@@ -53,87 +53,89 @@ const setup = async (step = createMockNotebookStep()) => {
 };
 
 describe("DataStep", () => {
-  it("should render with all columns selected", async () => {
-    await setup();
-    userEvent.click(getIcon("chevrondown"));
+  describe("fields selection", () => {
+    it("should render with all columns selected", async () => {
+      await setup();
+      userEvent.click(getIcon("chevrondown"));
 
-    expect(screen.getByLabelText("Select none")).toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeEnabled();
-    expect(screen.getByLabelText("Tax")).toBeChecked();
-    expect(screen.getByLabelText("Tax")).toBeEnabled();
-  });
+      expect(screen.getByLabelText("Select none")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeEnabled();
+      expect(screen.getByLabelText("Tax")).toBeChecked();
+      expect(screen.getByLabelText("Tax")).toBeEnabled();
+    });
 
-  it("should render with a single column selected", async () => {
-    const query = createQueryWithFields(["ID"]);
-    await setup(createMockNotebookStep({ topLevelQuery: query }));
-    userEvent.click(getIcon("chevrondown"));
+    it("should render with a single column selected", async () => {
+      const query = createQueryWithFields(["ID"]);
+      await setup(createMockNotebookStep({ topLevelQuery: query }));
+      userEvent.click(getIcon("chevrondown"));
 
-    expect(screen.getByLabelText("Select all")).not.toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeDisabled();
-    expect(screen.getByLabelText("Tax")).not.toBeChecked();
-    expect(screen.getByLabelText("Tax")).toBeEnabled();
-  });
+      expect(screen.getByLabelText("Select all")).not.toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeDisabled();
+      expect(screen.getByLabelText("Tax")).not.toBeChecked();
+      expect(screen.getByLabelText("Tax")).toBeEnabled();
+    });
 
-  it("should render with multiple columns selected", async () => {
-    const query = createQueryWithFields(["ID", "TOTAL"]);
-    await setup(createMockNotebookStep({ topLevelQuery: query }));
-    userEvent.click(getIcon("chevrondown"));
+    it("should render with multiple columns selected", async () => {
+      const query = createQueryWithFields(["ID", "TOTAL"]);
+      await setup(createMockNotebookStep({ topLevelQuery: query }));
+      userEvent.click(getIcon("chevrondown"));
 
-    expect(screen.getByLabelText("Select all")).not.toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeChecked();
-    expect(screen.getByLabelText("ID")).toBeEnabled();
-    expect(screen.getByLabelText("Tax")).not.toBeChecked();
-    expect(screen.getByLabelText("Tax")).toBeEnabled();
-    expect(screen.getByLabelText("Total")).toBeChecked();
-    expect(screen.getByLabelText("Total")).toBeEnabled();
-  });
+      expect(screen.getByLabelText("Select all")).not.toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeChecked();
+      expect(screen.getByLabelText("ID")).toBeEnabled();
+      expect(screen.getByLabelText("Tax")).not.toBeChecked();
+      expect(screen.getByLabelText("Tax")).toBeEnabled();
+      expect(screen.getByLabelText("Total")).toBeChecked();
+      expect(screen.getByLabelText("Total")).toBeEnabled();
+    });
 
-  it("should allow selecting a column", async () => {
-    const query = createQueryWithFields(["ID"]);
-    const step = createMockNotebookStep({ topLevelQuery: query });
-    const { getNextColumn } = await setup(step);
+    it("should allow selecting a column", async () => {
+      const query = createQueryWithFields(["ID"]);
+      const step = createMockNotebookStep({ topLevelQuery: query });
+      const { getNextColumn } = await setup(step);
 
-    userEvent.click(getIcon("chevrondown"));
-    userEvent.click(screen.getByLabelText("Tax"));
+      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Tax"));
 
-    expect(getNextColumn("ID").selected).toBeTruthy();
-    expect(getNextColumn("TAX").selected).toBeTruthy();
-    expect(getNextColumn("TOTAL").selected).toBeFalsy();
-  });
+      expect(getNextColumn("ID").selected).toBeTruthy();
+      expect(getNextColumn("TAX").selected).toBeTruthy();
+      expect(getNextColumn("TOTAL").selected).toBeFalsy();
+    });
 
-  it("should allow de-selecting a column", async () => {
-    const { getNextColumn } = await setup();
+    it("should allow de-selecting a column", async () => {
+      const { getNextColumn } = await setup();
 
-    userEvent.click(getIcon("chevrondown"));
-    userEvent.click(screen.getByLabelText("Tax"));
+      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Tax"));
 
-    expect(getNextColumn("ID").selected).toBeTruthy();
-    expect(getNextColumn("TAX").selected).toBeFalsy();
-    expect(getNextColumn("TOTAL").selected).toBeTruthy();
-  });
+      expect(getNextColumn("ID").selected).toBeTruthy();
+      expect(getNextColumn("TAX").selected).toBeFalsy();
+      expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
 
-  it("should allow selecting all columns", async () => {
-    const query = createQueryWithFields(["ID"]);
-    const step = createMockNotebookStep({ topLevelQuery: query });
-    const { getNextColumn } = await setup(step);
+    it("should allow selecting all columns", async () => {
+      const query = createQueryWithFields(["ID"]);
+      const step = createMockNotebookStep({ topLevelQuery: query });
+      const { getNextColumn } = await setup(step);
 
-    userEvent.click(getIcon("chevrondown"));
-    userEvent.click(screen.getByLabelText("Select all"));
+      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Select all"));
 
-    expect(getNextColumn("ID").selected).toBeTruthy();
-    expect(getNextColumn("TAX").selected).toBeTruthy();
-    expect(getNextColumn("TOTAL").selected).toBeTruthy();
-  });
+      expect(getNextColumn("ID").selected).toBeTruthy();
+      expect(getNextColumn("TAX").selected).toBeTruthy();
+      expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
 
-  it("should leave one column when de-selecting all columns", async () => {
-    const { getNextQuery } = await setup();
+    it("should leave one column when de-selecting all columns", async () => {
+      const { getNextQuery } = await setup();
 
-    userEvent.click(getIcon("chevrondown"));
-    userEvent.click(screen.getByLabelText("Select none"));
+      userEvent.click(getIcon("chevrondown"));
+      userEvent.click(screen.getByLabelText("Select none"));
 
-    const nextQuery = getNextQuery();
-    expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
+      const nextQuery = getNextQuery();
+      expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
+    });
   });
 });
