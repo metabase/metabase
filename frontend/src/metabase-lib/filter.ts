@@ -308,6 +308,7 @@ export function filterParts(
     numberFilterParts(query, stageIndex, filterClause) ??
     booleanFilterParts(query, stageIndex, filterClause) ??
     specificDateFilterParts(query, stageIndex, filterClause) ??
+    relativeDateFilterParts(query, stageIndex, filterClause) ??
     excludeDateFilterParts(query, stageIndex, filterClause)
   );
 }

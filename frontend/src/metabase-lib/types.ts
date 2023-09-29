@@ -78,6 +78,7 @@ export type BucketName =
   | "hour-of-day";
 
 export type BucketDisplayInfo = {
+  shortName: BucketName;
   displayName: string;
   default?: boolean;
   selected?: boolean;
@@ -253,7 +254,7 @@ export type RelativeDateFilterOptions = {
 
 // values depend on the bucket
 // day-of-week => 1-7 (Monday-Sunday)
-// month-of-year => 0-11 (January-December)
+// month-of-year => 1-12 (January-December)
 // quarter-of-year => 1-4
 // hour-of-day => 0-23
 
