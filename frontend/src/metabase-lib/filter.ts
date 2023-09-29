@@ -297,7 +297,7 @@ export function isExcludeDateFilter(
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-const TIME_FORMATS = ["HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
+const TIME_FORMAT = "HH:mm:SS.sss";
 
 export function timeFilterClause({
   operator,
@@ -311,7 +311,7 @@ export function timeFilterClause({
 
   return expressionClause(operator, [
     column,
-    ...dates.map(date => date.format(TIME_FORMATS[0])),
+    ...dates.map(date => date.format(TIME_FORMAT)),
   ]);
 }
 
@@ -335,7 +335,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const dates = values.map(value => moment(value, TIME_FORMATS));
+  const dates = values.map(value => moment(value, TIME_FORMAT));
   if (!dates.every(date => date.isValid())) {
     return null;
   }
