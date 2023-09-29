@@ -33,6 +33,7 @@ const TEST_CARD = createMockCard({
 const TEST_CARD_SLUG = `${TEST_CARD.id}-${TEST_CARD.name.toLocaleLowerCase()}`;
 
 const TEST_CARD_NATIVE = createMockCard({
+  can_write: true,
   dataset_query: createMockNativeDatasetQuery({
     database: SAMPLE_DB_ID,
     native: {
