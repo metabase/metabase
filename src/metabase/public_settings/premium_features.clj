@@ -90,7 +90,7 @@
    [:valid                          :boolean]
    [:status                         ms/NonBlankString]
    [:error-details {:optional true} [:maybe ms/NonBlankString]]
-   [:features      {:optional true} [:maybe ms/NonBlankString]]
+   [:features      {:optional true} [:sequential ms/NonBlankString]]
    [:trial         {:optional true} :boolean]
    [:valid_thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
 

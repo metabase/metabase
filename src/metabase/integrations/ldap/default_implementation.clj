@@ -70,7 +70,7 @@
         (str/replace "{dn}" (Filter/encodeValue ^String dn))
         (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
-(mu/defn ^:private user-groups :- [:maybe [ms/NonBlankString]]
+(mu/defn ^:private user-groups :- [:maybe [:sequential ms/NonBlankString]]
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ms/NonBlankString

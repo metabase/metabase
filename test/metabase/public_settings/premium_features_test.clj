@@ -212,7 +212,7 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            "Invalid input: [\"should be a keyword\"]"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
@@ -226,7 +226,7 @@
              (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            #"Invalid input: \[\"should be a keyword\"\]"
                             (greeting-with-schema "rasta"))))
 
     (testing "Only EE schema is validated if EE implementation is called"
@@ -235,7 +235,7 @@
 
       (with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Output of greeting-with-invalid-ee-return-schema does not match schema"
+                              #"Invalid output: \[\"should be a keyword\"\]"
                               (greeting-with-invalid-ee-return-schema :rasta)))))
 
     (testing "EE schema is not validated if OSS fallback is called"

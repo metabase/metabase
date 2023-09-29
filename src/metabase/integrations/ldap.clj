@@ -231,7 +231,7 @@
      (find-user conn username)))
 
   ([ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
-    username :- ms/NonBlankString]
+    username        :- ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
 (mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
