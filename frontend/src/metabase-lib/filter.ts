@@ -5,9 +5,11 @@ import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   BooleanFilterParts,
+  BucketName,
   ColumnMetadata,
   ExcludeDateFilterParts,
   ExpressionClause,
+  ExpressionParts,
   FilterClause,
   FilterOperator,
   FilterOperatorName,
@@ -30,18 +32,6 @@ export function filterableColumnOperators(
   column: ColumnMetadata,
 ): FilterOperator[] {
   return ML.filterable_column_operators(column);
-}
-
-function isFilterOperator(
-  query: Query,
-  stageIndex: number,
-  column: ColumnMetadata,
-  operatorName: string,
-): operatorName is FilterOperatorName {
-  return filterableColumnOperators(column).some(operator => {
-    const operatorInfo = displayInfo(query, stageIndex, operator);
-    return operatorInfo.shortName === operatorName;
-  });
 }
 
 export function filter(
@@ -68,6 +58,10 @@ function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
 }
 
+function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
+  return arg === "current" || isNumberLiteral(arg);
+}
+
 function isNumberLiteralArray(arg: unknown): arg is number[] {
   return Array.isArray(arg) && arg.every(isNumberLiteral);
 }
@@ -80,8 +74,28 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
   return Array.isArray(arg) && arg.every(isBooleanLiteral);
 }
 
+function isExpression(arg: unknown): arg is ExpressionParts {
+  return arg != null && typeof arg === "object";
+}
+
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
+}
+
+function isFilterOperator(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+  operatorName: string,
+): operatorName is FilterOperatorName {
+  return filterableColumnOperators(column).some(operator => {
+    const operatorInfo = displayInfo(query, stageIndex, operator);
+    return operatorInfo.shortName === operatorName;
+  });
+}
+
+function isTemporalBucket(arg: unknown): arg is BucketName {
+  return typeof arg === "string";
 }
 
 export function stringFilterClause({
@@ -270,7 +284,107 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  return null;
+  const filterParts = expressionParts(query, stageIndex, filterClause);
+
+  return (
+    relativeDateFilterPartsWithoutOffset(filterParts) ??
+    relativeDateFilterPartsWithOffset(filterParts)
+  );
+}
+
+function relativeDateFilterPartsWithoutOffset({
+  operator,
+  args,
+  options,
+}: ExpressionParts): RelativeDateFilterParts | null {
+  if (operator !== "time-interval" || args.length === 3) {
+    return null;
+  }
+
+  const [column, value, bucket] = args;
+  if (
+    !isColumnMetadata(column) ||
+    !isNumberOrCurrentLiteral(value) ||
+    !isTemporalBucket(bucket)
+  ) {
+    return null;
+  }
+
+  return {
+    column,
+    value,
+    bucket,
+    options,
+  };
+}
+
+function relativeDateFilterPartsWithOffset({
+  operator,
+  args,
+  options,
+}: ExpressionParts): RelativeDateFilterParts | null {
+  if (operator !== "between" || args.length !== 3) {
+    return null;
+  }
+
+  const [offsetParts, startParts, endParts] = args;
+  if (
+    !isExpression(offsetParts) ||
+    !isExpression(startParts) ||
+    !isExpression(endParts) ||
+    offsetParts.operator !== "+" ||
+    offsetParts.args.length !== 2 ||
+    startParts.operator !== "relative-datetime" ||
+    startParts.args.length !== 2 ||
+    endParts.operator !== "relative-datetime" ||
+    endParts.args.length !== 2
+  ) {
+    return null;
+  }
+
+  const [column, intervalParts] = offsetParts.args;
+  if (
+    !isColumnMetadata(column) ||
+    !isExpression(intervalParts) ||
+    intervalParts.operator !== "interval"
+  ) {
+    return null;
+  }
+
+  const [offsetValue, offsetBucket] = intervalParts.args;
+  if (!isNumberLiteral(offsetValue) || !isTemporalBucket(offsetBucket)) {
+    return null;
+  }
+
+  const [startValue, startBucket] = startParts.args;
+  const [endValue, endBucket] = endParts.args;
+  if (
+    !isNumberLiteral(startValue) ||
+    !isTemporalBucket(startBucket) ||
+    !isNumberLiteral(endValue) ||
+    !isTemporalBucket(endBucket) ||
+    startBucket !== endBucket ||
+    (startValue !== 0 && endValue !== 0)
+  ) {
+    return null;
+  }
+
+  return {
+    column,
+    value: startValue < 0 ? startValue : endValue,
+    bucket: startBucket,
+    offsetValue,
+    offsetBucket,
+    options,
+  };
+}
+
+export function isRelativeDateFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function excludeDateFilterClause({

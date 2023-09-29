@@ -165,17 +165,11 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime";
 
-export type ExpressionArg =
-  | null
-  | boolean
-  | number
-  | string
-  | ColumnMetadata
-  | ExpressionClause;
+export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
   operator: ExpressionOperatorName;
-  args: ExpressionArg[];
+  args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
 
