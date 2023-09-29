@@ -10,7 +10,7 @@ export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
-  onSelect: (filter: Lib.FilterClause) => void;
+  onSelect: (filter: Lib.ExpressionClause) => void;
   onClose?: () => void;
 }
 
