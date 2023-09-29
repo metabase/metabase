@@ -22,7 +22,7 @@
   (let [defaults {:timestamp :%now}]
     (merge defaults log-entry)))
 
-(def ^:private ^:dynamic recent-views-stored-per-user
+(def ^:private ^:dynamic *recent-views-stored-per-user*
   "The number of recently viewed items to keep per user. This should be larger than the number of items returned by the
   /api/activity/recent_views endpoint, but it should still be lightweight to read all of a user's recent views at once."
   100)
@@ -57,7 +57,7 @@
                                       :model    (u/lower-case-en (name model))
                                       :model_id model-id})
       (let [current-views  (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
-            ids-to-prune (view-ids-to-prune current-views recent-views-stored-per-user)]
+            ids-to-prune (view-ids-to-prune current-views *recent-views-stored-per-user*)]
         (when (seq ids-to-prune)
          (t2/delete! :model/RecentViews :id [:in ids-to-prune]))))))
 
@@ -76,12 +76,12 @@
 (defn user-recent-views
   "Returns the most recent `n` unique views for a given user."
   ([user-id]
-   (user-recent-views user-id recent-views-stored-per-user))
+   (user-recent-views user-id *recent-views-stored-per-user*))
 
   ([user-id n]
    (let [all-user-views (t2/select-fn-vec #(select-keys % [:model :model_id])
                                           :model/RecentViews
                                           :user_id user-id
                                           {:order-by [[:timestamp :desc]]
-                                           :limit    recent-views-stored-per-user})]
+                                           :limit    *recent-views-stored-per-user*})]
      (take n (distinct all-user-views)))))

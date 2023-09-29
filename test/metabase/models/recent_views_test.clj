@@ -43,9 +43,9 @@
 
 (deftest update-users-recent-views!-test
   (clear-test-user-recent-views :rasta)
-  (binding [recent-views/recent-views-stored-per-user 3]
+  (binding [recent-views/*recent-views-stored-per-user* 3]
     (let [user-id (mt/user->id :rasta)]
-      (testing "`update-users-recent-views!` prunes views after the threshold of `recent-views-stored-per-user`"
+      (testing "`update-users-recent-views!` prunes views after the threshold of `*recent-views-stored-per-user*`"
         (recent-views/update-users-recent-views! user-id :model/Card 1)
         (is (= [{:model "card" :model_id 1}]
                (recent-views/user-recent-views user-id)))
@@ -78,8 +78,8 @@
         (is (= [{:model "dashboard" :model_id 2} {:model "card" :model_id 9} {:model "card" :model_id 8}]
                (recent-views/user-recent-views user-id))))
 
-      (testing "If `recent-views-stored-per-user` changes, the table expands or shrinks appropriately"
-        (binding [recent-views/recent-views-stored-per-user 4]
+      (testing "If `*recent-views-stored-per-user*` changes, the table expands or shrinks appropriately"
+        (binding [recent-views/*recent-views-stored-per-user* 4]
           (recent-views/update-users-recent-views! user-id :model/Table 1)
           (is (= [{:model "table"     :model_id 1}
                   {:model "dashboard" :model_id 2}
@@ -87,7 +87,7 @@
                   {:model "card"      :model_id 8}]
                  (recent-views/user-recent-views user-id))))
 
-        (binding [recent-views/recent-views-stored-per-user 2]
+        (binding [recent-views/*recent-views-stored-per-user* 2]
           (recent-views/update-users-recent-views! user-id :model/Table 2)
           (is (= [{:model "table" :model_id 2} {:model "dashboard" :model_id 2}]
                  (recent-views/user-recent-views user-id))))))))
