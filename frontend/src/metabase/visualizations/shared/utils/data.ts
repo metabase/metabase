@@ -7,7 +7,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
-  ChartColumns,
+  CartesianChartColumns,
   ColumnDescriptor,
 } from "metabase/visualizations/lib/graph/columns";
 import type { ColumnFormatter } from "metabase/visualizations/shared/types/format";
@@ -52,7 +52,7 @@ const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
 
 export const getGroupedDataset = (
   rows: RowValues[],
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): GroupedDataset => {
   const { dimension } = chartColumns;
@@ -227,7 +227,7 @@ const getMultipleMetricSeries = (
 
 export const getSeries = (
   data: DatasetData,
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   if ("breakout" in chartColumns) {
