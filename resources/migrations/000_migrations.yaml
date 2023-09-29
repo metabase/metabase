@@ -15303,6 +15303,24 @@ databaseChangeLog:
             columnName: slug
             newDataType: varchar(254)
 
+  - changeSet:
+      id: v48.00-017
+      author: nemanjaglumac
+      comment: 'Collection color is removed in 0.48.0'
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: color
+      rollback:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: color
+                  type: char(7)
+                  remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
+                  constraints:
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
