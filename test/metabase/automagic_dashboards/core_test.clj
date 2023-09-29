@@ -67,8 +67,10 @@
 ;;; ------------------- `->reference` -------------------
 
 (deftest ^:parallel ->reference-test
-  (is (= [:field 1 nil]
-         (->> (assoc (mi/instance Field) :id 1)
+  (is (= [:field 1 {:base-type :type/Float}]
+         (->> (assoc (mi/instance Field)
+                :id 1
+                :base_type :type/Float)
               (#'magic/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
@@ -2052,7 +2054,8 @@
                           :dataset_query {:type     :query
                                           :database (mt/id)
                                           :query    {:source-table (format "card__%s" card-id)
-                                                     :breakout     [[:field (mt/id :people :latitude) nil]]
+                                                     :breakout     [[:field (mt/id :people :latitude)
+                                                                     {:base-type :type/Float}]]
                                                      :aggregation  [["count"]]}}}]
                         (#'magic/card-candidates
                           base-context

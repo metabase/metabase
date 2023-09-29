@@ -405,7 +405,7 @@
                    (cond
                      link               [:field id {:source-field link}]
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                     id                 [:field id nil]
+                     id                 [:field id {:base-type base_type}]
                      :else              [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)
@@ -664,8 +664,9 @@
  (walk/postwalk
    (fn [subform]
      (if (dashboard-templates/dimension-form? subform)
-       (let [[_ identifier opts] subform]
-         (->reference :mbql (-> identifier bindings (merge opts))))
+       (let [[_ identifier opts] subform
+             binding (-> identifier bindings (merge opts))]
+         (->reference :mbql binding))
        subform))
    {:type     :query
     :database (-> root :database)
