@@ -38,8 +38,6 @@
    [:group-base           [:maybe ms/NonBlankString]]
    [:group-mappings       [:maybe [:map-of (ms/InstanceOfClass DN) [:sequential ms/PositiveInt]]]]])
 
-
-
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 
 (def ^:private filter-placeholder
@@ -74,7 +72,7 @@
 
 (mu/defn ^:private user-groups :- [:maybe [ms/NonBlankString]]
   "Retrieve groups for a supplied DN."
-  [ldap-connection         :- LDAPConnectionPool
+  [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ms/NonBlankString
    uid                     :- [:maybe ms/NonBlankString]
    {:keys [group-base]}    :- LDAPSettings
@@ -117,8 +115,9 @@
   [ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
    username        :- ms/NonBlankString
    settings        :- LDAPSettings]
- (when-let [result (search ldap-connection username settings)]
-   (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
+  #pp :here
+ (when-let [result #pp (search ldap-connection username settings)]
+   #pp (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------

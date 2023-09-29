@@ -230,7 +230,7 @@
    (with-ldap-connection [conn]
      (find-user conn username)))
 
-  ([ldap-connection :- LDAPConnectionPool,
+  ([ldap-connection :- (ms/InstanceOfClass LDAPConnectionPool)
     username :- ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
