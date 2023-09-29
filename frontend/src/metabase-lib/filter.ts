@@ -1,22 +1,42 @@
+import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
-import { isBoolean, isNumeric, isString } from "./column_types";
+import {
+  BOOLEAN_FILTER_OPERATORS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
+  TIME_FILTER_OPERATORS,
+} from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
+import {
+  availableTemporalBuckets,
+  temporalBucket,
+  withTemporalBucket,
+} from "./temporal_bucket";
 import type {
+  BooleanFilterOperatorName,
   BooleanFilterParts,
+  BucketName,
   ColumnMetadata,
+  ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
   FilterOperator,
-  FilterOperatorName,
   FilterParts,
+  NumberFilterOperatorName,
   NumberFilterParts,
   Query,
   RelativeDateFilterParts,
+  SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
+  StringFilterOperatorName,
   StringFilterParts,
+  TimeFilterOperatorName,
+  TimeFilterParts,
 } from "./types";
 
 export function filterableColumns(
@@ -72,16 +92,40 @@ function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
 }
 
-function isFilterOperator(
-  query: Query,
-  stageIndex: number,
-  column: ColumnMetadata,
-  operatorName: string,
-): operatorName is FilterOperatorName {
-  return filterableColumnOperators(column).some(operator => {
-    const operatorInfo = displayInfo(query, stageIndex, operator);
-    return operatorInfo.shortName === operatorName;
-  });
+function isStringFilterOperator(arg: unknown): arg is StringFilterOperatorName {
+  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isNumberFilterOperator(arg: unknown): arg is NumberFilterOperatorName {
+  const operators: ReadonlyArray<string> = NUMBER_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isBooleanFilterOperator(
+  arg: unknown,
+): arg is BooleanFilterOperatorName {
+  const operators: ReadonlyArray<string> = BOOLEAN_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isSpecificDateFilterOperator(
+  arg: unknown,
+): arg is SpecificDateFilterOperatorName {
+  const operators: ReadonlyArray<string> = SPECIFIC_DATE_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isExcludeDateFilterOperator(
+  arg: unknown,
+): arg is ExcludeDateFilterOperatorName {
+  const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isTimeFilterOperator(arg: unknown): arg is TimeFilterOperatorName {
+  const operators: ReadonlyArray<string> = TIME_FILTER_OPERATORS;
+  return isStringLiteral(arg) && operators.includes(arg);
 }
 
 export function stringFilterClause({
@@ -109,10 +153,9 @@ export function stringFilterParts(
 
   const [column, ...values] = args;
   if (
+    !isStringFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isString(column) ||
-    !isStringLiteralArray(values) ||
-    !isFilterOperator(query, stageIndex, column, operator)
+    !isStringLiteralArray(values)
   ) {
     return null;
   }
@@ -153,10 +196,9 @@ export function numberFilterParts(
 
   const [column, ...values] = args;
   if (
+    !isNumberFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    !isNumberLiteralArray(values) ||
-    !isFilterOperator(query, stageIndex, column, operator)
+    !isNumberLiteralArray(values)
   ) {
     return null;
   }
@@ -196,10 +238,9 @@ export function booleanFilterParts(
 
   const [column, ...values] = args;
   if (
+    !isBooleanFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isBoolean(column) ||
-    !isBooleanLiteralArray(values) ||
-    !isFilterOperator(query, stageIndex, column, operator)
+    !isBooleanLiteralArray(values)
   ) {
     return null;
   }
@@ -232,7 +273,25 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  return null;
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (
+    !isSpecificDateFilterOperator(operator) ||
+    !isColumnMetadata(column) ||
+    !isStringLiteralArray(values)
+  ) {
+    return null;
+  }
+
+  return {
+    column,
+    operator,
+    values,
+  };
 }
 
 export function isSpecificDateFilter(
@@ -251,7 +310,18 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
-  throw new TypeError();
+  if (offsetValue == null || offsetBucket == null) {
+    return expressionClause("time-interval", [column, value, bucket], options);
+  }
+
+  return expressionClause("between", [
+    expressionClause("+", [
+      column,
+      expressionClause("interval", [-offsetValue, offsetBucket]),
+    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
+  ]);
 }
 
 export function relativeDateFilterParts(
@@ -270,13 +340,27 @@ export function isRelativeDateFilter(
   return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function excludeDateFilterClause({
-  operator,
-  column,
-  values,
-  bucket,
-}: ExcludeDateFilterParts): ExpressionClause {
-  throw new TypeError();
+const DATE_FORMAT = "yyyy-MM-dd";
+const TIME_FORMAT = "HH:mm:SS.sss";
+
+export function excludeDateFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
+): ExpressionClause {
+  const bucket = availableTemporalBuckets(query, stageIndex, column).find(
+    bucket => displayInfo(query, stageIndex, bucket).shortName === bucketName,
+  );
+  if (!bucket) {
+    throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
+  }
+
+  const bucketColumn = withTemporalBucket(column, bucket);
+  const bucketValues = values.map(value =>
+    formatExcludeDateFilterValue(value, bucketName),
+  );
+
+  return expressionClause(operator, [bucketColumn, ...bucketValues]);
 }
 
 export function excludeDateFilterParts(
@@ -284,7 +368,83 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return null;
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (
+    !isExcludeDateFilterOperator(operator) ||
+    !isColumnMetadata(column) ||
+    !isStringLiteralArray(values)
+  ) {
+    return null;
+  }
+
+  const bucket = temporalBucket(column);
+  if (!bucket) {
+    return null;
+  }
+
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const bucketValues = values.map(value =>
+    parseExcludeDateFilterValue(value, bucketInfo.shortName),
+  );
+
+  return {
+    column,
+    operator,
+    values: bucketValues,
+    bucket: bucketInfo.shortName,
+  };
+}
+
+function parseExcludeDateFilterValue(
+  value: string,
+  bucketName: BucketName,
+): number {
+  const date = moment(value, DATE_FORMAT);
+
+  switch (bucketName) {
+    case "hour-of-day":
+      return date.hour();
+    case "day-of-week":
+      return date.isoWeekday();
+    case "month-of-year":
+      return date.month() + 1; // moment.month() is 0-based
+    case "quarter-of-year":
+      return date.quarter();
+    default:
+      return date.utcOffset();
+  }
+}
+
+function formatExcludeDateFilterValue(
+  value: number,
+  bucketName: BucketName,
+): string {
+  const date = moment();
+
+  switch (bucketName) {
+    case "hour-of-day":
+      date.hour(value);
+      break;
+    case "day-of-week":
+      date.isoWeekday(value);
+      break;
+    case "month-of-year":
+      date.month(value - 1); // moment.month() is 0-based
+      break;
+    case "quarter-of-year":
+      date.quarter(value);
+      break;
+    default:
+      date.utcOffset(value);
+      break;
+  }
+
+  return date.format(DATE_FORMAT);
 }
 
 export function isExcludeDateFilter(
@@ -293,6 +453,61 @@ export function isExcludeDateFilter(
   filterClause: FilterClause,
 ): boolean {
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function timeFilterClause({
+  operator,
+  column,
+  values,
+}: TimeFilterParts): ExpressionClause {
+  const dates = values.map(value => moment(value, moment.ISO_8601));
+  if (!dates.every(date => date.isValid())) {
+    throw new TypeError("Invalid date format");
+  }
+
+  return expressionClause(operator, [
+    column,
+    ...dates.map(date => date.format(TIME_FORMAT)),
+  ]);
+}
+
+export function timeFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): TimeFilterParts | null {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (
+    !isTimeFilterOperator(operator) ||
+    !isColumnMetadata(column) ||
+    !isStringLiteralArray(values)
+  ) {
+    return null;
+  }
+
+  const dates = values.map(value => moment(value, TIME_FORMAT));
+  if (!dates.every(date => date.isValid())) {
+    return null;
+  }
+
+  return {
+    column,
+    operator,
+    values: dates.map(date => date.toISOString()),
+  };
+}
+
+export function isTimeFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return timeFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function filterParts(
@@ -306,6 +521,7 @@ export function filterParts(
     booleanFilterParts(query, stageIndex, filterClause) ??
     specificDateFilterParts(query, stageIndex, filterClause) ??
     relativeDateFilterParts(query, stageIndex, filterClause) ??
-    excludeDateFilterParts(query, stageIndex, filterClause)
+    excludeDateFilterParts(query, stageIndex, filterClause) ??
+    timeFilterParts(query, stageIndex, filterClause)
   );
 }

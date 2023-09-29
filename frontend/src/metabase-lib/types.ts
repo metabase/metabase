@@ -1,4 +1,12 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  BOOLEAN_FILTER_OPERATORS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
+  TIME_FILTER_OPERATORS,
+} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -182,21 +190,11 @@ declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
 export type FilterOperatorName =
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | "between"
-  | ">="
-  | "<="
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with";
+  | StringFilterOperatorName
+  | NumberFilterOperatorName
+  | BooleanFilterOperatorName
+  | ExcludeDateFilterOperatorName
+  | TimeFilterOperatorName;
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -204,8 +202,19 @@ export type FilterOperatorDisplayInfo = {
   default?: boolean;
 };
 
+export type FilterParts =
+  | StringFilterParts
+  | NumberFilterParts
+  | BooleanFilterParts
+  | SpecificDateFilterParts
+  | RelativeDateFilterParts
+  | ExcludeDateFilterParts
+  | TimeFilterParts;
+
+export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+
 export type StringFilterParts = {
-  operator: FilterOperatorName;
+  operator: StringFilterOperatorName;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -215,20 +224,27 @@ export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
+export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+
 export type NumberFilterParts = {
-  operator: FilterOperatorName;
+  operator: NumberFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
 };
 
+export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+
 export type BooleanFilterParts = {
-  operator: FilterOperatorName;
+  operator: BooleanFilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };
 
+export type SpecificDateFilterOperatorName =
+  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+
 export type SpecificDateFilterParts = {
-  operator: FilterOperatorName;
+  operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
 };
@@ -246,33 +262,30 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
-// values depend on the bucket
-// day-of-week => 1-7 (Monday-Sunday)
-// month-of-year => 1-12 (January-December)
-// quarter-of-year => 1-4
-// hour-of-day => 0-23
+export type ExcludeDateFilterOperatorName =
+  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
 
+/*
+ * values depend on the bucket
+ * day-of-week => 1-7 (Monday-Sunday)
+ * month-of-year => 1-12 (January-December)
+ * quarter-of-year => 1-4
+ * hour-of-day => 0-23
+ */
 export type ExcludeDateFilterParts = {
-  operator: FilterOperatorName;
+  operator: ExcludeDateFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
   bucket: BucketName;
 };
 
-export type TimeFilterParts = {
-  operator: FilterOperatorName;
-  column: ColumnMetadata;
-  values: string[]; // HH:mm:ss
-};
+export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
 
-export type FilterParts =
-  | StringFilterParts
-  | NumberFilterParts
-  | BooleanFilterParts
-  | TimeFilterParts
-  | SpecificDateFilterParts
-  | RelativeDateFilterParts
-  | ExcludeDateFilterParts;
+export type TimeFilterParts = {
+  operator: TimeFilterOperatorName;
+  column: ColumnMetadata;
+  values: string[]; // ISO 8601 date with time
+};
 
 declare const Join: unique symbol;
 export type Join = unknown & { _opaque: typeof Join };
