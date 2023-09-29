@@ -11,6 +11,8 @@ import type { CartesianChartModel } from "metabase/visualizations/echarts/cartes
 
 import { isNumeric } from "metabase-lib/types/utils/isa";
 
+const NORMALIZED_RANGE = { min: 0, max: 1 };
+
 const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
   nameGap: number,
@@ -122,7 +124,17 @@ const buildMetricAxis = (
     });
   };
 
+  const isNormalized = settings["stackable.stack_type"] === "normalized";
+  const range = isNormalized ? NORMALIZED_RANGE : {};
+
+  const percentageFormatter = (value: unknown) =>
+    renderingContext.formatValue(value, {
+      column: column,
+      number_style: "percent",
+    });
+
   return {
+    ...range,
     ...getAxisNameDefaultOption(
       renderingContext,
       40, // TODO: compute
@@ -139,7 +151,8 @@ const buildMetricAxis = (
       ...getTicksDefaultOption(renderingContext),
       // @ts-expect-error TODO: figure out EChart types
       formatter: (value: string) => {
-        return formatter(value);
+        const formatterFn = isNormalized ? percentageFormatter : formatter;
+        return formatterFn(value);
       },
     },
   };
