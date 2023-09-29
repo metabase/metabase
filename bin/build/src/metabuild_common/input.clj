@@ -58,7 +58,7 @@
                            [:c :e])
     ;-> :c"
   [prompt letters & options]
-  (let [letter-strs (map #(str/upper-case (if (keyword? %)
+  (let [letter-strs (map #(u/upper-case-en (if (keyword? %)
                                             (name %)
                                             (str %)))
                          letters)
@@ -66,7 +66,7 @@
                      read-line-with-prompt
                      (format "%s [%s]" prompt (str/join "/" letter-strs))
                      :validator (fn [line]
-                                  (when-not (contains? (set letter-strs) (str/trim (str/upper-case line)))
+                                  (when-not (contains? (set letter-strs) (str/trim (u/upper-case-en line)))
                                     (format "Please enter %s" (str/join " or " (map pr-str letter-strs)))))
                      options)]
     (out/safe-println (str/trim letter))
