@@ -142,8 +142,6 @@
       flatten
       set))
 
-;;; for some reason the `:clj-kondo/ignore` doesn't work inside of [[defenterprise-schema]]
-#_{:clj-kondo/ignore [:deprecated-var]}
 (defenterprise-schema fetch-or-create-user! :- (ms/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap

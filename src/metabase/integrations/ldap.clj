@@ -4,17 +4,13 @@
    [clj-ldap.client :as ldap]
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
-   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :refer [User]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [schema.core :as s])
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
 
@@ -216,7 +212,7 @@
    (let [dn (if (string? user-info) user-info (:dn user-info))]
      (ldap/bind? conn dn password))))
 
-(s/defn ldap-settings
+(defn ldap-settings
   "A map of all ldap settings"
   []
   {:first-name-attribute (ldap-attribute-firstname)
@@ -230,14 +226,15 @@
 
 (mu/defn find-user :- [:maybe default-impl/UserInfo]
   "Get user information for the supplied username."
-  ([username :- su/NonBlankString]
+  ([username :- ms/NonBlankString]
    (with-ldap-connection [conn]
      (find-user conn username)))
 
-  ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
+  ([ldap-connection :- LDAPConnectionPool,
+    username :- ms/NonBlankString]
    (default-impl/find-user ldap-connection username (ldap-settings))))
 
-(s/defn fetch-or-create-user! :- #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema User)
+(mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))
