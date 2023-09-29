@@ -33,7 +33,7 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
-  settings?: Record<string, unknown>;
+  settings?: VisualizationSettings;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

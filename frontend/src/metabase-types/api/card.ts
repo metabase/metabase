@@ -1,8 +1,13 @@
 import type { GaugeSegment } from "metabase/static-viz/components/Gauge/types";
-import type { HeaderWidthType } from "metabase/visualizations/visualizations/PivotTable/types";
+import type {
+  HeaderWidthType,
+  PivotSetting,
+} from "metabase/visualizations/visualizations/PivotTable/types";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { DatasetColumn } from "metabase-types/api/dataset";
+import type { ClickBehavior } from "metabase-types/api/click-behavior";
+import type { ActionDisplayType } from "metabase-types/api/actions";
 import type { DatabaseId } from "./database";
 import type {
   DashboardId,
@@ -12,15 +17,8 @@ import type {
 } from "./dashboard";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
-import type {
-  DatasetQuery,
-  DimensionReference,
-  FieldReference,
-  PublicDatasetQuery,
-} from "./query";
+import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
-import type { ClickBehavior } from "metabase-types/api/click-behavior";
-import type { ActionDisplayType } from "metabase-types/api/actions";
 
 export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
@@ -202,11 +200,7 @@ export type BasicVisualizationSettings = {
   "pivot.show_row_totals"?: boolean;
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
   "pivot_table.column_show_totals"?: boolean;
-  "pivot_table.column_split"?: {
-    columns: DimensionReference[];
-    rows: DimensionReference[];
-    values: DimensionReference[];
-  };
+  "pivot_table.column_split"?: PivotSetting;
   "pivot_table.column_widths"?: HeaderWidthType;
   "progress.color"?: string;
   "progress.goal"?: number;
@@ -242,6 +236,7 @@ export type BasicVisualizationSettings = {
   "waterfall.total_color"?: string;
 
   title?: string;
+  text?: string;
   display?: "line" | "area" | "bar";
   axis?: null | "left" | "right";
   _header_unit?: string;

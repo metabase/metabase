@@ -13,6 +13,7 @@ import type {
   ClickBehavior,
   DatasetData,
   DatasetColumn,
+  VisualizationSettings,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
@@ -27,8 +28,6 @@ function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
 }
 
-type VizSettings = Record<string, unknown>;
-
 interface Props {
   dashboard: Dashboard;
   dashcard: DashboardOrderedCard;
@@ -38,15 +37,15 @@ interface Props {
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
     columnKey: string,
-    settings?: VizSettings | null,
+    settings?: VisualizationSettings | null,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings?: VisualizationSettings | null,
   ) => void;
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings?: VisualizationSettings | null,
   ) => void;
 }
 
@@ -69,11 +68,11 @@ function ClickBehaviorSidebar({
   );
 
   const [originalVizSettings, setOriginalVizSettings] = useState<
-    VizSettings | undefined | null
+    VisualizationSettings | undefined | null
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
-    VizSettings | undefined | null
+    VisualizationSettings | undefined | null
   >(null);
 
   const previousDashcard = usePrevious(dashcard);

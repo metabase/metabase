@@ -48,7 +48,7 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
     const extraProps = {
       ...columnSettingsWidget,
       props: {
-        ...columnSettingsWidget.props,
+        ...columnSettingsWidget?.props,
         initialKey: getColumnKey(column),
       },
     };

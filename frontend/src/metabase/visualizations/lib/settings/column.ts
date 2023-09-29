@@ -17,6 +17,7 @@ import { ChartSettingTableColumns } from "metabase/visualizations/components/set
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args: Series[]) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require("metabase/visualizations").getVisualizationRaw(...args);
 }
 
@@ -61,6 +62,10 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import {
   isDate,
   isNumber,
@@ -70,12 +75,8 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { nestedSettings } from "./nested";
-import type {
-  VisualizationSettingDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
 import type Field from "metabase-lib/metadata/Field";
+import { nestedSettings } from "./nested";
 
 export function getGlobalSettingsForColumn(
   fieldOrColumn?: Field | DatasetColumn,
@@ -144,7 +145,7 @@ function dateStyleOption(
 ) {
   let format = getDateFormatFromStyle(style, unit, separator);
   if (abbreviate) {
-    format = format.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
+    format = format?.replace(/MMMM/, "MMM").replace(/dddd/, "ddd");
   }
   return {
     name: EXAMPLE_DATE.format(format),
@@ -238,7 +239,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColum
       inline: true,
       getHidden: ({ unit }, settings = {}) => {
         const format = getDateFormatFromStyle(settings["date_style"], unit);
-        return !format.match(/MMMM|dddd/);
+        return !format?.match(/MMMM|dddd/);
       },
       readDependencies: ["date_style"],
     },

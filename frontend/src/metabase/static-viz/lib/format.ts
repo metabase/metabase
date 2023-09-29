@@ -51,6 +51,7 @@ type StaticFormattingOptions = {
   prefix?: string;
   suffix?: string;
   noRange?: boolean;
+  compact?: boolean;
 };
 
 // Literally simplified copy of frontend/src/metabase/lib/formatting/value.tsx that excludes

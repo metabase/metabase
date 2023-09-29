@@ -251,7 +251,7 @@ export const _columnSettings = {
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
