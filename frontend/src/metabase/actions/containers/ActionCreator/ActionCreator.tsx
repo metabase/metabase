@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -8,6 +8,7 @@ import Modal from "metabase/components/Modal";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import type {
   CreateActionParams,
   UpdateActionParams,
@@ -102,25 +103,15 @@ function ActionCreator({
     renderEditorBody,
   } = useActionContext();
 
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
   const isEditable = isNew || (model != null && model.canWriteActions());
-  const [actionToSubmit, scheduleSubmitAction] = useState<WritebackAction>();
 
-  const showUnsavedChangesWarning = isEditable && isDirty && !actionToSubmit;
+  const showUnsavedChangesWarning =
+    isEditable && isDirty && !isCallbackScheduled;
 
   useBeforeUnload(!route && showUnsavedChangesWarning);
-
-  useEffect(() => {
-    /**
-     * onSubmit and onClose are called in an effect so that
-     * showUnsavedChangesWarning has a chance to re-compute on re-render
-     */
-    if (actionToSubmit) {
-      onSubmit?.(actionToSubmit);
-      onClose?.();
-    }
-  }, [actionToSubmit, onSubmit, onClose]);
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -138,7 +129,11 @@ function ActionCreator({
     handleActionChange(values);
 
     setShowSaveModal(false);
-    scheduleSubmitAction(createdAction);
+
+    scheduleCallback(() => {
+      onSubmit?.(createdAction);
+      onClose?.();
+    });
   };
 
   const handleUpdate = async () => {
@@ -150,7 +145,11 @@ function ActionCreator({
       });
 
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
-      scheduleSubmitAction(updatedAction);
+
+      scheduleCallback(() => {
+        onSubmit?.(updatedAction);
+        onClose?.();
+      });
     }
   };
 
