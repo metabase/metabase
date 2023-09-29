@@ -300,7 +300,11 @@ export function excludeDateFilterClause(
   const bucket = availableTemporalBuckets(query, stageIndex, column).find(
     bucket => displayInfo(query, stageIndex, bucket).shortName === bucketName,
   );
-  const bucketColumn = withTemporalBucket(column, bucket ?? null);
+  if (!bucket) {
+    throw new TypeError(`Unsupported temporal bucket ${bucketName}`);
+  }
+
+  const bucketColumn = withTemporalBucket(column, bucket);
   const bucketValues = values.map(value =>
     formatExcludeDateFilterValue(value, bucketName),
   );
