@@ -615,6 +615,51 @@ describe("QueryBuilder", () => {
           ),
         ).not.toBeInTheDocument();
       });
+
+      it("should not show custom warning modal when saving edited question", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        userEvent.click(screen.getByText("Save"));
+
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("save-question-modal"),
+        );
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
