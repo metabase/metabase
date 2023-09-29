@@ -1,6 +1,7 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type {
   BOOLEAN_FILTER_OPERATORS,
+  EXCLUDE_DATE_FILTER_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -265,6 +266,9 @@ export type RelativeDateFilterOptions = {
 export type ExcludeDateFilterOperatorName =
   typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
 
+export type ExcludeDateFilterBucketName =
+  typeof EXCLUDE_DATE_FILTER_BUCKETS[number];
+
 /*
  * values depend on the bucket
  * day-of-week => 1-7 (Monday-Sunday)
@@ -276,7 +280,7 @@ export type ExcludeDateFilterParts = {
   operator: ExcludeDateFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
-  bucket: BucketName;
+  bucket: ExcludeDateFilterBucketName;
 };
 
 export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];

@@ -3,6 +3,7 @@ import * as ML from "cljs/metabase.lib.js";
 
 import {
   BOOLEAN_FILTER_OPERATORS,
+  EXCLUDE_DATE_FILTER_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -19,8 +20,8 @@ import {
 import type {
   BooleanFilterOperatorName,
   BooleanFilterParts,
-  BucketName,
   ColumnMetadata,
+  ExcludeDateFilterBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
   ExpressionClause,
@@ -121,6 +122,13 @@ function isExcludeDateFilterOperator(
 ): arg is ExcludeDateFilterOperatorName {
   const operators: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_OPERATORS;
   return isStringLiteral(arg) && operators.includes(arg);
+}
+
+function isExcludeDateFilterBucket(
+  arg: unknown,
+): arg is ExcludeDateFilterBucketName {
+  const buckets: ReadonlyArray<string> = EXCLUDE_DATE_FILTER_BUCKETS;
+  return isStringLiteral(arg) && buckets.includes(arg);
 }
 
 function isTimeFilterOperator(arg: unknown): arg is TimeFilterOperatorName {
@@ -388,21 +396,26 @@ export function excludeDateFilterParts(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const bucketName = bucketInfo.shortName;
+  if (!isExcludeDateFilterBucket(bucketName)) {
+    return null;
+  }
+
   const bucketValues = values.map(value =>
-    parseExcludeDateFilterValue(value, bucketInfo.shortName),
+    parseExcludeDateFilterValue(value, bucketName),
   );
 
   return {
     column,
     operator,
     values: bucketValues,
-    bucket: bucketInfo.shortName,
+    bucket: bucketName,
   };
 }
 
 function parseExcludeDateFilterValue(
   value: string,
-  bucketName: BucketName,
+  bucketName: ExcludeDateFilterBucketName,
 ): number {
   const date = moment(value, DATE_FORMAT);
 
@@ -415,14 +428,12 @@ function parseExcludeDateFilterValue(
       return date.month() + 1; // moment.month() is 0-based
     case "quarter-of-year":
       return date.quarter();
-    default:
-      return date.utcOffset();
   }
 }
 
 function formatExcludeDateFilterValue(
   value: number,
-  bucketName: BucketName,
+  bucketName: ExcludeDateFilterBucketName,
 ): string {
   const date = moment();
 
@@ -438,9 +449,6 @@ function formatExcludeDateFilterValue(
       break;
     case "quarter-of-year":
       date.quarter(value);
-      break;
-    default:
-      date.utcOffset(value);
       break;
   }
 

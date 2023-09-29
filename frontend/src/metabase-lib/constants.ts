@@ -38,4 +38,11 @@ export const EXCLUDE_DATE_FILTER_OPERATORS = [
   "not-null",
 ] as const;
 
+export const EXCLUDE_DATE_FILTER_BUCKETS = [
+  "hour-of-day",
+  "day-of-week",
+  "month-of-year",
+  "quarter-of-year",
+] as const;
+
 export const TIME_FILTER_OPERATORS = [">", "<", "between"] as const;
