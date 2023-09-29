@@ -1,12 +1,11 @@
 import { t } from "ttag";
 import { useMemo, useState } from "react";
-
 import { Box, Button, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { FilterPickerWidgetProps } from "./types";
 import { BackButton } from "./BackButton";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import type { FilterPickerWidgetProps } from "./types";
 
 type OptionType = "true" | "false" | "empty" | "not-empty";
 
@@ -70,7 +69,7 @@ export function BooleanFilterPicker({
     return isExpanded ? options : options.filter(option => option.isAdvanced);
   }, [options, isExpanded]);
 
-  const handleChange = (type: string) => {
+  const handleOptionChange = (type: string) => {
     setOptionType(type as OptionType);
   };
 
@@ -84,7 +83,7 @@ export function BooleanFilterPicker({
         <BackButton onClick={onBack}>{columnInfo.displayName}</BackButton>
       </Header>
       <Stack p="md">
-        <Radio.Group value={optionType} onChange={handleChange}>
+        <Radio.Group value={optionType} onChange={handleOptionChange}>
           {visibleOptions.map(option => (
             <Radio
               key={option.type}
