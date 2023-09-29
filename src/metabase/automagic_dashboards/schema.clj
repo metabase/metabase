@@ -124,7 +124,7 @@
     [:map
      [:available-dimensions [:map-of [:string {:min 1}] any?]]
      [:available-metrics [:map-of [:string {:min 1}] any?]]
-     [:available-filters [:map-of [:string {:min 1}] any?]]]))
+     [:available-filters {:optional true} [:map-of [:string {:min 1}] any?]]]))
 
 ;; Schemas for "affinity" functions as these can be particularly confusing
 
