@@ -115,7 +115,7 @@ export type VisualizationGridSize = {
   height: number;
 };
 
-export type VisualizationStaticProps = {
+export type VisualizationProperties = {
   noun?: string;
   uiName: string;
   identifier: string;
@@ -155,6 +155,6 @@ export type VisualizationStaticProps = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = React.ComponentType<VisualizationProps> &
-  VisualizationStaticProps & {
+  VisualizationProperties & {
     name: string; // name of this visualization’s `class` or `function`
   };

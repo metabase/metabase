@@ -6,7 +6,7 @@ import _ from "underscore";
 import type { Series, VisualizationSettings } from "metabase-types/api";
 import type {
   VisualizationProps,
-  VisualizationStaticProps,
+  VisualizationProperties,
 } from "metabase/visualizations/types";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -55,7 +55,7 @@ import {
   getValueWidth,
 } from "./utils";
 
-const staticProps: VisualizationStaticProps = {
+const vizProperties: VisualizationProperties = {
   uiName: t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -308,4 +308,4 @@ export function SmartScalar({
   );
 }
 
-Object.assign(SmartScalar, staticProps);
+Object.assign(SmartScalar, vizProperties);
