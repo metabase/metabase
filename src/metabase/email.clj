@@ -178,7 +178,7 @@
 (def ^:private SMTPSettings
   [:map {:closed true}
    [:host                         ms/NonBlankString]
-   [:port                         ms/IntGreaterThanZero]
+   [:port                         ms/PositiveInt]
    ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
    [:user        {:optional true} [:maybe ms/Str]]
    [:security    {:optional true} [:maybe [:enum :tls :ssl :none :starttls]]]
