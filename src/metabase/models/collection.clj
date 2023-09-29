@@ -76,11 +76,7 @@
 
 (defmethod mi/can-read? Collection
   ([instance]
-   ;; Audit collection should only be fetched if audit app is enabled
-   (if (and (not (premium-features/enable-audit-app?))
-            (= (:entity_id instance) (perms/default-audit-collection-entity-id)))
-     false
-     (mi/current-user-has-full-permissions? :read instance)))
+   (perms/can-read-audit-helper :model/Collection instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
 

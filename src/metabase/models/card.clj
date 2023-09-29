@@ -70,11 +70,7 @@
 
 (defmethod mi/can-read? Card
   ([instance]
-   ;; Cards in audit collection should only be fetched if audit app is enabled
-   (if (and (not (premium-features/enable-audit-app?))
-            (perms/is-parent-collection-audit? instance))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :read))))
+   (perms/can-read-audit-helper :model/Card instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Card :id pk))))
 
