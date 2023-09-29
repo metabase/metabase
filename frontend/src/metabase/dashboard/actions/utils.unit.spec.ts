@@ -2,6 +2,7 @@ import {
   createMockDashboard,
   createMockDashboardOrderedCard,
 } from "metabase-types/api/mocks";
+import type { VisualizationSettings } from "metabase-types/api";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 describe("dashboard > actions > utils", () => {
@@ -135,14 +136,18 @@ describe("dashboard > actions > utils", () => {
       const oldCards = [
         createMockDashboardOrderedCard({
           id: 1,
-          visualization_settings: { foo: { bar: { baz: 21 } } },
+          visualization_settings: {
+            foo: { bar: { baz: 21 } },
+          } as VisualizationSettings,
         }),
         createMockDashboardOrderedCard({ id: 2 }),
       ];
       const newCards = [
         createMockDashboardOrderedCard({
           id: 1,
-          visualization_settings: { foo: { bar: { baz: 22 } } },
+          visualization_settings: {
+            foo: { bar: { baz: 22 } },
+          } as VisualizationSettings,
         }),
         createMockDashboardOrderedCard({ id: 2 }),
       ];
@@ -182,7 +187,9 @@ describe("dashboard > actions > utils", () => {
         .map(index =>
           createMockDashboardOrderedCard({
             id: index,
-            visualization_settings: { foo: { bar: { baz: index * 10 } } },
+            visualization_settings: {
+              foo: { bar: { baz: index * 10 } },
+            } as VisualizationSettings,
           }),
         );
       const newCards = Array(1000)
@@ -190,7 +197,9 @@ describe("dashboard > actions > utils", () => {
         .map(index =>
           createMockDashboardOrderedCard({
             id: index,
-            visualization_settings: { foo: { bar: { baz: index * 10 } } },
+            visualization_settings: {
+              foo: { bar: { baz: index * 10 } },
+            } as VisualizationSettings,
           }),
         );
 
