@@ -307,7 +307,7 @@ describe("ModelDetailPage", () => {
     });
 
     describe("management", () => {
-      it("allows to rename modal", async () => {
+      it("allows to rename model", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByDisplayValue(model.displayName() as string);
