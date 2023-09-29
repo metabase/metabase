@@ -276,8 +276,8 @@ export function specificDateFilterClause({
   values,
 }: SpecificDateFilterParts): ExpressionClause {
   const columnWithoutBucket = withTemporalBucket(column, null);
-  const valueStrings = values.map(value => value.format(DATE_FORMAT));
-  return expressionClause(operator, [columnWithoutBucket, ...valueStrings]);
+  const formattedValues = values.map(value => value.format(DATE_FORMAT));
+  return expressionClause(operator, [columnWithoutBucket, ...formattedValues]);
 }
 
 export function specificDateFilterParts(
@@ -290,16 +290,16 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const [column, ...valueStrings] = args;
+  const [column, ...formattedValues] = args;
   if (
     !isSpecificDateFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(valueStrings)
+    !isStringLiteralArray(formattedValues)
   ) {
     return null;
   }
 
-  const values = valueStrings.map(value => moment.utc(value, DATE_FORMAT));
+  const values = formattedValues.map(value => moment.utc(value, DATE_FORMAT));
   if (!values.every(value => value.isValid())) {
     return null;
   }
@@ -393,10 +393,10 @@ export function excludeDateFilterClause(
   }
 
   const columnWithBucket = withTemporalBucket(column, bucket);
-  const valueStrings = values.map(value =>
+  const formattedValues = values.map(value =>
     formatExcludeDateFilterValue(value, bucketName),
   );
-  return expressionClause(operator, [columnWithBucket, ...valueStrings]);
+  return expressionClause(operator, [columnWithBucket, ...formattedValues]);
 }
 
 export function excludeDateFilterParts(
@@ -409,11 +409,11 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const [column, ...valueStrings] = args;
+  const [column, ...formattedValues] = args;
   if (
     !isExcludeDateFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(valueStrings)
+    !isStringLiteralArray(formattedValues)
   ) {
     return null;
   }
@@ -429,7 +429,7 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const values = valueStrings.map(value =>
+  const values = formattedValues.map(value =>
     parseExcludeDateFilterValue(value, bucketName),
   );
 
@@ -496,8 +496,8 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const valueStrings = values.map(value => value.format(TIME_FORMAT));
-  return expressionClause(operator, [column, ...valueStrings]);
+  const formattedValues = values.map(value => value.format(TIME_FORMAT));
+  return expressionClause(operator, [column, ...formattedValues]);
 }
 
 export function timeFilterParts(
@@ -510,16 +510,16 @@ export function timeFilterParts(
     return null;
   }
 
-  const [column, ...valueStrings] = args;
+  const [column, ...formattedValues] = args;
   if (
     !isTimeFilterOperator(operator) ||
     !isColumnMetadata(column) ||
-    !isStringLiteralArray(valueStrings)
+    !isStringLiteralArray(formattedValues)
   ) {
     return null;
   }
 
-  const values = valueStrings.map(value => moment.utc(value, TIME_FORMAT));
+  const values = formattedValues.map(value => moment.utc(value, TIME_FORMAT));
   if (!values.every(date => date.isValid())) {
     return null;
   }
