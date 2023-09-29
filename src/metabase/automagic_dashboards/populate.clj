@@ -48,7 +48,7 @@
       (create-collection! "Automatically Generated Dashboards" nil nil)))
 
 (defn colors
-  "A vector of colors used for coloring charts and collections. Uses [[public-settings/application-colors]] for user choices."
+  "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."
   []
   (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
         colors-map (merge {:brand   "#509EE3"
