@@ -252,14 +252,11 @@
       (update :tables set/union (materialized-views database))))
 
 (defmethod driver/db-default-timezone :vertica
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "show timezone;")
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         (.getString rset "setting"))))))
+  [_driver _database]
+  ;; There is no Database default timezone in Vertica, you can change the SESSION timezone with `SET TIME ZONE TO ...`,
+  ;; but TIMESTAMP WITH TIMEZONEs are all stored in UTC. See
+  ;; https://www.vertica.com/docs/9.0.x/HTML/index.htm#Authoring/InstallationGuide/AppendixTimeZones/UsingTimeZonesWithHPVertica.htm
+  "UTC")
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
