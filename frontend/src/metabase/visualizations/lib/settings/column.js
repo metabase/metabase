@@ -23,10 +23,12 @@ import { hasHour } from "metabase/lib/formatting/datetime-utils";
 import { currency } from "cljs/metabase.shared.util.currency";
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
-  [].concat(...series.map(s => (s.data && s.data.cols) || []));
+  series.flatMap(s => s.data?.cols ?? []);
 
-export function columnSettings(args = {}) {
-  const { getColumns = DEFAULT_GET_COLUMNS, hidden, ...def } = args;
+export function columnSettings({
+  getColumns = DEFAULT_GET_COLUMNS,
+  ...def
+} = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",
@@ -36,7 +38,6 @@ export function columnSettings(args = {}) {
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
     useRawSeries: true,
-    hidden,
     ...def,
   });
 }
