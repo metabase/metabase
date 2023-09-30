@@ -307,7 +307,7 @@ export type JoinConditionOperatorDisplayInfo = {
 };
 
 declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof Join };
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
 
 export type JoinStrategyDisplayInfo = {
   displayName: string;
