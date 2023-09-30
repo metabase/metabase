@@ -422,6 +422,9 @@ export function excludeDateFilterParts(
   const bucketValues = stringValues.map(value =>
     stringToExcludeDatePart(value, bucketInfo.shortName),
   );
+  if (!isDefinedArray(bucketValues)) {
+    return null;
+  }
 
   return {
     column,
@@ -827,8 +830,11 @@ function excludeDatePartToString(
 function stringToExcludeDatePart(
   value: string,
   bucketName: BucketName,
-): number {
+): number | null {
   const date = moment(value, DATE_FORMAT);
+  if (!date.isValid()) {
+    return null;
+  }
 
   switch (bucketName) {
     case "hour-of-day":
@@ -840,6 +846,6 @@ function stringToExcludeDatePart(
     case "quarter-of-year":
       return date.quarter();
     default:
-      return date.utcOffset();
+      return null;
   }
 }
