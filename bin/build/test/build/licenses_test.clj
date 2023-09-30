@@ -14,8 +14,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parse [rdr] (xml/parse rdr :skip-whitespace true))
-
 (def clojure-xml "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
   <modelVersion>4.0.0</modelVersion>
@@ -32,22 +30,6 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
-</project>")
-
-
-(def ^:private clojure-jdbc-xml
-  "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">
-  <modelVersion>4.0.0</modelVersion>
-  <artifactId>java.jdbc</artifactId>
-  <version>0.7.11</version>
-  <name>java.jdbc</name>
-
-  <parent>
-    <groupId>org.clojure</groupId>
-    <artifactId>pom.contrib</artifactId>
-    <version>0.2.2</version>
-  </parent>
 </project>")
 
 
