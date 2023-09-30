@@ -5,7 +5,11 @@ import {
   updateDashboardCards,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -49,7 +53,7 @@ describe("issue 12720", () => {
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: SQL_ID } }) => {
         updateDashboardCards({
-          dashboard_id: 1,
+          dashboard_id: ORDERS_DASHBOARD_ID,
           cards: [
             {
               card_id: SQL_ID,
@@ -67,8 +71,8 @@ describe("issue 12720", () => {
             },
             // add filter to existing card
             {
-              id: 1,
-              card_id: 1,
+              id: ORDERS_DASHBOARD_DASHCARD_ID,
+              card_id: ORDERS_QUESTION_ID,
               row: 0,
               col: 0,
               size_x: 7,
@@ -76,7 +80,7 @@ describe("issue 12720", () => {
               parameter_mappings: [
                 {
                   parameter_id: dashboardFilter.id,
-                  card_id: 1,
+                  card_id: ORDERS_QUESTION_ID,
                   target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
                 },
               ],

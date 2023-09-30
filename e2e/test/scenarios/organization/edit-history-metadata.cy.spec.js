@@ -39,6 +39,7 @@ describe("scenarios > collection items metadata", () => {
       visitQuestion(ORDERS_QUESTION_ID);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
+      cy.signOut();
     });
 
     it("should display last editor's name", () => {
@@ -61,18 +62,22 @@ describe("scenarios > collection items metadata", () => {
 
       cy.signIn("normal");
       cy.visit("/collection/root");
+
       // Ensure nothing is edited by current user,
       // Otherwise, the test is irrelevant
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(fullName).should("not.exist");
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText(fullName).should("not.exist");
+        cy.findByText("Orders").click();
+      });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders").click();
       changeQuestion();
 
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Orders in a dashboard").click();
+
+      cy.findByTestId("collection-table").within(() => {
+        cy.findByText("Orders in a dashboard").click();
+      });
+
       changeDashboard();
 
       cy.visit("/collection/root");

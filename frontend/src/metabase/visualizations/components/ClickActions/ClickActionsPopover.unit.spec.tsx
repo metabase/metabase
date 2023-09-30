@@ -16,6 +16,7 @@ import { ClickActionsPopover } from "metabase/visualizations/components/ClickAct
 import type { RegularClickAction } from "metabase/visualizations/types";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { checkNotNull } from "metabase/core/utils/types";
+import registerVisualizations from "metabase/visualizations/register";
 import type { DatasetQuery, Series } from "metabase-types/api";
 import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
@@ -24,6 +25,8 @@ import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
+
+registerVisualizations();
 
 const ORDERS_COLUMNS = createOrdersTableDatasetColumns();
 

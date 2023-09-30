@@ -11,7 +11,8 @@ import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import { getSetting } from "metabase/selectors/settings";
 
-import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import { closeNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getUser,

@@ -87,7 +87,7 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
@@ -192,7 +192,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("18,760").should("not.exist");
       cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 

@@ -22,10 +22,10 @@ import {
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/Writable/i).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/colors/i).click();
+      cy.findByPlaceholderText(/Search for some data/).type("colors");
+      popover()
+        .findByRole("heading", { name: /colors/i })
+        .click();
       cy.icon("add_data").click();
       enterCustomColumnDetails({
         formula: "case([ID] > 1, 25, 5)",
