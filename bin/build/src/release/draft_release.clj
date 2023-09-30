@@ -23,8 +23,7 @@
 
 (defn- generate-draft-changelog []
   (u/step "Generate draft changelog"
-    (let [pre-release?                           (c/pre-release-version?)
-          {bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
+    (let [{bugs :bug, enhancements :enhancement} (group-by github/issue-type (github/milestone-issues))]
       (stencil/render-file release-template-filename
                            {:enhancements enhancements
                             :bug-fixes    bugs

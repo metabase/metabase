@@ -89,7 +89,7 @@
    (shell {:out :string} command)
    :out))
 
-(defn -main [& args]
+(defn -main []
   ;; Clear existing list of releases
   (let [target "../../docs/releases.md"]
     (shell (str "rm -rf " target))

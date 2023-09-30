@@ -29,7 +29,7 @@
   "Fetch the current version of the version info file via HTTP."
   []
   (u/step "Fetch existing version info file"
-    (let [{:keys [status body], :as response} (http/get (str "http://" (version-info-url)))]
+    (let [{:keys [status body]} (http/get (str "http://" (version-info-url)))]
       (when (>= status 400)
         (throw (ex-info (format "Error fetching version info: status code %d" status)
                         (try
