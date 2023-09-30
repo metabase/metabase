@@ -328,7 +328,7 @@ export function relativeDateFilterParts(
 ): RelativeDateFilterParts | null {
   const filterParts = expressionParts(query, stageIndex, filterClause);
   return (
-    relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts) ||
+    relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts) ??
     relativeDateFilterPartsWithOffset(query, stageIndex, filterParts)
   );
 }
