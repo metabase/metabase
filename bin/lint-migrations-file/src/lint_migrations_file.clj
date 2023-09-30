@@ -87,8 +87,8 @@
             x)
         x)
 
-      true ; some other kind of change; continue walking
-      x)
+      ;; some other kind of change; continue walking
+      :else x)
     x))
 
 (defn no-bare-blob-or-text-types?
