@@ -35,13 +35,14 @@
 
   :unresolved-symbol
   {:exclude
-   [instaparse.core/transform
+   [(build.uberjar/with-duration-ms)
     (cljs.test/is [=? malli=])
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
     (clojure.test/is [query= sql= =? malli=])
     (clojure.tools.macro/macrolet)
+    instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
     (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
     (metabase.mbql.util.match/match)
