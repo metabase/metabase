@@ -323,6 +323,17 @@ export function isRelativeDateFilter(
   return relativeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
+export function excludeDateFilterBuckets(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): Bucket[] {
+  return availableTemporalBuckets(query, stageIndex, column).filter(bucket => {
+    const bucketInfo = displayInfo(query, stageIndex, bucket);
+    return isExcludeDateBucket(bucketInfo.shortName);
+  });
+}
+
 export function excludeDateFilterClause(
   query: Query,
   stageIndex: number,
@@ -371,6 +382,10 @@ export function excludeDateFilterParts(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
+  if (!isExcludeDateBucket(bucketInfo.shortName)) {
+    return null;
+  }
+
   const bucketValues = stringValues.map(value =>
     stringToExcludeDatePart(value, bucketInfo.shortName),
   );
@@ -591,6 +606,18 @@ function stringToTimeParts(value: string): TimeParts | null {
     hour: time.hour(),
     minute: time.minute(),
   };
+}
+
+function isExcludeDateBucket(bucketName: BucketName): boolean {
+  switch (bucketName) {
+    case "hour-of-day":
+    case "day-of-week":
+    case "month-of-year":
+    case "quarter-of-year":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function excludeDatePartToString(
