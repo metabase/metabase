@@ -410,7 +410,7 @@ function excludeDatePartToDate(value: number, bucketName: BucketName): string {
       date.isoWeekday(value);
       break;
     case "month-of-year":
-      date.month(value - 1); // moment.month() is 0-based
+      date.month(value);
       break;
     case "quarter-of-year":
       date.quarter(value);
@@ -432,7 +432,7 @@ function excludeDateToDatePart(value: string, bucketName: BucketName): number {
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
-      return date.month() + 1; // moment.month() is 0-based
+      return date.month();
     case "quarter-of-year":
       return date.quarter();
     default:
