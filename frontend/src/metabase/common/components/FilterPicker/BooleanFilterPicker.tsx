@@ -129,11 +129,10 @@ function getOptionType(
   }
 
   const operatorInfo = Lib.displayInfo(query, stageIndex, filterParts.operator);
-  switch (operatorInfo.shortName) {
-    case "=":
-      return filterParts.values[0] ? "true" : "false";
-    default:
-      return operatorInfo.shortName;
+  if (operatorInfo.shortName === "=") {
+    return filterParts.values[0] ? "true" : "false";
+  } else {
+    return operatorInfo.shortName;
   }
 }
 
