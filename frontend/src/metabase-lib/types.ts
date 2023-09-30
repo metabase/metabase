@@ -258,9 +258,9 @@ export type SpecificDateFilterParts = {
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  bucket: Bucket;
+  bucket: BucketName;
   value: number | "current";
-  offsetBucket?: Bucket;
+  offsetBucket?: BucketName;
   offsetValue?: number;
   options: RelativeDateFilterOptions;
 };

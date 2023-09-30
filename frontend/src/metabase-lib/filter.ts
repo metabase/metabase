@@ -238,7 +238,7 @@ export function specificDateFilterClause(
     : values.map(value => datePartsToString(value));
 
   const minuteBucket = hasTime
-    ? findColumnTemporalBucket(query, stageIndex, column, "minute")
+    ? findTemporalBucket(query, stageIndex, column, "minute")
     : undefined;
   const columnWithOrWithoutBucket =
     hasTime && minuteBucket
@@ -299,41 +299,25 @@ export function isSpecificDateFilter(
   return specificDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function relativeDateFilterClause(
-  query: Query,
-  stageIndex: number,
-  {
-    column,
-    value,
-    bucket,
-    offsetValue,
-    offsetBucket,
-    options,
-  }: RelativeDateFilterParts,
-): ExpressionClause {
-  const bucketInfo = displayInfo(query, stageIndex, bucket);
+export function relativeDateFilterClause({
+  column,
+  value,
+  bucket,
+  offsetValue,
+  offsetBucket,
+  options,
+}: RelativeDateFilterParts): ExpressionClause {
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause(
-      "time-interval",
-      [column, value, bucketInfo.shortName],
-      options,
-    );
+    return expressionClause("time-interval", [column, value, bucket], options);
   }
 
-  const offsetBucketInfo = displayInfo(query, stageIndex, offsetBucket);
   return expressionClause("between", [
     expressionClause("+", [
       column,
-      expressionClause("interval", [-offsetValue, offsetBucketInfo.shortName]),
+      expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
-    expressionClause("relative-datetime", [
-      value < 0 ? value : 0,
-      bucketInfo.shortName,
-    ]),
-    expressionClause("relative-datetime", [
-      value > 0 ? value : 0,
-      bucketInfo.shortName,
-    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, bucket]),
   ]);
 }
 
@@ -549,31 +533,13 @@ function findFilterOperator(
 function findTemporalBucket(
   query: Query,
   stageIndex: number,
-  buckets: Bucket[],
-  bucketName: string,
-): Bucket | undefined {
-  return buckets.find(bucket => {
-    const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === bucketName;
-  });
-}
-
-function findColumnTemporalBucket(
-  query: Query,
-  stageIndex: number,
   column: ColumnMetadata,
   bucketName: string,
 ): Bucket | undefined {
-  const buckets = availableTemporalBuckets(query, stageIndex, column);
-  return findTemporalBucket(query, stageIndex, buckets, bucketName);
-}
-
-function findQueryTemporalBucket(
-  query: Query,
-  stageIndex: number,
-  bucketName: string,
-): Bucket | undefined {
-  return findTemporalBucket(query, stageIndex, [], bucketName);
+  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
+    const bucketInfo = displayInfo(query, stageIndex, bucket);
+    return bucketInfo.shortName === bucketName;
+  });
 }
 
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
@@ -699,6 +665,19 @@ function isSpecificDateOperator(operatorName: ExpressionOperatorName): boolean {
   }
 }
 
+function isRelativeDateBucket(bucketName: string): bucketName is BucketName {
+  switch (bucketName) {
+    case "day":
+    case "week":
+    case "month":
+    case "quarter":
+    case "year":
+      return true;
+    default:
+      return false;
+  }
+}
+
 function relativeDateFilterPartsWithoutOffset(
   query: Query,
   stageIndex: number,
@@ -713,20 +692,16 @@ function relativeDateFilterPartsWithoutOffset(
     !isColumnMetadata(column) ||
     !isDate(column) ||
     !isNumberOrCurrentLiteral(value) ||
-    !isStringLiteral(bucketName)
+    !isStringLiteral(bucketName) ||
+    !isRelativeDateBucket(bucketName)
   ) {
-    return null;
-  }
-
-  const bucket = findQueryTemporalBucket(query, stageIndex, bucketName);
-  if (!bucket) {
     return null;
   }
 
   return {
     column,
     value,
-    bucket,
+    bucket: bucketName,
     options,
   };
 }
@@ -766,16 +741,11 @@ function relativeDateFilterPartsWithOffset(
   }
 
   const [offsetValue, offsetBucketName] = intervalParts.args;
-  if (!isNumberLiteral(offsetValue) || !isStringLiteral(offsetBucketName)) {
-    return null;
-  }
-
-  const offsetBucket = findQueryTemporalBucket(
-    query,
-    stageIndex,
-    offsetBucketName,
-  );
-  if (!offsetBucket) {
+  if (
+    !isNumberLiteral(offsetValue) ||
+    !isStringLiteral(offsetBucketName) ||
+    !isRelativeDateBucket(offsetBucketName)
+  ) {
     return null;
   }
 
@@ -784,30 +754,22 @@ function relativeDateFilterPartsWithOffset(
   if (
     !isNumberLiteral(startValue) ||
     !isStringLiteral(startBucketName) ||
+    !isRelativeDateBucket(startBucketName) ||
     !isNumberLiteral(endValue) ||
     !isStringLiteral(endBucketName) ||
+    !isRelativeDateBucket(endBucketName) ||
     startBucketName !== endBucketName ||
     (startValue !== 0 && endValue !== 0)
   ) {
     return null;
   }
 
-  const startBucket = findQueryTemporalBucket(
-    query,
-    stageIndex,
-    startBucketName,
-  );
-  const endBucket = findQueryTemporalBucket(query, stageIndex, endBucketName);
-  if (!startBucket || !endBucket) {
-    return null;
-  }
-
   return {
     column,
     value: startValue < 0 ? startValue : endValue,
-    bucket: startBucket,
+    bucket: startBucketName,
     offsetValue,
-    offsetBucket,
+    offsetBucket: offsetBucketName,
     options,
   };
 }
