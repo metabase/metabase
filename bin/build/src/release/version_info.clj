@@ -83,7 +83,9 @@
   (validate-version-info)
   (u/announce (format "%s updated." (version-info-filename))))
 
-(defn update-version-info! []
+(defn update-version-info!
+  "Start a build step that updates version info."
+  []
   (u/step (format "Update %s" (version-info-filename))
     (cond
       (c/pre-release-version?)

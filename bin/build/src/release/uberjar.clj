@@ -35,7 +35,9 @@
               (u/announce "Hash of %s is %s" url url-hash)
               (assert (= uberjar-hash url-hash)))))))))
 
-(defn upload-uberjar! []
+(defn upload-uberjar!
+  "Start a build step that uploads the uberjar and validates it."
+  []
   (u/step "Upload uberjar and validate"
     (u/step (format "Upload uberjar to %s" (c/artifact-download-url "metabase.jar"))
       (upload/upload-artifact! c/uberjar-path "metabase.jar"))

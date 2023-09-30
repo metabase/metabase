@@ -29,7 +29,7 @@
       (apply distinct? (mapcat #(str/split (-> % :sql :dbms) #",")
                                changes))))))
 
-(def change-types-supporting-rollback
+(def ^:private change-types-supporting-rollback
   ;; This set was generated with a little grep and awk from the docs here:
   ;; https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
   ;;
