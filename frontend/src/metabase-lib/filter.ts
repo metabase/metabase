@@ -17,6 +17,7 @@ import type {
   DateTimeParts,
   ExcludeDateFilterParts,
   ExpressionClause,
+  ExpressionOperatorName,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -245,7 +246,7 @@ export function specificDateFilterParts(
   }
 
   const operator = findFilterOperator(query, stageIndex, column, operatorName);
-  if (!operator) {
+  if (!operator || !isSpecificDateOperator(operatorName)) {
     return null;
   }
 
@@ -372,7 +373,11 @@ export function excludeDateFilterParts(
   }
 
   const operator = findFilterOperator(query, stageIndex, column, operatorName);
-  if (!operator) {
+  if (!operator || !isExcludeDateOperator(operatorName)) {
+    return null;
+  }
+
+  if (!isExcludeDateOperator(operatorName)) {
     return null;
   }
 
@@ -606,6 +611,29 @@ function stringToTimeParts(value: string): TimeParts | null {
     hour: time.hour(),
     minute: time.minute(),
   };
+}
+
+function isSpecificDateOperator(operatorName: ExpressionOperatorName): boolean {
+  switch (operatorName) {
+    case "=":
+    case ">":
+    case "<":
+    case "between":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isExcludeDateOperator(operatorName: ExpressionOperatorName): boolean {
+  switch (operatorName) {
+    case "!=":
+    case "is-null":
+    case "not-null":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function isExcludeDateBucket(bucketName: BucketName): boolean {
