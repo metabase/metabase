@@ -11,6 +11,7 @@ import type {
   BooleanFilterParts,
   BucketName,
   ColumnMetadata,
+  DateParts,
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
@@ -195,12 +196,14 @@ export function isBooleanFilter(
   return booleanFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function specificDateFilterClause({
-  operator,
-  column,
-  values,
-}: SpecificDateFilterParts): ExpressionClause {
-  throw new TypeError();
+export function specificDateFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, values }: SpecificDateFilterParts,
+): ExpressionClause {
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  const stringValues = values.map(value => datePartsToDateString(value));
+  return expressionClause(operatorInfo.shortName, [column, ...stringValues]);
 }
 
 export function specificDateFilterParts(
@@ -438,6 +441,16 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
 
 const DATE_FORMAT = "yyyy-MM-dd";
 const TIME_FORMAT = "HH:mm:ss";
+
+function datePartsToDateString(value: DateParts): string {
+  const date = moment({
+    year: value.year,
+    month: value.month,
+    date: value.date,
+  });
+
+  return date.format(DATE_FORMAT);
+}
 
 function timePartsToTimeString(value: TimeParts): string {
   const time = moment({

@@ -251,7 +251,7 @@ export type BooleanFilterParts = {
 export type SpecificDateFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
-  values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
+  values: DateParts[];
 };
 
 export type RelativeDateFilterParts = {
