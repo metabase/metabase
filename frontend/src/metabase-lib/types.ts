@@ -245,10 +245,10 @@ export type SpecificDateFilterParts = {
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  value: number | "current";
   bucket: Bucket;
-  offsetValue?: number;
+  value: number | "current";
   offsetBucket?: Bucket;
+  offsetValue?: number;
   options: RelativeDateFilterOptions;
 };
 
@@ -266,8 +266,8 @@ export type RelativeDateFilterOptions = {
 export type ExcludeDateFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
-  values: number[];
   bucket: Bucket;
+  values: number[];
 };
 
 export type TimeFilterParts = {

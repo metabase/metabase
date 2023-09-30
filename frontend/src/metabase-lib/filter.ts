@@ -1,9 +1,15 @@
+import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
+import {
+  temporalBucket,
+  withTemporalBucket,
+} from "metabase-lib/temporal_bucket";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   BooleanFilterParts,
+  BucketName,
   ColumnMetadata,
   ExcludeDateFilterParts,
   ExpressionClause,
@@ -212,14 +218,18 @@ export function isSpecificDateFilter(
   return specificDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function relativeDateFilterClause({
-  column,
-  value,
-  bucket,
-  offsetValue,
-  offsetBucket,
-  options,
-}: RelativeDateFilterParts): ExpressionClause {
+export function relativeDateFilterClause(
+  query: Query,
+  stageIndex: number,
+  {
+    column,
+    value,
+    bucket,
+    offsetValue,
+    offsetBucket,
+    options,
+  }: RelativeDateFilterParts,
+): ExpressionClause {
   throw new TypeError();
 }
 
@@ -242,9 +252,19 @@ export function isRelativeDateFilter(
 export function excludeDateFilterClause(
   query: Query,
   stageIndex: number,
-  { operator, column, values, bucket: bucketName }: ExcludeDateFilterParts,
+  { operator, column, values, bucket }: ExcludeDateFilterParts,
 ): ExpressionClause {
-  throw new TypeError();
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  const columnWithBucket = withTemporalBucket(column, bucket);
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const bucketValues = values.map(value =>
+    excludeDatePartToDate(value, bucketInfo.shortName),
+  );
+
+  return expressionClause(operatorInfo.shortName, [
+    columnWithBucket,
+    ...bucketValues,
+  ]);
 }
 
 export function excludeDateFilterParts(
@@ -252,7 +272,41 @@ export function excludeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return null;
+  const { operator: operatorName, args } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...values] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+    return null;
+  }
+
+  const operator = findFilterOperator(query, stageIndex, column, operatorName);
+  if (!operator) {
+    return null;
+  }
+
+  const bucket = temporalBucket(column);
+  if (!bucket) {
+    return null;
+  }
+
+  const bucketInfo = displayInfo(query, stageIndex, bucket);
+  const bucketValues = values.map(value =>
+    excludeDateToDatePart(value, bucketInfo.shortName),
+  );
+
+  return {
+    column,
+    operator,
+    bucket,
+    values: bucketValues,
+  };
 }
 
 export function isExcludeDateFilter(
@@ -341,4 +395,47 @@ function isBooleanLiteral(arg: unknown): arg is boolean {
 
 function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
   return Array.isArray(arg) && arg.every(isBooleanLiteral);
+}
+
+const DATE_FORMAT = "yyyy-MM-dd";
+
+function excludeDatePartToDate(value: number, bucketName: BucketName): string {
+  const date = moment();
+
+  switch (bucketName) {
+    case "hour-of-day":
+      date.hour(value);
+      break;
+    case "day-of-week":
+      date.isoWeekday(value);
+      break;
+    case "month-of-year":
+      date.month(value - 1); // moment.month() is 0-based
+      break;
+    case "quarter-of-year":
+      date.quarter(value);
+      break;
+    default:
+      date.utcOffset(value);
+      break;
+  }
+
+  return date.format(DATE_FORMAT);
+}
+
+function excludeDateToDatePart(value: string, bucketName: BucketName): number {
+  const date = moment(value, DATE_FORMAT);
+
+  switch (bucketName) {
+    case "hour-of-day":
+      return date.hour();
+    case "day-of-week":
+      return date.isoWeekday();
+    case "month-of-year":
+      return date.month() + 1; // moment.month() is 0-based
+    case "quarter-of-year":
+      return date.quarter();
+    default:
+      return date.utcOffset();
+  }
 }
