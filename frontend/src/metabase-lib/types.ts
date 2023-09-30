@@ -225,6 +225,8 @@ export type TimeParts = {
   minute: number;
 };
 
+export type DateTimeParts = DateParts & Partial<TimeParts>;
+
 export type StringFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;

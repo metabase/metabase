@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
 import {
+  availableTemporalBuckets,
   temporalBucket,
   withTemporalBucket,
 } from "metabase-lib/temporal_bucket";
@@ -9,9 +10,11 @@ import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import type {
   BooleanFilterParts,
+  Bucket,
   BucketName,
   ColumnMetadata,
   DateParts,
+  DateTimeParts,
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
@@ -202,8 +205,24 @@ export function specificDateFilterClause(
   { operator, column, values }: SpecificDateFilterParts,
 ): ExpressionClause {
   const operatorInfo = displayInfo(query, stageIndex, operator);
-  const stringValues = values.map(value => datePartsToDateString(value));
-  return expressionClause(operatorInfo.shortName, [column, ...stringValues]);
+
+  const hasTime = values.some(hasTimeParts);
+  const stringValues = hasTime
+    ? values.map(value => dateTimePartsToString(value))
+    : values.map(value => datePartsToString(value));
+
+  const minuteBucket = hasTime
+    ? findTemporalBucket(query, stageIndex, column, "minute")
+    : undefined;
+  const columnWithOrWithoutBucket =
+    hasTime && minuteBucket
+      ? withTemporalBucket(column, minuteBucket)
+      : withTemporalBucket(column, null);
+
+  return expressionClause(operatorInfo.shortName, [
+    columnWithOrWithoutBucket,
+    ...stringValues,
+  ]);
 }
 
 export function specificDateFilterParts(
@@ -230,7 +249,7 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const values = stringValues.map(value => dateStringToTimeParts(value));
+  const values = stringValues.map(value => stringToDateTimeParts(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -290,7 +309,7 @@ export function excludeDateFilterClause(
   const columnWithBucket = withTemporalBucket(column, bucket);
   const bucketInfo = displayInfo(query, stageIndex, bucket);
   const stringValues = values.map(value =>
-    excludeDatePartToDateString(value, bucketInfo.shortName),
+    excludeDatePartToString(value, bucketInfo.shortName),
   );
 
   return expressionClause(operatorInfo.shortName, [
@@ -330,7 +349,7 @@ export function excludeDateFilterParts(
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
   const bucketValues = stringValues.map(value =>
-    excludeDateStringToDatePart(value, bucketInfo.shortName),
+    stringToExcludeDatePart(value, bucketInfo.shortName),
   );
 
   return {
@@ -355,8 +374,13 @@ export function timeFilterClause(
   { operator, column, values }: TimeFilterParts,
 ): ExpressionClause {
   const operatorInfo = displayInfo(query, stageIndex, operator);
-  const stringValues = values.map(value => timePartsToTimeString(value));
-  return expressionClause(operatorInfo.shortName, [column, ...stringValues]);
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  const stringValues = values.map(value => timePartsToString(value));
+
+  return expressionClause(operatorInfo.shortName, [
+    columnWithoutBucket,
+    ...stringValues,
+  ]);
 }
 
 export function timeFilterParts(
@@ -383,7 +407,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const values = stringValues.map(value => timeStringToTimeParts(value));
+  const values = stringValues.map(value => stringToTimeParts(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -431,6 +455,18 @@ function findFilterOperator(
   });
 }
 
+function findTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+  bucketName: BucketName,
+): Bucket | undefined {
+  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
+    const bucketInfo = displayInfo(query, stageIndex, bucket);
+    return bucketInfo.shortName === bucketName;
+  });
+}
+
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
 }
@@ -469,31 +505,51 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
 
 const DATE_FORMAT = "yyyy-MM-dd";
 const TIME_FORMAT = "HH:mm:ss";
+const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
-function datePartsToDateString(value: DateParts): string {
+function hasTimeParts({ hour, minute }: DateTimeParts): boolean {
+  return hour !== 0 || minute !== 0;
+}
+
+function datePartsToString(parts: DateParts): string {
   const date = moment({
-    year: value.year,
-    month: value.month,
-    date: value.date,
+    year: parts.year,
+    month: parts.month,
+    date: parts.date,
   });
 
   return date.format(DATE_FORMAT);
 }
 
-function dateStringToTimeParts(value: string): DateParts | null {
-  const date = moment(value, DATE_FORMAT);
-  if (!date.isValid()) {
+function dateTimePartsToString(parts: DateTimeParts): string {
+  const date = moment({
+    year: parts.year,
+    month: parts.month,
+    date: parts.date,
+    hour: parts.hour ?? 0,
+    minute: parts.minute ?? 0,
+    second: 0,
+  });
+
+  return date.format(DATE_TIME_FORMAT);
+}
+
+function stringToDateTimeParts(value: string): DateTimeParts | null {
+  const dateTime = moment(value, [DATE_TIME_FORMAT, DATE_FORMAT]);
+  if (!dateTime.isValid()) {
     return null;
   }
 
   return {
-    year: date.year(),
-    month: date.month(),
-    date: date.date(),
+    year: dateTime.year(),
+    month: dateTime.month(),
+    date: dateTime.date(),
+    hour: dateTime.hour(),
+    minute: dateTime.minute(),
   };
 }
 
-function timePartsToTimeString(value: TimeParts): string {
+function timePartsToString(value: TimeParts): string {
   const time = moment({
     hour: value.hour,
     minute: value.minute,
@@ -502,7 +558,7 @@ function timePartsToTimeString(value: TimeParts): string {
   return time.format(TIME_FORMAT);
 }
 
-function timeStringToTimeParts(value: string): TimeParts | null {
+function stringToTimeParts(value: string): TimeParts | null {
   const time = moment(value, TIME_FORMAT);
   if (!time.isValid()) {
     return null;
@@ -514,7 +570,7 @@ function timeStringToTimeParts(value: string): TimeParts | null {
   };
 }
 
-function excludeDatePartToDateString(
+function excludeDatePartToString(
   value: number,
   bucketName: BucketName,
 ): string {
@@ -541,7 +597,7 @@ function excludeDatePartToDateString(
   return date.format(DATE_FORMAT);
 }
 
-function excludeDateStringToDatePart(
+function stringToExcludeDatePart(
   value: string,
   bucketName: BucketName,
 ): number {
