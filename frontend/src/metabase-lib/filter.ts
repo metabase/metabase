@@ -1,13 +1,14 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
+import { isBoolean, isDate, isNumeric, isString, isTime } from "./column_types";
+import { expressionClause, expressionParts } from "./expression";
+import { displayInfo } from "./metadata";
 import {
   availableTemporalBuckets,
   temporalBucket,
   withTemporalBucket,
-} from "metabase-lib/temporal_bucket";
-import { expressionClause, expressionParts } from "./expression";
-import { displayInfo } from "./metadata";
+} from "./temporal_bucket";
 import type {
   BooleanFilterParts,
   Bucket,
@@ -79,7 +80,11 @@ export function stringFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isString(column) ||
+    !isStringLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -128,7 +133,11 @@ export function numberFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isNumberLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isNumeric(column) ||
+    !isNumberLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -176,7 +185,11 @@ export function booleanFilterParts(
   }
 
   const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isBooleanLiteralArray(values)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isBoolean(column) ||
+    !isBooleanLiteralArray(values)
+  ) {
     return null;
   }
 
@@ -252,7 +265,11 @@ export function specificDateFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isStringLiteralArray(stringValues)
+  ) {
     return null;
   }
 
@@ -394,16 +411,16 @@ export function excludeDateFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isStringLiteralArray(stringValues)
+  ) {
     return null;
   }
 
   const operator = findFilterOperator(query, stageIndex, column, operatorName);
   if (!operator || !isExcludeDateOperator(operatorName)) {
-    return null;
-  }
-
-  if (!isExcludeDateOperator(operatorName)) {
     return null;
   }
 
@@ -467,7 +484,11 @@ export function timeFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isTime(column) ||
+    !isStringLiteralArray(stringValues)
+  ) {
     return null;
   }
 
