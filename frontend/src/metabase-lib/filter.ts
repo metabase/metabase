@@ -22,6 +22,7 @@ import type {
   SpecificDateFilterParts,
   StringFilterParts,
   TimeFilterParts,
+  TimeParts,
 } from "./types";
 
 export function filterableColumns(
@@ -257,13 +258,13 @@ export function excludeDateFilterClause(
   const operatorInfo = displayInfo(query, stageIndex, operator);
   const columnWithBucket = withTemporalBucket(column, bucket);
   const bucketInfo = displayInfo(query, stageIndex, bucket);
-  const bucketValues = values.map(value =>
-    excludeDatePartToDate(value, bucketInfo.shortName),
+  const stringValues = values.map(value =>
+    excludeDatePartToDateString(value, bucketInfo.shortName),
   );
 
   return expressionClause(operatorInfo.shortName, [
     columnWithBucket,
-    ...bucketValues,
+    ...stringValues,
   ]);
 }
 
@@ -281,8 +282,8 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const [column, ...values] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
+  const [column, ...stringValues] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
     return null;
   }
 
@@ -297,8 +298,8 @@ export function excludeDateFilterParts(
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
-  const bucketValues = values.map(value =>
-    excludeDateToDatePart(value, bucketInfo.shortName),
+  const bucketValues = stringValues.map(value =>
+    excludeDateStringToDatePart(value, bucketInfo.shortName),
   );
 
   return {
@@ -317,12 +318,14 @@ export function isExcludeDateFilter(
   return excludeDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function timeFilterClause({
-  operator,
-  column,
-  values,
-}: TimeFilterParts): ExpressionClause {
-  throw new TypeError();
+export function timeFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, values }: TimeFilterParts,
+): ExpressionClause {
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  const stringValues = values.map(value => timePartsToTimeString(value));
+  return expressionClause(operatorInfo.shortName, [column, ...stringValues]);
 }
 
 export function timeFilterParts(
@@ -330,7 +333,35 @@ export function timeFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): TimeFilterParts | null {
-  return null;
+  const { operator: operatorName, args } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...stringValues] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+    return null;
+  }
+
+  const operator = findFilterOperator(query, stageIndex, column, operatorName);
+  if (!operator) {
+    return null;
+  }
+
+  const values = stringValues.map(value => timeStringToTimeParts(value));
+  if (!isDefinedArray(values)) {
+    return null;
+  }
+
+  return {
+    operator,
+    column,
+    values,
+  };
 }
 
 export function isTimeFilter(
@@ -373,6 +404,14 @@ function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
 }
 
+function isDefined<T>(arg: T | undefined | null): arg is T {
+  return arg != null;
+}
+
+function isDefinedArray<T>(arg: (T | undefined | null)[]): arg is T[] {
+  return arg.every(isDefined);
+}
+
 function isStringLiteral(arg: unknown): arg is string {
   return typeof arg === "string";
 }
@@ -398,8 +437,33 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
 }
 
 const DATE_FORMAT = "yyyy-MM-dd";
+const TIME_FORMAT = "HH:mm:ss";
 
-function excludeDatePartToDate(value: number, bucketName: BucketName): string {
+function timePartsToTimeString(value: TimeParts): string {
+  const time = moment({
+    hour: value.hour,
+    minute: value.minute,
+  });
+
+  return time.format(TIME_FORMAT);
+}
+
+function timeStringToTimeParts(value: string): TimeParts | null {
+  const time = moment(value, TIME_FORMAT);
+  if (!time.isValid()) {
+    return null;
+  }
+
+  return {
+    hour: time.hour(),
+    minute: time.minute(),
+  };
+}
+
+function excludeDatePartToDateString(
+  value: number,
+  bucketName: BucketName,
+): string {
   const date = moment();
 
   switch (bucketName) {
@@ -423,7 +487,10 @@ function excludeDatePartToDate(value: number, bucketName: BucketName): string {
   return date.format(DATE_FORMAT);
 }
 
-function excludeDateToDatePart(value: string, bucketName: BucketName): number {
+function excludeDateStringToDatePart(
+  value: string,
+  bucketName: BucketName,
+): number {
   const date = moment(value, DATE_FORMAT);
 
   switch (bucketName) {

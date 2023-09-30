@@ -214,6 +214,17 @@ export type FilterParts =
   | ExcludeDateFilterParts
   | TimeFilterParts;
 
+export type DateParts = {
+  year: number;
+  month: number; // 0-11 (January-December)
+  date: number;
+};
+
+export type TimeParts = {
+  hour: number;
+  minute: number;
+};
+
 export type StringFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
@@ -273,7 +284,7 @@ export type ExcludeDateFilterParts = {
 export type TimeFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
-  values: string[]; // HH:mm:ss
+  values: TimeParts[];
 };
 
 declare const Join: unique symbol;
