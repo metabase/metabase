@@ -819,9 +819,6 @@ function excludeDatePartToString(
     case "quarter-of-year":
       date.quarter(value);
       break;
-    default:
-      date.utcOffset(value);
-      break;
   }
 
   return date.format(DATE_FORMAT);
