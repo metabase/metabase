@@ -200,6 +200,17 @@ export function isBooleanFilter(
   return booleanFilterParts(query, stageIndex, filterClause) != null;
 }
 
+export function specificDateFilterOperators(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): FilterOperator[] {
+  return filterableColumnOperators(column).filter(operator => {
+    const operatorInfo = displayInfo(query, stageIndex, operator);
+    return isSpecificDateOperator(operatorInfo.shortName);
+  });
+}
+
 export function specificDateFilterClause(
   query: Query,
   stageIndex: number,
@@ -322,6 +333,17 @@ export function isRelativeDateFilter(
   filterClause: FilterClause,
 ): boolean {
   return relativeDateFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function excludeDateFilterOperators(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): FilterOperator[] {
+  return filterableColumnOperators(column).filter(operator => {
+    const operatorInfo = displayInfo(query, stageIndex, operator);
+    return isExcludeDateOperator(operatorInfo.shortName);
+  });
 }
 
 export function excludeDateFilterBuckets(
