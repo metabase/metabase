@@ -281,6 +281,10 @@ export function isSpecificDateFilter(
   return specificDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
+export function relativeDateFilterBuckets(query: Query): Bucket[] {
+  return [];
+}
+
 export function relativeDateFilterClause(
   query: Query,
   stageIndex: number,
