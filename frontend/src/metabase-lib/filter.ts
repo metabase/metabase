@@ -19,6 +19,7 @@ import type {
   ExcludeDateFilterParts,
   ExpressionClause,
   ExpressionOperatorName,
+  ExpressionParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -237,7 +238,7 @@ export function specificDateFilterClause(
     : values.map(value => datePartsToString(value));
 
   const minuteBucket = hasTime
-    ? findTemporalBucket(query, stageIndex, column, "minute")
+    ? findColumnTemporalBucket(query, stageIndex, column, "minute")
     : undefined;
   const columnWithOrWithoutBucket =
     hasTime && minuteBucket
@@ -298,10 +299,6 @@ export function isSpecificDateFilter(
   return specificDateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function relativeDateFilterBuckets(query: Query): Bucket[] {
-  return [];
-}
-
 export function relativeDateFilterClause(
   query: Query,
   stageIndex: number,
@@ -345,7 +342,8 @@ export function relativeDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  return null;
+  const filterParts = expressionParts(query, stageIndex, filterClause);
+  return relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts);
 }
 
 export function isRelativeDateFilter(
@@ -367,7 +365,7 @@ export function excludeDateFilterOperators(
   });
 }
 
-export function excludeDateFilterBuckets(
+export function excludeDateFilterTemporalBuckets(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
@@ -548,13 +546,32 @@ function findFilterOperator(
 function findTemporalBucket(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata,
-  bucketName: BucketName,
+  buckets: Bucket[],
+  bucketName: string,
 ): Bucket | undefined {
-  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
+  return buckets.find(bucket => {
     const bucketInfo = displayInfo(query, stageIndex, bucket);
     return bucketInfo.shortName === bucketName;
   });
+}
+
+function findColumnTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+  bucketName: string,
+): Bucket | undefined {
+  const buckets = availableTemporalBuckets(query, stageIndex, column);
+  return findTemporalBucket(query, stageIndex, buckets, bucketName);
+}
+
+function findQueryTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+  bucketName: string,
+): Bucket | undefined {
+  return findTemporalBucket(query, stageIndex, [], bucketName);
 }
 
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
@@ -579,6 +596,10 @@ function isStringLiteralArray(arg: unknown): arg is string[] {
 
 function isNumberLiteral(arg: unknown): arg is number {
   return typeof arg === "number";
+}
+
+function isNumberOrCurrentLiteral(arg: unknown): arg is number | "current" {
+  return isNumberLiteral(arg) || arg === "current";
 }
 
 function isNumberLiteralArray(arg: unknown): arg is number[] {
@@ -670,6 +691,38 @@ function isSpecificDateOperator(operatorName: ExpressionOperatorName): boolean {
     default:
       return false;
   }
+}
+
+function relativeDateFilterPartsWithoutOffset(
+  query: Query,
+  stageIndex: number,
+  { operator, args, options }: ExpressionParts,
+): RelativeDateFilterParts | null {
+  if (operator !== "time-interval" || args.length === 3) {
+    return null;
+  }
+
+  const [column, value, bucketName] = args;
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isNumberOrCurrentLiteral(value) ||
+    !isStringLiteral(bucketName)
+  ) {
+    return null;
+  }
+
+  const bucket = findQueryTemporalBucket(query, stageIndex, column, bucketName);
+  if (!bucket) {
+    return null;
+  }
+
+  return {
+    column,
+    value,
+    bucket,
+    options,
+  };
 }
 
 function isExcludeDateOperator(operatorName: ExpressionOperatorName): boolean {
