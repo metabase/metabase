@@ -7,7 +7,7 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import type { FilterPickerWidgetProps } from "./types";
 
-type OptionType = "true" | "false" | "is-null" | "not-null";
+type OptionType = Lib.FilterOperatorName | "true" | "false";
 
 type Option = {
   name: string;
@@ -94,22 +94,24 @@ function getOptions(
   column: Lib.ColumnMetadata,
 ): Option[] {
   const operators = Lib.filterableColumnOperators(column);
-  return operators.reduce((options: Option[], operator) => {
+  return operators.flatMap((operator): Option[] => {
     const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
-    switch (operatorInfo.shortName) {
-      case "=":
-        options.push({ name: t`True`, type: "true", operator });
-        options.push({ name: t`False`, type: "false", operator });
-        break;
-      case "is-null":
-        options.push({ name: t`Empty`, type: "is-null", operator });
-        break;
-      case "not-null":
-        options.push({ name: t`Not empty`, type: "not-null", operator });
-        break;
+    if (operatorInfo.shortName === "=") {
+      return [
+        { operator, name: t`True`, type: "true" },
+        { operator, name: t`False`, type: "false" },
+      ];
+    } else {
+      return [
+        {
+          operator,
+          name: operatorInfo.displayName,
+          type: operatorInfo.shortName,
+          isAdvanced: true,
+        },
+      ];
     }
-    return options;
-  }, []);
+  });
 }
 
 function getOptionType(
@@ -130,12 +132,8 @@ function getOptionType(
   switch (operatorInfo.shortName) {
     case "=":
       return filterParts.values[0] ? "true" : "false";
-    case "is-null":
-      return "is-null";
-    case "not-null":
-      return "not-null";
     default:
-      return "true";
+      return operatorInfo.shortName;
   }
 }
 
@@ -158,13 +156,7 @@ function getFilterClause(
         column,
         values: [false],
       });
-    case "is-null":
-      return Lib.booleanFilterClause(query, stageIndex, {
-        operator,
-        column,
-        values: [],
-      });
-    case "not-null":
+    default:
       return Lib.booleanFilterClause(query, stageIndex, {
         operator,
         column,
