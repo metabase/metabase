@@ -107,7 +107,9 @@
       (upload/upload-artifact! html-file-path "launch-aws-eb.html"))))
 
 ;; TODO -- we should merge the EB build logic into this script, it's still an ancient bash script
-(defn publish-elastic-beanstalk-artifacts! []
+(defn publish-elastic-beanstalk-artifacts!
+  "Create and publish Elastic Beanstalk artifacts, and validate them."
+  []
   (u/step "Create and publish Elastic Beanstalk artifacts"
     (create-archive!)
     (create-html-file!)

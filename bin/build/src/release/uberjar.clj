@@ -8,7 +8,9 @@
    [release.common.http :as common.http]
    [release.common.upload :as upload]))
 
-(defn build-uberjar! []
+(defn build-uberjar!
+  "Start a build step that builds the uberjar."
+  []
   (u/step "Build uberjar"
     (u/delete-file-if-exists! (str u/project-root-directory "/target"))
     (build/build! {:version (str \v (c/version))

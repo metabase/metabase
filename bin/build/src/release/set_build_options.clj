@@ -5,7 +5,9 @@
    [metabuild-common.core :as u]
    [release.common :as c]))
 
-(defn prompt-and-set-build-options! []
+(defn prompt-and-set-build-options!
+  "Prompt and set release build options."
+  []
   (let [[current-branch] (u/step "Determine current branch"
                            (u/sh "git" "symbolic-ref" "--short" "HEAD"))]
     (loop []

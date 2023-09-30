@@ -7,6 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn sha-256-sum [filename]
+(defn sha-256-sum
+  "Get the SHA-256 digest of the filename."
+  [filename]
   (with-open [is (io/input-stream (u/assert-file-exists filename))]
     (DigestUtils/sha256Hex is)))

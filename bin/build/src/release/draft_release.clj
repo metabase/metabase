@@ -71,7 +71,9 @@
             (u/announce "The correct JAR hash is %s" (hash/sha-256-sum c/uberjar-path))
             (assert (= (hash/sha-256-sum c/uberjar-path) release-hash) "Incorrect hash on GitHub release")))))))
 
-(defn create-draft-release! []
+(defn create-draft-release!
+  "Create a draft release and validate it."
+  []
   (u/step "Create draft release"
     (let [changelog (generate-draft-changelog)]
       (upload-draft-changelog! changelog)
