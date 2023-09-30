@@ -7,6 +7,8 @@
    [release.common :as c]
    [release.common.github :as github]))
 
+(set! *warn-on-reflection* true)
+
 (defn- version-info-filename []
   (case (c/edition)
     :oss "version-info.json"

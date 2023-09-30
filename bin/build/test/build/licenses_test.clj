@@ -12,6 +12,8 @@
    (java.io StringWriter)
    (java.nio.file Files FileSystems LinkOption Path Paths)))
 
+(set! *warn-on-reflection* true)
+
 (defn- parse [rdr] (xml/parse rdr :skip-whitespace true))
 
 (def clojure-xml "<?xml version=\"1.0\" encoding=\"UTF-8\"?>

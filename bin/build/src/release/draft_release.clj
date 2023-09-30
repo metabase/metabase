@@ -11,6 +11,8 @@
    [stencil.core :as stencil]
    [stencil.loader]))
 
+(set! *warn-on-reflection* true)
+
 ;; Disable caching of our template files for easier REPL debugging, we're only rendering them once anyways
 (stencil.loader/set-cache (cache/ttl-cache-factory {} :ttl 0))
 

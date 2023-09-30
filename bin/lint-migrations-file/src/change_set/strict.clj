@@ -5,6 +5,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (comment change-set.common/keep-me
          change.strict/keep-me)
 

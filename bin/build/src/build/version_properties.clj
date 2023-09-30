@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [metabuild-common.core :as u]))
 
+(set! *warn-on-reflection* true)
+
 (def version-properties-filename
   (u/filename u/project-root-directory "resources" "version.properties"))
 

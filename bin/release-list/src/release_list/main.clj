@@ -4,6 +4,8 @@
             [clojure.string  :as str]
             [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (def release-page
   "Template for docs page that will list releases."
   (slurp "./resources/releases-template.md"))

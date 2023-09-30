@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (comment change-set.strict/keep-me
          change-set.unstrict/keep-me)
 
