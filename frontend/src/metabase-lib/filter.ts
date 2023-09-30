@@ -211,7 +211,35 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  return null;
+  const { operator: operatorName, args } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...stringValues] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+    return null;
+  }
+
+  const operator = findFilterOperator(query, stageIndex, column, operatorName);
+  if (!operator) {
+    return null;
+  }
+
+  const values = stringValues.map(value => dateStringToTimeParts(value));
+  if (!isDefinedArray(values)) {
+    return null;
+  }
+
+  return {
+    operator,
+    column,
+    values,
+  };
 }
 
 export function isSpecificDateFilter(
@@ -450,6 +478,19 @@ function datePartsToDateString(value: DateParts): string {
   });
 
   return date.format(DATE_FORMAT);
+}
+
+function dateStringToTimeParts(value: string): DateParts | null {
+  const date = moment(value, DATE_FORMAT);
+  if (!date.isValid()) {
+    return null;
+  }
+
+  return {
+    year: date.year(),
+    month: date.month(),
+    date: date.date(),
+  };
 }
 
 function timePartsToTimeString(value: TimeParts): string {
