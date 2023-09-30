@@ -1,5 +1,6 @@
 ;; #!/usr/bin/env bb
 (ns release-list.main
+  (:gen-class)
   (:require [babashka.process :refer [shell]]
             [clojure.string  :as str]
             [metabase.util.log :as log]))
