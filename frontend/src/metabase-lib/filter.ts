@@ -343,7 +343,10 @@ export function relativeDateFilterParts(
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
   const filterParts = expressionParts(query, stageIndex, filterClause);
-  return relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts);
+  return (
+    relativeDateFilterPartsWithoutOffset(query, stageIndex, filterParts) ||
+    relativeDateFilterPartsWithOffset(query, stageIndex, filterParts)
+  );
 }
 
 export function isRelativeDateFilter(
@@ -568,7 +571,6 @@ function findColumnTemporalBucket(
 function findQueryTemporalBucket(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata,
   bucketName: string,
 ): Bucket | undefined {
   return findTemporalBucket(query, stageIndex, [], bucketName);
@@ -576,6 +578,10 @@ function findQueryTemporalBucket(
 
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
   return ML.is_column_metadata(arg);
+}
+
+function isExpression(arg: unknown): arg is ExpressionParts {
+  return arg != null && typeof arg === "object";
 }
 
 function isDefined<T>(arg: T | undefined | null): arg is T {
@@ -712,7 +718,7 @@ function relativeDateFilterPartsWithoutOffset(
     return null;
   }
 
-  const bucket = findQueryTemporalBucket(query, stageIndex, column, bucketName);
+  const bucket = findQueryTemporalBucket(query, stageIndex, bucketName);
   if (!bucket) {
     return null;
   }
@@ -721,6 +727,87 @@ function relativeDateFilterPartsWithoutOffset(
     column,
     value,
     bucket,
+    options,
+  };
+}
+
+function relativeDateFilterPartsWithOffset(
+  query: Query,
+  stageIndex: number,
+  { operator, args, options }: ExpressionParts,
+): RelativeDateFilterParts | null {
+  if (operator !== "between" || args.length !== 3) {
+    return null;
+  }
+
+  const [offsetParts, startParts, endParts] = args;
+  if (
+    !isExpression(offsetParts) ||
+    !isExpression(startParts) ||
+    !isExpression(endParts) ||
+    offsetParts.operator !== "+" ||
+    offsetParts.args.length !== 2 ||
+    startParts.operator !== "relative-datetime" ||
+    startParts.args.length !== 2 ||
+    endParts.operator !== "relative-datetime" ||
+    endParts.args.length !== 2
+  ) {
+    return null;
+  }
+
+  const [column, intervalParts] = offsetParts.args;
+  if (
+    !isColumnMetadata(column) ||
+    !isDate(column) ||
+    !isExpression(intervalParts) ||
+    intervalParts.operator !== "interval"
+  ) {
+    return null;
+  }
+
+  const [offsetValue, offsetBucketName] = intervalParts.args;
+  if (!isNumberLiteral(offsetValue) || !isStringLiteral(offsetBucketName)) {
+    return null;
+  }
+
+  const offsetBucket = findQueryTemporalBucket(
+    query,
+    stageIndex,
+    offsetBucketName,
+  );
+  if (!offsetBucket) {
+    return null;
+  }
+
+  const [startValue, startBucketName] = startParts.args;
+  const [endValue, endBucketName] = endParts.args;
+  if (
+    !isNumberLiteral(startValue) ||
+    !isStringLiteral(startBucketName) ||
+    !isNumberLiteral(endValue) ||
+    !isStringLiteral(endBucketName) ||
+    startBucketName !== endBucketName ||
+    (startValue !== 0 && endValue !== 0)
+  ) {
+    return null;
+  }
+
+  const startBucket = findQueryTemporalBucket(
+    query,
+    stageIndex,
+    startBucketName,
+  );
+  const endBucket = findQueryTemporalBucket(query, stageIndex, endBucketName);
+  if (!startBucket || !endBucket) {
+    return null;
+  }
+
+  return {
+    column,
+    value: startValue < 0 ? startValue : endValue,
+    bucket: startBucket,
+    offsetValue,
+    offsetBucket,
     options,
   };
 }
