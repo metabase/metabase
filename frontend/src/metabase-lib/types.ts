@@ -163,7 +163,8 @@ export type ExpressionOperatorName =
   | "ends-with"
   | "interval"
   | "time-interval"
-  | "relative-datetime";
+  | "relative-datetime"
+  | "inside";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -181,7 +182,8 @@ export type ExpressionOptions = {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
-export type FilterOperatorName =
+export type FilterOperatorName = Extract<
+  ExpressionOperatorName,
   | "="
   | "!="
   | ">"
@@ -197,7 +199,9 @@ export type FilterOperatorName =
   | "not-empty"
   | "starts-with"
   | "ends-with"
-  | "time-interval";
+  | "time-interval"
+  | "inside"
+>;
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -241,6 +245,13 @@ export type StringFilterOptions = {
 export type NumberFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
+  values: number[];
+};
+
+export type CoordinateFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  longitudeColumn?: ColumnMetadata;
   values: number[];
 };
 

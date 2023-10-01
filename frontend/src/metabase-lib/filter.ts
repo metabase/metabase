@@ -1,7 +1,6 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
-import { isBoolean, isDate, isNumeric, isString, isTime } from "./column_types";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import {
@@ -14,6 +13,7 @@ import type {
   Bucket,
   BucketName,
   ColumnMetadata,
+  CoordinateFilterParts,
   DateParts,
   DateTimeParts,
   ExcludeDateFilterParts,
@@ -81,11 +81,7 @@ export function stringFilterParts(
   }
 
   const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isString(column) ||
-    !isStringLiteralArray(values)
-  ) {
+  if (!isColumnMetadata(column) || !isStringLiteralArray(values)) {
     return null;
   }
 
@@ -134,11 +130,7 @@ export function numberFilterParts(
   }
 
   const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isNumeric(column) ||
-    !isNumberLiteralArray(values)
-  ) {
+  if (!isColumnMetadata(column) || !isNumberLiteralArray(values)) {
     return null;
   }
 
@@ -160,6 +152,62 @@ export function isNumberFilter(
   filterClause: FilterClause,
 ): boolean {
   return numberFilterParts(query, stageIndex, filterClause) != null;
+}
+
+export function coordinateFilterClause(
+  query: Query,
+  stageIndex: number,
+  { operator, column, longitudeColumn, values }: CoordinateFilterParts,
+): ExpressionClause {
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  const args =
+    operatorInfo.shortName === "inside"
+      ? [column, longitudeColumn ?? column, ...values]
+      : [column, ...values];
+  return expressionClause(operatorInfo.shortName, args);
+}
+
+export function coordinateFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): CoordinateFilterParts | null {
+  const { operator: operatorName, args } = expressionParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (args.length < 1) {
+    return null;
+  }
+
+  const [column, ...otherArgs] = args;
+  const [longitudeColumn, ...nonColumnArgs] = otherArgs;
+  const values = operatorName === "inside" ? nonColumnArgs : otherArgs;
+  if (!isColumnMetadata(column) || !isNumberLiteralArray(values)) {
+    return null;
+  }
+
+  const operator = findFilterOperator(query, stageIndex, column, operatorName);
+  if (!operator) {
+    return null;
+  }
+
+  if (operatorName !== "inside") {
+    return { operator, column, values };
+  } else if (isColumnMetadata(longitudeColumn)) {
+    return { operator, column, longitudeColumn, values };
+  } else {
+    return null;
+  }
+}
+
+export function isCoordinateFilter(
+  query: Query,
+  stageIndex: number,
+  filterClause: FilterClause,
+): boolean {
+  return coordinateFilterParts(query, stageIndex, filterClause) != null;
 }
 
 export function booleanFilterClause(
@@ -186,11 +234,7 @@ export function booleanFilterParts(
   }
 
   const [column, ...values] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isBoolean(column) ||
-    !isBooleanLiteralArray(values)
-  ) {
+  if (!isColumnMetadata(column) || !isBooleanLiteralArray(values)) {
     return null;
   }
 
@@ -266,11 +310,7 @@ export function specificDateFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDate(column) ||
-    !isStringLiteralArray(stringValues)
-  ) {
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
     return null;
   }
 
@@ -396,11 +436,7 @@ export function excludeDateFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isDate(column) ||
-    !isStringLiteralArray(stringValues)
-  ) {
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
     return null;
   }
 
@@ -472,11 +508,7 @@ export function timeFilterParts(
   }
 
   const [column, ...stringValues] = args;
-  if (
-    !isColumnMetadata(column) ||
-    !isTime(column) ||
-    !isStringLiteralArray(stringValues)
-  ) {
+  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
     return null;
   }
 
@@ -693,7 +725,6 @@ function relativeDateFilterPartsWithoutOffset(
   const [column, value, bucketName] = args;
   if (
     !isColumnMetadata(column) ||
-    !isDate(column) ||
     !isNumberOrCurrentLiteral(value) ||
     !isStringLiteral(bucketName) ||
     !isRelativeDateBucket(bucketName)
@@ -736,7 +767,6 @@ function relativeDateFilterPartsWithOffset(
   const [column, intervalParts] = offsetParts.args;
   if (
     !isColumnMetadata(column) ||
-    !isDate(column) ||
     !isExpression(intervalParts) ||
     intervalParts.operator !== "interval"
   ) {
