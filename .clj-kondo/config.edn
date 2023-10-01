@@ -653,7 +653,7 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util$)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
-  {:pattern "metabase\\.cmd.*"
+  {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))"
    :name    printable-namespaces}
   {:pattern "^metabase\\.lib\\.*"
    :name    metabase-lib}
@@ -707,7 +707,12 @@
 
   printable-namespaces
   {:linters
-   {:discouraged-var {:level :off}}}
+   {:discouraged-var {clojure.pprint/pprint     {:level :off}
+                      clojure.core/print        {:level :off}
+                      clojure.core/printf       {:level :off}
+                      clojure.core/println      {:level :off}
+                      clojure.string/lower-case {:level :off}
+                      clojure.string/upper-case {:level :off}}}}
 
   honey-sql-2-namespaces
   {:linters
