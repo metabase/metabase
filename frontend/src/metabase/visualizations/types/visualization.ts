@@ -187,18 +187,17 @@ export type VisualizationSettingsDefinitions<TObject = unknown> = {
 };
 
 // returned by getSettingWidget
-export type VisualizationSettingWidget<TObject, TValue> =
-  VisualizationSettingDefinition<TObject, TValue> & {
-    id: string;
-    value: TValue;
-    set: boolean;
-    widget: any;
-    onChange: (newValue: TValue, question: Question) => void;
-    onChangeSettings: (
-      newSettings: VisualizationSettings,
-      question: Question,
-    ) => void;
-  };
+export type VisualizationSettingWidget<TObject = unknown, TValue = any> = {
+  id: string;
+  value: TValue;
+  set: boolean;
+  widget: any;
+  onChange: (newValue: TValue, question: Question) => void;
+  onChangeSettings: (
+    newSettings: VisualizationSettings,
+    question: Question,
+  ) => void;
+} & VisualizationSettingDefinition<TObject, TValue>;
 
 export type VisualizationGridSize = {
   // grid columns

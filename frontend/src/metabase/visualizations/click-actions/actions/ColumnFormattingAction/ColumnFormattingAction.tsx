@@ -45,22 +45,24 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       widget => widget.id === "column_settings",
     );
 
-    const extraProps = {
+    const extraProps = columnSettingsWidget && {
       ...columnSettingsWidget,
       props: {
-        ...columnSettingsWidget?.props,
+        ...(columnSettingsWidget.props as object),
         initialKey: getColumnKey(column),
       },
     };
 
     return (
       <PopoverRoot>
-        <ChartSettingsWidget
-          {...extraProps}
-          key={columnSettingsWidget?.id}
-          hidden={false}
-          dataTestId={POPOVER_TEST_ID}
-        />
+        {extraProps && (
+          <ChartSettingsWidget
+            {...extraProps}
+            key={extraProps.id}
+            hidden={false}
+            dataTestId={POPOVER_TEST_ID}
+          />
+        )}
       </PopoverRoot>
     );
   };

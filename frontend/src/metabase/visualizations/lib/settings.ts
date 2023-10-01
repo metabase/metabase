@@ -17,6 +17,7 @@ import ChartSettingColorsPicker from "metabase/visualizations/components/setting
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type {
   VisualizationSettingsDefinitions,
+  VisualizationSettingWidget,
   WidgetName,
 } from "metabase/visualizations/types";
 import type {
@@ -127,17 +128,15 @@ function getComputedSetting(
   return (computedSettings[settingId] = undefined);
 }
 
-// I couldn’t convince TypeScript to use our VisualizationSettingWidget type here,
-// but it describes the format of what is returned.
 function getSettingWidget(
   settingsDefs: VisualizationSettingsDefinitions,
   settingId: VisualizationSettingId,
   storedSettings: VisualizationSettings,
   computedSettings: VisualizationSettings,
   object: unknown,
-  onChangeSettings: any /* VisualizationSettingWidget["onChangeSettings"] */,
+  onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
   extra: unknown = {},
-) /* returns VisualizationSettingWidget */ {
+): VisualizationSettingWidget {
   const settingDef = settingsDefs[settingId] ?? {};
   const value = computedSettings[settingId];
   const onChange = (newValue: typeof value, question: Question) => {
@@ -201,7 +200,7 @@ export function getSettingsWidgets(
   storedSettings: VisualizationSettings,
   computedSettings: VisualizationSettings,
   object: unknown,
-  onChangeSettings: any /* VisualizationSettingWidget["onChangeSettings"] */,
+  onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
   extra = {},
 ) {
   return Object.keys(settingsDefs)
