@@ -130,8 +130,8 @@ export type BasicVisualizationSettings = {
   "funnel.type"?: "funnel" | "bar";
   "gauge.range"?: [number, number];
   "gauge.segments"?: GaugeSegment[];
-  "graph._dimension_filter"?: (col: unknown) => boolean;
-  "graph._metric_filter"?: (col: unknown) => boolean;
+  "graph._dimension_filter"?: (col: DatasetColumn) => boolean;
+  "graph._metric_filter"?: (col: DatasetColumn) => boolean;
   "graph.colors"?: string[];
   "graph.dimensions"?: string[];
   "graph.goal_label"?: string;
@@ -145,6 +145,8 @@ export type BasicVisualizationSettings = {
   "graph.show_goal"?: boolean;
   "graph.show_trendline"?: boolean;
   "graph.show_values"?: boolean;
+  "graph.x_axis._is_timeseries"?: boolean;
+  "graph.x_axis._is_numeric"?: boolean;
   "graph.x_axis._is_histogram"?: boolean;
   "graph.x_axis.axis_enabled"?: boolean | "compact" | "rotate-45" | "rotate-90";
   "graph.x_axis.gridLine_enabled"?: boolean;
@@ -165,7 +167,7 @@ export type BasicVisualizationSettings = {
   "graph.y_axis.max"?: number;
   "graph.y_axis.min"?: number;
   "graph.y_axis.scale"?: "linear" | "pow" | "log";
-  "graph.y_axis.title_text"?: string;
+  "graph.y_axis.title_text"?: string | null;
   "line.interpolate"?: "linear" | "cardinal" | "step-after";
   "line.marker_enabled"?: null | boolean;
   "line.missing"?: "zero" | "none" | "interpolate";
@@ -212,7 +214,7 @@ export type BasicVisualizationSettings = {
   "scalar.prefix"?: string; // legacy
   "scalar.scale"?: number; // legacy
   "scalar.suffix"?: string; // legacy
-  "scatter.bubble"?: string;
+  "scatter.bubble"?: string | null;
   series_settings?: Record<string, SeriesSettings>;
   "series_settings.colors"?: { [key: string]: string };
   "stackable.stack_display"?: "area" | "bar";
