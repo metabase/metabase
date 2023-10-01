@@ -97,6 +97,7 @@ export type VisualizationSettingDefinition<
   TProps = unknown,
   TExtra = any,
 > = {
+  id?: string;
   widget?: WidgetName | any; // FIXME: setting this to React.ComponentType<TProps> didn’t seem to work
   inline?: boolean;
   useRawSeries?: boolean;
