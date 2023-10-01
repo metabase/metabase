@@ -5,7 +5,7 @@ import type {
 } from "metabase/visualizations/visualizations/PivotTable/types";
 import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { DatasetColumn } from "metabase-types/api/dataset";
+import type { DatasetColumn, SingleSeries } from "metabase-types/api/dataset";
 import type { ClickBehavior } from "metabase-types/api/click-behavior";
 import type { ActionDisplayType } from "metabase-types/api/actions";
 import type { DateFormatOptions } from "metabase/static-viz/lib/dates";
@@ -43,6 +43,7 @@ export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   archived: boolean;
 
   creator?: UserInfo;
+  _seriesKey?: string;
 }
 
 export interface PublicCard {
@@ -215,8 +216,6 @@ export type BasicVisualizationSettings = {
   "scalar.scale"?: number; // legacy
   "scalar.suffix"?: string; // legacy
   "scatter.bubble"?: string | null;
-  series_settings?: Record<string, SeriesSettings>;
-  "series_settings.colors"?: { [key: string]: string };
   "stackable.stack_display"?: "area" | "bar";
   "stackable.stack_type"?: "stacked" | "normalized" | null;
   "stackable.stacked"?: VisualizationSettings["stackable.stack_type"]; // legacy
@@ -239,8 +238,9 @@ export type BasicVisualizationSettings = {
   "waterfall.total_color"?: string;
 
   title?: string;
+  color?: string;
   text?: string;
-  display?: "line" | "area" | "bar";
+  display?: "line" | "area" | "bar" | string;
   axis?: null | "left" | "right";
   _header_unit?: string;
   column_title?: string;
@@ -248,6 +248,7 @@ export type BasicVisualizationSettings = {
   currency_in_header?: boolean;
   show_mini_bar?: boolean;
   _numberFormatter?: any;
+  show_series_values?: boolean;
 
   click_behavior?: ClickBehavior;
   actionDisplayType?: ActionDisplayType;
@@ -278,8 +279,15 @@ export type VisualizationColumnSettings = {
   };
 };
 
+export type VisualizationSeriesSettings = {
+  series: (series: SingleSeries) => BasicVisualizationSettings;
+  series_settings: Record<string, SeriesSettings>;
+  "series_settings.colors": { [key: string]: string };
+};
+
 export type VisualizationSettings = BasicVisualizationSettings &
-  Partial<VisualizationColumnSettings>;
+  Partial<VisualizationColumnSettings> &
+  Partial<VisualizationSeriesSettings>;
 
 export type VisualizationSettingId = keyof VisualizationSettings;
 

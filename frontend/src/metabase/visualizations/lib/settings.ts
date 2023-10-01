@@ -44,15 +44,15 @@ const WIDGETS: Record<WidgetName, any> = {
   colors: ChartSettingColorsPicker,
 };
 
-export function getComputedSettings(
-  settingsDefs: VisualizationSettingsDefinitions,
-  object: unknown,
+export function getComputedSettings<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
+  object: TObject,
   storedSettings: VisualizationSettings,
   extra = {},
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
-    getComputedSetting(
+    getComputedSetting<TObject>(
       computedSettings,
       settingsDefs,
       settingId as VisualizationSettingId,
@@ -64,11 +64,11 @@ export function getComputedSettings(
   return computedSettings;
 }
 
-function getComputedSetting(
+function getComputedSetting<TObject>(
   computedSettings: VisualizationSettings, // MUTATED!
-  settingsDefs: VisualizationSettingsDefinitions,
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
   settingId: VisualizationSettingId,
-  object: unknown,
+  object: TObject,
   storedSettings: VisualizationSettings,
   extra = {},
 ) {
@@ -90,8 +90,10 @@ function getComputedSetting(
   }
 
   if (settingDef.useRawSeries) {
-    const series = object as TransformedSeries;
+    const series = object as unknown as TransformedSeries;
     if (series._raw) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       object = series;
     }
   }
@@ -128,15 +130,15 @@ function getComputedSetting(
   return (computedSettings[settingId] = undefined);
 }
 
-function getSettingWidget(
-  settingsDefs: VisualizationSettingsDefinitions,
+function getSettingWidget<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
   settingId: VisualizationSettingId,
   storedSettings: VisualizationSettings,
   computedSettings: VisualizationSettings,
-  object: unknown,
+  object: TObject,
   onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
   extra: unknown = {},
-): VisualizationSettingWidget {
+): VisualizationSettingWidget<TObject> {
   const settingDef = settingsDefs[settingId] ?? {};
   const value = computedSettings[settingId];
   const onChange = (newValue: typeof value, question: Question) => {
@@ -151,9 +153,11 @@ function getSettingWidget(
     settingDef.onUpdate?.(newValue, extra);
   };
   if (settingDef.useRawSeries) {
-    const series = object as TransformedSeries;
+    const series = object as unknown as TransformedSeries;
     if (series._raw) {
       (extra as any).transformedSeries = series;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       object = series;
     }
   }
@@ -195,11 +199,11 @@ function getSettingWidget(
   };
 }
 
-export function getSettingsWidgets(
-  settingsDefs: VisualizationSettingsDefinitions,
+export function getSettingsWidgets<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
   storedSettings: VisualizationSettings,
   computedSettings: VisualizationSettings,
-  object: unknown,
+  object: TObject,
   onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
   extra = {},
 ) {

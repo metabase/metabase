@@ -340,6 +340,7 @@ export const LINE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   },
 };
 
+type StackableDisplay = "area" | "bar";
 const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
 
 export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
@@ -356,9 +357,11 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
     },
     isValid: (series, settings) => {
       if (settings["stackable.stack_type"] != null) {
-        const displays = series.map(single => settings.series(single).display);
-        const stackableDisplays = displays.filter(display =>
-          STACKABLE_DISPLAY_TYPES.has(display),
+        const displays = series.map(
+          single => settings.series?.(single).display,
+        );
+        const stackableDisplays = displays.filter(
+          display => display && STACKABLE_DISPLAY_TYPES.has(display),
         );
         return stackableDisplays.length > 1;
       }
@@ -378,9 +381,9 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
       return shouldStack ? "stacked" : null;
     },
     getHidden: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      const stackableDisplays = displays.filter(display =>
-        STACKABLE_DISPLAY_TYPES.has(display),
+      const displays = series.map(single => settings.series?.(single).display);
+      const stackableDisplays = displays.filter(
+        display => display && STACKABLE_DISPLAY_TYPES.has(display),
       );
       return stackableDisplays.length <= 1;
     },
@@ -397,15 +400,15 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions<Series> = {
       ],
     },
     getDefault: (series, settings) => {
-      const displays = series.map(single => settings.series(single).display);
-      const firstStackable = _.find(displays, display =>
-        STACKABLE_DISPLAY_TYPES.has(display),
+      const displays = series.map(single => settings.series?.(single).display);
+      const firstStackable = displays.find(
+        display => display && STACKABLE_DISPLAY_TYPES.has(display),
       );
       if (firstStackable) {
-        return firstStackable;
+        return firstStackable as StackableDisplay;
       }
       if (STACKABLE_DISPLAY_TYPES.has(series[0].card.display)) {
-        return series[0].card.display;
+        return series[0].card.display as StackableDisplay;
       }
       return "bar";
     },

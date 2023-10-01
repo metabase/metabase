@@ -103,6 +103,7 @@ export type VisualizationSettingDefinition<
   inline?: boolean;
   useRawSeries?: boolean;
   group?: string;
+  noPadding?: boolean;
 
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
