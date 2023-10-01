@@ -29,12 +29,12 @@
       (apply distinct? (mapcat #(str/split (-> % :sql :dbms) #",")
                                changes))))))
 
-(def ^:private change-types-supporting-rollback
-  ;; This set was generated with a little grep and awk from the docs here:
-  ;; https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
-  ;;
-  ;; If a new change type is introduced that supports automatic rollback, it should be added
-  ;; to this set.
+(def change-types-supporting-rollback
+  "This set was generated with a little grep and awk from the docs here:
+  https://docs.liquibase.com/workflows/liquibase-community/liquibase-auto-rollback.html
+
+  If a new change type is introduced that supports automatic rollback, it should be added
+  to this set."
   #{:addCheckConstraint
     :addColumn
     :addDefaultValue

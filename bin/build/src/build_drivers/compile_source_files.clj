@@ -29,7 +29,7 @@
    (ns.deps/graph)
    ns-decls))
 
-(defn- source-path-namespaces
+(defn source-path-namespaces
   "Topologically sort the namespaces so we don't end up with weird compilation issues."
   [source-paths]
   (let [ns-decls   (mapcat

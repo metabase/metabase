@@ -9,7 +9,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [grasp.api :as g]
-   [metabase.util.log :as log]
    [metabuild-common.core :as u])
   (:import
    (org.fedorahosted.tennera.jgettext Catalog HeaderFields Message PoWriter)))
@@ -174,7 +173,7 @@
       (let [po-writer (PoWriter.)
             catalog   (processed->catalog grouped)]
         (.write po-writer catalog writer)))
-    (log/info "Created pot file at " filename)
+    (println "Created pot file at " filename)
     {:valid-usages (count good-forms)
      :entry-count  (count grouped)
      :bad-forms    bad-forms}))
@@ -184,16 +183,16 @@
   or more forms were found that it could not process."
   [{:keys [filename]}]
   (when (str/blank? filename)
-    (log/info "Please provide a filename argument. Eg: ")
-    (log/info "  clj -X:build i18n.enumerate/enumerate :filename \"\\\"$POT_BACKEND_NAME\\\"\"")
-    (log/info "  clj -X:build i18n.enumerate/enumerate :filename '\"metabase.pot\"'")
+    (println "Please provide a filename argument. Eg: ")
+    (println "  clj -X:build i18n.enumerate/enumerate :filename \"\\\"$POT_BACKEND_NAME\\\"\"")
+    (println "  clj -X:build i18n.enumerate/enumerate :filename '\"metabase.pot\"'")
     (System/exit 1))
   (let [{:keys [valid-usages entry-count bad-forms]} (create-pot-file! roots filename)]
-    (log/info (format "Found %d forms for translations" valid-usages))
-    (log/info (format "Grouped into %d distinct pot entries" entry-count))
+    (println (format "Found %d forms for translations" valid-usages))
+    (println (format "Grouped into %d distinct pot entries" entry-count))
     (when (seq bad-forms)
-      (log/info (format "Found %d forms that could not be analyzed" (count bad-forms)))
-      (run! (comp log/info pr-str) bad-forms)
+      (println (format "Found %d forms that could not be analyzed" (count bad-forms)))
+      (run! (comp println pr-str) bad-forms)
       (System/exit 1))
     (System/exit 0)))
 

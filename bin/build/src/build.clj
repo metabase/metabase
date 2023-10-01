@@ -3,7 +3,7 @@
    [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.uberjar :as uberjar]
-   [build.version-info :as version-info]
+   [build.version-properties :as version-properties]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -39,7 +39,7 @@
                      "HOME"       (env/env :user-home)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
-              "yarn" "build"))
+              "yarn" "build-release"))
       (u/step "Build static viz"
         (u/sh {:dir u/project-root-directory
                :env {"PATH"       (env/env :path)
@@ -76,8 +76,6 @@
                         "resources"
                         "license-frontend-third-party.txt") license-text))))
 
-
-
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
   (u/delete-file-if-exists! uberjar/uberjar-filename)
@@ -89,7 +87,7 @@
 (def ^:private all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
-                   (version-info/generate-version-info-file! edition version))
+                   (version-properties/generate-version-properties-file! edition version))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
@@ -110,7 +108,7 @@
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
    (let [version (or version
-                     (version-info/current-snapshot-version edition))]
+                     (version-properties/current-snapshot-version edition))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"

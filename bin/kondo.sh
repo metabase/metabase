@@ -12,10 +12,10 @@ rm -rf .clj-kondo/metosin/malli-types-clj/
 rm -rf .clj-kondo/.cache
 
 # Run Kondo against all of our Clojure files in the various directories they might live.
-find src test bin shared modules/drivers enterprise/backend \
+find modules/drivers shared enterprise/backend \
      -maxdepth 2 \
      -type d \
      -name src -or -name test \
     | xargs clj-kondo \
             --parallel \
-            --lint src test
+            --lint bin src test

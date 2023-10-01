@@ -15,8 +15,8 @@
     (u/delete-file-if-exists! (c/driver-jar-destination-path driver))))
 
 (defn build-driver!
-  "Build a single driver, if needed."
-  ;; 1-arity that takes just a map is mean for use directly with clojure -X
+  "Build a single driver, if needed.
+  1-arity that takes just a map is meant for use directly with clojure -X."
   ([{:keys [driver edition], :as options}]
    (build-driver! driver edition (dissoc options :driver :edition)))
 

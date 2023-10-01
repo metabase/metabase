@@ -101,47 +101,10 @@ jobs:
           cat clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip.sha256 >> SHA256sum.txt
           echo " clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip" >> SHA256sum.txt
           sha256sum -c SHA256sum.txt
-          unzip clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
-      - run: ./clj-kondo --version
+          unzip -d /usr/local/bin clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
+      - run: clj-kondo --version
       - name: Run clj-kondo
-        run: >-
-          ./clj-kondo
-          --config ./.clj-kondo/config.edn
-          --config-dir ./.clj-kondo
-          --parallel
-          --lint
-          ./src
-          ./test
-          ./enterprise/backend/src
-          ./enterprise/backend/test
-          ./shared/src
-          ./shared/test
-          ./modules/drivers/athena/src
-          ./modules/drivers/athena/test
-          ./modules/drivers/bigquery-cloud-sdk/src
-          ./modules/drivers/bigquery-cloud-sdk/test
-          ./modules/drivers/druid/src
-          ./modules/drivers/druid/test
-          ./modules/drivers/googleanalytics/src
-          ./modules/drivers/googleanalytics/test
-          ./modules/drivers/mongo/src
-          ./modules/drivers/mongo/test
-          ./modules/drivers/oracle/src
-          ./modules/drivers/oracle/test
-          ./modules/drivers/presto-jdbc/src
-          ./modules/drivers/presto-jdbc/test
-          ./modules/drivers/redshift/src
-          ./modules/drivers/redshift/test
-          ./modules/drivers/snowflake/src
-          ./modules/drivers/snowflake/test
-          ./modules/drivers/sparksql/src
-          ./modules/drivers/sparksql/test
-          ./modules/drivers/sqlite/src
-          ./modules/drivers/sqlite/test
-          ./modules/drivers/sqlserver/src
-          ./modules/drivers/sqlserver/test
-          ./modules/drivers/vertica/src
-          ./modules/drivers/vertica/test
+        run: ./bin/kondo.sh
 
   be-linter-eastwood:
     needs: [files-changed, static-viz-files-changed]

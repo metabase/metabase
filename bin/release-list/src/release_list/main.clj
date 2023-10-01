@@ -2,8 +2,7 @@
 (ns release-list.main
   (:gen-class)
   (:require [babashka.process :refer [shell]]
-            [clojure.string  :as str]
-            [metabase.util.log :as log]))
+            [clojure.string  :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -92,9 +91,9 @@
 
 (defn -main
   "Entry point for creating a release list.
-  Run it from `release-list/` with:
+  Run it from `bin/release-list/` with
 
-  `bb -m release-list.main`"
+    bb -m release-list.main"
   []
   ;; Clear existing list of releases
   (let [target "../../docs/releases.md"]
@@ -106,4 +105,4 @@
               prep-links
               group-versions
               prep-page))
-    (log/info "List of releases updated in `docs/releases.md`.")))
+    (println "List of releases updated in `docs/releases.md`.")))

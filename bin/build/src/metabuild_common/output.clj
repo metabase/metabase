@@ -2,8 +2,7 @@
   (:require
    [clojure.pprint :as pprint]
    [clojure.string :as str]
-   [colorize.core :as colorize]
-   [metabase.util.log :as log]))
+   [colorize.core :as colorize]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,9 +19,9 @@
 (defn safe-println
   "Thread-safe version of `println` that also indents output based on the current step build step."
   [& args]
-  (locking log/info
-    (log/info (steps-indent))
-    (apply log/info args)))
+  (locking println
+    (print (steps-indent))
+    (apply println args)))
 
 (defn announce
   "Like `safe-println` + `format`, but outputs text in magenta. Use this for printing messages such as when something
@@ -45,6 +44,6 @@
   "Pretty print an Exception when a step fails to stdout."
   [^Throwable e]
   (let [e-map (Throwable->map e)]
-    (log/info (colorize/red (str "Step failed: " (.getMessage e))))
+    (println (colorize/red (str "Step failed: " (.getMessage e))))
     (binding [pprint/*print-right-margin* 120]
-      (log/infof e-map))))
+      (pprint/pprint e-map))))

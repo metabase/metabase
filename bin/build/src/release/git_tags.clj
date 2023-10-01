@@ -15,7 +15,7 @@
         (u/announce "Found %s tag on commit %s" tag tag-hash)))))
 
 (defn push-tags!
-  "Push and validate Git tag."
+  "Start a build step to push and validate the Git tag."
   []
   (u/step "Push and validate Git tag"
     (git/recreate-and-push-tag! u/project-root-directory (str "v" (c/version)))

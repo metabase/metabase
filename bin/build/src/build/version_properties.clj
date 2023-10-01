@@ -77,7 +77,7 @@
   ([edition]
    (generate-version-properties-file! edition (current-snapshot-version edition)))
 
-  ([_ version]
+  ([_edition version]
    (u/delete-file-if-exists! version-properties-filename)
    (u/step (format "Generate version.properties file for version %s" version)
      (spit version-properties-filename (version-properties version))

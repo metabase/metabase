@@ -11,4 +11,4 @@
   ([source-file version filename]
    (u/step (format "Upload %s to %s" source-file (c/artifact-download-url version filename))
      (u/s3-copy! (u/assert-file-exists source-file) (c/s3-artifact-url version filename))
-     (u/create-cloudfront-invalidation! c/cloudfront-distribution-id (c/s3-artifact-path version filename)))))
+     (u/create-cloudfront-invalidation! c/downloads-cloudfront-distribution-id (c/s3-artifact-path version filename)))))

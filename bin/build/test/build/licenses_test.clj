@@ -34,7 +34,7 @@
 
 (defn jar->path
   "Return a Path for a jar."
-   ^Path [filename]
+  ^Path [filename]
   (let [path (Paths/get filename (into-array String []))]
     (if (Files/exists path (into-array LinkOption []))
       path
@@ -102,7 +102,7 @@
                                        '[org.clojure/clojure
                                          org.apache.commons/commons-math3
                                          net.redhogs.cronparser/cron-parser-core])
-          normalize-entry (fn [[_ {:keys [coords license error]}]]
+          normalize-entry (fn [[_jar {:keys [coords license error]}]]
                             [((juxt :group :artifact) coords)
                              (cond-> {:license (not (str/blank? license))}
                                error (assoc :error error))])

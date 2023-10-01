@@ -1,12 +1,14 @@
 (ns metabuild-common.aws
   (:require
+   [environ.core]
    [metabuild-common.env :as env]
    [metabuild-common.output :as out]
    [metabuild-common.shell :as shell]
    [metabuild-common.steps :as steps]))
 
 (defn- aws-profile []
-  (env/env-or-throw :aws-default-profile))
+  (when (not (contains? environ.core/env :ci))
+    (env/env-or-throw :aws-default-profile)))
 
 (defn s3-copy!
   "Shell out to `aws s3 cp` to copy something, either to an S3 bucket or across S3 buckets."

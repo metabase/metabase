@@ -1,9 +1,9 @@
 (ns i18n.create-artifacts
   (:require
+   [clojure.pprint :as pprint]
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
-   [metabase.util.log :as log]
    [metabuild-common.core :as u]))
 
 (defn- locales-dot-edn []
@@ -15,7 +15,7 @@
   (u/step "Create resources/locales.clj"
     (let [file (u/filename u/project-root-directory "resources" "locales.clj")]
       (u/delete-file-if-exists! file)
-      (spit file (with-out-str (log/infof (locales-dot-edn))))
+      (spit file (with-out-str (pprint/pprint (locales-dot-edn))))
       (u/assert-file-exists file))))
 
 (defn- create-artifacts-for-locale! [locale]

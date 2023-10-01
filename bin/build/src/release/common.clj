@@ -5,19 +5,22 @@
 
 (set! *warn-on-reflection* true)
 
-(def cloudfront-distribution-id
-  "The CloudFront distribution where our artifacts live."
+(def downloads-cloudfront-distribution-id
+  "The CloudFront distribution where the downloads live."
   "E35CJLWZIZVG7K")
+(def static-cloudfront-distribution-id
+  "The CloudFront distribution where the version info lives."
+  "E1HU16PWP1JPMC")
 
 (def ^String uberjar-path
   "Fully-qualified path to the uberjar we're building."
   (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
 
-(defonce ^:private build-options
+(defonce ^:private ^:dynamic *build-options*
   (atom nil))
 
 (defn- build-option-or-throw [k]
-  (or (get @build-options k)
+  (or (get @*build-options* k)
       (let [msg (format "%s is not set. Run release.set-build-options/prompt-and-set-build-options! to set it."
                         (name k))
             e   (ex-info msg {})]
@@ -39,7 +42,7 @@
   "Change the version we're building."
   [new-version]
   ;; strip off initial `v` if present
-  (swap! build-options assoc :version (str/replace new-version #"^v" "")))
+  (swap! *build-options* assoc :version (str/replace new-version #"^v" "")))
 
 (defn github-milestone
   "Name of GitHub milestone to query for fixed issue descriptions. Same as version, except for enterprise edition, in
@@ -50,7 +53,7 @@
 (defn set-github-milestone!
   "Change the GitHub milestone we should reference when generating a new release."
   [new-github-milestone]
-  (swap! build-options assoc :github-milestone new-github-milestone))
+  (swap! *build-options* assoc :github-milestone new-github-milestone))
 
 (defn branch
   "Branch we are building from, e.g. `release-0.36.x`"
@@ -60,7 +63,7 @@
 (defn set-branch!
   "Change the branch we're building from."
   [new-branch]
-  (swap! build-options assoc :branch new-branch))
+  (swap! *build-options* assoc :branch new-branch))
 
 (defn edition
   "Either `:oss` (Community Edition) or `:ee` (Enterprise Edition)."
@@ -72,7 +75,7 @@
   "Change the edition we're building, either `:oss` or `:ee`."
   [new-edition]
   (assert (#{:oss :ee} new-edition))
-  (swap! build-options assoc :edition new-edition))
+  (swap! *build-options* assoc :edition new-edition))
 
 (defn pre-release-version?
   "Whether this version should be considered a prerelease. True if the version doesn't follow the usual

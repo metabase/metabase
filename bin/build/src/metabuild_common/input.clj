@@ -2,20 +2,19 @@
   (:require
    [clojure.string :as str]
    [environ.core :as env]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabuild-common.output :as out]))
 
 (set! *warn-on-reflection* true)
 
 (defn interactive?
   "Whether we're running these scripts interactively, and can prompt the user for input. By default, this is
-  true (except when running in CircleCI), but if the env var `INTERACTIVE=false` is set, these scripts will not prompt
-  for input. Be sure to set this when running scripts in CI or other places that automate them."
+  true (except when running in CI), but if the env var `INTERACTIVE=false` is set, these scripts will not prompt
+  for input. Be sure to set this when running scripts in CI or other places that automate them. Most CI providers
+  set the `CI` env var to true by default, so we can use that as a fallback."
   []
   (if-let [env-var (env/env :interactive)]
     (Boolean/parseBoolean env-var)
-    (not (:circleci env/env))))
+    (not (:ci env/env))))
 
 (defn read-line-with-prompt
   "Prompt for and read a value from stdin. Accepts two options: `:default`, which is the default value to use if the
@@ -27,9 +26,9 @@
         (throw (ex-info "Cannot prompt for a value when script is ran non-interactively; specify a :default value."
                         {})))
     (loop []
-      (log/info (str prompt " "))
+      (print (str prompt " "))
       (when default
-        (log/info "(default %s) " (pr-str default)))
+        (printf "(default %s) " (pr-str default)))
       (flush)
       (let [line (or (not-empty (str/trim (read-line)))
                      default)]
@@ -43,7 +42,7 @@
           (let [error (validator line)]
             (if error
               (do
-                (log/info error)
+                (println error)
                 (recur))
               line))
 
@@ -58,7 +57,7 @@
                            [:c :e])
     ;-> :c"
   [prompt letters & options]
-  (let [letter-strs (map #(u/upper-case-en (if (keyword? %)
+  (let [letter-strs (map #(str/upper-case (if (keyword? %)
                                             (name %)
                                             (str %)))
                          letters)
@@ -66,11 +65,11 @@
                      read-line-with-prompt
                      (format "%s [%s]" prompt (str/join "/" letter-strs))
                      :validator (fn [line]
-                                  (when-not (contains? (set letter-strs) (str/trim (u/upper-case-en line)))
+                                  (when-not (contains? (set letter-strs) (str/trim (str/upper-case line)))
                                     (format "Please enter %s" (str/join " or " (map pr-str letter-strs)))))
                      options)]
     (out/safe-println (str/trim letter))
-    (keyword (str/trim (u/lower-case-en letter)))))
+    (keyword (str/trim (str/lower-case letter)))))
 
 (defn yes-or-no-prompt
   "Prompt user to type `Y` or `N`; prompt will repeat until one of those two letters is typed. Returns `true` or `false`
