@@ -126,6 +126,25 @@ describe("DatabaseEditApp", () => {
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
     });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      const databaseForm = await screen.findByLabelText("Display name");
+
+      userEvent.type(databaseForm, "Test database");
+
+      history.goBack();
+
+      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Cache TTL field", () => {
