@@ -15,7 +15,12 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const questionDetails = {
   query: {
     "source-table": ORDERS_ID,
-    expressions: { "CC Date": ["field", ORDERS.CREATED_AT, null] },
+    expressions: {
+      "CC Date": ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+    },
+    "order-by": [
+      ["asc", ["field", ORDERS.ID, { "base-type": "type/BigInteger" }]],
+    ],
   },
 };
 
@@ -70,11 +75,10 @@ describe("issue 17775", () => {
   it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
     filterWidget().click();
 
-    setQuarterAndYear({ quarter: "Q1", year: "2025" });
+    setQuarterAndYear({ quarter: "Q1", year: "2023" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65");
-
-    cy.findAllByText("February 11, 2025, 9:40 PM").should("have.length", 2);
+    cy.findByText("44.43");
+    cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
   });
 });
