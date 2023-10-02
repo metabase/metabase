@@ -1151,7 +1151,7 @@
 
         (migrate!)
         (testing "should drop the existing color column"
-          (is (true? (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))
+          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))
 
         (db.setup/migrate! db-type data-source :down)
         (testing "Rollback to the previous version should restore the column column, and set the default color value"
