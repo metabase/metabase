@@ -81,6 +81,11 @@ describe("metabase/parameters/utils/formatting", () => {
         expected: "Last Week",
       },
       {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "October 2, 2023 - October 24, 2023",
+      },
+      {
         type: "number/=",
         value: 123456789,
         expected: "123,456,789",
