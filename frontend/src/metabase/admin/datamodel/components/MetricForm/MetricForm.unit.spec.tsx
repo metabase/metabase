@@ -4,8 +4,15 @@ import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import { Route } from "metabase/hoc/Title";
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
 
 const setup = () => {
+  setupDatabasesEndpoints([createMockDatabase()]);
+  setupSearchEndpoints([]);
   renderWithProviders(
     <Route path="/admin/datamodel/metric/create" component={MetricApp} />,
     {

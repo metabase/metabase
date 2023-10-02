@@ -5,8 +5,13 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { setupLoginEndpoint } from "__support__/server-mocks";
+import {
+  setupCurrentUserEndpoint,
+  setupLoginEndpoint,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import { PasswordPanel } from "./PasswordPanel";
 
 const TEST_EMAIL = "user@example.test";
@@ -26,6 +31,8 @@ const setup = ({ isGoogleAuthEnabled = false }: SetupOpts = {}) => {
   MetabaseSettings.set("google-auth-enabled", isGoogleAuthEnabled);
 
   setupLoginEndpoint();
+  setupCurrentUserEndpoint(createMockUser());
+  setupPropertiesEndpoints(createMockSettings());
   renderWithProviders(<PasswordPanel />, { storeInitialState: state });
 };
 

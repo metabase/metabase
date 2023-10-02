@@ -1,4 +1,4 @@
-import { popover } from "e2e/support/helpers";
+import { popover, queryBuilderMain } from "e2e/support/helpers";
 
 /**
  * Initiate Summarize action
@@ -14,7 +14,7 @@ export function filter({ mode } = {}) {
 }
 
 export function join() {
-  initiateAction("Join", "notebook");
+  cy.button("Join data").click();
 }
 
 export function addCustomColumn() {
@@ -95,7 +95,6 @@ function initiateAction(actionType, mode) {
 const ACTION_TYPE_TO_ICON_MAP = {
   Filter: "filter",
   Summarize: "sum",
-  Join: "join_left_outer",
   CustomColumn: "add_data",
 };
 
@@ -107,4 +106,41 @@ const ACTION_TYPE_TO_ICON_MAP = {
  */
 function getIcon(actionType) {
   return ACTION_TYPE_TO_ICON_MAP[actionType];
+}
+
+export function assertQueryBuilderRowCount(count) {
+  const message =
+    count === 1 ? "Showing 1 row" : `Showing ${count.toLocaleString()} rows`;
+  cy.findByTestId("question-row-count").contains(message);
+}
+
+/**
+ * Assert a join is valid by checking query builder UI and query results.
+ * Expects a question to be visualized as a table.
+ *
+ * @param {string} [lhsTable] join's LHS table name
+ * @param {string} [rhsTable] join's RHS table name
+ * @param {string} lhsSampleColumn join's LHS sample column name
+ * @param {string} rhsSampleColumn join's RHS sample column name
+ */
+export function assertJoinValid({
+  lhsTable,
+  rhsTable,
+  lhsSampleColumn,
+  rhsSampleColumn,
+}) {
+  // Ensure the QB shows `${lhsTable} + ${rhsTable}` in the header
+  // The check is optional for cases when a table name isn't clear (e.g. a multi-stage ad-hoc question)
+  if (lhsTable && rhsTable) {
+    cy.findByTestId("question-table-badges").within(() => {
+      cy.findByText(lhsTable).should("be.visible");
+      cy.findByText(rhsTable).should("be.visible");
+    });
+  }
+
+  // Ensure the results have columns from both tables
+  queryBuilderMain().within(() => {
+    cy.findByText(lhsSampleColumn).should("be.visible");
+    cy.findByText(rhsSampleColumn).should("be.visible");
+  });
 }
