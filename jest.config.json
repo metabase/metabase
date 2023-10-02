@@ -4,6 +4,7 @@
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^promise-loader\\?global\\!metabase-lib\\/metadata\\/utils\\/ga-metadata$": "<rootDir>/frontend/src/metabase-lib/metadata/utils/ga-metadata.js",
     "ace/ext-searchbox": "<rootDir>/frontend/test/__mocks__/aceSearchBoxExtMock.js",
+    "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)": "<rootDir>/frontend/test/__mocks__/svgMock.jsx"
@@ -23,7 +24,7 @@
     "<rootDir>/frontend/src",
     "<rootDir>/enterprise/frontend/src"
   ],
-  "modulePathIgnorePatterns": ["<rootDir>/frontend/src/cljs_release/.*"],
+  "modulePathIgnorePatterns": ["<rootDir>/target/cljs_release/.*"],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
@@ -33,7 +34,6 @@
     "@testing-library/jest-dom/extend-expect",
     "<rootDir>/frontend/test/jest-setup-env.js"
   ],
-  "globalSetup": "<rootDir>/frontend/test/global-setup.js",
   "globals": {
     "ace": {},
     "ga": {}
@@ -51,8 +51,8 @@
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
-    "/frontend/src/cljs/",
-    "/frontend/src/cljs_release/",
+    "/target/cljs_dev/",
+    "/target/cljs_release/",
     "/frontend/test/"
   ],
   "testEnvironment": "jest-environment-jsdom",
