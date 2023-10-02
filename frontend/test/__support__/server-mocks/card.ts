@@ -13,6 +13,10 @@ export function setupCardEndpoints(card: Card) {
     const lastCall = fetchMock.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
   });
+  fetchMock.post("path:/api/card", async url => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
+  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
   fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
