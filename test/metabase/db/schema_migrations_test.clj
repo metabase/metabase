@@ -1145,11 +1145,11 @@
             collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
                                                                                        :slug "amazing_collection"
                                                                                        :color "#509EE3"}))
-            test-collection (t2/select :model/Collection :id collection-id)]
+            test-collection (t2/select-one :model/Collection :id collection-id)]
 
         (migrate!)
         (testing "should drop the existing color column"
-          (is (true? (not (contains? (into {} test-collection) :color)))))
+          (is (true? (not (contains? test-collection :color)))))
 
         (db.setup/migrate! db-type data-source :down)
         (testing "Rollback to the previous version should restore the column column and set the default value"
