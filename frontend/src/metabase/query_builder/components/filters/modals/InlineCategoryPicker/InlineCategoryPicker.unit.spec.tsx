@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
@@ -10,6 +9,7 @@ import type { Field, FieldValue } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -92,7 +92,7 @@ describe("InlineCategoryPicker", () => {
 
   beforeEach(() => {
     // mock all requests to field values
-    fetchMock.get(/\/api\/field\/\d+\/values/, []);
+    setupFieldValuesGeneralEndpoint();
   });
 
   it("should render an inline category picker", () => {

@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 import { isTypeFK } from "metabase-lib/types/utils/isa";
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
@@ -17,6 +17,13 @@ export function setupDatabaseEndpoints(db: Database) {
     const body = await call?.request?.json();
     return { ...db, ...body };
   });
+}
+
+export function setupDatabaseUsageInfo(
+  db: Database,
+  usageInfo: DatabaseUsageInfo,
+) {
+  fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
 export function setupDatabasesEndpoints(

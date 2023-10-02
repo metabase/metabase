@@ -17,7 +17,7 @@ export function setupCardEndpoints(card: Card) {
   const virtualTableId = getQuestionVirtualTableId(card.id);
   fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
     ...convertSavedQuestionToVirtualTable(card),
-    fields: card.result_metadata.map(field => ({
+    fields: card.result_metadata?.map(field => ({
       ...field,
       table_id: virtualTableId,
     })),

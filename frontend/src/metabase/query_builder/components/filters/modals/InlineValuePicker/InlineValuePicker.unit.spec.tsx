@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { renderWithProviders } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
 
@@ -9,6 +8,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -20,7 +20,7 @@ const TEXT_FIELD_ID = 2;
 
 describe("InlineValuePicker", () => {
   beforeEach(() => {
-    fetchMock.get(/\/api\/field\/\d+\/values/, []);
+    setupFieldValuesGeneralEndpoint();
   });
   const metadata = createMockMetadata({
     fields: [

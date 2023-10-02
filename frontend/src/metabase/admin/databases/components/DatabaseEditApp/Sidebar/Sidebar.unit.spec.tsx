@@ -1,6 +1,5 @@
 import _ from "underscore";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
@@ -9,6 +8,7 @@ import {
   COMMON_DATABASE_FEATURES,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -41,7 +41,12 @@ function setup({
     }),
   });
   const metadata = getMetadata(state);
-  fetchMock.get(`path:/api/database/${database.id}/usage_info`, {});
+  setupDatabaseUsageInfo(database, {
+    question: 1,
+    dataset: 1,
+    metric: 1,
+    segment: 1,
+  });
 
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
