@@ -22,6 +22,7 @@ export interface ColumnMetadataItem {
   column: Lib.ColumnMetadata;
   name: string;
   displayName: string;
+  selected?: boolean;
 }
 
 export interface ColumnGroupItem {

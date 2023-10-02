@@ -1,3 +1,4 @@
+import {t} from "ttag"
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/core/components/Icon";
 import type {
@@ -39,7 +40,7 @@ export const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
 
   return aggregations.length === 0 && breakouts.length === 0
     ? Lib.visibleColumns(query, STAGE_INDEX)
-    : [];
+    : Lib.returnedColumns(query, STAGE_INDEX);
 };
 
 export const getQueryColumnSettingItems = (
@@ -128,6 +129,7 @@ export const getAdditionalMetadataColumns = (
 const getColumnGroupName = (
   displayInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
 ) => {
+  // console.log(displayInfo)
   const columnInfo = displayInfo as Lib.ColumnDisplayInfo;
   const tableInfo = displayInfo as Lib.TableDisplayInfo;
   return columnInfo.fkReferenceName || tableInfo.displayName;
@@ -139,20 +141,20 @@ export const getColumnGroups = (
 ): ColumnGroupItem[] => {
   const groups = Lib.groupColumns(metadataColumns);
 
+  console.log(metadataColumns, groups)
+
   return groups.map(group => {
     const displayInfo = Lib.displayInfo(query, STAGE_INDEX, group);
     const columns = Lib.getColumnsFromColumnGroup(group);
-
     return {
       columns: columns.map(column => {
-        const displayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
+        const columnDisplayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
         return {
           column,
-          name: displayInfo.name,
-          displayName: displayInfo.displayName,
+          ...columnDisplayInfo
         };
       }),
-      displayName: getColumnGroupName(displayInfo),
+      displayName: getColumnGroupName(displayInfo) || t`Question`,
       isJoinable: displayInfo.isFromJoin || displayInfo.isImplicitlyJoinable,
     };
   });
@@ -213,7 +215,7 @@ export const findColumnSettingIndex = (
     [column] as Lib.ColumnMetadata[] | DatasetColumn[],
     columnSettings.map(({ fieldRef }) => fieldRef),
   );
-
+  
   return columnIndexes.findIndex(index => index >= 0);
 };
 

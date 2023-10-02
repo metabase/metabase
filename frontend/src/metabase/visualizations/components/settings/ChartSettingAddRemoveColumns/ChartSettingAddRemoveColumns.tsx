@@ -1,14 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { t } from "ttag";
 import { Button, Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 
 import { Icon } from "metabase/core/components/Icon";
-import type { DatasetColumn } from "metabase-types/api";
+import type { TableColumnOrderSetting } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox/StackedCheckBox";
 
-import * as Lib from "metabase-lib";
-import { isNotFalsy } from "metabase/core/utils/types";
 import type Question from "metabase-lib/Question";
 import type {
   ColumnSetting,
@@ -22,18 +20,18 @@ import {
   findColumnSettingIndex,
   removeColumnFromSettings,
   addColumnInSettings,
+  getColumnSettingsWithRefs,
 } from "../ChartSettingTableColumns/utils";
 
 interface ChartSettingAddRemoveColumnsProps {
   question: Question;
-  value: ColumnSetting[];
+  value: TableColumnOrderSetting[];
   onChange: (value: ColumnSetting[], quesion?: Question) => void;
-  columns: DatasetColumn[];
   onWidgetOverride: (key: string | null) => void;
 }
 
 export const ChartSettingAddRemoveColumns = ({
-  value: columnSettings,
+  value,
   onChange,
   question,
   onWidgetOverride,
@@ -41,43 +39,36 @@ export const ChartSettingAddRemoveColumns = ({
   const [search, setSearch] = useState("");
   const query = question._getMLv2Query();
 
-  const metadataColumnGroups = getColumnGroups(
-    query,
-    getMetadataColumns(query),
+  const columnSettings = useMemo(
+    () => getColumnSettingsWithRefs(value),
+    [value],
   );
 
-  const datasetRefs = columnSettings
-    .map(({ fieldRef }) => fieldRef)
-    .filter(isNotFalsy);
+  const metadataColumnGroups = useMemo(() => {
+    const groups = getColumnGroups(query, getMetadataColumns(query));
 
-  const isColumnInQuery = (column: Lib.ColumnMetadata) => {
-    const columnSettingIndex = findColumnSettingIndex(
-      query,
-      column,
-      columnSettings,
-    );
+    return groups.map((group, index, arr) => {
+      const name = group.displayName;
+      const repeats = arr
+        .slice(0, index)
+        .filter(x => x.displayName === name).length;
 
-    return columnSettingIndex !== -1;
-  };
+      return {
+        ...group,
+        displayName: repeats > 0 ? `${name} ${repeats + 1}` : `${name}`,
+      };
+    });
+  }, [query]);
 
   const areAllColumnsInQuery = (columns: ColumnMetadataItem[]) => {
-    return columns
-      .map(({ column }) =>
-        Lib.findColumnIndexesFromLegacyRefs(
-          query,
-          -1,
-          [column],
-          datasetRefs,
-        ).some(index => index !== -1),
-      )
-      .every(result => result);
+    return columns.every(({ selected }) => selected);
   };
 
   const addAllColumnsFromTable = (columns: ColumnMetadataItem[]) => {
     let newQuery = query;
     let newSettings = columnSettings;
     columns.forEach(columnItem => {
-      if (!isColumnInQuery(columnItem.column)) {
+      if (!columnItem.selected) {
         newSettings = addColumnInSettings(newQuery, newSettings, columnItem);
         newQuery = enableColumnInQuery(newQuery, {
           metadataColumn: columnItem.column,
@@ -93,13 +84,12 @@ export const ChartSettingAddRemoveColumns = ({
     let newSettings = columnSettings;
 
     columns.forEach(columnItem => {
-      const columnSettingIndex = findColumnSettingIndex(
-        newQuery,
-        columnItem.column,
-        newSettings,
-      );
-
-      if (columnSettingIndex !== -1) {
+      if (columnItem.selected) {
+        const columnSettingIndex = findColumnSettingIndex(
+          newQuery,
+          columnItem.column,
+          newSettings,
+        );
         newSettings = removeColumnFromSettings(newSettings, {
           columnSettingIndex,
         });
@@ -114,8 +104,7 @@ export const ChartSettingAddRemoveColumns = ({
   };
 
   const toggleColumn = (columnItem: ColumnMetadataItem) => {
-    const { column } = columnItem;
-    if (isColumnInQuery(column)) {
+    if (columnItem.selected) {
       handleDisableColumn(columnItem);
     } else {
       handleEnableColumn(columnItem);
@@ -157,6 +146,8 @@ export const ChartSettingAddRemoveColumns = ({
     [question, query, columnSettings, onChange],
   );
 
+  console.log(metadataColumnGroups);
+
   return (
     <div>
       <Button variant="subtle" pl="0" onClick={() => onWidgetOverride(null)}>
@@ -183,7 +174,10 @@ export const ChartSettingAddRemoveColumns = ({
         }
 
         return (
-          <>
+          <div
+            role="list"
+            aria-label={`${columnGroup.displayName.toLocaleLowerCase()}-table-columns`}
+          >
             <Text fz="lg" fw={700} mb="1rem">
               {columnGroup.displayName}
             </Text>
@@ -217,12 +211,12 @@ export const ChartSettingAddRemoveColumns = ({
                       </Text>
                     </Flex>
                   }
-                  checked={isColumnInQuery(columnItem.column)}
+                  checked={columnItem.selected}
                   onClick={() => toggleColumn(columnItem)}
                 />
               </Box>
             ))}
-          </>
+          </div>
         );
       })}
     </div>
