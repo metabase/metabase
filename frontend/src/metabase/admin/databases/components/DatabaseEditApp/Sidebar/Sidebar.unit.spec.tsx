@@ -42,10 +42,10 @@ function setup({
   });
   const metadata = getMetadata(state);
   setupDatabaseUsageInfo(database, {
-    question: 1,
-    dataset: 1,
-    metric: 1,
-    segment: 1,
+    question: 0,
+    dataset: 0,
+    metric: 0,
+    segment: 0,
   });
 
   // Using mockResolvedValue since `ActionButton` component
