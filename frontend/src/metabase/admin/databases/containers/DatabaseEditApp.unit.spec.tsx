@@ -159,7 +159,6 @@ describe("DatabaseEditApp", () => {
       history.push("/");
 
       const databaseForm = await screen.findByLabelText("Display name");
-
       userEvent.type(databaseForm, "Test database");
 
       history.goBack();
