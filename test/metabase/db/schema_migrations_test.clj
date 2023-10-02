@@ -1146,10 +1146,13 @@
                                                                                        :slug "amazing_collection"
                                                                                        :color "#509EE3"}))]
 
+        (testing "Collection should exist and have the color set by the user prior to migration"
+          (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+
         (migrate!)
         (testing "should drop the existing color column"
           (is (true? (not (contains? (t2/select-one :model/Collection :id collection-id) :color)))))
 
         (db.setup/migrate! db-type data-source :down)
-        (testing "Rollback to the previous version should restore the column column, and give it the default color value"
+        (testing "Rollback to the previous version should restore the column column, and set the default color value"
           (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))
