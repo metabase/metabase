@@ -1,12 +1,7 @@
 import { IndexRoute, Route } from "react-router";
 
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-  waitFor,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
@@ -18,6 +13,7 @@ import {
 } from "metabase-types/api/mocks";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
@@ -43,7 +39,19 @@ const ENGINES_MOCK: Record<string, Engine> = {
   },
 };
 
-async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
+const TestHome = () => <div />;
+
+interface SetupOpts {
+  cachingEnabled?: boolean;
+  databaseIdParam?: string;
+  initialRoute?: string;
+}
+
+async function setup({
+  cachingEnabled = false,
+  databaseIdParam = "",
+  initialRoute = `/${databaseIdParam}`,
+}: SetupOpts = {}) {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const settings = mockSettings({
@@ -54,23 +62,25 @@ async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
     "enable-query-caching": cachingEnabled,
   });
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route path="/">
+      <Route path="/home" component={TestHome} />
       <IndexRoute component={DatabaseEditApp} />
       <Route path=":databaseId" component={DatabaseEditApp} />
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/${databaseIdParam}`,
+      initialRoute,
       storeInitialState: {
         settings,
       },
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 }
 
 describe("DatabaseEditApp", () => {
