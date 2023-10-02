@@ -45,11 +45,16 @@ export function ExcludeDatePicker({
     setValues([]);
   };
 
+  const handleBack = () => {
+    setUnit(undefined);
+  };
+
   return unit ? (
     <ExcludeValuePicker
       unit={unit}
       initialValues={values}
       onChangeValues={handleChangeValues}
+      onBack={handleBack}
     />
   ) : (
     <ExcludeOptionPicker
@@ -83,7 +88,7 @@ export function ExcludeOptionPicker({
   }, [availableOperators]);
 
   return (
-    <div>
+    <Stack>
       {unitOptions.length > 0 && (
         <Stack>
           {unitOptions.map((option, index) => (
@@ -106,7 +111,7 @@ export function ExcludeOptionPicker({
           ))}
         </Stack>
       )}
-    </div>
+    </Stack>
   );
 }
 
@@ -114,12 +119,14 @@ interface ExcludeValuePickerProps {
   unit: DatePickerExtractionUnit;
   initialValues: number[];
   onChangeValues: (values: number[]) => void;
+  onBack: () => void;
 }
 
 function ExcludeValuePicker({
   unit,
   initialValues,
   onChangeValues,
+  onBack,
 }: ExcludeValuePickerProps) {
   const [values] = useState(initialValues);
   const isEmpty = values.length === 0;
@@ -134,6 +141,8 @@ function ExcludeValuePicker({
 
   return (
     <Stack>
+      <Button onClick={onBack}>{t`Back`}</Button>
+      <Divider />
       <Checkbox
         checked={isEmpty}
         label={isEmpty ? t`Select none…` : t`Select all…`}
