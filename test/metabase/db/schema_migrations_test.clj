@@ -1145,9 +1145,7 @@
             collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
                                                                                        :slug "amazing_collection"
                                                                                        :color "#509EE3"}))
-            test-collection (mdb.query/query {:select [:*]
-                                              :from   [:collection]
-                                              :where  [:= :id collection-id]})]
+            test-collection (t2/select :model/Collection :id collection-id)]
 
         (migrate!)
         (testing "should drop the existing color column"
