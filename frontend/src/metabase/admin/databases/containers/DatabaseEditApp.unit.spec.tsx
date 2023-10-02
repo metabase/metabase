@@ -1,7 +1,12 @@
 import { IndexRoute, Route } from "react-router";
 
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
@@ -125,6 +130,27 @@ describe("DatabaseEditApp", () => {
 
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      history.goBack();
+
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
     });
 
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
