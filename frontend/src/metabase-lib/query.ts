@@ -7,10 +7,11 @@ import type {
   MetricMetadata,
   Query,
 } from "./types";
+import type LegacyMetadata from "./metadata/Metadata";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
-  metadata: MetadataProvider,
+  metadata: MetadataProvider | LegacyMetadata,
   datasetQuery: DatasetQuery,
 ): Query {
   return ML.query(databaseId, metadata, datasetQuery);

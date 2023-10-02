@@ -24,6 +24,7 @@ export const DataStep = ({
   const { stageIndex } = step;
 
   const question = query.question();
+  const metadata = question.metadata();
   const collectionId = question.collectionId();
   const tableId = query.sourceTableId();
 
@@ -45,9 +46,32 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const onTableChange = (nextTableId: TableId) => {
+  const handleCreateQuery = (tableId: TableId) => {
+    const databaseId = metadata.table(tableId)?.db_id;
+    if (databaseId) {
+      const nextQuery = Lib.fromLegacyQuery(databaseId, metadata, {
+        type: "query",
+        database: databaseId,
+        query: {
+          "source-table": tableId,
+        },
+      });
+      updateQuery(nextQuery);
+    }
+  };
+
+  const handleChangeTable = (nextTableId: TableId) => {
     const nextQuery = Lib.withDifferentTable(topLevelQuery, nextTableId);
     updateQuery(nextQuery);
+  };
+
+  const handleTableSelect = (tableId: TableId) => {
+    const isNew = !databaseId;
+    if (isNew) {
+      handleCreateQuery(tableId);
+    } else {
+      handleChangeTable(tableId);
+    }
   };
 
   return (
@@ -74,7 +98,7 @@ export const DataStep = ({
           databaseQuery={{ saved: true }}
           selectedDatabaseId={databaseId}
           selectedTableId={tableId}
-          setSourceTableFn={onTableChange}
+          setSourceTableFn={handleTableSelect}
           isInitiallyOpen={!table}
           triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
         />
