@@ -61,6 +61,7 @@ describe("issue 17775", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
+      .parent()
       .within(() => {
         cy.findByText("Select…").click();
       });
