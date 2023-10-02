@@ -16,6 +16,9 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
+import { useSelector } from "metabase/lib/redux";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { getDashboard } from "metabase/dashboard/selectors";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -53,6 +56,13 @@ function QuestionPicker({
 
   const collections = (collection && collection.children) || [];
 
+  const dashboard = useSelector(getDashboard);
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const isCurrentDashboardInPublicCollection =
+    dashboard.collection_id !== userPersonalCollectionId;
+  const isShowingQuestions = isCurrentDashboardInPublicCollection
+    ? collection.id !== userPersonalCollectionId
+    : true;
   return (
     <QuestionPickerRoot>
       <SearchInput
@@ -101,12 +111,14 @@ function QuestionPicker({
         </>
       )}
 
-      <QuestionList
-        hasCollections={collections.length > 0}
-        searchText={debouncedSearchText}
-        collectionId={currentCollectionId}
-        onSelect={onSelect}
-      />
+      {isShowingQuestions && (
+        <QuestionList
+          hasCollections={collections.length > 0}
+          searchText={debouncedSearchText}
+          collectionId={currentCollectionId}
+          onSelect={onSelect}
+        />
+      )}
     </QuestionPickerRoot>
   );
 }
