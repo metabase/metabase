@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import _ from "underscore";
 
 import { useCallbackEffect } from "./use-callback-effect";
 
@@ -25,7 +24,7 @@ const TestComponent = ({ callback }: Props) => {
 
 describe("useCallbackEffect", () => {
   it("is not scheduled initially", () => {
-    const callback = jest.fn(_.noop);
+    const callback = jest.fn();
 
     render(<TestComponent callback={callback} />);
 
@@ -33,7 +32,7 @@ describe("useCallbackEffect", () => {
   });
 
   it("schedules callback to after re-render", async () => {
-    const callback = jest.fn(_.noop);
+    const callback = jest.fn();
 
     render(<TestComponent callback={callback} />);
 
