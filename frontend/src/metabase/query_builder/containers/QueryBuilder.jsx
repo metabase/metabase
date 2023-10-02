@@ -423,7 +423,7 @@ function QueryBuilder(props) {
 
   const isLocationAllowed = useCallback(
     location => {
-      if (!question?.isNative()) {
+      if (!question?.isNative() || question?.isDataset()) {
         return true;
       }
 
