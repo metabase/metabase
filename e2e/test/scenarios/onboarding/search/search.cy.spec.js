@@ -338,8 +338,9 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
         });
 
-        // Check that we're getting elements from other users by checking for other types,
-        // since all assets, for the user we're querying are questions
+        // Check all of the names of the search results to make sure we're getting
+        // more than just the one that's filtered with `created_by`. We can refactor
+        // this in the future when we redesign the search result elements to include users.
         cy.findAllByTestId("search-result-item-name").then(
           $searchResultLabel => {
             const uniqueLabels = new Set(
@@ -420,8 +421,9 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
         });
 
-        // Check that we're getting elements from other users by checking for other types,
-        // since all assets, for the user we're querying are questions
+        // Check all of the names of the search results to make sure we're getting
+        // more than just the one that's filtered with `last_edited_by`. We can refactor
+        // this in the future when we redesign the search result elements to include users.
         cy.findAllByTestId("search-result-item-name").then(
           $searchResultLabel => {
             const uniqueLabels = new Set(
