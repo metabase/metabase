@@ -1,5 +1,4 @@
 (ns lint-migrations-file
-  (:gen-class)
   (:require
    [change-set.strict]
    [change-set.unstrict]

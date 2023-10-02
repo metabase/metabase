@@ -707,12 +707,13 @@
 
   printable-namespaces
   {:linters
-   {:discouraged-var {clojure.pprint/pprint     {:level :off}
-                      clojure.core/print        {:level :off}
-                      clojure.core/printf       {:level :off}
-                      clojure.core/println      {:level :off}
-                      clojure.string/lower-case {:level :off}
-                      clojure.string/upper-case {:level :off}}}}
+   {:main-without-gen-class {:level :off}
+    :discouraged-var        {clojure.pprint/pprint     {:level :off}
+                             clojure.core/print        {:level :off}
+                             clojure.core/printf       {:level :off}
+                             clojure.core/println      {:level :off}
+                             clojure.string/lower-case {:level :off}
+                             clojure.string/upper-case {:level :off}}}}
 
   honey-sql-2-namespaces
   {:linters
