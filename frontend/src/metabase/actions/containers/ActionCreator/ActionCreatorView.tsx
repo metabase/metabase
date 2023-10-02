@@ -87,7 +87,7 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot>
+    <ModalRoot data-testid="action-creator">
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader

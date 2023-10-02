@@ -10,10 +10,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-temporary-setting-values [uploads-enabled true]
       (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
-
         (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
                               (api.card/upload-csv!
-                               1
+                               nil
                                "star_wars.csv"
                                (upload-test/csv-file-with ["id,ship,captain"
                                                            "1,Serenity,Malcolm Reynolds"

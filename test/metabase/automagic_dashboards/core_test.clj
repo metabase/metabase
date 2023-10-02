@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [flatland.ordered.map :refer [ordered-map]]
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
@@ -2034,7 +2035,11 @@
                                           :database (mt/id)
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates base-context available-values card-def)))))
+                        (#'magic/card-candidates
+                          base-context
+                          {#{} [{}]}
+                          available-values
+                          card-def)))))
             (testing "A card spec that requires both the Count and Lat metrics and dimensions will produce cards that
                       use those bound dimensions."
               (let [card-def {:title      "Some sort of card"
@@ -2049,13 +2054,11 @@
                                           :query    {:source-table (format "card__%s" card-id)
                                                      :breakout     [[:field (mt/id :people :latitude) nil]]
                                                      :aggregation  [["count"]]}}}]
-                        (#'magic/card-candidates base-context available-values card-def)))))
-            (testing "A card spec that requires dimensions we haven't bound to will produce no cards."
-              (let [card-def {:title      "Some sort of card"
-                              :metrics    ["Count"]
-                              :dimensions [{"Lat" {}} {"Lon" {}}]
-                              :score      100}]
-                (is (= nil (#'magic/card-candidates base-context available-values card-def)))))))))))
+                        (#'magic/card-candidates
+                          base-context
+                          {#{"Lat"} [{"Lat" (t2/select-one :model/Field (mt/id :people :latitude))}]}
+                          available-values
+                          card-def)))))))))))
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
@@ -2093,201 +2096,6 @@
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
 
-;;; -------------------- card-candidates and subfunctions tests --------------------
-
-(deftest potential-card-dimension-bindings-test
-  (testing "potential-card-dimension-bindings will compute the full cartesian product of every possible combination of
-            fields from the context that can satisfy the dimensions, metrics, and filters that are required per the
-            dimensions, metrics, and filters common to both the context and the card."
-    (is (= [{"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
-            {"Date" {:name "SALES_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}
-            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Income"}}
-            {"Date" {:name "ENROLL_DATE"}, "Discount" {:name "Price Discount"}, "Income" {:name "Realized Income"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"
-               {:matches [{:name "TAX"} {:name "SUBTOTAL"}]}
-               "Date"
-               {:matches
-                [{:name "SALES_DATE"} {:name "ENROLL_DATE"}]}
-               "Income"   {:matches [{:name "Income"} {:name "Realized Income"}]}
-               "Discount" {:matches [{:name "Price Discount"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Date" {}]]
-              :satisfied-metrics    [{"AvgDiscount" {:metric ["/"
-                                                              ["sum" ["dimension" "Discount"]]
-                                                              ["sum" ["dimension" "Income"]]]
-                                                     :name   "Average discount %"}}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) still require a dimension to match on.
-            In this case you would be counting the Source dimension field."
-    (is (= [{"Source" {:name "SOURCE"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "ACTIVE_SUBSCRIPTION"}
-                                                  {:name "TRIAL_CONVERTED"}
-                                                  {:name "LEGACY_PLAN"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Source" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) will match all dimensions if present."
-    (is (= [{"Source"        {:name "SOURCE"}
-             "GenericNumber" {:name "SEATS"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "NO MATCH"}
-                                                  {:name "AT ALL"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Source" {}]
-                                     [:dimension "GenericNumber" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensionless metrics (e.g. count) must have some dimension to count on.
-            Count won't just count a source table or anything, a dimension must be provided."
-    (is (= [{}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"GenericNumber"         {:matches [{:name "SEATS"}]},
-               "GenericCategoryMedium" {:matches [{:name "PLAN"}
-                                                  {:name "NO MATCH"}
-                                                  {:name "AT ALL"}]}
-               "Source"                {:matches [{:name "SOURCE"}]}}}
-             {:query nil}
-             {:satisfied-dimensions []
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimension-only matching is also supported (e.g. show points at Lon-Lat locations)."
-    (is (= [{"Lon" {:name "Longitude"}
-             "Lat" {:name "Latitude"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"Lon" {:matches [{:name "Longitude"}]},
-               "Lat" {:matches [{:name "Latitude"}]}}}
-             {:query nil}
-             {:satisfied-dimensions [[:dimension "Lon" {}]
-                                     [:dimension "Lat" {}]]
-              :satisfied-metrics    [{:metric ["count"]}]
-              :satisfied-filters    []}))))
-  (testing "Dimensions can be sourced from a query."
-    (is (= [{"QUERY_FIELD" {:name "Query Field"}}]
-           (#'magic/potential-card-dimension-bindings
-             nil
-             {:available-dimensions
-              {"QUERY_FIELD" {:matches [{:name "Query Field"}]}}}
-             {:query [:field [:dimension "QUERY_FIELD"]]}
-             {:satisfied-dimensions []
-              :satisfied-metrics    []
-              :satisfied-filters    []})))))
-
-(deftest potential-card-dimension-bindings-to-entity-type-test
-  (testing "Ensure the branch is called in which the filter-tables branch of some-fn is called."
-    (mt/dataset sample-dataset
-      (testing "The dimension is named in the card query"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query [:field [:dimension dimension-name]]}
-                    {:satisfied-dimensions []
-                     :satisfied-metrics    []
-                     :satisfied-filters    []})))))
-      (testing "The dimension is named in the filters"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query nil}
-                    {:satisfied-dimensions []
-                     :satisfied-metrics    []
-                     :satisfied-filters    [[:dimension dimension-name]]})))))
-      (testing "The dimension is named in the satisfied dimensions"
-        (let [{:keys [entity_type] :as table} (t2/select-one :model/Table :id (mt/id :orders))
-              dimension-name (name entity_type)
-              root         (#'magic/->root table)
-              base-context (#'magic/make-base-context root)]
-          (is (=? [{dimension-name table}]
-                  (#'magic/potential-card-dimension-bindings
-                    base-context
-                    {}
-                    {:query nil}
-                    {:satisfied-dimensions [[:dimension dimension-name {}]]
-                     :satisfied-metrics    []
-                     :satisfied-filters    []}))))))))
-
-(deftest potential-card-dimension-bindings-native-query-card-test
-  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
-  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
-  (testing "Card templates can specify dimensions in their queries, which can include table dependencies."
-    (mt/dataset sample-dataset
-      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
-            card-template {:query query}
-            table         (t2/select-one :model/Table :id (mt/id :people))
-            root          (#'magic/->root table)
-            base-context  (#'magic/make-base-context root)
-            [potential-binding :as potential-bindings] (#'magic/potential-card-dimension-bindings
-                                                         base-context
-                                                         {:available-dimensions
-                                                          {"State"  {:matches [{:name "STATE"}]}
-                                                           "UserFK" {:matches [{:name "USER_ID"}]}
-                                                           "UserPK" {:matches [{:name "ID"}]}}}
-                                                         card-template
-                                                         {:satisfied-dimensions []
-                                                          :satisfied-metrics    []
-                                                          :satisfied-filters    []})]
-        (is (= 1 (count potential-bindings)))
-        (is (=? {"State"        {:name "STATE"}
-                 "GenericTable" table
-                 "UserTable"    table
-                 "UserFK"       {:name "USER_ID"}
-                 "UserPK"       {:name "ID"}}
-                potential-binding))))))
-
-(deftest make-cards-native-query-card-test
-  ;; Note that this *only* occurs in resources/automagic_dashboards/table/example.yaml and so is never used was, until
-  ;; this case was discovered, never tested 😷🤒🤕🤢🤮🤧🥵🥶🥴😵😵‍💫🤯. Is this a desired supported feature?
-  (testing "Cards can be generated from a card with a native query."
-    (mt/dataset sample-dataset
-      (let [query         "select count(*), [[State]] from [[GenericTable]] join [[UserTable]] on [[UserFK]] = [[UserPK]]"
-            card-template {:query query :score 1}
-            table         (t2/select-one :model/Table :id (mt/id :people))
-            root          (#'magic/->root table)
-            base-context  (#'magic/make-base-context root)
-            [card-candidate :as card-candidates] (#'magic/card-candidates
-                                                   base-context
-                                                   {:available-dimensions
-                                                    {"State"  {:matches [{:name "STATE"}]}
-                                                     "UserFK" {:matches [{:name "USER_ID"}]}
-                                                     "UserPK" {:matches [{:name "ID"}]}}}
-                                                   card-template)]
-        (is (= 1 (count card-candidates)))
-        ;; Note that PEOPLE does not contain USER_ID.
-        ;; This is contrived based on the base context data and mocked available dimensions.
-        (is (=? (assoc card-template
-                  :dataset_query {:type     :native
-                                  :native   {:query "select count(*), STATE from PEOPLE join PEOPLE on USER_ID = ID"}
-                                  :database (mt/id)})
-                card-candidate))))))
-
 (deftest singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
     (is (= #{1 2 "TOTAL"}
@@ -2302,7 +2110,7 @@
   (testing "Cases in which the bindings are valid."
     (is (true?
          (let [context           nil
-               common-dimensions [[:dimension "Date" {}]]
+               common-dimensions [{"Date" {}}]
                bindings          {"Date"     {:name "SALES_DATE"}
                                   "Discount" {:name "Price Discount"}
                                   "Income"   {:name "Income"}}]
@@ -2320,12 +2128,186 @@
     (is (false?
          (let [context           {:root {:cell-query
                                          [:= [:field 123 {:base-type :type/Integer}]]}}
-               common-dimensions [[:dimension "ID" {}]]
+               common-dimensions [{"ID" {}}]
                bindings          {"ID" {:id 123}}]
            (#'magic/valid-bindings? context common-dimensions bindings))))
     (is (false?
          (let [context           {:root {:cell-query
                                          [:= [:field "X" {:base-type :type/Integer}]]}}
-               common-dimensions [[:dimension "X" {}]]
+               common-dimensions [{"X" {}}]
                bindings          {"X" {:name "X"}}]
            (#'magic/valid-bindings? context common-dimensions bindings))))))
+
+(deftest match-affinities-test
+  (testing "If no dimensions are provided, only dimensionless affinities are matched"
+    (let [affinities    [{:affinity-name "RowcountLast30Days"
+                          :filters       ["Last30Days"]
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"CreateTimestamp"}}
+                         {:affinity-name "DistinctFKCounts"
+                          :metrics       ["CountDistinctFKs"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{"FK"}}
+                         {:affinity-name "Rowcount"
+                          :metrics       ["Count"]
+                          :score         100
+                          :dimensions    []
+                          :base-dims     #{}}]
+          nothing-bound #{}]
+      (is (= (ordered-map "Rowcount" [#{}])
+             (magic/match-affinities affinities nothing-bound)))))
+  (testing "When dimensions are present, all affinities that are a subset of those dimensions are matched"
+    (let [affinities [{:affinity-name "RowcountLast30Days"
+                       :filters       ["Last30Days"]
+                       :metrics       ["Count"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{"CreateTimestamp"}}
+                      {:affinity-name "DistinctFKCounts"
+                       :metrics       ["CountDistinctFKs"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{"FK"}}
+                      {:affinity-name "Rowcount"
+                       :metrics       ["Count"]
+                       :score         100
+                       :dimensions    []
+                       :base-dims     #{}}]
+          x          #{"CreateTimestamp"}]
+      (is (= (ordered-map
+               "RowcountLast30Days" [#{"CreateTimestamp"}]
+               "Rowcount" [#{}])
+             (magic/match-affinities affinities x)))))
+  (testing "Multiple affinities of the same name may be present with different dimensions"
+    (doseq [identified-field ["CreateTimestamp" "CreateDate" "JoinTimestamp"]]
+      (let [affinities [{:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims     #{"CreateTimestamp"}}
+                        {:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims     #{"CreateDate"}}
+                        {:filters       ["Last30Days"],
+                         :metrics       ["Count"],
+                         :score         100,
+                         :dimensions    [],
+                         :affinity-name "RowcountLast30Days",
+                         :base-dims     #{"JoinTimestamp"}}]
+            bound      #{identified-field}]
+        (is (= (ordered-map
+                 "RowcountLast30Days" [#{identified-field}])
+               (magic/match-affinities affinities bound))))))
+  (testing "Multidimensional affinities must satisfy all dimensions to be matched."
+    (testing "Only \"AverageIncomeByMonth\" is satisfied as \"Discount\" is an absent dimension"
+      (let [affinities [{:dimensions    ["Timestamp"]
+                         :metrics       ["AvgIncome"]
+                         :score         100
+                         :affinity-name "AverageIncomeByMonth"
+                         :base-dims     #{"Income" "Timestamp"}}
+                        {:dimensions    ["Timestamp"]
+                         :metrics       ["AvgDiscount"]
+                         :score         70
+                         :affinity-name "AverageDiscountByMonth"
+                         :base-dims     #{"Income" "Discount" "Timestamp"}}]
+            bound      #{"Income" "Timestamp"}]
+        (is (= (ordered-map
+                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}])
+               (magic/match-affinities affinities bound)))))
+    (testing "Both affinities are matched as all three dimensions are present."
+      (let [affinities [{:dimensions    ["Timestamp"]
+                         :metrics       ["AvgIncome"]
+                         :score         100
+                         :affinity-name "AverageIncomeByMonth"
+                         :base-dims     #{"Income" "Timestamp"}}
+                        {:dimensions    ["Timestamp"]
+                         :metrics       ["AvgDiscount"]
+                         :score         70
+                         :affinity-name "AverageDiscountByMonth"
+                         :base-dims     #{"Income" "Discount" "Timestamp"}}]
+            bound      #{"Income" "Timestamp" "Discount"}]
+        (is (= (ordered-map
+                 "AverageIncomeByMonth" [#{"Income" "Timestamp"}],
+                 "AverageDiscountByMonth" [#{"Income" "Discount" "Timestamp"}])
+               (magic/match-affinities affinities bound)))))))
+
+(deftest dash-template->affinities-test
+  (testing "A trivial case: The TotalOrders metric is dimensionless"
+    (is (= [{:metrics       ["TotalOrders"]
+             :dimensions    []
+             :affinity-name "Rowcount"
+             :base-dims     #{}}]
+           (magic/dash-template->affinities
+             {:cards   [{"Rowcount" {:metrics ["TotalOrders"]}}]
+              :metrics [{"TotalOrders" {:metric ["count"]}}]
+              :filters []}))))
+  (testing "A direct dimension is used"
+    (is (= [{:dimensions    ["Timestamp"]
+             :affinity-name "DIRECT"
+             :base-dims     #{"Timestamp"}}]
+           (magic/dash-template->affinities
+             {:cards   [{"DIRECT" {:dimensions [{"Timestamp" {}}]}}]}))))
+  (testing "One indirect dimension is called out and matched"
+    (is (= [{:metrics       ["AvgIncome"]
+             :dimensions    []
+             :affinity-name "Average Income"
+             :base-dims     #{"Income"}}]
+           (magic/dash-template->affinities
+             {:cards   [{"Average Income" {:metrics ["AvgIncome"]}}]
+              :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
+              :filters []})))))
+
+(deftest all-satisfied-bindings-test
+  (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
+    (is (= {}
+           (let [distinct-affinity-sets []
+                 available-dimensions   {}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "A two-binding affinity with multiple matches will expand out to all options."
+    (is (= {#{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
+
+           (let [distinct-affinity-sets [#{"Lat" "Lon"}]
+                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "Adding in an affinity group with no dimensions produces an empty set of satisfied bindings"
+    (is (= {#{"Category"} []
+            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
+
+           (let [distinct-affinity-sets [#{"Category"}
+                                         #{"Lat" "Lon"}]
+                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
+  (testing "All affinities match up to potential bindings across multiple affinity sets"
+    (is (= {#{"Category"} [{"Category" {:name "User Category"}}]
+            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
+                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
+
+           (let [distinct-affinity-sets [#{"Category"}
+                                         #{"Lat" "Lon"}]
+                 available-dimensions   {"Category" {:matches [{:name "User Category"}]}
+                                         "Lat" {:matches [{:name "Latitude"}
+                                                          {:name "LATITUDE"}]}
+                                         "Lon" {:matches [{:name "Longitude"}
+                                                          {:name "LONGITUDE"}]}}]
+             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions))))))

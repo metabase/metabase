@@ -1,5 +1,5 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
@@ -7,10 +7,11 @@ import type {
   MetricMetadata,
   Query,
 } from "./types";
+import type LegacyMetadata from "./metadata/Metadata";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
-  metadata: MetadataProvider,
+  metadata: MetadataProvider | LegacyMetadata,
   datasetQuery: DatasetQuery,
 ): Query {
   return ML.query(databaseId, metadata, datasetQuery);
@@ -18,6 +19,10 @@ export function fromLegacyQuery(
 
 export function toLegacyQuery(query: Query): DatasetQuery {
   return ML.legacy_query(query);
+}
+
+export function withDifferentTable(query: Query, tableId: TableId): Query {
+  return ML.with_different_table(query, tableId);
 }
 
 export function suggestedName(query: Query): string {

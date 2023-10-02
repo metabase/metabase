@@ -14,17 +14,19 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
   setupCardDataset,
-  setupCardEndpoints,
+  setupCardsEndpoints,
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -43,12 +45,45 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload"
 import { serializeCardForUrl } from "metabase/lib/card";
 import QueryBuilder from "./QueryBuilder";
 
+registerVisualizations();
+
 const TEST_DB = createSampleDatabase();
 
 const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
   dataset: true,
+});
+
+const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
+  ...TEST_CARD,
+  dataset: false,
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, null]],
+    },
+  },
+});
+
+const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
+  ...TEST_CARD,
+  dataset: false,
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["expression", "Custom Created At"]],
+      expressions: {
+        "Custom Created At": ["field", ORDERS.CREATED_AT, null],
+      },
+    },
+  },
 });
 
 const TEST_CARD_VISUALIZATION = createMockCard({
@@ -155,6 +190,8 @@ const TestQueryBuilder = (
   );
 };
 
+const TestHome = () => <div />;
+
 function isSavedCard(card: Card | UnsavedCard): card is Card {
   return "id" in card;
 }
@@ -178,7 +215,7 @@ const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   if (isSavedCard(card)) {
-    setupCardEndpoints(card);
+    setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
@@ -186,9 +223,9 @@ const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route>
-      <IndexRoute component={TestQueryBuilder} />
+      <Route path="/home" component={TestHome} />
       <Route path="/model">
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
@@ -206,11 +243,16 @@ const setup = async ({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  if (initialRoute !== "/home") {
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-spinner"),
+    );
+  }
 
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 };
 
 describe("QueryBuilder", () => {
@@ -228,6 +270,43 @@ describe("QueryBuilder", () => {
         });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+
+      it("renders time series grouping widget for date field breakout", async () => {
+        await setup({
+          card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+        });
+        const timeSeriesModeFooter = await screen.findByTestId(
+          "time-series-mode-footer",
+        );
+        expect(timeSeriesModeFooter).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).getByText("by"),
+        ).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).getByTestId(
+            "time-series-grouping-select-button",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("doesn't render time series grouping widget for custom date field breakout (metabase#33504)", async () => {
+        await setup({
+          card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
+        });
+
+        const timeSeriesModeFooter = await screen.findByTestId(
+          "time-series-mode-footer",
+        );
+        expect(timeSeriesModeFooter).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).queryByText("by"),
+        ).not.toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).queryByTestId(
+            "time-series-grouping-select-button",
+          ),
+        ).not.toBeInTheDocument();
       });
     });
 
@@ -429,7 +508,7 @@ describe("QueryBuilder", () => {
         );
       });
 
-      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      it("should not trigger beforeunload event when user tries to leave an ad-hoc structured query", async () => {
         const { mockEventListener } = await setup({
           card: TEST_UNSAVED_STRUCTURED_CARD,
         });
@@ -460,6 +539,204 @@ describe("QueryBuilder", () => {
     });
   });
 
+  describe("unsaved changes warning", () => {
+    describe("native queries", () => {
+      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        history.goBack();
+
+        expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        history.goBack();
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when running edited question", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        userEvent.click(
+          within(screen.getByTestId("query-builder-main")).getByRole("button", {
+            name: "Get Answer",
+          }),
+        );
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving edited question", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        userEvent.click(screen.getByText("Save"));
+
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("save-question-modal"),
+        );
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving edited question as a new one", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        userEvent.click(screen.getByText("Save"));
+
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        userEvent.click(
+          within(saveQuestionModal).getByText("Save as new question"),
+        );
+        userEvent.type(
+          within(saveQuestionModal).getByPlaceholderText(
+            "What is the name of your question?",
+          ),
+          "New question",
+        );
+        expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
+        userEvent.click(
+          within(saveQuestionModal).getByRole("button", { name: "Save" }),
+        );
+
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("save-question-modal"),
+        );
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe("downloading results", () => {
     // I initially planned to test unsaved native (ad-hoc) queries here as well.
     // But native queries won't run the query on first load, we need to manually
@@ -469,7 +746,7 @@ describe("QueryBuilder", () => {
 
     it("should allow downloading results for a native query", async () => {
       const mockDownloadEndpoint = fetchMock.post(
-        `/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
+        `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
         {},
       );
       await setup({

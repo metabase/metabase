@@ -81,46 +81,51 @@
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions.
   "
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [clojure.math.combinatorics :as math.combo]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [clojure.zip :as zip]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [java-time :as t]
-   [kixi.stats.core :as stats]
-   [kixi.stats.math :as math]
-   [medley.core :as m]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.filters :as filters]
-   [metabase.automagic-dashboards.populate :as populate]
-   [metabase.automagic-dashboards.visualization-macros :as visualization]
-   [metabase.db.query :as mdb.query]
-   [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.predicates :as mbql.preds]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :as card :refer [Card]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.metric :as metric :refer [Metric]]
-   [metabase.models.query :refer [Query]]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.related :as related]
-   [metabase.sync.analyze.classify :as classify]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
-   [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [ring.util.codec :as codec]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+    [buddy.core.codecs :as codecs]
+    [cheshire.core :as json]
+    [clojure.math.combinatorics :as math.combo]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [clojure.walk :as walk]
+    [clojure.zip :as zip]
+    [flatland.ordered.map :refer [ordered-map]]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [java-time :as t]
+    [kixi.stats.core :as stats]
+    [kixi.stats.math :as math]
+    [medley.core :as m]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.filters :as filters]
+    [metabase.automagic-dashboards.populate :as populate]
+    [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.db.query :as mdb.query]
+    [metabase.driver :as driver]
+    [metabase.mbql.normalize :as mbql.normalize]
+    [metabase.mbql.predicates :as mbql.preds]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.card :as card :refer [Card]]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :as field :refer [Field]]
+    [metabase.models.interface :as mi]
+    [metabase.models.metric :as metric :refer [Metric]]
+    [metabase.models.query :refer [Query]]
+    [metabase.models.segment :refer [Segment]]
+    [metabase.models.table :refer [Table]]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.related :as related]
+    [metabase.sync.analyze.classify :as classify]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [metabase.util.schema :as su]
+    [potemkin :as p]
+    [ring.util.codec :as codec]
+    [schema.core :as s]
+    [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -737,7 +742,7 @@
     (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
 
 (defn- instantiate-metadata
-  [x context {:keys [available-metrics]} bindings]
+  [x context available-metrics bindings]
   (-> (walk/postwalk
        (fn [form]
          (if (i18n/localized-string? form)
@@ -769,24 +774,6 @@
          (map filters/field-reference->id)
          set)))
 
-(defn- potential-card-dimension-bindings
-  "Compute all potential assignments (bindings) of identified fields (assigned to dimensions) to
-  required dimensions in the card definition."
-  [{:keys [tables]}
-   {:keys [available-dimensions]}
-   {card-query :query}
-   {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}]
-  (let [dimension-locations [satisfied-dimensions satisfied-metrics satisfied-filters card-query]
-        used-dimensions     (dashboard-templates/collect-dimensions dimension-locations)
-        matched-fields      (map
-                              (some-fn
-                                #(get-in available-dimensions [% :matches])
-                                (comp #(filter-tables % tables) dashboard-templates/->entity))
-                              used-dimensions)]
-    (->> matched-fields
-         (apply math.combo/cartesian-product)
-         (map (partial zipmap used-dimensions)))))
-
 (defn- build-dashcard
   "Build a dashcard from the given context, card template, common entities, and field bindings.
 
@@ -794,8 +781,6 @@
   bindings are provided. E.g. if X is mapped over Y and multiple fields are candidates for dimension Y, you will end
   up with a dashcard for each potential valid X and Y combination."
   [context
-   ;; TODO - Is this needed or can we just use satisfied-dimensions?
-   {:keys [available-dimensions] :as available-values}
    {card-dimensions :dimensions
     card-query      :query
     card-score      :score
@@ -805,71 +790,84 @@
    bindings]
   (let [score          (if card-query
                          card-score
-                         (* (or (->> card-dimensions
-                                     (map (partial get available-dimensions))
-                                     (concat satisfied-filters satisfied-metrics)
+                         (* (or (->> (concat (vals satisfied-filters)
+                                             (vals satisfied-metrics)
+                                             (vals satisfied-dimensions))
                                      (transduce (keep :score) stats/mean))
                                 dashboard-templates/max-score)
                             (/ card-score dashboard-templates/max-score)))
-        metrics        (for [metric satisfied-metrics]
+        metrics        (for [metric (vals satisfied-metrics)]
                          {:name   ((some-fn :name (comp metric-name :metric)) metric)
                           :metric (:metric metric)
                           :op     (-> metric :metric metric-op)})
         dashcard       (visualization/expand-visualization
                          card-template
-                         (map (comp bindings second) satisfied-dimensions)
+                         (vals bindings)
                          metrics)
         dashcard-query (if card-query
                          (build-native-query context bindings card-query)
                          (build-mbql-query context
                                            bindings
-                                           satisfied-filters
+                                           (vals satisfied-filters)
                                            metrics
-                                           satisfied-dimensions
+                                           (map (comp #(into [:dimension] %) first) card-dimensions)
                                            limit
                                            (build-order-by dashcard)))]
     (-> dashcard
-        (instantiate-metadata context available-values (->> (map :name metrics)
+        (instantiate-metadata context satisfied-metrics (->> (map :name metrics)
                                                             (zipmap (:metrics dashcard))
                                                             (merge bindings)))
         (assoc :dataset_query dashcard-query
                :metrics metrics
-               :dimensions (map (comp :name bindings second) satisfied-dimensions)
+               :dimensions (map :name (vals bindings))
                :score score))))
 
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
     (->> satisfied-dimensions
-         (map (fn [[_ identifier opts]]
+         (map first)
+         (map (fn [[identifier opts]]
                 (merge (bindings identifier) opts)))
          (every? (every-pred valid-breakout-dimension?
                              (complement (comp cell-dimension? id-or-name)))))))
 
-(defn- card-candidates
+(mu/defn card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [{:keys [query-filter] :as context}
-   {:keys [available-dimensions available-metrics available-filters] :as available-values}
-   {required-dimensions :dimensions
-    required-metrics    :metrics
-    required-filters    :filters
-    card-title          :title
+  [{:keys [query-filter] :as context} :- ads/context
+   satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
+   {:keys [available-dimensions available-metrics available-filters]} :- ads/available-values
+   {card-dimensions :dimensions
+    card-metrics    :metrics
+    card-filters    :filters
     :as                 card-template}]
-  (if (and (every? available-dimensions (map ffirst required-dimensions))
-           (every? available-metrics required-metrics)
-           (every? available-filters required-filters))
-    (let [satisfied-metrics    (map available-metrics required-metrics)
-          satisfied-filters    (cond-> (map available-filters required-filters)
-                                 query-filter
-                                 (conj {:filter query-filter}))
-          satisfied-dimensions (map (comp (partial into [:dimension]) first) required-dimensions)
-          satisfied-values     {:satisfied-dimensions satisfied-dimensions
-                                :satisfied-metrics    satisfied-metrics
-                                :satisfied-filters    satisfied-filters}]
-      (->> (potential-card-dimension-bindings context available-values card-template satisfied-values)
-           (filter (partial valid-bindings? context satisfied-dimensions))
-           (map (partial build-dashcard context available-values card-template satisfied-values))))
-    (log/debugf "Card %s cannot satisfy required dimensions." card-title)))
+  (let [satisfied-metrics    (zipmap
+                               card-metrics
+                               (map available-metrics card-metrics))
+        satisfied-filters    (cond-> (zipmap
+                                       card-filters
+                                       (map available-filters card-filters))
+                               query-filter
+                               (assoc "query-filter" {:filter query-filter}))
+        satisfied-dimensions (zipmap
+                               card-dimensions
+                               (map
+                                 (fn [card-dimension]
+                                   (-> card-dimension
+                                       ffirst
+                                       available-dimensions
+                                       (dissoc :matches)))
+                                 card-dimensions))
+        satisfied-values     {:satisfied-dimensions satisfied-dimensions
+                              :satisfied-metrics    satisfied-metrics
+                              :satisfied-filters    satisfied-filters}
+        dimension-locations  [satisfied-metrics satisfied-filters]
+        used-dimensions      (set (into
+                                    (map ffirst card-dimensions)
+                                    (dashboard-templates/collect-dimensions dimension-locations)))]
+    (->> (satisfied-bindings (set used-dimensions))
+         (filter (partial valid-bindings? context card-dimensions))
+         (map (partial build-dashcard context card-template satisfied-values)))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -927,6 +925,121 @@
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
 
+(p/defprotocol+ AffinitySetProvider
+  "For some item, determine the affinity sets of that item. This is a set of sets, each underlying set being a set of
+  dimensions that, if satisfied, specify affinity to the item."
+  (create-affinity-sets [this item]))
+
+(mu/defn base-dimension-provider :- [:fn #(satisfies? AffinitySetProvider %)]
+  "Takes a dashboard template and produces a function that takes a dashcard template and returns a seq of potential
+  dimension sets that can satisfy the card."
+  [{card-metrics :metrics card-filters :filters} :- ads/dashboard-template]
+  (let [dim-groups (fn [items]
+                     (-> (->> items
+                              (map
+                                (fn [item]
+                                  [(ffirst item)
+                                   (set (dashboard-templates/collect-dimensions item))]))
+                              (group-by first))
+                         (update-vals (fn [v] (mapv second v)))
+                         (update "this" conj #{})))
+        m->dims    (dim-groups card-metrics)
+        f->dims    (dim-groups card-filters)]
+    (reify AffinitySetProvider
+      (create-affinity-sets [_ {:keys [dimensions metrics filters]}]
+        (let [dimset                (set (map ffirst dimensions))
+              underlying-dim-groups (concat (map m->dims metrics) (map f->dims filters))]
+          (set
+            (map
+              (fn [lower-dims] (reduce into dimset lower-dims))
+              (apply math.combo/cartesian-product underlying-dim-groups))))))))
+
+(mu/defn dash-template->affinities :- ads/affinities
+  "Takes a dashboard template, pulls the affinities from its cards, adds the name of the card
+  as the affinity name, and adds in the set of all required base dimensions to satisfy the card.
+
+  As card, filter, and metric names need not be unique, the number of affinities computed may
+  be larger than the number of distinct card names and affinities are a sequence, not a map.
+
+  These can easily be grouped by :affinity-name, :base-dims, etc. to efficiently select
+  the appropriate affinities for a given situation.
+
+  eg:
+  (dash-template->affinities-map
+   (dashboard-templates/get-dashboard-template [\"table\" \"TransactionTable\"]))
+
+   [{:metrics [\"TotalOrders\"]
+     :score 100
+     :dimensions []
+     :affinity-name \"Rowcount\"
+      :base-dims #{}}
+    {:filters [\"Last30Days\"]
+      :metrics [\"TotalOrders\"]
+      :score 100
+      :dimensions []
+      :affinity-name \"RowcountLast30Days\"
+      :base-dims #{\"Timestamp\"}}
+      ...
+   ].
+"
+  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template]
+  ;; todo: cards can specify native queries with dimension template tags. See
+  ;; resources/automagic_dashboards/table/example.yaml
+  ;; note that they can specify dimension dependencies and ALSO table dependencies:
+  ;; - Native:
+  ;;    title: Native query
+  ;;    # Template interpolation works the same way as in title and description. Field
+  ;;    # names are automatically expanded into the full TableName.FieldName form.
+  ;;    query: select count(*), [[State]]
+  ;;           from [[GenericTable]] join [[UserTable]] on
+  ;;           [[UserFK]] = [[UserPK]]
+  ;;    visualization: bar
+  (let [provider (base-dimension-provider dashboard-template)]
+    (letfn [(card-deps [card]
+              (-> (select-keys card [:dimensions :filters :metrics :score])
+                  (update :dimensions (partial mapv ffirst))))]
+      (mapcat
+        (fn [card-template]
+          (let [[card-name template] (first card-template)]
+            (for [base-dims (create-affinity-sets provider template)]
+              (assoc (card-deps template)
+                :affinity-name card-name
+                :base-dims base-dims))))
+        card-templates))))
+
+(mu/defn match-affinities :- ads/affinity-matches
+  "Return an ordered map of affinity names to the set of dimensions they depend on."
+  [affinities :- ads/affinities
+   available-dimensions :- [:set [:string {:min 1}]]]
+  ;; Since the affinities contain the exploded base-dims, we simply do a set filter on the affinity names as that is
+  ;; how we currently match to existing cards.
+  (let [met-affinities (filter (fn [{:keys [base-dims] :as _v}]
+                                 (set/subset? base-dims available-dimensions))
+                               affinities)]
+    (reduce (fn [m {:keys [affinity-name base-dims]}]
+              (update m affinity-name (fnil conj []) base-dims))
+            (ordered-map)
+            met-affinities)))
+
+(comment
+  (dash-template->affinities
+    (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+
+  ;; example call
+  (let [affinities (-> ["table" "GenericTable"]
+                       dashboard-templates/get-dashboard-template
+                       dash-template->affinities)]
+    (match-affinities affinities #{"JoinDate"}))
+
+  ;; example call where one affinity matches on two sets of dimensions: "OrdersBySource" matches
+  ;; on [#{"SourceSmall" "Timestamp"} #{"SourceMedium"}]
+  (let [affinities (-> ["table" "TransactionTable"]
+                       dashboard-templates/get-dashboard-template
+                       dash-template->affinities)]
+    (match-affinities affinities
+                      #{"SourceSmall" "Timestamp" "SourceMedium"}))
+  )
+
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
@@ -942,17 +1055,53 @@
      :query-filter (filters/inject-refinement (:query-filter root)
                                               (:cell-query root))}))
 
-(defn- make-cards
+(p/defprotocol+ CardTemplateProducer
+  "Given an affinity name and corresponding affinity sets, produce a card template whose base dimensions match
+  one of the affinity sets. Example:
+
+  Given an affinity-name \"AverageQuantityByMonth\" and affinities [#{\"Quantity\" \"Timestamp\"}], the producer
+  should produce a card template for which the base dimensions of the card are #{\"Quantity\" \"Timestamp\"}.
+  "
+  (create-template [_ affinity-name affinities]))
+
+(mu/defn card-based-layout :- [:fn #(satisfies? CardTemplateProducer %)]
+  "Returns an implementation of `CardTemplateProducer`. This is a bit circular right now as we break the idea of cards
+  being the driver.  Affinities are sets of dimensions that are interesting together. We mine the card template
+  definitions for these. And then when we want to make a layout, we use the set of interesting dimensions and the name
+  of that interestingness to find the card that originally defined it. But this gives us the seam to break this
+  connection. We can independently come up with a notion of interesting combinations and then independently come up
+  with how to put that in a dashcard."
+  [{template-cards :cards :as dashboard-template} :- ads/dashboard-template]
+  (let [by-name             (update-vals (group-by ffirst template-cards) #(map (comp val first) %))
+        resolve-overloading (fn [affinities cards]
+                              (let [provider (base-dimension-provider dashboard-template)]
+                                (some
+                                  (fn [card]
+                                    (let [dimsets (create-affinity-sets provider card)]
+                                      (when (some dimsets affinities) card)))
+                                  cards)))]
+    (reify CardTemplateProducer
+      (create-template [_ affinity-name affinities]
+        (let [possible-cards (by-name affinity-name)]
+          (if (= (count possible-cards) 1)
+            (first possible-cards)
+            (resolve-overloading affinities possible-cards)))))))
+
+(mu/defn make-cards :- ads/dashcards
   "Create cards from the context using the provided template cards.
   Note that card, as destructured here, is a template baked into a dashboard template and is not a db entity Card."
-  [context available-values {card-templates :cards}]
-  (some->> card-templates
-           (map first)
-           (map-indexed (fn [position [identifier card-template]]
-                          (some->> (assoc card-template :position position)
-                                   (card-candidates context available-values)
-                                   not-empty
-                                   (hash-map (name identifier)))))
+  [context :- ads/context
+   available-values :- ads/available-values
+   satisfied-affinities :- ads/affinity-matches
+   satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
+   layout-producer :- [:fn #(satisfies? CardTemplateProducer %)]]
+  (some->> satisfied-affinities
+           (map-indexed (fn [position [affinity-name affinities]]
+                          (let [card-template (create-template layout-producer affinity-name affinities)]
+                            (some->> (assoc card-template :position position)
+                                     (card-candidates context satisfied-bindings available-values)
+                                     not-empty
+                                     (hash-map (name affinity-name))))))
            (apply merge-with (partial max-key (comp :score first)) {})
            vals
            (apply concat)))
@@ -960,14 +1109,14 @@
 (defn- make-dashboard
   ([root dashboard-template]
    (make-dashboard root dashboard-template {:tables [(:source root)] :root root} nil))
-  ([root dashboard-template context available-values]
+  ([root dashboard-template context {:keys [available-metrics]}]
    (-> dashboard-template
        (select-keys [:title :description :transient_title :groups])
        (cond->
          (:comparison? root)
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
-       (instantiate-metadata context available-values {}))))
+       (instantiate-metadata context available-metrics {}))))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field
@@ -999,6 +1148,43 @@
                    :name   (:name entity)
                    :score  dashboard-templates/max-score})))
 
+(mu/defn satisified-bindings :- ads/dimension-maps
+  "Take an affinity set (a set of dimensions) and a map of dimension to bound items and return all possible realized
+  affinity combinations for this affinity set and binding."
+  [affinity-set :- ads/dimension-set
+   available-dimensions :- ads/dimension-bindings]
+  (->> affinity-set
+       (map
+         (fn [affinity-dimension]
+           (let [{:keys [matches]} (available-dimensions affinity-dimension)]
+             matches)))
+       (apply math.combo/cartesian-product)
+       (mapv (fn [combos] (zipmap affinity-set combos)))))
+
+(mu/defn all-satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
+  "Compute all potential combinations of dimensions for each affinity set."
+  [distinct-affinity-sets :- [:sequential ads/dimension-set]
+   available-dimensions :- ads/dimension-bindings]
+  (let [satisfied-combos (map #(satisified-bindings % available-dimensions)
+                              distinct-affinity-sets)]
+    (zipmap distinct-affinity-sets satisfied-combos)))
+
+(comment
+  (let [{template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+        model        (t2/select-one :model/Card 2)
+        base-context (make-base-context (->root model))
+        affinities           (dash-template->affinities dashboard-template)
+        available-dimensions (->> (bind-dimensions base-context template-dimensions)
+                                  (add-field-self-reference base-context))
+        satisfied-affinities (match-affinities affinities (set (keys available-dimensions)))
+        distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)]
+    (update-vals
+      (all-satisfied-bindings distinct-affinity-sets available-dimensions)
+      (fn [v]
+        (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
+  )
+
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
@@ -1012,21 +1198,30 @@
     :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [dimensions        (->> (bind-dimensions base-context template-dimensions)
-                               (add-field-self-reference base-context))
+  (let [available-dimensions   (->> (bind-dimensions base-context template-dimensions)
+                                    (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
-        available-metrics (->> (resolve-available-dimensions dimensions template-metrics)
-                               (add-metric-self-reference base-context)
-                               (into {}))
-        available-filters (into {} (resolve-available-dimensions dimensions template-filters))
-        available-values  {:available-dimensions dimensions
-                           :available-metrics    available-metrics
-                           :available-filters    available-filters}
-        cards             (make-cards base-context available-values dashboard-template)]
+        available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)
+                                    (add-metric-self-reference base-context)
+                                    (into {}))
+        available-filters      (into {} (resolve-available-dimensions available-dimensions template-filters))
+        available-values       {:available-dimensions available-dimensions
+                                :available-metrics    available-metrics
+                                :available-filters    available-filters}
+        ;; for now we construct affinities from cards
+        affinities             (dash-template->affinities dashboard-template)
+        ;; get the suitable matches for them
+        satisfied-affinities   (match-affinities affinities (set (keys available-dimensions)))
+        distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)
+        cards                  (make-cards base-context
+                                           available-values
+                                           satisfied-affinities
+                                           (all-satisfied-bindings distinct-affinity-sets available-dimensions)
+                                           (card-based-layout dashboard-template))]
     (when (or (not-empty cards) (nil? template-cards))
       [(assoc (make-dashboard root dashboard-template base-context available-values)
          :filters (->> dashboard_filters
-                       (mapcat (comp :matches dimensions))
+                       (mapcat (comp :matches available-dimensions))
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
          :cards cards)
        dashboard-template

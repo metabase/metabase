@@ -50,7 +50,25 @@ describe("Metadata", () => {
       const argsDefault = getDefaultArgs({});
       const data = await fetchData(argsDefault);
       await delay(10);
-      expect(argsDefault.dispatch.mock.calls.length).toEqual(2);
+
+      expect(argsDefault.dispatch).toHaveBeenCalledTimes(3);
+
+      expect(argsDefault.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_LOADING",
+        }),
+      );
+      expect(argsDefault.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_PROMISE",
+        }),
+      );
+      expect(argsDefault.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_LOADED",
+        }),
+      );
+
       expect(data).toEqual(args.newData);
     });
 
@@ -59,14 +77,14 @@ describe("Metadata", () => {
         requestState: args.requestStateLoading,
       });
       const dataLoading = await fetchData(argsLoading);
-      expect(argsLoading.dispatch.mock.calls.length).toEqual(0);
+      expect(argsLoading.dispatch).toHaveBeenCalledTimes(0);
       expect(dataLoading).toEqual(args.existingData);
 
       const argsLoaded = getDefaultArgs({
         requestState: args.requestStateLoaded,
       });
       const dataLoaded = await fetchData(argsLoaded);
-      expect(argsLoaded.dispatch.mock.calls.length).toEqual(0);
+      expect(argsLoaded.dispatch).toHaveBeenCalledTimes(0);
       expect(dataLoaded).toEqual(args.existingData);
     });
 
@@ -76,7 +94,25 @@ describe("Metadata", () => {
       });
       const dataError = await fetchData(argsError);
       await delay(10);
-      expect(argsError.dispatch.mock.calls.length).toEqual(2);
+
+      expect(argsError.dispatch).toHaveBeenCalledTimes(3);
+
+      expect(argsError.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_LOADING",
+        }),
+      );
+      expect(argsError.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_PROMISE",
+        }),
+      );
+      expect(argsError.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "metabase/requests/SET_REQUEST_LOADED",
+        }),
+      );
+
       expect(dataError).toEqual(args.newData);
     });
 
@@ -92,7 +128,7 @@ describe("Metadata", () => {
         const dataFail = await fetchData(argsFail).catch(error =>
           console.log(error),
         );
-        expect(argsFail.dispatch.mock.calls.length).toEqual(2);
+        expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
         expect(dataFail).toEqual(args.existingData);
       } catch (error) {
         return;
@@ -104,28 +140,28 @@ describe("Metadata", () => {
     it("should return new data regardless of previous request state", async () => {
       const argsDefault = getDefaultArgs({});
       const data = await updateData(argsDefault);
-      expect(argsDefault.dispatch.mock.calls.length).toEqual(2);
+      expect(argsDefault.dispatch).toHaveBeenCalledTimes(3);
       expect(data).toEqual(args.newData);
 
       const argsLoading = getDefaultArgs({
         requestState: args.requestStateLoading,
       });
       const dataLoading = await updateData(argsLoading);
-      expect(argsLoading.dispatch.mock.calls.length).toEqual(2);
+      expect(argsLoading.dispatch).toHaveBeenCalledTimes(3);
       expect(dataLoading).toEqual(args.newData);
 
       const argsLoaded = getDefaultArgs({
         requestState: args.requestStateLoaded,
       });
       const dataLoaded = await updateData(argsLoaded);
-      expect(argsLoaded.dispatch.mock.calls.length).toEqual(2);
+      expect(argsLoaded.dispatch).toHaveBeenCalledTimes(3);
       expect(dataLoaded).toEqual(args.newData);
 
       const argsError = getDefaultArgs({
         requestState: args.requestStateError,
       });
       const dataError = await updateData(argsError);
-      expect(argsError.dispatch.mock.calls.length).toEqual(2);
+      expect(argsError.dispatch).toHaveBeenCalledTimes(3);
       expect(dataError).toEqual(args.newData);
     });
 
@@ -137,7 +173,7 @@ describe("Metadata", () => {
       });
       const data = await updateData(argsFail);
       await delay(10);
-      expect(argsFail.dispatch.mock.calls.length).toEqual(2);
+      expect(argsFail.dispatch).toHaveBeenCalledTimes(2);
       expect(data).toEqual(args.existingData);
     });
   });
