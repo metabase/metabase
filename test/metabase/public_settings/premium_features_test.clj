@@ -212,12 +212,12 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            "Invalid input: [\"should be a keyword\"]"
+                            #"Invalid input: \[\"should be a keyword\"\]"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Output of greeting-with-invalid-oss-return-schema does not match schema"
+                            #"Invalid output: \[\"should be a keyword\"\]"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?

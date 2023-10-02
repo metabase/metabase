@@ -52,8 +52,8 @@
        :pulse_id          pulse_id
        :dashboard_card_id dashboard_card_id
        :position          (u/or-with some? position (next-position-for pulse_id))
-       :include_csv       (u/or-with some? include_csv false)
-       :include_xls       (u/or-with some? include_xls false)})))
+       :include_csv       (boolean include_csv)
+       :include_xls       (boolean include_xls)})))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

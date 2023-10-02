@@ -411,7 +411,6 @@
                 (with-redefs [setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value)))
               (catch Throwable e
-                (println e)
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
                                 {:setting        setting-k
                                  :location       (symbol (name (:namespace setting)) setting-k)
