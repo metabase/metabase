@@ -1,6 +1,6 @@
 import { compare as compareVersions, coerce } from "semver";
 
-// https://regexr.com/7k4pv
+// https://regexr.com/7l1ip
 export const isValidVersionString = (versionString: string) => {
   return /^(v0|v1)\.(\d|\.){3,}(\-rc\d+|\-RC\d+)*$/.test(versionString);
 };
