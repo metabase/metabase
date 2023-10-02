@@ -226,7 +226,6 @@ const setup = async ({
   const { history } = renderWithProviders(
     <Route>
       <Route path="/home" component={TestHome} />
-      <IndexRoute component={TestQueryBuilder} />
       <Route path="/model">
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
