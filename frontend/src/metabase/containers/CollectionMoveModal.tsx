@@ -15,6 +15,7 @@ interface CollectionMoveModalProps {
   onClose: () => void;
   onMove: (collection: any) => void;
   initialCollectionId?: number | string | null;
+  collectionsToMove?: Array<Collection>;
 }
 
 export const CollectionMoveModal = ({
@@ -22,6 +23,7 @@ export const CollectionMoveModal = ({
   onClose,
   onMove,
   initialCollectionId,
+  collectionsToMove,
 }: CollectionMoveModalProps) => {
   const [selectedCollectionId, setSelectedCollectionId] =
     useState(initialCollectionId);
@@ -48,6 +50,7 @@ export const CollectionMoveModal = ({
         onOpenCollectionChange={setOpenCollectionId}
         value={selectedCollectionId}
         onChange={setSelectedCollectionId}
+        collectionsToFilter={collectionsToMove}
       />
       <ButtonContainer>
         <Button light icon="add" onClick={() => setCreatingCollection(true)}>

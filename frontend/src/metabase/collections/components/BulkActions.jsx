@@ -96,6 +96,7 @@ function BulkActions({
                 ? t`Move ${selectedItems.length} items?`
                 : t`Move "${selectedItems[0].getName()}"?`
             }
+            collectionsToMove={selectedItems}
             onClose={onCloseModal}
             onMove={onMove}
           />

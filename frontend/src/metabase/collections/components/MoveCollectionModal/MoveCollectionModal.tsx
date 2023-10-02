@@ -28,6 +28,7 @@ const MoveCollectionModal = ({
       initialCollectionId={collection.id}
       onMove={handleMove}
       onClose={onClose}
+      collectionsToMove={[collection]}
     />
   );
 };
