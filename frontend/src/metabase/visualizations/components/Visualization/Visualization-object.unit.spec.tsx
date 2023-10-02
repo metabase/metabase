@@ -5,6 +5,11 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import type { FieldVisibilityType } from "metabase-types/api";
+import {
+  setupActionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 function setup({
   rows,
@@ -36,6 +41,9 @@ function setup({
       },
     ),
   ];
+
+  setupDatabasesEndpoints([createSampleDatabase()]);
+  setupActionsEndpoints([]);
 
   renderWithProviders(<Visualization rawSeries={series} />);
 }

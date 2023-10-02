@@ -9,6 +9,7 @@ import type { Field, FieldValue } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -88,6 +89,10 @@ describe("InlineCategoryPicker", () => {
   const remappedCategoryField = checkNotNull(
     metadata.field(REMAPPED_CATEGORY_FIELD),
   );
+
+  beforeEach(() => {
+    setupFieldValuesGeneralEndpoint();
+  });
 
   it("should render an inline category picker", () => {
     const testFilter = new Filter(
