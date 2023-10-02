@@ -1,7 +1,7 @@
 import { generateVersionInfoJson, getVersionInfoUrl } from "./version-info";
 import type { Issue, VersionInfoFile } from "./types";
 
-describe("verion-info", () => {
+describe("version-info", () => {
   describe("generateVersionInfoJson", () => {
     const issues = [
       {
