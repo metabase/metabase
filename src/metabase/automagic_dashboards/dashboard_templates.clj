@@ -232,48 +232,49 @@
         {identifier {k definition}}))))
 
 (def ^:private dashboard-template-validator
-  (sc/coercer!
-    DashboardTemplate
-    {[s/Str]         u/one-or-many
-    [OrderByPair]   u/one-or-many
-    OrderByPair     (fn [x]
-                      (if (string? x)
-                        {x "ascending"}
-                        x))
-    Visualization   (fn [x]
-                      (if (string? x)
-                        [x {}]
-                        (first x)))
-    Metric          (comp (with-defaults {:score max-score})
-                          (shorthand-definition :metric))
-    Dimension       (comp (with-defaults {:score max-score})
-                          (shorthand-definition :field_type))
-    Filter          (comp (with-defaults {:score max-score})
-                          (shorthand-definition :filter))
-    Card            (with-defaults {:score  max-score
-                                    :width  populate/default-card-width
-                                    :height populate/default-card-height})
-    [CardDimension] u/one-or-many
-    CardDimension   (fn [x]
-                      (if (string? x)
-                        {x {}}
-                        x))
-    TableType       ->entity
-    FieldType       ->type
-    Identifier      (fn [x]
-                      (if (keyword? x)
-                        (name x)
-                        x))
-    Groups          (partial apply merge)
-    AppliesTo       (fn [x]
-                      (let [[table-type field-type] (str/split x #"\.")]
-                        (if field-type
-                          [(->entity table-type) (->type field-type)]
-                          [(if (-> table-type ->entity table-type?)
-                             (->entity table-type)
-                             (->type table-type))])))
-    LocalizedString (fn [s]
-                      (i18n/->UserLocalizedString s nil {}))}))
+  identity
+  #_(sc/coercer!
+      DashboardTemplate
+      {[s/Str]         u/one-or-many
+       [OrderByPair]   u/one-or-many
+       OrderByPair     (fn [x]
+                         (if (string? x)
+                           {x "ascending"}
+                           x))
+       Visualization   (fn [x]
+                         (if (string? x)
+                           [x {}]
+                           (first x)))
+       Metric          (comp (with-defaults {:score max-score})
+                             (shorthand-definition :metric))
+       Dimension       (comp (with-defaults {:score max-score})
+                             (shorthand-definition :field_type))
+       Filter          (comp (with-defaults {:score max-score})
+                             (shorthand-definition :filter))
+       Card            (with-defaults {:score  max-score
+                                       :width  populate/default-card-width
+                                       :height populate/default-card-height})
+       [CardDimension] u/one-or-many
+       CardDimension   (fn [x]
+                         (if (string? x)
+                           {x {}}
+                           x))
+       TableType       ->entity
+       FieldType       ->type
+       Identifier      (fn [x]
+                         (if (keyword? x)
+                           (name x)
+                           x))
+       Groups          (partial apply merge)
+       AppliesTo       (fn [x]
+                         (let [[table-type field-type] (str/split x #"\.")]
+                           (if field-type
+                             [(->entity table-type) (->type field-type)]
+                             [(if (-> table-type ->entity table-type?)
+                                (->entity table-type)
+                                (->type table-type))])))
+       LocalizedString (fn [s]
+                         (i18n/->UserLocalizedString s nil {}))}))
 
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 

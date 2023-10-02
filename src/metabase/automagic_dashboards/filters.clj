@@ -7,12 +7,10 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
+(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
   "Extract field ID from a given field reference form."
   [clause]
   (mbql.u/match-one clause [:field id _] id))

@@ -17,13 +17,12 @@
    [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(s/defn ^:private add-bindings :- Bindings
-  [bindings :- Bindings, source :- SourceName, new-bindings :- (s/maybe DimensionBindings)]
+(mu/defn ^:private add-bindings :- Bindings
+  [bindings :- Bindings, source :- SourceName, new-bindings :- [:maybe DimensionBindings]]
   (reduce-kv (fn [bindings name definition]
                (->> definition
                     (de/resolve-dimension-clauses bindings source)
@@ -40,10 +39,10 @@
     [:field (id :guard integer?) _]
     (t2/select-one-fn :name Field :id id)))
 
-(s/defn ^:private infer-resulting-dimensions :- DimensionBindings
+(mu/defn ^:private infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
-   query                :- (s/pred mbql.s/valid-query?)]
+   query                :- [:fn mbql.s/valid-query?]]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
     (into {} (for [{:keys [name] :as col} (qp/query->expected-cols query)]
@@ -88,7 +87,7 @@
                                  (for [breakout breakout]
                                    (de/resolve-dimension-clauses bindings name breakout)))))
 
-(s/defn ^:private ->source-table-reference
+(mu/defn ^:private ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
   (if (mi/instance-of? Table entity)
@@ -114,7 +113,7 @@
   [_bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
-(s/defn ^:private transform-step! :- Bindings
+(mu/defn ^:private transform-step! :- Bindings
   [bindings :- Bindings, {:keys [name source aggregation expressions] :as step} :- Step]
   (let [source-entity  (get-in bindings [source :entity])
         local-bindings (-> bindings
@@ -135,30 +134,29 @@
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
 (def ^:private Tableset
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  [(mi/InstanceOf:Schema Table)])
+  [:sequential (ms/InstanceOf Table)])
 
-(s/defn ^:private find-tables-with-domain-entity :- Tableset
+(mu/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]
   (filter #(-> % :domain_entity :type (isa? (:type domain-entity-spec))) tableset))
 
-(s/defn ^:private tableset->bindings :- Bindings
+(mu/defn ^:private tableset->bindings :- Bindings
   [tableset :- Tableset]
   (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity :as table} tableset]
              [domain-entity-name
               {:dimensions (m/map-vals de/mbql-reference dimensions)
                :entity     table}])))
 
-(s/defn ^:private apply-transform-to-tableset! :- Bindings
+(mu/defn ^:private apply-transform-to-tableset! :- Bindings
   [tableset :- Tableset, {:keys [steps _provides]} :- TransformSpec]
   (driver/with-driver (-> tableset first table/database :engine)
     (reduce transform-step! (tableset->bindings tableset) (vals steps))))
 
-(s/defn ^:private resulting-entities :- [SourceEntity]
+(mu/defn ^:private resulting-entities :- [SourceEntity]
   [bindings :- Bindings, {:keys [provides]} :- TransformSpec]
   (map (comp :entity val) (select-keys bindings provides)))
 
-(s/defn ^:private validate-results :- Bindings
+(mu/defn ^:private validate-results :- Bindings
   [bindings :- Bindings, {:keys [provides]} :- TransformSpec]
   (doseq [domain-entity-name provides]
     (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
@@ -167,21 +165,22 @@
                 domain-entity-name))))
   bindings)
 
-(s/defn ^:private tables-matching-requirements :- (s/maybe Tableset)
-  [tableset :- Tableset, {:keys [requires]} :- TransformSpec]
+(mu/defn ^:private tables-matching-requirements :- [:maybe Tableset]
+  [tableset :- Tableset
+   {:keys [requires]} :- TransformSpec]
   (let [matches (map (comp (partial find-tables-with-domain-entity tableset)
                            @domain-entity-specs)
                      requires)]
     (when (every? (comp #{1} count) matches)
       (map first matches))))
 
-(s/defn ^:private tableset :- Tableset
-  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
+(mu/defn ^:private tableset :- Tableset
+  [db-id :- ms/PositiveInt, schema :- [:maybe :string]]
   (table/with-fields
     (de/with-domain-entity
       (t2/select 'Table :db_id db-id :schema schema))))
 
-(s/defn apply-transform!
+(mu/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.
 
   The algorithm is as follows:
@@ -191,7 +190,7 @@
      cols to the bindings.
   4) Check that all output cards have the expected result shape.
   5) Return the output cards."
-  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), spec :- TransformSpec]
+  [db-id :- ms/PositiveInt, schema :- [:maybe :string], spec :- TransformSpec]
   (tf.materialize/fresh-collection-for-transform! spec)
   (some-> (tableset db-id schema)
           (tables-matching-requirements spec)
@@ -202,6 +201,6 @@
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
-  (filter (comp (partial some (comp #{(u/the-id table)} u/the-id))
+  (filter (comp (partial some (comp #(u/the-id table) u/the-id))
                 (partial tables-matching-requirements (tableset (:db_id table) (:schema table))))
           @transform-specs))
