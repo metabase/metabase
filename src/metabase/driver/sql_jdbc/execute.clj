@@ -699,6 +699,7 @@
   (try
     (do-with-connection-with-options
      driver
+     (qp.store/database)
      {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (qp.store/database))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]

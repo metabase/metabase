@@ -13,7 +13,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
@@ -22,7 +21,7 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection PreparedStatement)))
+   (java.sql Connection)))
 
 (set! *warn-on-reflection* true)
 
@@ -345,21 +344,6 @@
             [(conj errors {:index row-index, :error (ex-message e)})
              successes]))))
      rows)))
-
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{db-id :id} (qp.store/database)]
-      (with-jdbc-transaction [conn db-id]
-        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
-          {:rows-affected (if (instance? PreparedStatement stmt)
-                            (.executeUpdate ^PreparedStatement stmt)
-                            (.executeUpdate stmt sql))})))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
 
 ;;;; `:bulk/create`
 
