@@ -274,7 +274,7 @@ describe("scenarios > question > joined questions", () => {
     addSummaryField({ metric: "Count of rows" });
     addSummaryGroupingField({ table: "Product", field: "ID" });
 
-    join();
+    cy.findAllByTestId("action-buttons").last().button("Join data").click();
     joinTable("Reviews", "ID", "Product ID");
     visualize();
 
