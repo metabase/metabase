@@ -7,6 +7,7 @@ import {
   filterField,
   getNotebookStep,
   join,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
   openTable,
@@ -450,17 +451,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     });
 
-    cy.createQuestion({
-      name: "Orders model",
-      query: { "source-table": ORDERS_ID },
-      dataset: true,
-      display: "table",
-    });
+    cy.createQuestion(
+      {
+        name: "Orders model",
+        query: { "source-table": ORDERS_ID },
+        dataset: true,
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
 
-    startNewQuestion();
-    popover().findByText("Models").click();
-    popover().findByText("Products model").click();
-    cy.wait("@loadMetadata");
+    openNotebook();
 
     join();
     popover().findByText("Orders model").click();
