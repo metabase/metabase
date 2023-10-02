@@ -16,8 +16,7 @@
   "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
   :feature :audit-app
   [group-id changes]
-    (let [audit-collection-id (default-audit-collection-id)
-          [change-id type]    (first (filter #(= (first %) audit-collection-id) changes))]
+    (let [[change-id type] (first (filter #(= (first %) (default-audit-collection-id)) changes))]
         (when change-id
           (let [change-permissions! (case type
                                       :read  perms/grant-permissions!
