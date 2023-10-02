@@ -38,6 +38,7 @@ interface OwnProps<TId> {
   onChange: (value: PickerValue<TId>) => void;
   initialOpenCollectionId?: CollectionId;
   collectionFilter?: (collection: Collection) => boolean;
+  collectionsToFilter?: Array<Collection>;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   children?: React.ReactNode;
 }
@@ -91,10 +92,12 @@ function ItemPicker<TId>({
   initialOpenCollectionId = "root",
   onOpenCollectionChange,
   children,
+  collectionsToFilter,
 }: Props<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );
+  const [filterList, setFilterList] = useState<Array<CollectionId>>([]);
   const [searchString, setSearchString] = useState("");
 
   const isPickingNotCollection = models.some(model => model !== "collection");
@@ -113,15 +116,50 @@ function ItemPicker<TId>({
       list = [openCollection, ...list];
     }
 
-    const collectionItems = list
+    let collectionItems = list
       .filter(canWriteToCollectionOrChildren)
       .map(collection => ({
         ...collection,
         model: "collection",
       }));
 
+    if (collectionsToFilter && collectionsToFilter?.length > 0) {
+      // If there is collections to filter then filter the collection as well as its parent conditionally
+      const filterIds: Array<CollectionId> = [];
+
+      collectionsToFilter.forEach((collection: Collection) => {
+        // filter the collection
+        collection.id && filterIds.push(collection.id);
+      });
+
+      collectionsToFilter.forEach((collection: Collection) => {
+        // filter the parent if the move collections are the only children
+        if (collection.parent_id) {
+          const childrenIds = new Set(
+            collectionsById[collection.parent_id].children?.map(
+              (child: Collection) => child.id,
+            ),
+          );
+
+          Array.from(childrenIds).forEach(id => {
+            filterIds.includes(id) && childrenIds.delete(id);
+          });
+
+          if (childrenIds.size === 0) {
+            collection.parent_id && filterIds.push(collection.parent_id);
+          }
+        }
+      });
+
+      setFilterList(filterIds);
+
+      collectionItems = collectionItems.filter(
+        (collection: Collection) => !filterIds.includes(collection.id),
+      );
+    }
+
     return collectionItems as CollectionPickerItem<TId>[];
-  }, [openCollection, models]);
+  }, [openCollection, models, collectionsToFilter, collectionsById]);
 
   const crumbs = useMemo(
     () =>
@@ -173,11 +211,26 @@ function ItemPicker<TId>({
         return false;
       }
 
-      return (
-        Array.isArray(collection.children) && collection.children.length > 0
+      if (!Array.isArray(collection.children)) {
+        return false;
+      }
+
+      if (collection.children.length < 0) {
+        return false;
+      }
+
+      // showing has no children if the only children are the filtered collections
+      const childrenIds = new Set(
+        collection.children.map((child: Collection) => child.id),
       );
+
+      Array.from(childrenIds).forEach(id => {
+        filterList.includes(id) && childrenIds.delete(id);
+      });
+
+      return childrenIds.size > 0;
     },
-    [isPickingNotCollection],
+    [isPickingNotCollection, filterList],
   );
 
   const checkHasWritePermissionForItem = useCallback(
