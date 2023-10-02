@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import { Icon } from "metabase/core/components/Icon";
 import { Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
 import type {
   DatePickerExtractionUnit,
@@ -20,6 +21,7 @@ export interface ExcludeDatePickerProps {
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerExtractionUnit[];
   onChange: (value: ExcludeDatePickerValue) => void;
+  onBack: () => void;
 }
 
 export function ExcludeDatePicker({
@@ -27,6 +29,7 @@ export function ExcludeDatePicker({
   availableOperators,
   availableUnits,
   onChange,
+  onBack,
 }: ExcludeDatePickerProps) {
   const [unit, setUnit] = useState(value?.unit);
   const [values, setValues] = useState(value?.values ?? []);
@@ -63,6 +66,7 @@ export function ExcludeDatePicker({
       availableUnits={availableUnits}
       onChangeUnit={handleChangeUnit}
       onChangeOperator={handleChangeOperator}
+      onBack={onBack}
     />
   );
 }
@@ -72,6 +76,7 @@ interface ExcludeOptionPickerProps {
   availableUnits: DatePickerExtractionUnit[];
   onChangeOperator: (operator: DatePickerOperator) => void;
   onChangeUnit: (unit: DatePickerExtractionUnit) => void;
+  onBack: () => void;
 }
 
 export function ExcludeOptionPicker({
@@ -79,6 +84,7 @@ export function ExcludeOptionPicker({
   availableUnits,
   onChangeOperator,
   onChangeUnit,
+  onBack,
 }: ExcludeOptionPickerProps) {
   const unitOptions = useMemo(() => {
     return getExcludeUnitOptions(availableOperators, availableUnits);
@@ -90,6 +96,11 @@ export function ExcludeOptionPicker({
 
   return (
     <Stack>
+      <Button
+        leftIcon={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >{t`Exclude…`}</Button>
+      <Divider />
       {unitOptions.map((option, index) => (
         <Button key={index} onClick={() => onChangeUnit(option.unit)}>
           {option.label}
@@ -150,7 +161,10 @@ function ExcludeValuePicker({
 
   return (
     <Stack>
-      <Button onClick={onBack}>{t`Back`}</Button>
+      <Button
+        leftIcon={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >{t`Exclude…`}</Button>
       <Divider />
       <Checkbox
         checked={isEmpty}
