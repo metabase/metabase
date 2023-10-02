@@ -90,28 +90,17 @@ export function ExcludeOptionPicker({
 
   return (
     <Stack>
-      {unitOptions.length > 0 && (
-        <Stack>
-          {unitOptions.map((option, index) => (
-            <Button key={index} onClick={() => onChangeUnit(option.unit)}>
-              {option.label}
-            </Button>
-          ))}
-        </Stack>
-      )}
+      {unitOptions.map((option, index) => (
+        <Button key={index} onClick={() => onChangeUnit(option.unit)}>
+          {option.label}
+        </Button>
+      ))}
       {unitOptions.length > 0 && operatorOptions.length > 0 && <Divider />}
-      {operatorOptions.length > 0 && (
-        <Stack>
-          {operatorOptions.map((option, index) => (
-            <Button
-              key={index}
-              onClick={() => onChangeOperator(option.operator)}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </Stack>
-      )}
+      {operatorOptions.map((option, index) => (
+        <Button key={index} onClick={() => onChangeOperator(option.operator)}>
+          {option.label}
+        </Button>
+      ))}
     </Stack>
   );
 }
