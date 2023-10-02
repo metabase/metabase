@@ -1152,7 +1152,7 @@
 
         (migrate! :up)
         (testing "should drop the existing color column"
-          (is (not (contains? (into {} test-collection) :color))))
+          (is (true? (not (contains? (into {} test-collection) :color)))))
 
         (migrate! :down)
         (testing "Rollback to the previous version should restore the column column and set the default value"
