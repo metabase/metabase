@@ -141,6 +141,10 @@ describe("DatabaseEditApp", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
+      const databaseForm = await screen.findByLabelText("Display name");
+      userEvent.type(databaseForm, "ab");
+      userEvent.type(databaseForm, "{backspace}{backspace}");
+
       history.goBack();
 
       expect(
@@ -158,6 +162,9 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
       const databaseForm = await screen.findByLabelText("Display name");
       userEvent.type(databaseForm, "Test database");
 
