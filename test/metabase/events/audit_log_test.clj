@@ -373,20 +373,33 @@
               :details     {}}
              (event "user-joined" (mt/user->id :rasta)))))))
 
+(deftest user-invited-event-test
+  (testing :event/user-invited
+    (mt/with-model-cleanup [Activity]
+      (let [event {:user-id (mt/user->id :rasta)
+                   :details {}}]
+        (is (= event (events/publish-event! :event/user-invited event))))
+      (is (= {:model_id nil
+              :user_id  (mt/user->id :rasta)
+              :details  {}
+              :topic    :user-invited
+              :model    "User"}
+             (event :user-invited (mt/user->id :lucky)))))))
+
 (deftest user-update-event-test
- (testing :event/user-update
-  (mt/with-model-cleanup [Activity]
-    (let [event {:user-id (mt/user->id :rasta)
-                 :details {:id        (mt/user->id :lucky)
-                           :last_name "Charms"}}]
-      (is (= event (events/publish-event! :event/user-update event))))
-    (is (= {:model_id (mt/user->id :lucky)
-            :user_id  (mt/user->id :rasta)
-            :details  {:id        (mt/user->id :lucky)
-                       :last_name "Charms"}
-            :topic    :user-update
-            :model    "User"}
-     (event :user-update (mt/user->id :lucky)))))))
+  (testing :event/user-update
+    (mt/with-model-cleanup [Activity]
+      (let [event {:user-id (mt/user->id :rasta)
+                   :details {:id        (mt/user->id :lucky)
+                             :last_name "Charms"}}]
+        (is (= event (events/publish-event! :event/user-update event))))
+      (is (= {:model_id (mt/user->id :lucky)
+              :user_id  (mt/user->id :rasta)
+              :details  {:id        (mt/user->id :lucky)
+                         :last_name "Charms"}
+              :topic    :user-update
+              :model    "User"}
+             (event :user-update (mt/user->id :lucky)))))))
 
 (deftest user-deactivated-event-test
  (testing :event/user-deactivated
@@ -407,7 +420,7 @@
      (event :user-deactivated (mt/user->id :lucky)))))))
 
 (deftest user-reactivated-event-test
- (testing :event/user-deactivated
+ (testing :event/user-reactivated
   (mt/with-model-cleanup [Activity]
     (let [event {:user-id (mt/user->id :rasta)
                  :details {:id         (mt/user->id :lucky)

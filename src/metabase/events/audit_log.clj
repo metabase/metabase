@@ -78,15 +78,18 @@
   (audit-log/record-event! topic object))
 
 (derive ::user-event ::event)
+(derive :event/user-invited ::user-event)
 (derive :event/user-update ::user-event)
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic object]
-  {:pre [(pos-int? (:user-id object))]}
+  {:pre [(let [id (:user-id object)]
+           (or (nil? id)
+               (pos-int? id)))]}
   (let [{:keys [user-id details]} object]
-   (audit-log/record-event! topic details user-id :model/User (:id details))))
+    (audit-log/record-event! topic details user-id :model/User (:id details))))
 
 (derive ::user-joined-event ::event)
 (derive :event/user-joined ::user-joined-event)
