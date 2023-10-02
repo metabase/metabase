@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Checkbox, Group, Divider, Stack } from "metabase/ui";
+import { Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
+import type { ExcludeValueOption } from "./types";
 import {
   getExcludeOperatorOptions,
   getExcludeOperatorValue,
@@ -128,12 +129,31 @@ function ExcludeValuePicker({
   onChangeValues,
   onBack,
 }: ExcludeValuePickerProps) {
-  const [values] = useState(initialValues);
+  const [values, setValues] = useState(initialValues);
   const isEmpty = values.length === 0;
 
-  const optionGroups = useMemo(() => {
+  const groups = useMemo(() => {
     return getExcludeValueOptionGroups(unit);
   }, [unit]);
+
+  const handleToggleAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setValues([]);
+    } else {
+      setValues(groups.flatMap(groups => groups.map(({ value }) => value)));
+    }
+  };
+
+  const handleToggleOption = (
+    option: ExcludeValueOption,
+    isChecked: boolean,
+  ) => {
+    if (isChecked) {
+      setValues(values.filter(value => value !== option.value));
+    } else {
+      setValues([...values, option.value]);
+    }
+  };
 
   const handleSubmit = () => {
     onChangeValues(values);
@@ -146,16 +166,20 @@ function ExcludeValuePicker({
       <Checkbox
         checked={isEmpty}
         label={isEmpty ? t`Select none…` : t`Select all…`}
+        onChange={event => handleToggleAll(event.target.checked)}
       />
       <Divider />
       <Group>
-        {optionGroups.map((group, groupIndex) => (
+        {groups.map((group, groupIndex) => (
           <Stack key={groupIndex}>
             {group.map((option, optionIndex) => (
               <Checkbox
                 key={optionIndex}
                 label={option.label}
                 checked={!values.includes(option.value)}
+                onChange={event =>
+                  handleToggleOption(option, event.target.checked)
+                }
               />
             ))}
           </Stack>
