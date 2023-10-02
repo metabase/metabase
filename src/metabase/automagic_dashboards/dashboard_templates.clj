@@ -3,6 +3,8 @@
   (:gen-class)
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.transform :as mtx]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -11,6 +13,7 @@
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.yaml :as yaml]
+   [metabase.util.malli.schema :as ms]
    [schema.coerce :as sc]
    [schema.core :as s]
    [schema.spec.core :as spec])
@@ -23,19 +26,21 @@
   "Maximal (and default) value for heuristics scores."
   100)
 
-(def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (deferred-trs "0 <= score <= {0}" max-score)))
+(def ^:private Score [:int {:min 0 :max 100}])
 
-(def ^:private MBQL [s/Any])
+(def ^:private MBQL [:sequential :any])
 
-(def ^:private Identifier s/Str)
+(def ^:private Identifier :string)
 
-(def ^:private Metric {Identifier {(s/required-key :metric) MBQL
-                                   (s/required-key :score)  Score
-                                   (s/optional-key :name)   LocalizedString}})
+(def ^:private Metric [:map-of Identifier [:map {:closed true}
+                                           [:metric MBQL]
+                                           [:score Score]
+                                           [:name {:optional true} LocalizedString]]])
 
-(def ^:private Filter {Identifier {(s/required-key :filter) MBQL
-                                   (s/required-key :score)  Score}})
+(def ^:private Filter
+ [:map-of Identifier [:map {:closed true}
+                           [:filter MBQL]
+                           [:score Score]]])
 
 (defn ga-dimension?
   "Does string `t` denote a Google Analytics dimension?"
@@ -68,53 +73,63 @@
   [t]
   (isa? t :entity/*))
 
-(def ^:private TableType (s/constrained s/Keyword table-type?))
-(def ^:private FieldType (s/cond-pre (s/constrained s/Str ga-dimension?)
-                                     (s/constrained s/Keyword field-type?)))
+(def ^:private TableType [:and :keyword table-type?])
+(def ^:private FieldType [:or
+                          [:and :string ga-dimension?]
+                          [:keyword field-type?]])
 
-(def ^:private AppliesTo (s/either [FieldType]
-                                   [TableType]
-                                   [(s/one TableType "table") FieldType]))
+(def ^:private AppliesTo
+  [:or
+   [:sequential FieldType]
+   [:sequential TableType]
+   [:tuple TableType FieldType]])
 
-(def ^:private Dimension {Identifier {(s/required-key :field_type)      AppliesTo
-                                      (s/required-key :score)           Score
-                                      (s/optional-key :links_to)        TableType
-                                      (s/optional-key :named)           s/Str
-                                      (s/optional-key :max_cardinality) s/Int}})
+(def ^:private Dimension
+  [:map-of Identifier [:map {:closed true}
+                       [:field_type                       AppliesTo]
+                       [:score                            Score]
+                       [:links_to        {:optional true} TableType]
+                       [:named           {:optional true} :string]
+                       [:max_cardinality {:optional true} :int]]])
 
-(def ^:private OrderByPair {Identifier (s/enum "descending" "ascending")})
 
-(def ^:private Visualization [(s/one s/Str "visualization") su/Map])
+(def ^:private OrderByPair [:map-of Identifier [:enum "descending" "ascending"]])
 
-(def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (deferred-trs "1 <= width <= {0}" populate/grid-width)))
-(def ^:private Height (s/constrained s/Int pos?))
+(def ^:private Visualization [:sequential [:tuple :string :map]])
 
-(def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
+(def ^:private Width  [:int
+                       {:min 1 :max populate/grid-width}])
+
+(def ^:private Height [:and :int pos?])
+
+(def ^:private CardDimension [:map-of Identifier [:map {:closed true}
+                                                  [:aggregation {:optional true} :string]]])
 
 (def ^:private Card
-  {Identifier {(s/required-key :title)         LocalizedString
-               (s/required-key :score)         Score
-               (s/optional-key :visualization) Visualization
-               (s/optional-key :text)          LocalizedString
-               (s/optional-key :dimensions)    [CardDimension]
-               (s/optional-key :filters)       [s/Str]
-               (s/optional-key :metrics)       [s/Str]
-               (s/optional-key :limit)         su/IntGreaterThanZero
-               (s/optional-key :order_by)      [OrderByPair]
-               (s/optional-key :description)   LocalizedString
-               (s/optional-key :query)         s/Str
-               (s/optional-key :width)         Width
-               (s/optional-key :height)        Height
-               (s/optional-key :group)         s/Str
-               (s/optional-key :y_label)       LocalizedString
-               (s/optional-key :x_label)       LocalizedString
-               (s/optional-key :series_labels) [LocalizedString]}})
+  [:map-of Identifier [:map {:closed true}
+                       [:title         LocalizedString]
+                       [:score         Score]
+                       [:visualization {:optional true}  Visualization]
+                       [:text {:optional true}           LocalizedString]
+                       [:dimensions {:optional true}     [:sequential CardDimension]]
+                       [:filters {:optional true}        [:sequential :string]]
+                       [:metrics {:optional true}        [:sequential :string]]
+                       [:limit {:optional true}          su/IntGreaterThanZero]
+                       [:order_by {:optional true}       [:sequential OrderByPair]]
+                       [:description {:optional true}    LocalizedString]
+                       [:query {:optional true}          :string]
+                       [:width {:optional true}          Width]
+                       [:height {:optional true}         Height]
+                       [:group {:optional true}          :string]
+                       [:y_label {:optional true}        LocalizedString]
+                       [:x_label {:optional true}        LocalizedString]
+                       [:series_labels {:optional true}  [:sequential LocalizedString]]]])
 
 (def ^:private Groups
-  {Identifier {(s/required-key :title)            LocalizedString
-               (s/optional-key :comparison_title) LocalizedString
-               (s/optional-key :description)      LocalizedString}})
+  [:map-of Identifier [:map {:closed true}
+                       [:title            LocalizedString]
+                       [:comparison_title {:optional true}  LocalizedString]
+                       [:description {:optional true}       LocalizedString]]])
 
 (def ^{:arglists '([definition])} identifier
   "Return `key` in `{key {}}`."
@@ -128,14 +143,14 @@
   (mapcat (comp k val first) cards))
 
 (def ^:private DimensionForm
-  [(s/one (s/constrained (s/cond-pre s/Str s/Keyword) (comp #{:dimension} qp.util/normalize-token))
-          "dimension")
-   (s/one s/Str "identifier")
-   su/Map])
+  [:tuple
+   [:and [:or :string :keyword] [:fn (comp #{:dimension} qp.util/normalize-token)]]
+   :string
+   :map])
 
 (def ^{:arglists '([form])} dimension-form?
   "Does form denote a dimension reference?"
-  (complement (s/checker DimensionForm)))
+  (mc/validator DimensionForm))
 
 (defn collect-dimensions
   "Return all dimension references in form."
