@@ -26,7 +26,7 @@ import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
   setupCardDataset,
-  setupCardEndpoints,
+  setupCardsEndpoints,
   setupCardQueryEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -215,7 +215,7 @@ const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   if (isSavedCard(card)) {
-    setupCardEndpoints(card);
+    setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
