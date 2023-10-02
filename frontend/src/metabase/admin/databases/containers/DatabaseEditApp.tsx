@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
+import { withRouter } from "react-router";
+import type { Route } from "react-router";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -16,6 +18,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { getSetting } from "metabase/selectors/settings";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -26,7 +29,6 @@ import type {
   DatabaseId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -73,6 +75,7 @@ interface DatabaseEditAppProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
+  route: Route;
 }
 
 const mapStateToProps = (state: State) => {
@@ -124,14 +127,13 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     initializeDatabase,
     params,
     saveDatabase,
+    route,
   } = props;
 
   const editingExistingDatabase = database?.id != null;
   const addingNewDatabase = !editingExistingDatabase;
 
   const [isDirty, setIsDirty] = useState(false);
-
-  useBeforeUnload(isDirty);
 
   useMount(async () => {
     await reset();
@@ -195,6 +197,8 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           />
         )}
       </DatabaseEditMain>
+
+      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
     </DatabaseEditRoot>
   );
 }
@@ -215,4 +219,5 @@ export default _.compose(
   title(
     ({ database }: { database: DatabaseData }) => database && database.name,
   ),
+  withRouter,
 )(DatabaseEditApp);
