@@ -1,6 +1,10 @@
 import _ from "underscore";
 import moment from "moment-timezone";
-import type { DatePickerExtractionUnit, DatePickerOperator } from "../types";
+import type {
+  DatePickerExtractionUnit,
+  DatePickerOperator,
+  ExcludeDatePickerValue,
+} from "../types";
 import { EXCLUDE_UNIT_OPTIONS, EXCLUDE_OPERATOR_OPTIONS } from "./constants";
 import type {
   ExcludeOperatorOption,
@@ -68,4 +72,26 @@ function getExcludeMonthOption(month: number): ExcludeValueOption {
 function getExcludeQuarterOption(quarter: number): ExcludeValueOption {
   const date = moment().quarter(quarter);
   return { value: quarter, label: date.format("Qo") };
+}
+
+export function getExcludeOperatorValue(
+  operator: DatePickerOperator,
+): ExcludeDatePickerValue {
+  return {
+    type: "exclude",
+    operator,
+    values: [],
+  };
+}
+
+export function getExcludeUnitValue(
+  unit: DatePickerExtractionUnit,
+  values: number[],
+): ExcludeDatePickerValue {
+  return {
+    type: "exclude",
+    operator: "!=",
+    unit,
+    values,
+  };
 }
