@@ -61,6 +61,11 @@ describe("metabase/parameters/utils/formatting", () => {
         expected: "Past 30 Days",
       },
       {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
         type: "number/=",
         value: 123456789,
         expected: "123,456,789",
