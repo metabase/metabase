@@ -43,7 +43,7 @@ export function getExcludeValueOptionGroups(
         _.range(12, 24).map(getExcludeHourOption),
       ];
     case "day-of-week":
-      return [_.range(0, 7).map(getExcludeDayOption)];
+      return [_.range(1, 8).map(getExcludeDayOption)];
     case "month-of-year":
       return [
         _.range(0, 6).map(getExcludeMonthOption),
@@ -61,7 +61,7 @@ function getExcludeHourOption(hour: number): ExcludeValueOption {
 
 function getExcludeDayOption(day: number): ExcludeValueOption {
   const date = moment().isoWeekday(day);
-  return { value: day, label: date.format("ddd") };
+  return { value: day, label: date.format("dddd") };
 }
 
 function getExcludeMonthOption(month: number): ExcludeValueOption {

@@ -87,11 +87,7 @@ export function ExcludeOptionPicker({
       {unitOptions.length > 0 && (
         <Stack>
           {unitOptions.map((option, index) => (
-            <Button
-              variant="subtle"
-              key={index}
-              onClick={() => onChangeUnit(option.unit)}
-            >
+            <Button key={index} onClick={() => onChangeUnit(option.unit)}>
               {option.label}
             </Button>
           ))}
@@ -102,7 +98,6 @@ export function ExcludeOptionPicker({
         <Stack>
           {operatorOptions.map((option, index) => (
             <Button
-              variant="subtle"
               key={index}
               onClick={() => onChangeOperator(option.operator)}
             >
@@ -139,10 +134,10 @@ function ExcludeValuePicker({
 
   return (
     <Stack>
-      <Divider />
-      <Checkbox checked={isEmpty}>
-        {isEmpty ? t`Select none…` : t`Select all…`}
-      </Checkbox>
+      <Checkbox
+        checked={isEmpty}
+        label={isEmpty ? t`Select none…` : t`Select all…`}
+      />
       <Divider />
       <Group>
         {optionGroups.map((group, groupIndex) => (
@@ -150,10 +145,9 @@ function ExcludeValuePicker({
             {group.map((option, optionIndex) => (
               <Checkbox
                 key={optionIndex}
+                label={option.label}
                 checked={!values.includes(option.value)}
-              >
-                {option.label}
-              </Checkbox>
+              />
             ))}
           </Stack>
         ))}
