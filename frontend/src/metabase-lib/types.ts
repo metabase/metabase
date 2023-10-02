@@ -1,12 +1,4 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type {
-  BOOLEAN_FILTER_OPERATORS,
-  EXCLUDE_DATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
-  TIME_FILTER_OPERATORS,
-} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -171,7 +163,8 @@ export type ExpressionOperatorName =
   | "ends-with"
   | "interval"
   | "time-interval"
-  | "relative-datetime";
+  | "relative-datetime"
+  | "inside";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -189,12 +182,26 @@ export type ExpressionOptions = {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
-export type FilterOperatorName =
-  | StringFilterOperatorName
-  | NumberFilterOperatorName
-  | BooleanFilterOperatorName
-  | ExcludeDateFilterOperatorName
-  | TimeFilterOperatorName;
+export type FilterOperatorName = Extract<
+  ExpressionOperatorName,
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with"
+  | "time-interval"
+  | "inside"
+>;
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -211,10 +218,21 @@ export type FilterParts =
   | ExcludeDateFilterParts
   | TimeFilterParts;
 
-export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+export type DateParts = {
+  year: number;
+  month: number; // 0-11 (January-December)
+  date: number;
+};
+
+export type TimeParts = {
+  hour: number;
+  minute: number;
+};
+
+export type DateTimeParts = DateParts & Partial<TimeParts>;
 
 export type StringFilterParts = {
-  operator: StringFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -224,37 +242,37 @@ export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
-export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
-
 export type NumberFilterParts = {
-  operator: NumberFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
-export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+export type CoordinateFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  longitudeColumn?: ColumnMetadata;
+  values: number[];
+};
 
 export type BooleanFilterParts = {
-  operator: BooleanFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
 
-export type SpecificDateFilterOperatorName =
-  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
-
 export type SpecificDateFilterParts = {
-  operator: SpecificDateFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
-  values: string[]; // yyyy-MM-dd or yyyy-MM-ddTHH:mm:ss
+  values: DateParts[];
 };
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  value: number | "current";
   bucket: BucketName;
-  offsetValue?: number;
+  value: number | "current";
   offsetBucket?: BucketName;
+  offsetValue?: number;
   options: RelativeDateFilterOptions;
 };
 
@@ -262,29 +280,24 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
-export type ExcludeDateFilterOperatorName =
-  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
-
 /*
  * values depend on the bucket
  * day-of-week => 1-7 (Monday-Sunday)
- * month-of-year => 1-12 (January-December)
+ * month-of-year => 0-11 (January-December)
  * quarter-of-year => 1-4
  * hour-of-day => 0-23
  */
 export type ExcludeDateFilterParts = {
-  operator: ExcludeDateFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
+  bucket: Bucket;
   values: number[];
-  bucket: BucketName;
 };
 
-export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
-
 export type TimeFilterParts = {
-  operator: TimeFilterOperatorName;
+  operator: FilterOperator;
   column: ColumnMetadata;
-  values: string[]; // ISO 8601 date with time
+  values: TimeParts[];
 };
 
 declare const Join: unique symbol;
@@ -305,7 +318,7 @@ export type JoinConditionOperatorDisplayInfo = {
 };
 
 declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof Join };
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
 
 export type JoinStrategyDisplayInfo = {
   displayName: string;

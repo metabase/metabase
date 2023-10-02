@@ -7,39 +7,14 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import type { FilterPickerWidgetProps } from "./types";
 
-type OptionType = "true" | "false" | "empty" | "not-empty";
+type OptionType = Lib.FilterOperatorName | "true" | "false";
 
 type Option = {
   name: string;
   type: OptionType;
-  operator: Lib.FilterOperatorName;
+  operator: Lib.FilterOperator;
   isAdvanced?: boolean;
 };
-
-const OPTIONS: Option[] = [
-  {
-    name: t`True`,
-    type: "true",
-    operator: "=",
-  },
-  {
-    name: t`False`,
-    type: "false",
-    operator: "=",
-  },
-  {
-    name: t`Empty`,
-    type: "empty",
-    operator: "is-null",
-    isAdvanced: true,
-  },
-  {
-    name: t`Not empty`,
-    type: "not-empty",
-    operator: "not-null",
-    isAdvanced: true,
-  },
-];
 
 export function BooleanFilterPicker({
   query,
@@ -74,7 +49,10 @@ export function BooleanFilterPicker({
   };
 
   const handleSubmit = () => {
-    onChange(getFilterClause(column, optionType));
+    const option = options.find(option => option.type === optionType);
+    if (option) {
+      onChange(getFilterClause(query, stageIndex, column, option));
+    }
   };
 
   return (
@@ -116,10 +94,24 @@ function getOptions(
   column: Lib.ColumnMetadata,
 ): Option[] {
   const operators = Lib.filterableColumnOperators(column);
-  const operatorNames = operators.map(
-    operator => Lib.displayInfo(query, stageIndex, operator).shortName,
-  );
-  return OPTIONS.filter(option => operatorNames.includes(option.operator));
+  return operators.flatMap((operator): Option[] => {
+    const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
+    if (operatorInfo.shortName === "=") {
+      return [
+        { operator, name: t`True`, type: "true" },
+        { operator, name: t`False`, type: "false" },
+      ];
+    } else {
+      return [
+        {
+          operator,
+          name: operatorInfo.displayName,
+          type: operatorInfo.shortName,
+          isAdvanced: true,
+        },
+      ];
+    }
+  });
 }
 
 function getOptionType(
@@ -136,42 +128,36 @@ function getOptionType(
     return "true";
   }
 
-  switch (filterParts.operator) {
-    case "=":
-      return filterParts.values[0] ? "true" : "false";
-    case "is-null":
-      return "empty";
-    case "not-null":
-      return "not-empty";
+  const operatorInfo = Lib.displayInfo(query, stageIndex, filterParts.operator);
+  if (operatorInfo.shortName === "=") {
+    return filterParts.values[0] ? "true" : "false";
+  } else {
+    return operatorInfo.shortName;
   }
 }
 
 function getFilterClause(
+  query: Lib.Query,
+  stageIndex: number,
   column: Lib.ColumnMetadata,
-  filterType: OptionType,
+  { type, operator }: Option,
 ): Lib.ExpressionClause {
-  switch (filterType) {
+  switch (type) {
     case "true":
-      return Lib.booleanFilterClause({
-        operator: "=",
+      return Lib.booleanFilterClause(query, stageIndex, {
+        operator,
         column,
         values: [true],
       });
     case "false":
-      return Lib.booleanFilterClause({
-        operator: "=",
+      return Lib.booleanFilterClause(query, stageIndex, {
+        operator,
         column,
         values: [false],
       });
-    case "empty":
-      return Lib.booleanFilterClause({
-        operator: "is-null",
-        column,
-        values: [],
-      });
-    case "not-empty":
-      return Lib.booleanFilterClause({
-        operator: "not-null",
+    default:
+      return Lib.booleanFilterClause(query, stageIndex, {
+        operator,
         column,
         values: [],
       });
