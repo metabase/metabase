@@ -19,3 +19,5 @@ export interface ExcludeDatePickerValue {
   unit?: DatePickerExtractionUnit;
   values: number[];
 }
+
+export type DatePickerValue = ExcludeDatePickerValue;
