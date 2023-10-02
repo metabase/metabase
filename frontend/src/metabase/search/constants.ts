@@ -4,6 +4,7 @@ export const SearchFilterKeys = {
   Type: "type",
   Verified: "verified",
   CreatedBy: "created_by",
+  LastEditedBy: "last_edited_by",
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModelType[] = [

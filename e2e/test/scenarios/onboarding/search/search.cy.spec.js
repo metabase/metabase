@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   createAction,
   describeEE,
@@ -6,11 +5,13 @@ import {
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  modal,
   popover,
   resetSnowplow,
   restore,
   setActionsEnabledForDB,
   setTokenFeatures,
+  summarize,
 } from "e2e/support/helpers";
 import {
   NORMAL_USER_ID,
@@ -59,7 +60,11 @@ const typeFilters = [
 ];
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
-const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
+const TEST_QUESTION = {
+  name: `Robert's Question`,
+  query: { "source-table": ORDERS_ID, limit: 1 },
+  collection_id: null,
+};
 
 describe("scenarios > search", () => {
   beforeEach(() => {
@@ -276,12 +281,10 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
-        // create a bunch of questions from a normal user, then we can query the question
+        // create a question from a normal user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
-        for (const question of TEST_QUESTIONS) {
-          cy.createQuestion(question);
-        }
+        cy.createQuestion(TEST_QUESTION);
         cy.signOut();
 
         cy.signInAsAdmin();
@@ -290,18 +293,18 @@ describe("scenarios > search", () => {
       it("should hydrate created_by filter", () => {
         cy.intercept("GET", "/api/user").as("getUsers");
 
-        cy.request("GET", "/api/user/current").then(
-          ({ body: { common_name, id } }) => {
-            cy.visit(`/search?q=orders&created_by=${id}`);
+        cy.visit(`/search?q=orders&created_by=${NORMAL_USER_ID}`);
 
-            cy.wait("@search");
-            cy.wait("@getUsers");
+        cy.wait("@search");
 
-            cy.findByTestId("created_by-search-filter").within(() => {
-              cy.findByText(common_name).should("exist");
-              cy.findByLabelText("close icon").should("exist");
-            });
-          },
+        cy.findByTestId("created_by-search-filter").within(() => {
+          cy.findByText("Robert Tableton").should("exist");
+          cy.findByLabelText("close icon").should("exist");
+        });
+
+        cy.findByTestId("search-result-item-name").should(
+          "contain.text",
+          TEST_QUESTION.name,
         );
 
         // TODO: Add more assertions for search results when we redesign the search result elements to include users.
@@ -321,9 +324,10 @@ describe("scenarios > search", () => {
         });
         cy.url().should("contain", "created_by");
 
-        cy.findAllByTestId("search-result-item").each(result => {
-          cy.wrap(result).should("contain.text", "Robert's Question");
-        });
+        cy.findByTestId("search-result-item-name").should(
+          "contain.text",
+          "Robert's Question",
+        );
       });
 
       it("should remove created_by filter when `X` is clicked on filter", () => {
@@ -336,12 +340,95 @@ describe("scenarios > search", () => {
 
         // Check that we're getting elements from other users by checking for other types,
         // since all assets, for the user we're querying are questions
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultLabel => {
+            const uniqueLabels = new Set(
+              $searchResultLabel.toArray().map(el => el.textContent),
             );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+            expect(uniqueLabels.size).to.be.greaterThan(1);
+            expect(uniqueLabels).to.include(TEST_QUESTION.name);
+          },
+        );
+      });
+    });
+
+    describe("last_edited_by filter", () => {
+      beforeEach(() => {
+        // create a question from an admin user, then have a normal user edit it.
+        // then, we'll check that the last editor is the normal user, from the admin view
+        cy.signInAsAdmin();
+        cy.createQuestion(TEST_QUESTION).then(
+          ({ body: { id: questionId } }) => {
+            cy.signOut();
+            cy.signInAsNormalUser();
+            cy.visit(`/question/${questionId}`);
+            summarize();
+            cy.findByTestId("sidebar-right").findByText("Done").click();
+            cy.findByTestId("qb-header-action-panel")
+              .findByText("Save")
+              .click();
+            modal().findByText("Save").click();
+            cy.signOut();
+            cy.signInAsAdmin();
+          },
+        );
+      });
+
+      it("should hydrate last_edited_by filter", () => {
+        cy.intercept("GET", "/api/user").as("getUsers");
+
+        cy.visit(`/search?q=q&last_edited_by=${NORMAL_USER_ID}`);
+
+        cy.wait("@search");
+
+        cy.findByTestId("last_edited_by-search-filter").within(() => {
+          cy.findByText("Robert Tableton").should("exist");
+          cy.findByLabelText("close icon").should("exist");
+        });
+
+        cy.findByTestId("search-result-item-name").should(
+          "contain.text",
+          TEST_QUESTION.name,
+        );
+      });
+
+      it("should filter results by the last_edited user", () => {
+        cy.visit("/");
+
+        getSearchBar().clear().type("e{enter}");
+        cy.wait("@search");
+
+        cy.findByTestId("last_edited_by-search-filter").click();
+
+        popover().within(() => {
+          cy.findByText("Robert Tableton").click();
+          cy.findByText("Apply filters").click();
+        });
+        cy.url().should("contain", "last_edited_by");
+
+        cy.findByTestId("search-result-item-name").should(
+          "contain.text",
+          TEST_QUESTION.name,
+        );
+      });
+
+      it("should remove last_edited_by filter when `X` is clicked on filter", () => {
+        cy.visit(`/search?q=e&created_by=${NORMAL_USER_ID}`);
+
+        cy.findByTestId("created_by-search-filter").within(() => {
+          cy.findByText("Robert Tableton").should("exist");
+          cy.findByLabelText("close icon").click();
+        });
+
+        // Check that we're getting elements from other users by checking for other types,
+        // since all assets, for the user we're querying are questions
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultLabel => {
+            const uniqueLabels = new Set(
+              $searchResultLabel.toArray().map(el => el.textContent),
+            );
+            expect(uniqueLabels.size).to.be.greaterThan(1);
+            expect(uniqueLabels).to.include(TEST_QUESTION.name);
           },
         );
       });
@@ -452,12 +539,4 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
-}
-
-function generateQuestions(prefix, count) {
-  return _.range(count).map(idx => ({
-    name: `${prefix} ${idx + 1}`,
-    query: { "source-table": ORDERS_ID },
-    collection_id: null,
-  }));
 }
