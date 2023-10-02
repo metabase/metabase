@@ -4,6 +4,11 @@ import { Route } from "metabase/hoc/Title";
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
+import {
+  setupDatabasesEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets/sample_database";
 
 const setup = () => {
   renderWithProviders(
@@ -20,6 +25,11 @@ const setup = () => {
 };
 
 describe("SegmentForm", () => {
+  beforeEach(() => {
+    setupDatabasesEndpoints([createSampleDatabase()]);
+    setupSearchEndpoints([]);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });

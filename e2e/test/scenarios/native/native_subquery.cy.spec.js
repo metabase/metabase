@@ -7,6 +7,7 @@ import {
   runNativeQuery,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
@@ -279,7 +280,7 @@ describe("scenarios > question > native subquery", () => {
     const questionDetails = {
       name: "Nested GUI question",
       query: {
-        "source-table": "card__1",
+        "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
     };

@@ -8,6 +8,7 @@
    :exclude
    [filter])
   (:require
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -28,11 +29,11 @@
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
-;; TODO: This pattern of "re-export some function and slap a `clj->js` at the end" is going to keep appearing.
-;; Generalize the machinery in `metabase.domain-entities.malli` to handle this case, so we get schema-powered automatic
-;; conversion for incoming args and outgoing return values. I'm imagining something like
-;; `(mu/js-export lib.core/recognize-template-tags)` where that function has a Malli schema and it works like
-;; `metabase.shared.util.namespaces/import-fn` plus wrapping it with conversion for all args and the return value.
+(defn- convert-js-template-tags [tags]
+  (update-vals (js->clj tags) #(-> %
+                                   (update-keys keyword)
+                                   (update :type keyword))))
+
 (defn ^:export extract-template-tags
   "Extract the template tags from a native query's text.
 
@@ -48,10 +49,9 @@
   Invalid patterns are simply ignored, so something like `{{&foo!}}` is just disregarded."
   ([query-text] (extract-template-tags query-text {}))
   ([query-text existing-tags]
-   (->> existing-tags
-        lib.core/->TemplateTags
+   (->> (convert-js-template-tags existing-tags)
         (lib.core/extract-template-tags query-text)
-        lib.core/TemplateTags->)))
+        clj->js)))
 
 (defn ^:export suggestedName
   "Return a nice description of a query."
@@ -387,14 +387,29 @@
   [a-query stage-number a-filter-clause]
   (lib.core/filter-operator a-query stage-number a-filter-clause))
 
-(defn ^:export filter-parts
-  "Returns the parts (operator, args, and optionally, options) of `filter-clause`."
-  [a-query stage-number a-filter-clause]
-  (let [{:keys [operator options column args]} (lib.core/filter-parts a-query stage-number a-filter-clause)]
-    #js {:operator operator
-         :options (clj->js (select-keys options [:case-sensitive :include-current]))
-         :column column
-         :args (to-array args)}))
+(defn ^:export expression-clause
+  "Returns a standalone clause for an `operator`, `options`, and arguments."
+  [an-operator options args]
+  (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
+
+(defn ^:export expression-parts
+  "Returns the parts (operator, args, and optionally, options) of `expression-clause`."
+  [a-query stage-number an-expression-clause]
+  (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
+    (walk/postwalk
+      (fn [node]
+        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
+          (let [{:keys [operator options args]} node]
+            #js {:operator (name operator)
+                 :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
+          node))
+      parts)))
+
+(defn ^:export is-column-metadata
+  "Returns true if arg is a a ColumnMetadata"
+  [arg]
+  (and (map? arg) (= :metadata/column (:lib/type arg))))
 
 (defn ^:export filter
   "Sets `boolean-expression` as a filter on `query`."
@@ -488,8 +503,7 @@
   (let [stage          (lib.util/query-stage a-query stage-number)
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns
-                a-query stage-number vis-columns ret-columns {:keep-join? true}))))
+    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
@@ -510,11 +524,13 @@
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
-    (if (.-field_ref legacy-column)
-      ;; Prefer the attached field_ref if provided.
-      (legacy-ref->pMBQL (.-field_ref legacy-column))
-      ;; Fall back to converting like metadata.
-      (js.metadata/parse-column legacy-column))
+    ;; Convert legacy columns like we do for metadata.
+    (let [parsed (js.metadata/parse-column legacy-column)]
+      (if (= (:lib/source parsed) :source/aggregations)
+        ;; Special case: Aggregations need to be converted to a pMBQL :aggregation ref and :lib/source-uuid set.
+        (let [agg-ref (legacy-ref->pMBQL (.-field_ref legacy-column))]
+          (assoc parsed :lib/source-uuid (last agg-ref)))
+        parsed))
     ;; It's already a :metadata/column map
     column))
 
@@ -723,7 +739,7 @@
 (defn ^:export with-template-tags
   "Updates the native query's template tags."
   [a-query tags]
-  (lib.core/with-template-tags a-query (lib.core/->TemplateTags tags)))
+  (lib.core/with-template-tags a-query (convert-js-template-tags tags)))
 
 (defn ^:export raw-native-query
   "Returns the native query string"
@@ -733,7 +749,7 @@
 (defn ^:export template-tags
   "Returns the native query's template tags"
   [a-query]
-  (lib.core/TemplateTags-> (lib.core/template-tags a-query)))
+  (clj->js (lib.core/template-tags a-query)))
 
 (defn ^:export required-native-extras
   "Returns the extra keys that are required for this database's native queries, for example `:collection` name is
@@ -768,6 +784,12 @@
   "Returns the extra keys for native queries associated with this query."
   [a-query]
   (clj->js (lib.core/native-extras a-query)))
+
+(defn ^:export engine
+  "Returns the database engine.
+   Must be a native query"
+  [a-query]
+  (name (lib.core/engine a-query)))
 
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment

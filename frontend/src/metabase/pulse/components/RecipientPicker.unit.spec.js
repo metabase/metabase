@@ -22,6 +22,7 @@ describe("recipient picker", () => {
           users={TEST_USERS}
           isNewPulse={true}
           onRecipientsChange={() => alert("why?")}
+          invalidRecipientText={() => {}}
         />,
       );
       // Popover with all names should be open on focus
@@ -35,6 +36,7 @@ describe("recipient picker", () => {
           users={TEST_USERS}
           isNewPulse={true}
           onRecipientsChange={() => alert("why?")}
+          invalidRecipientText={() => {}}
         />,
       );
       // Now only the recipient name should be visible

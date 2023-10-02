@@ -7,6 +7,8 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 describeEE("issue 30235", function () {
   beforeEach(() => {
     restore();
@@ -19,7 +21,7 @@ describeEE("issue 30235", function () {
 
     cy.createCollection({
       name: COLLECTION_NAME,
-      parent_id: 1,
+      parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: { id } }) => {
       cy.visit(`/collection/${id}`);
 

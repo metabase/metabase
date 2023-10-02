@@ -207,7 +207,7 @@
     (let [mlv2-metadatas (for [col source-metadata]
                            (lib.card/->card-metadata-column (qp.store/metadata-provider) col))]
       (or
-       (lib.equality/closest-matching-metadata
+       (lib.equality/find-matching-column
         [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
         mlv2-metadatas)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
