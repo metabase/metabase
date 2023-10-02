@@ -681,6 +681,59 @@ describe("QueryBuilder", () => {
           ),
         ).not.toBeInTheDocument();
       });
+
+      it("does not show custom warning modal when saving edited question as a new one", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/home",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("mock-native-query-editor"),
+          ).toBeInTheDocument();
+        });
+
+        const inputArea = within(
+          screen.getByTestId("mock-native-query-editor"),
+        ).getByRole("textbox");
+
+        userEvent.click(inputArea);
+        userEvent.type(inputArea, "0");
+        userEvent.tab();
+
+        userEvent.click(screen.getByText("Save"));
+
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        userEvent.click(
+          within(saveQuestionModal).getByText("Save as new question"),
+        );
+        userEvent.type(
+          within(saveQuestionModal).getByPlaceholderText(
+            "What is the name of your question?",
+          ),
+          "New question",
+        );
+        expect(screen.getByTestId("save-question-modal")).toBeInTheDocument();
+        userEvent.click(
+          within(saveQuestionModal).getByRole("button", { name: "Save" }),
+        );
+
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("save-question-modal"),
+        );
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
