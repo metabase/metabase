@@ -226,6 +226,7 @@ export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
   displayName: string;
+  longDisplayName: string;
   default?: boolean;
 };
 
