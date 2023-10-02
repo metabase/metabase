@@ -80,10 +80,3 @@ export const StatusIcon = styled(Icon)`
   width: ${getIconSize};
   height: ${getIconSize};
 `;
-
-export const StatusSpinner = styled(LoadingSpinner)`
-  position: absolute;
-  top: 0;
-  left: 0;
-  color: ${color("brand")};
-`;

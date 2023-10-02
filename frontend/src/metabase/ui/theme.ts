@@ -43,6 +43,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ]),
     success: getThemeColors([color("success")]),
     error: getThemeColors([color("error")]),
+    accent4: getThemeColors([color("accent4")]),
   },
   primaryColor: "brand",
   primaryShade: 1,

@@ -1,5 +1,7 @@
 import styled from "@emotion/styled";
 import { keyframes } from "@emotion/react";
+import { Loader } from "metabase/ui";
+import type { LoaderProps } from "@mantine/core";
 
 const spinnerAnimation = keyframes`
   from {
@@ -49,3 +51,5 @@ export const SpinnerIcon = styled.div<SpinnerIconProps>`
     left: ${props => `-${props.borderWidth}px`};
   }
 `;
+
+export const StyledLoader = styled(Loader)<LoaderProps>``;

@@ -75,14 +75,12 @@ export const StatusCardDescription = styled.div`
   line-height: 0.8125rem;
   margin-top: 0.25rem;
 `;
-
-export const StatusCardSpinner = styled(LoadingSpinner)`
+styled(LoadingSpinner)`
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${color("brand")};
 `;
-
 interface StatusCardIconContainerProps {
   isError?: boolean;
 }

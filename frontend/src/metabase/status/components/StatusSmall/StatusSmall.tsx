@@ -6,8 +6,8 @@ import {
   StatusIconContainer,
   StatusIcon,
   StatusContainer,
-  StatusSpinner,
 } from "./StatusSmall.styled";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export interface StatusSmallProps {
   status: InitialSyncStatus;
@@ -32,7 +32,9 @@ const StatusSmall = ({
             <StatusIcon status={status} name={icon} />
           </StatusIconContainer>
         </StatusContainer>
-        {hasSpinner && <StatusSpinner size={48} />}
+        {hasSpinner && (
+          <LoadingSpinner top={0} left={0} pos="absolute" size={48} />
+        )}
       </StatusRoot>
     </Tooltip>
   );

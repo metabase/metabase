@@ -1,3 +1,4 @@
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
@@ -8,7 +9,6 @@ import {
   StatusCardBody,
   StatusCardTitle,
   StatusCardDescription,
-  StatusCardSpinner,
   StatusCardIconContainer,
   StatusRoot,
   StatusHeader,
@@ -98,7 +98,7 @@ const StatusCard = ({
         </StatusCardTitle>
         <StatusCardDescription>{description}</StatusCardDescription>
       </StatusCardBody>
-      {isInProgress && <StatusCardSpinner size={24} borderWidth={3} />}
+      {isInProgress && <LoadingSpinner c="brand.1" size={24} />}
       {isCompleted && (
         <StatusCardIconContainer>
           <Icon name="check" size={12} />

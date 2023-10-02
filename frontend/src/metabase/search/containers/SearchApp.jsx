@@ -30,6 +30,7 @@ import {
   SearchMain,
   SearchRoot,
 } from "./SearchApp.styled";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export default function SearchApp({ location }) {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
@@ -78,47 +79,49 @@ export default function SearchApp({ location }) {
           <Subhead>{jt`Results for "${searchText}"`}</Subhead>
         </SearchHeader>
       )}
-      <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) =>
-          list.length > 0 ? (
-            <SearchBody>
-              <SearchMain>
-                <SearchResultSection items={list} />
-                <Flex justify="flex-end" align="center" my="1rem">
-                  <PaginationControls
-                    showTotal
-                    pageSize={PAGE_SIZE}
-                    page={page}
-                    itemsLength={list.length}
-                    total={metadata.total}
-                    onNextPage={handleNextPage}
-                    onPreviousPage={handlePreviousPage}
-                  />
-                </Flex>
-              </SearchMain>
-              <SearchControls>
-                <TypeSearchSidebar
-                  availableModels={getAvailableModels(
-                    metadata.available_models,
-                  )}
-                  selectedType={selectedSidebarType}
-                  onSelectType={onChangeSelectedType}
-                />
-              </SearchControls>
-            </SearchBody>
-          ) : (
-            <SearchEmptyState>
-              <Card>
-                <EmptyState
-                  title={t`Didn't find anything`}
-                  message={t`There weren't any results for your search.`}
-                  illustrationElement={<img src={NoResults} />}
-                />
-              </Card>
-            </SearchEmptyState>
-          )
-        }
-      </Search.ListLoader>
+      {/*<Search.ListLoader query={query} wrapped>*/}
+      {/*  {({ list, metadata }) =>*/}
+      {/*    list.length > 0 ? (*/}
+      {/*      <SearchBody>*/}
+      {/*        <SearchMain>*/}
+      {/*          <SearchResultSection items={list} />*/}
+      {/*          <Flex justify="flex-end" align="center" my="1rem">*/}
+      {/*            <PaginationControls*/}
+      {/*              showTotal*/}
+      {/*              pageSize={PAGE_SIZE}*/}
+      {/*              page={page}*/}
+      {/*              itemsLength={list.length}*/}
+      {/*              total={metadata.total}*/}
+      {/*              onNextPage={handleNextPage}*/}
+      {/*              onPreviousPage={handlePreviousPage}*/}
+      {/*            />*/}
+      {/*          </Flex>*/}
+      {/*        </SearchMain>*/}
+      {/*        <SearchControls>*/}
+      {/*          <TypeSearchSidebar*/}
+      {/*            availableModels={getAvailableModels(*/}
+      {/*              metadata.available_models,*/}
+      {/*            )}*/}
+      {/*            selectedType={selectedSidebarType}*/}
+      {/*            onSelectType={onChangeSelectedType}*/}
+      {/*          />*/}
+      {/*        </SearchControls>*/}
+      {/*      </SearchBody>*/}
+      {/*    ) : (*/}
+      {/*      <SearchEmptyState>*/}
+      {/*        <Card>*/}
+      {/*          <EmptyState*/}
+      {/*            title={t`Didn't find anything`}*/}
+      {/*            message={t`There weren't any results for your search.`}*/}
+      {/*            illustrationElement={<img src={NoResults} />}*/}
+      {/*          />*/}
+      {/*        </Card>*/}
+      {/*      </SearchEmptyState>*/}
+      {/*    )*/}
+      {/*  }*/}
+      {/*</Search.ListLoader>*/}
+
+      <LoadingSpinner size={64} borderWidth={16} />
     </SearchRoot>
   );
 }

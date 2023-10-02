@@ -1,31 +1,30 @@
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import { Icon } from "metabase/core/components/Icon";
-import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
+import type { LoaderProps } from "metabase/ui";
+import { Center } from "metabase/ui";
+import { StyledLoader, SpinnerRoot } from "./LoadingSpinner.styled";
 
-interface Props {
+type Props = {
   className?: string;
-  size?: number;
   borderWidth?: number;
   "data-testid"?: string;
-}
+} & LoaderProps;
 
 const BaseLoadingSpinner = ({
   className,
   size = 32,
-  borderWidth = 4,
+  color = "brand.1",
   "data-testid": dataTestId,
+  ...loaderProps
 }: Props) => (
-  <SpinnerRoot
-    className={className}
-    data-testid={dataTestId ?? "loading-spinner"}
-  >
+  <Center className={className} data-testid={dataTestId ?? "loading-spinner"}>
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
     ) : (
-      <SpinnerIcon iconSize={size} borderWidth={borderWidth} />
+      <StyledLoader {...loaderProps} c={color} size={size} />
     )}
-  </SpinnerRoot>
+  </Center>
 );
 
 /**

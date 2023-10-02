@@ -47,6 +47,7 @@ import {
   VisualizationActionButtonsContainer,
   VisualizationSlowSpinner,
 } from "./Visualization.styled";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 const defaultProps = {
   errorMessageOverride: undefined,
@@ -407,10 +408,10 @@ class Visualization extends PureComponent {
     const extra = (
       <VisualizationActionButtonsContainer>
         {isSlow && !loading && (
-          <VisualizationSlowSpinner
+          <LoadingSpinner
+            color={isSlow === "usually-slow" ? "accent4.0" : "text.1"}
             className="Visualization-slow-spinner"
             size={18}
-            isUsuallySlow={isSlow === "usually-slow"}
           />
         )}
         {actionButtons}

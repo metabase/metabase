@@ -1,6 +1,4 @@
 import styled from "@emotion/styled";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
 
 export const VisualizationRoot = styled.div`
   display: flex;
@@ -20,11 +18,4 @@ export interface VisualizationSlowSpinnerProps {
 export const VisualizationActionButtonsContainer = styled.span`
   display: flex;
   align-items: center;
-`;
-
-export const VisualizationSlowSpinner = styled(
-  LoadingSpinner,
-)<VisualizationSlowSpinnerProps>`
-  color: ${props =>
-    props.isUsuallySlow ? color("accent4") : color("text-medium")};
 `;
