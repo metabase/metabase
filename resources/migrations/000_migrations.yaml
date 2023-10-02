@@ -15304,7 +15304,7 @@ databaseChangeLog:
             newDataType: varchar(254)
 
   - changeSet:
-      id: v48.00-017
+      id: v48.00-019
       author: nemanjaglumac
       comment: 'Collection color is removed in 0.48.0'
       changes:

@@ -1139,8 +1139,8 @@
                      column_name;"))))))
 
 (deftest remove-collection-color-test
-  (testing "Migration v48.00-017"
-    (impl/test-migrations ["v48.00-017"] [migrate!]
+  (testing "Migration v48.00-019"
+    (impl/test-migrations ["v48.00-019"] [migrate!]
       (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
                                                                                        :slug "amazing_collection"
