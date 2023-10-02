@@ -89,7 +89,7 @@
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (mu/with-api-error-message
-    pos?
+    [:and number? pos?]
     (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
