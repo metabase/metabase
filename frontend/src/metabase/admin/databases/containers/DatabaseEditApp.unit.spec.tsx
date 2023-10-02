@@ -10,8 +10,10 @@ import {
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
+import type { Engine } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockEngineSource,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
@@ -20,7 +22,7 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload"
 import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
-const ENGINES_MOCK = {
+const ENGINES_MOCK: Record<string, Engine> = {
   H2: {
     "details-fields": [
       { "display-name": "Connection String", name: "db", required: true },
@@ -28,6 +30,7 @@ const ENGINES_MOCK = {
     ],
     "driver-name": "H2",
     "superseded-by": null,
+    source: createMockEngineSource(),
   },
   sqlite: {
     "details-fields": [
@@ -36,6 +39,7 @@ const ENGINES_MOCK = {
     ],
     "driver-name": "SQLite",
     "superseded-by": null,
+    source: createMockEngineSource(),
   },
 };
 
