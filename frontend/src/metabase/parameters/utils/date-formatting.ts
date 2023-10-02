@@ -124,7 +124,7 @@ export function formatAllOptionsWidget(urlEncoded: string): string | null {
 
 function parseDateRangeValue(value: string) {
   const [start, end] = (value || "").split(RANGE_SEPARATOR);
-  return { start: moment(start), end: moment(end) };
+  return { start: moment(start, true), end: moment(end, true) };
 }
 
 export function formatRangeWidget(value: string): string | null {
@@ -135,17 +135,17 @@ export function formatRangeWidget(value: string): string | null {
 }
 
 function formatSingleWidget(value: string): string | null {
-  const m = moment(value);
+  const m = moment(value, true);
   return m.isValid() ? m.format("MMMM D, YYYY") : null;
 }
 
 function formatMonthYearWidget(value: string): string | null {
-  const m = moment(value, "YYYY-MM");
+  const m = moment(value, "YYYY-MM", true);
   return m.isValid() ? m.format("MMMM YYYY") : null;
 }
 
 function formatQuarterYearWidget(value: string): string | null {
-  const m = moment(value, "[Q]Q-YYYY");
+  const m = moment(value, "[Q]Q-YYYY", true);
   return m.isValid() ? m.format("[Q]Q YYYY") : null;
 }
 
