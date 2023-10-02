@@ -91,7 +91,6 @@ describe("InlineCategoryPicker", () => {
   );
 
   beforeEach(() => {
-    // mock all requests to field values
     setupFieldValuesGeneralEndpoint();
   });
 
