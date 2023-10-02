@@ -47,6 +47,21 @@ describe("metabase/parameters/utils/formatting", () => {
       },
       {
         type: "date/month-year",
+        value: "2018-01",
+        expected: "January 2018",
+      },
+      {
+        type: "date/quarter-year",
+        value: "Q1-2018",
+        expected: "Q1 2018",
+      },
+      {
+        type: "date/relative",
+        value: "past30days",
+        expected: "Past 30 Days",
+      },
+      {
+        type: "date/month-year",
         value: "thisday",
         expected: "Today",
       },
