@@ -15,9 +15,10 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,16 +57,50 @@
   []
   (*db-fn*))
 
+(defn- make-memoized-test-database-id-fn
+  "Create a function with the signature
+
+    (f driver) => test-data-database-id
+
+  That is memoized for the current application database."
+  []
+  (mdb.connection/memoize-for-application-db
+   (fn [driver]
+     (u/the-id (get-or-create-test-data-db! driver)))))
+
+(def ^:private memoized-test-data-database-id-fn
+  "Atom with a function with the signature
+
+    (f driver) => test-database-database-id"
+  (atom nil))
+
+(defn- reset-memoized-test-data-database-id! []
+  (reset! memoized-test-data-database-id-fn (make-memoized-test-database-id-fn)))
+
+(reset-memoized-test-data-database-id!)
+
+(defn- test-data-database-id []
+  (@memoized-test-data-database-id-fn (tx/driver)))
+
 (def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
-  (let [f (mdb.connection/memoize-for-application-db
-           (fn [driver]
-             (u/the-id (get-or-create-test-data-db! driver))))]
-    (fn []
-      (f (tx/driver)))))
+  #'test-data-database-id)
 
 (mu/defn db-id :- ::lib.schema.id/database
   []
   (*db-id-fn*))
+
+(derive :model/Database ::database.reset-memoized-test-data-database-id-on-delete)
+
+;;; there's no Toucan 2 `define-after-delete` yet, but we can it by adding an after method that runs after transducing
+;;; the query.
+(methodical/defmethod t2.pipeline/transduce-query :after
+  [#_query-type     :toucan.query-type/delete.*
+   #_model          ::database.reset-memoized-test-data-database-id-on-delete
+   #_resolved-query :default]
+  "Clear cached `test-data` Database IDs when Databases are deleted."
+  [_rf _query-type _model _parsed-args result]
+  (reset-memoized-test-data-database-id!)
+  result)
 
 ;;; ID lookup maps look like these:
 ;;;
@@ -316,11 +351,10 @@
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.connection/memoize-for-application-db
                            (fn [driver]
-                             (binding [db/*disable-db-logging* true]
-                               (let [db (get-or-create-database! driver dbdef)]
-                                 (assert db)
-                                 (assert (pos-int? (:id db)))
-                                 db))))
+                             (let [db (get-or-create-database! driver dbdef)]
+                               (assert db)
+                               (assert (pos-int? (:id db)))
+                               db)))
         db-fn             #(get-db-for-driver (tx/driver))]
     (binding [*db-fn*    db-fn
               *db-id-fn* #(u/the-id (db-fn))]

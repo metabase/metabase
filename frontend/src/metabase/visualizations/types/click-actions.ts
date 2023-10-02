@@ -7,6 +7,7 @@ import type {
   DatasetQuery,
 } from "metabase-types/api";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -102,7 +103,7 @@ export type ClickAction =
   | DefaultClickAction
   | AlwaysDefaultClickAction;
 
-export type Drill = (options: ClickActionProps) => ClickAction[];
+export type LegacyDrill = (options: ClickActionProps) => ClickAction[];
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -115,7 +116,7 @@ export type ClickActionPopoverProps = {
   series: Series;
   onClick: (action: RegularClickAction) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
-  onChange: (settings: VisualizationSettings) => void;
+  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onResize: (...args: unknown[]) => void;
   onClose: () => void;
 };
@@ -138,6 +139,16 @@ export const isRegularClickAction = (
 ): clickAction is RegularClickAction =>
   !isAlwaysDefaultClickAction(clickAction);
 
+export type Drill<
+  T extends Lib.DrillThruDisplayInfo = Lib.DrillThruDisplayInfo,
+> = (
+  options: ClickActionProps & {
+    drill: Lib.DrillThru;
+    drillDisplayInfo: T;
+    applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
+  },
+) => ClickAction[];
+
 export interface ModeFooterComponentProps {
   lastRunCard: Card;
   question: Question;
@@ -151,9 +162,10 @@ export interface ModeFooterComponentProps {
   ) => void;
 }
 
-export interface QueryMode {
+export interface QueryClickActionsMode {
   name: string;
-  drills: Drill[];
-  fallback?: Drill;
-  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element;
+
+  clickActions: LegacyDrill[];
+  fallback?: LegacyDrill;
+  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element | null;
 }

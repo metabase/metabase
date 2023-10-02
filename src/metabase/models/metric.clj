@@ -20,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -63,7 +64,7 @@
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
   [metadata-provider :- lib.metadata/MetadataProvider
-   {:keys [definition], table-id :table_id, :as _metric}]
+   {:keys [definition], table-id :table_id, :as _metric} :- (ms/InstanceOf :model/Metric)]
   (when (seq definition)
     (try
       (let [database-id (u/the-id (lib.metadata.protocols/database metadata-provider))
@@ -75,9 +76,14 @@
         (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
         nil))))
 
-(defn- warmed-metadata-provider [database-id metrics]
+(mu/defn ^:private warmed-metadata-provider :- lib.metadata/MetadataProvider
+  [database-id :- ::lib.schema.id/database
+   metrics     :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
-                            (lib.metadata.protocols/store-metadatas! :metadata/metric metrics))
+                            (lib.metadata.protocols/store-metadatas!
+                             :metadata/metric
+                             (map #(lib.metadata.jvm/instance->metadata % :metadata/metric)
+                                  metrics)))
         segment-ids       (into #{} (mbql.u/match (map :definition metrics)
                                       [:segment (id :guard integer?) & _]
                                       id))
@@ -87,14 +93,16 @@
                                                              [metrics segments]))
         fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/column field-ids)
         table-ids         (into #{}
-                                (comp cat (map :table_id))
-                                [fields segments metrics])]
+                                cat
+                                [(map :table-id fields)
+                                 (map :table-id segments)
+                                 (map :table_id metrics)])]
     ;; this is done for side-effects
     (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
     metadata-provider))
 
-(defn- metrics->table-id->warmed-metadata-provider
-  [metrics]
+(mu/defn ^:private metrics->table-id->warmed-metadata-provider :- fn?
+  [metrics :- [:maybe [:sequential (ms/InstanceOf :model/Metric)]]]
   (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id metrics)))]
                                       (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))
         db-id->metadata-provider    (memoize

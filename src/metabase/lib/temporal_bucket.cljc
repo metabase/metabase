@@ -138,12 +138,21 @@
   [_x]
   nil)
 
+(mu/defmethod temporal-bucket-method :option/temporal-bucketing :- ::lib.schema.temporal-bucketing/unit
+  [option]
+  (:unit option))
+
+(mu/defn raw-temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
+  "Get the raw temporal bucketing `unit` associated with something e.g. a `:field` ref or a ColumnMetadata."
+  [x]
+  (temporal-bucket-method x))
+
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucketing option associated with something, if any."
   [x]
-  (when-let [unit (temporal-bucket-method x)]
+  (when-let [unit (raw-temporal-bucket x)]
     {:lib/type :option/temporal-bucketing
-     :unit unit}))
+     :unit     unit}))
 
 (def ^:private hidden-bucketing-options
   "Options that are technically legal in MBQL, but that should be hidden in the UI."

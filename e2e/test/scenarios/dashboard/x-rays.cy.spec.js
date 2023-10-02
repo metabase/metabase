@@ -14,11 +14,12 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > x-rays", () => {
+describe("scenarios > x-rays", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -263,29 +264,31 @@ describe("scenarios > x-rays", () => {
   it("should be able to open x-ray on a dashcard from a dashboard with multiple tabs", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
-      addOrUpdateDashboardCard({
-        card_id: 3,
-        dashboard_id,
-        card: {
-          row: 0,
-          col: 0,
-          size_x: 24,
-          size_y: 10,
-          visualization_settings: {},
-        },
+    return cy
+      .createDashboard({ name: "my dashboard" })
+      .then(({ body: { id: dashboard_id } }) => {
+        addOrUpdateDashboardCard({
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          dashboard_id,
+          card: {
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 10,
+            visualization_settings: {},
+          },
+        });
+
+        visitDashboardAndCreateTab({ dashboardId: dashboard_id });
+        cy.findByRole("tab", { name: "Tab 1" }).click();
+
+        cy.get("circle").eq(0).click({ force: true });
+        popover().findByText("Automatic insights…").click();
+        popover().findByText("X-ray").click();
+        cy.wait("@dataset", { timeout: 30000 });
+
+        // Ensure charts actually got rendered
+        cy.get("text.x-axis-label").contains("Created At");
       });
-
-      visitDashboardAndCreateTab({ dashboardId: dashboard_id });
-      cy.findByRole("tab", { name: "Tab 1" }).click();
-
-      cy.get("circle").eq(0).click({ force: true });
-      popover().findByText("Automatic insights…").click();
-      popover().findByText("X-ray").click();
-      cy.wait("@dataset", { timeout: 30000 });
-
-      // Ensure charts actually got rendered
-      cy.get("text.x-axis-label").contains("Created At");
-    });
   });
 });

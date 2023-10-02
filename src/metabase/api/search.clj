@@ -84,7 +84,8 @@
    :model_id            :integer
    :model_name          :text
    ;; returned for indexed-entity
-   :pk_ref              :text))
+   :pk_ref              :text
+   :model_index_id      :integer))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |

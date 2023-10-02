@@ -5,7 +5,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
-   [metabase.api.database :as api.database :refer [DBEngineString]]
+   [metabase.api.database :as api.database]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -31,17 +31,20 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private SetupToken
+(def ^:private ^:deprcated SetupToken
   "Schema for a string that matches the instance setup token."
-  (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
-    "Token does not match the setup token."))
+  (mu/with-api-error-message
+   [:and
+    ms/NonBlankString
+    [:fn
+     {:error/message "setup token"}
+     (every-pred string? #'setup/token-match?)]]
+   (i18n/deferred-tru "Token does not match the setup token.")))
 
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
@@ -109,8 +112,7 @@
   (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
                                               allow-tracking?)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint can also be used to add a database, create and invite a second admin, and/or
   set specific settings from the setup flow."
@@ -124,37 +126,37 @@
           invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
   {token              SetupToken
-   site_name          su/NonBlankString
-   site_locale        (s/maybe su/ValidLocale)
-   first_name         (s/maybe su/NonBlankString)
-   last_name          (s/maybe su/NonBlankString)
-   email              su/Email
-   invited_first_name (s/maybe su/NonBlankString)
-   invited_last_name  (s/maybe su/NonBlankString)
-   invited_email      (s/maybe su/Email)
-   password           su/ValidPassword
-   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
-   auto_run_queries   (s/maybe s/Bool)}
+   site_name          ms/NonBlankString
+   site_locale        [:maybe ms/ValidLocale]
+   first_name         [:maybe ms/NonBlankString]
+   last_name          [:maybe ms/NonBlankString]
+   email              ms/Email
+   invited_first_name [:maybe ms/NonBlankString]
+   invited_last_name  [:maybe ms/NonBlankString]
+   invited_email      [:maybe ms/Email]
+   password           ms/ValidPassword
+   allow_tracking     [:maybe [:or :boolean ms/BooleanString]]
+   schedules          [:maybe sync.schedules/ExpandedSchedulesMap]
+   auto_run_queries   [:maybe :boolean]}
   (letfn [(create! []
             (try
               (t2/with-transaction [_conn]
-               (let [user-info (setup-create-user!
-                                {:email email, :first-name first_name, :last-name last_name, :password password})
-                     db        (setup-create-database! {:name name
-                                                        :driver engine
-                                                        :details details
-                                                        :schedules schedules
-                                                        :database database
-                                                        :creator-id (:user-id user-info)})]
-                 (setup-maybe-create-and-invite-user! {:email invited_email,
-                                                       :first_name invited_first_name,
-                                                       :last_name invited_last_name}
-                                                      {:email email, :first_name first_name})
-                 (setup-set-settings!
-                  request
-                  {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 (assoc user-info :database db)))
+                (let [user-info (setup-create-user!
+                                 {:email email, :first-name first_name, :last-name last_name, :password password})
+                      db        (setup-create-database! {:name name
+                                                         :driver engine
+                                                         :details details
+                                                         :schedules schedules
+                                                         :database database
+                                                         :creator-id (:user-id user-info)})]
+                  (setup-maybe-create-and-invite-user! {:email invited_email,
+                                                        :first_name invited_first_name,
+                                                        :last_name invited_last_name}
+                                                       {:email email, :first_name first_name})
+                  (setup-set-settings!
+                   request
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
@@ -163,8 +165,11 @@
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
-      (events/publish-event! :database-create database)
-      (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (when database
+        (events/publish-event! :event/database-create database))
+      (->> {:user-id user-id}
+           (events/publish-event! :event/user-login)
+           (events/publish-event! :event/user-joined))
       (snowplow/track-event! ::snowplow/new-user-created user-id)
       (when database (snowplow/track-event! ::snowplow/database-connection-successful
                                             user-id
@@ -172,12 +177,11 @@
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/validate"
+(api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
-   engine DBEngineString}
+   engine api.database/DBEngineString}
   (when (setup/has-user-setup)
     (throw (ex-info (tru "Instance already initialized")
                     {:status-code 400})))
@@ -193,7 +197,7 @@
 
 ;;; Admin Checklist
 
-(def ChecklistState
+(def ^:private ChecklistState
   "Malli schema for the state to annotate the checklist."
   [:map {:closed true}
    [:db-type [:enum :h2 :mysql :postgres]]
@@ -321,8 +325,7 @@
   ([checklist-info]
    (annotate (checklist-items checklist-info))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/admin_checklist"
+(api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
   (validation/check-has-application-permission :setting)
@@ -330,8 +333,7 @@
 
 ;; User defaults endpoint
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/user_defaults"
+(api/defendpoint GET "/user_defaults"
   "Returns object containing default user details for initial setup, if configured,
    and if the provided token value matches the token in the configuration value."
   [token]

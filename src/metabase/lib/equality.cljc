@@ -3,14 +3,17 @@
   (:refer-clojure :exclude [=])
   (:require
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.mbql.util.match :as mbql.u.match]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 (defmulti =
@@ -94,132 +97,241 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(defn- update-options-remove-namespaced-keys [a-ref]
-  (lib.options/update-options a-ref (fn [options]
-                                      (into {} (remove (fn [[k _v]] (qualified-keyword? k))) options))))
+(mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
+  "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
+  Saved Question metadata if available.
 
-(defn- field-id-ref? [a-ref]
-  (mbql.u.match/match-one a-ref
-    [:field _opts (_id :guard pos-int?)]))
+  This doesn't really have a good home. It's used here and by [[metabase.lib.field]], but because it depends on eg.
+  [[metabase.lib.card]] and [[metabase.lib.convert]] it can't go in [[metabase.lib.metadata.calculation]]."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   field-id     :- ::lib.schema.id/field]
+  (merge
+   (when (lib.util/first-stage? query stage-number)
+     (when-let [card-id (lib.util/source-card-id query)]
+       (when-let [card-metadata (lib.card/saved-question-metadata query card-id)]
+         (m/find-first #(clojure.core/= (:id %) field-id)
+                       card-metadata))))
+   (try
+     (lib.metadata/field query field-id)
+     (catch #?(:clj Throwable :cljs :default) _
+       nil))))
 
-(defn find-closest-matching-ref
-  "Find the ref that most closely matches `a-ref` from a sequence of `refs`. This is meant to power things
-  like [[metabase.lib.breakout/breakoutable-columns]] which are supposed to include `:breakout-position` for columns
-  that are already present as a breakout; sometimes the column in the breakout does not exactly match what MLv2 would
-  have generated. So try to figure out which column it is referring to.
+(mu/defn ^:private column-join-alias :- [:maybe :string]
+  [column :- lib.metadata/ColumnMetadata]
+  ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
-  This first looks for a matching ref with a strict comparison, then in increasingly less-strict comparisons until it
-  finds something that matches. This is mostly to work around bugs like #31482 where MLv1 generated queries with
-  `:field` refs that did not include join aliases even tho the Fields came from joined Tables... we still know the
-  Fields are the same if they have the same IDs.
+(mu/defn ^:private plausible-matches-for-name :- [:sequential lib.metadata/ColumnMetadata]
+  [ref-name   :- :string
+   join-alias :- [:maybe :string]
+   columns    :- [:sequential lib.metadata/ColumnMetadata]]
+  (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
+                               (clojure.core/= (column-join-alias %) join-alias))
+                         columns))
+      (filter #(and (clojure.core/= (:name %) ref-name)
+                    (clojure.core/= (column-join-alias %) join-alias))
+              columns)))
 
-  The three-arity version can also find matches between integer Field ID references like `[:field {} 1]` and
-  equivalent string column name field literal references like `[:field {} \"bird_type\"]` by resolving Field IDs using
-  a `metadata-providerable` (something that can be treated as a metadata provider, e.g. a `query` with a
-  MetadataProvider associated with it). This is the ultimately hacky workaround for totally busted legacy queries.
-  Note that this currently only works when `a-ref` is the one with the integer Field ID and `refs` have string literal
-  column names; it does not work the other way around. Luckily we currently don't have problems with MLv1/legacy
-  queries accidentally using string :field literals where it shouldn't have been doing so.
+(mu/defn ^:private plausible-matches-for-id :- [:sequential lib.metadata/ColumnMetadata]
+  [ref-id     :- :int
+   join-alias :- [:maybe :string]
+   columns    :- [:sequential lib.metadata/ColumnMetadata]
+   generous?  :- [:maybe :boolean]]
+  (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
+                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                               (or (and (not join-alias)
+                                        (#{:source/fields :source/card} (:lib/source %)))
+                                   (clojure.core/= (column-join-alias %) join-alias)))
+                         columns))
+      (when generous?
+        (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
+      []))
 
-  IMPORTANT!
+(mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe lib.metadata/ColumnMetadata]
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential lib.metadata/ColumnMetadata]]
+  (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
+    (if-not (next no-implicit)
+      (first no-implicit)
+      (throw (ex-info "Ambiguous match! Implement more logic in disambiguate-matches."
+                      {:ref a-ref
+                       :columns columns})))
+    nil))
 
-  When trying to find the matching ref for a sequence of metadatas, prefer [[index-of-closest-matching-metadata]]
-  or [[closest-matching-metadata]] instead, which are less
-  broken (see [[metabase.lib.equality-test/index-of-closest-matching-metadata-test]]) and is slightly more performant,
-  since it converts metadatas to refs in a lazy fashion."
-  ([a-ref refs]
-   (loop [xform identity, more-xforms [ ;; ignore irrelevant keys from :binning options
-                                       #(lib.options/update-options % m/update-existing :binning dissoc :metadata-fn :lib/type)
-                                       ;; ignore namespaced keys
-                                       update-options-remove-namespaced-keys
-                                       ;; ignore type info
-                                       #(lib.options/update-options % dissoc :base-type :effective-type)
-                                       ;; ignore temporal-unit
-                                       #(lib.options/update-options % dissoc :temporal-unit)
-                                       ;; ignore binning altogether
-                                       #(lib.options/update-options % dissoc :binning)
-                                       ;; ignore join alias
-                                       #(lib.options/update-options % dissoc :join-alias)]]
-     (or (let [a-ref (xform a-ref)]
-           (m/find-first #(= (xform %) a-ref)
-                         refs))
-         (when (seq more-xforms)
-           (recur (comp xform (first more-xforms)) (rest more-xforms))))))
+(mu/defn ^:private disambiguate-matches-no-alias :- [:maybe lib.metadata/ColumnMetadata]
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential lib.metadata/ColumnMetadata]]
+  ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
+  ;; ignore the source alias on columns with :source/card or :source/fields
+  (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
+                                             (not (#{:source/card} (:lib/source %))))
+                                       columns))]
+    ;; At least 1 matching column with no :source-alias.
+    (if-not (next no-alias)
+      (first no-alias)
+      ;; More than 1, keep digging.
+      (disambiguate-matches-prefer-explicit a-ref no-alias))
+    ;; No columns are missing :source-alias - pass them all to the next stage.
+    ;; TODO: I'm not certain this one is sound, but it's necessary to make `lib.join/select-home-column` work as
+    ;; written. If this case causes issues, that logic may need rewriting.
+    nil))
 
-  ([metadata-providerable a-ref refs]
-   (or (find-closest-matching-ref a-ref refs)
-       (when (and metadata-providerable
-                  (field-id-ref? a-ref))
-         (let [[_field opts field-id] a-ref]
-           (when-let [field-name (:name (lib.metadata/field metadata-providerable field-id))]
-             (find-closest-matching-ref [:field opts field-name] refs)))))))
+(mu/defn ^:private disambiguate-matches :- [:maybe lib.metadata/ColumnMetadata]
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential lib.metadata/ColumnMetadata]]
+  (let [{:keys [join-alias]} (lib.options/options a-ref)]
+    (if join-alias
+      ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
+      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
+        (if-not (next matches)
+          (first matches)
+          (throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+                          {:ref     a-ref
+                           :matches matches}))))
+      (disambiguate-matches-no-alias a-ref columns))))
 
-(mu/defn index-of-closest-matching-metadata :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
-  "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
-  rather than a sequence of refs. This allows us to do more sophisticated fuzzy matching
-  than [[find-closest-matching-ref]], because column metadatas inherently have more information than they do after
-  they are converted to refs.
+(def ^:private FindMatchingColumnOptions
+  [:map [:generous? {:optional true} :boolean]])
 
-  If a match is found, this returns the index of the matching metadata in `metadatas`. Otherwise returns `nil.` If you
-  want the metadata instead, use [[closest-matching-metadata]]."
-  [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
-  (when (seq metadatas)
-    ;; create refs in a lazy fashion, e.g. if the very first metadata ends up matching we don't need to create refs
-    ;; for all of the other metadatas.
-    (letfn [(index-with-ref-fn [ref-fn]
-              ;; store the associated index in metadata attached to the created ref.
-              (let [refs (for [[i metadata] (m/indexed metadatas)]
-                           (vary-meta (ref-fn metadata) assoc ::index i))]
-                (when-let [matching-ref (find-closest-matching-ref a-ref refs)]
-                  (::index (meta matching-ref)))))]
-      (or
-       ;; attempt to find a matching ref using the same logic as [[find-closest-matching-ref]] ...
-       (index-with-ref-fn lib.ref/ref)
-       ;; if that fails, and we're comparing a "Field ID" ref like
-       ;;
-       ;;    [:field {} 1]
-       ;;
-       ;; then try again forcing creation of Field ID refs for all of the metadatas. This way we can match
-       ;; things where the FE incorrectly used a Field ID ref even tho we were expecting a nominal :field
-       ;; literal ref like
-       ;;
-       ;;    [:field {} "my_field"]
-       (when (field-id-ref? a-ref)
-         ;; force creation of a Field ID ref by giving it a source that will make the ref creation code
-         ;; treat this as coming from a source table. This only makes sense for metadatas that have an
-         ;; associated Field `:id`, so only do it for those ones.
-         (index-with-ref-fn (fn [metadata]
-                              (lib.ref/ref
-                               (cond-> metadata
-                                 (:id metadata) (assoc :lib/source :source/table-defaults))))))))))
+(mu/defn find-matching-column :- [:maybe lib.metadata/ColumnMetadata]
+  "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
 
-(mu/defn closest-matching-metadata :- [:maybe lib.metadata/ColumnMetadata]
-  "Like [[find-closest-matching-ref]], but finds the closest match for `a-ref` from a sequence of Column `metadatas`
-  rather than a sequence of refs. See [[index-of-closet-matching-metadata]] for more info."
-  [a-ref     :- ::lib.schema.ref/ref
-   metadatas :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
-  (when-let [i (index-of-closest-matching-metadata a-ref metadatas)]
-    (nth metadatas i)))
+  Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
+  this can return quickly.
+
+  If there are multiple plausible matches, they are disambiguated by the most important extra included in the `ref`.
+  (`:join-alias` first, then `:temporal-unit`, etc.)
+
+  - Integer IDs in the `ref` are matched by ID; this usually is unambiguous.
+    - If there are multiple joins on one table (including possible implicit joins), check `:join-alias` next.
+      - If `a-ref` has a `:join-alias`, only a column which matches it can be the match, and it should be unique.
+      - If `a-ref` doesn't have a `:join-alias`, prefer the column with no `:join-alias`, and prefer already selected
+        columns over implicitly joinable ones.
+    - There may be broken cases where the ref has an ID but the column does not. Therefore the ID must be resolved to a
+      name or `:lib/desired-column-alias` and matched that way.
+      - `query` and `stage-number` are required for this case, since they're needed to resolve the correct name.
+      - Columns with `:id` set are dropped to prevent them matching. (If they didn't match by `:id` above they shouldn't
+        match by name due to a coincidence of column names in different tables.)
+  - String IDs are checked against `:lib/desired-column-alias` first.
+    - If that doesn't match any columns, `:name` is compared next.
+    - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
+
+  Returns the matching column, or nil if no match is found."
+  ([a-ref columns]
+   (find-matching-column a-ref columns {}))
+
+  ([[ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+    columns                          :- [:sequential lib.metadata/ColumnMetadata]
+    {:keys [generous?]}              :- FindMatchingColumnOptions]
+   (case ref-kind
+     ;; Aggregations are referenced by the UUID of the column being aggregated.
+     :aggregation  (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
+                                       (clojure.core/= (:lib/source-uuid %) ref-id))
+                                 columns)
+     ;; Expressions are referenced by name; fields by ID or name.
+     (:expression
+       :field)     (let [plausible (if (string? ref-id)
+                                     (plausible-matches-for-name ref-id (:join-alias opts) columns)
+                                     (plausible-matches-for-id   ref-id (:join-alias opts) columns generous?))]
+                     (case (count plausible)
+                       0 nil
+                       1 (first plausible)
+                       (disambiguate-matches a-ref plausible)))
+     (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
+
+  ([query stage-number a-ref columns]
+   (find-matching-column query stage-number a-ref columns {}))
+
+  ([query                              :- [:maybe ::lib.schema/query]
+    stage-number                       :- :int
+    [_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
+    columns                            :- [:sequential lib.metadata/ColumnMetadata]
+    opts                               :- FindMatchingColumnOptions]
+   (or (find-matching-column a-ref columns opts)
+       ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
+       ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
+       ;; it certainly shouldn't match by name just because of the coincidence of column names!
+       (when (and query (number? ref-id))
+         (when-let [no-id-columns (not-empty (remove :id columns))]
+           (when-let [resolved (resolve-field-id query stage-number ref-id)]
+             (find-matching-column (assoc a-ref 2 (or (:lib/desired-column-alias resolved)
+                                                      (:name resolved)))
+                                   no-id-columns opts)))))))
+
+(defn- ref-id-or-name [[_ref-kind _opts id-or-name]]
+  id-or-name)
+
+(mu/defn find-matching-ref :- [:maybe ::lib.schema.ref/ref]
+  "Given `column` and a list of `refs`, finds the ref that best matches this column.
+
+  Throws if there are multiple, ambiguous matches.
+
+  Returns the matching ref, or nil if no plausible matches are found."
+  [column       :- lib.metadata/ColumnMetadata
+   refs         :- [:sequential ::lib.schema.ref/ref]]
+  (let [ref-tails (group-by ref-id-or-name refs)
+        matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
+                      (not-empty (get ref-tails (:id column)))
+                      (not-empty (get ref-tails (:lib/desired-column-alias column)))
+                      (get ref-tails (:name column))
+                      [])]
+    (case (count matches)
+      0 nil
+      1 (first matches)
+      (throw (ex-info "Ambiguous match: given column matches multiple refs"
+                      {:column        column
+                       :matching-refs matches})))))
+
+(mu/defn find-column-indexes-for-refs :- [:sequential :int]
+  "Given a list `haystack` of columns or refs, and a list `needles` of refs to searc for, this returns a list parallel
+  to `needles` with the corresponding index into the `haystack`, or -1 if not found.
+
+  DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
+  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  [[find-matching-ref]] if it's refs."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   needles      :- [:sequential ::lib.schema.ref/ref]
+   haystack     :- [:sequential lib.metadata/ColumnMetadata]]
+  (let [by-column (into {}
+                        (map-indexed (fn [index column]
+                                       [column index]))
+                        haystack)]
+    (for [needle needles
+          :let [matched (find-matching-column query stage-number needle haystack)]]
+      (get by-column matched -1))))
+
+;; TODO: Refactor this away. Handle legacy refs in `lib.js`, then call [[find-matching-column]] directly.
+(mu/defn find-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+  "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
+  FE names for similar functions."
+  ([query legacy-ref metadatas]
+   (find-column-for-legacy-ref query -1 legacy-ref metadatas))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    legacy-ref   :- some?
+    metadatas    :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
+   (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns
-  "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching
-  with [[index-of-closest-matching-metadata]].
+  "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching with
+  [[find-matching-column]].
 
   Example usage:
 
     ;; example (simplified) implementation of [[metabase.lib.field/fieldable-columns]]
     ;;
     ;; return (visibile-columns query), but if any of those appear in `:fields`, mark then `:selected?`
-    (mark-selected-columns (visibile-columns query) (:fields stage))"
-  [cols selected-columns-or-refs]
-  (when (seq cols)
-    (let [selected-refs              (mapv lib.ref/ref selected-columns-or-refs)
-          matching-selected-indecies (into #{}
-                                           (map (fn [selected-ref]
-                                                  (index-of-closest-matching-metadata selected-ref cols)))
-                                           selected-refs)]
-      (mapv
-       (fn [[i col]]
-         (assoc col :selected? (contains? matching-selected-indecies i)))
-       (m/indexed cols)))))
+    (mark-selected-columns (visible-columns query) (:fields stage))"
+  ([cols selected-columns-or-refs]
+   (mark-selected-columns nil -1 cols selected-columns-or-refs))
+
+  ([query stage-number cols selected-columns-or-refs]
+   (when (seq cols)
+     (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
+           matching-selected-cols (into #{}
+                                        (map #(find-matching-column query stage-number % cols))
+                                        selected-refs)]
+       (mapv #(assoc % :selected? (contains? matching-selected-cols %)) cols)))))

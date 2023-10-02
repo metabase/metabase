@@ -1,74 +1,79 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import type { FieldFilter } from "metabase-types/api";
+import { expressionClause } from "./expression";
 import type {
+  BooleanFilterParts,
   ColumnMetadata,
-  ColumnWithOperators,
-  ExpressionArg,
-  ExternalOp,
-  FilterOperator,
+  ExpressionClause,
   FilterClause,
-  FilterParts,
+  NumberFilterParts,
   Query,
+  RelativeDateFilterParts,
+  TextFilterParts,
 } from "./types";
 
 export function filterableColumns(
   query: Query,
   stageIndex: number,
-): ColumnWithOperators[] {
+): ColumnMetadata[] {
   return ML.filterable_columns(query, stageIndex);
-}
-
-export function filterableColumnOperators(
-  filterableColumn: ColumnWithOperators,
-): FilterOperator[] {
-  return ML.filterable_column_operators(filterableColumn);
-}
-
-export function filterClause(
-  filterOperator: FilterOperator,
-  column: ColumnMetadata,
-  ...args: ExpressionArg[]
-): FilterClause {
-  return ML.filter_clause(filterOperator, column, ...args);
 }
 
 export function filter(
   query: Query,
   stageIndex: number,
-  booleanExpression: ExternalOp,
+  filterClause: FilterClause | ExpressionClause,
 ): Query {
-  return ML.filter(query, stageIndex, booleanExpression);
+  return ML.filter(query, stageIndex, filterClause);
 }
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
 }
 
-export function filterOperator(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-) {
-  return ML.filter_operator(query, stageIndex, filterClause);
+export function textFilterClause({
+  operator,
+  column,
+  values,
+  options,
+}: TextFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values], options);
 }
 
-export function filterParts(
-  query: Query,
-  stageIndex: number,
-  filterClause: FilterClause,
-): FilterParts {
-  return ML.filter_parts(query, stageIndex, filterClause);
+export function numberFilterClause({
+  operator,
+  column,
+  values,
+}: NumberFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values]);
 }
 
-export function findFilterForLegacyFilter(
-  query: Query,
-  stageIndex: number,
-  legacyFilterClause: FieldFilter,
-): FilterClause {
-  return ML.find_filter_for_legacy_filter(
-    query,
-    stageIndex,
-    legacyFilterClause,
-  );
+export function booleanFilterClause({
+  operator,
+  column,
+  values,
+}: BooleanFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values]);
+}
+
+export function relativeDateFilterClause({
+  column,
+  value,
+  unit,
+  offsetValue,
+  offsetUnit,
+  options,
+}: RelativeDateFilterParts): ExpressionClause {
+  if (offsetValue == null || offsetUnit == null) {
+    return expressionClause("time-interval", [column, value, unit], options);
+  }
+
+  return expressionClause("between", [
+    expressionClause("+", [
+      column,
+      expressionClause("interval", [-offsetValue, offsetUnit]),
+    ]),
+    expressionClause("relative-datetime", [value < 0 ? value : 0, offsetUnit]),
+    expressionClause("relative-datetime", [value > 0 ? value : 0, offsetUnit]),
+  ]);
 }

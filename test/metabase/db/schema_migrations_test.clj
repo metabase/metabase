@@ -1165,3 +1165,24 @@
                                           :id [:in [rev-dash-1-old rev-dash-2-old rev-card-1-old]])))
         (is (= #{true} (t2/select-fn-set :most_recent (t2/table-name :model/Revision)
                                          :id [:in [rev-dash-1-new rev-dash-2-new rev-card-1-new]])))))))
+(deftest fks-are-indexed-test
+  (mt/test-driver :postgres
+    (testing "all FKs should be indexed"
+     (is (= [] (t2/query
+                "SELECT
+                     conrelid::regclass AS table_name,
+                     a.attname AS column_name
+                 FROM
+                     pg_constraint AS c
+                     JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                 WHERE
+                     c.contype = 'f'
+                     AND NOT EXISTS (
+                         SELECT 1
+                         FROM pg_index AS i
+                         WHERE i.indrelid = c.conrelid
+                           AND a.attnum = ANY(i.indkey)
+                     )
+                 ORDER BY
+                     table_name,
+                     column_name;"))))))

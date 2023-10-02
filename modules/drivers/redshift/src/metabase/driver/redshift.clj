@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -14,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -75,20 +75,6 @@
           :dest-table       {:name   (:dest-table-name fk)
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
-
-;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
-;; Redshift is always in UTC and doesn't return it's timezone
-(defmethod driver.common/current-db-time-date-formatters :redshift
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :redshift
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(defmethod driver/current-db-time :redshift
-  [& args]
-  (apply driver.common/current-db-time args))
 
 (defmethod driver/db-start-of-week :redshift
   [_]
@@ -183,7 +169,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database driver (qp.store/database) pattern)]])
+   [:raw (quote-literal-for-database driver (lib.metadata/database (qp.store/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
@@ -319,7 +305,8 @@
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
-                    [(:name (qp.store/field field-id)) (:value param)]))))
+                    [(:name (lib.metadata/field (qp.store/metadata-provider) field-id))
+                     (:value param)]))))
         user-parameters))
 
 (defmethod qp.util/query->remark :redshift

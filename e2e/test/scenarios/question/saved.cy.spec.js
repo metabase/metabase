@@ -9,10 +9,12 @@ import {
   questionInfoButton,
   rightSidebar,
   appBar,
-  getCollectionIdFromSlug,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -227,8 +229,8 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
-    getCollectionIdFromSlug("second_collection", collection_id => {
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { collection_id });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_id: SECOND_COLLECTION_ID,
     });
 
     visitQuestion(ORDERS_QUESTION_ID);
@@ -291,7 +293,7 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should always be possible to view the full title text of the saved question", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
     savedQuestionTitle.clear();
     savedQuestionTitle.type(

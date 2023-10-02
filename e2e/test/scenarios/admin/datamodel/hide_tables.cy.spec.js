@@ -33,7 +33,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     // It shouldn't show in a new question data picker
     startNewQuestion();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
+    cy.contains("Raw Data").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

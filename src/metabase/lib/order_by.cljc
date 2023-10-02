@@ -1,6 +1,5 @@
 (ns metabase.lib.order-by
   (:require
-   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -138,10 +137,13 @@
          aggregations       (not-empty (lib.aggregation/aggregations-metadata query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (let [stage (lib.util/query-stage query stage-number)]
-                                (lib.metadata.calculation/visible-columns query stage-number stage)))
+                              (let [stage   (lib.util/query-stage query stage-number)
+                                    options {:include-implicitly-joinable-for-source-card? false}]
+                                (lib.metadata.calculation/visible-columns query stage-number stage options)))
          columns            (filter orderable-column? columns)
-         existing-order-bys (order-bys query stage-number)]
+         existing-order-bys (->> (order-bys query stage-number)
+                                 (map (fn [[_tag _opts expr]]
+                                        expr)))]
      (cond
        (empty? columns)
        nil
@@ -150,19 +152,17 @@
        (vec columns)
 
        :else
-       (let [col-index->position (into {}
-                                       (map-indexed
-                                        (fn [pos [_tag _opts expr]]
-                                          (when-let [col-index (lib.equality/index-of-closest-matching-metadata
-                                                                (lib.ref/ref expr)
-                                                                columns)]
-                                            [col-index pos])))
-                                       existing-order-bys)]
-         (mapv (fn [[i col]]
-                 (let [pos (col-index->position i)]
-                   (cond-> col
-                     pos (assoc :order-by-position pos))))
-               (m/indexed columns)))))))
+       (let [matching (into {}
+                            (comp (map lib.ref/ref)
+                                  (keep-indexed (fn [index an-order-by]
+                                                  (when-let [col (lib.equality/find-matching-column
+                                                                   query stage-number an-order-by columns)]
+                                                    [col index]))))
+                            existing-order-bys)]
+         (mapv #(let [pos (matching %)]
+                  (cond-> %
+                    pos (assoc :order-by-position pos)))
+               columns))))))
 
 (def ^:private opposite-direction
   {:asc :desc

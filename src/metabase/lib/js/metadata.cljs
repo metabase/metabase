@@ -24,7 +24,7 @@
 ;;; where keys are a map of String ID => metadata
 
 (defn- object-get [obj k]
-  (when obj
+  (when (and obj (js-in k obj))
     (gobject/get obj k)))
 
 (defn- obj->clj
@@ -49,9 +49,9 @@
                      [k (object-get obj k)]))
               ;; ignore values that are functions
               (remove (fn [[_k v]]
-                        (= (goog/typeOf v) "function")))
+                        (js-fn? v)))
               xform)
-             (gobject/getKeys obj))))))
+             (js-keys obj))))))
 
 ;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
 (defmulti ^:private excluded-keys
@@ -82,13 +82,27 @@
   {:arglists '([object-type])}
   keyword)
 
+(defmulti ^:private rename-key-fn
+  "Returns a function of the keys, either renaming each one or preserving it.
+  If this function returns nil for a given key, the original key is preserved.
+  Use [[excluded-keys]] to drop keys from the input.
+
+  Defaults to nil, which means no renaming is done."
+  identity)
+
+(defmethod rename-key-fn :default [_]
+  nil)
+
 (defn- parse-object-xform [object-type]
   (let [excluded-keys-set (excluded-keys object-type)
-        parse-field       (parse-field-fn object-type)]
+        parse-field       (parse-field-fn object-type)
+        rename-key        (rename-key-fn object-type)]
     (comp
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(keyword (u/->kebab-case-en k)) v]))
+            [(cond-> (keyword (u/->kebab-case-en k))
+               rename-key (#(or (rename-key %) %)))
+             v]))
      ;; remove [[excluded-keys]]
      (if (empty? excluded-keys-set)
        identity
@@ -195,6 +209,10 @@
     :metrics
     :table})
 
+(defmethod rename-key-fn :field
+  [_object-type]
+  {:source :lib/source})
+
 (defn- parse-field-id
   [id]
   (cond-> id
@@ -213,6 +231,9 @@
                            (walk/keywordize-keys v)
                            (js->clj v :keywordize-keys true))
       :has-field-values  (keyword v)
+      :lib/source        (if (= v "aggregation")
+                           :source/aggregations
+                           (keyword "source" v))
       :semantic-type     (keyword v)
       :visibility-type   (keyword v)
       :id                (parse-field-id v)
@@ -305,9 +326,9 @@
                [id (delay (assemble-card metadata id))]))
         (-> #{}
             (into (keep lib.util/legacy-string-table-id->card-id)
-                  (gobject/getKeys (object-get metadata "tables")))
+                  (js-keys (object-get metadata "tables")))
             (into (map parse-long)
-                  (gobject/getKeys (object-get metadata "questions"))))))
+                  (js-keys (object-get metadata "questions"))))))
 
 (defmethod lib-type :metric
   [_object-type]
@@ -401,22 +422,26 @@
         :when              (and a-segment (= (:table-id a-segment) table-id))]
     a-segment))
 
+(defn- setting [setting-key]
+  (.get js/__metabaseSettings (name setting-key)))
+
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
   [database-id unparsed-metadata]
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
     (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]            (database metadata database-id))
-      (table    [_this table-id]   (table    metadata table-id))
-      (field    [_this field-id]   (field    metadata field-id))
-      (metric   [_this metric-id]  (metric   metadata metric-id))
-      (segment  [_this segment-id] (segment  metadata segment-id))
-      (card     [_this card-id]    (card     metadata card-id))
-      (tables   [_this]            (tables   metadata database-id))
-      (fields   [_this table-id]   (fields   metadata table-id))
-      (metrics  [_this table-id]   (metrics  metadata table-id))
-      (segments [_this table-id]   (segments metadata table-id))
+      (database [_this]             (database metadata database-id))
+      (table    [_this table-id]    (table    metadata table-id))
+      (field    [_this field-id]    (field    metadata field-id))
+      (metric   [_this metric-id]   (metric   metadata metric-id))
+      (segment  [_this segment-id]  (segment  metadata segment-id))
+      (card     [_this card-id]     (card     metadata card-id))
+      (tables   [_this]             (tables   metadata database-id))
+      (fields   [_this table-id]    (fields   metadata table-id))
+      (metrics  [_this table-id]    (metrics  metadata table-id))
+      (segments [_this table-id]    (segments metadata table-id))
+      (setting  [_this setting-key] (setting  setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
@@ -428,3 +453,7 @@
              (deref form)
              form))
          metadata)))))
+
+(def parse-column
+  "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
+  (parse-object-fn :field))

@@ -209,6 +209,7 @@
   [[:model-index-value.name     :name]
    [:model-index-value.model_pk :id]
    [:model-index.pk_ref         :pk_ref]
+   [:model-index.id             :model_index_id]
    [:collection.name            :collection_name]
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]

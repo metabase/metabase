@@ -11,18 +11,18 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-import MetabaseUtils from "metabase/lib/utils";
+import { isEmail, isEmpty } from "metabase/lib/utils";
 import { updateSettings as defaultUpdateSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
 import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
 
 const VALIDATIONS = {
   email: {
-    validate: value => MetabaseUtils.isEmail(value),
+    validate: value => isEmail(value),
     message: t`That's not a valid email address`,
   },
   email_list: {
-    validate: value => value.every(MetabaseUtils.isEmail),
+    validate: value => value.every(isEmail),
     message: t`That's not a valid email address`,
   },
   integer: {
@@ -88,7 +88,7 @@ class SettingsBatchForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement(validation, value, element) {
-    if (MetabaseUtils.isEmpty(value)) {
+    if (isEmpty(value)) {
       return;
     }
 
@@ -119,7 +119,7 @@ class SettingsBatchForm extends Component {
     if (!enabledKey || formData[enabledKey]) {
       availableElements.forEach(function (element) {
         // test for required elements
-        if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+        if (element.required && isEmpty(formData[element.key])) {
           valid = false;
         }
 

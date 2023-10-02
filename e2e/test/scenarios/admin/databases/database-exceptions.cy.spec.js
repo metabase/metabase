@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   typeAndBlurUsingLabel,
@@ -12,7 +13,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   });
 
   it("should handle malformed (null) database details (metabase#25715)", () => {
-    cy.intercept("GET", "/api/database/1", req => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
       req.reply(res => {
         res.body.details = null;
       });

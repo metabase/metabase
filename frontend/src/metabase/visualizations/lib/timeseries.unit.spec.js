@@ -7,7 +7,10 @@ import {
 import { getVisualizationTransformed } from "metabase/visualizations";
 
 import { StringColumn, NumberColumn } from "__support__/visualizations";
+import registerVisualizations from "metabase/visualizations/register";
 import { TYPE } from "metabase-lib/types/constants";
+
+registerVisualizations();
 
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {

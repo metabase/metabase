@@ -1,7 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
-import { entityTypeForObject } from "metabase/lib/schema";
+import { entityForObject } from "metabase/lib/schema";
 
 import { ObjectUnionSchema } from "metabase/schema";
 
@@ -94,8 +94,7 @@ export default createEntity({
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
-    const entities = require("metabase/entities");
-    const entity = entities[entityTypeForObject(object)];
+    const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
     } else {
@@ -104,6 +103,48 @@ export default createEntity({
     }
   },
 
+  objectActions: {
+    setArchived: (object, archived) => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        return entity
+          ? dispatch(entity.actions.setArchived(object, archived))
+          : warnEntityAndReturnObject(object);
+      };
+    },
+
+    delete: object => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        return entity
+          ? dispatch(entity.actions.delete(object))
+          : warnEntityAndReturnObject(object);
+      };
+    },
+  },
+
+  objectSelectors: {
+    getName: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getName?.(object) ?? object?.name
+        : warnEntityAndReturnObject(object);
+    },
+
+    getColor: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getColor?.(object) ?? null
+        : warnEntityAndReturnObject(object);
+    },
+
+    getIcon: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getIcon?.(object) ?? null
+        : warnEntityAndReturnObject(object);
+    },
+  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
     return (
@@ -120,3 +161,8 @@ export default createEntity({
     );
   },
 });
+
+function warnEntityAndReturnObject(object) {
+  console.warn("Couldn't find entity for object", object);
+  return object;
+}

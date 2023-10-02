@@ -1,81 +1,75 @@
+import _ from "underscore";
 import {
+  createAction,
+  describeEE,
   describeWithSnowplow,
   enableTracking,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  popover,
   resetSnowplow,
   restore,
+  setActionsEnabledForDB,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  createMetric,
-  createSegment,
-} from "e2e/support/helpers/e2e-table-metadata-helpers";
+  NORMAL_USER_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const typeFilters = [
   {
     label: "Question",
-    sidebarLabel: "Questions",
     filterName: "card",
     resultInfoText: "Saved question in",
   },
   {
     label: "Dashboard",
-    sidebarLabel: "Dashboards",
     filterName: "dashboard",
     resultInfoText: "Dashboard in",
   },
   {
     label: "Collection",
-    sidebarLabel: "Collections",
     filterName: "collection",
     resultInfoText: "Collection",
   },
   {
-    label: "Metric",
-    sidebarLabel: "Metrics",
-    filterName: "metric",
-    resultInfoText: "Metric for",
-  },
-  {
-    label: "Segment",
-    sidebarLabel: "Segments",
-    filterName: "segment",
-    resultInfoText: "Segment of",
-  },
-  {
     label: "Table",
-    sidebarLabel: "Raw Tables",
     filterName: "table",
     resultInfoText: "Table in",
   },
   {
     label: "Database",
-    sidebarLabel: "Databases",
     filterName: "database",
     resultInfoText: "Database",
   },
   {
     label: "Model",
-    sidebarLabel: "Models",
     filterName: "dataset",
     resultInfoText: "Model in",
   },
+  {
+    label: "Action",
+    filterName: "action",
+    resultInfoText: "for",
+  },
 ];
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
+const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
 describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
     cy.intercept("GET", "/api/search?q=*").as("search");
+    cy.signInAsAdmin();
   });
 
   describe("universal search", () => {
     it("should work for admin (metabase#20018)", () => {
-      cy.signInAsAdmin();
-
       cy.visit("/");
       getSearchBar().as("searchBox").type("product").blur();
 
@@ -117,7 +111,10 @@ describe("scenarios > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       getSearchBar().type("ord");
+
       cy.wait("@search");
+
+      cy.findByTestId("app-bar").findByDisplayValue("ord");
       cy.findAllByTestId("search-result-item-name")
         .first()
         .should("have.text", "Orders");
@@ -129,43 +126,46 @@ describe("scenarios > search", () => {
         "eq",
         `/question/${ORDERS_QUESTION_ID}-orders`,
       );
+
+      cy.get("@search.all").should("have.length", 1);
+    });
+  });
+  describe("accessing full page search with `Enter`", () => {
+    it("should not render full page search if user has not entered a text query ", () => {
+      cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
+
+      cy.visit("/");
+
+      getSearchBar().click().type("{enter}");
+
+      cy.wait("@getRecentViews");
+
+      cy.findByTestId("search-results-floating-container").within(() => {
+        cy.findByText("Recently viewed").should("exist");
+      });
+      cy.location("pathname").should("eq", "/");
+    });
+
+    it("should render full page search when search text is present and user clicks 'Enter'", () => {
+      cy.visit("/");
+
+      getSearchBar().click().type("orders{enter}");
+      cy.wait("@search");
+
+      cy.findByTestId("search-app").within(() => {
+        cy.findByText('Results for "orders"').should("exist");
+      });
+
+      cy.location().should(loc => {
+        expect(loc.pathname).to.eq("/search");
+        expect(loc.search).to.eq("?q=orders");
+      });
     });
   });
 
   describe("applying search filters", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-
-      createSegment({
-        name: "Segment",
-        description: "All orders with a total under $100.",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-        },
-      });
-
-      createMetric({
-        name: "Metric",
-        description: "Sum of orders subtotal",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-      });
-
-      cy.createQuestion({
-        name: "Orders Model",
-        query: { "source-table": ORDERS_ID },
-        dataset: true,
-      });
-    });
-
-    describe("hydrating search query from URL", () => {
-      it("should hydrate search with search text", () => {
+    describe("no filters", () => {
+      it("hydrating search from URL", () => {
         cy.visit("/search?q=orders");
         cy.wait("@search");
 
@@ -174,122 +174,247 @@ describe("scenarios > search", () => {
           cy.findByText('Results for "orders"').should("exist");
         });
       });
+    });
 
-      it("should hydrate search with search text and filter", () => {
-        const { sidebarLabel, filterName, resultInfoText } = typeFilters[0];
-        cy.visit(`/search?q=orders&type=${filterName}`);
+    describe("type filter", () => {
+      beforeEach(() => {
+        setActionsEnabledForDB(SAMPLE_DB_ID);
+
+        cy.createQuestion({
+          name: "Orders Model",
+          query: { "source-table": ORDERS_ID },
+          dataset: true,
+        }).then(({ body: { id } }) => {
+          createAction({
+            name: "Update orders quantity",
+            description: "Set orders quantity to the same value",
+            type: "query",
+            model_id: id,
+            database_id: SAMPLE_DB_ID,
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              native: {
+                query: "UPDATE orders SET quantity = quantity",
+              },
+              type: "native",
+            },
+            parameters: [],
+            visualization_settings: {
+              type: "button",
+            },
+          });
+        });
+      });
+
+      typeFilters.forEach(({ label, filterName, resultInfoText }) => {
+        it(`should hydrate search with search text and ${label} filter`, () => {
+          cy.visit(`/search?q=e&type=${filterName}`);
+          cy.wait("@search");
+
+          getSearchBar().should("have.value", "e");
+
+          cy.findByTestId("search-app").within(() => {
+            cy.findByText('Results for "e"').should("exist");
+          });
+
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            cy.wrap(result).should("contain.text", resultInfoText);
+          });
+
+          cy.findByTestId("type-search-filter").within(() => {
+            cy.findByText(label).should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+        });
+
+        it(`should filter results by ${label}`, () => {
+          cy.visit("/");
+
+          getSearchBar().clear().type("e{enter}");
+          cy.wait("@search");
+
+          cy.findByTestId("type-search-filter").click();
+          popover().within(() => {
+            cy.findByText(label).click();
+            cy.findByText("Apply filters").click();
+          });
+
+          cy.findAllByTestId("result-link-info-text").each(result => {
+            if (resultInfoText) {
+              cy.wrap(result).should("contain.text", resultInfoText);
+            }
+          });
+        });
+      });
+
+      it("should remove type filter when `X` is clicked on search filter", () => {
+        const { label, filterName } = typeFilters[0];
+        cy.visit(`/search?q=e&type=${filterName}`);
         cy.wait("@search");
 
-        getSearchBar().should("have.value", "orders");
-        cy.findByTestId("search-bar-filter-button").should(
-          "have.attr",
-          "data-is-filtered",
-          "true",
+        cy.findByTestId("type-search-filter").within(() => {
+          cy.findByText(label).should("exist");
+          cy.findByLabelText("close icon").click();
+          cy.findByText(label).should("not.exist");
+          cy.findByText("Content type").should("exist");
+        });
+
+        cy.url().should("not.contain", "type");
+
+        // Check that we're getting elements other than Questions by checking the
+        // result text and checking if there's more than one result-link-info-text text
+        cy.findAllByTestId("result-link-info-text").then(
+          $resultTypeDescriptions => {
+            const uniqueTypeDescriptions = new Set(
+              $resultTypeDescriptions.toArray().map(el => el.textContent),
+            );
+            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+          },
+        );
+      });
+    });
+
+    describe("created_by filter", () => {
+      beforeEach(() => {
+        // create a bunch of questions from a normal user, then we can query the question
+        // created by that user as an admin
+        cy.signInAsNormalUser();
+        for (const question of TEST_QUESTIONS) {
+          cy.createQuestion(question);
+        }
+        cy.signOut();
+
+        cy.signInAsAdmin();
+      });
+
+      it("should hydrate created_by filter", () => {
+        cy.intercept("GET", "/api/user").as("getUsers");
+
+        cy.request("GET", "/api/user/current").then(
+          ({ body: { common_name, id } }) => {
+            cy.visit(`/search?q=orders&created_by=${id}`);
+
+            cy.wait("@search");
+            cy.wait("@getUsers");
+
+            cy.findByTestId("created_by-search-filter").within(() => {
+              cy.findByText(common_name).should("exist");
+              cy.findByLabelText("close icon").should("exist");
+            });
+          },
         );
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-
-        cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-        cy.findByTestId("type-sidebar").within(() => {
-          cy.findByText(sidebarLabel).should("exist");
-        });
-        cy.findAllByTestId("result-link-info-text").each(result => {
-          cy.wrap(result).should("contain.text", resultInfoText);
-        });
+        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
       });
-    });
 
-    describe("accessing full page search with `Enter`", () => {
-      it("should not render full page search if user has not entered a text query ", () => {
-        cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
-
+      it("should filter results by user", () => {
         cy.visit("/");
-
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
-        getSearchBar().click().type("{enter}");
-
-        cy.wait("@getRecentViews");
-
-        cy.findByTestId("search-results-floating-container").within(() => {
-          cy.findByText("Recently viewed").should("exist");
-        });
-        cy.location("pathname").should("eq", "/");
-      });
-
-      it("should render full page search when search text is present and user clicks 'Enter'", () => {
-        cy.visit("/");
-        cy.findByTestId("search-bar-filter-button").click();
-        getSearchModalContainer().within(() => {
-          cy.findByText("Question").click();
-          cy.findByText("Apply all filters").click();
-        });
-        getSearchBar().click().type("orders{enter}");
-        cy.wait("@search");
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "orders"').should("exist");
-        });
-
-        cy.location().should(loc => {
-          expect(loc.pathname).to.eq("/search");
-          expect(loc.search).to.eq("?q=orders&type=card");
-        });
-      });
-    });
-
-    describe("search filters", () => {
-      typeFilters.forEach(
-        ({ label, sidebarLabel, filterName, resultInfoText }) => {
-          it(`should filter results by ${label}`, () => {
-            cy.visit("/");
-
-            cy.findByTestId("search-bar-filter-button").click();
-            getSearchModalContainer().within(() => {
-              cy.findByText(label).click();
-              cy.findByText("Apply all filters").click();
-            });
-
-            getSearchBar().clear().type("e{enter}");
-            cy.wait("@search");
-
-            cy.url().should("include", `type=${filterName}`);
-
-            cy.findAllByTestId("result-link-info-text").each(result => {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            });
-
-            cy.findAllByTestId("type-sidebar-item").should("have.length", 2);
-            cy.findByTestId("type-sidebar").within(() => {
-              cy.findByText(sidebarLabel).should("exist");
-            });
-          });
-        },
-      );
-
-      it("should not filter results when `Clear all filters` is applied", () => {
-        cy.visit("/search?q=order&type=card");
-        cy.wait("@search");
-
-        cy.findAllByTestId("search-result-item-name");
-        cy.findByTestId("search-bar-filter-button").click();
-
-        getSearchModalContainer().within(() => {
-          cy.findByText("Clear all filters").click();
-        });
 
         getSearchBar().clear().type("e{enter}");
         cy.wait("@search");
 
-        cy.findAllByTestId("type-sidebar-item").should(
-          "have.length",
-          typeFilters.length + 1,
+        cy.findByTestId("created_by-search-filter").click();
+
+        popover().within(() => {
+          cy.findByText("Robert Tableton").click();
+          cy.findByText("Apply filters").click();
+        });
+        cy.url().should("contain", "created_by");
+
+        cy.findAllByTestId("search-result-item").each(result => {
+          cy.wrap(result).should("contain.text", "Robert's Question");
+        });
+      });
+
+      it("should remove created_by filter when `X` is clicked on filter", () => {
+        cy.visit(`/search?q=e&created_by=${NORMAL_USER_ID}`);
+
+        cy.findByTestId("created_by-search-filter").within(() => {
+          cy.findByText("Robert Tableton").should("exist");
+          cy.findByLabelText("close icon").click();
+        });
+
+        // Check that we're getting elements from other users by checking for other types,
+        // since all assets, for the user we're querying are questions
+        cy.findAllByTestId("result-link-info-text").then(
+          $resultTypeDescriptions => {
+            const uniqueTypeDescriptions = new Set(
+              $resultTypeDescriptions.toArray().map(el => el.textContent),
+            );
+            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
+          },
         );
+      });
+    });
+
+    describeEE("verified filter", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+        cy.createModerationReview({
+          status: "verified",
+          moderated_item_type: "card",
+          moderated_item_id: ORDERS_COUNT_QUESTION_ID,
+        });
+      });
+
+      it("should hydrate search with search text and verified filter", () => {
+        cy.visit("/search?q=orders&verified=true");
+        cy.wait("@search");
+
+        getSearchBar().should("have.value", "orders");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "orders"').should("exist");
+        });
+
+        cy.findAllByTestId("search-result-item").each(result => {
+          cy.wrap(result).within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+      });
+
+      it("should filter results by verified items", () => {
+        cy.visit("/");
+
+        getSearchBar().clear().type("e{enter}");
+        cy.wait("@search");
+
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
+
+        cy.findAllByTestId("search-result-item").each(result => {
+          cy.wrap(result).within(() => {
+            cy.findByLabelText("verified icon").should("exist");
+          });
+        });
+      });
+
+      it("should not filter results when verified items is off", () => {
+        cy.visit("/search?q=e&verified=true");
+
+        cy.wait("@search");
+
+        cy.findByTestId("verified-search-filter")
+          .findByTestId("toggle-filter-switch")
+          .click();
+        cy.url().should("not.include", "verified=true");
+
+        let verifiedElementCount = 0;
+        let unverifiedElementCount = 0;
+        cy.findAllByTestId("search-result-item")
+          .each($el => {
+            if (!$el.find('[aria-label="verified icon"]').length) {
+              unverifiedElementCount++;
+            } else {
+              verifiedElementCount++;
+            }
+          })
+          .then(() => {
+            expect(verifiedElementCount).to.eq(1);
+            expect(unverifiedElementCount).to.be.gt(0);
+          });
       });
     });
   });
@@ -329,6 +454,10 @@ function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
 }
 
-function getSearchModalContainer() {
-  return cy.findByTestId("search-filter-modal-container");
+function generateQuestions(prefix, count) {
+  return _.range(count).map(idx => ({
+    name: `${prefix} ${idx + 1}`,
+    query: { "source-table": ORDERS_ID },
+    collection_id: null,
+  }));
 }
