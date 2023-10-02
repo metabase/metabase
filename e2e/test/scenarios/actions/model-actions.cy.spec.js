@@ -23,19 +23,7 @@ import {
 import { createMockActionParameter } from "metabase-types/api/mocks";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 
-const PG_DB_ID = 2;
-const PG_ORDERS_TABLE_ID = 9;
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
-
-const SAMPLE_ORDERS_MODEL = {
-  name: "Order",
-  dataset: true,
-  display: "table",
-  database: PG_DB_ID,
-  query: {
-    "source-table": PG_ORDERS_TABLE_ID,
-  },
-};
 
 const TEST_PARAMETER = createMockActionParameter({
   id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
@@ -57,7 +45,7 @@ const SAMPLE_QUERY_ACTION = {
   name: "Demo Action",
   type: "query",
   parameters: [TEST_PARAMETER],
-  database_id: PG_DB_ID,
+  database_id: WRITABLE_DB_ID,
   dataset_query: {
     type: "native",
     native: {
@@ -66,7 +54,7 @@ const SAMPLE_QUERY_ACTION = {
         [TEST_TEMPLATE_TAG.name]: TEST_TEMPLATE_TAG,
       },
     },
-    database: PG_DB_ID,
+    database: WRITABLE_DB_ID,
   },
   visualization_settings: {
     fields: {
@@ -93,10 +81,11 @@ describe(
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
-      setActionsEnabledForDB(PG_DB_ID);
+      setActionsEnabledForDB(WRITABLE_DB_ID);
 
-      cy.createQuestion(SAMPLE_ORDERS_MODEL, {
-        wrapId: true,
+      createModelFromTableName({
+        tableName: "orders",
+        modelName: "Order",
         idAlias: "modelId",
       });
 
@@ -188,18 +177,14 @@ describe(
         .icon("unarchive")
         .click({ force: true });
 
-      cy.wait("@updateAction");
-      cy.wait("@getSearchResults");
-      cy.wait("@getArchived");
-
-      cy.get("main").within(() => {
+      cy.findByTestId("archived-list").within(() => {
         cy.findByText("Items you archive will appear here.");
         cy.findByText("Delete Order").should("not.exist");
       });
 
       cy.findByTestId("toast-undo").button("Undo").click();
 
-      cy.get("main").within(() => {
+      cy.findByTestId("archived-list").within(() => {
         cy.findByText("Items you archive will appear here.").should(
           "not.exist",
         );
@@ -209,7 +194,7 @@ describe(
       cy.log("Delete the action");
       getArchiveListItem("Delete Order").icon("trash").click({ force: true });
 
-      cy.get("main").within(() => {
+      cy.findByTestId("archived-list").within(() => {
         cy.findByText("Items you archive will appear here.");
         cy.findByText("Delete Order").should("not.exist");
       });
@@ -235,7 +220,7 @@ describe(
       modal().within(() => {
         cy.findByText("Select a model").click();
       });
-      popover().findByText(SAMPLE_ORDERS_MODEL.name).click();
+      popover().findByText("Order").click();
       cy.findByRole("button", { name: "Create" }).click();
 
       cy.get("@modelId").then(modelId => {
@@ -257,10 +242,10 @@ describe(
 
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
-          [PG_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
         },
         [USER_GROUPS.DATA_GROUP]: {
-          [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+          [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
         },
       });
 
@@ -821,12 +806,12 @@ describe(
       cy.updatePermissionsGraph(
         {
           [USER_GROUPS.ALL_USERS_GROUP]: {
-            [PG_DB_ID]: { data: { schemas: "all", native: "write" } },
+            [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
           },
         },
         [
           {
-            db_id: PG_DB_ID,
+            db_id: WRITABLE_DB_ID,
             group_id: USER_GROUPS.ALL_USERS_GROUP,
             attribute: "role",
           },
