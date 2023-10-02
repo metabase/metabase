@@ -450,8 +450,8 @@
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! User id changes)
-          (events/publish-event! :event/user-update {:updater api/*current-user-id*
-                                                     :changes (assoc changes :id id)}))
+          (events/publish-event! :event/user-update {:user-id api/*current-user-id*
+                                                     :details (assoc changes :id id)}))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
@@ -480,12 +480,15 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
       [400 {:message (tru "Not able to reactivate an active user")}])
-    (reactivate-user! user)))
+    (events/publish-event! :event/user-reactivated
+                           {:user-id api/*current-user-id*
+                            :details (dissoc user [:is_active :sso_source])})
+    (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
@@ -523,9 +526,11 @@
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
-  (api/check-500 (pos? (t2/update! User id {:is_active false})))
-  (events/publish-event! :event/user-deactivated {:updater          api/*current-user-id*
-                                                  :deactivated-user (t2/select-one [:model/User :email :first_name :last_name :id] :id id)})
+  (api/check-500
+   (when (pos? (t2/update! User id {:is_active false}))
+     (events/publish-event! :event/user-deactivated
+                            {:user-id api/*current-user-id*
+                             :details (t2/select-one [:model/User :email :first_name :last_name :id] :id id)})))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
