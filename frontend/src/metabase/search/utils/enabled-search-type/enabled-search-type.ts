@@ -8,3 +8,9 @@ export function isEnabledSearchModelType(
     typeof value === "string" && enabledSearchTypes.some(type => type === value)
   );
 }
+
+export const filterEnabledSearchTypes = (
+  values: unknown[],
+): EnabledSearchModelType[] => {
+  return values.filter(isEnabledSearchModelType);
+};

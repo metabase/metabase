@@ -40,7 +40,7 @@ export type ToggleSidebarFilterProps = {
   "data-testid"?: string;
 };
 export const ToggleSidebarFilter = ({
-  filter: { title },
+  filter: { label },
   value,
   onChange,
   "data-testid": dataTestId,
@@ -48,7 +48,7 @@ export const ToggleSidebarFilter = ({
   return (
     <Group noWrap px="0.25rem" py="0.5rem" data-testid={dataTestId}>
       <Text w="100%" c="text.1" fw={700}>
-        {title}
+        {label}
       </Text>
       <Switch
         wrapperProps={{

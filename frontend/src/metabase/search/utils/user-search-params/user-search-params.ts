@@ -1,9 +1,7 @@
 import type { UserId } from "metabase-types/api";
 import type { SearchQueryParamValue } from "metabase/search/types";
 
-export const parseUserIdString = (
-  value: SearchQueryParamValue,
-): UserId | null => {
+export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   if (!value || Array.isArray(value)) {
     return null;
   }

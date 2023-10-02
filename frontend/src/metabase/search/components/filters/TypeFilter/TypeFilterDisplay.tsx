@@ -9,7 +9,7 @@ export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"]
   ({ value }) => {
     let titleText = "";
     if (!value || !value.length) {
-      titleText = TypeFilter.title;
+      titleText = TypeFilter.label;
     } else if (value.length === 1) {
       titleText = getTranslatedEntityName(value[0]) ?? t`1 type selected`;
     } else {

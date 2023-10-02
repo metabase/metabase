@@ -5,17 +5,17 @@ import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 import {
   convertUserIdToString,
-  parseUserIdString,
+  parseUserId,
 } from "metabase/search/utils/user-search-params";
 
 export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   iconName: "person",
-  title: t`Creator`,
+  label: t`Creator`,
   type: "dropdown",
-  DisplayComponent: ({ value }) => (
-    <UserNameDisplay title={CreatedByFilter.title} value={value} />
+  DisplayComponent: ({ value: userId }) => (
+    <UserNameDisplay label={CreatedByFilter.label} userId={userId} />
   ),
   ContentComponent: SearchUserPicker,
-  fromUrl: parseUserIdString,
+  fromUrl: parseUserId,
   toUrl: convertUserIdToString,
 };

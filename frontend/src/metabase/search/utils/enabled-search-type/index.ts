@@ -1,1 +1,4 @@
-export { isEnabledSearchModelType } from "./enabled-search-type";
+export {
+  isEnabledSearchModelType,
+  filterEnabledSearchTypes,
+} from "./enabled-search-type";

@@ -26,7 +26,7 @@ export type DropdownSidebarFilterProps<T extends FilterTypeKeys = any> = {
 } & SearchFilterComponentProps<T>;
 
 export const DropdownSidebarFilter = ({
-  filter: { title, iconName, DisplayComponent, ContentComponent },
+  filter: { label, iconName, DisplayComponent, ContentComponent },
   "data-testid": dataTestId,
   value,
   onChange,
@@ -104,7 +104,7 @@ export const DropdownSidebarFilter = ({
     >
       <DropdownFieldSet
         noPadding
-        legend={fieldHasValue ? title : null}
+        legend={fieldHasValue ? label : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
         <DropdownDisplayContent position="apart" noWrap w="100%">
@@ -113,7 +113,7 @@ export const DropdownSidebarFilter = ({
           ) : (
             <Group noWrap>
               {iconName && <Icon name={iconName} />}
-              <Text weight={700}>{title}</Text>
+              <Text weight={700}>{label}</Text>
             </Group>
           )}
           <Button

@@ -8,18 +8,18 @@ import type { UserNameDisplayProps } from "./UserNameDisplay";
 const TEST_USER_LIST_RESULT = createMockUserListResult();
 
 const setup = async ({
-  value = null,
+  userId = null,
   users = [TEST_USER_LIST_RESULT],
   waitForLoading = true,
 }: {
-  value?: UserNameDisplayProps["value"];
+  userId?: UserNameDisplayProps["userId"];
   users?: UserListResult[];
   waitForLoading?: boolean;
 } = {}) => {
   setupUsersEndpoints(users);
 
   renderWithProviders(
-    <UserNameDisplay title={"UserNameDisplay Test"} value={value} />,
+    <UserNameDisplay label={"UserNameDisplay Test"} userId={userId} />,
   );
 
   if (waitForLoading) {
@@ -31,7 +31,7 @@ const setup = async ({
 
 describe("UserNameDisplay", () => {
   it("should initially display loading message when a user is selected", async () => {
-    await setup({ waitForLoading: false, value: TEST_USER_LIST_RESULT.id });
+    await setup({ waitForLoading: false, userId: TEST_USER_LIST_RESULT.id });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
@@ -41,7 +41,7 @@ describe("UserNameDisplay", () => {
   });
 
   it("should display user name when value is a valid user", async () => {
-    await setup({ value: TEST_USER_LIST_RESULT.id });
+    await setup({ userId: TEST_USER_LIST_RESULT.id });
     expect(screen.getByText("Testy Tableton")).toBeInTheDocument();
   });
 
@@ -55,7 +55,7 @@ describe("UserNameDisplay", () => {
 
     await setup({
       users: [userWithoutCommonName],
-      value: userWithoutCommonName.id,
+      userId: userWithoutCommonName.id,
     });
     expect(screen.getByText("1 user selected")).toBeInTheDocument();
   });
