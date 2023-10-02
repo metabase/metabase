@@ -91,6 +91,8 @@
     [:models                              [:set SearchableModel]]
     [:created-at         {:optional true} ms/NonBlankString]
     [:created-by         {:optional true} ms/PositiveInt]
+    [:last-edited-at     {:optional true} ms/NonBlankString]
+    [:last-edited-by     {:optional true} ms/PositiveInt]
     [:table-db-id        {:optional true} ms/PositiveInt]
     [:limit-int          {:optional true} ms/Int]
     [:offset-int         {:optional true} ms/Int]

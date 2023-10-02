@@ -30,6 +30,7 @@
             Revision
             Table
             User]]
+   [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
@@ -215,7 +216,7 @@
       (t2.with-temp/with-temp [Collection collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
-          (try
+          (mt/with-model-cleanup [:model/Dashboard]
             (is (= (merge
                     dashboard-defaults
                     {:name           test-dashboard-name
@@ -232,36 +233,85 @@
                                                                            :parameters    [{:id "abc123", :name "test", :type "date"}]
                                                                            :cache_ttl     1234
                                                                            :collection_id (u/the-id collection)})
-                       dashboard-response)))
-            (finally
-              (t2/delete! Dashboard :name test-dashboard-name))))))))
+                       dashboard-response)))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
     (testing "Make sure we can create a Dashboard with a Collection position"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (let [dashboard-name (mt/random-name)]
-            (try
+          (mt/with-model-cleanup [:model/Dashboard]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (let [dashboard-name (mt/random-name)]
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
               (is (=? {:collection_id true, :collection_position 1000}
                       (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                              (update :collection_id (partial = (u/the-id collection))))))
-              (finally
-                (t2/delete! Dashboard :name dashboard-name)))))
+                              (update :collection_id (partial = (u/the-id collection))))))))
 
-        (testing "..but not if we don't have permissions for the Collection"
-          (t2.with-temp/with-temp [Collection collection]
-            (let [dashboard-name (mt/random-name)]
-              (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
-                                                                  :collection_id       (u/the-id collection)
-                                                                  :collection_position 1000})
-              (is (= nil
-                     (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
-                             (update :collection_id (partial = (u/the-id collection)))))))))))))
+          (testing "..but not if we don't have permissions for the Collection"
+            (t2.with-temp/with-temp [Collection collection]
+              (let [dashboard-name (mt/random-name)]
+                (mt/user-http-request :rasta :post 403 "dashboard" {:name                dashboard-name
+                                                                    :collection_id       (u/the-id collection)
+                                                                    :collection_position 1000})
+                (is (not (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               GET /api/dashboard/                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-dashboards-test
+  (mt/with-temp
+    [:model/Dashboard {rasta-dash     :id} {:creator_id    (mt/user->id :rasta)}
+     :model/Dashboard {crowberto-dash :id} {:creator_id    (mt/user->id :crowberto)
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
+     :model/Dashboard {archived-dash  :id} {:archived      true
+                                            :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
+                                            :creator_id    (mt/user->id :crowberto)}]
+
+    (testing "should include creator info and last edited info"
+      (revision/push-revision!
+       :entity      :model/Dashboard
+       :id          crowberto-dash
+       :user-id     (mt/user->id :crowberto)
+       :is_creation true
+       :object      {:id crowberto-dash})
+      (is (=? (merge (t2/select-one :model/Dashboard crowberto-dash)
+                     {:creator        {:id          (mt/user->id :crowberto)
+                                       :email       "crowberto@metabase.com"
+                                       :first_name  "Crowberto"
+                                       :last_name   "Corv"
+                                       :common_name "Crowberto Corv"}}
+                     {:last-edit-info {:id         (mt/user->id :crowberto)
+                                       :first_name "Crowberto"
+                                       :last_name  "Corv"
+                                       :email      "crowberto@metabase.com"
+                                       :timestamp  true}})
+              (-> (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine")
+                  first
+                  (update-in [:last-edit-info :timestamp] boolean)))))
+
+    (testing "f=all shouldn't return archived dashboards"
+      (is (= #{rasta-dash crowberto-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+
+      (testing "and should respect read perms"
+        (is (= #{rasta-dash}
+               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))))
+
+    (testing "f=archvied return archived dashboards"
+      (is (= #{archived-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
+
+      (testing "and should return read perms"
+        (is (= #{}
+               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "archived")))))))
+
+    (testing "f=mine return dashboards created by caller but do not include archived"
+      (is (= #{crowberto-dash}
+             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "mine"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             GET /api/dashboard/:id                                             |
@@ -818,15 +868,15 @@
     (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
-          (api.card-test/with-ordered-items collection [Card  a
-                                                        Pulse b
-                                                        Card  d]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-            (is (= {"a" 1
-                    "b" 2
-                    "d" 3}
-                   (api.card-test/get-name->collection-position :rasta collection)))
-            (try
+          (mt/with-model-cleanup [:model/Dashboard]
+            (api.card-test/with-ordered-items collection [Card  a
+                                                          Pulse b
+                                                          Card  d]
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+              (is (= {"a" 1
+                      "b" 2
+                      "d" 3}
+                     (api.card-test/get-name->collection-position :rasta collection)))
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                "c"
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 3})
@@ -834,9 +884,7 @@
                       "b" 2
                       "c" 3
                       "d" 4}
-                     (api.card-test/get-name->collection-position :rasta collection)))
-              (finally
-                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                     (api.card-test/get-name->collection-position :rasta collection))))))))))
 
 (deftest insert-dashboard-no-position-test
   (testing "POST /api/dashboard"
@@ -851,17 +899,14 @@
                     "b" 2
                     "d" 3}
                    (api.card-test/get-name->collection-position :rasta collection)))
-            (try
+            (mt/with-model-cleanup [:model/Dashboard]
               (mt/user-http-request :rasta :post 200 "dashboard" {:name          "c"
                                                                   :collection_id (u/the-id collection)})
               (is (= {"a" 1
                       "b" 2
                       "c" nil
                       "d" 3}
-                     (api.card-test/get-name->collection-position :rasta collection)))
-              (finally
-                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
-
+                     (api.card-test/get-name->collection-position :rasta collection))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           DELETE /api/dashboard/:id                                            |
@@ -880,13 +925,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest copy-dashboard-test
-  (testing "POST /api/dashboard/:id/copy"
-    (testing "A plain copy with nothing special"
-      (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
-                                                    :description "A description"
-                                                    :creator_id  (mt/user->id :rasta)}]
-        (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
-          (try
+  (mt/with-model-cleanup [:model/Dashboard]
+    (testing "POST /api/dashboard/:id/copy"
+      (testing "A plain copy with nothing special"
+        (t2.with-temp/with-temp [Dashboard dashboard {:name        "Test Dashboard"
+                                                      :description "A description"
+                                                      :creator_id  (mt/user->id :rasta)}]
+          (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
             (is (= (merge
                     dashboard-defaults
                     {:name          "Test Dashboard"
@@ -897,19 +942,18 @@
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not=  (:entity_id dashboard) (:entity_id response))
-                "The copy should have a new entity ID generated")
-            (finally
-              (t2/delete! Dashboard :id (u/the-id response)))))))))
+                "The copy should have a new entity ID generated")))))))
+
 
 (deftest copy-dashboard-test-2
-  (testing "POST /api/dashboard/:id/copy"
-    (testing "Ensure name / description / user set when copying"
-      (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
-                                                     :description "An old description"}]
-        (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" (:id dashboard))
-                                             {:name        "Test Dashboard - Duplicate"
-                                              :description "A new description"})]
-          (try
+  (mt/with-model-cleanup [:model/Dashboard]
+    (testing "POST /api/dashboard/:id/copy"
+      (testing "Ensure name / description / user set when copying"
+        (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
+                                                       :description "An old description"}]
+          (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" (:id dashboard))
+                                               {:name        "Test Dashboard - Duplicate"
+                                                :description "A new description"})]
             (is (= (merge
                     dashboard-defaults
                     {:name          "Test Dashboard - Duplicate"
@@ -920,68 +964,68 @@
                    (dashboard-response response)))
             (is (some? (:entity_id response)))
             (is (not= (:entity_id dashboard) (:entity_id response))
-                "The copy should have a new entity ID generated")
-            (finally
-              (t2/delete! Dashboard :id (u/the-id response)))))))))
+                "The copy should have a new entity ID generated")))))))
+
 
 (deftest copy-dashboard-test-3
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
-      (mt/with-temp [Collection source-coll {:name "Source collection"}
-                     Collection dest-coll   {:name "Destination collection"}
-                     Dashboard  dashboard {:name          "Dashboard to be Copied"
-                                           :description   "A description"
-                                           :collection_id (u/the-id source-coll)
-                                           :creator_id    (mt/user->id :rasta)}
-                     Card       total-card  {:name "Total orders per month"
-                                             :collection_id (u/the-id source-coll)
-                                             :display :line
-                                             :visualization_settings
-                                             {:graph.dimensions ["CREATED_AT"]
-                                              :graph.metrics ["sum"]}
-                                             :dataset_query
-                                             (mt/$ids
-                                              {:database (mt/id)
-                                               :type     :query
-                                               :query    {:source-table $$orders
-                                                          :aggregation  [[:sum $orders.total]]
-                                                          :breakout     [!month.orders.created_at]}})}
-                     Card      avg-card  {:name "Average orders per month"
-                                          :collection_id (u/the-id source-coll)
-                                          :display :line
-                                          :visualization_settings
-                                          {:graph.dimensions ["CREATED_AT"]
-                                           :graph.metrics ["sum"]}
-                                          :dataset_query
-                                          (mt/$ids
-                                           {:database (mt/id)
-                                            :type     :query
-                                            :query    {:source-table $$orders
-                                                       :aggregation  [[:avg $orders.total]]
-                                                       :breakout     [!month.orders.created_at]}})}
-                     Card          model {:name "A model"
-                                          :collection_id (u/the-id source-coll)
-                                          :dataset true
-                                          :dataset_query
-                                          (mt/$ids
-                                           {:database (mt/id)
-                                            :type :query
-                                            :query {:source-table $$orders
-                                                    :limit 4}})}
-                     DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
-                                             :card_id    (u/the-id total-card)
-                                             :size_x 6, :size_y 6}
-                     DashboardCard _textcard {:dashboard_id (u/the-id dashboard)
-                                              :visualization_settings
-                                              {:virtual_card
-                                               {:display :text}
-                                               :text "here is some text"}}
-                     DashboardCard _        {:dashboard_id (u/the-id dashboard)
-                                             :card_id    (u/the-id model)
-                                             :size_x 6, :size_y 6}
-                     DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
-                                            :card_id (u/the-id avg-card)
-                                            :position 0}]
+      (mt/with-temp
+        [Collection source-coll {:name "Source collection"}
+         Collection dest-coll   {:name "Destination collection"}
+         Dashboard  dashboard {:name          "Dashboard to be Copied"
+                               :description   "A description"
+                               :collection_id (u/the-id source-coll)
+                               :creator_id    (mt/user->id :rasta)}
+         Card       total-card  {:name "Total orders per month"
+                                 :collection_id (u/the-id source-coll)
+                                 :display :line
+                                 :visualization_settings
+                                 {:graph.dimensions ["CREATED_AT"]
+                                  :graph.metrics ["sum"]}
+                                 :dataset_query
+                                 (mt/$ids
+                                  {:database (mt/id)
+                                   :type     :query
+                                   :query    {:source-table $$orders
+                                              :aggregation  [[:sum $orders.total]]
+                                              :breakout     [!month.orders.created_at]}})}
+         Card      avg-card  {:name "Average orders per month"
+                              :collection_id (u/the-id source-coll)
+                              :display :line
+                              :visualization_settings
+                              {:graph.dimensions ["CREATED_AT"]
+                               :graph.metrics ["sum"]}
+                              :dataset_query
+                              (mt/$ids
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table $$orders
+                                           :aggregation  [[:avg $orders.total]]
+                                           :breakout     [!month.orders.created_at]}})}
+         Card          model {:name "A model"
+                              :collection_id (u/the-id source-coll)
+                              :dataset true
+                              :dataset_query
+                              (mt/$ids
+                               {:database (mt/id)
+                                :type :query
+                                :query {:source-table $$orders
+                                        :limit 4}})}
+         DashboardCard dashcard {:dashboard_id (u/the-id dashboard)
+                                 :card_id    (u/the-id total-card)
+                                 :size_x 6, :size_y 6}
+         DashboardCard _textcard {:dashboard_id (u/the-id dashboard)
+                                  :visualization_settings
+                                  {:virtual_card
+                                   {:display :text}
+                                   :text "here is some text"}}
+         DashboardCard _        {:dashboard_id (u/the-id dashboard)
+                                 :card_id    (u/the-id model)
+                                 :size_x 6, :size_y 6}
+         DashboardCardSeries _ {:dashboardcard_id (u/the-id dashcard)
+                                :card_id (u/the-id avg-card)
+                                :position 0}]
         (mt/with-model-cleanup [Card Dashboard DashboardCard DashboardCardSeries]
           (let [resp (mt/user-http-request :crowberto :post 200
                                            (format "dashboard/%d/copy" (:id dashboard))
@@ -1169,27 +1213,28 @@
   (testing "POST /api/dashboard/:id/copy"
     (testing "for a dashboard that has tabs"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-        (let [new-dash-id        (:id (mt/user-http-request :rasta :post 200
-                                                            (format "dashboard/%d/copy" dashboard-id)
-                                                            {:name        "New dashboard"
-                                                             :description "A new description"}))
-              original-tabs      (t2/select [:model/DashboardTab :id :position :name]
-                                            :dashboard_id dashboard-id
-                                            {:order-by [[:position :asc]]})
-              new-tabs           (t2/select [:model/DashboardTab :id :position :name]
-                                            :dashboard_id new-dash-id
-                                            {:order-by [[:position :asc]]})
-              new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
-         (testing "Cards are located correctly between tabs"
-           (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (ordered-cards-by-position dashboard-id))
-                  (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (for [card (ordered-cards-by-position new-dash-id)]
-                         (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [new-dash-id        (:id (mt/user-http-request :rasta :post 200
+                                                              (format "dashboard/%d/copy" dashboard-id)
+                                                              {:name        "New dashboard"
+                                                               :description "A new description"}))
+                original-tabs      (t2/select [:model/DashboardTab :id :position :name]
+                                              :dashboard_id dashboard-id
+                                              {:order-by [[:position :asc]]})
+                new-tabs           (t2/select [:model/DashboardTab :id :position :name]
+                                              :dashboard_id new-dash-id
+                                              {:order-by [[:position :asc]]})
+                new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
+            (testing "Cards are located correctly between tabs"
+              (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                          (ordered-cards-by-position dashboard-id))
+                     (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
+                          (for [card (ordered-cards-by-position new-dash-id)]
+                            (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
-         (testing "new tabs should have the same name and position"
-           (is (= (map #(dissoc % :id) original-tabs)
-                  (map #(dissoc % :id) new-tabs)))))))))
+            (testing "new tabs should have the same name and position"
+              (is (= (map #(dissoc % :id) original-tabs)
+                     (map #(dissoc % :id) new-tabs))))))))))
 
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
@@ -2144,29 +2189,29 @@
                                                            :card_id 123
                                                            :series  [8 9]}]}
                                 :message  "updated"}]
-      (is (= [{:is_reversion          false
-               :is_creation           false
-               :message               "updated"
-               :user                  (-> (user-details (mt/fetch-user :crowberto))
+      (is (=? [{:is_reversion          false
+                :is_creation           false
+                :message               "updated"
+                :user                  (-> (user-details (mt/fetch-user :crowberto))
+                                           (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff                  {:before {:name        "b"
+                                                 :description nil
+                                                 :cards       [{:series nil, :size_y 4, :size_x 4}]}
+                                        :after  {:name        "c"
+                                                 :description "something"
+                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
+                :has_multiple_changes true
+                :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
+               {:is_reversion         false
+                :is_creation          true
+                :message              nil
+                :user                 (-> (user-details (mt/fetch-user :rasta))
                                           (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff                  {:before {:name        "b"
-                                                :description nil
-                                                :cards       [{:series nil, :size_y 4, :size_x 4}]}
-                                       :after  {:name        "c"
-                                                :description "something"
-                                                :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
-               :has_multiple_changes true
-               :description          "added a description and renamed it from \"b\" to \"c\", modified the cards and added some series to card 123."}
-              {:is_reversion         false
-               :is_creation          true
-               :message              nil
-               :user                 (-> (user-details (mt/fetch-user :rasta))
-                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff                 nil
-               :has_multiple_changes false
-               :description          "created this."}]
-             (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
-                      (dissoc revision :timestamp :id))))))))
+                :diff                 nil
+                :has_multiple_changes false
+                :description          "created this."}]
+              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
+                       (dissoc revision :timestamp :id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -2194,20 +2239,7 @@
                                                            :description nil
                                                            :cards       []}
                                                 :message  "updated"}]
-      (is (= {:is_reversion         true
-              :is_creation          false
-              :message              nil
-              :user                 (-> (user-details (mt/fetch-user :crowberto))
-                                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-              :diff                 {:before {:name "b"}
-                                     :after  {:name "a"}}
-              :has_multiple_changes false
-              :description          "reverted to an earlier version."}
-             (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
-                                           {:revision_id revision-id})
-                     :id :timestamp)))
-
-      (is (= [{:is_reversion         true
+      (is (=? {:is_reversion         true
                :is_creation          false
                :message              nil
                :user                 (-> (user-details (mt/fetch-user :crowberto))
@@ -2216,25 +2248,37 @@
                                       :after  {:name "a"}}
                :has_multiple_changes false
                :description          "reverted to an earlier version."}
-              {:is_reversion         false
-               :is_creation          false
-               :message              "updated"
-               :user                 (-> (user-details (mt/fetch-user :crowberto))
-                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff                 {:before {:name "a"}
-                                      :after  {:name "b"}}
-               :has_multiple_changes false
-               :description          "renamed this Dashboard from \"a\" to \"b\"."}
-              {:is_reversion         false
-               :is_creation          true
-               :message              nil
-               :user                 (-> (user-details (mt/fetch-user :rasta))
-                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff                 nil
-               :has_multiple_changes false
-               :description          "created this."}]
-             (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
-                      (dissoc revision :timestamp :id))))))))
+              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
+                                            {:revision_id revision-id})
+                     :id :timestamp)))
+      (is (=? [{:is_reversion         true
+                :is_creation          false
+                :message              nil
+                :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff                 {:before {:name "b"}
+                                       :after  {:name "a"}}
+                :has_multiple_changes false
+                :description          "reverted to an earlier version."}
+               {:is_reversion         false
+                :is_creation          false
+                :message              "updated"
+                :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff                 {:before {:name "a"}
+                                       :after  {:name "b"}}
+                :has_multiple_changes false
+                :description          "renamed this Dashboard from \"a\" to \"b\"."}
+               {:is_reversion         false
+                :is_creation          true
+                :message              nil
+                :user                 (-> (user-details (mt/fetch-user :rasta))
+                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                :diff                 nil
+                :has_multiple_changes false
+                :description          "created this."}]
+              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
+                       (dissoc revision :timestamp :id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

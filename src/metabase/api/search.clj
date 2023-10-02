@@ -413,6 +413,8 @@
   [{:keys [archived
            created-at
            created-by
+           last-edited-at
+           last-edited-by
            limit
            models
            offset
@@ -424,6 +426,8 @@
                                [:archived        {:optional true} [:maybe :boolean]]
                                [:created-at      {:optional true} [:maybe ms/NonBlankString]]
                                [:created-by      {:optional true} [:maybe ms/PositiveInt]]
+                               [:last-edited-at  {:optional true} [:maybe ms/NonBlankString]]
+                               [:last-edited-by  {:optional true} [:maybe ms/PositiveInt]]
                                [:limit           {:optional true} [:maybe ms/Int]]
                                [:offset          {:optional true} [:maybe ms/Int]]
                                [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
@@ -437,29 +441,35 @@
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
                         :models             models}
-                 (some? created-at)  (assoc :created-at created-at)
-                 (some? created-by)  (assoc :created-by created-by)
-                 (some? table-db-id) (assoc :table-db-id table-db-id)
-                 (some? limit)       (assoc :limit-int limit)
-                 (some? offset)      (assoc :offset-int offset)
-                 (some? verified)    (assoc :verified verified))]
+                 (some? created-at)     (assoc :created-at created-at)
+                 (some? created-by)     (assoc :created-by created-by)
+                 (some? last-edited-at) (assoc :last-edited-at last-edited-at)
+                 (some? last-edited-by) (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)    (assoc :table-db-id table-db-id)
+                 (some? limit)          (assoc :limit-int limit)
+                 (some? offset)         (assoc :offset-int offset)
+                 (some? verified)       (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived table-db-id created_at created_by verified]
-  {archived    [:maybe ms/BooleanValue]
-   table-db-id [:maybe ms/PositiveInt]
-   created_at  [:maybe ms/NonBlankString]
-   created_by  [:maybe ms/PositiveInt]
-   verified    [:maybe true?]}
-  (query-model-set (search-context {:search-string q
-                                    :archived      archived
-                                    :table-db-id   table-db-id
-                                    :created-at    created_at
-                                    :created-by    created_by
-                                    :verified      verified
-                                    :models        search.config/all-models})))
+  [q archived table-db-id created_at created_by last_edited_at last_edited_by verified]
+  {archived       [:maybe ms/BooleanValue]
+   table-db-id    [:maybe ms/PositiveInt]
+   created_at     [:maybe ms/NonBlankString]
+   created_by     [:maybe ms/PositiveInt]
+   last_edited_at [:maybe ms/PositiveInt]
+   last_edited_by [:maybe ms/PositiveInt]
+   verified       [:maybe true?]}
+  (query-model-set (search-context {:search-string  q
+                                    :archived       archived
+                                    :table-db-id    table-db-id
+                                    :created-at     created_at
+                                    :created-by     created_by
+                                    :last-edited-at last_edited_at
+                                    :last-edited-by last_edited_by
+                                    :verified       verified
+                                    :models         search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -470,14 +480,16 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_at created_by table_db_id models verified]
-  {q           [:maybe ms/NonBlankString]
-   archived    [:maybe :boolean]
-   table_db_id [:maybe ms/PositiveInt]
-   models      [:maybe [:or SearchableModel [:sequential SearchableModel]]]
-   created_at  [:maybe ms/NonBlankString]
-   created_by  [:maybe ms/PositiveInt]
-   verified    [:maybe true?]}
+  [q archived created_at created_by table_db_id models last_edited_at last_edited_by verified]
+  {q              [:maybe ms/NonBlankString]
+   archived       [:maybe :boolean]
+   table_db_id    [:maybe ms/PositiveInt]
+   models         [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   created_at     [:maybe ms/NonBlankString]
+   created_by     [:maybe ms/PositiveInt]
+   last_edited_at [:maybe ms/NonBlankString]
+   last_edited_by [:maybe ms/PositiveInt]
+   verified       [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
@@ -485,15 +497,17 @@
                     (string? models) #{models}
                     :else            (set models))
         results    (search (search-context
-                            {:search-string q
-                             :archived      archived
-                             :created-at    created_at
-                             :created-by    created_by
-                             :table-db-id   table_db_id
-                             :models        models-set
-                             :limit         mw.offset-paging/*limit*
-                             :offset        mw.offset-paging/*offset*
-                             :verified      verified}))
+                            {:search-string  q
+                             :archived       archived
+                             :created-at     created_at
+                             :created-by     created_by
+                             :last-edited-at last_edited_at
+                             :last-edited-by last_edited_by
+                             :table-db-id    table_db_id
+                             :models         models-set
+                             :limit          mw.offset-paging/*limit*
+                             :offset         mw.offset-paging/*offset*
+                             :verified       verified}))
         duration   (- (System/currentTimeMillis) start-time)]
     ;; Only track global searches
     (when (and (nil? models)
