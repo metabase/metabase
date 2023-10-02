@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   dashboardGrid,
   getDashboardCards,
@@ -58,9 +57,9 @@ describe("issue 14793", () => {
     popover().findByText("X-ray").click();
 
     cy.wait("@xray").then(xhr => {
-      _.times(XRAY_DATASETS, () => {
+      for (let i = 0; i < XRAY_DATASETS; ++i) {
         cy.wait("@postDataset");
-      });
+      }
       expect(xhr.status).not.to.eq(500);
       expect(xhr.response.body.cause).not.to.exist;
     });
