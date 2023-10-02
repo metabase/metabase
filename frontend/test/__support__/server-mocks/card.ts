@@ -13,10 +13,6 @@ export function setupCardEndpoints(card: Card) {
     const lastCall = fetchMock.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
   });
-  fetchMock.post("path:/api/card", async url => {
-    const lastCall = fetchMock.lastCall(url);
-    return createMockCard(await lastCall?.request?.json());
-  });
 
   const virtualTableId = getQuestionVirtualTableId(card.id);
   fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
@@ -31,6 +27,10 @@ export function setupCardEndpoints(card: Card) {
 
 export function setupCardsEndpoints(cards: Card[]) {
   fetchMock.get({ url: "path:/api/card", overwriteRoutes: false }, cards);
+  fetchMock.post("path:/api/card", async url => {
+    const lastCall = fetchMock.lastCall(url);
+    return createMockCard(await lastCall?.request?.json());
+  });
   cards.forEach(card => setupCardEndpoints(card));
 }
 
