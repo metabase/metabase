@@ -14,16 +14,16 @@ describe("version-helpers", () => {
     const validCases = [
       "v0.75.2.3",
       "v1.75.2.3",
-      "v0.75-RC1",
-      "v1.75-RC2",
-      "v0.45-rc99",
-      "v1.45-RC99",
-      "v0.75-rc0",
+      "v0.75.0-RC1",
+      "v1.75.0-RC2",
+      "v0.45.0-rc99",
+      "v1.45.0-RC99",
+      "v0.75.0-rc0",
       "v0.75.2",
-      "v1.11",
-      "v1.75",
+      "v1.11.0",
+      "v1.75.0",
       "v1.75.2",
-      "v1.9",
+      "v1.9.0",
     ];
 
     validCases.forEach(input => {
@@ -51,6 +51,8 @@ describe("version-helpers", () => {
       "v0.12.0-migration",
       "v1.42.0-preview1",
       "v20150601-alpha",
+      "v1.9", // require .0 for major releases
+      "v0.11",
     ];
 
     invalidCases.forEach(input => {
@@ -60,7 +62,7 @@ describe("version-helpers", () => {
     });
 
     it("should recognize RC versions as valid", () => {
-      const cases = ["v0.75-RC1", "v1.75-RC2", "v0.3.4-rc3"];
+      const cases = ["v0.75.0-RC1", "v1.75.0-RC2", "v0.3.4-rc3"];
 
       cases.forEach(input => {
         expect(isValidVersionString(input)).toEqual(true);
@@ -121,7 +123,7 @@ describe("version-helpers", () => {
 
   describe("isRCVersion", () => {
     it("should correctly identify RC version numbers", () => {
-      ["v0.75-RC1", "v1.75-RC2", "v0.75.2.9.7-rc3"].forEach(input => {
+      ["v0.75.0-RC1", "v1.75.0-RC2", "v0.75.2.9.7-rc3"].forEach(input => {
         expect(isRCVersion(input)).toEqual(true);
       });
     });
@@ -133,7 +135,7 @@ describe("version-helpers", () => {
     });
 
     it("should return false for invalid versions", () => {
-      ["123", "foo", "rc", "parc"].forEach(input => {
+      ["123", "foo", "rc", "parc", "v9.9-rc2"].forEach(input => {
         expect(isRCVersion(input)).toEqual(false);
       });
     });
@@ -141,12 +143,13 @@ describe("version-helpers", () => {
 
   describe("getVersionType", () => {
     const cases: [string, string][] = [
-      ["v0.25", "major"],
-      ["v1.25", "major"],
+      ["v0.25.0", "major"],
+      ["v1.25.0", "major"],
       ["v0.25.2", "minor"],
       ["v1.25.2.3", "patch"],
-      ["v0.75-rc1", "rc"],
-      ["v1.75-RC2", "rc"],
+      ["v1.25.0.3", "patch"],
+      ["v0.75.0-rc1", "rc"],
+      ["v1.75.0-RC2", "rc"],
     ];
 
     cases.forEach(([input, expected]) => {
@@ -163,12 +166,12 @@ describe("version-helpers", () => {
 
   describe("getReleaseBranch", () => {
     const cases = [
-      "v0.75-RC1",
-      "v1.75-rc1",
-      "v0.75-rc99",
-      "v1.75",
-      "v0.75",
+      "v0.75.0-RC1",
+      "v1.75.0-rc1",
+      "v0.75.0-rc99",
+      "v1.75.0",
       "v0.75.0",
+      "v0.75.0.0",
       "v0.75.2",
       "v1.75.2.0",
       "v1.75.2.3.4",
@@ -189,10 +192,10 @@ describe("version-helpers", () => {
   describe("isLatestVersion", () => {
     it(`should return true for latest releases`, () => {
       const cases: [string, string[]][] = [
-        ["v0.25.2.1", ["v0.24", "v0.25.1", "v0.25.2", "v0.9"]],
-        ["v0.25.3", ["v0.24", "v0.25.1", "v0.25.2"]],
-        ["v0.26", ["v0.24", "v0.25.1", "v0.25.2"]],
-        ["v0.26.0", ["v0.24", "v0.25.1", "v0.25.2"]],
+        ["v0.25.2.1", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
+        ["v0.25.3", ["v0.24.0", "v0.25.1", "v0.25.2"]],
+        ["v0.26.0", ["v0.24.0", "v0.25.1", "v0.25.2"]],
+        ["v0.26.0", ["v0.24.0", "v0.25.1", "v0.25.2"]],
       ];
       cases.forEach(([input, releases]) => {
         expect(isLatestVersion(input, releases)).toEqual(true);
@@ -202,11 +205,11 @@ describe("version-helpers", () => {
 
     it(`should return false for non-latest releases`, () => {
       const cases: [string, string[]][] = [
-        ["v0.21.2.1", ["v0.24", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
-        ["v0.25.1.2", ["v0.24", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
-        ["v0.25", ["v0.24", "v0.25.1", "v0.25.2", "v0.9"]],
-        ["v0.25.1.99", ["v0.24", "v0.25.1", "v0.25.2", "v0.9"]],
-        ["v0.71", ["v0.24", "v0.25.1", "v0.25.2", "v0.80"]],
+        ["v0.21.2.1", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
+        ["v0.25.1.2", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
+        ["v0.25.0", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
+        ["v0.25.1.99", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
+        ["v0.71", ["v0.24", "v0.25.1", "v0.25.2", "v0.80.0"]],
       ];
       cases.forEach(([input, releases]) => {
         expect(isLatestVersion(input, releases),).toEqual(false);
@@ -260,12 +263,12 @@ describe("version-helpers", () => {
 
     it("should never mark an RC as latest", () => {
       const cases: [string, string[]][] = [
-        ["v0.25.2.1-rc1", ["v0.24", "v0.25.1", "v0.25.2-rc1"]],
-        ["v0.25.3-rc2", ["v0.24", "v0.25.1", "v0.25.2-rc2"]],
-        ["v0.26-RC2", ["v0.24", "v0.25.1", "v0.25.2-rc3"]],
-        ["v0.24.5-rc1", ["v0.24", "v0.25.1", "v0.25.2-rc4"]],
-        ["v0.26-rc99", ["v0.24", "v0.25.1", "v0.25.2-rc4"]],
-        ["v0.99-rc99", ["v0.24", "v0.25.1", "v0.99-rc4", "v0.9.9.9"]],
+        ["v0.25.2.1-rc1", ["v0.24.0", "v0.25.1", "v0.25.2-rc1"]],
+        ["v0.25.3-rc2", ["v0.24.0", "v0.25.1", "v0.25.2-rc2"]],
+        ["v0.26.0-RC2", ["v0.24.0", "v0.25.1", "v0.25.2-rc3"]],
+        ["v0.24.5-rc1", ["v0.24.0", "v0.25.1", "v0.25.2-rc4"]],
+        ["v0.26.0-rc99", ["v0.24.0", "v0.25.1", "v0.25.2-rc4"]],
+        ["v0.99.0-rc99", ["v0.24.0", "v0.25.1", "v0.99-rc4", "v0.9.9.9"]],
       ];
 
       cases.forEach(([input, releases]) => {

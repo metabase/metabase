@@ -42,12 +42,12 @@ describe("verion-info", () => {
     it("should add new latest version to version info json", () => {
       const generatedJson = generateVersionInfoJson({
         milestoneIssues: issues,
-        version: "v0.3",
+        version: "v0.3.0",
         existingVersionInfo: oldJson,
       });
 
       expect(generatedJson.latest).toEqual({
-        version: "v0.3",
+        version: "v0.3.0",
         released: expect.any(String),
         patch: false,
         highlights: ["New Issue 1", "New Issue 2"],
@@ -57,7 +57,7 @@ describe("verion-info", () => {
     it("should move old latest version to older array", () => {
       const generatedJson = generateVersionInfoJson({
         milestoneIssues: issues,
-        version: "v0.3",
+        version: "v0.3.0",
         existingVersionInfo: oldJson,
       });
 
