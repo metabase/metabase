@@ -15,7 +15,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
