@@ -23,7 +23,7 @@ describe("issue 17968", () => {
       .click();
     popover().findByText("Created At").click();
 
-    cy.button("Join data").click();
+    cy.findAllByTestId("action-buttons").last().button("Join data").click();
     popover().findByText("Products").click();
     popover().findByText("Count").click();
 
