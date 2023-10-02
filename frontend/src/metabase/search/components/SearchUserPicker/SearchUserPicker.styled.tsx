@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 import { Stack } from "metabase/ui";
 
-export const CreatedByContainer = styled(Stack)`
+export const SearchUserPickerContainer = styled(Stack)`
   overflow: hidden;
 `;
 
-export const CreatedByContentContainer = styled(Stack)`
+export const SearchUserPickerContent = styled(Stack)`
   overflow-y: auto;
 `;

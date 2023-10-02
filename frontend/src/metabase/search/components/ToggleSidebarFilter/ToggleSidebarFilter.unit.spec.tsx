@@ -2,11 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { ToggleSidebarFilterProps } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
-import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
+import type { ToggleSidebarFilterProps } from "metabase/search/components/ToggleSidebarFilter";
+import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 
 const mockFilter: SearchFilterComponent = {
-  title: "Mock Filter",
+  label: "Mock Filter",
   iconName: "filter",
   type: "toggle",
   fromUrl: value => value,
@@ -59,7 +59,7 @@ describe("ToggleSidebarFilter", () => {
       onChange: jest.fn(),
     });
 
-    const titleElement = screen.getByText(mockFilter.title);
+    const titleElement = screen.getByText(mockFilter.label);
     const switchElement = screen.getByTestId("toggle-filter-switch");
 
     expect(titleElement).toBeInTheDocument();

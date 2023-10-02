@@ -7,7 +7,7 @@ import type { DropdownSidebarFilterProps } from "./DropdownSidebarFilter";
 import { DropdownSidebarFilter } from "./DropdownSidebarFilter";
 
 const mockFilter: SearchFilterComponent = {
-  title: "Mock Filter",
+  label: "Mock Filter",
   iconName: "filter",
   type: "dropdown",
   DisplayComponent: ({ value }) => (
@@ -81,7 +81,7 @@ describe("DropdownSidebarFilter", () => {
     setup({ value: ["value1"] });
 
     expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
-      mockFilter.title,
+      mockFilter.label,
     );
 
     expect(screen.getByTestId("mock-display-component")).toBeInTheDocument();

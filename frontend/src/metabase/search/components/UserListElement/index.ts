@@ -1,1 +1,1 @@
-export * from "./UserListElement";
+export { UserListElement } from "./UserListElement";

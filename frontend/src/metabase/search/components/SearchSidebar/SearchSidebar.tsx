@@ -7,11 +7,11 @@ import type {
 } from "metabase/search/types";
 import { Stack } from "metabase/ui";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { DropdownSidebarFilter } from "metabase/search/components/SearchSidebar/DropdownSidebarFilter/DropdownSidebarFilter";
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter/TypeFilter";
+import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
+import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { ToggleSidebarFilter } from "metabase/search/components/SearchSidebar/ToggleSidebarFilter/ToggleSidebarFilter";
-import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter/CreatedByFilter";
+import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
+import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;

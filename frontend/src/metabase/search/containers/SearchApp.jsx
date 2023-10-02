@@ -19,9 +19,9 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
   SearchControls,

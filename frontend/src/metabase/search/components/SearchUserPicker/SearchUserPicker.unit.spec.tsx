@@ -5,27 +5,27 @@ import type { User } from "metabase-types/api";
 import { screen, renderWithProviders, waitFor } from "__support__/ui";
 import type { CreatedByFilterProps } from "metabase/search/types";
 import { setupUsersEndpoints } from "__support__/server-mocks";
-import { CreatedByContent } from "./CreatedByContent";
+import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 
 const TEST_USERS: User[] = [
   createMockUser({ id: 1, common_name: "Alice" }),
   createMockUser({ id: 2, common_name: "Bob" }),
 ];
 
-const TestCreatedByContent = ({ onChange }: { onChange: jest.Func }) => {
+const TestSearchUserPicker = ({ onChange }: { onChange: jest.Func }) => {
   const [value, setValue] = useState<CreatedByFilterProps | null>(null);
   const onUserChange = (value: CreatedByFilterProps | null) => {
     setValue(value);
     onChange(value);
   };
-  return <CreatedByContent value={value} onChange={onUserChange} />;
+  return <SearchUserPicker value={value} onChange={onUserChange} />;
 };
 
 const setup = async () => {
   setupUsersEndpoints(TEST_USERS);
 
   const mockOnChange = jest.fn();
-  renderWithProviders(<TestCreatedByContent onChange={mockOnChange} />);
+  renderWithProviders(<TestSearchUserPicker onChange={mockOnChange} />);
 
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
@@ -34,7 +34,7 @@ const setup = async () => {
   return { mockOnChange };
 };
 
-describe("CreatedByContent", () => {
+describe("SearchUserPicker", () => {
   it("displays user list when data is available", async () => {
     await setup();
 
