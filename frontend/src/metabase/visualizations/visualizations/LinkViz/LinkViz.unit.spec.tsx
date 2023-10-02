@@ -12,6 +12,7 @@ import {
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
+import registerVisualizations from "metabase/visualizations/register";
 
 import type {
   DashboardOrderedCard,
@@ -28,6 +29,8 @@ import {
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
+
+registerVisualizations();
 
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;

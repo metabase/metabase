@@ -14,6 +14,7 @@ import {
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createSampleDatabase,
   ORDERS,
@@ -43,12 +44,45 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload"
 import { serializeCardForUrl } from "metabase/lib/card";
 import QueryBuilder from "./QueryBuilder";
 
+registerVisualizations();
+
 const TEST_DB = createSampleDatabase();
 
 const TEST_CARD = createMockCard({
   id: 1,
   name: "Test card",
   dataset: true,
+});
+
+const TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD = createMockCard({
+  ...TEST_CARD,
+  dataset: false,
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, null]],
+    },
+  },
+});
+
+const TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD = createMockCard({
+  ...TEST_CARD,
+  dataset: false,
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [["expression", "Custom Created At"]],
+      expressions: {
+        "Custom Created At": ["field", ORDERS.CREATED_AT, null],
+      },
+    },
+  },
 });
 
 const TEST_CARD_VISUALIZATION = createMockCard({
@@ -228,6 +262,43 @@ describe("QueryBuilder", () => {
         });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+
+      it("renders time series grouping widget for date field breakout", async () => {
+        await setup({
+          card: TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+        });
+        const timeSeriesModeFooter = await screen.findByTestId(
+          "time-series-mode-footer",
+        );
+        expect(timeSeriesModeFooter).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).getByText("by"),
+        ).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).getByTestId(
+            "time-series-grouping-select-button",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("doesn't render time series grouping widget for custom date field breakout (metabase#33504)", async () => {
+        await setup({
+          card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
+        });
+
+        const timeSeriesModeFooter = await screen.findByTestId(
+          "time-series-mode-footer",
+        );
+        expect(timeSeriesModeFooter).toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).queryByText("by"),
+        ).not.toBeInTheDocument();
+        expect(
+          within(timeSeriesModeFooter).queryByTestId(
+            "time-series-grouping-select-button",
+          ),
+        ).not.toBeInTheDocument();
       });
     });
 
