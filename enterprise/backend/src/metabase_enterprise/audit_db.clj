@@ -39,9 +39,7 @@
   []
   ((mdb.connection/memoize-for-application-db
    (fn []
-     (let [user (t2/select-one-pk :model/Collection :entity_id (default-audit-collection-entity-id))]
-       (assert user (trs "Audit collection not found."))
-       user)))))
+     (t2/select-one-pk :model/Collection :entity_id (default-audit-collection-entity-id))))))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
