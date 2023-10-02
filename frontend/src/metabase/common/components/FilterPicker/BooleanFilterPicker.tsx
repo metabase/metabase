@@ -9,6 +9,8 @@ import type { FilterPickerWidgetProps } from "./types";
 
 type OptionType = Lib.FilterOperatorName | "true" | "false";
 
+const operatorsToShow = ["=", "is-null", "not-null"];
+
 type Option = {
   name: string;
   type: OptionType;
@@ -94,24 +96,27 @@ function getOptions(
   column: Lib.ColumnMetadata,
 ): Option[] {
   const operators = Lib.filterableColumnOperators(column);
-  return operators.flatMap((operator): Option[] => {
-    const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
-    if (operatorInfo.shortName === "=") {
-      return [
-        { operator, name: t`True`, type: "true" },
-        { operator, name: t`False`, type: "false" },
-      ];
-    } else {
-      return [
-        {
-          operator,
-          name: operatorInfo.displayName,
-          type: operatorInfo.shortName,
-          isAdvanced: true,
-        },
-      ];
-    }
-  });
+  return operators
+    .flatMap((operator): Option[] => {
+      const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
+      if (operatorInfo.shortName === "=") {
+        return [
+          { operator, name: t`True`, type: "true" },
+          { operator, name: t`False`, type: "false" },
+        ];
+      } else if (operatorsToShow.includes(operatorInfo.shortName)) {
+        return [
+          {
+            operator,
+            name: operatorInfo.displayName,
+            type: operatorInfo.shortName,
+            isAdvanced: true,
+          },
+        ];
+      }
+      return [];
+    })
+    .filter(Boolean);
 }
 
 function getOptionType(
