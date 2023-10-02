@@ -295,6 +295,10 @@ function QueryBuilder(props) {
   });
 
   useEffect(() => {
+    initializeQB(location, params);
+  }, [initializeQB, location, params]);
+
+  useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   });
