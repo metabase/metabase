@@ -1661,8 +1661,8 @@
 
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
-    (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
-      (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}
+    (with-redefs [perms/default-audit-collection-id (constantly 1111)]
+      (t2.with-temp/with-temp [Collection collection {:id 1111}
                                Card       card       {:collection_id (:id collection)}
                                Dashboard  dashboard  {:collection_id (:id collection)}]
         (mt/with-current-user (mt/user->id :crowberto)

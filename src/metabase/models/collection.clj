@@ -68,11 +68,11 @@
 
 (defmethod mi/can-write? Collection
   ([instance]
-   (if (= (:entity_id instance) (perms/default-audit-collection-entity-id))
+   (mi/can-write? :model/Collection (:id instance)))
+  ([model pk]
+   (if (= pk (perms/default-audit-collection-id))
      false
-     (mi/current-user-has-full-permissions? :write instance)))
-  ([_ pk]
-   (mi/can-write? (t2/select-one :model/Collection :id pk))))
+     (mi/current-user-has-full-permissions? :write model pk))))
 
 (defmethod mi/can-read? Collection
   ([instance]

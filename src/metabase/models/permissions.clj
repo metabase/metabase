@@ -1091,6 +1091,11 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
+(defenterprise default-audit-collection-id
+  "OSS implementation of `audit-db/default-audit-collection-id`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions in application monitoring permissions."
@@ -1107,14 +1112,14 @@
 (defn is-parent-collection-audit?
   "Check if an instance's parent collection is the audit collection."
   [instance]
-  (= (t2/select-one-fn :entity_id :model/Collection :id (:collection_id instance)) (default-audit-collection-entity-id)))
+  (= (:collection_id instance) (default-audit-collection-id)))
 
 (defn can-read-audit-helper
   "Audit instances should only be fetched if audit app is enabled."
   [model instance]
   (if (and (not (premium-features/enable-audit-app?))
            (case model
-             :model/Collection (= (:entity_id instance) (default-audit-collection-entity-id))
+             :model/Collection (= (:id instance) (default-audit-collection-id))
              (is-parent-collection-audit? instance)))
     false
     (case model
