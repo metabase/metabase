@@ -17,7 +17,17 @@ interface Props {
   router: InjectedRouter;
 }
 
-const IS_LOCATION_ALLOWED = () => false;
+const IS_LOCATION_ALLOWED = (location?: Location) => {
+  /**
+   * If there is no "location" then it's unbeforeunload event, which is
+   * handled by useBeforeUnload hook - no reason to duplicate its work.
+   */
+  if (!location) {
+    return true;
+  }
+
+  return false;
+};
 
 const LeaveConfirmationModalBase = ({
   isEnabled,
