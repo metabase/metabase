@@ -1112,7 +1112,8 @@
 (defn is-parent-collection-audit?
   "Check if an instance's parent collection is the audit collection."
   [instance]
-  (= (:collection_id instance) (default-audit-collection-id)))
+  (let [parent-id (:collection_id instance)]
+    (and (some? parent-id) (= parent-id (default-audit-collection-id)))))
 
 (defn can-read-audit-helper
   "Audit instances should only be fetched if audit app is enabled."
