@@ -1,10 +1,13 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import registerVisualizations from "metabase/visualizations/register";
 
 import { delay } from "metabase/lib/promise";
 
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+
+registerVisualizations();
 
 describe("Visualization", () => {
   const renderViz = async series => {

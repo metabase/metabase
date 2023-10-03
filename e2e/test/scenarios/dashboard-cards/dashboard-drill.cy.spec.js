@@ -12,7 +12,11 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const {
   ORDERS,
@@ -453,8 +457,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -462,7 +466,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
-              card_id: 1,
+              card_id: ORDERS_QUESTION_ID,
               target: [
                 "dimension",
                 [
@@ -514,8 +518,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -523,7 +527,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
-              card_id: 1,
+              card_id: ORDERS_QUESTION_ID,
               target: [
                 "dimension",
                 [
@@ -878,8 +882,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
         cards: [
           {
-            id: 1,
-            card_id: 1,
+            id: ORDERS_DASHBOARD_DASHCARD_ID,
+            card_id: ORDERS_QUESTION_ID,
             row: 0,
             col: 0,
             size_x: 16,
@@ -889,12 +893,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
             parameter_mappings: [
               {
                 parameter_id: ordersIdFilter.id,
-                card_id: 1,
+                card_id: ORDERS_QUESTION_ID,
                 target: ["dimension", ["field", ORDERS.ID, null]],
               },
               {
                 parameter_id: productsIdFilter.id,
-                card_id: 1,
+                card_id: ORDERS_QUESTION_ID,
                 target: [
                   "dimension",
                   [
@@ -919,14 +923,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       drillThroughCardTitle("Orders");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("37.65");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("110.93");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("52.72").should("not.exist");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 2 rows");
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("37.65");
+        cy.findByText("110.93");
+        cy.findByText("52.72").should("not.exist");
+      });
+
+      cy.findByTestId("question-row-count").findByText("Showing 2 rows");
 
       postDrillAssertion();
     });
@@ -935,12 +938,12 @@ describe("scenarios > dashboard > dashboard drill", () => {
       setFilterValue(productsIdFilter.name);
 
       drillThroughCardTitle("Orders");
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("37.65").should("not.exist");
+        cy.findAllByText("105.12");
+      });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("37.65").should("not.exist");
-      cy.findAllByText("105.12");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 191 rows");
+      cy.findByTestId("question-row-count").findByText("Showing 191 rows");
 
       postDrillAssertion();
     });

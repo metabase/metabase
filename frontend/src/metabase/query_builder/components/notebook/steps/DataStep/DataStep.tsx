@@ -7,25 +7,72 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 
 import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+
 import type { NotebookStepUiComponentProps } from "../../types";
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
-import {
-  FieldPickerContentContainer,
-  FieldsPickerIcon,
-  FIELDS_PICKER_STYLES,
-} from "../../FieldsPickerIcon";
+import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
+import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
   topLevelQuery,
   query,
   step,
+  readOnly,
   color,
   updateQuery,
-  readOnly,
 }: NotebookStepUiComponentProps) => {
+  const { stageIndex } = step;
+
   const question = query.question();
-  const table = query.table();
-  const canSelectTableColumns = table && query.isRaw() && !readOnly;
+  const metadata = question.metadata();
+  const collectionId = question.collectionId();
+  const tableId = query.sourceTableId();
+
+  const databaseId = Lib.databaseID(topLevelQuery);
+  const table = tableId
+    ? Lib.tableOrCardMetadata(topLevelQuery, tableId)
+    : null;
+
+  const pickerLabel = table
+    ? Lib.displayInfo(topLevelQuery, stageIndex, table).displayName
+    : t`Pick your starting data`;
+
+  const isRaw = useMemo(() => {
+    return (
+      Lib.aggregations(topLevelQuery, stageIndex).length === 0 &&
+      Lib.breakouts(topLevelQuery, stageIndex).length === 0
+    );
+  }, [topLevelQuery, stageIndex]);
+
+  const canSelectTableColumns = table && isRaw && !readOnly;
+
+  const handleCreateQuery = (tableId: TableId) => {
+    const databaseId = metadata.table(tableId)?.db_id;
+    if (databaseId) {
+      const nextQuery = Lib.fromLegacyQuery(databaseId, metadata, {
+        type: "query",
+        database: databaseId,
+        query: {
+          "source-table": tableId,
+        },
+      });
+      updateQuery(nextQuery);
+    }
+  };
+
+  const handleChangeTable = (nextTableId: TableId) => {
+    const nextQuery = Lib.withDifferentTable(topLevelQuery, nextTableId);
+    updateQuery(nextQuery);
+  };
+
+  const handleTableSelect = (tableId: TableId) => {
+    const isNew = !databaseId;
+    if (isNew) {
+      handleCreateQuery(tableId);
+    } else {
+      handleChangeTable(tableId);
+    }
+  };
 
   return (
     <NotebookCell color={color}>
@@ -36,7 +83,7 @@ export const DataStep = ({
           canSelectTableColumns && (
             <DataFieldsPicker
               query={topLevelQuery}
-              stageIndex={step.stageIndex}
+              stageIndex={stageIndex}
               updateQuery={updateQuery}
             />
           )
@@ -47,19 +94,13 @@ export const DataStep = ({
       >
         <DataSourceSelector
           hasTableSearch
-          collectionId={question.collectionId()}
+          collectionId={collectionId}
           databaseQuery={{ saved: true }}
-          selectedDatabaseId={query.databaseId()}
-          selectedTableId={query.tableId()}
-          setSourceTableFn={(tableId: TableId) =>
-            updateQuery(query.setTableId(tableId))
-          }
-          isInitiallyOpen={!query.tableId()}
-          triggerElement={
-            <FieldPickerContentContainer>
-              {table ? table.displayName() : t`Pick your starting data`}
-            </FieldPickerContentContainer>
-          }
+          selectedDatabaseId={databaseId}
+          selectedTableId={tableId}
+          setSourceTableFn={handleTableSelect}
+          isInitiallyOpen={!table}
+          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
         />
       </NotebookCellItem>
     </NotebookCell>

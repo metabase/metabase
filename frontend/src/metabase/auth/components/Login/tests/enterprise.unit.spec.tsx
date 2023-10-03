@@ -1,5 +1,5 @@
+import "metabase/plugins/builtin";
 import { screen } from "__support__/ui";
-
 import { setup } from "./setup";
 
 describe("Login", () => {

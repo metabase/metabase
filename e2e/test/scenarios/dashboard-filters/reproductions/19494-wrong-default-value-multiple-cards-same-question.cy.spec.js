@@ -7,7 +7,10 @@ import {
   updateDashboardCards,
 } from "e2e/support/helpers";
 
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const filter1 = {
   name: "Card 1 Filter",
@@ -32,17 +35,17 @@ describe("issue 19494", () => {
 
     // Add two "Orders" questions to the existing "Orders in a dashboard" dashboard
     updateDashboardCards({
-      dashboard_id: 1,
+      dashboard_id: ORDERS_DASHBOARD_ID,
       cards: [
         {
-          card_id: 1,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 11,
           size_y: 8,
         },
         {
-          card_id: 1,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 8,
           size_x: 11,
