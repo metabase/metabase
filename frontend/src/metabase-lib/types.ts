@@ -290,7 +290,7 @@ export type RelativeDateFilterOptions = {
 export type ExcludeDateFilterParts = {
   operator: FilterOperator;
   column: ColumnMetadata;
-  bucket: Bucket;
+  bucket: Bucket | null;
   values: number[];
 };
 

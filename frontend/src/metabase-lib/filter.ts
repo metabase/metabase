@@ -409,6 +409,11 @@ export function excludeDateFilterClause(
   { operator, column, values, bucket }: ExcludeDateFilterParts,
 ): ExpressionClause {
   const operatorInfo = displayInfo(query, stageIndex, operator);
+  if (bucket == null) {
+    const columnWithoutBucket = withTemporalBucket(column, null);
+    return expressionClause(operatorInfo.shortName, [columnWithoutBucket]);
+  }
+
   const columnWithBucket = withTemporalBucket(column, bucket);
   const bucketInfo = displayInfo(query, stageIndex, bucket);
   const stringValues = values.map(value =>
@@ -447,7 +452,11 @@ export function excludeDateFilterParts(
 
   const bucket = temporalBucket(column);
   if (!bucket) {
-    return null;
+    if (stringValues.length === 0) {
+      return { column, operator, bucket: null, values: [] };
+    } else {
+      return null;
+    }
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
@@ -553,28 +562,32 @@ export function filterParts(
   );
 }
 
-function findFilterOperator(
+export function findFilterOperator(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
   operatorName: string,
-): FilterOperator | undefined {
-  return filterableColumnOperators(column).find(operator => {
+): FilterOperator | null {
+  const operator = filterableColumnOperators(column).find(operator => {
     const operatorInfo = displayInfo(query, stageIndex, operator);
     return operatorInfo.shortName === operatorName;
   });
+  return operator ?? null;
 }
 
-function findTemporalBucket(
+export function findTemporalBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
   bucketName: string,
-): Bucket | undefined {
-  return availableTemporalBuckets(query, stageIndex, column).find(bucket => {
-    const bucketInfo = displayInfo(query, stageIndex, bucket);
-    return bucketInfo.shortName === bucketName;
-  });
+): Bucket | null {
+  const bucket = availableTemporalBuckets(query, stageIndex, column).find(
+    bucket => {
+      const bucketInfo = displayInfo(query, stageIndex, bucket);
+      return bucketInfo.shortName === bucketName;
+    },
+  );
+  return bucket ?? null;
 }
 
 function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
@@ -621,7 +634,7 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
   return Array.isArray(arg) && arg.every(isBooleanLiteral);
 }
 
-const DATE_FORMAT = "yyyy-MM-dd";
+const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
@@ -718,7 +731,7 @@ function relativeDateFilterPartsWithoutOffset(
   stageIndex: number,
   { operator, args, options }: ExpressionParts,
 ): RelativeDateFilterParts | null {
-  if (operator !== "time-interval" || args.length === 3) {
+  if (operator !== "time-interval" || args.length !== 3) {
     return null;
   }
 
