@@ -11,7 +11,6 @@ import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValue,
-  ExcludeDatePickerValue,
 } from "./types";
 
 export interface DatePickerProps {
@@ -19,7 +18,7 @@ export interface DatePickerProps {
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerExtractionUnit[];
-  onChange: (value: ExcludeDatePickerValue) => void;
+  onChange: (value: DatePickerValue) => void;
 }
 
 export function DatePicker({
@@ -49,9 +48,10 @@ export function DatePicker({
     default:
       return (
         <DateShortcutPicker
+          availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
           onChange={onChange}
-          onSelect={setType}
+          onNavigate={setType}
         />
       );
   }

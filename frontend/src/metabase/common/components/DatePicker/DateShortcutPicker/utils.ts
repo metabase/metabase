@@ -1,0 +1,19 @@
+import type { DatePickerOperator, DatePickerShortcut } from "../types";
+import { SHORTCUT_OPTION_GROUPS, TYPE_OPTIONS } from "./constants";
+import type { ShortcutOption, TypeOption } from "./types";
+
+export function getShortcutOptionGroups(
+  availableShortcuts: DatePickerShortcut[],
+): ShortcutOption[][] {
+  return SHORTCUT_OPTION_GROUPS.map(options =>
+    options.filter(option => availableShortcuts.includes(option.shortcut)),
+  ).filter(options => options.length > 0);
+}
+
+export function getTypeOptions(
+  availableOperators: DatePickerOperator[],
+): TypeOption[] {
+  return TYPE_OPTIONS.filter(option =>
+    option.operators.some(operator => availableOperators.includes(operator)),
+  );
+}
