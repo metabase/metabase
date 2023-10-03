@@ -809,13 +809,14 @@
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type     :type/Integer
-                       :display_name  "Count"
-                       :name          "count"
-                       :semantic_type :type/Quantity
-                       :source        :aggregation
-                       :field_ref     [:aggregation 0]}]
-                     (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
+              (is (=? [{:base_type         :type/Integer
+                        :display_name      "Count"
+                        :name              "count"
+                        :semantic_type     :type/Quantity
+                        :source            :aggregation
+                        :field_ref         [:aggregation 0]
+                        :aggregation_index 0}]
+                      (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
 
 (defn- updating-card-updates-metadata-query []
   (mt/mbql-query venues {:fields [$id $name]}))
