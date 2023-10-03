@@ -7,7 +7,7 @@ import { SegmentedControl } from "metabase/components/SegmentedControl";
 import CheckBox from "metabase/core/components/CheckBox";
 import Label from "metabase/components/type/Label";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox";
-import Toggle from "metabase/core/components/Toggle";
+import { Switch } from "metabase/ui";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
@@ -183,10 +183,10 @@ export default class EmailAttachmentPicker extends Component {
 
     return (
       <div>
-        <Toggle
+        <Switch
           aria-label={t`Attach results`}
-          value={isEnabled}
-          onChange={this.toggleAttach}
+          checked={isEnabled}
+          onChange={e => this.toggleAttach(e.currentTarget.checked)}
         />
 
         {isEnabled && (

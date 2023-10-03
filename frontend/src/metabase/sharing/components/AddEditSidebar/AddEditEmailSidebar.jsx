@@ -4,19 +4,19 @@ import { t } from "ttag";
 
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
-
 import { Icon } from "metabase/core/components/Icon";
-import Toggle from "metabase/core/components/Toggle";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
 import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
+
 import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import DefaultParametersSection from "./DefaultParametersSection";
 import CaveatMessage from "./CaveatMessage";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
+import { StyledBox, StyledSwitch } from "./AddEditEmailSidebar.styled";
 
 function _AddEditEmailSidebar({
   pulse,
@@ -110,13 +110,14 @@ function _AddEditEmailSidebar({
             parameters={parameters}
           />
         )}
-        <div className="text-bold py3 flex justify-between align-center border-top">
-          <Heading>{t`Don't send if there aren't results`}</Heading>
-          <Toggle
-            value={pulse.skip_if_empty || false}
+        <StyledBox py="1.5rem">
+          <StyledSwitch
+            label={t`Don't send if there aren't results`}
+            checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
+            labelPosition="left"
           />
-        </div>
+        </StyledBox>
         <div className="text-bold py2 flex justify-between align-center border-top">
           <div className="flex align-center">
             <Heading>{t`Attach results`}</Heading>
