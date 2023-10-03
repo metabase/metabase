@@ -1,4 +1,5 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { BOOLEAN_FILTER_OPERATORS } from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -257,8 +258,10 @@ export type CoordinateFilterParts = {
   values: number[];
 };
 
+export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+
 export type BooleanFilterParts = {
-  operator: FilterOperator;
+  operator: BooleanFilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };

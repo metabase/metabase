@@ -1,6 +1,7 @@
 import moment from "moment-timezone";
 import * as ML from "cljs/metabase.lib.js";
 
+import { BOOLEAN_FILTER_OPERATORS } from "metabase-lib/constants";
 import { expressionClause, expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import {
@@ -9,6 +10,7 @@ import {
   withTemporalBucket,
 } from "./temporal_bucket";
 import type {
+  BooleanFilterOperatorName,
   BooleanFilterParts,
   Bucket,
   BucketName,
@@ -210,13 +212,12 @@ export function isCoordinateFilter(
   return coordinateFilterParts(query, stageIndex, filterClause) != null;
 }
 
-export function booleanFilterClause(
-  query: Query,
-  stageIndex: number,
-  { operator, column, values }: BooleanFilterParts,
-): ExpressionClause {
-  const operatorInfo = displayInfo(query, stageIndex, operator);
-  return expressionClause(operatorInfo.shortName, [column, ...values]);
+export function booleanFilterClause({
+  operator,
+  column,
+  values,
+}: BooleanFilterParts): ExpressionClause {
+  return expressionClause(operator, [column, ...values]);
 }
 
 export function booleanFilterParts(
@@ -224,22 +225,13 @@ export function booleanFilterParts(
   stageIndex: number,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  const { operator: operatorName, args } = expressionParts(
-    query,
-    stageIndex,
-    filterClause,
-  );
-  if (args.length < 1) {
+  const { operator, args } = expressionParts(query, stageIndex, filterClause);
+  if (!isBooleanOperator(operator) || args.length < 1) {
     return null;
   }
 
   const [column, ...values] = args;
   if (!isColumnMetadata(column) || !isBooleanLiteralArray(values)) {
-    return null;
-  }
-
-  const operator = findFilterOperator(query, stageIndex, column, operatorName);
-  if (!operator) {
     return null;
   }
 
@@ -621,6 +613,25 @@ function isBooleanLiteralArray(arg: unknown): arg is boolean[] {
   return Array.isArray(arg) && arg.every(isBooleanLiteral);
 }
 
+function isBooleanOperator(
+  operator: ExpressionOperatorName,
+): operator is BooleanFilterOperatorName {
+  const operators: ReadonlyArray<string> = BOOLEAN_FILTER_OPERATORS;
+  return operators.includes(operator);
+}
+
+function isSpecificDateOperator(operator: ExpressionOperatorName): boolean {
+  switch (operator) {
+    case "=":
+    case ">":
+    case "<":
+    case "between":
+      return true;
+    default:
+      return false;
+  }
+}
+
 const DATE_FORMAT = "yyyy-MM-dd";
 const TIME_FORMAT = "HH:mm:ss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
@@ -686,18 +697,6 @@ function stringToTimeParts(value: string): TimeParts | null {
     hour: time.hour(),
     minute: time.minute(),
   };
-}
-
-function isSpecificDateOperator(operatorName: ExpressionOperatorName): boolean {
-  switch (operatorName) {
-    case "=":
-    case ">":
-    case "<":
-    case "between":
-      return true;
-    default:
-      return false;
-  }
 }
 
 function isRelativeDateBucket(bucketName: string): bucketName is BucketName {
