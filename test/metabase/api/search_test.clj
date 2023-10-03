@@ -796,12 +796,14 @@
 (deftest filter-by-creator-test
   (let [search-term "Created by Filter"]
     (with-search-items-in-root-collection search-term
-      (t2.with-temp/with-temp
+      (mt/with-temp
         [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+         :model/User      {user-id-2 :id}    {:first_name "Explorer" :last_name "Hubble"}
          :model/Card      {card-id :id}      {:name (format "%s Card 1" search-term) :creator_id user-id}
          :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
                                               :collection_id (:id (collection/user->personal-collection user-id))}
          :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
+         :model/Card      {card-id-4 :id}      {:name (format "%s Card 4" search-term) :creator_id user-id-2}
          :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
          :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
@@ -826,26 +828,43 @@
                           (map (juxt :id :model :name))
                           set))))))
 
-        (testing "Works with archived filter"
-          (is (=? [{:model "card"
-                    :id     card-id-3
-                    :archived true}]
-                  (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
+        (testing "Able to filter by multiple creators"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :created_by user-id-2)]
 
-        (testing "Works with models filter"
-          (testing "return intersections of supported models with provided models"
-            (is (= #{"dashboard" "card"}
-                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
-                        :data
-                        (map :model)
-                        set))))
+            (testing "only a subset of models are applicable"
+              (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
 
-          (testing "return nothing if there is no intersection"
-            (is (= #{}
-                   (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
-                        :data
-                        (map :model)
-                        set)))))
+            (testing "results contains only entities with the specified creator"
+              (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [card-id-4    "card"      "Created by Filter Card 4"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
+                     (->> (:data resp)
+                          (map (juxt :id :model :name))
+                          set))))))
+
+       (testing "Works with archived filter"
+         (is (=? [{:model "card"
+                   :id     card-id-3
+                   :archived true}]
+                 (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
+
+       (testing "Works with models filter"
+         (testing "return intersections of supported models with provided models"
+           (is (= #{"dashboard" "card"}
+                  (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "card" :models "dashboard")
+                       :data
+                       (map :model)
+                       set))))
+
+         (testing "return nothing if there is no intersection"
+           (is (= #{}
+                  (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :models "table" :models "database")
+                       :data
+                       (map :model)
+                       set)))))
 
        (testing "respect the read permissions"
          (let [resp (mt/user-http-request :rasta :get 200 "search" :q search-term :created_by user-id)]
@@ -858,11 +877,12 @@
 
        (testing "error if creator_id is not an integer"
          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_by "not-a-valid-user-id")]
-           (is (= {:created_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
+           (is (= {:created_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+                  (:errors resp)))))))))
 
 (deftest filter-by-last-edited-by-test
   (let [search-term "last-edited-by"]
-    (t2.with-temp/with-temp
+    (mt/with-temp
       [:model/Card       {rasta-card-id :id}   {:name search-term}
        :model/Card       {lucky-card-id :id}   {:name search-term}
        :model/Card       {rasta-model-id :id}  {:name search-term :dataset true}
@@ -884,7 +904,7 @@
            :is_creation true
            :object      {:id id}))
 
-        (testing "Able to filter by last edited"
+        (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
 
             (testing "only a subset of models are applicable"
@@ -899,9 +919,29 @@
                           (map (juxt :id :model))
                           set))))))
 
-        (testing "error if last_edited_by is not an integer"
-          (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_by "not-a-valid-user-id")]
-            (is (= {:last_edited_by "nullable value must be an integer greater than zero."} (:errors resp)))))))))
+        (testing "Able to filter by multiple last editor"
+          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id :last_edited_by lucky-user-id)]
+
+            (testing "only a subset of models are applicable"
+              (is (= #{"dashboard" "dataset" "metric" "card"} (set (:available_models resp)))))
+
+            (testing "results contains only entities with the specified creator"
+              (is (= #{[rasta-metric-id "metric"]
+                       [rasta-card-id   "card"]
+                       [rasta-model-id  "dataset"]
+                       [rasta-dash-id   "dashboard"]
+                       [lucky-metric-id "metric"]
+                       [lucky-card-id   "card"]
+                       [lucky-model-id  "dataset"]
+                       [lucky-dash-id   "dashboard"]}
+                     (->> (:data resp)
+                          (map (juxt :id :model))
+                          set))))))
+
+       (testing "error if last_edited_by is not an integer"
+         (let [resp (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_by "not-a-valid-user-id")]
+           (is (= {:last_edited_by "nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero."}
+                  (:errors resp)))))))))
 
 (deftest verified-filter-test
   (let [search-term "Verified filter"]

@@ -108,7 +108,7 @@
 (doseq [model ["card" "dataset" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
-    (sql.helpers/where query #p (default-created-by-fitler-clause model creator-ids))))
+    (sql.helpers/where query (default-created-by-fitler-clause model creator-ids))))
 
 ;; Verified filters
 
@@ -197,7 +197,7 @@
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
-      (> 1 (count editor-ids))
+      (> (count editor-ids) 1)
       (sql.helpers/where [:in :revision.user_id editor-ids]))))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]

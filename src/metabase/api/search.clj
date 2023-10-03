@@ -500,7 +500,7 @@
                             {:search-string  q
                              :archived       archived
                              :created-at     created_at
-                             :created-by     #p (u/one-or-many created_by)
+                             :created-by     (u/one-or-many created_by)
                              :last-edited-at last_edited_at
                              :last-edited-by (u/one-or-many last_edited_by)
                              :table-db-id    table_db_id
