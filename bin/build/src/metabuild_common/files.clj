@@ -49,12 +49,6 @@
   ([file & more]
    (dorun (map delete-file-if-exists! (cons file more)))))
 
-(defn ^:deprecated delete-file!
-  "Alias for `delete-file-if-exists!`. Here for backwards compatibility. Prefer `delete-file-if-exists!` going
-  forward."
-  [& args]
-  (apply delete-file-if-exists! args))
-
 (defn copy-file!
   "Copy a `source` file (or directory, recursively) to `dest`."
   [^String source ^String dest]
