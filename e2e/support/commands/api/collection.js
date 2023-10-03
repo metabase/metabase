@@ -4,7 +4,6 @@ Cypress.Commands.add(
     name,
     description = null,
     parent_id = null,
-    color = "#509EE3",
     authority_level = null,
   } = {}) => {
     cy.log(`Create a collection: ${name}`);
@@ -12,7 +11,6 @@ Cypress.Commands.add(
       name,
       description,
       parent_id,
-      color,
       authority_level,
     });
   },

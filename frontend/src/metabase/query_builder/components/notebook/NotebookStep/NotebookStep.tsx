@@ -76,6 +76,7 @@ function NotebookStep({
               color={stepUi.getColor()}
               large={hasLargeActionButtons}
               {...stepUi}
+              aria-label={stepUi.title}
               onClick={() => action.action({ query: step.query, openStep })}
             />
           ),

@@ -30108,7 +30108,7 @@ msgstr "كل القيم ({0})"
 
 #: frontend/src/metabase/visualizations/shared/utils/data.ts:129
 msgid "Other ({0})"
-msgstr "أخرى (0})"
+msgstr "أخرى ({0})"
 
 #: frontend/src/metabase/writeback/components/ActionCreator/FormCreator/constants.ts:20
 #: frontend/src/metabase/writeback/components/ActionCreator/FormCreator/constants.ts:74

@@ -35,7 +35,13 @@ export function visualize(callback) {
   });
 }
 
-export function addSummaryField({ metric, field, stage = 0, index = 0 }) {
+export function addSummaryField({
+  metric,
+  table,
+  field,
+  stage = 0,
+  index = 0,
+}) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("aggregate-step")
     .findAllByTestId("notebook-cell-item")
@@ -44,13 +50,21 @@ export function addSummaryField({ metric, field, stage = 0, index = 0 }) {
 
   popover().within(() => {
     cy.findByText(metric).click();
+    if (table) {
+      cy.findByText(table).click();
+    }
     if (field) {
       cy.findByText(field).click();
     }
   });
 }
 
-export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
+export function addSummaryGroupingField({
+  table,
+  field,
+  stage = 0,
+  index = 0,
+}) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("breakout-step")
     .findAllByTestId("notebook-cell-item")
@@ -58,6 +72,9 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
     .click();
 
   popover().within(() => {
+    if (table) {
+      cy.findByText(table).click();
+    }
     cy.findByText(field).click();
   });
 }
@@ -68,6 +85,24 @@ export function removeSummaryGroupingField({ field, stage = 0, index = 0 }) {
     .findByText(field)
     .icon("close")
     .click();
+}
+
+/**
+ * Joins a raw table given a table and optional LHS and RHS column names
+ * (for cases when join condition can't be selected automatically)
+ *
+ * Expects a join popover to be open
+ *
+ * @param {string} tableName
+ * @param {string} [lhsColumnName]
+ * @param {string} [rhsColumnName]
+ */
+export function joinTable(tableName, lhsColumnName, rhsColumnName) {
+  popover().findByText(tableName).click();
+  if (lhsColumnName && rhsColumnName) {
+    popover().findByText(lhsColumnName).click();
+    popover().findByText(rhsColumnName).click();
+  }
 }
 
 export function selectSavedQuestionsToJoin(

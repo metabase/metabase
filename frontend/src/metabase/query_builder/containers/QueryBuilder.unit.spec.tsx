@@ -746,7 +746,7 @@ describe("QueryBuilder", () => {
 
     it("should allow downloading results for a native query", async () => {
       const mockDownloadEndpoint = fetchMock.post(
-        `/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
+        `path:/api/card/${TEST_NATIVE_CARD.id}/query/csv`,
         {},
       );
       await setup({
