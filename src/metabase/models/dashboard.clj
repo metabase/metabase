@@ -127,9 +127,22 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
+(defn- migrate-parameters-list
+  "Update the `:parameters` list of a dashboard, and return the updated dashboard."
+  [dashboard]
+  (cond-> dashboard
+    (:parameters dashboard)
+    (update :parameters (fn [params]
+                          (for [p params]
+                            (cond-> p
+                              (or (= (:name p) "")
+                                  (= (:slug p) ""))
+                              (assoc :name "unnamed" :slug "unnamed")))))))
+
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
+      migrate-parameters-list
       public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard

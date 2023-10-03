@@ -648,6 +648,16 @@
           (is (= nil
                  (:public_uuid dashboard))))))))
 
+(deftest migrate-parameters-list-test
+  (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
+    (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
+      (mt/with-temp [:model/Dashboard dashboard {:parameters [{:id   "_CATEGORY_NAME_"
+                                                               :type "category" :name name
+                                                               :slug slug}]}]
+        (is (=? {:name "unnamed"
+                 :slug "unnamed"}
+                (first (:parameters dashboard))))))))
+
 (deftest post-update-test
   (t2.with-temp/with-temp [Collection    {collection-id-1 :id} {}
                            Collection    {collection-id-2 :id} {}

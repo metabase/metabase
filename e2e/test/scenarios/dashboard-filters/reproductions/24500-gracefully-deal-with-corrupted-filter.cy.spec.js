@@ -44,7 +44,7 @@ const questionDetails = {
 
 const dashboardDetails = { parameters };
 
-describe.skip("issues 15279 and 24500", () => {
+describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -110,16 +110,22 @@ describe.skip("issues 15279 and 24500", () => {
 
     // The corrupted filter is now present in the UI, but it doesn't work (as expected)
     // People can now easily remove it
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Select…");
-
     editDashboard();
-    filterWidget().last().find(".Icon-gear").click();
-    // Uncomment the next line if we end up disabling fields for the corrupted filter
-    // cy.findByText("No valid fields")
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Remove").click();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("unnamed")
+      .icon("gear")
+      .click();
+    cy.findByRole("button", { name: "Remove" }).click();
     saveDashboard();
+
+    // Check the list filter again
+    filterWidget().contains("List").click();
+    cy.wait("@values");
+
+    // Check that the search filter works
+    filterWidget().contains("Search").click();
+    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+    cy.button("Add filter").click();
 
     cy.get(".DashCard")
       .should("contain", "Lora Cronin")
