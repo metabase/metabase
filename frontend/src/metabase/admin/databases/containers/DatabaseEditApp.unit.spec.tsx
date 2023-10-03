@@ -82,6 +82,10 @@ async function setup({
     },
   );
 
+  await waitFor(() => {
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+  });
+
   return {
     history: checkNotNull(history),
     mockEventListener,

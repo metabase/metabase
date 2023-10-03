@@ -2,12 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -76,6 +71,10 @@ async function setup({
     },
   );
 
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
+
   return { history: checkNotNull(history) };
 }
 
@@ -97,10 +96,6 @@ describe("actions > containers > ActionCreatorModal", () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION_NOT_FOUND_ID}`;
     const { history } = await setup({ initialRoute, action: null });
 
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
-
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
     expect(history.getCurrentLocation().pathname).toBe(
@@ -112,10 +107,6 @@ describe("actions > containers > ActionCreatorModal", () => {
     const action = { ...ACTION, archived: true };
     const initialRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
     const { history } = await setup({ initialRoute, action });
-
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
