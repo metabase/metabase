@@ -209,7 +209,7 @@ describe("DatabaseEditApp", () => {
 
       userEvent.click(await screen.findByText("Save"));
 
-      await waitFor(async () => {
+      await waitFor(() => {
         expect(history.getCurrentLocation().pathname).toEqual(
           "/admin/databases",
         );
