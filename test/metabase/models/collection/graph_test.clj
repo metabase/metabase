@@ -94,6 +94,16 @@
                            (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :write}}}
                (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
 
+(deftest audit-collections-graph-test
+  (testing "Check that the audit collection has :read for admins."
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
+        (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}]
+          (is (= {:revision 0
+                  :groups   {(u/the-id (perms-group/all-users)) {:root :none,  :COLLECTION :none}
+                             (u/the-id (perms-group/admin))     {:root :write, :COLLECTION :read}}}
+                 (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection])))))))))
+
 (deftest read-perms-test
   (testing "make sure read perms show up correctly"
     (mt/with-non-admin-groups-no-root-collection-perms
