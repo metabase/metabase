@@ -128,13 +128,15 @@
   (update-dashboard-subscription-pulses! dashboard))
 
 (defn- migrate-parameters-list
-  "Update the `:parameters` list of a dashboard, and return the updated dashboard."
+  "Update the `:parameters` list of a dashboard from legacy formats."
   [dashboard]
   (cond-> dashboard
     (:parameters dashboard)
     (update :parameters (fn [params]
                           (for [p params]
                             (cond-> p
+                              ;; It was previously possible for parameters to have empty strings for :name and
+                              ;; :slug, but these are now required to be non-blank strings.
                               (or (= (:name p) "")
                                   (= (:slug p) ""))
                               (assoc :name "unnamed" :slug "unnamed")))))))
