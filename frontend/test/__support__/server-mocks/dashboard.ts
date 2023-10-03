@@ -14,3 +14,7 @@ export function setupDashboardsEndpoints(dashboards: Dashboard[]) {
   fetchMock.get("path:/api/dashboard", dashboards);
   dashboards.forEach(dashboard => setupDashboardEndpoints(dashboard));
 }
+
+export function setupDashboardNotFoundEndpoint(dashboard: Dashboard) {
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}`, 404);
+}
