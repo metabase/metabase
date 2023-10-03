@@ -6,7 +6,7 @@ export interface DashboardPickerProps {
   onChange: (dashboardId: DashboardId) => void;
   collectionId?: CollectionId;
   shouldFetchDashboards?: boolean;
-  onOpenCollectionChange: (collectionId: CollectionId) => void;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
 }
 
 const DashboardPicker = ({
@@ -14,7 +14,6 @@ const DashboardPicker = ({
   onChange,
   collectionId,
   shouldFetchDashboards,
-  onOpenCollectionChange,
   ...props
 }: DashboardPickerProps) => (
   <ItemPicker
@@ -24,7 +23,6 @@ const DashboardPicker = ({
     onChange={dashboard => onChange(dashboard.id)}
     models={["dashboard"]}
     shouldFetchItems={shouldFetchDashboards}
-    onOpenCollectionChange={onOpenCollectionChange}
   />
 );
 
