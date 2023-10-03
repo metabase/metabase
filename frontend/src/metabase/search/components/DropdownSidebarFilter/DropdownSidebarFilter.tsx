@@ -31,7 +31,6 @@ export const DropdownSidebarFilter = ({
   value,
   onChange,
 }: DropdownSidebarFilterProps) => {
-  const [selectedValues, setSelectedValues] = useState(value);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const isNavbarOpen = useSelector(getIsNavbarOpen);
@@ -66,7 +65,6 @@ export const DropdownSidebarFilter = ({
   }, [isNavbarOpen, isSmallScreen]);
 
   const onApplyFilter = (value: SearchFilterPropTypes) => {
-    setSelectedValues(value);
     onChange(value);
     setIsPopoverOpen(false);
   };
@@ -74,7 +72,6 @@ export const DropdownSidebarFilter = ({
   const onClearFilter = (e: MouseEvent) => {
     if (fieldHasValue) {
       e.stopPropagation();
-      setSelectedValues(undefined);
       onChange(undefined);
       setIsPopoverOpen(false);
     }
@@ -82,7 +79,6 @@ export const DropdownSidebarFilter = ({
 
   const onPopoverClose = () => {
     // reset selection to the current filter state
-    setSelectedValues(value);
     setIsPopoverOpen(false);
   };
 
@@ -136,12 +132,14 @@ export const DropdownSidebarFilter = ({
         sizeToFit
       >
         <SearchEventSandbox>
-          <Box w={popoverWidth ?? "100%"}>
-            <ContentComponent
-              value={selectedValues}
-              onChange={selected => onApplyFilter(selected)}
-            />
-          </Box>
+          {popoverWidth && (
+            <Box w={popoverWidth}>
+              <ContentComponent
+                value={value}
+                onChange={selected => onApplyFilter(selected)}
+              />
+            </Box>
+          )}
         </SearchEventSandbox>
       </Popover>
     </Box>

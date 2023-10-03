@@ -5,21 +5,24 @@ import type { UserListResult } from "metabase-types/api";
 import { UserNameDisplay } from "./UserNameDisplay";
 import type { UserNameDisplayProps } from "./UserNameDisplay";
 
-const TEST_USER_LIST_RESULT = createMockUserListResult();
+const TEST_USER_LIST_RESULTS = [
+  createMockUserListResult({ id: 1, common_name: "Testy Tableton" }),
+  createMockUserListResult({ id: 2, common_name: "Testy McTestface" }),
+];
 
 const setup = async ({
-  userId = null,
-  users = [TEST_USER_LIST_RESULT],
+  userIdList = [],
+  users = TEST_USER_LIST_RESULTS,
   waitForLoading = true,
 }: {
-  userId?: UserNameDisplayProps["userId"];
+  userIdList?: UserNameDisplayProps["userIdList"];
   users?: UserListResult[];
   waitForLoading?: boolean;
 } = {}) => {
   setupUsersEndpoints(users);
 
   renderWithProviders(
-    <UserNameDisplay label={"UserNameDisplay Test"} userId={userId} />,
+    <UserNameDisplay label={"UserNameDisplay Test"} userIdList={userIdList} />,
   );
 
   if (waitForLoading) {
@@ -30,22 +33,25 @@ const setup = async ({
 };
 
 describe("UserNameDisplay", () => {
-  it("should initially display loading message when a user is selected", async () => {
-    await setup({ waitForLoading: false, userId: TEST_USER_LIST_RESULT.id });
+  it("should initially display loading message when users are selected", async () => {
+    await setup({
+      waitForLoading: false,
+      userIdList: [TEST_USER_LIST_RESULTS[0].id],
+    });
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
-  it("should initially display title when value is null", async () => {
+  it("should initially display title when user list is empty", async () => {
     await setup({ waitForLoading: true });
     expect(screen.getByText("UserNameDisplay Test")).toBeInTheDocument();
   });
 
-  it("should display user name when value is a valid user", async () => {
-    await setup({ userId: TEST_USER_LIST_RESULT.id });
+  it("should display user name when there's one user in the list", async () => {
+    await setup({ userIdList: [TEST_USER_LIST_RESULTS[0].id] });
     expect(screen.getByText("Testy Tableton")).toBeInTheDocument();
   });
 
-  it("should fallback to '1 user selected' if the user doesn't have a common name", async () => {
+  it("should fallback to '1 user selected' if there is one user and they don't have a common name", async () => {
     // the backend should always return a `common_name` field, so this is a fallback
 
     const userWithoutCommonName = createMockUserListResult({
@@ -55,8 +61,17 @@ describe("UserNameDisplay", () => {
 
     await setup({
       users: [userWithoutCommonName],
-      userId: userWithoutCommonName.id,
+      userIdList: [userWithoutCommonName.id],
     });
     expect(screen.getByText("1 user selected")).toBeInTheDocument();
+  });
+
+  it("should display `X users selected` if there are multiple users", async () => {
+    await setup({
+      userIdList: TEST_USER_LIST_RESULTS.map(user => user.id),
+    });
+    expect(
+      screen.getByText(`${TEST_USER_LIST_RESULTS.length} users selected`),
+    ).toBeInTheDocument();
   });
 });

@@ -4,29 +4,32 @@ import { Text } from "metabase/ui";
 import type { UserId } from "metabase-types/api";
 
 export type UserNameDisplayProps = {
-  userId: UserId | null;
+  userIdList: UserId[];
   label: string;
 };
 
-export const UserNameDisplay = ({ userId, label }: UserNameDisplayProps) => {
+export const UserNameDisplay = ({
+  userIdList,
+  label,
+}: UserNameDisplayProps) => {
   const { data: users = [], isLoading } = useUserListQuery();
 
-  const user = userId && users.find(user => user.id === userId);
+  const selectedUserList = users.filter(user => userIdList.includes(user.id));
 
   const getDisplayValue = () => {
     if (isLoading) {
       return t`Loading…`;
     }
 
-    if (!userId) {
+    if (selectedUserList.length === 0) {
       return label;
     }
 
-    if (user && user.common_name) {
-      return user.common_name;
+    if (selectedUserList.length === 1) {
+      return selectedUserList[0].common_name ?? t`1 user selected`;
     }
 
-    return t`1 user selected`;
+    return t`${selectedUserList.length} users selected`;
   };
 
   return (

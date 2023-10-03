@@ -13,8 +13,8 @@ const TEST_USERS: User[] = [
 ];
 
 const TestSearchUserPicker = ({ onChange }: { onChange: jest.Func }) => {
-  const [value, setValue] = useState<CreatedByFilterProps | null>(null);
-  const onUserChange = (value: CreatedByFilterProps | null) => {
+  const [value, setValue] = useState<CreatedByFilterProps>([]);
+  const onUserChange = (value: CreatedByFilterProps) => {
     setValue(value);
     onChange(value);
   };

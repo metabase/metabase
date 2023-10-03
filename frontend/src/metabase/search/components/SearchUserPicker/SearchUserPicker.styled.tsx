@@ -1,5 +1,8 @@
 import styled from "@emotion/styled";
-import { Stack } from "metabase/ui";
+import { css } from "@emotion/react";
+import type { HTMLAttributes } from "react";
+import type { ButtonProps } from "metabase/ui";
+import { Stack, TextInput, Button, Group } from "metabase/ui";
 
 export const SearchUserPickerContainer = styled(Stack)`
   overflow: hidden;
@@ -7,4 +10,51 @@ export const SearchUserPickerContainer = styled(Stack)`
 
 export const SearchUserPickerContent = styled(Stack)`
   overflow-y: auto;
+`;
+
+export const SearchUserSelectBox = styled(Group)`
+  border: ${({ theme }) => theme.colors.border[0]} 1px solid;
+  border-radius: ${({ theme }) => theme.radius.md};
+`;
+
+// We can also use these styles in the `light` variant of the Button component
+export const SelectedUserButton = styled(Button)<
+  ButtonProps & HTMLAttributes<HTMLButtonElement>
+>`
+  ${({ theme }) => {
+    const primaryColor = theme.colors.brand[1];
+    const backgroundColor = theme.fn.lighten(primaryColor, 0.8);
+    const hoverBackgroundColor = theme.fn.lighten(primaryColor, 0.6);
+
+    return css`
+      color: ${primaryColor};
+      background-color: ${backgroundColor};
+      border: 0;
+
+      &:hover {
+        background-color: ${hoverBackgroundColor};
+      }
+
+      &:disabled {
+        color: ${theme.fn.lighten(primaryColor, 0.5)};
+        background-color: ${theme.fn.lighten(backgroundColor, 0.6)};
+      }
+    `;
+  }}
+
+  & .emotion-Button-label {
+    width: 100%;
+  }
+`;
+
+export const SearchUserPickerInput = styled(TextInput)`
+  flex: 1;
+
+  & .emotion-TextInput-input {
+    padding: ${({ theme }) => theme.spacing.sm};
+  }
+
+  & .emotion-TextInput-wrapper {
+    margin-top: 0;
+  }
 `;
