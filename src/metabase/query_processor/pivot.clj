@@ -121,7 +121,7 @@
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
-  [{{all-breakouts :breakout} :query, :keys [pivot-rows pivot-cols query], :as outer-query}]
+  [{{all-breakouts :breakout} :query, :keys [query], :as outer-query} {:keys [pivot-rows pivot-cols]}]
   (try
     (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
                              (log/tracef "Using breakout combinations: %s" (pr-str <>)))
@@ -213,22 +213,27 @@
 
 (defn run-pivot-query
   "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
-   its application via `partial`.
+  its application via `partial`.
 
-   You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
+  You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
   ([query]
-   (run-pivot-query query nil))
+   (run-pivot-query query nil nil))
   ([query info]
-   (run-pivot-query query info nil))
+   (run-pivot-query query info nil nil))
   ([query info context]
+   (run-pivot-query query info context nil))
+  ([query info context pivot-options]
    (binding [qp.perms/*card-id* (get info :card-id)]
      (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
        (let [context                 (merge (context.default/default-context) context)
              query                   (mbql.normalize/normalize query)
+             ;; TODO: put pivot-options into the query for both saved cards and ad-hoc queries
+             pivot-options           (or (mbql.normalize/normalize pivot-options)
+                                         (select-keys query [:pivot-rows :pivot-cols]))
              main-breakout           (:breakout (:query query))
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp/query->expected-cols col-determination-query)
-             all-queries             (generate-queries query)]
+             all-queries             (generate-queries query pivot-options)]
          (process-multiple-queries
           all-queries
           info

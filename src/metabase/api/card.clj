@@ -1031,14 +1031,20 @@ saved later when it is ready."
 
 (api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache]
+  [card-id :as {{:keys [parameters ignore_cache pivot_cols pivot_rows]
                  :or   {ignore_cache false}} :body}]
   {card-id      ms/PositiveInt
-   ignore_cache [:maybe :boolean]}
-  (qp.card/run-query-for-card-async card-id :api
-                            :parameters parameters,
-                            :qp-runner qp.pivot/run-pivot-query
-                            :ignore_cache ignore_cache))
+   ignore_cache [:maybe :boolean]
+   pivot_cols   [:vector ms/IntGreaterThanOrEqualToZero]
+   pivot_rows   [:vector ms/IntGreaterThanOrEqualToZero]}
+  (qp.card/run-query-for-card-async
+   card-id
+   :api
+   :parameters parameters
+   :qp-runner (fn [query info context]
+                (qp.pivot/run-pivot-query query info context {:pivot-cols pivot_cols
+                                                              :pivot-rows pivot_rows}))
+   :ignore_cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
