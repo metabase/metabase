@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider
@@ -684,3 +685,25 @@
              (lib.metadata.calculation/metadata
               query
               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+
+(deftest ^:parallel recursive-column-resolution-test
+  (testing "#34247"
+    (let [source-query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          metadata-provider (lib.metadata.composed-provider/composed-metadata-provider
+                             meta/metadata-provider
+                             (lib.tu/mock-metadata-provider
+                              {:cards [{:name          "My Card"
+                                        :id            1
+                                        :dataset-query source-query}]}))
+          query             (-> (lib/query metadata-provider {:database (meta/id)
+                                                              :lib/type :mbql/query
+                                                              :stages   [{:lib/type    :mbql.stage/mbql
+                                                                          :source-card 1}]})
+                                (lib/expression "expr" [:field
+                                                        {:lib/uuid  (str (random-uuid))
+                                                         :base-type :type/Float}
+                                                        "TAX"]))]
+      (is (=? {:lib/type :metadata/column
+               :name     "TAX"
+               :id       (meta/id :orders :tax)}
+             (#'lib.field/resolve-column-name query -1 "TAX"))))))
