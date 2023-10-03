@@ -62,6 +62,9 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
             size,
             sizes: SWITCH_PADDING,
           }),
+          "&:empty": {
+            padding: 0,
+          },
         },
         label: {
           padding: 0,
