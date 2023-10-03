@@ -1,8 +1,9 @@
-name: Pre-release [WIP]
+name: Release 2 - Pre-release testing
+run-name: Pre-release Testing of ${{ github.event.workflow_run.name }}
 
 on:
   workflow_run:
-    workflows: [Build for the official Metabase release]
+    workflows: [Release 1 - Build Release Artifact]
     types: [completed]
 
 jobs:
@@ -17,28 +18,44 @@ jobs:
       ee_version: ${{ steps.version-properties.outputs.ee_version }}
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Download Metabase ${{ matrix.edition }} artifact
-        run: |
-          declare -a curlHeaders=('-H' "Accept: application/vnd.github+json" '-H' "Authorization: Bearer $GITHUB_TOKEN" '-H' "X-GitHub-Api-Version: 2022-11-28")
+      - name: 'Download artifact'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
 
-          download_link=$(
-            curl -sL \
-              "${curlHeaders[@]}" \
-              "${{ github.event.workflow_run.artifacts_url }}" \
-              | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name) | .archive_download_url')
+            const allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.payload.workflow_run.id,
+            });
 
-          curl -sL "${curlHeaders[@]}" $download_link -o mb.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_NAME: metabase-${{ matrix.edition }}-uberjar
+            const matchArtifact = allArtifacts.data.artifacts.find((artifact) => {
+              return artifact.name.includes('-${{ matrix.edition }}-');
+            });
+
+            if (!matchArtifact) {
+              throw new Error('No artifact found');
+            }
+
+            const download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
       - name: Unzip Metabase artifact containing an uberjar
         run: unzip mb.zip
       - name: Extract the version.properties file from the JAR
         run: |
-          jar xf target/uberjar/metabase.jar version.properties
+          jar xf metabase.jar version.properties
           mv version.properties resources/
       - name: Reveal Metabase ${{ matrix.edition }} properties
         id: version-properties
@@ -59,7 +76,7 @@ jobs:
         with:
           name: metabase-${{ matrix.edition }}-uberjar
           path: |
-            ./target/uberjar/metabase.jar
+            ./metabase.jar
             ./COMMIT-ID
             ./SHA256.sum
 
@@ -146,7 +163,7 @@ jobs:
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Launch uberjar (and keep it running)
-      run: java -jar ./target/uberjar/metabase.jar &
+      run: java -jar ./metabase.jar &
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
@@ -195,10 +212,12 @@ jobs:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Get the version info
       run: |
-        jar xf target/uberjar/metabase.jar version.properties
+        jar xf metabase.jar version.properties
         mv version.properties resources/
     - name: Run a few important Cypress tests as sanity check
-      run: yarn test-cypress-run --folder onboarding
+      run: |
+        mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
+        yarn test-cypress-run --folder onboarding
       env:
         TERM: xterm
     - name: Upload Cypress Artifacts upon failure
@@ -242,7 +261,7 @@ jobs:
       with:
         name: metabase-${{ matrix.edition }}-uberjar
     - name: Move the Uberjar to the context dir
-      run: mv ./target/uberjar/metabase.jar bin/docker/.
+      run: mv metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v2

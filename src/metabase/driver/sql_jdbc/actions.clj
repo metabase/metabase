@@ -10,12 +10,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
@@ -25,7 +23,7 @@
    [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
-   (java.sql Connection PreparedStatement SQLException)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -346,21 +344,6 @@
             [(conj errors {:index row-index, :error (ex-message e)})
              successes]))))
      rows)))
-
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{db-id :id} (lib.metadata/database (qp.store/metadata-provider))]
-      (with-jdbc-transaction [conn db-id]
-        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
-          {:rows-affected (if (instance? PreparedStatement stmt)
-                            (.executeUpdate ^PreparedStatement stmt)
-                            (.executeUpdate stmt sql))})))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
 
 ;;;; `:bulk/create`
 
