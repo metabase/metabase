@@ -102,7 +102,7 @@ function convertQuestionToAction(
     id: question.id(),
     name: question.displayName() as string,
     description: question.description(),
-    dataset_query: question.datasetQuery() as NativeDatasetQuery,
+    dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
