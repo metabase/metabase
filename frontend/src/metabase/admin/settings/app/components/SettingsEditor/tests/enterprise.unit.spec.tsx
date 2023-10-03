@@ -1,3 +1,4 @@
+import "metabase/plugins/builtin";
 import userEvent from "@testing-library/user-event";
 import {
   createMockGroup,

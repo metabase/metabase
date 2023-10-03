@@ -139,6 +139,11 @@ export const updateDashboard = createThunkAction(
       const { dashboards, dashboardId } = state.dashboard;
       const dashboard = dashboards[dashboardId];
 
+      if (!dashboard) {
+        console.warn(`no dashboard with id ${dashboardId} were found`);
+        return;
+      }
+
       if (attributeNames.length > 0) {
         const attributes = _.pick(dashboard, attributeNames);
 
