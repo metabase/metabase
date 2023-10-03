@@ -18,7 +18,7 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { Collection, Dashboard } from "metabase-types/api";
+import type { Card, Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
@@ -49,22 +49,33 @@ const DASHBOARDS_BY_ID = {
   [DASHBOARD_AT_ROOT.id]: DASHBOARD_AT_ROOT,
 };
 
-const COLLECTION_1 = createMockCollection({
+const COLLECTION = createMockCollection({
   id: 1,
-  name: "C1",
+  name: "Collection",
   can_write: true,
+  location: "/",
 });
 
-const COLLECTION_2 = createMockCollection({
+const NESTED_COLLECTION = createMockCollection({
   id: 2,
-  name: "C2",
+  name: "Nested collection",
   can_write: true,
+  location: `/${COLLECTION.id}/`,
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
   id: CURRENT_USER.personal_collection_id,
   name: "My personal collection",
   personal_owner_id: CURRENT_USER.id,
+  can_write: true,
+  location: "/",
+});
+
+const NESTED_PERSONAL_COLLECTION = createMockCollection({
+  id: CURRENT_USER.personal_collection_id + 1,
+  name: "Nested personal collection",
+  can_write: true,
+  location: `/${PERSONAL_COLLECTION.id}/`,
 });
 
 const ROOT_COLLECTION = createMockCollection({
@@ -74,12 +85,14 @@ const ROOT_COLLECTION = createMockCollection({
 
 const COLLECTIONS = [
   ROOT_COLLECTION,
-  COLLECTION_1,
-  COLLECTION_2,
+  COLLECTION,
+  NESTED_COLLECTION,
   PERSONAL_COLLECTION,
+  NESTED_PERSONAL_COLLECTION,
 ];
 
 interface SetupOpts {
+  card?: Card;
   collections?: Collection[];
   error?: string;
   dashboard?: Dashboard;
@@ -88,6 +101,7 @@ interface SetupOpts {
 }
 
 const setup = async ({
+  card = CARD,
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
   noRecentDashboard = false,
@@ -105,7 +119,7 @@ const setup = async ({
       path="/"
       component={() => (
         <AddToDashSelectDashModal
-          card={CARD}
+          card={card}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
           dashboards={DASHBOARDS_BY_ID}
@@ -199,6 +213,72 @@ describe("AddToDashSelectDashModal", () => {
         expect(screen.getByTestId("item-picker-header")).toHaveTextContent(
           ROOT_COLLECTION.name,
         );
+      });
+
+      describe("question is in personal collection", () => {
+        const CARD_IN_PERSONAL_COLLECTION = createMockCard({
+          id: 2,
+          name: "Card in a personal collection",
+          dataset: true,
+          collection_id: PERSONAL_COLLECTION.id as number,
+        });
+
+        it('should not render "Create a new dashboard" option when opening public collections', async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            noRecentDashboard: true,
+          });
+
+          expect(
+            screen.queryByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).not.toBeInTheDocument();
+        });
+
+        it('should render "Create a new dashboard" option when opening personal collections', async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            noRecentDashboard: true,
+          });
+          // await setup();
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          );
+
+          expect(
+            screen.getByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).toBeInTheDocument();
+        });
+
+        it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            noRecentDashboard: true,
+          });
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          );
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: NESTED_PERSONAL_COLLECTION.name,
+            }),
+          );
+
+          expect(
+            screen.getByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).toBeInTheDocument();
+        });
       });
     });
   });

@@ -23,7 +23,6 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { useSelector } from "metabase/lib/redux";
 import Collections from "metabase/entities/collections";
@@ -86,9 +85,8 @@ export const AddToDashSelectDashModal = ({
   useEffect(() => {
     setOpenCollectionId(collectionId);
   }, [collectionId]);
-  const question = useSelector(getQuestion);
   const isQuestionWithinPersonalCollection =
-    useIsCollectionWithinPersonalCollection(question?.collectionId());
+    useIsCollectionWithinPersonalCollection(card.collection_id);
   const isOpenCollectionWithinPersonalCollection =
     useIsCollectionWithinPersonalCollection(openCollectionId);
 
