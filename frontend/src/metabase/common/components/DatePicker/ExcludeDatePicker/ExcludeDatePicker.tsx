@@ -65,6 +65,7 @@ export function ExcludeDatePicker({
     />
   ) : (
     <ExcludeOptionPicker
+      value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
       onChangeUnit={handleChangeUnit}
