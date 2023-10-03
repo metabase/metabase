@@ -79,7 +79,7 @@ describe("issue 17775", () => {
     setQuarterAndYear({ quarter: "Q1", year: "2023" });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("44.43");
+    cy.findAllByText("44.43").should("have.length", 2);
     cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
   });
 });
