@@ -434,7 +434,7 @@ function QueryBuilder(props) {
 
       const { hash, pathname } = location;
 
-      if (question?.isDataset()) {
+      if (question.isDataset()) {
         const isGoingToQueryTab =
           pathname.startsWith("/model/") && pathname.endsWith("/query");
         const isGoingToMetadataTab =
@@ -443,13 +443,13 @@ function QueryBuilder(props) {
         return isGoingToQueryTab || isGoingToMetadataTab;
       }
 
-      if (!question?.isNative()) {
-        return true;
+      if (question.isNative()) {
+        const isRunningQuestion = pathname === "/question" && hash.length > 0;
+
+        return isRunningQuestion;
       }
 
-      const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
-      return isRunningQuestion;
+      return true;
     },
     [question],
   );
