@@ -423,15 +423,33 @@ function QueryBuilder(props) {
 
   const isLocationAllowed = useCallback(
     location => {
-      if (!question?.isNative() || question?.isDataset()) {
+      /**
+       * If there is no "question" there is no reason to prevent navigation.
+       * If there is no "location" then it's unbeforeunload event, which is
+       * handled by useBeforeUnload hook - no reason to duplicate its work.
+       */
+      if (!question || !location) {
         return true;
       }
 
-      const isTryingToRunModifiedSavedQuestion = Boolean(
-        location?.pathname === "/question" && location?.hash,
-      );
+      const { hash, pathname } = location;
 
-      return isTryingToRunModifiedSavedQuestion;
+      if (question?.isDataset()) {
+        const isGoingToQueryTab =
+          pathname.startsWith("/model/") && pathname.endsWith("/query");
+        const isGoingToMetadataTab =
+          pathname.startsWith("/model/") && pathname.endsWith("/metadata");
+
+        return isGoingToQueryTab || isGoingToMetadataTab;
+      }
+
+      if (!question?.isNative()) {
+        return true;
+      }
+
+      const isRunningQuestion = pathname === "/question" && hash.length > 0;
+
+      return isRunningQuestion;
     },
     [question],
   );
