@@ -1,36 +1,19 @@
-export type DatePickerOperator =
-  | "="
-  | "!="
-  | "<"
-  | ">"
-  | "between"
-  | "is-null"
-  | "not-null";
+import type {
+  DATE_PICKER_OPERATORS,
+  DATE_PICKER_SHORTCUTS,
+  DATE_PICKER_TRUNCATION_UNITS,
+  DATE_PICKER_EXTRACTION_UNITS,
+} from "./constants";
 
-export type DatePickerShortcut =
-  | "today"
-  | "yesterday"
-  | "last-week"
-  | "last-7-days"
-  | "last-30-days"
-  | "last-month"
-  | "last-3-months"
-  | "last-12-months";
+export type DatePickerOperator = typeof DATE_PICKER_OPERATORS[number];
 
-export type DatePickerTruncationUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year";
+export type DatePickerShortcut = typeof DATE_PICKER_SHORTCUTS[number];
 
 export type DatePickerExtractionUnit =
-  | "hour-of-day"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year";
+  typeof DATE_PICKER_EXTRACTION_UNITS[number];
+
+export type DatePickerTruncationUnit =
+  typeof DATE_PICKER_TRUNCATION_UNITS[number];
 
 export interface RelativeDatePickerValue {
   type: "relative";

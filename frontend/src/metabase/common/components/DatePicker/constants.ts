@@ -1,10 +1,4 @@
-import type {
-  DatePickerExtractionUnit,
-  DatePickerOperator,
-  DatePickerShortcut,
-} from "./types";
-
-export const DEFAULT_OPERATORS: DatePickerOperator[] = [
+export const DATE_PICKER_OPERATORS = [
   "=",
   "!=",
   "<",
@@ -12,9 +6,9 @@ export const DEFAULT_OPERATORS: DatePickerOperator[] = [
   "between",
   "is-null",
   "not-null",
-];
+] as const;
 
-export const DEFAULT_SHORTCUTS: DatePickerShortcut[] = [
+export const DATE_PICKER_SHORTCUTS = [
   "today",
   "yesterday",
   "last-week",
@@ -23,11 +17,21 @@ export const DEFAULT_SHORTCUTS: DatePickerShortcut[] = [
   "last-month",
   "last-3-months",
   "last-12-months",
-];
+] as const;
 
-export const DEFAULT_UNITS: DatePickerExtractionUnit[] = [
+export const DATE_PICKER_TRUNCATION_UNITS = [
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "quarter",
+  "month",
+  "year",
+] as const;
+
+export const DATE_PICKER_EXTRACTION_UNITS = [
   "hour-of-day",
   "day-of-week",
   "month-of-year",
   "quarter-of-year",
-];
+] as const;

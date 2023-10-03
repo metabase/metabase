@@ -20,8 +20,8 @@ import {
 
 export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
-  availableOperators: DatePickerOperator[];
-  availableUnits: DatePickerExtractionUnit[];
+  availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -77,8 +77,8 @@ export function ExcludeDatePicker({
 
 interface ExcludeOptionPickerProps {
   value: ExcludeDatePickerValue | undefined;
-  availableOperators: DatePickerOperator[];
-  availableUnits: DatePickerExtractionUnit[];
+  availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
   onChangeOperator: (operator: DatePickerOperator) => void;
   onChangeUnit: (unit: DatePickerExtractionUnit) => void;
   onBack: () => void;

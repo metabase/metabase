@@ -2,9 +2,9 @@ import { useState } from "react";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { DateShortcutPicker } from "./DateShortcutPicker";
 import {
-  DEFAULT_OPERATORS,
-  DEFAULT_SHORTCUTS,
-  DEFAULT_UNITS,
+  DATE_PICKER_EXTRACTION_UNITS,
+  DATE_PICKER_OPERATORS,
+  DATE_PICKER_SHORTCUTS,
 } from "./constants";
 import type {
   DatePickerExtractionUnit,
@@ -15,17 +15,17 @@ import type {
 
 export interface DatePickerProps {
   value?: DatePickerValue;
-  availableOperators?: DatePickerOperator[];
-  availableShortcuts?: DatePickerShortcut[];
-  availableUnits?: DatePickerExtractionUnit[];
+  availableOperators?: ReadonlyArray<DatePickerOperator>;
+  availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
+  availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
   onChange: (value: DatePickerValue) => void;
 }
 
 export function DatePicker({
   value,
-  availableOperators = DEFAULT_OPERATORS,
-  availableShortcuts = DEFAULT_SHORTCUTS,
-  availableUnits = DEFAULT_UNITS,
+  availableOperators = DATE_PICKER_OPERATORS,
+  availableShortcuts = DATE_PICKER_SHORTCUTS,
+  availableUnits = DATE_PICKER_EXTRACTION_UNITS,
   onChange,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);

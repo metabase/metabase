@@ -13,8 +13,8 @@ import type {
 } from "./types";
 
 export function getExcludeUnitOptions(
-  availableOperators: DatePickerOperator[],
-  availableUnits: DatePickerExtractionUnit[],
+  availableOperators: ReadonlyArray<DatePickerOperator>,
+  availableUnits: ReadonlyArray<DatePickerExtractionUnit>,
 ): ExcludeUnitOption[] {
   if (!availableOperators.includes("!=")) {
     return [];
@@ -26,7 +26,7 @@ export function getExcludeUnitOptions(
 }
 
 export function getExcludeOperatorOptions(
-  availableOperators: DatePickerOperator[],
+  availableOperators: ReadonlyArray<DatePickerOperator>,
 ): ExcludeOperatorOption[] {
   return EXCLUDE_OPERATOR_OPTIONS.filter(option =>
     availableOperators.includes(option.operator),

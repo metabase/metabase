@@ -10,8 +10,8 @@ import type {
 import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 
 interface DateShortcutPickerProps {
-  availableOperators: DatePickerOperator[];
-  availableShortcuts: DatePickerShortcut[];
+  availableOperators: ReadonlyArray<DatePickerOperator>;
+  availableShortcuts: ReadonlyArray<DatePickerShortcut>;
   onChange: (value: RelativeDatePickerValue) => void;
   onNavigate: (type: DatePickerValueType) => void;
 }
