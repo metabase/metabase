@@ -1220,7 +1220,7 @@
                                           (fn [{:keys [dimension-name semantic_type] :as field}]
                                             {dimension-name {:field_type [semantic_type] :score 100}})
                                           fields)]]
-             {:metrics    [{metric-name
+             {:metrics    [{card-metric-name
                             {:name   metric-name
                              :metric (mapv (fn [{:keys [dimension-name]}]
                                              [:dimension dimension-name]) fields)
@@ -1230,7 +1230,7 @@
                             {:title (deferred-tru "A look at the {0} metric" metric-name)
                              :score         100
                              :dimensions    (mapv (fn [dim] (update-vals dim empty)) dimensions)
-                             :metrics       [metric-name]
+                             :metrics       [card-metric-name]
                              :query-literal definition
                              :height 8
                              :width 8
