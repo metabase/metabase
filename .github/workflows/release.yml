@@ -469,7 +469,7 @@ jobs:
     timeout-minutes: 15
     permissions: write-all
     env:
-      AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+      AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
       DOCKERHUB_REPO: ${{ vars.DOCKERHUB_REPO }}
     strategy:
