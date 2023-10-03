@@ -111,10 +111,10 @@
   "A specification for the basic keys in a dashboard template."
   (mc/schema
     [:map
-     [:dimensions {:optional true} [:vector dimension-template]]
-     [:metrics {:optional true} [:vector metric-template]]
-     [:filters {:optional true} [:vector filter-template]]
-     [:cards {:optional true} [:vector card-template]]]))
+     [:dimensions {:optional true} [:sequential dimension-template]]
+     [:metrics {:optional true} [:sequential metric-template]]
+     [:filters {:optional true} [:sequential filter-template]]
+     [:cards {:optional true} [:sequential card-template]]]))
 
 ;; Available values schema -- These are items for which fields have been successfully bound
 
@@ -138,9 +138,9 @@
    set of dimensions which, when satisfied, enable this affinity object."
   (mc/schema
     [:map
-     [:dimensions {:optional true} [:vector string?]]
-     [:metrics {:optional true} [:vector string?]]
-     [:filters {:optional true} [:vector string?]]
+     [:dimensions {:optional true} [:sequential string?]]
+     [:metrics {:optional true} [:sequential string?]]
+     [:filters {:optional true} [:sequential string?]]
      [:score {:optional true} nat-int?]
      [:affinity-name string?]
      [:base-dims dimension-set]]))

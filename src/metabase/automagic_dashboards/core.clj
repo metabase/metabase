@@ -405,7 +405,8 @@
                    (cond
                      link               [:field id {:source-field link}]
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                     id                 [:field id nil]
+                     ;; This is only here as a workaround until https://github.com/metabase/metabase/issues/34286 gets fixed
+                     id                 [:field id {:base-type base_type}]
                      :else              [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)
@@ -783,6 +784,7 @@
   [context
    {card-dimensions :dimensions
     card-query      :query
+    query-literal   :query-literal
     card-score      :score
     :keys           [limit]
     :as             card-template}
@@ -804,19 +806,23 @@
                          card-template
                          (vals bindings)
                          metrics)
-        dashcard-query (if card-query
-                         (build-native-query context bindings card-query)
-                         (build-mbql-query context
-                                           bindings
-                                           (vals satisfied-filters)
-                                           metrics
-                                           (map (comp #(into [:dimension] %) first) card-dimensions)
-                                           limit
-                                           (build-order-by dashcard)))]
+        dashcard-query (cond
+                         query-literal {:type     :query
+                                        :query    query-literal
+                                        :database (-> context :root :database)}
+                         card-query (build-native-query context bindings card-query)
+                         :else (build-mbql-query
+                                 context
+                                 bindings
+                                 (vals satisfied-filters)
+                                 metrics
+                                 (map (comp #(into [:dimension] %) first) card-dimensions)
+                                 limit
+                                 (build-order-by dashcard)))]
     (-> dashcard
         (instantiate-metadata context satisfied-metrics (->> (map :name metrics)
-                                                            (zipmap (:metrics dashcard))
-                                                            (merge bindings)))
+                                                             (zipmap (:metrics dashcard))
+                                                             (merge bindings)))
         (assoc :dataset_query dashcard-query
                :metrics metrics
                :dimensions (map :name (vals bindings))
@@ -840,7 +846,7 @@
    {card-dimensions :dimensions
     card-metrics    :metrics
     card-filters    :filters
-    :as                 card-template}]
+    :as             card-template}]
   (let [satisfied-metrics    (zipmap
                                card-metrics
                                (map available-metrics card-metrics))
@@ -1185,20 +1191,74 @@
         (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
   )
 
+(defn find-field-ids [m]
+  (let [fields (atom #{})]
+    (walk/prewalk
+      (fn [v]
+        (when (vector? v)
+          (let [[f id] v]
+            (when (and id (= :field f))
+              (swap! fields conj id))))
+        v)
+      m)
+    @fields))
+
+(defmulti dashboard-enhancements mi/model)
+
+(defmethod dashboard-enhancements :model/Table [{table-id :id :as _table}]
+  (letfn [(unique-name [n id] (str (gensym (format "%s_%s" n id))))]
+    (apply merge-with concat
+           (for [{metric-name :name
+                  metric-id   :id
+                  :keys       [definition]} (t2/select :model/Metric :table_id table-id)
+                 :let [card-metric-name (unique-name metric-name metric-id)
+                       fields           (map
+                                          (fn [{field-name :name field-id :id :as field}]
+                                            (assoc field :dimension-name (unique-name field-name field-id)))
+                                          (t2/select :model/Field :id [:in (find-field-ids definition)]))
+                       dimensions       (mapv
+                                          (fn [{:keys [dimension-name semantic_type] :as field}]
+                                            {dimension-name {:field_type [semantic_type] :score 100}})
+                                          fields)]]
+             {:metrics    [{metric-name
+                            {:name   metric-name
+                             :metric (mapv (fn [{:keys [dimension-name]}]
+                                             [:dimension dimension-name]) fields)
+                             :score  100}}]
+              :dimensions dimensions
+              :cards      [{(unique-name "CARD" metric-id)
+                            {:title (deferred-tru "A look at the {0} metric" metric-name)
+                             :score         100
+                             :dimensions    (mapv (fn [dim] (update-vals dim empty)) dimensions)
+                             :metrics       [metric-name]
+                             :query-literal definition
+                             :height 8
+                             :width 8
+                             :visualization ["scalar" {}]
+                             :group "Overview"}}]}))))
+
+(defmethod dashboard-enhancements :default [_] nil)
+
+(comment
+  (dashboard-enhancements (t2/select-one :model/Table :name "ACCOUNTS"))
+  )
+
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
 
   Returns nil if no cards are produced."
-  [{root :root :as base-context}
-   {template-dimensions :dimensions
-    template-metrics    :metrics
-    template-filters    :filters
-    template-cards      :cards
-    :keys               [dashboard-template-name dashboard_filters]
-    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
+  [{{:keys [entity] :as root} :root :as base-context}
+   {:keys [dashboard-template-name] :as original-dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions   (->> (bind-dimensions base-context template-dimensions)
+  (let [enhancements           (dashboard-enhancements entity)
+        {template-dimensions :dimensions
+         template-metrics    :metrics
+         template-filters    :filters
+         template-cards      :cards
+         :keys               [dashboard_filters]
+         :as                 dashboard-template} (merge-with concat original-dashboard-template enhancements)
+        available-dimensions   (->> (bind-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
         available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)
@@ -1224,7 +1284,7 @@
                        (mapcat (comp :matches available-dimensions))
                        (remove (comp (singular-cell-dimensions root) id-or-name)))
          :cards cards)
-       dashboard-template
+       original-dashboard-template
        available-values])))
 
 (def ^:private ^:const ^Long max-related 8)
