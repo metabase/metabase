@@ -51,12 +51,20 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
       color: "brand",
       size: "md",
     },
-    styles: (theme, { error }: SwitchStylesParams, { size = "md" }) => {
+    styles: (
+      theme,
+      { error, labelPosition }: SwitchStylesParams,
+      { size = "md" },
+    ) => {
       return {
         labelWrapper: {
-          paddingLeft: getSize({ size, sizes: SWITCH_PADDING }),
+          [labelPosition === "left" ? "paddingRight" : "paddingLeft"]: getSize({
+            size,
+            sizes: SWITCH_PADDING,
+          }),
         },
         label: {
+          padding: 0,
           fontWeight: 700,
           fontSize: getSize({ size, sizes: LABEL_FONT_SIZES }),
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
@@ -68,11 +76,13 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           },
         },
         description: {
+          padding: 0,
           marginTop: rem(8),
           fontSize: rem(12),
           color: theme.colors.text[1],
         },
         error: {
+          padding: 0,
           marginTop: rem(8),
           fontSize: rem(12),
           color: theme.colors.error[0],
