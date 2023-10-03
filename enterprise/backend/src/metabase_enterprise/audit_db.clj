@@ -38,7 +38,7 @@
   []
   ((mdb.connection/memoize-for-application-db
    (fn []
-     (t2/select-one-pk :model/Collection :entity_id (default-audit-collection-entity-id))))))
+     (t2/select-one-pk :model/Collection :entity_id "vG58R8k-QddHWA7_47umn")))))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
