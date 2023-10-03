@@ -21,6 +21,14 @@ export const EXCLUDE_UNIT_OPTIONS: ExcludeUnitOption[] = [
 ];
 
 export const EXCLUDE_OPERATOR_OPTIONS: ExcludeOperatorOption[] = [
-  { operator: "is-null", label: t`Is empty` },
-  { operator: "not-null", label: t`Not empty` },
+  {
+    operator: "is-null",
+    label: t`Is empty`,
+    value: { type: "exclude", operator: "not-null", values: [] },
+  },
+  {
+    operator: "not-null",
+    label: t`Not empty`,
+    value: { type: "exclude", operator: "is-null", values: [] },
+  },
 ];

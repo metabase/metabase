@@ -80,16 +80,6 @@ function getExcludeQuarterOption(quarter: number): ExcludeValueOption {
   return { value: quarter, label: date.format("Qo") };
 }
 
-export function getExcludeOperatorValue(
-  operator: DatePickerOperator,
-): ExcludeDatePickerValue {
-  return {
-    type: "exclude",
-    operator,
-    values: [],
-  };
-}
-
 export function getExcludeUnitValue(
   unit: DatePickerExtractionUnit,
   values: number[],
