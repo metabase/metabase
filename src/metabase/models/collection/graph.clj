@@ -88,7 +88,7 @@
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
         audit-collection-id (perms/default-audit-collection-id)]
-    (if (= audit-collection-id ::noop)
+    (if (nil? audit-collection-id)
       graph
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
 
