@@ -12,6 +12,7 @@ import type { ExcludeValueOption } from "./types";
 import {
   findExcludeUnitOption,
   getExcludeOperatorOptions,
+  getExcludeOperatorValue,
   getExcludeUnitOptions,
   getExcludeUnitValue,
   getExcludeValueOptionGroups,
@@ -89,6 +90,10 @@ export function ExcludeOptionPicker({
     return getExcludeOperatorOptions(availableOperators);
   }, [availableOperators]);
 
+  const handleChange = (operator: DatePickerOperator) => {
+    onChange(getExcludeOperatorValue(operator));
+  };
+
   return (
     <div>
       <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
@@ -104,8 +109,8 @@ export function ExcludeOptionPicker({
       {operatorOptions.map((option, index) => (
         <OptionButton
           key={index}
-          isSelected={option.value.operator === value?.operator}
-          onClick={() => onChange(option.value)}
+          isSelected={option.operator === value?.operator}
+          onClick={() => handleChange(option.operator)}
         >
           {option.label}
         </OptionButton>
