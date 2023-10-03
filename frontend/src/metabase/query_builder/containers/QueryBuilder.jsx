@@ -425,7 +425,7 @@ function QueryBuilder(props) {
     location => {
       /**
        * If there is no "question" there is no reason to prevent navigation.
-       * If there is no "location" then it's unbeforeunload event, which is
+       * If there is no "location" then it's beforeunload event, which is
        * handled by useBeforeUnload hook - no reason to duplicate its work.
        */
       if (!question || !location) {

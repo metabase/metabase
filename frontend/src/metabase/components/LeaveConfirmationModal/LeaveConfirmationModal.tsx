@@ -19,7 +19,7 @@ interface Props {
 
 const IS_LOCATION_ALLOWED = (location?: Location) => {
   /**
-   * If there is no "location" then it's unbeforeunload event, which is
+   * If there is no "location" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
    */
   if (!location) {
