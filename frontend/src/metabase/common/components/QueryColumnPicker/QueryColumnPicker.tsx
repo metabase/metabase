@@ -13,7 +13,7 @@ import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
-type ColumnListItem = Lib.ColumnDisplayInfo & {
+export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 

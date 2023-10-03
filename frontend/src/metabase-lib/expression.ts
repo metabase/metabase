@@ -3,7 +3,7 @@ import type {
   ColumnMetadata,
   ExpressionArg,
   ExpressionClause,
-  ExpressionOperator,
+  ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
   FilterClause,
@@ -43,7 +43,7 @@ export function expressionParts(
 }
 
 export function expressionClause(
-  operator: ExpressionOperator,
+  operator: ExpressionOperatorName,
   args: (ExpressionArg | ExpressionClause)[],
   options: ExpressionOptions | null = null,
 ): ExpressionClause {

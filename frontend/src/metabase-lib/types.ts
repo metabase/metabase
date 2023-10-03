@@ -64,6 +64,26 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
+export type BucketName =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";
+
+export type BucketDisplayInfo = {
+  shortName: BucketName;
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -120,53 +140,36 @@ export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BucketDisplayInfo = {
-  displayName: string;
-  default?: boolean;
-  selected?: boolean;
-};
-
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
+export type ExpressionOperatorName =
   | "+"
-  | "-"
-  | "*"
-  | "/"
   | "="
   | "!="
   | ">"
-  | ">="
   | "<"
+  | ">="
   | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
   | "is-null"
   | "not-null"
   | "is-empty"
   | "not-empty"
-  | "contains"
-  | "does-not-contain"
   | "starts-with"
-  | "ends-width"
-  | "between"
+  | "ends-with"
   | "interval"
   | "time-interval"
-  | "relative-datetime";
-
-export type TemporalUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year";
+  | "relative-datetime"
+  | "inside";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperator;
+  operator: ExpressionOperatorName;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
@@ -176,40 +179,125 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type TextFilterParts = {
-  operator: ExpressionOperator;
-  column: ColumnMetadata;
-  values: string[];
-  options: TextFilterOptions;
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+export type FilterOperatorName = Extract<
+  ExpressionOperatorName,
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "starts-with"
+  | "ends-with"
+  | "time-interval"
+  | "inside"
+>;
+
+export type FilterOperatorDisplayInfo = {
+  shortName: FilterOperatorName;
+  displayName: string;
+  default?: boolean;
 };
 
-export type TextFilterOptions = {
+export type FilterParts =
+  | StringFilterParts
+  | NumberFilterParts
+  | BooleanFilterParts
+  | SpecificDateFilterParts
+  | RelativeDateFilterParts
+  | ExcludeDateFilterParts
+  | TimeFilterParts;
+
+export type DateParts = {
+  year: number;
+  month: number; // 0-11 (January-December)
+  date: number;
+};
+
+export type TimeParts = {
+  hour: number;
+  minute: number;
+};
+
+export type DateTimeParts = DateParts & Partial<TimeParts>;
+
+export type StringFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  values: string[];
+  options: StringFilterOptions;
+};
+
+export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
 export type NumberFilterParts = {
-  operator: ExpressionOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: number[];
 };
 
+export type CoordinateFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  longitudeColumn?: ColumnMetadata;
+  values: number[];
+};
+
 export type BooleanFilterParts = {
-  operator: ExpressionOperator;
+  operator: FilterOperator;
   column: ColumnMetadata;
   values: boolean[];
 };
 
+export type SpecificDateFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  values: DateParts[];
+};
+
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
+  bucket: BucketName;
   value: number | "current";
-  unit: TemporalUnit;
+  offsetBucket?: BucketName;
   offsetValue?: number;
-  offsetUnit?: TemporalUnit;
   options: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
+};
+
+/*
+ * values depend on the bucket
+ * day-of-week => 1-7 (Monday-Sunday)
+ * month-of-year => 0-11 (January-December)
+ * quarter-of-year => 1-4
+ * hour-of-day => 0-23
+ */
+export type ExcludeDateFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  bucket: Bucket;
+  values: number[];
+};
+
+export type TimeFilterParts = {
+  operator: FilterOperator;
+  column: ColumnMetadata;
+  values: TimeParts[];
 };
 
 declare const Join: unique symbol;
@@ -230,7 +318,7 @@ export type JoinConditionOperatorDisplayInfo = {
 };
 
 declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof Join };
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
 
 export type JoinStrategyDisplayInfo = {
   displayName: string;
