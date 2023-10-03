@@ -36,5 +36,7 @@ export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   return numValue;
 };
 
-export const stringifyUserIdArray = (value: UserId[]): SearchQueryParamValue =>
-  Number.isInteger(value) ? String(value) : null;
+export const stringifyUserIdArray = (
+  value?: UserId[] | null,
+): SearchQueryParamValue =>
+  value ? value.map(idString => String(idString)) : [];

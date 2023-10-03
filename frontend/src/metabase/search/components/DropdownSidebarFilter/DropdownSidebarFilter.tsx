@@ -72,7 +72,7 @@ export const DropdownSidebarFilter = ({
   const onClearFilter = (e: MouseEvent) => {
     if (fieldHasValue) {
       e.stopPropagation();
-      onChange(undefined);
+      onChange(null);
       setIsPopoverOpen(false);
     }
   };

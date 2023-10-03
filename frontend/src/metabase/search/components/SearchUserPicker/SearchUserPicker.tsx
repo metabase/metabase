@@ -68,7 +68,7 @@ export const SearchUserPicker = ({
                 c="brand.1"
                 px="md"
                 py="sm"
-                maw="min(30ch, 100%)"
+                maw="100%"
                 rightIcon={<Icon name="close" />}
                 onClick={() =>
                   setSelectedUserIds(without(selectedUserIds, userId))
@@ -85,8 +85,11 @@ export const SearchUserPicker = ({
             variant="unstyled"
             size="md"
             placeholder={
-              selectedUserIds.length === 0 ? t`Search for users…` : undefined
+              selectedUserIds.length === 0
+                ? t`Search for users…`
+                : t`Add users…`
             }
+            miw="15ch"
             value={userFilter}
             tabIndex={0}
             onChange={event => setUserFilter(event.currentTarget.value)}
