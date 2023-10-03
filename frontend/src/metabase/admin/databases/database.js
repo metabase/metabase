@@ -166,7 +166,6 @@ export const createDatabase = function (database) {
       );
 
       dispatch({ type: CREATE_DATABASE });
-      dispatch(push("/admin/databases?created=true"));
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
