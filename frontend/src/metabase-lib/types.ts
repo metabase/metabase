@@ -1,4 +1,15 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  BOOLEAN_FILTER_OPERATORS,
+  COORDINATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
+  EXCLUDE_DATE_BUCKETS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  RELATIVE_DATE_BUCKETS,
+  TIME_FILTER_OPERATORS,
+} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -184,26 +195,33 @@ export type ExpressionOptions = {
 declare const FilterOperator: unique symbol;
 export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
 
-export type FilterOperatorName = Extract<
-  ExpressionOperatorName,
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "between"
-  | "contains"
-  | "does-not-contain"
-  | "is-null"
-  | "not-null"
-  | "is-empty"
-  | "not-empty"
-  | "starts-with"
-  | "ends-with"
-  | "time-interval"
-  | "inside"
->;
+export type FilterOperatorName =
+  | StringFilterOperatorName
+  | NumberFilterOperatorName
+  | BooleanFilterOperatorName
+  | SpecificDateFilterOperatorName
+  | ExcludeDateFilterOperatorName;
+
+export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+
+export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+
+export type CoordinateFilterOperatorName =
+  typeof COORDINATE_FILTER_OPERATORS[number];
+
+export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+
+export type SpecificDateFilterOperatorName =
+  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+
+export type ExcludeDateFilterOperatorName =
+  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+
+export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+
+export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+
+export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -234,7 +252,7 @@ export type TimeParts = {
 export type DateTimeParts = DateParts & Partial<TimeParts>;
 
 export type StringFilterParts = {
-  operator: FilterOperator;
+  operator: StringFilterOperatorName;
   column: ColumnMetadata;
   values: string[];
   options: StringFilterOptions;
@@ -245,35 +263,35 @@ export type StringFilterOptions = {
 };
 
 export type NumberFilterParts = {
-  operator: FilterOperator;
+  operator: NumberFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
 };
 
 export type CoordinateFilterParts = {
-  operator: FilterOperator;
+  operator: CoordinateFilterOperatorName;
   column: ColumnMetadata;
   longitudeColumn?: ColumnMetadata;
   values: number[];
 };
 
 export type BooleanFilterParts = {
-  operator: FilterOperator;
+  operator: BooleanFilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };
 
 export type SpecificDateFilterParts = {
-  operator: FilterOperator;
+  operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: DateParts[];
 };
 
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
-  bucket: BucketName;
+  bucket: RelativeDateBucketName;
   value: number | "current";
-  offsetBucket?: BucketName;
+  offsetBucket?: RelativeDateBucketName;
   offsetValue?: number;
   options: RelativeDateFilterOptions;
 };
@@ -290,14 +308,14 @@ export type RelativeDateFilterOptions = {
  * hour-of-day => 0-23
  */
 export type ExcludeDateFilterParts = {
-  operator: FilterOperator;
+  operator: ExcludeDateFilterOperatorName;
   column: ColumnMetadata;
-  bucket: Bucket;
+  bucket: ExcludeDateBucketName | null;
   values: number[];
 };
 
 export type TimeFilterParts = {
-  operator: FilterOperator;
+  operator: TimeFilterOperatorName;
   column: ColumnMetadata;
   values: TimeParts[];
 };
