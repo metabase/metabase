@@ -27,11 +27,13 @@ const nestedCollectionOne = createMockCollection({
   id: 3,
   name: "Nested One",
   location: "/1/",
+  children: [],
 });
 const nestedCollectionTwo = createMockCollection({
   id: 4,
   name: "Nested Two",
   location: "/2/",
+  children: [],
 });
 
 const collectionOne = createMockCollection({
@@ -51,28 +53,37 @@ const rootCollection = createMockCollection({
   children: [collectionOne, collectionTwo],
 });
 
+const permissionGroups = [
+  { id: 1, name: "All Users", member_count: 40 },
+  { id: 2, name: "Administrators", member_count: 2 },
+  { id: 3, name: "Other Users", member_count: 33 },
+];
+
 const permissionsGraph: CollectionPermissionsGraph = {
   revision: 23,
   groups: {
     1: {
-      1: "write",
-      2: "write",
-      3: "read",
-      4: "none",
+      // all users
+      1: "write", // one
+      2: "write", // two
+      3: "read", // nested one
+      4: "none", // nested two
       root: "read",
     },
     2: {
-      1: "write",
-      2: "write",
-      3: "write",
-      4: "write",
+      // Administrators
+      1: "write", // one
+      2: "write", // two
+      3: "write", // nested one
+      4: "write", // nested two
       root: "write",
     },
     3: {
-      1: "read",
-      2: "read",
-      3: "none",
-      4: "none",
+      // Other users
+      1: "read", // one
+      2: "read", // two
+      3: "none", // nested one
+      4: "none", // nested two
       root: "read",
     },
   },
@@ -86,11 +97,7 @@ function setup() {
 
   setupCollectionPermissionsGraphEndpoint(permissionsGraph);
 
-  setupGroupsEndpoint([
-    { id: 1, name: "All Users", member_count: 40 },
-    { id: 2, name: "Administrators", member_count: 2 },
-    { id: 3, name: "Other Users", member_count: 33 },
-  ]);
+  setupGroupsEndpoint(permissionGroups);
 
   const initialState = createMockState();
 
@@ -175,7 +182,7 @@ describe("Admin > CollectionPermissionsPage", () => {
       userEvent.click(await screen.findByText("Collection One"));
       userEvent.click(await screen.findByText("Nested One"));
 
-      // change no access to view
+      // change Other users from no access to view
       userEvent.click(await screen.findByText("No access"));
       const listbox = await screen.findByRole("listbox");
       userEvent.click(within(listbox).getByText("View"));
@@ -213,6 +220,86 @@ describe("Admin > CollectionPermissionsPage", () => {
           },
         },
       });
+    });
+
+    it("can propagate permissions changes to sub-collection", async () => {
+      await setup();
+
+      expect(
+        await screen.findByText("Select a collection to see its permissions"),
+      ).toBeVisible();
+
+      userEvent.click(await screen.findByText("Collection One"));
+
+      // change other users from read to curate on collection one
+      // should also change permissions on nested one from no access to curate
+      const otherUsersRow = await screen
+        .findAllByRole("row")
+        .then(rows => rows[3]);
+
+      expect(within(otherUsersRow).getByText("Other Users")).toBeVisible();
+      userEvent.click(within(otherUsersRow).getByText("View"));
+
+      const popover = await screen.findByTestId("popover");
+      userEvent.click(within(popover).getByRole("switch")); // propagate switch
+      userEvent.click(within(popover).getByText("Curate"));
+
+      expect(
+        await screen.findByText("You've made changes to permissions."),
+      ).toBeInTheDocument();
+
+      userEvent.click(await screen.findByText("Save changes"));
+
+      // are you sure you want to save?
+      userEvent.click(await screen.findByText("Yes"));
+
+      expect(
+        await screen.findByText("You've made changes to permissions."),
+      ).not.toBeInTheDocument();
+
+      expect(await screen.findAllByText("Curate")).toHaveLength(3);
+      expect(screen.queryByText("No access")).not.toBeInTheDocument();
+
+      const lastRequest = await fetchMock
+        .lastCall("path:/api/collection/graph", {
+          method: "PUT",
+        })
+        ?.request?.json();
+
+      expect(lastRequest).toEqual({
+        ...permissionsGraph,
+        groups: {
+          ...permissionsGraph.groups,
+          3: {
+            ...permissionsGraph.groups[3],
+            1: "write",
+            3: "write",
+          },
+        },
+      });
+    });
+
+    it("should show toggle to change sub-collection permissions if the collection has sub-collections", async () => {
+      await setup();
+
+      userEvent.click(await screen.findByText("Collection One"));
+      userEvent.click(await screen.findByText("View"));
+
+      expect(
+        await screen.findByText("Also change sub-collections"),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show toggle to change sub-collection permissions if the collection does not have sub-collections", async () => {
+      await setup();
+
+      userEvent.click(await screen.findByText("Collection One"));
+      userEvent.click(await screen.findByText("Nested One"));
+      userEvent.click(await screen.findByText("View"));
+
+      expect(
+        screen.queryByText("Also change sub-collections"),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -187,7 +187,7 @@ const getCollectionPermission = (
 const getNamespace = (_state: State, props: CollectionIdProps) =>
   props.namespace;
 
-const getToggleLabel = (namespace: string) =>
+const getToggleLabel = (namespace?: string) =>
   namespace === "snippets"
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;
@@ -218,7 +218,7 @@ export const getCollectionsPermissionEditor = createSelector(
   Group.selectors.getList,
   getNamespace,
   (
-    permissions: CollectionPermissions,
+    permissions,
     collection,
     groups,
     namespace,
@@ -228,8 +228,7 @@ export const getCollectionsPermissionEditor = createSelector(
     }
 
     const hasChildren = collection.children?.length > 0;
-    const toggleLabel =
-      hasChildren && !!namespace ? getToggleLabel(namespace) : null;
+    const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     const entities = groups.map((group: GroupType) => {
