@@ -104,7 +104,7 @@ export function ExcludeOptionPicker({
       {operatorOptions.map((option, index) => (
         <OptionButton
           key={index}
-          isSelected={value?.operator === option.operator}
+          isSelected={option.value.operator === value?.operator}
           onClick={() => onChange(option.value)}
         >
           {option.label}
