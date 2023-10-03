@@ -12,5 +12,4 @@ export interface FilterPickerWidgetProps {
   filter?: FilterClause;
   onChange: (filter: ExpressionClause) => void;
   onBack: () => void;
-  onClose: () => void;
 }

@@ -11,7 +11,7 @@ export interface FilterPickerProps {
   stageIndex: number;
   filter?: Lib.FilterClause;
   onSelect: (filter: Lib.ExpressionClause) => void;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const MIN_WIDTH = 300;
@@ -35,6 +35,11 @@ export function FilterPicker({
 
   const checkColumnSelected = () => false;
 
+  const handleChange = (filter: Lib.ExpressionClause) => {
+    onSelect(filter);
+    onClose?.();
+  };
+
   const renderContent = () => {
     if (!column) {
       return (
@@ -56,8 +61,7 @@ export function FilterPicker({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        onChange={onSelect}
-        onClose={onClose}
+        onChange={handleChange}
         onBack={() => setColumn(undefined)}
       />
     );
