@@ -13,14 +13,14 @@ interface DateShortcutPickerProps {
   availableOperators: ReadonlyArray<DatePickerOperator>;
   availableShortcuts: ReadonlyArray<DatePickerShortcut>;
   onChange: (value: RelativeDatePickerValue) => void;
-  onNavigate: (type: DatePickerValueType) => void;
+  onSelectType: (type: DatePickerValueType) => void;
 }
 
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
   onChange,
-  onNavigate,
+  onSelectType,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
     return getShortcutOptionGroups(availableShortcuts);
@@ -49,7 +49,10 @@ export function DateShortcutPicker({
         <Divider mx="md" />
       )}
       {typeOptions.map((option, optionIndex) => (
-        <OptionButton key={optionIndex} onClick={() => onNavigate(option.type)}>
+        <OptionButton
+          key={optionIndex}
+          onClick={() => onSelectType(option.type)}
+        >
           {option.label}
         </OptionButton>
       ))}

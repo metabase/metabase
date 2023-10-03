@@ -8,7 +8,7 @@ import type {
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
-import type { ExcludeOperatorOption, ExcludeValueOption } from "./types";
+import type { ExcludeValueOption } from "./types";
 import {
   findExcludeUnitOption,
   getExcludeOperatorOptions,
@@ -35,17 +35,7 @@ export function ExcludeDatePicker({
   const [unit, setUnit] = useState(value?.unit);
   const [values, setValues] = useState(value?.values ?? []);
 
-  const handleChangeValues = (values: number[]) => {
-    if (unit) {
-      onChange(getExcludeUnitValue(unit, values));
-    }
-  };
-
-  const handleChangeOperator = (option: ExcludeOperatorOption) => {
-    onChange(option.value);
-  };
-
-  const handleChangeUnit = (unit: DatePickerExtractionUnit) => {
+  const handleSelectUnit = (unit: DatePickerExtractionUnit) => {
     setUnit(unit);
     setValues([]);
   };
@@ -59,7 +49,7 @@ export function ExcludeDatePicker({
       value={value}
       unit={unit}
       initialValues={values}
-      onChangeValues={handleChangeValues}
+      onChange={onChange}
       onBack={handleBack}
     />
   ) : (
@@ -67,8 +57,8 @@ export function ExcludeDatePicker({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      onChangeUnit={handleChangeUnit}
-      onChangeOperator={handleChangeOperator}
+      onChange={onChange}
+      onSelectUnit={handleSelectUnit}
       onBack={onBack}
     />
   );
@@ -78,8 +68,8 @@ interface ExcludeOptionPickerProps {
   value: ExcludeDatePickerValue | undefined;
   availableOperators: ReadonlyArray<DatePickerOperator>;
   availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
-  onChangeOperator: (option: ExcludeOperatorOption) => void;
-  onChangeUnit: (unit: DatePickerExtractionUnit) => void;
+  onChange: (value: ExcludeDatePickerValue) => void;
+  onSelectUnit: (unit: DatePickerExtractionUnit) => void;
   onBack: () => void;
 }
 
@@ -87,8 +77,8 @@ export function ExcludeOptionPicker({
   value,
   availableOperators,
   availableUnits,
-  onChangeOperator,
-  onChangeUnit,
+  onChange,
+  onSelectUnit,
   onBack,
 }: ExcludeOptionPickerProps) {
   const unitOptions = useMemo(() => {
@@ -104,7 +94,7 @@ export function ExcludeOptionPicker({
       <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
       <Divider mx="md" />
       {unitOptions.map((option, index) => (
-        <OptionButton key={index} onClick={() => onChangeUnit(option.unit)}>
+        <OptionButton key={index} onClick={() => onSelectUnit(option.unit)}>
           {option.label}
         </OptionButton>
       ))}
@@ -115,7 +105,7 @@ export function ExcludeOptionPicker({
         <OptionButton
           key={index}
           isSelected={value?.operator === option.operator}
-          onClick={() => onChangeOperator(option)}
+          onClick={() => onChange(option.value)}
         >
           {option.label}
         </OptionButton>
@@ -128,7 +118,7 @@ interface ExcludeValuePickerProps {
   value: ExcludeDatePickerValue | undefined;
   unit: DatePickerExtractionUnit;
   initialValues: number[];
-  onChangeValues: (values: number[]) => void;
+  onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
 
@@ -136,7 +126,7 @@ function ExcludeValuePicker({
   value,
   unit,
   initialValues,
-  onChangeValues,
+  onChange,
   onBack,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
@@ -171,7 +161,7 @@ function ExcludeValuePicker({
   };
 
   const handleSubmit = () => {
-    onChangeValues(values);
+    onChange(getExcludeUnitValue(unit, values));
   };
 
   return (

@@ -51,7 +51,7 @@ export function DatePicker({
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
           onChange={onChange}
-          onNavigate={setType}
+          onSelectType={setType}
         />
       );
   }
