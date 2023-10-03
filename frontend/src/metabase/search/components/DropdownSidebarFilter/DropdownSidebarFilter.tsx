@@ -7,7 +7,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Group, Text, Box, Button } from "metabase/ui";
+import { Group, Text, Box, Center, Button } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -119,10 +119,16 @@ export const DropdownSidebarFilter = ({
           <Button
             data-testid="sidebar-filter-dropdown-button"
             compact
+            mr="0.25rem"
+            size="xs"
             c="inherit"
             variant="subtle"
             onClick={onClearFilter}
-            leftIcon={<Icon name={getDropdownIcon()} />}
+            leftIcon={
+              <Center m="-0.25rem">
+                <Icon size={16} name={getDropdownIcon()} />
+              </Center>
+            }
           />
         </DropdownDisplayContent>
       </DropdownFieldSet>

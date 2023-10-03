@@ -1,4 +1,4 @@
-import { parseUserId, convertUserIdToString } from "./user-search-params";
+import { parseUserId, stringifyUserId } from "./user-search-params";
 
 describe("parseUserIdString", () => {
   it("should convert a valid string to a number", () => {
@@ -49,13 +49,13 @@ describe("parseUserIdString", () => {
 describe("convertUserIdToString", () => {
   it("should convert an UserId number to a string", () => {
     const userId = 1;
-    const result = convertUserIdToString(userId);
+    const result = stringifyUserId(userId);
     expect(result).toBe("1");
   });
 
   it("should return null if the input is null", () => {
     const userId = null;
-    const result = convertUserIdToString(userId);
+    const result = stringifyUserId(userId);
     expect(result).toBeNull();
   });
 });

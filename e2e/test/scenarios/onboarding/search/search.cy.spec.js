@@ -293,7 +293,7 @@ describe("scenarios > search", () => {
       it("should hydrate created_by filter", () => {
         cy.intercept("GET", "/api/user").as("getUsers");
 
-        cy.visit(`/search?q=orders&created_by=${NORMAL_USER_ID}`);
+        cy.visit(`/search?q=question&created_by=${NORMAL_USER_ID}`);
 
         cy.wait("@search");
 
