@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay/UserNameDisplay";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
-import { convertUserIdToString, parseUserIdArray } from "metabase/search/utils";
+import { stringifyUserIdArray, parseUserIdArray } from "metabase/search/utils";
 
 export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   iconName: "person",
@@ -14,5 +14,5 @@ export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   ),
   ContentComponent: SearchUserPicker,
   fromUrl: parseUserIdArray,
-  toUrl: convertUserIdToString,
+  toUrl: stringifyUserIdArray,
 };

@@ -1,6 +1,6 @@
 import {
   parseUserId,
-  convertUserIdToString,
+  stringifyUserIdArray,
   parseUserIdArray,
 } from "./user-search-params";
 
@@ -87,18 +87,18 @@ describe("parseUserId", () => {
 describe("convertUserIdToString", () => {
   it("should convert an UserId number array to a string", () => {
     const userId = [1, 2, 3, 4];
-    const result = convertUserIdToString(userId);
+    const result = stringifyUserIdArray(userId);
     expect(result).toStrictEqual(["1", "2", "3", "4"]);
   });
 
   it("should convert an UserId number to a string", () => {
     const userId = [1];
-    const result = convertUserIdToString(userId);
+    const result = stringifyUserIdArray(userId);
     expect(result).toStrictEqual(["1"]);
   });
 
   it("should return null if the input is null", () => {
-    const result = convertUserIdToString([]);
+    const result = stringifyUserIdArray([]);
     expect(result).toStrictEqual([]);
   });
 });
