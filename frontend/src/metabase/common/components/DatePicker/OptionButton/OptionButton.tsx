@@ -15,6 +15,7 @@ export function OptionButton({
   return (
     <Button
       c={isSelected ? "brand.1" : "text.2"}
+      display="block"
       variant="subtle"
       onClick={onClick}
     >

@@ -1,5 +1,4 @@
-import type { ReactNode, MouseEvent } from "react";
-import { Icon } from "metabase/core/components/Icon";
+import type { MouseEvent, ReactNode } from "react";
 import { Button } from "metabase/ui";
 
 export interface BackButtonProps {
@@ -9,12 +8,7 @@ export interface BackButtonProps {
 
 export function BackButton({ children, onClick }: BackButtonProps) {
   return (
-    <Button
-      c="text.1"
-      leftIcon={<Icon name="chevronleft" />}
-      variant="subtle"
-      onClick={onClick}
-    >
+    <Button c="text.1" display="block" variant="subtle" onClick={onClick}>
       {children}
     </Button>
   );

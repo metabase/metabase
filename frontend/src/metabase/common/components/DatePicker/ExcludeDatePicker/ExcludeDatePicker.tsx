@@ -101,16 +101,16 @@ export function ExcludeOptionPicker({
   }, [availableOperators]);
 
   return (
-    <Stack spacing={0}>
+    <div>
       <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
-      <Divider my="xs" />
+      <Divider mx="md" />
       {unitOptions.map((option, index) => (
         <OptionButton key={index} onClick={() => onChangeUnit(option.unit)}>
           {option.label}
         </OptionButton>
       ))}
       {unitOptions.length > 0 && operatorOptions.length > 0 && (
-        <Divider my="xs" />
+        <Divider mx="md" />
       )}
       {operatorOptions.map((option, index) => (
         <OptionButton
@@ -121,7 +121,7 @@ export function ExcludeOptionPicker({
           {option.label}
         </OptionButton>
       ))}
-    </Stack>
+    </div>
   );
 }
 
@@ -176,35 +176,39 @@ function ExcludeValuePicker({
   };
 
   return (
-    <Stack>
+    <div>
       <BackButton onClick={onBack}>{option?.label}</BackButton>
-      <Divider />
-      <Checkbox
-        checked={isEmpty}
-        label={isEmpty ? t`Select none…` : t`Select all…`}
-        onChange={event => handleToggleAll(event.target.checked)}
-      />
-      <Divider />
-      <Group>
-        {groups.map((group, groupIndex) => (
-          <Stack key={groupIndex}>
-            {group.map((option, optionIndex) => (
-              <Checkbox
-                key={optionIndex}
-                label={option.label}
-                checked={!values.includes(option.value)}
-                onChange={event =>
-                  handleToggleOption(option, event.target.checked)
-                }
-              />
-            ))}
-          </Stack>
-        ))}
-      </Group>
-      <Divider />
-      <Button variant="filled" disabled={isEmpty} onClick={handleSubmit}>
-        {isNew ? t`Add filter` : t`Update filter`}
-      </Button>
-    </Stack>
+      <Stack px="md" pb="md">
+        <Divider />
+        <Checkbox
+          checked={isEmpty}
+          label={isEmpty ? t`Select none…` : t`Select all…`}
+          onChange={event => handleToggleAll(event.target.checked)}
+        />
+        <Divider />
+        <Group>
+          {groups.map((group, groupIndex) => (
+            <Stack key={groupIndex}>
+              {group.map((option, optionIndex) => (
+                <Checkbox
+                  key={optionIndex}
+                  label={option.label}
+                  checked={!values.includes(option.value)}
+                  onChange={event =>
+                    handleToggleOption(option, event.target.checked)
+                  }
+                />
+              ))}
+            </Stack>
+          ))}
+        </Group>
+        <Divider />
+        <Group position="right">
+          <Button variant="filled" disabled={isEmpty} onClick={handleSubmit}>
+            {isNew ? t`Add filter` : t`Update filter`}
+          </Button>
+        </Group>
+      </Stack>
+    </div>
   );
 }
