@@ -94,24 +94,24 @@ function getOptions(
   column: Lib.ColumnMetadata,
 ): Option[] {
   const operators = Lib.filterableColumnOperators(column);
-  return operators.flatMap((operator): Option[] => {
-    const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
-    if (operatorInfo.shortName === "=") {
-      return [
-        { operator, name: t`True`, type: "true" },
-        { operator, name: t`False`, type: "false" },
-      ];
-    } else {
-      return [
-        {
-          operator,
-          name: operatorInfo.displayName,
-          type: operatorInfo.shortName,
-          isAdvanced: true,
-        },
-      ];
-    }
-  });
+  return operators
+    .flatMap((operator): Option[] => {
+      const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
+      switch (operatorInfo.shortName) {
+        case "=":
+          return [
+            { operator, name: t`True`, type: "true" },
+            { operator, name: t`False`, type: "false" },
+          ];
+        case "is-null":
+          return [{ operator, name: t`Empty`, type: "is-null" }];
+        case "not-null":
+          return [{ operator, name: t`Not empty`, type: "not-null" }];
+        default:
+          return [];
+      }
+    })
+    .filter(Boolean);
 }
 
 function getOptionType(
