@@ -10,6 +10,7 @@ import {
 } from "metabase-types/api/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 
+import { setupCardsEndpoints } from "__support__/server-mocks";
 import type { Props as AddSeriesModalProps } from "./AddSeriesModal";
 import { AddSeriesModal } from "./AddSeriesModal";
 
@@ -93,6 +94,7 @@ const defaultProps = {
 };
 
 const setup = (options?: Partial<AddSeriesModalProps>) => {
+  setupCardsEndpoints([baseCard, firstCard, secondCard]);
   return renderWithProviders(<AddSeriesModal {...defaultProps} {...options} />);
 };
 

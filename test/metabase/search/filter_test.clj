@@ -34,13 +34,13 @@
       (is (= #{"dashboard" "dataset" "action" "card"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:created-by 1}))))
+                     {:created-by #{1}}))))
 
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models #{"dashboard" "dataset" "table"}
-                      :created-by 1})))))
+                      :created-by #{1}})))))
 
     (testing "created at"
       (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
@@ -70,13 +70,13 @@
       (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:last-edited-by 1}))))
+                     {:last-edited-by #{1}}))))
 
       (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models         #{"dashboard" "dataset" "table"}
-                      :last-edited-by 1})))))
+                      :last-edited-by #{1}})))))
 
    (testing "last edited at"
      (is (= #{"dashboard" "dataset" "action" "metric" "card"}
@@ -225,7 +225,7 @@
             (search.filter/build-filters
              base-search-query "dataset"
              (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
-                                        :last-edited-by 1})))))
+                                        :last-edited-by #{1}})))))
 
    (testing "for actiion"
      (is (= {:select [:*]
@@ -243,7 +243,12 @@
            (:where (search.filter/build-filters
                     base-search-query "card"
                     (merge default-search-ctx
-                           {:created-by 1})))))))
+                           {:created-by #{1}})))))
+    (is (= [:and [:= :card.archived false] [:in :card.creator_id #{1 2}]]
+           (:where (search.filter/build-filters
+                    base-search-query "card"
+                    (merge default-search-ctx
+                           {:created-by #{1 2}})))))))
 
 (deftest ^:parallel build-last-edited-by-filter-test
   (testing "last edited by filter"
@@ -258,7 +263,21 @@
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
-                   {:last-edited-by 1}))))))
+                   {:last-edited-by #{1}})))))
+
+  (testing "last edited by filter"
+    (is (= {:select [:*]
+            :from   [:table]
+            :where  [:and
+                     [:= :card.archived false]
+                     [:= :revision.most_recent true]
+                     [:= :revision.model "Card"]
+                     [:in :revision.user_id #{1 2}]]
+            :join   [:revision [:= :revision.model_id :card.id]]}
+           (search.filter/build-filters
+            base-search-query "dataset"
+            (merge default-search-ctx
+                   {:last-edited-by #{1 2}}))))))
 
 (deftest build-verified-filter-test
   (testing "verified filter"
@@ -310,7 +329,7 @@
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))
 
-(deftest ^:parallel buidl-filter-throw-error-for-unsuported-filters-test
+(deftest ^:parallel build-filter-throw-error-for-unsuported-filters-test
   (testing "throw error for filtering with unsupport models"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -319,7 +338,7 @@
           base-search-query
           "database"
           (merge default-search-ctx
-                 {:created-by 1}))))))
+                 {:created-by #{1}}))))))
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"

@@ -1,12 +1,12 @@
 ---
 title: "Metabot"
 summary: |
-  API endpoints for Metabot.
+  These Metabot endpoints are for an experimental feature.
 ---
 
 # Metabot
 
-API endpoints for Metabot.
+These Metabot endpoints are for an experimental feature.
 
 ## `POST /api/metabot/database/:database-id`
 
@@ -42,9 +42,9 @@ Ask Metabot to generate a SQL query given a prompt about a given model.
 
 ### PARAMS:
 
-*  **`model-id`** 
+*  **`model-id`** value must be an integer greater than zero.
 
-*  **`question`**
+*  **`question`** value must be a non-blank string.
 
 ---
 
