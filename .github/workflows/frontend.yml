@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   files-changed:
+    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 3
