@@ -367,30 +367,40 @@
                                             (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
             _                 (assert created-at-column)
             row               [{:column-name "CREATED_AT", :value "2018-05-01T00:00:00Z"}
-                               {:column-name "count", :value 457}]]
-        (doseq [context [{:column created-at-column
-                          :value  "2018-05-01T00:00:00Z"
-                          :row    row}
-                         {:column     count-column
-                          :value      457
-                          :row        row
-                          :dimensions [{:column-name "CREATED_AT", :value "2018-05-01T00:00:00Z"}]}]]
+                               {:column-name "count", :value 457}]
+            expected-drills   {:quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                                                    :type      :drill-thru/quick-filter
+                                                    :operators [{:name "<"}
+                                                                {:name ">"}
+                                                                {:name "="}
+                                                                {:name "≠"}]}
+                               :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
+                                                    :type       :drill-thru/underlying-records
+                                                    :row-count  2
+                                                    :table-name "Orders"}
+                               :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
+                                                    :display-name "See this month by week"
+                                                    :type         :drill-thru/zoom-in.timeseries
+                                                    :column       {:name                             "CREATED_AT"
+                                                                   :metabase.lib.field/temporal-unit :month}
+                                                    :value        "2018-05-01T00:00:00Z"
+                                                    :next-unit    :week}}]
+        (let [context {:column created-at-column
+                       :value  "2018-05-01T00:00:00Z"
+                       :row    row}]
           (testing (str "\ncontext =\n" (u/pprint-to-str context))
-            (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
-                      :type      :drill-thru/quick-filter
-                      :operators [{:name "<"}
-                                  {:name ">"}
-                                  {:name "="}
-                                  {:name "≠"}]}
-                     {:lib/type     :metabase.lib.drill-thru/drill-thru
-                      :display-name "See this month by week"
-                      :type         :drill-thru/zoom-in.timeseries
-                      :column       {:name                             "CREATED_AT"
-                                     :metabase.lib.field/temporal-unit :month}
-                      :value        "2018-05-01T00:00:00Z"
-                      :next-unit    :week}]
+            (is (=? (map expected-drills [:quick-filter :zoom-in.timeseries])
                     (lib/available-drill-thrus query -1 context)))
-            (test-drill-applications query context)))))))
+            (test-drill-applications query context)))
+        (testing "with :dimensions"
+          (let [context {:column     count-column
+                         :value      457
+                         :row        row
+                         :dimensions [{:column-name "CREATED_AT", :value "2018-05-01T00:00:00Z"}]}]
+            (testing (str "\ncontext =\n" (u/pprint-to-str context))
+              (is (=? (map expected-drills [:quick-filter :underlying-records :zoom-in.timeseries])
+                      (lib/available-drill-thrus query -1 context)))
+              (test-drill-applications query context))))))))
 
 (deftest ^:parallel count-aggregation-table-view-available-drill-thrus-test
   (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"

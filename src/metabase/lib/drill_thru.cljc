@@ -79,17 +79,16 @@
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
-  (cons
-   context
-   (when (seq dimensions)
-     (let [stage            (lib.util/query-stage query stage-number)
-           returned-columns (lib.metadata.calculation/returned-columns query stage-number stage)]
-       (for [{:keys [column-name value]} dimensions
-             :let                        [col (lib.field/resolve-column-name-in-metadata column-name returned-columns)]
-             :when                       col]
-         (assoc context
-                :column col
-                :value value))))))
+  (if (empty? dimensions)
+    [context]
+    (let [stage            (lib.util/query-stage query stage-number)
+          returned-columns (lib.metadata.calculation/returned-columns query stage-number stage)]
+      (for [{:keys [column-name value]} dimensions
+            :let                        [col (lib.field/resolve-column-name-in-metadata column-name returned-columns)]
+            :when                       col]
+        (assoc context
+               :column col
+               :value value)))))
 
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
