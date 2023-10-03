@@ -1,6 +1,6 @@
 import { IndexRoute, Route } from "react-router";
-
 import userEvent from "@testing-library/user-event";
+
 import {
   renderWithProviders,
   screen,
@@ -16,7 +16,10 @@ import {
   createMockEngineSource,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
@@ -44,7 +47,7 @@ const ENGINES_MOCK: Record<string, Engine> = {
   },
 };
 
-const TestHome = () => <div />;
+const MockComponent = () => <div />;
 
 interface SetupOpts {
   cachingEnabled?: boolean;
@@ -59,6 +62,8 @@ async function setup({
 }: SetupOpts = {}) {
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
+  setupDatabasesEndpoints([]);
+
   const settings = mockSettings({
     engines: ENGINES_MOCK,
     "token-features": createMockTokenFeatures({
@@ -69,7 +74,8 @@ async function setup({
 
   const { history } = renderWithProviders(
     <Route path="/">
-      <Route path="/home" component={TestHome} />
+      <Route path="/home" component={MockComponent} />
+      <Route path="/admin/databases" component={MockComponent} />
       <IndexRoute component={DatabaseEditApp} />
       <Route path=":databaseId" component={DatabaseEditApp} />
     </Route>,
@@ -118,9 +124,9 @@ describe("DatabaseEditApp", () => {
     it("should trigger beforeunload event when database connection is edited", async () => {
       const { mockEventListener } = await setup();
 
-      const databaseForm = await screen.findByLabelText("Display name");
+      const displayNameInput = await screen.findByLabelText("Display name");
 
-      userEvent.type(databaseForm, "Test database");
+      userEvent.type(displayNameInput, "Test database");
       const mockEvent = await waitFor(() => {
         return callMockEvent(mockEventListener, "beforeunload");
       });
@@ -145,9 +151,9 @@ describe("DatabaseEditApp", () => {
         screen.queryAllByTestId("loading-spinner"),
       );
 
-      const databaseForm = await screen.findByLabelText("Display name");
-      userEvent.type(databaseForm, "ab");
-      userEvent.type(databaseForm, "{backspace}{backspace}");
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "ab");
+      userEvent.type(displayNameInput, "{backspace}{backspace}");
 
       history.goBack();
 
@@ -169,8 +175,8 @@ describe("DatabaseEditApp", () => {
       await waitForElementToBeRemoved(() =>
         screen.queryAllByTestId("loading-spinner"),
       );
-      const databaseForm = await screen.findByLabelText("Display name");
-      userEvent.type(databaseForm, "Test database");
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "Test database");
 
       history.goBack();
 
@@ -180,6 +186,45 @@ describe("DatabaseEditApp", () => {
           "Navigating away from here will cause you to lose any changes you have made.",
         ),
       ).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal after creating new database connection", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      await waitForElementToBeRemoved(() =>
+        screen.queryAllByTestId("loading-spinner"),
+      );
+
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "Test database");
+      const connectionStringInput = await screen.findByLabelText(
+        "Connection String",
+      );
+      userEvent.type(
+        connectionStringInput,
+        "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
+      );
+
+      userEvent.click(await screen.findByText("Save"));
+
+      await waitFor(async () => {
+        expect(history.getCurrentLocation().pathname).toEqual(
+          "/admin/databases",
+        );
+      });
+
+      expect(history.getCurrentLocation().search).toEqual("?created=true");
+
+      expect(
+        screen.queryByText("Changes were not saved"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "Navigating away from here will cause you to lose any changes you have made.",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 
