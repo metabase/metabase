@@ -425,9 +425,9 @@
                                [:models                           [:maybe [:set SearchableModel]]]
                                [:archived        {:optional true} [:maybe :boolean]]
                                [:created-at      {:optional true} [:maybe ms/NonBlankString]]
-                               [:created-by      {:optional true} [:maybe ms/PositiveInt]]
+                               [:created-by      {:optional true} [:maybe [:sequential ms/PositiveInt]]]
                                [:last-edited-at  {:optional true} [:maybe ms/NonBlankString]]
-                               [:last-edited-by  {:optional true} [:maybe ms/PositiveInt]]
+                               [:last-edited-by  {:optional true} [:maybe [:sequential ms/PositiveInt]]]
                                [:limit           {:optional true} [:maybe ms/Int]]
                                [:offset          {:optional true} [:maybe ms/Int]]
                                [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
@@ -442,9 +442,9 @@
                         :archived?          (boolean archived)
                         :models             models}
                  (some? created-at)     (assoc :created-at created-at)
-                 (some? created-by)     (assoc :created-by created-by)
+                 (some? created-by)     (assoc :created-by (set created-by))
                  (some? last-edited-at) (assoc :last-edited-at last-edited-at)
-                 (some? last-edited-by) (assoc :last-edited-by last-edited-by)
+                 (some? last-edited-by) (assoc :last-edited-by (set last-edited-by))
                  (some? table-db-id)    (assoc :table-db-id table-db-id)
                  (some? limit)          (assoc :limit-int limit)
                  (some? offset)         (assoc :offset-int offset)
@@ -457,17 +457,17 @@
   {archived       [:maybe ms/BooleanValue]
    table-db-id    [:maybe ms/PositiveInt]
    created_at     [:maybe ms/NonBlankString]
-   created_by     [:maybe ms/PositiveInt]
+   created_by     [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    last_edited_at [:maybe ms/PositiveInt]
-   last_edited_by [:maybe ms/PositiveInt]
+   last_edited_by [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    verified       [:maybe true?]}
   (query-model-set (search-context {:search-string  q
                                     :archived       archived
                                     :table-db-id    table-db-id
                                     :created-at     created_at
-                                    :created-by     created_by
+                                    :created-by     (u/one-or-many created_by)
                                     :last-edited-at last_edited_at
-                                    :last-edited-by last_edited_by
+                                    :last-edited-by (u/one-or-many last_edited_by)
                                     :verified       verified
                                     :models         search.config/all-models})))
 
@@ -486,9 +486,9 @@
    table_db_id    [:maybe ms/PositiveInt]
    models         [:maybe [:or SearchableModel [:sequential SearchableModel]]]
    created_at     [:maybe ms/NonBlankString]
-   created_by     [:maybe ms/PositiveInt]
+   created_by     [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    last_edited_at [:maybe ms/NonBlankString]
-   last_edited_by [:maybe ms/PositiveInt]
+   last_edited_by [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    verified       [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
@@ -500,9 +500,9 @@
                             {:search-string  q
                              :archived       archived
                              :created-at     created_at
-                             :created-by     created_by
+                             :created-by     #p (u/one-or-many created_by)
                              :last-edited-at last_edited_at
-                             :last-edited-by last_edited_by
+                             :last-edited-by (u/one-or-many last_edited_by)
                              :table-db-id    table_db_id
                              :models         models-set
                              :limit          mw.offset-paging/*limit*

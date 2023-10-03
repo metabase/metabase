@@ -100,13 +100,15 @@
 
 ;; Created by filters
 (defn- default-created-by-fitler-clause
-  [model creator-id]
-  [:= (search.config/column-with-model-alias model :creator_id) creator-id])
+  [model creator-ids]
+  (if (= 1 (count creator-ids))
+    [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
+    [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
 (doseq [model ["card" "dataset" "dashboard" "action"]]
   (defmethod build-optional-filter-query [:created-by model]
-    [_filter model query creator-id]
-    (sql.helpers/where query (default-created-by-fitler-clause model creator-id))))
+    [_filter model query creator-ids]
+    (sql.helpers/where query #p (default-created-by-fitler-clause model creator-ids))))
 
 ;; Verified filters
 
@@ -185,15 +187,18 @@
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
-    [_filter model query last-edited-by]
+    [_filter model query editor-ids]
     (cond-> query
       ;; both last-edited-by and last-edited at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
                              [:= :revision.model (search-model->revision-model model)]))
-      true
-      (sql.helpers/where [:= :revision.user_id last-edited-by]))))
+      (= 1 (count editor-ids))
+      (sql.helpers/where [:= :revision.user_id (first editor-ids)])
+
+      (> 1 (count editor-ids))
+      (sql.helpers/where [:in :revision.user_id editor-ids]))))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
@@ -275,13 +280,13 @@
       (some? created-at)
       (#(build-optional-filter-query :created-at model % created-at))
 
-      (int? created-by)
+      (some? created-by)
       (#(build-optional-filter-query :created-by model % created-by))
 
       (some? last-edited-at)
       (#(build-optional-filter-query :last-edited-at model % last-edited-at))
 
-      (int? last-edited-by)
+      (some? last-edited-by)
       (#(build-optional-filter-query :last-edited-by model % last-edited-by))
 
       (some? verified)
