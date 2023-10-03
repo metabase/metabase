@@ -65,6 +65,7 @@ export const SearchUserPicker = ({
             return (
               <SelectedUserButton
                 key={userId}
+                c="brand.1"
                 px="md"
                 py="sm"
                 maw="min(30ch, 100%)"

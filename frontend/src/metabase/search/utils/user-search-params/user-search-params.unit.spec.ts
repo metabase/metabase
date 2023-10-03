@@ -39,42 +39,48 @@ describe("parseUserIdArray", () => {
 });
 
 describe("parseUserId", () => {
-  it("should convert a valid string to a UserId array", () => {
+  it("should convert a valid string to a number", () => {
     const userId = "123";
     const result = parseUserId(userId);
-    expect(result).toStrictEqual([123]);
+    expect(result).toBe(123);
   });
 
-  it("should return an empty array when value is null or undefined", () => {
+  it("should return null when userId is null or undefined", () => {
     const nullResult = parseUserId(null);
-    expect(nullResult).toStrictEqual([]);
+    expect(nullResult).toBeNull();
 
     const undefinedResult = parseUserId(undefined);
-    expect(undefinedResult).toStrictEqual([]);
+    expect(undefinedResult).toBeNull();
   });
 
-  it("should return an empty array when value is 0", () => {
+  it("should return null when userId is 0", () => {
     const userId = "0";
     const result = parseUserId(userId);
-    expect(result).toStrictEqual([]);
+    expect(result).toBeNull();
   });
 
-  it("should return an empty array when value is a negative number", () => {
+  it("should return null when userId is a negative number", () => {
     const userId = "-1";
     const result = parseUserId(userId);
-    expect(result).toStrictEqual([]);
+    expect(result).toBeNull();
   });
 
-  it("should return an empty array when value is a string that cannot be converted to a number", () => {
+  it("should return null when userId is a string that cannot be converted to a number", () => {
     const userId = "abc";
     const result = parseUserId(userId);
-    expect(result).toStrictEqual([]);
+    expect(result).toBeNull();
   });
 
-  it("should return an empty array when value is an empty string", () => {
+  it("should return null when userId is an empty string", () => {
     const userId = "";
     const result = parseUserId(userId);
-    expect(result).toStrictEqual([]);
+    expect(result).toBeNull();
+  });
+
+  it("should return null when userId is an array", () => {
+    const userId = ["123"];
+    const result = parseUserId(userId);
+    expect(result).toBeNull();
   });
 });
 

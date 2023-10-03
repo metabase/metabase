@@ -17,7 +17,6 @@ export const SearchUserSelectBox = styled(Group)`
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 
-// We can also use these styles in the `light` variant of the Button component
 export const SelectedUserButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >`
@@ -27,21 +26,14 @@ export const SelectedUserButton = styled(Button)<
     const hoverBackgroundColor = theme.fn.lighten(primaryColor, 0.6);
 
     return css`
-      color: ${primaryColor};
       background-color: ${backgroundColor};
       border: 0;
 
       &:hover {
         background-color: ${hoverBackgroundColor};
       }
-
-      &:disabled {
-        color: ${theme.fn.lighten(primaryColor, 0.5)};
-        background-color: ${theme.fn.lighten(backgroundColor, 0.6)};
-      }
     `;
   }}
-
   & .emotion-Button-label {
     width: 100%;
   }

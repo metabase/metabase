@@ -22,10 +22,8 @@ export const parseUserIdArray = (value: SearchQueryParamValue): UserId[] => {
   return [];
 };
 
-export const parseUserId = (
-  value: string | null | undefined,
-): UserId | null => {
-  if (!value) {
+export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
+  if (!value || Array.isArray(value)) {
     return null;
   }
 
