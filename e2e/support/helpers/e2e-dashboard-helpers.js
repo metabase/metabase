@@ -205,6 +205,10 @@ export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };
 
+export const dashboardGrid = () => {
+  return cy.findByTestId("dashboard-grid");
+};
+
 /**
  *
  * @param {number} dashboardId
