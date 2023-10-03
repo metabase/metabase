@@ -200,7 +200,6 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    dispatch(updateUrl(createdQuestion, { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
@@ -220,6 +219,8 @@ export const apiCreateQuestion = question => {
 
     const metadataOptions = { reload: createdQuestion.isDataset() };
     await dispatch(loadMetadataForCard(card, metadataOptions));
+
+    return createdQuestion;
   };
 };
 

@@ -52,29 +52,16 @@
 
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
-    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards", :color "#ABCDEF"}]
+    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards"}]
       (is (partial= (merge
                      (mt/object-defaults Collection)
                      {:name              "My Favorite Cards"
                       :slug              "my_favorite_cards"
                       :description       nil
-                      :color             "#ABCDEF"
                       :archived          false
                       :location          "/"
                       :personal_owner_id nil})
                     collection)))))
-
-(deftest color-validation-test
-  (testing "Collection colors should be validated when inserted into the DB"
-    (doseq [[input msg] {nil        "Missing color"
-                         "#ABC"     "Too short"
-                         "#BCDEFG"  "Invalid chars"
-                         "#ABCDEFF" "Too long"
-                         "ABCDEF"   "Missing hash prefix"}]
-      (testing msg
-        (is (thrown?
-             Exception
-             (t2/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
@@ -367,7 +354,7 @@
 (defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
-       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :color "#ABCDEF", :location ~location))]
+       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :location ~location))]
          ~@body)
        (finally
          (t2/delete! Collection :name name#)))))
@@ -1439,7 +1426,6 @@
              #"Collection must be in the same namespace as its parent"
              (t2/insert! Collection
                          {:location  (format "/%d/" (:id parent-collection))
-                          :color     "#F38630"
                           :name      "Child Collection"
                           :namespace child-namespace}))))
 
@@ -1465,8 +1451,7 @@
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
            (t2/insert! Collection
-                       {:color             "#F38630"
-                        :name              "Personal Collection"
+                       {:name              "Personal Collection"
                         :namespace         "x"
                         :personal_owner_id user-id}))))))
 
