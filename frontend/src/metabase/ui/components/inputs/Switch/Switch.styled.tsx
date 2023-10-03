@@ -50,7 +50,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       color: "brand",
     },
-    styles: (theme, { error }: SwitchStylesParams, { size = "sm" }) => {
+    styles: (theme, { error }: SwitchStylesParams, { size = "md" }) => {
       return {
         labelWrapper: {
           paddingLeft: getSize({ size, sizes: SWITCH_PADDING }),
