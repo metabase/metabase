@@ -160,7 +160,6 @@ describe("snapshots", () => {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
         name,
-        color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
       }).then(({ body }) => callback && callback(body));
