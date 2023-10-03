@@ -84,7 +84,7 @@ describe("parseUserId", () => {
   });
 });
 
-describe("convertUserIdToString", () => {
+describe("stringifyUserIdArray", () => {
   it("should convert an UserId number array to a string", () => {
     const userId = [1, 2, 3, 4];
     const result = stringifyUserIdArray(userId);
