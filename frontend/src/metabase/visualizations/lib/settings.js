@@ -6,7 +6,7 @@ import ChartSettingInputGroup from "metabase/visualizations/components/settings/
 import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
-import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
+import { ChartSettingToggle } from "metabase/visualizations/components/settings/ChartSettingToggle";
 import ChartSettingSegmentedControl from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
