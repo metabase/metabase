@@ -15,11 +15,7 @@ import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
-import {
-  FieldPickerContentContainer,
-  FIELDS_PICKER_STYLES,
-  FieldsPickerIcon,
-} from "../../FieldsPickerIcon";
+import { FIELDS_PICKER_STYLES, FieldsPickerIcon } from "../../FieldsPickerIcon";
 import FieldsPicker from "../FieldsPicker";
 import {
   DimensionContainer,
@@ -42,6 +38,7 @@ import {
   RemoveJoinIcon,
   Row,
   SecondaryJoinCell,
+  TableCell,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -486,9 +483,9 @@ function JoinTablePicker({
         setSourceTableFn={onChange}
         isInitiallyOpen={!hasSourceTable}
         triggerElement={
-          <FieldPickerContentContainer>
+          <TableCell>
             {joinedTable ? joinedTable.displayName() : t`Pick data…`}
-          </FieldPickerContentContainer>
+          </TableCell>
         }
       />
     </NotebookCellItem>

@@ -3,7 +3,6 @@ import "__support__/ui-mocks"; // included explicitly whereas with integrated te
 import _ from "underscore";
 import moment from "moment-timezone";
 import testAcrossTimezones from "__support__/timezones";
-
 import {
   NumberColumn,
   DateTimeColumn,
@@ -11,6 +10,9 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;

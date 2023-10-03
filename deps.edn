@@ -314,7 +314,7 @@
     ;; It fixes an issue where TypeScript can't parse the `cljs_env.js` output file.
     org.clojure/google-closure-library {:mvn/version "0.0-20230227-c7c0a541"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.9.0"}
-    thheller/shadow-cljs               {:mvn/version "2.25.3"}}}
+    thheller/shadow-cljs               {:mvn/version "2.25.7"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -571,17 +571,9 @@
   ;;    :upload-uberjar
   ;;    :push-git-tags
   ;;    :publish-draft-release
-  ;;    :publish-elastic-beanstalk-artifacts
   ;;    :update-version-info
   :build/release
   {:exec-fn release/release}
-
-  ;; Only in the CI for now: publish EBS artifact
-  ;; FIXME: remove after full release automation on CI
-  ;;
-  ;;    clojure -X:build:build/publish-ebs
-  :build/publish-ebs
-  {:exec-fn release/publish-ebs}
 
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev

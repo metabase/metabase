@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import _ from "underscore";
+
 import type { CreateQueryActionParams } from "metabase/entities/actions";
 
 import type {
@@ -103,7 +103,7 @@ function convertQuestionToAction(
     id: question.id(),
     name: question.displayName() as string,
     description: question.description(),
-    dataset_query: question.datasetQuery() as NativeDatasetQuery,
+    dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
     database_id: question.databaseId() as DatabaseId,
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
@@ -125,15 +125,19 @@ function QueryActionContextProvider({
   databaseId,
   children,
 }: QueryActionContextProviderProps) {
-  const [question, setQuestion] = useState(
+  const [initialQuestion, setInitialQuestion] = useState(
     resolveQuestion(initialAction, { metadata, databaseId }),
   );
+  const initialFormSettings = useMemo(
+    () => getDefaultFormSettings(initialAction?.visualization_settings),
+    [initialAction?.visualization_settings],
+  );
+
+  const [question, setQuestion] = useState(initialQuestion);
 
   const query = useMemo(() => question.query() as NativeQuery, [question]);
 
-  const [formSettings, setFormSettings] = useState(
-    getDefaultFormSettings(initialAction?.visualization_settings),
-  );
+  const [formSettings, setFormSettings] = useState(initialFormSettings);
 
   const action = useMemo(() => {
     const action = convertQuestionToAction(question, formSettings);
@@ -148,7 +152,12 @@ function QueryActionContextProvider({
   const canSave = !query.isEmpty();
 
   useEffect(() => {
-    setQuestion(resolveQuestion(initialAction, { metadata, databaseId }));
+    const newQuestion = resolveQuestion(initialAction, {
+      metadata,
+      databaseId,
+    });
+    setInitialQuestion(newQuestion);
+    setQuestion(newQuestion);
     // we do not want to update this any time
     // the props or metadata change, only if action id changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,8 +198,10 @@ function QueryActionContextProvider({
   );
 
   const isDirty = useMemo(() => {
-    return canSave && !_.isEqual(action, initialAction);
-  }, [action, canSave, initialAction]);
+    const isQuestionDirty = question.isDirtyComparedTo(initialQuestion);
+    const areFormSettingsDirty = !_.isEqual(formSettings, initialFormSettings);
+    return isQuestionDirty || areFormSettingsDirty;
+  }, [question, initialQuestion, formSettings, initialFormSettings]);
 
   const value = useMemo(
     (): ActionContextType => ({

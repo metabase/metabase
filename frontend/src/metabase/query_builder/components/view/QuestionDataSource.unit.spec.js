@@ -1,6 +1,10 @@
 /* eslint-disable react/display-name, react/prop-types */
 import { Component } from "react";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockDatabase,
+  createMockTable,
+} from "metabase-types/api/mocks";
 
 import {
   ORDERS_ID,
@@ -13,6 +17,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
+import { setupCardEndpoints } from "__support__/server-mocks/card";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
 import Question from "metabase-lib/Question";
@@ -273,8 +278,11 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+const SOURCE_CARD = createMockCard({ id: SOURCE_QUESTION_ID });
 
 function setup({ question, subHead = false, isObjectDetail = false } = {}) {
+  setupCardEndpoints(SOURCE_CARD);
+
   const onError = jest.fn();
   renderWithProviders(
     <ErrorBoundary onError={onError}>
