@@ -652,7 +652,8 @@
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
     (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
       (mt/with-temp [:model/Dashboard dashboard {:parameters [{:id   "_CATEGORY_NAME_"
-                                                               :type "category" :name name
+                                                               :type "category"
+                                                               :name name
                                                                :slug slug}]}]
         (is (=? {:name "unnamed"
                  :slug "unnamed"}
