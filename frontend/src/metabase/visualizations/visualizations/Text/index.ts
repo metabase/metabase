@@ -4,12 +4,13 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import { Text } from "./Text";
 
 const TextWrapper = Object.assign(Text, {
   uiName: t`Text`,
   identifier: "text",
-  iconName: "text",
+  iconName: "text" as any, // icon "text" doesn’t exist
   canSavePng: false,
 
   disableSettingsConfig: false,
@@ -72,6 +73,6 @@ const TextWrapper = Object.assign(Text, {
       default: true,
     },
   },
-});
+} as VisualizationProperties);
 
 export { TextWrapper as Text };
