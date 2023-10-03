@@ -84,11 +84,7 @@ export const SearchUserPicker = ({
           <SearchUserPickerInput
             variant="unstyled"
             size="md"
-            placeholder={
-              selectedUserIds.length === 0
-                ? t`Search for users…`
-                : t`Add users…`
-            }
+            placeholder={t`Search for users…`}
             miw="15ch"
             value={userFilter}
             tabIndex={0}
