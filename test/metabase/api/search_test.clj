@@ -793,6 +793,34 @@
 
 ;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
 
+(mt/with-temp
+  [:model/Card card  {:dataset_query (mt/native-query {:query (format "select * from %s" "a")})}]
+  card)
+
+(deftest search-native-query-test
+  (let [search-term "search-native-query"]
+    (t2.with-temp/with-temp
+      [:model/Card {card-id :id}    {:name search-term}
+       :model/Card {card-id-2 :id}  {:dataset_query (mt/native-query {:query (format "select * from %s" search-term)})}
+       :model/Card {model-id :id}   {:dataset true :name search-term :query_type :native}
+       :model/Card {model-id-2 :id} {:dataset true :dataset_query (mt/native-query {:query (format "select * from %s" search-term)})}]
+
+      #_(testing "do not search for native queries by default"
+          (is (= #{[card-id "card"]
+                   [model-id "dataset"]}
+               (->> (:data (mt/user-http-request :crowberto :get "search" :q search-term))
+                    (map (juxt :id :model))
+                    set))))
+
+      (testing "can search for native queries"
+        (is (= #{[card-id "card"]
+                 [card-id-2 "card"]
+                 [model-id "dataset"]
+                 [model-id-2 "dataset"]}
+             (->> (:data (mt/user-http-request :crowberto :get "search" :q search-term :search_native_query true :models "dataset"))
+                  (map (juxt :id :model))
+                  set)))))))
+
 (deftest filter-by-creator-test
   (let [search-term "Created by Filter"]
     (with-search-items-in-root-collection search-term

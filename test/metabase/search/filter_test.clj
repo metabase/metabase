@@ -360,3 +360,26 @@
                       base-search-query
                       "indexed-entity"
                       (merge default-search-ctx {:search-string "foo"}))))))))
+
+(deftest build-filters-search-native-query
+  (testing "do not search for native query by default"
+    (is (=
+         [:and
+           [:or
+            [:like [:lower :card.name] "%foo%"]
+            [:like [:lower :card.description] "%foo%"]]
+           [:= :card.archived false]]
+         (:where (search.filter/build-filters
+                  base-search-query
+                  "card"
+                  (merge default-search-ctx {:search-string "foo"})))))
+
+    (is (= [:and
+            [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
+            [:= :card.query_type "native"]
+            [:like [:lower :card.dataset_query] "%foo%"]
+            [:= :card.archived false]]
+           (:where (search.filter/build-filters
+                    base-search-query
+                    "card"
+                    (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))

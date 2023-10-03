@@ -70,7 +70,6 @@
                 token (search.util/tokenize (search.util/normalize query))]
             (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
               [:= 0 1]
-
               [:like
                [:lower column]
                (search.util/wildcard-match token)])))))
@@ -81,7 +80,6 @@
   (search-string-clause model (:search-string search-context)
                         (map #(search.config/column-with-model-alias model %)
                              (search.config/searchable-columns-for-model model))))
-
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
@@ -215,6 +213,17 @@
       ;; to be consistent we use revision.timestamp to do the filtering
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
+;; native query
+(doseq [model ["card" "dataset"]]
+  (defmethod build-optional-filter-query [:search-native-query model]
+    [_filter model query search-string]
+    (sql.helpers/where
+     query
+     [:and
+      [:= (search.config/column-with-model-alias model :query_type) "native"]
+      [:like [:lower (search.config/column-with-model-alias model :dataset_query)]
+       (search.util/wildcard-match search-string)]])))
+
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
   [_filter model query last-edited-at]
@@ -249,13 +258,16 @@
                 last-edited-at
                 last-edited-by
                 models
-                verified]} search-context]
+                search-native-query
+                verified]}        search-context
+        feature->supported-models (feature->supported-models)]
     (cond-> models
-      (some? created-at)     (set/intersection (:created-at (feature->supported-models)))
-      (some? created-by)     (set/intersection (:created-by (feature->supported-models)))
-      (some? last-edited-at) (set/intersection (:last-edited-at (feature->supported-models)))
-      (some? last-edited-by) (set/intersection (:last-edited-by (feature->supported-models)))
-      (some? verified)       (set/intersection (:verified (feature->supported-models))))))
+      (some? created-at)          (set/intersection (:created-at feature->supported-models))
+      (some? created-by)          (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
+      (some? search-native-query) (set/intersection (:search-native-query feature->supported-models))
+      (some? verified)            (set/intersection (:verified feature->supported-models)))))
 
 (mu/defn build-filters :- map?
   "Build the search filters for a model."
@@ -268,10 +280,14 @@
                 last-edited-at
                 last-edited-by
                 search-string
+                search-native-query
                 verified]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context))
+
+      (and (not (str/blank? search-string)) search-native-query)
+      (#(build-optional-filter-query :search-native-query model % search-string))
 
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))

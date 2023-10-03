@@ -1,5 +1,6 @@
 (ns metabase.search.config
   (:require
+   [cheshire.core :as json]
    [malli.core :as mc]
    [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
@@ -85,20 +86,22 @@
   "Map with the various allowed search parameters, used to construct the SQL query."
   (mc/schema
    [:map {:closed true}
-    [:search-string                       [:maybe ms/NonBlankString]]
-    [:archived?                           :boolean]
-    [:current-user-perms                  [:set perms/PathSchema]]
-    [:models                              [:set SearchableModel]]
-    [:created-at         {:optional true} ms/NonBlankString]
-    [:created-by         {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at     {:optional true} ms/NonBlankString]
-    [:last-edited-by     {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id        {:optional true} ms/PositiveInt]
-    [:limit-int          {:optional true} ms/Int]
-    [:offset-int         {:optional true} ms/Int]
+    [:search-string                        [:maybe ms/NonBlankString]]
+    [:archived?                            :boolean]
+    [:current-user-perms                   [:set perms/PathSchema]]
+    [:models                               [:set SearchableModel]]
+    [:created-at          {:optional true} ms/NonBlankString]
+    [:created-by          {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:last-edited-at      {:optional true} ms/NonBlankString]
+    [:last-edited-by      {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:table-db-id         {:optional true} ms/PositiveInt]
+    [:limit-int           {:optional true} ms/Int]
+    [:offset-int          {:optional true} ms/Int]
+    [:search-native-query {:optional true} boolean?]
     ;; true to search for verified items only,
     ;; nil will return all items
-    [:verified           {:optional true} [:maybe true?]]]))
+    [:verified            {:optional true} [:maybe true?]]]))
+
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -214,8 +217,7 @@
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
-   [:model.database_id          :database_id]
-   [:model.dataset_query        :dataset_query]])
+   [:model.database_id          :database_id]])
 
 (defmethod columns-for-model "dashboard"
   [_]
@@ -265,3 +267,10 @@
 (defmethod column->string :default
   [value _ _]
   value)
+
+(defmethod column->string [:card :dataset_query]
+  [value _ _]
+  (let [query (json/parse-string value true)]
+    (if (= "native" (:type query))
+      (-> query :native :query)
+      "")))
