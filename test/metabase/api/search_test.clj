@@ -803,7 +803,7 @@
          :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
                                               :collection_id (:id (collection/user->personal-collection user-id))}
          :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
-         :model/Card      {card-id-4 :id}      {:name (format "%s Card 4" search-term) :creator_id user-id-2}
+         :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
          :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :dataset true :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
          :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
