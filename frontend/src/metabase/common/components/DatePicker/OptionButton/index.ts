@@ -1,1 +1,1 @@
-export * from "./OptionButton.styled";
+export * from "./OptionButton";

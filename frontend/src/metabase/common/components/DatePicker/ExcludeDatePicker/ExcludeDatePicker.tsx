@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
 import { Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
+import { BackButton } from "../BackButton";
 import { OptionButton } from "../OptionButton";
 import type {
   DatePickerExtractionUnit,
@@ -102,10 +102,7 @@ export function ExcludeOptionPicker({
 
   return (
     <Stack spacing={0}>
-      <Button
-        leftIcon={<Icon name="chevronleft" />}
-        onClick={onBack}
-      >{t`Exclude…`}</Button>
+      <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
       <Divider my="xs" />
       {unitOptions.map((option, index) => (
         <OptionButton key={index} onClick={() => onChangeUnit(option.unit)}>
@@ -180,9 +177,7 @@ function ExcludeValuePicker({
 
   return (
     <Stack>
-      <Button leftIcon={<Icon name="chevronleft" />} onClick={onBack}>
-        {option?.label}
-      </Button>
+      <BackButton onClick={onBack}>{option?.label}</BackButton>
       <Divider />
       <Checkbox
         checked={isEmpty}
