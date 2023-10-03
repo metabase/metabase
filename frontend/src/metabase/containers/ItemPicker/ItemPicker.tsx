@@ -16,9 +16,6 @@ import { isRootCollection } from "metabase/collections/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import { useSelector } from "metabase/lib/redux";
-import { getQuestion } from "metabase/query_builder/selectors";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   CollectionPickerItem,
   PickerItem,
@@ -36,6 +33,7 @@ interface OwnProps<TId> {
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
+  shouldFetchItems?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue<TId>) => void;
@@ -88,6 +86,7 @@ function ItemPicker<TId>({
   className,
   showSearch = true,
   showScroll = true,
+  shouldFetchItems = true,
   style,
   onChange,
   getCollectionIcon,
@@ -225,10 +224,6 @@ function ItemPicker<TId>({
     [onOpenCollectionChange],
   );
 
-  const question = useSelector(getQuestion);
-  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
-  const isQuestionInPersonalCollection =
-    question?.collectionId() === userPersonalCollectionId;
   return (
     <ScrollAwareLoadingAndErrorWrapper
       loading={!collectionsById}
@@ -251,12 +246,7 @@ function ItemPicker<TId>({
         getCollectionIcon={getCollectionIcon}
         style={style}
         // personal is a fake collection for admins that contains all other user's collections
-        allowFetch={
-          openCollectionId !== "personal" &&
-          (isQuestionInPersonalCollection
-            ? openCollectionId === userPersonalCollectionId
-            : true)
-        }
+        allowFetch={openCollectionId !== "personal" && shouldFetchItems}
       >
         {children}
       </ItemPickerView>

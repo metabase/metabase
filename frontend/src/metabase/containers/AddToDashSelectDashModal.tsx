@@ -16,8 +16,12 @@ import {
 import { coerceCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
+import { getQuestion } from "metabase/query_builder/selectors";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { useSelector } from "metabase/lib/redux";
+
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {
@@ -72,6 +76,16 @@ export const AddToDashSelectDashModal = ({
     }
   };
 
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>(collectionId);
+  const question = useSelector(getQuestion);
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const isQuestionInPersonalCollection =
+    question?.collectionId() === userPersonalCollectionId;
+  const shouldFetchDashboards = isQuestionInPersonalCollection
+    ? openCollectionId === userPersonalCollectionId
+    : true;
+
   if (shouldCreateDashboard) {
     return (
       <CreateDashboardModal
@@ -104,13 +118,17 @@ export const AddToDashSelectDashModal = ({
         onChange={onDashboardSelected}
         collectionId={collectionId}
         value={mostRecentDashboardQuery.data?.id}
+        onOpenCollectionChange={setOpenCollectionId}
+        shouldFetchDashboards={shouldFetchDashboards}
       />
-      <Link onClick={() => setShouldCreateDashboard(true)} to="">
-        <LinkContent>
-          <Icon name="add" className="mx1" />
-          <h4>{t`Create a new dashboard`}</h4>
-        </LinkContent>
-      </Link>
+      {shouldFetchDashboards && (
+        <Link onClick={() => setShouldCreateDashboard(true)} to="">
+          <LinkContent>
+            <Icon name="add" className="mx1" />
+            <h4>{t`Create a new dashboard`}</h4>
+          </LinkContent>
+        </Link>
+      )}
     </ModalContent>
   );
 };
