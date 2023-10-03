@@ -38,7 +38,7 @@ export interface RelativeDatePickerValue {
   value: number | "current";
   offsetUnit?: DatePickerTruncationUnit;
   offsetValue?: number;
-  options: RelativeDatePickerOptions;
+  options?: RelativeDatePickerOptions;
 }
 
 export interface RelativeDatePickerOptions {
