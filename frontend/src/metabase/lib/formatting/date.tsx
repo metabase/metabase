@@ -493,12 +493,12 @@ const getMonthFormat = (options: OptionsType) =>
   options.compact || options.date_abbreviate ? "MMM" : "MMMM";
 
 export function getDateFormatFromStyle(
-  style: string,
-  unit: DatetimeUnit,
-  separator: string,
+  style?: string,
+  unit?: DatetimeUnit,
+  separator?: string,
   includeWeekday?: boolean,
 ) {
-  const replaceSeparators = (format: string) =>
+  const replaceSeparators = (format?: string) =>
     separator && format ? format.replace(/\//g, separator) : format;
 
   if (!unit) {
@@ -507,7 +507,7 @@ export function getDateFormatFromStyle(
 
   let format = null;
 
-  if (DATE_STYLE_TO_FORMAT[style]) {
+  if (style && DATE_STYLE_TO_FORMAT[style]) {
     if (DATE_STYLE_TO_FORMAT[style][unit]) {
       format = replaceSeparators(DATE_STYLE_TO_FORMAT[style][unit]);
     }
@@ -691,9 +691,9 @@ function replaceDateFormatNames(format: string, options: OptionsType) {
 
 function formatDateTimeWithFormats(
   value: number,
-  dateFormat: string,
-  timeFormat: string,
-  options: OptionsType,
+  dateFormat?: string,
+  timeFormat?: string,
+  options: OptionsType = {},
 ) {
   const m = parseTimestamp(
     value,

@@ -43,6 +43,17 @@ export interface ResultsMetadata {
   columns: DatasetColumn[];
 }
 
+export interface TimeseriesInsight {
+  "last-value": number;
+  "previous-value"?: number;
+  "last-change"?: number;
+  slope: number;
+  offset: number;
+  "best-fit": any;
+  col: string;
+  unit: string;
+}
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
@@ -51,6 +62,7 @@ export interface DatasetData {
   results_timezone?: string;
   download_perms?: DownloadPermission;
   results_metadata: ResultsMetadata;
+  insights?: TimeseriesInsight[];
 }
 
 export type JsonQuery = DatasetQuery & {

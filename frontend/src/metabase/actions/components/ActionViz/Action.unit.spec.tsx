@@ -20,6 +20,7 @@ import type {
   ActionDashboardCard,
   ParameterTarget,
   Database,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
@@ -414,7 +415,7 @@ describe("Actions > ActionViz > Action", () => {
   });
 
   describe("Form actions", () => {
-    const formSettings = { actionDisplayType: "form" };
+    const formSettings: VisualizationSettings = { actionDisplayType: "form" };
 
     it("should render an action form", async () => {
       await setup({ settings: formSettings });

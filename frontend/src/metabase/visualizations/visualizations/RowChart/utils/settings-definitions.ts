@@ -1,8 +1,10 @@
 import { t } from "ttag";
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import { getDefaultDimensionLabel } from "metabase/visualizations/lib/settings/graph";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
+import type { Series } from "metabase-types/api";
 
-export const ROW_CHART_SETTINGS = {
+export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   "stackable.stack_type": {
     section: t`Display`,
     title: t`Stacking`,
@@ -143,7 +145,7 @@ export const ROW_CHART_SETTINGS = {
     getDefault: (series, vizSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
-      const [metric] = vizSettings["graph.metrics"];
+      const [metric] = vizSettings["graph.metrics"] ?? [];
       const metricNames = Array.from(
         new Set(
           series.map(({ data: { cols } }) => {

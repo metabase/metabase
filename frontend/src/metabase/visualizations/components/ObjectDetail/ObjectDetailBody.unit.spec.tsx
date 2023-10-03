@@ -12,7 +12,7 @@ describe("ObjectDetailBody", () => {
         objectName="Large Sandstone Socks"
         zoomedRow={testDataset.rows[2]}
         settings={{
-          column: () => null,
+          column: () => ({}),
         }}
         hasRelationships={false}
         onVisualizationClick={() => null}

@@ -30,7 +30,7 @@ export interface DetailsTableCellProps {
   column: any;
   value: any;
   isColumnName: boolean;
-  settings: any;
+  settings: VisualizationSettings;
   className?: string;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;

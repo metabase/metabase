@@ -15,8 +15,22 @@ import { ChartSettingColorPicker } from "metabase/visualizations/components/sett
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import type {
+  VisualizationSettingsDefinitions,
+  VisualizationSettingWidget,
+  WidgetName,
+} from "metabase/visualizations/types";
+import type {
+  ClickBehavior,
+  TransformedSeries,
+  VisualizationColumnSettings,
+  VisualizationColumnsSettings,
+  VisualizationSettingId,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 
-const WIDGETS = {
+const WIDGETS: Record<WidgetName, any> = {
   input: ChartSettingInput,
   inputGroup: ChartSettingInputGroup,
   number: ChartSettingInputNumeric,
@@ -31,18 +45,18 @@ const WIDGETS = {
   colors: ChartSettingColorsPicker,
 };
 
-export function getComputedSettings(
-  settingsDefs,
-  object,
-  storedSettings,
+export function getComputedSettings<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
+  object: TObject,
+  storedSettings: VisualizationSettings,
   extra = {},
 ) {
   const computedSettings = {};
   for (const settingId in settingsDefs) {
-    getComputedSetting(
+    getComputedSetting<TObject>(
       computedSettings,
       settingsDefs,
-      settingId,
+      settingId as VisualizationSettingId,
       object,
       storedSettings,
       extra,
@@ -51,33 +65,38 @@ export function getComputedSettings(
   return computedSettings;
 }
 
-function getComputedSetting(
-  computedSettings, // MUTATED!
-  settingDefs,
-  settingId,
-  object,
-  storedSettings,
+function getComputedSetting<TObject>(
+  computedSettings: VisualizationSettings, // MUTATED!
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
+  settingId: VisualizationSettingId,
+  object: TObject,
+  storedSettings: VisualizationSettings,
   extra = {},
 ) {
   if (settingId in computedSettings) {
     return;
   }
 
-  const settingDef = settingDefs[settingId] || {};
+  const settingDef = settingsDefs[settingId] || {};
 
   for (const dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
       computedSettings,
-      settingDefs,
-      dependentId,
+      settingsDefs,
+      dependentId as VisualizationSettingId,
       object,
       storedSettings,
       extra,
     );
   }
 
-  if (settingDef.useRawSeries && object._raw) {
-    object = object._raw;
+  if (settingDef.useRawSeries) {
+    const series = object as unknown as TransformedSeries;
+    if (series._raw) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      object = series;
+    }
   }
 
   const settings = { ...storedSettings, ...computedSettings };
@@ -112,19 +131,19 @@ function getComputedSetting(
   return (computedSettings[settingId] = undefined);
 }
 
-function getSettingWidget(
-  settingDefs,
-  settingId,
-  storedSettings,
-  computedSettings,
-  object,
-  onChangeSettings,
-  extra = {},
-) {
-  const settingDef = settingDefs[settingId];
+function getSettingWidget<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
+  settingId: VisualizationSettingId,
+  storedSettings: VisualizationSettings,
+  computedSettings: VisualizationSettings,
+  object: TObject,
+  onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
+  extra: unknown = {},
+): VisualizationSettingWidget<TObject> {
+  const settingDef = settingsDefs[settingId] ?? {};
   const value = computedSettings[settingId];
-  const onChange = (value, question) => {
-    const newSettings = { [settingId]: value };
+  const onChange = (newValue: typeof value, question: Question) => {
+    const newSettings: VisualizationSettings = { [settingId]: newValue };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
     }
@@ -132,16 +151,22 @@ function getSettingWidget(
       newSettings[settingId] = null;
     }
     onChangeSettings(newSettings, question);
-    settingDef.onUpdate?.(value, extra);
+    settingDef.onUpdate?.(newValue, extra);
   };
-  if (settingDef.useRawSeries && object._raw) {
-    extra.transformedSeries = object;
-    object = object._raw;
+  if (settingDef.useRawSeries) {
+    const series = object as unknown as TransformedSeries;
+    if (series._raw) {
+      (extra as any).transformedSeries = series;
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      object = series;
+    }
   }
+
   return {
     ...settingDef,
     id: settingId,
-    value: value,
+    value,
     section: settingDef.getSection
       ? settingDef.getSection(object, computedSettings, extra)
       : settingDef.section,
@@ -158,34 +183,36 @@ function getSettingWidget(
       ? settingDef.getDisabled(object, computedSettings, extra)
       : settingDef.disabled || false,
     props: {
-      ...(settingDef.props ? settingDef.props : {}),
+      ...(settingDef.props ? (settingDef.props as object) : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, computedSettings, onChange, extra)
+        ? (settingDef.getProps(
+            object,
+            computedSettings,
+            onChange as any,
+            extra,
+          ) as object)
         : {}),
     },
     set: settingId in storedSettings,
-    widget:
-      typeof settingDef.widget === "string"
-        ? WIDGETS[settingDef.widget]
-        : settingDef.widget,
+    widget: WIDGETS[settingDef.widget as WidgetName] ?? settingDef.widget,
     onChange,
     onChangeSettings, // this gives a widget access to update other settings
   };
 }
 
-export function getSettingsWidgets(
-  settingDefs,
-  storedSettings,
-  computedSettings,
-  object,
-  onChangeSettings,
+export function getSettingsWidgets<TObject>(
+  settingsDefs: VisualizationSettingsDefinitions<TObject>,
+  storedSettings: VisualizationSettings,
+  computedSettings: VisualizationSettings,
+  object: TObject,
+  onChangeSettings: VisualizationSettingWidget["onChangeSettings"],
   extra = {},
 ) {
-  return Object.keys(settingDefs)
+  return Object.keys(settingsDefs)
     .map(settingId =>
       getSettingWidget(
-        settingDefs,
-        settingId,
+        settingsDefs,
+        settingId as VisualizationSettingId,
         storedSettings,
         computedSettings,
         object,
@@ -196,10 +223,14 @@ export function getSettingsWidgets(
     .filter(widget => widget.widget);
 }
 
-export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
-  const persistableDefaultSettings = {};
-  for (const settingId in settingsDefs) {
-    const settingDef = settingsDefs[settingId];
+export function getPersistableDefaultSettings(
+  settingsDefs: VisualizationSettingsDefinitions,
+  completeSettings: VisualizationSettings,
+) {
+  const persistableDefaultSettings: VisualizationSettings = {};
+  for (const id in settingsDefs) {
+    const settingId = id as VisualizationSettingId;
+    const settingDef = settingsDefs[settingId] ?? {};
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];
     }
@@ -207,7 +238,10 @@ export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
   return persistableDefaultSettings;
 }
 
-export function updateSettings(storedSettings, changedSettings) {
+export function updateSettings(
+  storedSettings: VisualizationSettings,
+  changedSettings: VisualizationSettings,
+) {
   for (const key of Object.keys(changedSettings)) {
     MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
   }
@@ -218,7 +252,7 @@ export function updateSettings(storedSettings, changedSettings) {
   // remove undefined settings
   for (const [key, value] of Object.entries(changedSettings)) {
     if (value === undefined) {
-      delete newSettings[key];
+      delete newSettings[key as VisualizationSettingId];
     }
   }
   return newSettings;
@@ -226,10 +260,16 @@ export function updateSettings(storedSettings, changedSettings) {
 
 // Merge two settings objects together.
 // Settings from the second argument take precedence over the first.
-export function mergeSettings(first = {}, second = {}) {
+export function mergeSettings(
+  first: VisualizationSettings = {},
+  second: VisualizationSettings = {},
+) {
   // Note: This hardcoded list of all nested settings is potentially fragile,
   // but both the list of nested settings and the keys used are very stable.
-  const nestedSettings = ["series_settings", "column_settings"];
+  const nestedSettings: VisualizationSettingId[] = [
+    "series_settings",
+    "column_settings",
+  ];
   const merged = { ...first, ...second };
   for (const key of nestedSettings) {
     // only set key if one of the objects to be merged has that key set
@@ -246,8 +286,14 @@ export function mergeSettings(first = {}, second = {}) {
   return merged;
 }
 
-export function getClickBehaviorSettings(settings) {
-  const newSettings = {};
+type ColumnClickBehaviors = {
+  [columnKey in string]: {
+    click_behavior: ClickBehavior;
+  };
+};
+
+export function getClickBehaviorSettings(settings: VisualizationSettings) {
+  const newSettings: VisualizationSettings = {};
 
   if (settings.click_behavior) {
     newSettings.click_behavior = settings.click_behavior;
@@ -261,7 +307,9 @@ export function getClickBehaviorSettings(settings) {
   return newSettings;
 }
 
-function getColumnClickBehavior(columnSettings) {
+function getColumnClickBehavior(
+  columnSettings?: VisualizationColumnsSettings,
+): ColumnClickBehaviors | null {
   if (columnSettings == null) {
     return null;
   }
@@ -270,7 +318,7 @@ function getColumnClickBehavior(columnSettings) {
     .filter(([_, fieldSettings]) => fieldSettings.click_behavior != null)
     .reduce((acc, [key, fieldSettings]) => {
       return {
-        ...acc,
+        ...(acc as any),
         [key]: {
           click_behavior: fieldSettings.click_behavior,
         },
@@ -289,7 +337,9 @@ const KEYS_TO_COMPARE = new Set([
   "suffix",
 ]);
 
-export function getLineAreaBarComparisonSettings(columnSettings) {
+export function getLineAreaBarComparisonSettings(
+  columnSettings: VisualizationColumnSettings,
+) {
   return _.pick(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
       return false;

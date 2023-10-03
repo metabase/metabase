@@ -100,7 +100,7 @@ describe("ObjectDetailsTable", () => {
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         settings={{
-          column: () => null,
+          column: () => ({}),
         }}
       />,
     );
@@ -118,7 +118,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{
-            column: () => null,
+            column: () => ({}),
           }}
         />,
       );
@@ -136,7 +136,7 @@ describe("ObjectDetailsTable", () => {
           onVisualizationClick={() => null}
           visualizationIsClickable={() => false}
           settings={{
-            column: () => null,
+            column: () => ({}),
           }}
         />,
       );

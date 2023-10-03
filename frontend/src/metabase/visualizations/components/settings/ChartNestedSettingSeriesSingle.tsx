@@ -2,7 +2,11 @@ import type * as React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
-import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
+import type {
+  SingleSeries,
+  VisualizationSettingId,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 
@@ -28,7 +32,8 @@ const ChartNestedSettingsSeriesSingle = ({
   seriesCardNames,
 }: ChartNestedSettingsSeriesSingleProps) => {
   const objectKey = object && getObjectKey(object);
-  const computedSettings = allComputedSettings[objectKey] || {};
+  const computedSettings =
+    allComputedSettings[objectKey as VisualizationSettingId] ?? {};
   const seriesCardName = seriesCardNames?.[objectKey];
 
   return (

@@ -2,6 +2,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { ActionDashboardCard } from "./actions";
@@ -45,11 +46,7 @@ export type BaseDashboardOrderedCard = {
   col: number;
   row: number;
   entity_id: string;
-  visualization_settings?: {
-    [key: string]: unknown;
-    virtual_card?: VirtualCard;
-    link?: LinkCardSettings;
-  };
+  visualization_settings?: VisualizationSettings;
   justAdded?: boolean;
   created_at: string;
   updated_at: string;

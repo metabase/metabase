@@ -142,10 +142,7 @@ function PivotTable({
 
   function isColumnCollapsible(columnIndex: number) {
     const columns = data.cols.filter(col => !isPivotGroupColumn(col));
-    const { [COLUMN_SHOW_TOTALS]: showTotals } = settings.column(
-      columns[columnIndex],
-    );
-    return showTotals;
+    return settings.column?.(columns[columnIndex])[COLUMN_SHOW_TOTALS];
   }
   useEffect(() => {
     // This is needed in case the cell counts didn't change, but the data or cell sizes did

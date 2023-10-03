@@ -6,6 +6,7 @@ import type {
   Dashboard,
   ActionDashboardCard,
   VisualizationSettings,
+  ButtonVariant,
 } from "metabase-types/api";
 
 import Button from "metabase/core/components/Button";
@@ -102,7 +103,7 @@ export function ActionSidebarFn({
               options={buttonVariantOptions}
               onChange={e =>
                 onUpdateVisualizationSettings({
-                  "button.variant": e.target.value,
+                  "button.variant": e.target.value as ButtonVariant,
                 })
               }
             />

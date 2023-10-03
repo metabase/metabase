@@ -2,10 +2,33 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
+import type {
+  Series,
+  VisualizationSettingId,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
-export function nestedSettings(
-  id,
+type NestedSettingsOptions<TObject> = {
+  objectName: string;
+  getObjects: (series: Series, settings: VisualizationSettings) => TObject[];
+  getObjectKey: (object: TObject) => string;
+  getSettingDefinitionsForObject: (
+    series: Series,
+    object: TObject,
+  ) => VisualizationSettingsDefinitions<TObject>;
+  getInheritedSettingsForObject?: (
+    object: TObject,
+  ) => VisualizationSettingsDefinitions<TObject>;
+  component: unknown;
+};
+
+export function nestedSettings<TObject>(
+  id: VisualizationSettingId,
   {
     objectName = "object",
     getObjects,
@@ -14,9 +37,14 @@ export function nestedSettings(
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
-  } = {},
-) {
-  function getComputedSettingsForObject(series, object, storedSettings, extra) {
+  }: VisualizationSettingDefinition<Series> & NestedSettingsOptions<TObject>,
+): VisualizationSettingsDefinitions<Series> {
+  function getComputedSettingsForObject(
+    series: Series,
+    object: TObject,
+    storedSettings: any,
+    extra: any,
+  ) {
     const settingsDefs = getSettingDefinitionsForObject(series, object);
     const inheritedSettings = getInheritedSettingsForObject(object);
     const computedSettings = getComputedSettings(
@@ -30,12 +58,12 @@ export function nestedSettings(
   }
 
   function getComputedSettingsForAllObjects(
-    series,
-    objects,
-    allStoredSettings,
-    extra,
+    series: Series,
+    objects: TObject[],
+    allStoredSettings: any,
+    extra: any,
   ) {
-    const allComputedSettings = {};
+    const allComputedSettings: any = {};
     for (const object of objects) {
       const key = getObjectKey(object);
       allComputedSettings[key] = getComputedSettingsForObject(
@@ -49,11 +77,11 @@ export function nestedSettings(
   }
 
   function getSettingsWidgetsForObject(
-    series,
-    object,
-    storedSettings,
-    onChangeSettings,
-    extra,
+    series: Series,
+    object: TObject,
+    storedSettings: any,
+    onChangeSettings: any,
+    extra: any,
   ) {
     const settingsDefs = getSettingDefinitionsForObject(series, object);
     const computedSettings = getComputedSettingsForObject(
@@ -83,7 +111,12 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series, settings, onChange, extra) => {
+      getProps: (
+        series: Series,
+        settings: VisualizationSettings,
+        onChange: (value: unknown) => void,
+        extra: unknown,
+      ) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -97,17 +130,17 @@ export function nestedSettings(
           objects,
           allComputedSettings,
           extra: { series, settings },
-          ...def.getExtraProps?.(series, settings, onChange, extra),
-          ...extra,
+          ...(def.getExtraProps?.(series, settings, onChange, extra) as object),
+          ...(extra as object),
         };
       },
       widget,
       ...def,
     },
     [objectName]: {
-      getDefault(series, settings) {
+      getDefault(series: Series, settings: VisualizationSettings) {
         const cache = new Map();
-        return object => {
+        return (object: TObject) => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);

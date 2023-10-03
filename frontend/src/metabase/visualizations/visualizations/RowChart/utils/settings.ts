@@ -44,8 +44,8 @@ export const getXValueRange = (
   }
 
   return [
-    parseInt(settings["graph.y_axis.min"], 10),
-    parseInt(settings["graph.y_axis.max"], 10),
+    parseInt(settings["graph.y_axis.min"] as any, 10),
+    parseInt(settings["graph.y_axis.max"] as any, 10),
   ];
 };
 

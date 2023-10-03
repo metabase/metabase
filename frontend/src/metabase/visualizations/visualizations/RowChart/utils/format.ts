@@ -22,7 +22,7 @@ export const getFormatters = (
   const yTickFormatter = (value: StringLike) => {
     return String(
       formatValue(value, {
-        ...settings.column(chartColumns.dimension.column),
+        ...settings.column?.(chartColumns.dimension.column),
         jsx: false,
       }),
     );
@@ -32,7 +32,7 @@ export const getFormatters = (
 
   const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
-    const number_separators = settings.column(column)?.number_separators;
+    const number_separators = settings.column?.(column)?.number_separators;
 
     return String(
       formatValue(percent, {
@@ -48,7 +48,7 @@ export const getFormatters = (
   const xTickFormatter = (value: NumberLike) => {
     return String(
       formatValue(value, {
-        ...settings.column(metricColumn.column),
+        ...settings.column?.(metricColumn.column),
         jsx: false,
       }),
     );
@@ -73,7 +73,7 @@ export const getLabelsFormatter = (
   const labelsFormatter = (value: any) =>
     String(
       formatValue(value, {
-        ...settings.column(column),
+        ...settings.column?.(column),
         jsx: false,
         compact: settings["graph.label_value_formatting"] === "compact",
       }),

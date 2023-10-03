@@ -23,7 +23,6 @@ import type {
   DatasetColumn,
   DatasetData,
   Series,
-  RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -43,9 +42,7 @@ export const getTitleForColumn = (
   column: DatasetColumn,
   settings: VisualizationSettings,
 ) => {
-  const { column: _column, column_title: columnTitle } =
-    settings.column(column);
-  return columnTitle || formatColumn(_column);
+  return settings.column?.(column)?.column_title ?? formatColumn(column);
 };
 
 export const settings = {
@@ -241,23 +238,19 @@ export const _columnSettings = {
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
-      return rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];
+      return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
     },
     getHidden: (
       column: DatasetColumn,
       columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
-      const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
+      const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];
       // to show totals a column needs to be:
       //  - in the left header ("rows" in COLUMN_SPLIT_SETTING)
       //  - not the last column
-      return !rows
-        .slice(0, -1)
-        .some((row: RowValue) => _.isEqual(row, column.field_ref));
+      return !rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
     },
   },
   column_title: {

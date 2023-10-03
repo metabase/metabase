@@ -1,4 +1,5 @@
 import type { DatetimeUnit } from "metabase-types/api/query";
+import type { OptionsType } from "metabase/lib/formatting/types";
 
 export const DEFAULT_TIME_STYLE = "h:mm A";
 export const DEFAULT_DATE_STYLE = "MMMM D, YYYY";
@@ -15,13 +16,13 @@ const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 export const hasDay = (unit: DatetimeUnit) =>
   unit == null || UNITS_WITH_DAY_SET.has(unit as UNITS_WITH_DAY_TYPE);
 
-export const hasHour = (unit: DatetimeUnit) =>
+export const hasHour = (unit?: DatetimeUnit) =>
   unit == null || UNITS_WITH_HOUR_SET.has(unit as UNITS_WITH_HOUR_TYPE);
 
 export function getTimeFormatFromStyle(
   style: string,
   unit: DatetimeUnit,
-  timeEnabled?: "minutes" | "milliseconds" | "seconds" | null,
+  timeEnabled?: OptionsType["time_enabled"],
 ) {
   const format = style;
   if (!timeEnabled || timeEnabled === "milliseconds") {
