@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import type { ExcludeValueOption } from "./types";
 import {
+  findExcludeUnitOption,
   getExcludeOperatorOptions,
   getExcludeOperatorValue,
   getExcludeUnitOptions,
@@ -33,6 +34,7 @@ export function ExcludeDatePicker({
 }: ExcludeDatePickerProps) {
   const [unit, setUnit] = useState(value?.unit);
   const [values, setValues] = useState(value?.values ?? []);
+  const isNew = value == null;
 
   const handleChangeValues = (values: number[]) => {
     if (unit) {
@@ -57,6 +59,7 @@ export function ExcludeDatePicker({
     <ExcludeValuePicker
       unit={unit}
       initialValues={values}
+      isNew={isNew}
       onChangeValues={handleChangeValues}
       onBack={handleBack}
     />
@@ -119,6 +122,7 @@ export function ExcludeOptionPicker({
 interface ExcludeValuePickerProps {
   unit: DatePickerExtractionUnit;
   initialValues: number[];
+  isNew: boolean;
   onChangeValues: (values: number[]) => void;
   onBack: () => void;
 }
@@ -126,11 +130,16 @@ interface ExcludeValuePickerProps {
 function ExcludeValuePicker({
   unit,
   initialValues,
+  isNew,
   onChangeValues,
   onBack,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
   const isEmpty = values.length === 0;
+
+  const option = useMemo(() => {
+    return findExcludeUnitOption(unit);
+  }, [unit]);
 
   const groups = useMemo(() => {
     return getExcludeValueOptionGroups(unit);
@@ -161,10 +170,9 @@ function ExcludeValuePicker({
 
   return (
     <Stack>
-      <Button
-        leftIcon={<Icon name="chevronleft" />}
-        onClick={onBack}
-      >{t`Exclude…`}</Button>
+      <Button leftIcon={<Icon name="chevronleft" />} onClick={onBack}>
+        {option?.label}
+      </Button>
       <Divider />
       <Checkbox
         checked={isEmpty}
@@ -190,7 +198,7 @@ function ExcludeValuePicker({
       </Group>
       <Divider />
       <Button variant="filled" disabled={isEmpty} onClick={handleSubmit}>
-        {t`Add filter`}
+        {isNew ? t`Add filter` : t`Update filter`}
       </Button>
     </Stack>
   );

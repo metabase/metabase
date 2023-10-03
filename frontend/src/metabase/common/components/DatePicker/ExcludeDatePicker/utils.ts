@@ -33,6 +33,12 @@ export function getExcludeOperatorOptions(
   );
 }
 
+export function findExcludeUnitOption(
+  unit: DatePickerExtractionUnit,
+): ExcludeUnitOption | undefined {
+  return EXCLUDE_UNIT_OPTIONS.find(option => option.unit === unit);
+}
+
 export function getExcludeValueOptionGroups(
   unit: DatePickerExtractionUnit,
 ): ExcludeValueOption[][] {

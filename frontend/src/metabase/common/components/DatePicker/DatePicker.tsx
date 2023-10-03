@@ -12,6 +12,7 @@ export interface DatePickerProps {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerExtractionUnit[];
   onChange: (value: ExcludeDatePickerValue) => void;
+  onBack: () => void;
 }
 
 export function DatePicker({
@@ -19,6 +20,7 @@ export function DatePicker({
   availableOperators = DEFAULT_OPERATORS,
   availableUnits = DEFAULT_UNITS,
   onChange,
+  onBack,
 }: DatePickerProps) {
   return (
     <ExcludeDatePicker
@@ -26,6 +28,7 @@ export function DatePicker({
       availableOperators={availableOperators}
       availableUnits={availableUnits}
       onChange={onChange}
+      onBack={onBack}
     />
   );
 }
