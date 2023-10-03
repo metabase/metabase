@@ -1112,7 +1112,7 @@
 (defn is-collection-id-audit?
   "Check if an id is one of the audit collection ids."
   [id]
-  (contains? #{(default-audit-collection-id) (default-custom-reports-id)} id))
+  (contains? (set [(default-audit-collection-id) (default-custom-reports-id)]) id))
 
 (defn is-parent-collection-audit?
   "Check if an instance's parent collection is the audit collection."

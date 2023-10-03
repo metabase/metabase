@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models.collection :refer [collection-entity-id->id]]
    [metabase.models.database :refer [Database]]
