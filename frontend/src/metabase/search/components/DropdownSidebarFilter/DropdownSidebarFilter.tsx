@@ -78,7 +78,6 @@ export const DropdownSidebarFilter = ({
   };
 
   const onPopoverClose = () => {
-    // reset selection to the current filter state
     setIsPopoverOpen(false);
   };
 
