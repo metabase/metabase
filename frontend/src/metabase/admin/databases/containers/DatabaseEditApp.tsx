@@ -2,7 +2,6 @@ import type { ComponentType } from "react";
 import { useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { withRouter } from "react-router";
 import type { Route } from "react-router";
 
 import { t } from "ttag";
@@ -239,5 +238,4 @@ export default _.compose(
   title(
     ({ database }: { database: DatabaseData }) => database && database.name,
   ),
-  withRouter,
 )(DatabaseEditApp);
