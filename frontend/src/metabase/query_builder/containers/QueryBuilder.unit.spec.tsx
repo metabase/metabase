@@ -243,11 +243,9 @@ const setup = async ({
     },
   );
 
-  if (initialRoute !== "/home") {
-    await waitForElementToBeRemoved(() =>
-      screen.queryByTestId("loading-spinner"),
-    );
-  }
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
 
   return {
     history: checkNotNull(history),

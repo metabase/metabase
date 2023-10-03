@@ -429,7 +429,6 @@
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
         collection (populate/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
-                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!

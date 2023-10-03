@@ -111,8 +111,7 @@
             :visualization_settings {}})
 
    Collection
-   (fn [_] {:name  (tu.random/random-name)
-            :color "#ABCDEF"})
+   (fn [_] {:name  (tu.random/random-name)})
 
    :model/Action
    (fn [_] {:creator_id (rasta-id)})

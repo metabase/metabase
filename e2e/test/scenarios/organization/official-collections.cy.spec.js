@@ -39,7 +39,6 @@ describeEE("official collections", () => {
         failOnStatusCode: false,
         body: {
           name: "Wannabe Official Collection",
-          color: "#000000",
           authority_level: "official",
         },
       }).then(({ body, status, statusText }) => {
