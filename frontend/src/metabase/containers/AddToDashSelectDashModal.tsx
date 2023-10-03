@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -16,12 +16,18 @@ import {
 import { coerceCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
-import type { Card, CollectionId, Dashboard } from "metabase-types/api";
+import type {
+  Card,
+  Collection,
+  CollectionId,
+  Dashboard,
+} from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import { useSelector } from "metabase/lib/redux";
-
+import Collections from "metabase/entities/collections";
+import { checkNotNull } from "metabase/core/utils/types";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {
@@ -76,14 +82,34 @@ export const AddToDashSelectDashModal = ({
     }
   };
 
-  const [openCollectionId, setOpenCollectionId] =
-    useState<CollectionId>(collectionId);
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>();
+  useEffect(() => {
+    setOpenCollectionId(collectionId);
+  }, [collectionId]);
   const question = useSelector(getQuestion);
-  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const userPersonalCollectionId = checkNotNull(
+    useSelector(getUserPersonalCollectionId),
+  );
+  const collectionsById: Record<CollectionId, Collection> = useSelector(
+    Collections.selectors.getExpandedCollectionsById,
+  );
+  const questionCollection = question?.collectionId()
+    ? collectionsById[checkNotNull(question.collectionId())]
+    : undefined;
+  const openCollection = openCollectionId
+    ? collectionsById[openCollectionId]
+    : undefined;
+  // XXX: Tests that sub collections in personal collection also work.
   const isQuestionInPersonalCollection =
-    question?.collectionId() === userPersonalCollectionId;
+    questionCollection?.id === userPersonalCollectionId ||
+    questionCollection?.path?.includes(userPersonalCollectionId);
+
+  const isOpenQuestionInPersonalCollection =
+    openCollection?.id === userPersonalCollectionId ||
+    openCollection?.path?.includes(userPersonalCollectionId);
+
   const shouldFetchDashboards = isQuestionInPersonalCollection
-    ? openCollectionId === userPersonalCollectionId
+    ? isOpenQuestionInPersonalCollection
     : true;
 
   if (shouldCreateDashboard) {

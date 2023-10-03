@@ -24,7 +24,13 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-          ? ["root", ...c.location.split("/").filter(l => l)]
+          ? [
+              "root",
+              ...c.location
+                .split("/")
+                .filter(l => l)
+                .map(Number),
+            ]
           : null,
       parent: null,
       children: [],

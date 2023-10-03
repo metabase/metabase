@@ -58,6 +58,7 @@ function QuestionPicker({
 
   const dashboard = useSelector(getDashboard);
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  // XXX: Handle a case when the dashboard is in a subcollection in a personal collection
   const isCurrentDashboardInPublicCollection =
     dashboard.collection_id !== userPersonalCollectionId;
   const isShowingQuestions = isCurrentDashboardInPublicCollection
