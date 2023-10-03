@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { HTMLAttributes } from "react";
 import type { ButtonProps } from "metabase/ui";
-import { Stack, TextInput, Button, Group } from "metabase/ui";
+import { Stack, Button, Group } from "metabase/ui";
 
 export const SearchUserPickerContainer = styled(Stack)`
   overflow: hidden;
@@ -34,19 +34,4 @@ export const SelectedUserButton = styled(Button)<
       }
     `;
   }}
-  & .emotion-Button-label {
-    width: 100%;
-  }
-`;
-
-export const SearchUserPickerInput = styled(TextInput)`
-  flex: 1;
-
-  & .emotion-TextInput-input {
-    padding: ${({ theme }) => theme.spacing.sm};
-  }
-
-  & .emotion-TextInput-wrapper {
-    margin-top: 0;
-  }
 `;

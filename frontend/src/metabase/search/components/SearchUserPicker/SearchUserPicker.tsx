@@ -8,11 +8,10 @@ import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFil
 import {
   SearchUserPickerContainer,
   SearchUserPickerContent,
-  SearchUserPickerInput,
   SearchUserSelectBox,
   SelectedUserButton,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
-import { Center, Text } from "metabase/ui";
+import { Center, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 
 export const SearchUserPicker = ({
@@ -81,14 +80,15 @@ export const SearchUserPicker = ({
             );
           })}
 
-          <SearchUserPickerInput
+          <TextInput
+            px="sm"
             variant="unstyled"
             size="md"
             placeholder={t`Search for users…`}
-            miw="15ch"
             value={userFilter}
             tabIndex={0}
             onChange={event => setUserFilter(event.currentTarget.value)}
+            mt="-0.25rem"
           />
         </SearchUserSelectBox>
         {filteredUsers.length > 0 ? (
