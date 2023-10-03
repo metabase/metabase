@@ -1,5 +1,5 @@
 import type { ReactNode, MouseEvent } from "react";
-import { OptionButtonRoot } from "./OptionButton.styled";
+import { Button } from "metabase/ui";
 
 export interface OptionButtonProps {
   isSelected?: boolean;
@@ -13,8 +13,12 @@ export function OptionButton({
   onClick,
 }: OptionButtonProps) {
   return (
-    <OptionButtonRoot isSelected={isSelected} onClick={onClick}>
+    <Button
+      c={isSelected ? "brand.1" : "text.2"}
+      variant="subtle"
+      onClick={onClick}
+    >
       {children}
-    </OptionButtonRoot>
+    </Button>
   );
 }
