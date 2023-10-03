@@ -21,6 +21,10 @@ jobs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
       - uses: actions/checkout@v3
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
