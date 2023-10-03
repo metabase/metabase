@@ -151,7 +151,6 @@ describeEE("scenarios > question > snippets (EE)", () => {
       cy.request("POST", "/api/collection", {
         name: "Snippet Folder",
         description: null,
-        color: "#509EE3",
         parent_id: null,
         namespace: "snippets",
       });
@@ -222,7 +221,6 @@ function createNestedSnippet() {
   cy.request("POST", "/api/collection", {
     name: "Snippet Folder",
     description: null,
-    color: "#509EE3",
     parent_id: null,
     namespace: "snippets",
   }).then(({ body: { id } }) => {

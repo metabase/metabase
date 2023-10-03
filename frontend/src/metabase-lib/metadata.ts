@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, FieldReference } from "metabase-types/api";
+import type { DatabaseId, FieldReference, TableId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
@@ -12,6 +12,7 @@ import type {
   Bucket,
   BucketDisplayInfo,
   CardMetadata,
+  CardDisplayInfo,
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
@@ -56,6 +57,21 @@ declare function DisplayInfoFn(
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnDisplayInfo | TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  cardMetadata: CardMetadata,
+): CardDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  tableMetadata: TableMetadata,
+): TableDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  tableLike: CardMetadata | TableMetadata,
+): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -135,7 +151,7 @@ export function describeTemporalUnit(
 
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
-  tableID: number | string,
+  tableID: TableId,
 ): CardMetadata | TableMetadata {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
