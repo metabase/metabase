@@ -16,16 +16,22 @@
    [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
    [metabase.lib.drill-thru.zoom :as lib.drill-thru.zoom]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 (comment
   lib.drill-thru.fk-details/keep-me
   lib.drill-thru.pk/keep-me
   lib.drill-thru.zoom/keep-me)
+
+(defmethod lib.metadata.calculation/display-info-method ::drill-thru
+  [query stage-number drill-thru]
+  (lib.drill-thru.common/drill-thru-info-method query stage-number drill-thru))
 
 ;; TODO: Different ways to apply drill-thru to a query.
 ;; So far:
@@ -55,9 +61,35 @@
           (assoc-in context [:column :lib/source-uuid] (lib.options/uuid ag))))
       context))
 
-(defmethod lib.metadata.calculation/display-info-method ::drill-thru
-  [query stage-number drill-thru]
-  (lib.drill-thru.common/drill-thru-info-method query stage-number drill-thru))
+;;; TODO: Missing drills: automatic insights, format.
+(def ^:private available-drill-thru-fns
+  [#'lib.drill-thru.distribution/distribution-drill
+   #'lib.drill-thru.column-filter/column-filter-drill
+   #'lib.drill-thru.foreign-key/foreign-key-drill
+   #'lib.drill-thru.object-details/object-detail-drill
+   #'lib.drill-thru.pivot/pivot-drill
+   #'lib.drill-thru.quick-filter/quick-filter-drill
+   #'lib.drill-thru.sort/sort-drill
+   #'lib.drill-thru.summarize-column/summarize-column-drill
+   #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
+   #'lib.drill-thru.underlying-records/underlying-records-drill
+   #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])
+
+(mu/defn ^:private all-contexts :- [:sequential {:min 1} ::lib.schema.drill-thru/context]
+  [query                             :- ::lib.schema/query
+   stage-number                      :- :int
+   {:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
+  (cons
+   context
+   (when (seq dimensions)
+     (let [stage            (lib.util/query-stage query stage-number)
+           returned-columns (lib.metadata.calculation/returned-columns query stage-number stage)]
+       (for [{:keys [column-name value]} dimensions
+             :let                        [col (lib.field/resolve-column-name-in-metadata column-name returned-columns)]
+             :when                       col]
+         (assoc context
+                :column col
+                :value value))))))
 
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
@@ -71,28 +103,19 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     context      :- ::lib.schema.drill-thru/context]
-   (let [context (icky-hack-add-source-uuid-to-aggregation-column-metadata query stage-number context)]
-     (try
-       (into []
-             (keep #(% query stage-number context))
-             ;; TODO: Missing drills: automatic insights, format.
-             [lib.drill-thru.distribution/distribution-drill
-              lib.drill-thru.column-filter/column-filter-drill
-              lib.drill-thru.foreign-key/foreign-key-drill
-              lib.drill-thru.object-details/object-detail-drill
-              lib.drill-thru.pivot/pivot-drill
-              lib.drill-thru.quick-filter/quick-filter-drill
-              lib.drill-thru.sort/sort-drill
-              lib.drill-thru.summarize-column/summarize-column-drill
-              lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
-              lib.drill-thru.underlying-records/underlying-records-drill
-              lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])
-       (catch #?(:clj Throwable :cljs :default) e
-         (throw (ex-info (str "Error getting available drill thrus for query: " (ex-message e))
-                         {:query        query
-                          :stage-number stage-number
-                          :context      context}
-                         e)))))))
+   (try
+     (into []
+           (mapcat (fn [context]
+                     (let [context (icky-hack-add-source-uuid-to-aggregation-column-metadata query stage-number context)]
+                       (keep #(% query stage-number context)
+                             available-drill-thru-fns))))
+           (all-contexts query stage-number context))
+     (catch #?(:clj Throwable :cljs :default) e
+       (throw (ex-info (str "Error getting available drill thrus for query: " (ex-message e))
+                       {:query        query
+                        :stage-number stage-number
+                        :context      context}
+                       e))))))
 
 (mu/defn drill-thru :- ::lib.schema/query
   "`(drill-thru query stage-number drill-thru)`
