@@ -35,7 +35,6 @@ export function ExcludeDatePicker({
 }: ExcludeDatePickerProps) {
   const [unit, setUnit] = useState(value?.unit);
   const [values, setValues] = useState(value?.values ?? []);
-  const isNew = value == null;
 
   const handleChangeValues = (values: number[]) => {
     if (unit) {
@@ -58,9 +57,9 @@ export function ExcludeDatePicker({
 
   return unit ? (
     <ExcludeValuePicker
+      value={value}
       unit={unit}
       initialValues={values}
-      isNew={isNew}
       onChangeValues={handleChangeValues}
       onBack={handleBack}
     />
@@ -76,6 +75,7 @@ export function ExcludeDatePicker({
 }
 
 interface ExcludeOptionPickerProps {
+  value: ExcludeDatePickerValue | undefined;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerExtractionUnit[];
   onChangeOperator: (operator: DatePickerOperator) => void;
@@ -84,6 +84,7 @@ interface ExcludeOptionPickerProps {
 }
 
 export function ExcludeOptionPicker({
+  value,
   availableOperators,
   availableUnits,
   onChangeOperator,
@@ -101,7 +102,6 @@ export function ExcludeOptionPicker({
   return (
     <Stack spacing={0}>
       <Button
-        variant="subtle"
         leftIcon={<Icon name="chevronleft" />}
         onClick={onBack}
       >{t`Exclude…`}</Button>
@@ -117,6 +117,7 @@ export function ExcludeOptionPicker({
       {operatorOptions.map((option, index) => (
         <OptionButton
           key={index}
+          isSelected={value?.operator === option.operator}
           onClick={() => onChangeOperator(option.operator)}
         >
           {option.label}
@@ -127,21 +128,22 @@ export function ExcludeOptionPicker({
 }
 
 interface ExcludeValuePickerProps {
+  value: ExcludeDatePickerValue | undefined;
   unit: DatePickerExtractionUnit;
   initialValues: number[];
-  isNew: boolean;
   onChangeValues: (values: number[]) => void;
   onBack: () => void;
 }
 
 function ExcludeValuePicker({
+  value,
   unit,
   initialValues,
-  isNew,
   onChangeValues,
   onBack,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
+  const isNew = value == null;
   const isEmpty = values.length === 0;
 
   const option = useMemo(() => {
