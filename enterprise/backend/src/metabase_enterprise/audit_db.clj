@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
+   [metabase.models.collection :refer [collection-entity-id->id]]
    [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -26,19 +27,25 @@
   []
   13371337)
 
-(defenterprise default-audit-collection-entity-id
+(def ^:private default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
-  :feature :none
-  []
   "vG58R8k-QddHWA7_47umn")
 
-(defenterprise default-audit-collection-id
-  "Default audit collection (instance analytics) id. Memoizes from entity id."
+(def ^:private default-custom-reports-entity-id
+  "Default custom reports entity id."
+  "okNLSZKdSxaoG58JSQY54")
+
+(defenterprise default-custom-reports-id
+  "Default custom reports id."
   :feature :none
   []
-  ((mdb.connection/memoize-for-application-db
-   (fn []
-     (t2/select-one-pk :model/Collection :entity_id (default-audit-collection-entity-id))))))
+  (collection-entity-id->id default-custom-reports-entity-id))
+
+(defenterprise default-audit-collection-id
+  "Default audit collection (instance analytics) id."
+  :feature :none
+  []
+  (collection-entity-id->id default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
