@@ -49,6 +49,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
   Switch: {
     defaultProps: {
       color: "brand",
+      size: "md",
     },
     styles: (theme, { error }: SwitchStylesParams, { size = "md" }) => {
       return {
