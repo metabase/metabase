@@ -87,29 +87,13 @@ export const AddToDashSelectDashModal = ({
     setOpenCollectionId(collectionId);
   }, [collectionId]);
   const question = useSelector(getQuestion);
-  const userPersonalCollectionId = checkNotNull(
-    useSelector(getUserPersonalCollectionId),
-  );
-  const collectionsById: Record<CollectionId, Collection> = useSelector(
-    Collections.selectors.getExpandedCollectionsById,
-  );
-  const questionCollection = question?.collectionId()
-    ? collectionsById[checkNotNull(question.collectionId())]
-    : undefined;
-  const openCollection = openCollectionId
-    ? collectionsById[openCollectionId]
-    : undefined;
-  // XXX: Tests that sub collections in personal collection also work.
-  const isQuestionInPersonalCollection =
-    questionCollection?.id === userPersonalCollectionId ||
-    questionCollection?.path?.includes(userPersonalCollectionId);
+  const isQuestionWithinPersonalCollection =
+    useIsCollectionWithinPersonalCollection(question?.collectionId());
+  const isOpenCollectionWithinPersonalCollection =
+    useIsCollectionWithinPersonalCollection(openCollectionId);
 
-  const isOpenQuestionInPersonalCollection =
-    openCollection?.id === userPersonalCollectionId ||
-    openCollection?.path?.includes(userPersonalCollectionId);
-
-  const shouldFetchDashboards = isQuestionInPersonalCollection
-    ? isOpenQuestionInPersonalCollection
+  const shouldFetchDashboards = isQuestionWithinPersonalCollection
+    ? isOpenCollectionWithinPersonalCollection
     : true;
 
   if (shouldCreateDashboard) {
@@ -158,6 +142,24 @@ export const AddToDashSelectDashModal = ({
     </ModalContent>
   );
 };
+
+function useIsCollectionWithinPersonalCollection(
+  collectionId: CollectionId | null | undefined,
+) {
+  const userPersonalCollectionId = checkNotNull(
+    useSelector(getUserPersonalCollectionId),
+  );
+  const collectionsById: Record<CollectionId, Collection> = useSelector(
+    Collections.selectors.getExpandedCollectionsById,
+  );
+
+  const collection = collectionId ? collectionsById[collectionId] : undefined;
+
+  return (
+    collection?.id === userPersonalCollectionId ||
+    collection?.path?.includes(userPersonalCollectionId)
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(AddToDashSelectDashModal);

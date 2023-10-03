@@ -18,7 +18,6 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import { getDashboard } from "metabase/dashboard/selectors";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -38,10 +37,11 @@ function QuestionPicker({
   onSelect,
   collectionsById,
   getCollectionIcon,
-  initialCollection,
+  initialCollection: initialCollectionId,
 }) {
+  const dashboardCollectionId = initialCollectionId || ROOT_COLLECTION.id;
   const [currentCollectionId, setCurrentCollectionId] = useState(
-    initialCollection || ROOT_COLLECTION.id,
+    dashboardCollectionId,
   );
   const [searchText, setSearchText] = useState("");
   const debouncedSearchText = useDebouncedValue(
@@ -56,14 +56,15 @@ function QuestionPicker({
 
   const collections = (collection && collection.children) || [];
 
-  const dashboard = useSelector(getDashboard);
-  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
-  // XXX: Handle a case when the dashboard is in a subcollection in a personal collection
-  const isCurrentDashboardInPublicCollection =
-    dashboard.collection_id !== userPersonalCollectionId;
-  const isShowingQuestions = isCurrentDashboardInPublicCollection
-    ? collection.id !== userPersonalCollectionId
+  const isDashboardWithinPersonalCollection =
+    useIsCollectionWithinPersonalCollection(dashboardCollectionId);
+  const isCollectionWithinPersonalCollection =
+    useIsCollectionWithinPersonalCollection(currentCollectionId);
+
+  const shouldShowQuestions = !isDashboardWithinPersonalCollection
+    ? !isCollectionWithinPersonalCollection
     : true;
+
   return (
     <QuestionPickerRoot>
       <SearchInput
@@ -112,7 +113,7 @@ function QuestionPicker({
         </>
       )}
 
-      {isShowingQuestions && (
+      {shouldShowQuestions && (
         <QuestionList
           hasCollections={collections.length > 0}
           searchText={debouncedSearchText}
@@ -121,6 +122,20 @@ function QuestionPicker({
         />
       )}
     </QuestionPickerRoot>
+  );
+}
+
+function useIsCollectionWithinPersonalCollection(collectionId) {
+  const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
+  const collectionsById = useSelector(
+    Collections.selectors.getExpandedCollectionsById,
+  );
+
+  const collection = collectionId ? collectionsById[collectionId] : undefined;
+
+  return (
+    collection?.id === userPersonalCollectionId ||
+    collection?.path?.includes(userPersonalCollectionId)
   );
 }
 
