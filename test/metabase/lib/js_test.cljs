@@ -104,3 +104,7 @@
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
+
+(deftest ^:parallel is-column-metadata-test
+  (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))
+  (is (false? (lib.js/is-column-metadata 1))))

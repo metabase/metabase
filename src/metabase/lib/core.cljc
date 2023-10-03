@@ -159,7 +159,8 @@
   upper
   lower]
  [lib.fe-util
-  filter-parts]
+  expression-clause
+  expression-parts]
  [lib.field
   add-field
   field-id

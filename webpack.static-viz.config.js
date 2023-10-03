@@ -2,8 +2,8 @@ const YAML = require("json-to-pretty-yaml");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
+const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 

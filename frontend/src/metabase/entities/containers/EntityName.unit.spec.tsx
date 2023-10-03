@@ -3,6 +3,10 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
+import {
+  setupCardEndpoints,
+  setupUserEndpoints,
+} from "__support__/server-mocks";
 import { EntityName } from "./EntityName";
 
 describe("EntityName", () => {
@@ -11,6 +15,8 @@ describe("EntityName", () => {
       const mockUser = createMockUser({
         common_name: "Testy Tableton",
       });
+      setupUserEndpoints(mockUser);
+
       renderWithProviders(
         <EntityName entityType="users" entityId={mockUser.id} />,
         {
@@ -29,6 +35,7 @@ describe("EntityName", () => {
     test("question with name (metabase#33192)", async () => {
       const expectedQuestionName = "Mock Products question";
       const mockCard = createMockCard({ name: expectedQuestionName });
+      setupCardEndpoints(mockCard);
 
       renderWithProviders(
         <EntityName entityType="questions" entityId={mockCard.id} />,

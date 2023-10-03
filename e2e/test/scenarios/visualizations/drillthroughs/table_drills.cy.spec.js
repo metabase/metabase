@@ -176,7 +176,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills", function (
       cy.findByText(`≠`).should("be.visible");
     });
 
-    cy.findByTestId("timeseries-mode-bar").within(() => {
+    cy.findByTestId("time-series-mode-footer").within(() => {
       cy.findByText(`View`).should("be.visible");
       cy.findByText(`All Time`).should("be.visible");
       cy.findByText(`by`).should("be.visible");

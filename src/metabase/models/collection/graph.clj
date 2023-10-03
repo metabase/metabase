@@ -9,7 +9,7 @@
     :as c-perm-revision
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group :as perms-group :as perms-group :refer [PermissionsGroup]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]

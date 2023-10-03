@@ -93,7 +93,7 @@ jobs:
         run: yarn run test-unit --coverage --silent
       - name: Run frontend unit tests
         if: github.ref_name != 'master'
-        run: yarn run test-unit
+        run: yarn run test-unit --silent
       - name: Upload coverage to codecov.io
         if: github.ref_name == 'master'
         uses: codecov/codecov-action@v3
