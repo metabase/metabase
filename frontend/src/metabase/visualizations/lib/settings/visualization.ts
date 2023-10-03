@@ -7,7 +7,7 @@ import type {
   VisualizationSettingsDefinitions,
   VisualizationSettingWidget,
 } from "metabase/visualizations/types";
-import type { Series, VisualizationColumnSettings } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
   getComputedSettings,
@@ -67,17 +67,17 @@ function getSettingDefinitionsForSeries(
 }
 
 function normalizeColumnSettings(
-  columnSettings: VisualizationColumnSettings["column_settings"],
+  columnSettings: VisualizationSettings["column_settings"],
 ) {
-  const newColumnSettings: VisualizationColumnSettings["column_settings"] = {};
-  for (const oldColumnKey of Object.keys(columnSettings)) {
+  const newColumnSettings: VisualizationSettings["column_settings"] = {};
+  for (const oldColumnKey of Object.keys(columnSettings ?? {})) {
     const [refOrName, fieldRef] = JSON.parse(oldColumnKey);
     // if the key is a reference, normalize the mbql syntax
     const newColumnKey =
       refOrName === "ref"
         ? JSON.stringify(["ref", normalizeFieldRef(fieldRef)])
         : oldColumnKey;
-    newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
+    newColumnSettings[newColumnKey] = columnSettings?.[oldColumnKey] ?? {};
   }
   return newColumnSettings;
 }

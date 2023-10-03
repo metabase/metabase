@@ -1,6 +1,5 @@
-import type { TimelineEvent } from "metabase-types/api";
+import type { TimelineEvent, VisualizationSettings } from "metabase-types/api";
 import type { RemappingHydratedDatasetColumn } from "./columns";
-import type { ComputedVisualizationSettings } from "./visualization";
 
 export interface DataPoint {
   key: string;
@@ -45,7 +44,7 @@ export interface HoveredObject {
   timelineEvents?: TimelineEvent[];
   data?: DataPoint[];
   dimensions?: HoveredDimension[];
-  settings?: ComputedVisualizationSettings;
+  settings?: VisualizationSettings;
   element?: Element;
   event?: MouseEvent;
   stackedTooltipModel?: StackedTooltipModel;

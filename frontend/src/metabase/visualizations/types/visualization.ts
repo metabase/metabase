@@ -4,6 +4,8 @@ import type {
   RawSeries,
   Series,
   TransformedSeries,
+  VisualizationColumnSettings,
+  VisualizationColumnSettingsId,
   VisualizationSettingId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -13,7 +15,6 @@ import type Query from "metabase-lib/queries/Query";
 
 import type Question from "metabase-lib/Question";
 import type { HoveredObject } from "./hover";
-import type { RemappingHydratedDatasetColumn } from "./columns";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -23,18 +24,12 @@ type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
-};
-
 export interface VisualizationProps {
   series: Series;
   card: Card;
   data: DatasetData;
   rawSeries: RawSeries;
-  settings: ComputedVisualizationSettings;
+  settings: VisualizationSettings;
   headerIcon: IconProps;
   actionButtons: React.ReactNode;
   fontFamily: string;
@@ -189,6 +184,13 @@ export type VisualizationSettingsDefinitions<TObject = unknown> = {
   >;
 };
 
+export type VisualizationColumnSettingsDefinitions<TObject = unknown> = {
+  [id in VisualizationColumnSettingsId]?: VisualizationSettingDefinition<
+    TObject,
+    VisualizationColumnSettings[id]
+  >;
+};
+
 // returned by getSettingWidget
 export type VisualizationSettingWidget<TObject = unknown, TValue = any> = {
   id: string;
@@ -230,7 +232,7 @@ export type VisualizationProperties = {
   minSize: VisualizationGridSize;
   defaultSize: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings: VisualizationSettingsDefinitions<Series>;
 
   placeHolderSeries?: Series;
 

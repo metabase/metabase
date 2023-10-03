@@ -63,6 +63,7 @@ export function columnSettings({
 
 import MetabaseSettings from "metabase/lib/settings";
 import type {
+  VisualizationColumnSettingsDefinitions,
   VisualizationSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
@@ -456,7 +457,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetCol
     },
   };
 
-const COMMON_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetColumn> =
+const COMMON_COLUMN_SETTINGS: VisualizationColumnSettingsDefinitions<DatasetColumn> =
   {
     // markdown_template: {
     //   title: t`Markdown template`,

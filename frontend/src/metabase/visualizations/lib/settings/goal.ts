@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>
@@ -20,7 +21,7 @@ export const getChartGoal = (
   };
 };
 
-export const GRAPH_GOAL_SETTINGS = {
+export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions<Series> = {
   "graph.show_goal": {
     section: t`Display`,
     title: t`Goal line`,

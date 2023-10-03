@@ -76,6 +76,7 @@ export type SeriesSettings = {
   title: string;
   color?: string;
   show_series_values?: boolean;
+  display?: "area" | "bar";
 };
 
 export type SeriesOrderSetting = {
@@ -117,6 +118,41 @@ export type ButtonVariant =
   | "borderless";
 
 export type BasicVisualizationSettings = {
+  title?: string;
+  color?: string;
+  text?: string;
+  display?: "line" | "area" | "bar" | string;
+  axis?: null | "left" | "right";
+  _header_unit?: string;
+  column_title?: string;
+  currency_in_header?: boolean;
+  show_mini_bar?: boolean;
+  _numberFormatter?: any;
+  show_series_values?: boolean;
+
+  click_behavior?: ClickBehavior;
+  actionDisplayType?: ActionDisplayType;
+
+  virtual_card?: VirtualCard;
+  link?: LinkCardSettings;
+
+  number_style?: NumberFormatOptions["number_style"];
+  number_separators?: NumberFormatOptions["number_separators"];
+  currency?: NumberFormatOptions["currency"];
+  currency_style?: NumberFormatOptions["currency_style"];
+  decimals?: NumberFormatOptions["decimals"];
+  scale?: NumberFormatOptions["scale"];
+  prefix?: NumberFormatOptions["prefix"];
+  suffix?: NumberFormatOptions["suffix"];
+
+  date_style?: DateFormatOptions["date_style"];
+  date_abbreviate?: DateFormatOptions["date_abbreviate"];
+  date_separator?: DateFormatOptions["date_separator"];
+  time_style?: DateFormatOptions["time_style"];
+  time_enabled?: OptionsType["time_enabled"];
+};
+
+export type VisualizationSettings = {
   "button.label"?: string;
   "button.variant"?: ButtonVariant;
   "card.description"?: string;
@@ -237,57 +273,23 @@ export type BasicVisualizationSettings = {
   "waterfall.show_total"?: boolean;
   "waterfall.total_color"?: string;
 
-  title?: string;
-  color?: string;
-  text?: string;
-  display?: "line" | "area" | "bar" | string;
-  axis?: null | "left" | "right";
-  _header_unit?: string;
-  column_title?: string;
-  _column_title_full?: string;
-  currency_in_header?: boolean;
-  show_mini_bar?: boolean;
-  _numberFormatter?: any;
-  show_series_values?: boolean;
+  // Nested settings
+  column?: (column: DatasetColumn) => VisualizationColumnSettings;
+  column_settings?: Record<string, VisualizationColumnSettings>;
+  series?: (series: SingleSeries) => SeriesSettings;
+  series_settings?: Record<string, SeriesSettings>;
+  "series_settings.colors"?: { [key: string]: string };
+} & BasicVisualizationSettings;
 
-  click_behavior?: ClickBehavior;
-  actionDisplayType?: ActionDisplayType;
-
-  virtual_card?: VirtualCard;
-  link?: LinkCardSettings;
-
-  number_style?: NumberFormatOptions["number_style"];
-  number_separators?: NumberFormatOptions["number_separators"];
-  currency?: NumberFormatOptions["currency"];
-  currency_style?: NumberFormatOptions["currency_style"];
-  decimals?: NumberFormatOptions["decimals"];
-  scale?: NumberFormatOptions["scale"];
-  prefix?: NumberFormatOptions["prefix"];
-  suffix?: NumberFormatOptions["suffix"];
-
-  date_style?: DateFormatOptions["date_style"];
-  date_abbreviate?: DateFormatOptions["date_abbreviate"];
-  date_separator?: DateFormatOptions["date_separator"];
-  time_style?: DateFormatOptions["time_style"];
-  time_enabled?: OptionsType["time_enabled"];
+export type VisualizationColumnsSettings = {
+  [columnKey in string]: VisualizationColumnSettings;
 };
-
 export type VisualizationColumnSettings = {
-  column: (column: DatasetColumn) => BasicVisualizationSettings;
-  column_settings: {
-    [columnKey in string]: BasicVisualizationSettings;
-  };
-};
-
-export type VisualizationSeriesSettings = {
-  series: (series: SingleSeries) => BasicVisualizationSettings;
-  series_settings: Record<string, SeriesSettings>;
-  "series_settings.colors": { [key: string]: string };
-};
-
-export type VisualizationSettings = BasicVisualizationSettings &
-  Partial<VisualizationColumnSettings> &
-  Partial<VisualizationSeriesSettings>;
+  column?: DatasetColumn;
+  _column_title_full?: string;
+  "pivot_table.column_show_totals"?: boolean;
+} & BasicVisualizationSettings;
+export type VisualizationColumnSettingsId = keyof VisualizationColumnSettings;
 
 export type VisualizationSettingId = keyof VisualizationSettings;
 

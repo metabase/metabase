@@ -21,9 +21,10 @@ import type {
   WidgetName,
 } from "metabase/visualizations/types";
 import type {
-  BasicVisualizationSettings,
   ClickBehavior,
   TransformedSeries,
+  VisualizationColumnSettings,
+  VisualizationColumnsSettings,
   VisualizationSettingId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -307,7 +308,7 @@ export function getClickBehaviorSettings(settings: VisualizationSettings) {
 }
 
 function getColumnClickBehavior(
-  columnSettings?: BasicVisualizationSettings,
+  columnSettings?: VisualizationColumnsSettings,
 ): ColumnClickBehaviors | null {
   if (columnSettings == null) {
     return null;
@@ -337,7 +338,7 @@ const KEYS_TO_COMPARE = new Set([
 ]);
 
 export function getLineAreaBarComparisonSettings(
-  columnSettings: BasicVisualizationSettings,
+  columnSettings: VisualizationColumnSettings,
 ) {
   return _.pick(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
