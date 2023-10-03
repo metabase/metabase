@@ -87,10 +87,10 @@
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
-        audit-collection-id (t2/select-one-fn :id :model/Collection :entity_id (perms/default-audit-collection-entity-id))]
-    (if audit-collection-id
-      (assoc-in graph [:groups admin-group-id audit-collection-id] :read)
-      graph)))
+        audit-collection-id (perms/default-audit-collection-id)]
+    (if (= audit-collection-id ::noop)
+      graph
+      (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
 
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
