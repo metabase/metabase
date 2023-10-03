@@ -6,6 +6,7 @@ import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
+import { AGGREGATION_FUNCTIONS } from "metabase-lib/expressions";
 import type Metadata from "./metadata/Metadata";
 import * as ML from "./v2";
 
@@ -53,6 +54,11 @@ export const columnFinder =
   (tableName: string, columnName: string): ML.ColumnMetadata => {
     const column = columns.find(column => {
       const displayInfo = ML.displayInfo(query, 0, column);
+
+      if (AGGREGATION_FUNCTIONS.has(columnName)) {
+        return displayInfo?.name === columnName;
+      }
+
       return (
         displayInfo?.table?.name === tableName &&
         displayInfo?.name === columnName
