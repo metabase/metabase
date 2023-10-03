@@ -1094,7 +1094,7 @@
 (defenterprise default-audit-collection-id
   "OSS implementation of `audit-db/default-audit-collection-id`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-db [] 0)
+  metabase-enterprise.audit-db [] ::noop)
 
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
