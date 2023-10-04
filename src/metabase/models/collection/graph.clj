@@ -87,7 +87,7 @@
   "In the graph, override the instance analytics collection within the admin group to read."
   [graph]
   (let [admin-group-id      (:id (perms-group/admin))
-        audit-collection-id (perms/default-audit-collection)]
+        audit-collection-id (:id (perms/default-audit-collection))]
     (if (nil? audit-collection-id)
       graph
       (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
