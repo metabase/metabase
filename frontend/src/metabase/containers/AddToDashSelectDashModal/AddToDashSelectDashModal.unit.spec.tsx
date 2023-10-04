@@ -236,6 +236,25 @@ describe("AddToDashSelectDashModal", () => {
           ).not.toBeInTheDocument();
         });
 
+        it('should not render "Create a new dashboard" option when opening public subcollections', async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            noRecentDashboard: true,
+          });
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: COLLECTION.name,
+            }),
+          );
+
+          expect(
+            screen.queryByRole("heading", {
+              name: "Create a new dashboard",
+            }),
+          ).not.toBeInTheDocument();
+        });
+
         it('should render "Create a new dashboard" option when opening personal collections', async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
@@ -285,6 +304,24 @@ describe("AddToDashSelectDashModal", () => {
           await setup({
             noRecentDashboard: true,
           });
+
+          expect(
+            screen.getByRole("heading", {
+              name: "Create a new dashboard",
+            }),
+          ).toBeInTheDocument();
+        });
+
+        it('should render "Create a new dashboard" option when opening public subcollections', async () => {
+          await setup({
+            noRecentDashboard: true,
+          });
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: COLLECTION.name,
+            }),
+          );
 
           expect(
             screen.getByRole("heading", {
