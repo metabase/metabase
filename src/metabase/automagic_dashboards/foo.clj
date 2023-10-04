@@ -121,3 +121,13 @@
        (map :card)
        dash-gen/do-layout)
   )
+
+(defn find-metrics
+  ;; what should this return?
+
+  ;; the metric should include the aggregation clause grounded on a field id.
+  ;;
+  [])
+
+(defn find-dimensions
+  [])
