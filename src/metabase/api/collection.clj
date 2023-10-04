@@ -88,7 +88,9 @@
                                (collection/visible-collection-ids->honeysql-filter-clause
                                 :id
                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                    :order-by [[:type :asc] [:%lower.name :asc]]}) collections
+                              ;; Order NULL collection types first so that audit collections are last
+                    :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                               [:%lower.name :asc]]}) collections
     ;; Remove other users' personal collections
     (if exclude-other-user-collections
       (remove-other-users-personal-collections api/*current-user-id* collections)
