@@ -3,8 +3,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 
-export const settings = {
+export const settings: VisualizationProperties = {
   uiName: "Link",
   canSavePng: false,
   identifier: "link",
@@ -26,13 +27,9 @@ export const settings = {
       dashboard: false,
     },
     link: {
-      value: {
-        url: "",
-      },
       default: {
         url: "",
       },
     },
   },
-  preventDragging: (e: React.SyntheticEvent) => e.stopPropagation(),
 };
