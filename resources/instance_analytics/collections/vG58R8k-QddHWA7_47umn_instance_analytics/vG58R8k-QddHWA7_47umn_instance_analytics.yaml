@@ -2,7 +2,6 @@ authority_level: null
 description: Your instance data and our analysis. This content isn’t editable, but you can duplicate any of it to create your own explorations and reports.
 archived: false
 slug: instance_analytics
-color: '#509EE3'
 name: Instance analytics
 personal_owner_id: null
 type: instance-analytics
