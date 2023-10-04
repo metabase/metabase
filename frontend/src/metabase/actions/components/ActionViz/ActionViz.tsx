@@ -4,6 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import Action from "./Action";
 
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
@@ -70,4 +71,4 @@ export default Object.assign(Action, {
       },
     },
   },
-});
+} as VisualizationProperties);

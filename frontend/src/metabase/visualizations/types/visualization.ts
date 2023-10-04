@@ -1,5 +1,6 @@
 import type {
   Card,
+  DatasetColumn,
   DatasetData,
   RawSeries,
   Series,
@@ -184,9 +185,9 @@ export type VisualizationSettingsDefinitions<TObject = unknown> = {
   >;
 };
 
-export type VisualizationColumnSettingsDefinitions<TObject = unknown> = {
+export type VisualizationColumnSettingsDefinitions = {
   [id in VisualizationColumnSettingsId]?: VisualizationSettingDefinition<
-    TObject,
+    DatasetColumn,
     VisualizationColumnSettings[id]
   >;
 };
@@ -223,7 +224,7 @@ export type VisualizationProperties = {
 
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
-  noHeader: boolean;
+  noHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
@@ -240,13 +241,17 @@ export type VisualizationProperties = {
   // TODO: remove dependency on metabase-lib
   isSensible?: (data: DatasetData, query?: Query) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
-  checkRenderable: (
+  checkRenderable?: (
     series: Series,
     settings: VisualizationSettings,
     query: Query,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+
+  columnSettings?: (
+    column: DatasetColumn,
+  ) => VisualizationColumnSettingsDefinitions;
 };
 
 // TODO: add component property for the react component instead of the intersection

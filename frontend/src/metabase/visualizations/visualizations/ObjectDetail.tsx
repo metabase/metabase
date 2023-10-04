@@ -12,8 +12,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 
-const ObjectDetailProperties = {
+const ObjectDetailProperties: VisualizationProperties = {
   uiName: t`Detail`,
   identifier: "object",
   iconName: "document",
@@ -27,19 +28,16 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...buildTableColumnSettings({ getIsColumnVisible: () => true }),
   },
-  columnSettings: column => {
-    const settings = {
-      column_title: {
-        title: t`Column title`,
-        widget: "input",
-        getDefault: column => formatColumn(column),
-      },
-      click_behavior: {},
-    };
-
-    return settings;
-  },
+  columnSettings: column => ({
+    column_title: {
+      title: t`Column title`,
+      widget: "input",
+      getDefault: column => formatColumn(column),
+    },
+    click_behavior: {},
+  }),
   isSensible: () => true,
 };
 
+// eslint-disable-next-line import/no-default-export
 export default Object.assign(ObjectDetail, ObjectDetailProperties);

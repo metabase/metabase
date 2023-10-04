@@ -457,30 +457,29 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions<DatasetCol
     },
   };
 
-const COMMON_COLUMN_SETTINGS: VisualizationColumnSettingsDefinitions<DatasetColumn> =
-  {
-    // markdown_template: {
-    //   title: t`Markdown template`,
-    //   widget: "input",
-    //   props: {
-    //     placeholder: "{{value}}",
-    //   },
-    // },
-    column: {
-      getValue: column => column,
+const COMMON_COLUMN_SETTINGS: VisualizationColumnSettingsDefinitions = {
+  // markdown_template: {
+  //   title: t`Markdown template`,
+  //   widget: "input",
+  //   props: {
+  //     placeholder: "{{value}}",
+  //   },
+  // },
+  column: {
+    getValue: column => column,
+  },
+  _column_title_full: {
+    getValue: (column, settings) => {
+      let columnTitle = settings["column_title"] || formatColumn(column);
+      const headerUnit = settings["_header_unit"];
+      if (headerUnit) {
+        columnTitle += ` (${headerUnit})`;
+      }
+      return columnTitle;
     },
-    _column_title_full: {
-      getValue: (column, settings) => {
-        let columnTitle = settings["column_title"] || formatColumn(column);
-        const headerUnit = settings["_header_unit"];
-        if (headerUnit) {
-          columnTitle += ` (${headerUnit})`;
-        }
-        return columnTitle;
-      },
-      readDependencies: ["column_title", "_header_unit"],
-    },
-  };
+    readDependencies: ["column_title", "_header_unit"],
+  },
+};
 
 export function getSettingDefinitionsForColumn(
   series: Series,
