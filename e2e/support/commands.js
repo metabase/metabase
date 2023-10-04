@@ -24,6 +24,7 @@ import "./commands/permissions/updatePermissions";
 import "./commands/permissions/sandboxTable";
 
 import "./commands/database/addH2SampleDatabase";
+import "./commands/database/addSQLiteDatabase";
 
 import "./commands/visibility/isVisibleInPopover";
 import "./commands/visibility/findByTextEnsureVisible";
