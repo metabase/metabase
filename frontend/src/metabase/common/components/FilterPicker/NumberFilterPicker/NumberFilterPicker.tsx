@@ -11,7 +11,7 @@ import { Header } from "../Header";
 import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FlexWithScroll } from "./NumberFilterPicker.styled";
+import { FlexWithScroll } from "../FilterPicker.styled";
 
 import { isNumberFilterValid } from "./utils";
 import { numberFilterValueCountMap } from "./constants";
