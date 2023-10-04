@@ -27,7 +27,6 @@ result_metadata:
   - id
   visibility_type: normal
   display_name: ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -50,17 +49,6 @@ result_metadata:
   - dashboard_id
   visibility_type: normal
   display_name: Dashboard ID
-  fingerprint:
-    global:
-      distinct-count: 964
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 13.164144011756061
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -83,17 +71,6 @@ result_metadata:
   - dashboardtab_id
   visibility_type: normal
   display_name: Dashboardtab ID
-  fingerprint:
-    global:
-      distinct-count: 104
-      nil%: 0.8749448934606907
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 1.985598824393828
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -116,17 +93,6 @@ result_metadata:
   - question_id
   visibility_type: normal
   display_name: Question ID
-  fingerprint:
-    global:
-      distinct-count: 3712
-      nil%: 0.2329169728141073
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 10.028655400440853
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
@@ -150,14 +116,6 @@ result_metadata:
   - created_at
   visibility_type: normal
   display_name: Created At
-  fingerprint:
-    global:
-      distinct-count: 4742
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2015-10-24T15:06:24.172Z'
-        latest: '2023-09-21T00:12:54.060828Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -181,14 +139,6 @@ result_metadata:
   - updated_at
   visibility_type: normal
   display_name: Updated At
-  fingerprint:
-    global:
-      distinct-count: 5221
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2022-06-02T13:37:56.486145Z'
-        latest: '2023-09-21T13:18:24.459914Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/Category
@@ -211,18 +161,6 @@ result_metadata:
   - size_x
   visibility_type: normal
   display_name: Size X
-  fingerprint:
-    global:
-      distinct-count: 23
-      nil%: 0
-    type:
-      type/Number:
-        min: 1
-        q1: 6.231338150329106
-        q3: 15.647543451754933
-        max: 24
-        sd: 6.767071177106806
-        avg: 11.868479059515062
   base_type: type/Integer
 - description: null
   semantic_type: null
@@ -245,18 +183,6 @@ result_metadata:
   - size_y
   visibility_type: normal
   display_name: Size Y
-  fingerprint:
-    global:
-      distinct-count: 31
-      nil%: 0
-    type:
-      type/Number:
-        min: 1
-        q1: 3.1826881414282955
-        q3: 5.798712883491861
-        max: 39
-        sd: 2.6853042700448704
-        avg: 4.595885378398238
   base_type: type/Integer
 - description: null
   semantic_type: null
@@ -279,18 +205,6 @@ result_metadata:
   - row
   visibility_type: normal
   display_name: Row
-  fingerprint:
-    global:
-      distinct-count: 323
-      nil%: 0
-    type:
-      type/Number:
-        min: 0
-        q1: 1.9382922546877586
-        q3: 23.153250670120297
-        max: 494
-        sd: 56.065451345367705
-        avg: 25.129316678912563
   base_type: type/Integer
 - description: null
   semantic_type: type/Category
@@ -313,18 +227,6 @@ result_metadata:
   - col
   visibility_type: normal
   display_name: Col
-  fingerprint:
-    global:
-      distinct-count: 22
-      nil%: 0
-    type:
-      type/Number:
-        min: 0
-        q1: 0
-        q3: 11.814122649476184
-        max: 21
-        sd: 6.805388672509809
-        avg: 5.514621601763409
   base_type: type/Integer
 - description: null
   semantic_type: type/SerializedJSON
@@ -347,17 +249,6 @@ result_metadata:
   - visualization_settings
   visibility_type: normal
   display_name: Visualization Settings
-  fingerprint:
-    global:
-      distinct-count: 2003
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 1
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 158.65260837619397
   base_type: type/Text
 - description: null
   semantic_type: type/SerializedJSON
@@ -380,17 +271,6 @@ result_metadata:
   - parameter_mappings
   visibility_type: normal
   display_name: Parameter Mappings
-  fingerprint:
-    global:
-      distinct-count: 1880
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 1
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 61.29301983835415
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false

@@ -2,7 +2,6 @@ authority_level: null
 description: null
 archived: false
 slug: custom_reports
-color: '#509EE3'
 name: Custom reports
 personal_owner_id: null
 type: null
