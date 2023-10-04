@@ -26,7 +26,6 @@ result_metadata:
   - user_id
   visibility_type: normal
   display_name: User ID
-  fingerprint: null
   base_type: type/Integer
 - description: null
   semantic_type: type/Name
@@ -48,17 +47,6 @@ result_metadata:
   - email
   visibility_type: normal
   display_name: Email
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 1
-        percent-state: 0
-        average-length: 19.5
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -80,17 +68,6 @@ result_metadata:
   - first_name
   visibility_type: normal
   display_name: First Name
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 4.5
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -112,17 +89,6 @@ result_metadata:
   - last_name
   visibility_type: normal
   display_name: Last Name
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 6
   base_type: type/Text
 - description: null
   semantic_type: type/Name
@@ -144,17 +110,6 @@ result_metadata:
   - full_name
   visibility_type: normal
   display_name: Full Name
-  fingerprint:
-    global:
-      distinct-count: 5
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 9.8
   base_type: type/Text
 - description: null
   semantic_type: type/JoinTimestamp
@@ -177,14 +132,6 @@ result_metadata:
   - date_joined
   visibility_type: normal
   display_name: Date Joined
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2023-06-08T14:02:23.48704Z'
-        latest: '2023-06-08T14:42:49.058862Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: null
@@ -207,14 +154,6 @@ result_metadata:
   - last_login
   visibility_type: normal
   display_name: Last Login
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0.5
-    type:
-      type/DateTime:
-        earliest: '2023-06-09T13:37:55.93202Z'
-        latest: '2023-06-09T13:37:55.93202Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -237,14 +176,6 @@ result_metadata:
   - updated_at
   visibility_type: normal
   display_name: Updated At
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2023-06-08T14:42:59.563714Z'
-        latest: '2023-06-09T17:27:11.418799Z'
   base_type: type/DateTime
 - description: null
   semantic_type: type/Category
@@ -266,10 +197,6 @@ result_metadata:
   - is_admin
   visibility_type: normal
   display_name: Is Admin
-  fingerprint:
-    global:
-      distinct-count: 1
-      nil%: 0
   base_type: type/Boolean
 - description: null
   semantic_type: type/Category
@@ -291,10 +218,6 @@ result_metadata:
   - is_active
   visibility_type: normal
   display_name: Is Active
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
   base_type: type/Boolean
 - description: null
   semantic_type: type/Source
@@ -316,17 +239,6 @@ result_metadata:
   - sso_source
   visibility_type: normal
   display_name: Sso Source
-  fingerprint:
-    global:
-      distinct-count: 1
-      nil%: 1
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 0
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -348,17 +260,6 @@ result_metadata:
   - locale
   visibility_type: normal
   display_name: Locale
-  fingerprint:
-    global:
-      distinct-count: 1
-      nil%: 1
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 0
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false
