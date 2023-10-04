@@ -538,6 +538,75 @@ describe("QueryBuilder", () => {
   });
 
   describe("unsaved changes warning", () => {
+    describe("editing models", () => {
+      describe("editing queries", () => {
+        it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+
+          await waitFor(() => {
+            expect(rowLimitInput).toHaveValue(10);
+          });
+
+          userEvent.tab();
+
+          history.goBack();
+
+          expect(
+            screen.getByText("Changes were not saved"),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(
+              "Navigating away from here will cause you to lose any changes you have made.",
+            ),
+          ).toBeInTheDocument();
+        });
+
+        it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          history.goBack();
+
+          expect(
+            screen.queryByText("Changes were not saved"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByText(
+              "Navigating away from here will cause you to lose any changes you have made.",
+            ),
+          ).not.toBeInTheDocument();
+        });
+      });
+    });
+
     describe("native queries", () => {
       it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
