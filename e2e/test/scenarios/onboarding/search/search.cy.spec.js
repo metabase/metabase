@@ -565,7 +565,7 @@ describe("scenarios > search", () => {
 
       it("should remove last_edited_by filter when `X` is clicked on filter", () => {
         cy.visit(
-          `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&created_by=${ADMIN_USER_ID}`,
+          `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&last_edited_by=${ADMIN_USER_ID}`,
         );
 
         expectSearchResultItemNameContent({
