@@ -15,13 +15,11 @@
         (testing "Admins can add an official collection"
           (mt/with-model-cleanup [:model/Collection]
             (let [resp (mt/user-http-request :crowberto :post 200 "collection" {:name            "An official collection"
-                                                                                :color           "#000000"
                                                                                 :authority_level "official"})]
               (is (malli= [:map
                            [:description       :nil]
                            [:archived          [:= false]]
                            [:slug              [:= "an_official_collection"]]
-                           [:color             [:= "#000000"]]
                            [:name              [:= "An official collection"]]
                            [:personal_owner_id :nil]
                            [:authority_level   [:= "official"]]
@@ -38,19 +36,17 @@
 
           (testing "but the type has to be valid"
             (mt/user-http-request :crowberto :post 400 "collection"
-                                  {:name "foo" :color "#f38630" :authority_level "invalid-type"})))
+                                  {:name "foo" :authority_level "invalid-type"})))
 
         (testing "non-admins get 403"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post 403 "collection" {:name            "An official collection"
-                                                                      :color           "#000000"
                                                                       :authority_level "official"}))))))
 
     (testing "fails to add an official collection if doesn't have any premium features"
       (premium-features-test/with-premium-features #{}
         (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
-                                                                        :color           "#000000"
                                                                         :authority_level "official"})))))))
 
 (deftest update-collection-authority-happy-path-test

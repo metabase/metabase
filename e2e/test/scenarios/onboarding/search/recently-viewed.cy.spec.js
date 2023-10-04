@@ -51,7 +51,7 @@ describe("search > recently viewed", () => {
       `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
     );
     assertRecentlyViewedItem(
-      ORDERS_QUESTION_ID,
+      1,
       "Orders",
       "Question",
       `/question/${ORDERS_QUESTION_ID}-orders`,
@@ -71,7 +71,7 @@ describe("search > recently viewed", () => {
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "Enter" });
 
-    cy.url().should("match", /\/question\/1-orders$/);
+    cy.url().should("match", /\/question\/\d+-orders$/);
   });
 });
 
@@ -83,7 +83,7 @@ describeEE("search > recently viewed > enterprise features", () => {
 
     cy.request("POST", "/api/moderation-review", {
       status: "verified",
-      moderated_item_id: 1,
+      moderated_item_id: ORDERS_QUESTION_ID,
       moderated_item_type: "card",
     });
 

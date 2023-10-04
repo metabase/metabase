@@ -7,13 +7,14 @@ import {
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
-    cy.intercept("GET", "/api/card/*").as("card");
+    cy.intercept("POST", "/api/card").as("saveCard");
 
     restore();
     cy.signInAsAdmin();
@@ -30,7 +31,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should set up an email alert", () => {
-    openAlertForQuestion();
+    openAlertForQuestion(ORDERS_QUESTION_ID);
     cy.button("Done").click();
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
@@ -41,7 +42,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
-    openAlertForQuestion();
+    openAlertForQuestion(ORDERS_QUESTION_ID);
 
     // Turn off email
     toggleChannel("Email");
@@ -71,7 +72,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       cy.findByRole("button", { name: "Save" }).click();
     });
 
-    cy.wait("@card");
+    cy.wait("@saveCard");
 
     modal().within(() => {
       cy.findByRole("button", { name: "Set up an alert" }).click();
@@ -85,7 +86,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 });
 
-function openAlertForQuestion(id = 1) {
+function openAlertForQuestion(id) {
   visitQuestion(id);
   cy.icon("bell").click();
 

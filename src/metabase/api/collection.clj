@@ -819,7 +819,7 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name color description parent_id namespace authority_level]}]
+  [{:keys [name description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
   (when (some? authority_level)
@@ -832,7 +832,6 @@
       Collection
       (merge
         {:name        name
-         :color       color
          :description description
          :authority_level authority_level
          :namespace   namespace}
@@ -841,9 +840,8 @@
 
 (api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
+  [:as {{:keys [name description parent_id namespace authority_level] :as body} :body}]
   {name            ms/NonBlankString
-   color           [:maybe [:re collection/hex-color-regex]]
    description     [:maybe ms/NonBlankString]
    parent_id       [:maybe ms/PositiveInt]
    namespace       [:maybe ms/NonBlankString]
@@ -899,10 +897,9 @@
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
+  [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
   {id              ms/PositiveInt
    name            [:maybe ms/NonBlankString]
-   color           [:maybe [:re collection/hex-color-regex]]
    description     [:maybe ms/NonBlankString]
    archived        [:maybe ms/BooleanValue]
    parent_id       [:maybe ms/PositiveInt]
@@ -922,7 +919,7 @@
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
       (when (seq updates)
         (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that

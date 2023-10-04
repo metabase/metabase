@@ -38,7 +38,7 @@
    (partial instance? klass)])
 
 (defn maps-with-unique-key
-  "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
+  "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
   [maps-schema k]
   (mu/with-api-error-message
     [:and

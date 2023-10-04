@@ -36,7 +36,7 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Comparison of embedding types
 
-| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Signed](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
 |----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
 | Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |

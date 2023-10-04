@@ -19,8 +19,7 @@
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (t2.with-temp/with-temp [Collection c {:name       "No Entity ID Collection"
                                              :slug       "no_entity_id_collection"
-                                             :created_at now
-                                             :color      "#FF0000"}]
+                                             :created_at now}]
         (t2/update! Collection (:id c) {:entity_id nil})
         (letfn [(entity-id []
                   (some-> (t2/select-one-fn :entity_id Collection :id (:id c)) str/trim))]
@@ -34,8 +33,7 @@
         (testing "Error: duplicate entity IDs"
           (t2.with-temp/with-temp [Collection c2 {:name       "No Entity ID Collection"
                                                   :slug       "no_entity_id_collection"
-                                                  :created_at now
-                                                  :color      "#FF0000"}]
+                                                  :created_at now}]
             (t2/update! Collection (:id c2) {:entity_id nil})
             (letfn [(entity-id []
                       (some-> (t2/select-one-fn :entity_id Collection :id (:id c2)) str/trim))]

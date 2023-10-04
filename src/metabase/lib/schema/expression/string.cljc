@@ -27,4 +27,4 @@
   [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
-  [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]])
+  [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
