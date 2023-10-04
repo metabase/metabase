@@ -1086,13 +1086,13 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise default-audit-collection-id
-  "OSS implementation of `audit-db/default-audit-collection-id`, which is an enterprise feature, so does nothing in the OSS
+(defenterprise default-audit-collection
+  "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise default-custom-reports-id
-  "OSS implementation of `audit-db/default-custom-reports-id`, which is an enterprise feature, so does nothing in the OSS
+(defenterprise default-custom-reports-collection
+  "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
@@ -1112,7 +1112,7 @@
 (defn is-collection-id-audit?
   "Check if an id is one of the audit collection ids."
   [id]
-  (contains? (set [(default-audit-collection-id) (default-custom-reports-id)]) id))
+  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
 
 (defn is-parent-collection-audit?
   "Check if an instance's parent collection is the audit collection."

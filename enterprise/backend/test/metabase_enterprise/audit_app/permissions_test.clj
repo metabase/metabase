@@ -15,18 +15,18 @@
 
 (deftest permissions-instance-analytics-audit-v2-test
   (premium-features-test/with-premium-features #{:audit-app}
-    (mt/with-temp [PermissionsGroup {group-id :id}                    {}
-                   Database         {database-id :id}                 {}
-                   Table            view-table                        {:db_id database-id :name "v_users"}
-                   Collection       {collection-id :id} {}]
+    (mt/with-temp [PermissionsGroup {group-id :id}    {}
+                   Database         {database-id :id} {}
+                   Table            view-table        {:db_id database-id :name "v_users"}
+                   Collection       collection        {}]
       (with-redefs [audit-db/default-audit-db-id                (constantly database-id)
-                    audit-db/default-audit-collection-id        (constantly collection-id)]
+                    audit-db/default-audit-collection           (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
-          (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :read))
+          (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
           (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]
             (is (contains? new-perms (table-query-path view-table)))))
         (testing "Unable to update instance analytics to writable"
           (is (thrown-with-msg?
                Exception
                #"Unable to make audit collections writable."
-               (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id collection-id] :write)))))))))
+               (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))

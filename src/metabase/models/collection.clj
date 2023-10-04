@@ -70,7 +70,7 @@
   ([instance]
    (mi/can-write? :model/Collection (:id instance)))
   ([model pk]
-   (if (= pk (perms/default-audit-collection-id))
+   (if (= pk (:id (perms/default-audit-collection)))
      false
      (mi/current-user-has-full-permissions? :write model pk))))
 
@@ -79,14 +79,6 @@
    (perms/can-read-audit-helper :model/Collection instance))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Collection :id pk))))
-
-(defn collection-entity-id->id
-  "Returns id from entity id for collections. Memoizes from entity id."
-  [entity-id]
-  ((mdb.connection/memoize-for-application-db
-    (fn [entity-id]
-      (t2/select-one-pk :model/Collection :entity_id entity-id))) entity-id))
-
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."

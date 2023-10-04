@@ -1646,22 +1646,32 @@
 
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
-    (with-redefs [perms/default-audit-collection-id (constantly 1111)]
-      (t2.with-temp/with-temp [Collection collection {:id 1111}
-                               Card       card       {:collection_id (:id collection)}
-                               Dashboard  dashboard  {:collection_id (:id collection)}]
+    (t2.with-temp/with-temp [Collection audit-collection {}
+                             Card       audit-card       {:collection_id (:id audit-collection)}
+                             Dashboard  audit-dashboard  {:collection_id (:id audit-collection)}
+                             Collection cr-collection    {}
+                             Card       cr-card          {:collection_id (:id cr-collection)}
+                             Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
+      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
+                    perms/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (premium-features-test/with-premium-features #{:audit-app}
-            (is (not (mi/can-write? collection))
+            (is (not (mi/can-write? audit-collection))
                 "Admin isn't able to write to audit collection")
-            (is (not (mi/can-write? card))
+            (is (not (mi/can-write? audit-card))
                 "Admin isn't able to write to audit collection card")
-            (is (not (mi/can-write? dashboard))
+            (is (not (mi/can-write? audit-dashboard))
                 "Admin isn't able to write to audit collection dashboard"))
           (premium-features-test/with-premium-features #{}
-            (is (not (mi/can-write? collection))
+            (is (not (mi/can-read? audit-collection))
                 "Admin isn't able to read audit collection when audit app isn't enabled")
-            (is (not (mi/can-write? card))
+            (is (not (mi/can-read? audit-card))
                 "Admin isn't able to read audit collection card when audit app isn't enabled")
-            (is (not (mi/can-write? dashboard))
-                "Admin isn't able to read audit collection dashboard when audit app isn't enabled")))))))
+            (is (not (mi/can-read? audit-dashboard))
+                "Admin isn't able to read audit collection dashboard when audit app isn't enabled")
+            (is (not (mi/can-read? cr-collection))
+                "Admin isn't able to read custom reports collection when audit app isn't enabled")
+            (is (not (mi/can-read? cr-card))
+                "Admin isn't able to read custom reports card when audit app isn't enabled")
+            (is (not (mi/can-read? cr-dashboard))
+                "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
