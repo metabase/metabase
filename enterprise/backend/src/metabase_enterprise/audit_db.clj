@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
@@ -25,11 +26,32 @@
   []
   13371337)
 
-(defenterprise default-audit-collection-entity-id
+(def ^:private default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
+  "vG58R8k-QddHWA7_47umn")
+
+(def ^:private default-custom-reports-entity-id
+  "Default custom reports entity id."
+  "okNLSZKdSxaoG58JSQY54")
+
+(defn collection-entity-id->collection
+  "Returns the collection from entity id for collections. Memoizes from entity id."
+  [entity-id]
+  ((mdb.connection/memoize-for-application-db
+    (fn [entity-id]
+      (t2/select-one :model/Collection :entity_id entity-id))) entity-id))
+
+(defenterprise default-custom-reports-collection
+  "Default custom reports collection."
   :feature :none
   []
-  "vG58R8k-QddHWA7_47umn")
+  (collection-entity-id->collection default-custom-reports-entity-id))
+
+(defenterprise default-audit-collection
+  "Default audit collection (instance analytics) collection."
+  :feature :none
+  []
+  (collection-entity-id->collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
