@@ -56,7 +56,7 @@ const COLLECTION = createMockCollection({
   location: "/",
 });
 
-const NESTED_COLLECTION = createMockCollection({
+const SUBCOLLECTION = createMockCollection({
   id: 2,
   name: "Nested collection",
   can_write: true,
@@ -71,7 +71,7 @@ const PERSONAL_COLLECTION = createMockCollection({
   location: "/",
 });
 
-const NESTED_PERSONAL_COLLECTION = createMockCollection({
+const PERSONAL_SUBCOLLECTION = createMockCollection({
   id: CURRENT_USER.personal_collection_id + 1,
   name: "Nested personal collection",
   can_write: true,
@@ -86,9 +86,9 @@ const ROOT_COLLECTION = createMockCollection({
 const COLLECTIONS = [
   ROOT_COLLECTION,
   COLLECTION,
-  NESTED_COLLECTION,
+  SUBCOLLECTION,
   PERSONAL_COLLECTION,
-  NESTED_PERSONAL_COLLECTION,
+  PERSONAL_SUBCOLLECTION,
 ];
 
 interface SetupOpts {
@@ -287,7 +287,7 @@ describe("AddToDashSelectDashModal", () => {
           );
           userEvent.click(
             screen.getByRole("heading", {
-              name: NESTED_PERSONAL_COLLECTION.name,
+              name: PERSONAL_SUBCOLLECTION.name,
             }),
           );
 
@@ -360,7 +360,7 @@ describe("AddToDashSelectDashModal", () => {
           );
           userEvent.click(
             screen.getByRole("heading", {
-              name: NESTED_PERSONAL_COLLECTION.name,
+              name: PERSONAL_SUBCOLLECTION.name,
             }),
           );
 
