@@ -88,7 +88,13 @@
             (search.filter/search-context->applicable-models
              (merge default-search-ctx
                     {:models   #{"dashboard" "dataset" "table"}
-                     :last-edited-at "past3days"})))))))
+                     :last-edited-at "past3days"})))))
+
+   (testing "search native query"
+     (is (= #{"dataset" "action" "card"}
+            (search.filter/search-context->applicable-models
+             (merge default-search-ctx
+                    {:search-native-query true})))))))
 
 (deftest joined-with-table?-test
   (are [expected args]
