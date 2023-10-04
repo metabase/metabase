@@ -43,7 +43,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Compile CLJS
-        run: yarn build:cljs
+        run: yarn build-pure:cljs
       - name: Run Prettier formatting linter
         run: yarn run lint-prettier-pure
       - name: Run ESLint linter
