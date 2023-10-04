@@ -593,6 +593,18 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+          userEvent.tab();
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "{backspace}");
+          userEvent.tab();
+
           history.goBack();
 
           expect(
