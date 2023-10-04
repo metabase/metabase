@@ -2,10 +2,12 @@
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -60,12 +62,27 @@
 
 (mu/defn matching-field-metadata :- [:maybe TableMetadataFieldWithOptionalID]
   "Find Metadata that matches `field-metadata` from a set of `other-metadata`, if any exists. Useful for finding the
-  corresponding Metabase Field for field metadata from the DB, or vice versa."
+  corresponding Metabase Field for field metadata from the DB, or vice versa. Will prefer exact matches."
   [field-metadata :- TableMetadataFieldWithOptionalID
    other-metadata :- [:set TableMetadataFieldWithOptionalID]]
-  (some
-   (fn [other-field-metadata]
-     (when (= (canonical-name field-metadata)
-              (canonical-name other-field-metadata))
-       other-field-metadata))
-   other-metadata))
+  (let [matches (keep
+                  (fn [other-field-metadata]
+                    (when (= (canonical-name field-metadata)
+                             (canonical-name other-field-metadata))
+                      other-field-metadata))
+                  other-metadata)]
+    (case (count matches)
+      0
+      nil
+
+      1
+      (first matches)
+
+      (if-let [exact (some (fn [match]
+                             (when (= (:name field-metadata) (:name match))
+                               match))
+                           matches)]
+        exact
+        (do
+          (log/warn (i18n/trs "Found multiple matching field metadata for:") (:name field-metadata) (map :name matches))
+          (first matches))))))

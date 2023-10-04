@@ -221,13 +221,11 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.request("POST", "/api/collection", {
         name: "Personal nested Collection",
-        color: "#509ee3",
         description: `nested 1 level`,
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       }).then(({ body }) => {
         cy.request("POST", "/api/collection", {
           name: "Personal nested nested Collection",
-          color: "#509ee3",
           description: `nested 2 levels`,
           parent_id: body.id,
         }).then(({ body }) => {
@@ -286,7 +284,9 @@ describe("scenarios > home > custom homepage", () => {
       restore();
       cy.signInAsAdmin();
       cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
     });
 
     it("should redirect you if you do not have permissions for set dashboard", () => {

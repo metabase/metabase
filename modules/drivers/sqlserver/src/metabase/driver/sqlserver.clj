@@ -8,7 +8,6 @@
    [java-time :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -477,17 +476,16 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defmethod driver.common/current-db-time-date-formatters :sqlserver
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
-
-(defmethod driver.common/current-db-time-native-query :sqlserver
-  [_]
-  "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
-
-(defmethod driver/current-db-time :sqlserver
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :sqlserver
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT sysdatetimeoffset();")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
+           (t/zone-offset offset-date-time)))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]

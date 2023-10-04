@@ -6,6 +6,7 @@ import {
   getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -20,7 +21,7 @@ const filter = {
 const questionDetails = {
   query: { "source-table": PRODUCTS_ID, limit: 2 },
   // Admin's personal collection is always the first one (hence, the id 1)
-  collection_id: 1,
+  collection_id: ADMIN_PERSONAL_COLLECTION_ID,
 };
 
 const dashboardDetails = {

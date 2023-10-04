@@ -7,7 +7,7 @@ export function useJoinCondition(
   stageIndex: number,
   table: Lib.Joinable,
   join?: Lib.Join,
-  condition?: Lib.JoinConditionClause,
+  condition?: Lib.JoinCondition,
 ) {
   const previousCondition = usePrevious(condition);
 
@@ -21,9 +21,9 @@ export function useJoinCondition(
   const [rhsColumn, _setRHSColumn] = useState<Lib.ColumnMetadata | undefined>(
     conditionParts?.rhsColumn,
   );
-  const [operator, _setOperator] = useState<Lib.FilterOperator | undefined>(
-    getInitialConditionOperator(query, stageIndex, condition),
-  );
+  const [operator, _setOperator] = useState<
+    Lib.JoinConditionOperator | undefined
+  >(getInitialConditionOperator(query, stageIndex, condition));
 
   useEffect(() => {
     if (condition && previousCondition !== condition) {
@@ -67,15 +67,21 @@ export function useJoinCondition(
     [query, stageIndex, join, table, lhsColumn, rhsColumn],
   );
 
-  const setOperator = (operator: Lib.FilterOperator) => {
+  const setOperator = (operator: Lib.JoinConditionOperator) => {
     _setOperator(operator);
     if (lhsColumn && rhsColumn) {
-      return Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      return Lib.joinConditionClause(
+        query,
+        stageIndex,
+        operator,
+        lhsColumn,
+        rhsColumn,
+      );
     }
   };
 
   const maybeSyncTemporalUnit = (
-    condition: Lib.JoinConditionClause,
+    condition: Lib.JoinCondition,
     col1: Lib.ColumnMetadata,
     col2: Lib.ColumnMetadata,
   ) => {
@@ -95,7 +101,13 @@ export function useJoinCondition(
 
   const setLHSColumn = (lhsColumn: Lib.ColumnMetadata) => {
     if (operator && lhsColumn && rhsColumn) {
-      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(
+        query,
+        stageIndex,
+        operator,
+        lhsColumn,
+        rhsColumn,
+      );
       condition = maybeSyncTemporalUnit(condition, lhsColumn, rhsColumn);
 
       const { lhsColumn: nextLHSColumn, rhsColumn: nextRHSColumn } =
@@ -112,7 +124,13 @@ export function useJoinCondition(
 
   const setRHSColumn = (rhsColumn: Lib.ColumnMetadata) => {
     if (operator && lhsColumn && rhsColumn) {
-      let condition = Lib.joinConditionClause(operator, lhsColumn, rhsColumn);
+      let condition = Lib.joinConditionClause(
+        query,
+        stageIndex,
+        operator,
+        lhsColumn,
+        rhsColumn,
+      );
       condition = maybeSyncTemporalUnit(condition, rhsColumn, lhsColumn);
 
       const { lhsColumn: nextLHSColumn, rhsColumn: nextRHSColumn } =
@@ -161,7 +179,7 @@ function getDefaultJoinOperator(
 function getInitialConditionOperator(
   query: Lib.Query,
   stageIndex: number,
-  condition?: Lib.JoinConditionClause,
+  condition?: Lib.JoinCondition,
 ) {
   if (condition) {
     const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(

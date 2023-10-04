@@ -12,7 +12,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const [table, _setTable] = useState(
     join ? Lib.joinedThing(query, join) : undefined,
   );
-  const [conditions, _setConditions] = useState<Lib.JoinConditionClause[]>(
+  const [conditions, _setConditions] = useState<Lib.JoinCondition[]>(
     join ? Lib.joinConditions(join) : [],
   );
 
@@ -132,7 +132,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   );
 
   const addCondition = useCallback(
-    (condition: Lib.JoinConditionClause) => {
+    (condition: Lib.JoinCondition) => {
       const nextConditions = [...conditions, condition];
       _setConditions(nextConditions);
 
@@ -150,7 +150,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   );
 
   const updateCondition = useCallback(
-    (conditionIndex: number, nextCondition: Lib.JoinConditionClause) => {
+    (conditionIndex: number, nextCondition: Lib.JoinCondition) => {
       const currentCondition = conditions[conditionIndex];
       const nextConditions = [...conditions];
       nextConditions[conditionIndex] = nextCondition;
@@ -166,7 +166,7 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   );
 
   const removeCondition = useCallback(
-    (condition: Lib.JoinConditionClause) => {
+    (condition: Lib.JoinCondition) => {
       const nextConditions = conditions.filter(
         _condition => _condition !== condition,
       );

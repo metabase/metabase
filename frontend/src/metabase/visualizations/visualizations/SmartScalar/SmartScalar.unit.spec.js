@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);

@@ -101,7 +101,7 @@ export function JoinStep({
     }
   };
 
-  const handleAddCondition = (condition: Lib.JoinConditionClause) => {
+  const handleAddCondition = (condition: Lib.JoinCondition) => {
     const nextQuery = addCondition(condition);
     if (nextQuery) {
       updateQuery(nextQuery);
@@ -111,7 +111,7 @@ export function JoinStep({
 
   const handleUpdateCondition = (
     conditionIndex: number,
-    nextCondition: Lib.JoinConditionClause,
+    nextCondition: Lib.JoinCondition,
   ) => {
     const nextQuery = updateCondition(conditionIndex, nextCondition);
     if (nextQuery) {
@@ -119,7 +119,7 @@ export function JoinStep({
     }
   };
 
-  const handleRemoveCondition = (condition: Lib.JoinConditionClause) => {
+  const handleRemoveCondition = (condition: Lib.JoinCondition) => {
     const nextQuery = removeCondition(condition);
     if (nextQuery) {
       updateQuery(nextQuery);
@@ -129,7 +129,7 @@ export function JoinStep({
   const handleNewConditionClick = () => setIsAddingNewCondition(true);
 
   const renderJoinCondition = (
-    condition?: Lib.JoinConditionClause,
+    condition?: Lib.JoinCondition,
     index?: number,
   ) => {
     if (!table) {
@@ -261,12 +261,12 @@ function JoinConditionRightPart({
 interface JoinConditionProps {
   query: Lib.Query;
   stageIndex: number;
-  condition?: Lib.JoinConditionClause;
+  condition?: Lib.JoinCondition;
   join?: Lib.Join;
   table: Lib.Joinable;
   readOnly?: boolean;
   canRemove: boolean;
-  onChange: (condition: Lib.JoinConditionClause) => void;
+  onChange: (condition: Lib.JoinCondition) => void;
   onChangeLHSColumn: (column: Lib.ColumnMetadata) => void;
   onRemove: () => void;
 }
@@ -303,7 +303,7 @@ function JoinCondition({
   const isNewCondition = !condition;
   const isComplete = Boolean(lhsColumn && rhsColumn && operator);
 
-  const handleOperatorChange = (operator: Lib.FilterOperator) => {
+  const handleOperatorChange = (operator: Lib.JoinConditionOperator) => {
     const nextCondition = setOperator(operator);
     if (nextCondition) {
       onChange(nextCondition);

@@ -5,14 +5,16 @@ import type {
   CardMetadata,
   Clause,
   ColumnMetadata,
-  FilterOperator,
   Join,
-  JoinConditionClause,
+  JoinCondition,
+  JoinConditionOperator,
   JoinConditionParts,
   JoinStrategy,
   Query,
   TableMetadata,
 } from "./types";
+import { expressionParts } from "./expression";
+import { displayInfo, isColumnMetadata } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
@@ -30,17 +32,20 @@ export function joins(query: Query, stageIndex: number): Join[] {
 
 export function joinClause(
   joinable: Joinable,
-  conditions: JoinConditionClause[],
+  conditions: JoinCondition[],
 ): Join {
   return ML.join_clause(joinable, conditions);
 }
 
 export function joinConditionClause(
-  filterOperator: FilterOperator,
+  query: Query,
+  stageIndex: number,
+  operator: JoinConditionOperator,
   lhsColumn: ColumnMetadata,
   rhsColumn: ColumnMetadata,
-): JoinConditionClause {
-  return ML.filter_clause(filterOperator, lhsColumn, rhsColumn);
+): JoinCondition {
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  return ML.expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {
@@ -62,36 +67,41 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
   return ML.with_join_strategy(join, strategy);
 }
 
-export function joinConditions(join: Join): JoinConditionClause[] {
+export function joinConditions(join: Join): JoinCondition[] {
   return ML.join_conditions(join);
 }
 
 export function joinConditionParts(
   query: Query,
   stageIndex: number,
-  condition: JoinConditionClause,
+  condition: JoinCondition,
 ): JoinConditionParts {
   const {
-    operator,
-    column: lhsColumn,
-    args,
-    options,
-  } = ML.filter_parts(query, stageIndex, condition);
+    operator: operatorName,
+    args: [lhsColumn, rhsColumn],
+  } = expressionParts(query, stageIndex, condition);
 
-  // Join conditions have a single arg and it's always a column
-  const rhsColumn = args[0] as ColumnMetadata;
+  if (!isColumnMetadata(lhsColumn) || !isColumnMetadata(rhsColumn)) {
+    throw new TypeError("Unexpected join condition");
+  }
 
-  return {
-    operator,
+  const operator = joinConditionOperators(
+    query,
+    stageIndex,
     lhsColumn,
     rhsColumn,
-    options,
-  };
+  ).find(op => displayInfo(query, stageIndex, op).shortName === operatorName);
+
+  if (!operator) {
+    throw new TypeError("Unexpected join condition");
+  }
+
+  return { operator, lhsColumn, rhsColumn };
 }
 
 export function withJoinConditions(
   join: Join,
-  newConditions: JoinConditionClause[],
+  newConditions: JoinCondition[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
 }
@@ -99,9 +109,9 @@ export function withJoinConditions(
 export function joinConditionUpdateTemporalBucketing(
   query: Query,
   stageIndex: number,
-  condition: JoinConditionClause,
+  condition: JoinCondition,
   bucket: Bucket,
-): JoinConditionClause {
+): JoinCondition {
   return ML.join_condition_update_temporal_bucketing(
     query,
     stageIndex,
@@ -182,7 +192,7 @@ export function joinConditionOperators(
   stageIndex: number,
   lhsColumn?: ColumnMetadata,
   rhsColumn?: ColumnMetadata,
-): FilterOperator[] {
+): JoinConditionOperator[] {
   return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
 }
 
@@ -190,7 +200,7 @@ export function suggestedJoinCondition(
   query: Query,
   stageIndex: number,
   joinable: Joinable,
-): JoinConditionClause | null {
+): JoinCondition | null {
   return ML.suggested_join_condition(query, stageIndex, joinable);
 }
 

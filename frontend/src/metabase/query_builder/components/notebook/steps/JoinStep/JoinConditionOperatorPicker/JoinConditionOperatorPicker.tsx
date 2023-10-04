@@ -10,11 +10,11 @@ import {
 interface JoinConditionOperatorPickerProps {
   query: Lib.Query;
   stageIndex: number;
-  operator?: Lib.FilterOperator;
-  operators: Lib.FilterOperator[];
+  operator?: Lib.JoinConditionOperator;
+  operators: Lib.JoinConditionOperator[];
   disabled?: boolean;
   isConditionComplete: boolean;
-  onChange: (operator: Lib.FilterOperator) => void;
+  onChange: (operator: Lib.JoinConditionOperator) => void;
 }
 
 export function JoinConditionOperatorPicker({

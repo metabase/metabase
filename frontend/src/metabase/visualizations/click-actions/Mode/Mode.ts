@@ -49,6 +49,8 @@ export class Mode {
         return question.setDatasetQuery(Lib.toLegacyQuery(updatedQuery));
       };
 
+      // TODO: those calculations are really expensive and must be memoized at some level
+      // check `_visualizationIsClickableCached` from TableInteractive
       const availableDrillThrus = Lib.availableDrillThrus(
         query,
         stageIndex,
@@ -58,7 +60,6 @@ export class Mode {
         clicked?.dimensions,
       );
 
-      // TODO: those calculations are really expensive and should be memoized at some level
       drills = availableDrillThrus
         .flatMap(drill => {
           const drillDisplayInfo = Lib.displayInfo(query, stageIndex, drill);

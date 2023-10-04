@@ -1,5 +1,8 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import {
+  setupDashboardEndpoints,
+  setupDashboardNotFoundEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -40,6 +43,7 @@ describe("useDatabaseQuery", () => {
     expect(screen.getByText(TEST_DASHBOARD.name)).toBeInTheDocument();
   });
   it("should return an error when it can't find a dashboard", async () => {
+    setupDashboardNotFoundEndpoint(TEST_DASHBOARD);
     renderWithProviders(<TestComponent />);
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText("Error")).toBeInTheDocument();

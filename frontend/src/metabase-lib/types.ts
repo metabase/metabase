@@ -46,9 +46,18 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
-declare const JoinConditionClause: unique symbol;
-export type JoinConditionClause = unknown & {
-  _opaque: typeof JoinConditionClause;
+declare const Join: unique symbol;
+export type Join = unknown & { _opaque: typeof Join };
+
+declare const JoinStrategy: unique symbol;
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
+
+declare const JoinCondition: unique symbol;
+export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
+
+declare const JoinConditionOperator: unique symbol;
+export type JoinConditionOperator = unknown & {
+  _opaque: typeof JoinConditionOperator;
 };
 
 export type Clause =
@@ -56,18 +65,13 @@ export type Clause =
   | BreakoutClause
   | ExpressionClause
   | FilterClause
-  | JoinConditionClause
+  | JoinCondition
   | OrderByClause;
 
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
-
-declare const ColumnWithOperators: unique symbol;
-export type ColumnWithOperators = ColumnMetadata & {
-  _opaque: typeof ColumnWithOperators;
-};
 
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
@@ -143,40 +147,99 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-declare const FilterOperator: unique symbol;
-export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+export type ExpressionOperator =
+  | "+"
+  | "-"
+  | "*"
+  | "/"
+  | "="
+  | "!="
+  | ">"
+  | ">="
+  | "<"
+  | "<="
+  | "is-null"
+  | "not-null"
+  | "is-empty"
+  | "not-empty"
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-width"
+  | "between"
+  | "interval"
+  | "time-interval"
+  | "relative-datetime";
 
-export type FilterOperatorDisplayInfo = {
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year";
+
+export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
+
+export type ExpressionParts = {
+  operator: ExpressionOperator;
+  args: (ExpressionArg | ExpressionParts)[];
+  options: ExpressionOptions;
+};
+
+export type ExpressionOptions = {
+  "case-sensitive"?: boolean;
+  "include-current"?: boolean;
+};
+
+export type TextFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: string[];
+  options: TextFilterOptions;
+};
+
+export type TextFilterOptions = {
+  "case-sensitive"?: boolean;
+};
+
+export type NumberFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: number[];
+};
+
+export type BooleanFilterParts = {
+  operator: ExpressionOperator;
+  column: ColumnMetadata;
+  values: boolean[];
+};
+
+export type RelativeDateFilterParts = {
+  column: ColumnMetadata;
+  value: number | "current";
+  unit: TemporalUnit;
+  offsetValue?: number;
+  offsetUnit?: TemporalUnit;
+  options: RelativeDateFilterOptions;
+};
+
+export type RelativeDateFilterOptions = {
+  "include-current"?: boolean;
+};
+
+export type JoinConditionOperatorDisplayInfo = {
   displayName: string;
   shortName: string;
   default?: boolean;
 };
 
-export type ExpressionArg =
-  | null
-  | boolean
-  | number
-  | string
-  | ColumnMetadata
-  | Clause;
-
-export type FilterParts = {
-  operator: FilterOperator;
-  options: Record<string, unknown>;
-  column: ColumnWithOperators | null;
-  args: ExpressionArg[];
-};
-
-export type JoinConditionParts = Omit<FilterParts, "column" | "args"> & {
+export type JoinConditionParts = {
+  operator: JoinConditionOperator;
   lhsColumn: ColumnMetadata;
   rhsColumn: ColumnMetadata;
 };
-
-declare const Join: unique symbol;
-export type Join = unknown & { _opaque: typeof Join };
-
-declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof Join };
 
 export type JoinStrategyDisplayInfo = {
   displayName: string;

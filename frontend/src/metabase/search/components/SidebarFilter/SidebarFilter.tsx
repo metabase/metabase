@@ -11,7 +11,7 @@ import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
 import { useSelector } from "metabase/lib/redux";
-import { getIsNavbarOpen } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import {
   DropdownApplyButtonDivider,

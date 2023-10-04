@@ -58,7 +58,6 @@ describeWithSnowplow(
 
       cy.request("POST", "/api/collection", {
         name: `Uploads Collection`,
-        color: "#000000", // shockingly, this unused field is required
         parent_id: null,
       }).then(({ body: { id: collectionId } }) => {
         cy.wrap(collectionId).as("collectionId");
@@ -107,7 +106,6 @@ describeWithSnowplow(
 
           cy.request("POST", "/api/collection", {
             name: `Uploads Collection`,
-            color: "#000000", // shockingly, this unused field is required
             parent_id: null,
           }).then(({ body: { id: collectionId } }) => {
             cy.wrap(collectionId).as("collectionId");
@@ -287,7 +285,7 @@ function uploadFile(testFile, valid = true) {
       cy.findByText("Start exploring").click();
     });
 
-    cy.url().should("include", `/model/5`);
+    cy.url().should("include", `/model/`);
     cy.findByTestId("TableInteractive-root");
   } else {
     cy.findByRole("status").within(() => {
