@@ -102,6 +102,11 @@ export const SHORTCUT_OPTION_GROUPS: ShortcutOption[][] = [
 
 export const TYPE_OPTIONS: TypeOption[] = [
   {
+    label: t`Relative dates…`,
+    type: "relative",
+    operators: [],
+  },
+  {
     label: t`Exclude…`,
     type: "exclude",
     operators: ["!=", "is-null", "not-null"],

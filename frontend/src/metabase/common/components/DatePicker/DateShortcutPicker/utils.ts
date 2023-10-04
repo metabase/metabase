@@ -13,7 +13,9 @@ export function getShortcutOptionGroups(
 export function getTypeOptions(
   availableOperators: ReadonlyArray<DatePickerOperator>,
 ): TypeOption[] {
-  return TYPE_OPTIONS.filter(option =>
-    option.operators.some(operator => availableOperators.includes(operator)),
+  return TYPE_OPTIONS.filter(
+    option =>
+      option.operators.length === 0 ||
+      option.operators.some(operator => availableOperators.includes(operator)),
   );
 }
