@@ -66,7 +66,7 @@
   [colls]
   (if (premium-features/enable-audit-app?)
     colls
-    (filter (fn [coll] (not= (:entity_id coll) (perms/default-audit-collection-entity-id))) colls)))
+    (filter (fn [coll] (not (perms/is-collection-id-audit? (:id coll)))) colls)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
