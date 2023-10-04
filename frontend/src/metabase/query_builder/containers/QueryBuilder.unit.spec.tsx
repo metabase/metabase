@@ -669,6 +669,63 @@ describe("QueryBuilder", () => {
               ),
             ).toBeInTheDocument();
           });
+
+          it("does not show custom warning modal when leaving unedited metadata via SPA navigation", async () => {
+            const { history } = await setup({
+              card: TEST_MODEL_CARD,
+              dataset: TEST_MODEL_DATASET,
+              initialRoute: "/home",
+            });
+
+            history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
+
+            await waitFor(() => {
+              expect(
+                screen.queryByTestId("loading-spinner"),
+              ).not.toBeInTheDocument();
+            });
+
+            const columnDisplayName = await screen.findByTitle("Display name");
+
+            userEvent.click(columnDisplayName);
+            userEvent.type(columnDisplayName, "X");
+
+            await waitFor(() => {
+              expect(columnDisplayName).toHaveValue(
+                `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+              );
+            });
+
+            userEvent.tab();
+
+            userEvent.click(columnDisplayName);
+            userEvent.type(columnDisplayName, "{backspace}");
+
+            await waitFor(() => {
+              expect(columnDisplayName).toHaveValue(
+                TEST_MODEL_DATASET_COLUMN.display_name,
+              );
+            });
+
+            userEvent.tab();
+
+            await waitFor(() => {
+              expect(
+                screen.getByRole("button", { name: "Save changes" }),
+              ).toBeDisabled();
+            });
+
+            history.goBack();
+
+            expect(
+              screen.queryByText("Changes were not saved"),
+            ).not.toBeInTheDocument();
+            expect(
+              screen.queryByText(
+                "Navigating away from here will cause you to lose any changes you have made.",
+              ),
+            ).not.toBeInTheDocument();
+          });
         });
       });
     });
