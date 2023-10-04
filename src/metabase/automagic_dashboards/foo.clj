@@ -206,32 +206,6 @@
        (map (fn [[metric-name metric-definition]]
               (assoc metric-definition :metric-name metric-name)))))
 
-(comment
-  (require '[metabase.automagic-dashboards.core :as magic])
-  (let [template-name    "GenericTable"
-        entity           (t2/select-one :model/Metric :name "Churn")
-        {template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context     (#'magic/make-base-context (magic/->root entity))
-        bound-dimensions (#'magic/bind-dimensions base-context template-dimensions)]
-    (find-metrics
-     entity
-     (normalize-metrics dashboard-template)
-     bound-dimensions))
-
-  (let [template-name    "GenericTable"
-        entity           (t2/select-one :model/Table :name "ACCOUNTS")
-        {template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context     (#'magic/make-base-context (magic/->root entity))
-        bound-dimensions (#'magic/bind-dimensions base-context template-dimensions)]
-    (find-metrics
-      entity
-      (normalize-metrics dashboard-template)
-      bound-dimensions))
-  )
-
-
 ;;; dimensions
 
 (defn- fieldspec-matcher
@@ -397,3 +371,28 @@
                              0  (update a :matches concat (:matches b))
                              -1 b))
               {})))
+
+(comment
+  (require '[metabase.automagic-dashboards.core :as magic])
+  (let [template-name    "GenericTable"
+        entity           (t2/select-one :model/Metric :name "Churn")
+        {template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context     (#'magic/make-base-context (magic/->root entity))
+        bound-dimensions (find-dimensions base-context template-dimensions)]
+    (find-metrics
+      entity
+      (normalize-metrics dashboard-template)
+      bound-dimensions))
+
+  (let [template-name    "GenericTable"
+        entity           (t2/select-one :model/Table :name "ACCOUNTS")
+        {template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context     (#'magic/make-base-context (magic/->root entity))
+        bound-dimensions (find-dimensions base-context template-dimensions)]
+    (find-metrics
+      entity
+      (normalize-metrics dashboard-template)
+      bound-dimensions))
+  )
