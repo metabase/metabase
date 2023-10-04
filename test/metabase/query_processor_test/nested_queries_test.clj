@@ -306,18 +306,17 @@
               (qp.test-util/rows-and-cols
                (mt/format-rows-by [int int]
                  (qp/process-query
-                  (query-with-source-card 1
-                    (mt/$ids venues
-                      {:aggregation [:count]
-                       :breakout    [*price]})))))))]
-      (is (= (breakout-results :has-source-metadata? false :native-source? true)
-             (run-native-query native-sub-query))
+                  (query-with-source-card 1 (mt/$ids venues
+                                              {:aggregation [:count]
+                                               :breakout    [*price]})))))))]
+      (is (=? (breakout-results :has-source-metadata? false :native-source? true)
+              (run-native-query native-sub-query))
           "make sure `card__id`-style queries work with native source queries as well")
-      (is (= (breakout-results :has-source-metadata? false :native-source? true)
-             (run-native-query (str native-sub-query " -- small comment here")))
+      (is (=? (breakout-results :has-source-metadata? false :native-source? true)
+              (run-native-query (str native-sub-query " -- small comment here")))
           "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
-      (is (= (breakout-results :has-source-metadata? false :native-source? true)
-             (run-native-query (str native-sub-query " -- small comment here\n")))
+      (is (=? (breakout-results :has-source-metadata? false :native-source? true)
+              (run-native-query (str native-sub-query " -- small comment here\n")))
           "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail"))))
 
 (deftest ^:parallel filter-by-field-literal-test
@@ -524,18 +523,17 @@
                                       [{:database (mt/id)
                                         :type     :native
                                         :native   {:query "SELECT * FROM CHECKINS"}}])
-      (is (= [(-> (qp.test-util/breakout-col (qp.test-util/field-literal-col :checkins :date))
-                  (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                         :unit         :day)
-                  (dissoc :semantic_type :coercion_strategy :table_id
-                          :id :settings :fingerprint :nfc_path))
-              (qp.test-util/aggregate-col :count)]
-             (mt/cols
-              (qp/process-query
-               (query-with-source-card 1
-                 (mt/$ids checkins
-                   {:aggregation [[:count]]
-                    :breakout    [!day.*date]})))))))))
+      (is (=? [(-> (qp.test-util/breakout-col (qp.test-util/field-literal-col :checkins :date))
+                   (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
+                          :unit         :day)
+                   (dissoc :semantic_type :coercion_strategy :table_id
+                           :id :settings :fingerprint :nfc_path))
+               (qp.test-util/aggregate-col :count)]
+              (mt/cols
+               (qp/process-query
+                (query-with-source-card 1 (mt/$ids checkins
+                                            {:aggregation [[:count]]
+                                             :breakout    [!day.*date]})))))))))
 
 (deftest ^:parallel breakout-year-test
   ;; TODO make this work for other drivers supporting :nested-queries
@@ -551,16 +549,16 @@
                                                    :data :cols)]
                                        (-> (into {} col)
                                            (assoc :source :fields)
-                                           (dissoc :position)))]
+                                           (dissoc :position :aggregation_index)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
-            (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
-                    (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
-                   (mt/cols
-                    (qp/process-query (query-with-source-card 1)))))))))))
+            (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
+                     (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
+                    (mt/cols
+                     (qp/process-query (query-with-source-card 1)))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)

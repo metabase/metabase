@@ -2,6 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { Icon } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
@@ -10,6 +11,8 @@ export interface ItemRootProps {
   isSelected: boolean;
   hasChildren?: boolean;
 }
+
+export const ItemIcon = styled(Icon)``;
 
 export const ItemRoot = styled.div<ItemRootProps>`
   margin-top: 0.5rem;
@@ -21,6 +24,10 @@ export const ItemRoot = styled.div<ItemRootProps>`
     css`
       color: ${color("white")};
       background-color: ${color("brand")};
+
+      & ${ExpandButton} {
+        color: ${color("white")};
+      }
     `}
 
   ${({ canSelect, hasChildren }) =>
@@ -31,6 +38,24 @@ export const ItemRoot = styled.div<ItemRootProps>`
       &:hover {
         color: ${color("white")};
         background-color: ${color("brand")};
+
+        & ${ExpandButton} {
+          /**
+           * If the item can't be selected, show the ExpandButton's hovered
+           * state to indicate that the ExapndButton's click handler will be
+           * called if the user clicks on the item.
+           */
+          color: ${canSelect ? color("white") : color("brand")};
+          background-color: ${canSelect ? color("brand") : color("white")};
+
+          &:hover {
+            color: ${color("brand")};
+            & ${ItemIcon} {
+              color: ${color("brand")};
+            }
+            background-color: ${color("white")};
+          }
+        }
       }
     `}
 `;
@@ -51,11 +76,6 @@ export const ExpandButton = styled(IconButtonWrapper)<{ canSelect: boolean }>`
 
   color: ${color("text-light")};
   border: 1px solid ${color("border")};
-
-  &:hover {
-    background-color: ${props =>
-      props.canSelect ? color("white") : color("brand")};
-  }
 `;
 
 ExpandButton.defaultProps = {
