@@ -215,7 +215,7 @@ describe("AddToDashSelectDashModal", () => {
         );
       });
 
-      describe("question is in personal collection", () => {
+      describe("question is in a personal collection", () => {
         const CARD_IN_PERSONAL_COLLECTION = createMockCard({
           id: 2,
           name: "Card in a personal collection",
@@ -241,7 +241,6 @@ describe("AddToDashSelectDashModal", () => {
             card: CARD_IN_PERSONAL_COLLECTION,
             noRecentDashboard: true,
           });
-          // await setup();
 
           userEvent.click(
             screen.getByRole("heading", {
@@ -259,6 +258,61 @@ describe("AddToDashSelectDashModal", () => {
         it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
+            noRecentDashboard: true,
+          });
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          );
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: NESTED_PERSONAL_COLLECTION.name,
+            }),
+          );
+
+          expect(
+            screen.getByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).toBeInTheDocument();
+        });
+      });
+
+      describe("question is in a public collection", () => {
+        it('should render "Create a new dashboard" option when opening public collections', async () => {
+          await setup({
+            noRecentDashboard: true,
+          });
+
+          expect(
+            screen.getByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).toBeInTheDocument();
+        });
+
+        it('should render "Create a new dashboard" option when opening personal collections', async () => {
+          await setup({
+            noRecentDashboard: true,
+          });
+
+          userEvent.click(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          );
+
+          expect(
+            screen.getByRole("heading", {
+              name: /create a new dashboard/i,
+            }),
+          ).toBeInTheDocument();
+        });
+
+        it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
+          await setup({
             noRecentDashboard: true,
           });
 
