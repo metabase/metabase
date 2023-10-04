@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
-import { BackButton } from "../BackButton";
-import { OptionButton } from "../OptionButton";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
@@ -97,25 +96,41 @@ export function ExcludeOptionPicker({
 
   return (
     <div>
-      <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
+      <Button
+        c="text.1"
+        display="block"
+        variant="subtle"
+        leftIcon={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >
+        {t`Exclude…`}
+      </Button>
       <Divider />
       <Box p="sm">
         {unitOptions.map((option, index) => (
-          <OptionButton key={index} onClick={() => onSelectUnit(option.unit)}>
+          <Button
+            key={index}
+            c="text.2"
+            display="block"
+            variant="subtle"
+            onClick={() => onSelectUnit(option.unit)}
+          >
             {option.label}
-          </OptionButton>
+          </Button>
         ))}
         {unitOptions.length > 0 && operatorOptions.length > 0 && (
           <Divider mx="md" my="sm" />
         )}
         {operatorOptions.map((option, index) => (
-          <OptionButton
+          <Button
             key={index}
-            isSelected={option.operator === value?.operator}
+            c={option.operator === value?.operator ? "brand.1" : "text.2"}
+            display="block"
+            variant="subtle"
             onClick={() => handleChange(option.operator)}
           >
             {option.label}
-          </OptionButton>
+          </Button>
         ))}
       </Box>
     </div>
@@ -174,7 +189,15 @@ function ExcludeValuePicker({
 
   return (
     <div>
-      <BackButton onClick={onBack}>{option?.label}</BackButton>
+      <Button
+        c="text.1"
+        display="block"
+        variant="subtle"
+        leftIcon={<Icon name="chevronleft" />}
+        onClick={onBack}
+      >
+        {option?.label}
+      </Button>
       <Divider />
       <Stack p="md">
         <Checkbox
