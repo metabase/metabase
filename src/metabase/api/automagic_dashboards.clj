@@ -8,7 +8,8 @@
    [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.metric-x-rays :as metric-x-rays]
+   [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+   [metabase.automagic-dashboards.foo :as metric-x-rays]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -272,7 +273,7 @@
     (api/read-check metric)
     (->> metric
          metric-x-rays/instantiate-affinities
-         (metric-x-rays/create-dashboard {:dashboard-name metric-name}))))
+         (dash-gen/create-dashboard {:dashboard-name metric-name}))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"

@@ -1,12 +1,7 @@
-(ns metabase.automagic-dashboards.metric-x-rays
-  (:require
-    [clojure.math :as math]
-    [clojure.math.combinatorics :as math.combo]
-    [clojure.walk :as walk]
-    [toucan2.core :as t2]))
+(ns metabase.automagic-dashboards.foo-dashboard-generator
+  (:require [clojure.math :as math]
+            [toucan2.core :as t2]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Chart generation code. This could be its very own ns independent of affinity calculation.
 
 (defmulti create-metric-chart (juxt :affinity-set :chart))
 
@@ -158,90 +153,3 @@
      :param_fields       {}
      :auto_apply_filters true
      :ordered_cards      cards}))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Global affinity definitions
-
-(defn affinity-set-interestingness [affinity-set]
-  (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
-
-(def affinity-specs
-  (mapv
-    (fn [{:keys [affinity-set] :as m}]
-      (assoc m :affinity-interestingness (affinity-set-interestingness affinity-set)))
-    [{:affinity-set #{:type/Longitude :type/Latitude} :charts [:map :binned-map]}
-     {:affinity-set #{:type/Country} :charts [:map]}
-     ;; How does this look?
-     {:affinity-set #{:type/State} :charts [:map]}
-     ;{:affinity-set #{:type/ZipCode} :charts [:map]}
-     {:affinity-set #{:type/Source} :charts [:bar]}
-     {:affinity-set #{:type/Category} :charts [:bar]}
-     {:affinity-set #{:type/CreationTimestamp} :charts [:line]}
-     {:affinity-set #{:type/Quantity} :charts [:line]}
-     {:affinity-set #{:type/Discount} :charts [:line]}]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Code for creation of instantiated affinities
-
-(defn find-field-ids [m]
-  (let [fields (atom #{})]
-    (walk/prewalk
-      (fn [v]
-        (when (vector? v)
-          (let [[f id] v]
-            (when (and id (= :field f))
-              (swap! fields conj id))))
-        v)
-      m)
-    @fields))
-
-(defn semantic-groups
-  [{:keys [table_id definition]}]
-  (let [field-ids            (find-field-ids definition)
-        potential-dimensions (t2/select :model/Field
-                               :id [:not-in field-ids]
-                               :table_id table_id
-                               :semantic_type [:not-in [:type/PK]])]
-    (update-vals
-      (->> potential-dimensions
-           (group-by :semantic_type))
-      (fn [vs] (set vs)))))
-
-(defn instantiate-affinities
-  [metric]
-  (let [semantic-groups      (semantic-groups metric)]
-    (for [{:keys [affinity-set] :as affinity-spec} affinity-specs
-          :when (every? semantic-groups affinity-set)
-          :let [bindings (map semantic-groups affinity-set)]
-          dimensions (apply math.combo/cartesian-product bindings)]
-      (assoc affinity-spec
-        :metric       metric
-        :dimensions   dimensions))))
-
-(comment
-  (map (juxt :name :id) (t2/select :model/Metric))
-  ;(["Churn" 785] ["gmail" 909] ["Weird Thing" 910] ["Multitable Metric" 920])
-  (->> (t2/select :model/Metric)
-       (map (fn [{:keys [name id] :as metric}]
-              [name id (keys (semantic-groups metric))])))
-
-  (let [{metric-name :name :as metric} (t2/select-one :model/Metric :name "Churn")]
-    (->> metric
-         instantiate-affinities
-         (create-dashboard {:dashboard-name metric-name})))
-
-  (->> (t2/select-one :model/Metric :name "Churn")
-       instantiate-affinities
-       (mapv (fn [affinity]
-               (-> affinity
-                   (update :dimensions #(mapv :name %))
-                   (update :metric :name)))))
-
-  (->> (t2/select-one :model/Metric :name "Weird Thing")
-       instantiate-affinities)
-
-
-  (->> (instantiate-affinities (t2/select-one :model/Metric :name "Churn"))
-       (map :card)
-       do-layout)
-  )
