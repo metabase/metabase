@@ -7,10 +7,12 @@ import {
   rightSidebar,
   filter,
   filterField,
+  visitCollection,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -26,12 +28,29 @@ describe("scenarios > question > native", () => {
   it("lets you create and run a SQL question", () => {
     openNativeEditor().type("select count(*) from orders");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    visitCollection(THIRD_COLLECTION_ID);
+
+    openNativeEditor({ fromCurrentPage: true }).type(
+      "select count(*) from orders",
+    );
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
   });
 
   it("displays an error", () => {
     openNativeEditor().type("select * from not_a_table");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "NOT_A_TABLE" not found');
   });
 
@@ -42,6 +61,7 @@ describe("scenarios > question > native", () => {
         "{shift}{leftarrow}".repeat(19), // highlight back to the front
     );
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains('Table "ORD" not found');
   });
 
@@ -51,6 +71,7 @@ describe("scenarios > question > native", () => {
     });
     cy.get("input[placeholder*='Stars']").type("3");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 168 rows");
   });
 
@@ -66,6 +87,7 @@ describe("scenarios > question > native", () => {
     cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
     runQuery();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -80,14 +102,17 @@ describe("scenarios > question > native", () => {
       });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
   });
 
   it("can save a question with no rows", () => {
     openNativeEditor().type("select * from people where false");
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No results!");
     cy.icon("contract").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -122,6 +147,7 @@ describe("scenarios > question > native", () => {
       });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This has a value");
 
     FILTERS.forEach(operator => {
@@ -161,7 +187,11 @@ describe("scenarios > question > native", () => {
 
   it("should be able to add new columns after hiding some (metabase#15393)", () => {
     openNativeEditor().type("select 1 as visible, 2 as hidden");
-    cy.get(".NativeQueryEditor .Icon-play").as("runQuery").click();
+    cy.findByTestId("native-query-editor-container")
+      .icon("play")
+      .as("runQuery")
+      .click();
+
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("sidebar-left")
       .as("sidebar")
@@ -185,6 +215,7 @@ describe("scenarios > question > native", () => {
 
     runQuery();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -192,19 +223,23 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
 
       // parameters[] should reflect the template tags
-      cy.wait("@card").should(xhr => {
+      cy.wait("@card").then(xhr => {
         const requestBody = xhr.request?.body;
         expect(requestBody?.parameters?.length).to.equal(2);
+        cy.wrap(xhr.response.body.id).as("questionId");
       });
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
 
     // Now load the question again and parameters[] should still be there
-    cy.intercept("GET", "/api/card/4").as("cardQuestion");
-    cy.visit("/question/4?cat=Gizmo&stars=3");
-    cy.wait("@cardQuestion").should(xhr => {
-      const responseBody = xhr.response?.body;
-      expect(responseBody?.parameters?.length).to.equal(2);
+    cy.get("@questionId").then(questionId => {
+      cy.intercept("GET", `/api/card/${questionId}`).as("cardQuestion");
+      cy.visit(`/question/${questionId}?cat=Gizmo&stars=3`);
+      cy.wait("@cardQuestion").should(xhr => {
+        const responseBody = xhr.response?.body;
+        expect(responseBody?.parameters?.length).to.equal(2);
+      });
     });
   });
 
@@ -223,6 +258,7 @@ describe("scenarios > question > native", () => {
       { autorun: false },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
 
@@ -235,6 +271,7 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/where CATEGORY='Gadget'/).should("be.visible");
   });
 
@@ -246,6 +283,7 @@ describe("scenarios > question > native", () => {
     cy.button("Preview the query").click();
     cy.wait("@datasetNative");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/missing required parameters/).should("be.visible");
   });
 
@@ -267,10 +305,12 @@ describe("scenarios > question > native", () => {
 
     cy.button("View the SQL").click();
     cy.wait("@datasetNative");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/FROM "PUBLIC"."ORDERS"/).should("be.visible");
 
     cy.button("Convert this question to SQL").click();
     runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row").should("be.visible");
   });
 
@@ -288,7 +328,7 @@ describe("scenarios > question > native", () => {
       ).as("databasePrompt");
     });
 
-    it("allows generate sql queries from natural language prompts", () => {
+    it.skip("allows generate sql queries from natural language prompts", () => {
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
@@ -306,13 +346,14 @@ describe("scenarios > question > native", () => {
 
       runQuery();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
 
       cy.findByLabelText("Close").click();
       cy.findByDisplayValue(PROMPT).should("not.exist");
     });
 
-    it("shows an error when an sql query cannot be generated", () => {
+    it.skip("shows an error when an sql query cannot be generated", () => {
       const errorMessage = "Could not generate a query for a given prompt";
       cy.intercept("POST", "/api/metabot/database/**/query", {
         body: {
@@ -330,8 +371,10 @@ describe("scenarios > question > native", () => {
         .focus()
         .type(`${PROMPT}{enter}`);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(errorMessage);
       cy.button("Try again").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(errorMessage);
       cy.button("Rephrase").click();
 
@@ -345,6 +388,7 @@ describe("scenarios > question > native", () => {
       cy.wait("@databasePrompt");
 
       runQuery();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
     });
   });

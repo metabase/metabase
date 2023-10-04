@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
@@ -6,7 +6,7 @@ import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -66,7 +66,6 @@ export default class AccordionList extends Component {
 
     // section getters/render props
     renderSectionIcon: PropTypes.func,
-    renderSectionExtra: PropTypes.func,
     renderSearchSection: PropTypes.func,
 
     // item getters/render props
@@ -83,6 +82,7 @@ export default class AccordionList extends Component {
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
+    showSpinner: PropTypes.func,
     showItemArrows: PropTypes.bool,
 
     searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
@@ -111,9 +111,7 @@ export default class AccordionList extends Component {
     hideEmptySectionsInSearch: false,
 
     // section getters/render props
-    renderSectionIcon: section =>
-      section.icon && <Icon name={section.icon} size={18} />,
-    renderSectionExtra: () => null,
+    renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
 
     // item getters/render props
     itemIsClickable: item => true,
@@ -121,10 +119,11 @@ export default class AccordionList extends Component {
     renderItemName: item => item.name,
     renderItemDescription: item => item.description,
     renderItemExtra: item => null,
-    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} />,
     getItemClassName: item => item.className,
     getItemStyles: item => {},
     hasInitialFocus: true,
+    showSpinner: _item => false,
   };
 
   componentDidMount() {

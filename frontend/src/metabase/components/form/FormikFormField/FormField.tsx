@@ -1,6 +1,6 @@
-import React from "react";
+import type * as React from "react";
 
-import {
+import type {
   FieldName,
   FieldValues,
   FormField as FormFieldType,
@@ -127,4 +127,5 @@ function FormField<Values>({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormField;

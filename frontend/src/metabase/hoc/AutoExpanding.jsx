@@ -1,16 +1,20 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-// If the composed element increases from it's original width, sets `expand` to true
-//
-// Used for components which we initially want to be small, but if they expand
-// beyond their initial size we want to fix their size to be larger so it doesn't
-// jump around, etc
+/**
+ * If the composed element increases from it's original width, sets `expand` to true
+ *
+ * Used for components which we initially want to be small, but if they expand
+ * beyond their initial size we want to fix their size to be larger so it doesn't
+ * jump around, etc
+ *
+ * @deprecated HOCs are deprecated
+ */
 export default ComposedComponent =>
   ExplicitSize()(
-    class AutoExpanding extends React.Component {
+    class AutoExpanding extends Component {
       state = {
         expand: false,
       };

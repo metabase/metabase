@@ -24,6 +24,7 @@ describe("issue 25537", () => {
     cy.icon("model").click();
     cy.wait("@getCollectionContent");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(questionDetails.name).should("exist");
   });
 });

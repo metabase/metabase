@@ -1,9 +1,8 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 import moment from "moment-timezone";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   computeFilterTimeRange,
   getTimeComponent,
@@ -12,7 +11,7 @@ import {
   TIME_SELECTOR_DEFAULT_HOUR,
   TIME_SELECTOR_DEFAULT_MINUTE,
 } from "metabase-lib/queries/utils/query-time";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
@@ -113,4 +112,5 @@ const DatePickerFooter: React.FC<Props> = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatePickerFooter;

@@ -41,12 +41,15 @@ describe("issue 25990", () => {
   it("should allow to filter by a column in a joined table (metabase#25990)", () => {
     visitQuestionAdhoc(questionDetails);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People - User").click();
     cy.findByPlaceholderText("Enter an ID").type("10");
     cy.button("Apply Filters").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is 10").should("be.visible");
   });
 });

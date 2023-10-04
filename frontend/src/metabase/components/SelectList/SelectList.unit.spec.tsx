@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import { screen, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

@@ -1,16 +1,15 @@
-import React from "react";
+import type * as React from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import {
-  EntityMenuIconButton,
-  EntityMenuIconButtonProps,
-} from "./EntityMenuTrigger.styled";
+import type { EntityMenuIconButtonProps } from "./EntityMenuTrigger.styled";
+import { EntityMenuIconButton } from "./EntityMenuTrigger.styled";
 
 type EntityMenuTriggerProps = {
   icon: string;
   onClick: () => void;
   open?: boolean;
   tooltip?: string;
+  tooltipPlacement?: "top" | "bottom";
   triggerProps?: EntityMenuIconButtonProps;
   trigger?: React.ReactElement;
   ariaLabel?: string;
@@ -21,6 +20,7 @@ const EntityMenuTrigger = ({
   onClick,
   open,
   tooltip,
+  tooltipPlacement,
   triggerProps,
   trigger,
   ariaLabel,
@@ -38,7 +38,7 @@ const EntityMenuTrigger = ({
     />
   );
   return tooltip ? (
-    <Tooltip tooltip={tooltip} isEnabled={!open}>
+    <Tooltip tooltip={tooltip} isEnabled={!open} placement={tooltipPlacement}>
       {triggerContent}
     </Tooltip>
   ) : (
@@ -46,4 +46,5 @@ const EntityMenuTrigger = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityMenuTrigger;

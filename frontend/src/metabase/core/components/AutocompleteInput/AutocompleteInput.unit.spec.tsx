@@ -1,8 +1,8 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import AutocompleteInput, { AutocompleteInputProps } from "./AutocompleteInput";
+import type { AutocompleteInputProps } from "./AutocompleteInput";
+import AutocompleteInput from "./AutocompleteInput";
 
 const OPTIONS = ["Banana", "Orange", "Mango"];
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -97,4 +97,5 @@ function TableClickBehaviorView({
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableClickBehaviorView;

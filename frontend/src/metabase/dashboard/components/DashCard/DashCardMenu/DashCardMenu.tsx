@@ -1,23 +1,22 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import * as Urls from "metabase/lib/urls";
-import Icon from "metabase/components/Icon";
-import {
-  downloadQueryResults,
-  DownloadQueryResultsOpts,
-} from "metabase/query_builder/actions";
+import { Icon } from "metabase/core/components/Icon";
+import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
+import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import {
+import { editQuestion } from "metabase/dashboard/actions";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
+import InternalQuery from "metabase-lib/queries/InternalQuery";
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
@@ -37,13 +36,15 @@ interface TriggerProps {
 }
 
 interface DispatchProps {
-  onDownload: (opts: DownloadQueryResultsOpts) => void;
+  onEditQuestion: (question: Question) => void;
+  onDownloadResults: (opts: DownloadQueryResultsOpts) => void;
 }
 
 type DashCardMenuProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
-  onDownload: downloadQueryResults,
+  onEditQuestion: editQuestion,
+  onDownloadResults: downloadQueryResults,
 };
 
 const DashCardMenu = ({
@@ -54,11 +55,12 @@ const DashCardMenu = ({
   uuid,
   token,
   params,
-  onDownload,
+  onEditQuestion,
+  onDownloadResults,
 }: DashCardMenuProps) => {
   const [{ loading }, handleDownload] = useAsyncFn(
     async (type: string) => {
-      await onDownload({
+      await onDownloadResults({
         type,
         question,
         result,
@@ -91,9 +93,7 @@ const DashCardMenu = ({
       canEditQuestion(question) && {
         title: `Edit question`,
         icon: "pencil",
-        link: Urls.question(question.card(), {
-          mode: question.isNative() ? "view" : "notebook",
-        }),
+        action: () => onEditQuestion(question),
       },
       canDownloadResults(result) && {
         title: loading ? t`Downloading…` : t`Download results`,
@@ -102,12 +102,12 @@ const DashCardMenu = ({
         content: handleMenuContent,
       },
     ],
-    [question, result, loading, handleMenuContent],
+    [question, result, loading, handleMenuContent, onEditQuestion],
   );
 
   return (
     <CardMenuRoot
-      className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
+      className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
@@ -124,6 +124,10 @@ const DashCardMenu = ({
 interface QueryDownloadWidgetOpts {
   question: Question;
   result?: Dataset;
+  isXray?: boolean;
+  isEmbed: boolean;
+  isPublic?: boolean;
+  isEditing: boolean;
 }
 
 const canEditQuestion = (question: Question) => {
@@ -138,8 +142,26 @@ const canDownloadResults = (result?: Dataset) => {
   );
 };
 
-DashCardMenu.shouldRender = ({ question, result }: QueryDownloadWidgetOpts) => {
-  return canEditQuestion(question) || canDownloadResults(result);
+DashCardMenu.shouldRender = ({
+  question,
+  result,
+  isXray,
+  isEmbed,
+  isPublic,
+  isEditing,
+}: QueryDownloadWidgetOpts) => {
+  const isInternalQuery = question.query() instanceof InternalQuery;
+  if (isEmbed) {
+    return isEmbed;
+  }
+  return (
+    !isInternalQuery &&
+    !isPublic &&
+    !isEditing &&
+    !isXray &&
+    (canEditQuestion(question) || canDownloadResults(result))
+  );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(DashCardMenu);

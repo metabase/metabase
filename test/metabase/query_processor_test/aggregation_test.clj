@@ -3,12 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.field :refer [Field]]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.util :as tu]))
 
-(deftest no-aggregation-test
+(deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that no aggregation just returns rows as-is."
       (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3]
@@ -25,43 +25,50 @@
                (mt/run-mbql-query venues
                  {:limit 10, :order-by [[:asc $id]]})))))))
 
-(deftest basic-aggregations-test
+(deftest ^:parallel count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "count aggregation"
       (is (= [[100]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query venues
-                 {:aggregation [[:count]]})))))
+                 {:aggregation [[:count]]})))))))
 
+(deftest ^:parallel sum-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "sum aggregation"
       (is (= [[203]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query venues
-                 {:aggregation [[:sum $price]]})))))
+                 {:aggregation [[:sum $price]]})))))))
 
+(deftest ^:parallel avg-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "avg aggregation"
       (is (= [[35.5059]]
              (mt/formatted-rows [4.0]
                (mt/run-mbql-query venues
-                 {:aggregation [[:avg $latitude]]})))))
+                 {:aggregation [[:avg $latitude]]})))))))
 
+(deftest ^:parallel distinct-count-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "distinct count aggregation"
       (is (= [[15]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:distinct $user_id]]})))))))
 
-(deftest standard-deviation-test
+(deftest ^:parallel standard-deviation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
                   :rows [[3.4]]}
-                 (qp.test/rows-and-cols
+                 (qp.test-util/rows-and-cols
                   (mt/format-rows-by [1.0]
-                    (mt/process-query query)))))))))
+                    (mt/process-query query))))))))))
 
+(deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
     (testing "Make sure standard deviations fail for drivers that don't support it"
       (is (thrown-with-msg?
@@ -77,28 +84,32 @@
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest min-test
+(deftest ^:parallel min-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [1]
            (mt/first-row
             (mt/format-rows-by [int]
               (mt/run-mbql-query venues
-                {:aggregation [[:min $price]]})))))
+                {:aggregation [[:min $price]]})))))))
 
+(deftest ^:parallel min-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
            (mt/formatted-rows [int 4.0]
              (mt/run-mbql-query venues
                {:aggregation [[:min $latitude]]
                 :breakout    [$price]}))))))
 
-(deftest max-test
+(deftest ^:parallel max-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [4]
            (mt/first-row
              (mt/format-rows-by [int]
                (mt/run-mbql-query venues
-                 {:aggregation [[:max $price]]})))))
+                 {:aggregation [[:max $price]]})))))))
 
+(deftest ^:parallel max-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
            (mt/formatted-rows [int 4.0]
              (mt/run-mbql-query venues
@@ -110,45 +121,48 @@
 ;;; |                                             MULTIPLE AGGREGATIONS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest multiple-aggregations-test
+(deftest ^:parallel multiple-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "two aggregations"
       (is (= [[100 203]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
-                 {:aggregation [[:count] [:sum $price]]})))))
+                 {:aggregation [[:count] [:sum $price]]})))))))
 
+(deftest ^:parallel multiple-aggregations-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing "three aggregations"
       (is (= [[2 100 203]]
              (mt/formatted-rows [int int int]
                (mt/run-mbql-query venues
                  {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
 
-(deftest multiple-aggregations-metadata-test
-  ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple
-  ;; columns with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and
-  ;; generalize it so we can use it with Mongo
-  ;;
-  ;; TODO part 2 -- not sure if this is still the case?
-  (mt/test-drivers (disj (mt/normal-drivers) :mongo)
+(deftest ^:parallel multiple-aggregations-metadata-test
+  (mt/test-drivers (mt/normal-drivers)
     (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
-      (is (= [(qp.test/aggregate-col :count)
-              (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
-             (mt/cols
+      (is (=? [(qp.test-util/aggregate-col :count)
+               (assoc (qp.test-util/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+              (mt/cols
                (mt/run-mbql-query venues
                  {:aggregation [[:count] [:count]]})))))))
 
 
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
-(deftest cumulate-sum-test
+(deftest ^:parallel cumulative-sum-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cum_sum w/o breakout should be treated the same as sum"
-      (is (= [[120]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]})))))
+      (let [result (mt/run-mbql-query users
+                     {:aggregation [[:cum-sum $id]]})]
+        (is (=? [{:display_name "Cumulative sum of ID",
+                  :source :aggregation}]
+                (-> result :data :cols)))
+        (is (= [[120]]
+               (mt/formatted-rows [int]
+                 result)))))))
 
+(deftest ^:parallel cumulative-sum-test-2
+  (mt/test-drivers (mt/normal-drivers)
     (testing " Simple cumulative sum where breakout field is same as cum_sum field"
       (is (= [[ 1   1]
               [ 2   3]
@@ -168,8 +182,10 @@
              (mt/formatted-rows [int int]
                (mt/run-mbql-query users
                  {:aggregation [[:cum-sum $id]]
-                  :breakout    [$id]})))))
+                  :breakout    [$id]})))))))
 
+(deftest ^:parallel cumulative-sum-test-3
+  (mt/test-drivers (mt/normal-drivers)
     (testing " Cumulative sum w/ a different breakout field"
       (is (= [["Broen Olujimi"        14]
               ["Conchúr Tihomir"      21]
@@ -189,8 +205,10 @@
              (mt/formatted-rows [str int]
                (mt/run-mbql-query users
                  {:aggregation [[:cum-sum $id]]
-                  :breakout    [$name]})))))
+                  :breakout    [$name]})))))))
 
+(deftest ^:parallel cumulative-sum-test-4
+  (mt/test-drivers (mt/normal-drivers)
     (testing " Cumulative sum w/ a different breakout field that requires grouping"
       (is (= [[1 1211]
               [2 4066]
@@ -203,73 +221,78 @@
 
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
-(deftest cumulative-count-test
+(deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
         (is (= {:rows [[15]]
-                :cols [(qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
-                 (mt/format-rows-by [int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]}))))))
+                :cols [(qp.test-util/aggregate-col :cum-count :users :id)]}
+               (qp.test-util/rows-and-cols
+                (mt/format-rows-by [int]
+                  (mt/run-mbql-query users
+                    {:aggregation [[:cum-count $id]]})))))))))
 
-      (testing "w/ breakout on field with distinct values"
-        (is (= {:rows [["Broen Olujimi"        1]
-                       ["Conchúr Tihomir"      2]
-                       ["Dwight Gresham"       3]
-                       ["Felipinho Asklepios"  4]
-                       ["Frans Hevel"          5]
-                       ["Kaneonuskatew Eiran"  6]
-                       ["Kfir Caj"             7]
-                       ["Nils Gotam"           8]
-                       ["Plato Yeshua"         9]
-                       ["Quentin Sören"       10]
-                       ["Rüstem Hebel"        11]
-                       ["Shad Ferdynand"      12]
-                       ["Simcha Yan"          13]
-                       ["Spiros Teofil"       14]
-                       ["Szymon Theutrich"    15]]
-                :cols [(qp.test/breakout-col :users :name)
-                       (qp.test/aggregate-col :cum-count :users :id)]}
-               (qp.test/rows-and-cols
-                 (mt/format-rows-by [str int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]
-                      :breakout    [$name]}))))))
+(deftest ^:parallel cumulative-count-with-breakout-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "w/ breakout on field with distinct values"
+      (is (=? {:rows [["Broen Olujimi"        1]
+                      ["Conchúr Tihomir"      2]
+                      ["Dwight Gresham"       3]
+                      ["Felipinho Asklepios"  4]
+                      ["Frans Hevel"          5]
+                      ["Kaneonuskatew Eiran"  6]
+                      ["Kfir Caj"             7]
+                      ["Nils Gotam"           8]
+                      ["Plato Yeshua"         9]
+                      ["Quentin Sören"       10]
+                      ["Rüstem Hebel"        11]
+                      ["Shad Ferdynand"      12]
+                      ["Simcha Yan"          13]
+                      ["Spiros Teofil"       14]
+                      ["Szymon Theutrich"    15]]
+               :cols [(qp.test-util/breakout-col :users :name)
+                      (qp.test-util/aggregate-col :cum-count :users :id)]}
+              (qp.test-util/rows-and-cols
+               (mt/format-rows-by [str int]
+                 (mt/run-mbql-query users
+                   {:aggregation [[:cum-count $id]]
+                    :breakout    [$name]}))))))))
 
-      (testing "w/ breakout on field that requires grouping"
-        (is (= {:cols [(qp.test/breakout-col :venues :price)
-                       (qp.test/aggregate-col :cum-count :venues :id)]
-                :rows [[1 22]
-                       [2 81]
-                       [3 94]
-                       [4 100]]}
-               (qp.test/rows-and-cols
-                 (mt/format-rows-by [int int]
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:cum-count $id]]
-                      :breakout    [$price]})))))))))
+
+(deftest ^:parallel cumulative-count-with-breakout-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "w/ breakout on field that requires grouping"
+      (is (=? {:cols [(qp.test-util/breakout-col :venues :price)
+                      (qp.test-util/aggregate-col :cum-count :venues :id)]
+               :rows [[1 22]
+                      [2 81]
+                      [3 94]
+                      [4 100]]}
+              (qp.test-util/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:cum-count $id]]
+                    :breakout    [$price]}))))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
     (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
+        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
                       :settings {:is_priceless false})
                (or (-> results mt/cols first)
                    results)))))))
 
-(deftest duplicate-aggregations-test
+(deftest ^:parallel duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"
       (is (= [[5050 203]]
              (mt/formatted-rows [int int]
                (mt/run-mbql-query venues
-                                  {:aggregation [[:sum $id] [:sum $price]]})))))))
+                 {:aggregation [[:sum $id] [:sum $price]]})))))))
 
-(deftest multiple-distinct-aggregations-test
+(deftest ^:parallel multiple-distinct-aggregations-test
   (testing "Multiple `:distinct` aggregations should work correctly (#13097)"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[100 4]]

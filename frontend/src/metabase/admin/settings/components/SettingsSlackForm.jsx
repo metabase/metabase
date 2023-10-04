@@ -1,14 +1,14 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
 import _ from "underscore";
 import { t, jt } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseUtils from "metabase/lib/utils";
+import { isEmail, isEmpty } from "metabase/lib/utils";
 
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { updateSlackSettings } from "../settings";
 import SettingsSetting from "./SettingsSetting";
@@ -50,13 +50,13 @@ class SettingsSlackForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement([validationType, validationMessage], value, element) {
-    if (MetabaseUtils.isEmpty(value)) {
+    if (isEmpty(value)) {
       return;
     }
 
     switch (validationType) {
       case "email":
-        return !MetabaseUtils.isEmail(value)
+        return !isEmail(value)
           ? validationMessage || t`That's not a valid email address`
           : null;
       case "integer":
@@ -86,7 +86,7 @@ class SettingsSlackForm extends Component {
 
     elements.forEach(function (element) {
       // test for required elements
-      if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+      if (element.required && isEmpty(formData[element.key])) {
         valid = false;
       }
 
@@ -116,7 +116,7 @@ class SettingsSlackForm extends Component {
     this.setState({
       formData: {
         ...this.state.formData,
-        [element.key]: MetabaseUtils.isEmpty(value) ? null : value,
+        [element.key]: isEmpty(value) ? null : value,
       },
     });
   }
@@ -261,7 +261,7 @@ class SettingsSlackForm extends Component {
           {settings}
           <li className="m2 mb4">
             <Button
-              mr={2}
+              className="mr2"
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled}

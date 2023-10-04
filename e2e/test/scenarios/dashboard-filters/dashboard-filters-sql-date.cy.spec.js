@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -17,6 +18,10 @@ import {
 
 describe("scenarios > dashboard > filters > SQL > date", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -55,7 +60,8 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery");
       },
     );
   });
@@ -63,25 +69,29 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
   it(`should work when set as the default filter`, () => {
     setFilter("Time", "Month and Year");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "October",
-      year: "2017",
+      year: "2022",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("Month and Year").click();
     saveDashboard();
 
     // The default value should immediately be applied
     cy.get(".Card").within(() => {
-      cy.contains("Hudson Borer");
+      cy.contains("Dagmar Fay");
     });
 
     // Make sure we can override the default value
-    cy.findByText("October, 2017").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("October 2022").click();
     popover().contains("August").click();
-    cy.findByText("Oda Brakus");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Macy Olson");
   });
 });
 
@@ -116,9 +126,4 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
     default:
       throw new Error("Wrong filter type!");
   }
-}
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
 }

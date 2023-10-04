@@ -3,11 +3,14 @@ import { assocIn } from "icepick";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import { Dataset } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
-import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import type { Dataset, Series } from "metabase-types/api";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderMode,
+} from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
@@ -97,7 +100,7 @@ function shouldTemplateTagEditorBeVisible({
   }
 }
 
-type UpdateQuestionOpts = {
+export type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;

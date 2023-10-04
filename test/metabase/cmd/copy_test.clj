@@ -6,7 +6,23 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]))
 
-(deftest all-models-accounted-for-test
+(deftest ^:parallel sql-for-selecting-instances-from-source-db-test
+  (is (= "SELECT * FROM metabase_field ORDER BY id ASC"
+         (#'copy/sql-for-selecting-instances-from-source-db :model/Field))))
+
+(deftest ^:parallel copy-h2-database-details-test
+  (doseq [copy-h2-database-details? [true false]]
+    (testing (str `copy/*copy-h2-database-details* " = " copy-h2-database-details?)
+      (binding [copy/*copy-h2-database-details* copy-h2-database-details?]
+        (is (= [{:id 1, :engine "h2", :details (if copy-h2-database-details? "{:db \"metabase.db\"}" "{}")}
+                {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}]
+               (into
+                []
+                (#'copy/model-results-xform :model/Database)
+                [{:id 1, :engine "h2", :details "{:db \"metabase.db\"}"}
+                 {:id 2, :engine "postgres", :details "{:db \"metabase\"}"}])))))))
+
+(deftest ^:paralell all-models-accounted-for-test
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
   (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.

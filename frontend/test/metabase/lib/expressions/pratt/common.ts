@@ -1,8 +1,8 @@
+import type { Expr } from "metabase-lib/expressions/pratt";
 import {
   lexify,
   parse,
   compile as newCompile,
-  Expr,
 } from "metabase-lib/expressions/pratt";
 import { resolve } from "metabase-lib/expressions/resolver";
 import { getMBQLName } from "metabase-lib/expressions/config";

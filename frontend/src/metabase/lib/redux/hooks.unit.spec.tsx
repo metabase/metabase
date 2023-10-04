@@ -1,4 +1,3 @@
-import React from "react";
 import type { State } from "metabase-types/store";
 
 import { renderWithProviders, screen } from "__support__/ui";

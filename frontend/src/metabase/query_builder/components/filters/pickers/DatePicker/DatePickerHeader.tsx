@@ -1,9 +1,9 @@
-import React from "react";
 import _ from "underscore";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import { Container, BackButton, TabButton } from "./DatePickerHeader.styled";
-import { DateOperator, DATE_OPERATORS } from "./DatePicker";
+import type { DateOperator } from "./DatePicker";
+import { DATE_OPERATORS } from "./DatePicker";
 import { getHeaderText } from "./ExcludeDatePicker";
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DatePickerHeader({
   operators = DATE_OPERATORS,
   filter,

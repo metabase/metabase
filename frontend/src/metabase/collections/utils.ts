@@ -1,6 +1,10 @@
 import { t } from "ttag";
 import { isNotNull } from "metabase/core/utils/types";
-import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
   collection: Collection,
@@ -39,7 +43,7 @@ function getNonRootParentId(collection: Collection) {
     return nonRootParent ? nonRootParent.id : undefined;
   }
   // location is a string like "/1/4" where numbers are parent collection IDs
-  const nonRootParentId = collection.location?.split("/")?.[0];
+  const nonRootParentId = collection.location?.split("/")?.[1];
   return canonicalCollectionId(nonRootParentId);
 }
 
@@ -55,8 +59,18 @@ export function isPersonalCollectionChild(
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
 
+export function isPersonalCollectionOrChild(
+  collection: Collection,
+  collectionList: Collection[],
+): boolean {
+  return (
+    isPersonalCollection(collection) ||
+    isPersonalCollectionChild(collection, collectionList)
+  );
+}
+
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
-  return canonicalCollectionId(collection.id) === null;
+  return canonicalCollectionId(collection?.id) === null;
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -121,7 +135,11 @@ export function coerceCollectionId(
 export function canonicalCollectionId(
   collectionId: string | number | null | undefined,
 ): number | null {
-  if (collectionId === "root" || collectionId == null) {
+  if (
+    collectionId === "root" ||
+    collectionId === null ||
+    collectionId === undefined
+  ) {
     return null;
   } else if (typeof collectionId === "number") {
     return collectionId;

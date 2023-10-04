@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
@@ -34,47 +35,90 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
-(defn- clause? [clause]
+(defn clause?
+  "Returns true if this is a clause."
+  [clause]
   (and (vector? clause)
        (> (count clause) 1)
        (keyword? (first clause))
        (map? (second clause))
        (contains? (second clause) :lib/uuid)))
 
-(defn clause-uuid
-  "Returns the :lib/uuid of `clause`. Returns nil if `clause` is not a clause."
+(defn clause-of-type?
+  "Returns true if this is a clause."
+  [clause clause-type]
+  (and (clause? clause)
+       (= (first clause) clause-type)))
+
+(defn field-clause?
+  "Returns true if this is a field clause."
+  [clause]
+  (clause-of-type? clause :field))
+
+(defn expression-name
+  "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
   (when (clause? clause)
-    (get-in clause [1 :lib/uuid])))
+    (get-in clause [1 :lib/expression-name])))
+
+(defn named-expression-clause
+  "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
+  [clause a-name]
+  (assoc-in
+    (if (clause? clause)
+      clause
+      [:value {:lib/uuid (str (random-uuid))
+               :effective-type (lib.schema.expression/type-of clause)}
+       clause])
+    [1 :lib/expression-name] a-name))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
-  {:pre [(clause? target-clause)]}
-  (m/update-existing
-    stage
-    location
-    #(->> (for [clause %]
-            (if (= (clause-uuid clause) (clause-uuid target-clause))
-              new-clause
-              clause))
-          vec)))
+  {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
+  (let [new-clause (if (= :expressions (first location))
+                     (named-expression-clause new-clause (expression-name target-clause))
+                     new-clause)]
+    (m/update-existing-in
+      stage
+      location
+      (fn [clause-or-clauses]
+        (->> (for [clause clause-or-clauses]
+               (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
+                 new-clause
+                 clause))
+             vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
    If a clause has :lib/uuid equal to the `target-clause` it is removed.
    If `location` contains no clause with `target-clause` no removal happens.
-   If the the location is empty, dissoc it from stage."
+   If the the location is empty, dissoc it from stage.
+   For the [:fields] location if only expressions remain, dissoc from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (if-let [target (get stage location)]
-    (let [target-uuid (clause-uuid target-clause)
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
-      (if (seq result)
-        (assoc stage location result)
-        (dissoc stage location)))
+  (if-let [target (get-in stage location)]
+    (let [target-uuid (lib.options/uuid target-clause)
+          [first-loc last-loc] [(first location) (last location)]
+          result (into [] (remove (comp #{target-uuid} lib.options/uuid)) target)
+          result (when-not (and (= location [:fields])
+                                (every? #(clause-of-type? % :expression) result))
+                   result)]
+      (cond
+        (seq result)
+        (assoc-in stage location result)
+
+        (= [:joins :conditions] [first-loc last-loc])
+        (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                        {:conditions (get-in stage location)}))
+
+        (= [:joins :fields] [first-loc last-loc])
+        (update-in stage (pop location) dissoc last-loc)
+
+        :else
+        (m/dissoc-in stage location)))
     stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
@@ -116,18 +160,26 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
+(defn ->stage-metadata
+  "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
+  [source-metadata]
+  (when source-metadata
+    (-> (if (seqable? source-metadata)
+          {:columns source-metadata}
+          source-metadata)
+        (update :columns (fn [columns]
+                           (mapv (fn [column]
+                                   (-> column
+                                       (update-keys u/->kebab-case-en)
+                                       (assoc :lib/type :metadata/column)))
+                                 columns)))
+        (assoc :lib/type :metadata/results))))
+
 (defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])
-        source-metadata (when source-metadata
-                          (-> (if (vector? source-metadata)
-                                {:columns source-metadata}
-                                source-metadata)
-                              (update :columns (fn [columns]
-                                                 (for [column columns]
-                                                   (assoc column :lib/type :metadata/field))))
-                              (assoc :lib/type :metadata/results)))
+        source-metadata (->stage-metadata source-metadata)
         previous-stage  (dec (count previous-stages))
         previous-stages (cond-> previous-stages
                           (and source-metadata
@@ -157,13 +209,14 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def ^:private AnyQuery
+(def LegacyOrPMBQLQuery
+  "Schema for a map that is either a legacy query OR a pMBQL query."
   [:or
    [:map
-    {:error/fn "legacy query"}
+    {:error/message "legacy query"}
     [:type [:enum :native :query]]]
    [:map
-    {:error/fn "pMBQL query"}
+    {:error/message "pMBQL query"}
     [:lib/type [:= :mbql/query]]]])
 
 (mu/defn pipeline
@@ -171,18 +224,18 @@
   goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
   functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
   process.)"
-  [query :- AnyQuery]
+  [query :- LegacyOrPMBQLQuery]
   (if (= (:lib/type query) :mbql/query)
     query
     (case (:type query)
       :native (native-query->pipeline query)
       :query  (mbql-query->pipeline query))))
 
-(mu/defn ^:private non-negative-stage-index :- [:int {:min 0}]
+(mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
-  [stages       :- [:sequential [:ref ::lib.schema/stage]]
-   stage-number :- :int]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
   (let [stage-number' (if (neg? stage-number)
                         (+ (count stages) stage-number)
                         stage-number)]
@@ -194,11 +247,16 @@
 
 (mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the previous stage, if there is one. `nil` if there is no previous stage."
-  [{:keys [stages], :as _query} :- :map
-   stage-number                 :- :int]
-  (let [stage-number (non-negative-stage-index stages stage-number)]
+  [query        :- :map
+   stage-number :- :int]
+  (let [stage-number (canonical-stage-index query stage-number)]
     (when (pos? stage-number)
       (dec stage-number))))
+
+(defn first-stage?
+  "Whether a `stage-number` is referring to the first stage of a query or not."
+  [query stage-number]
+  (not (previous-stage-number query stage-number)))
 
 (defn next-stage-number
   "The index of the next stage, if there is one. `nil` if there is no next stage."
@@ -212,10 +270,10 @@
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- AnyQuery
+  [query        :- LegacyOrPMBQLQuery
    stage-number :- :int]
-  (let [{:keys [stages]} (pipeline query)]
-    (get (vec stages) (non-negative-stage-index stages stage-number))))
+  (let [{:keys [stages], :as query} (pipeline query)]
+    (get (vec stages) (canonical-stage-index query stage-number))))
 
 (mu/defn previous-stage :- [:maybe ::lib.schema/stage]
   "Return the previous stage of the query, if there is one; otherwise return `nil`."
@@ -229,11 +287,11 @@
     (apply f stage args)
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
-  [query        :- AnyQuery
+  [query        :- LegacyOrPMBQLQuery
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
-        stage-number'               (non-negative-stage-index stages stage-number)
+        stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
 
@@ -266,46 +324,6 @@
            conjunction
            (last coll)))))))
 
-(defn update-stages-ignore-joins
-  "Like [[update-stages]], but does not recurse into the stages inside joins.
-
-  `f` has the signature
-
-    (f query stage-number stage)"
-  [query f]
-  (reduce
-   (fn [query stage-number]
-     (update-in query [:stages stage-number] (fn [stage]
-                                               (f query stage-number stage))))
-   query
-   (range 0 (count (:stages query)))))
-
-(defn update-stages
-  "Apply function `f` to every stage of a query, depth-first. Also applied to all query stages.
-
-  `f` has the signature
-
-    (f query stage-number stage)
-
-  `query` reflects the results of the previous call to `f`.
-
-  As a convenience, if `f` returns nil, the original stage will be used without changes."
-  [query f]
-  (letfn [(update-join [join]
-            (-> query
-                (assoc :stages (:stages join))
-                (update-stages f)
-                :stages))
-          (update-joins [joins]
-            (mapv update-join joins))]
-    (update-stages-ignore-joins
-     query
-     (fn [query stage-number stage]
-       (let [stage (cond-> stage
-                     (:joins stage)
-                     update-joins)]
-         (f query stage-number stage))))))
-
 (mu/defn ^:private string-byte-count :- [:int {:min 0}]
   "Number of bytes in a string using UTF-8 encoding."
   [s :- :string]
@@ -330,9 +348,9 @@
          (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
          (>= i (count s))                           s
          :else                                      (recur (inc i)
-                                                           (+
-                                                            cumulative-byte-count
-                                                            (string-byte-count (string-character-at s i))))))
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
 
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
@@ -383,19 +401,28 @@
            truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
 
-(mu/defn string-table-id->card-id :- [:maybe ::lib.schema.id/card]
-  "If `table-id` is a `card__<id>`-style string, parse the `<id>` part to an integer Card ID."
+(mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
+  "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
+  queries! You don't need to use this in pMBQL since this is converted automatically by [[metabase.lib.convert]] to
+  `:source-card`."
   [table-id]
   (when (string? table-id)
     (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
-(mu/defn source-table :- [:maybe [:or ::lib.schema.id/table ::lib.schema.id/table-card-id-string]]
-  "If this query has a `:source-table`, return it."
+(mu/defn source-table-id :- [:maybe ::lib.schema.id/table]
+  "If this query has a `:source-table` ID, return it."
   [query]
   (-> query :stages first :source-table))
 
-(defn unique-name-generator
+(mu/defn source-card-id :- [:maybe ::lib.schema.id/card]
+  "If this query has a `:source-card` ID, return it."
+  [query]
+  (-> query :stages first :source-card))
+
+(mu/defn unique-name-generator :- [:=>
+                                   [:cat ::lib.schema.common/non-blank-string]
+                                   ::lib.schema.common/non-blank-string]
   "Create a new function with the signature
 
     (f str) => str
@@ -431,7 +458,7 @@
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
    a-summary-clause]
-  (let [{:keys [stages] :as query} (pipeline query)
+  (let [query (pipeline query)
         stage-number (or stage-number -1)
         stage (query-stage query stage-number)
         new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
@@ -439,7 +466,7 @@
                     query stage-number
                     update location
                     (fn [summary-clauses]
-                      (conj (vec summary-clauses) (lib.common/->op-arg query stage-number a-summary-clause))))]
+                      (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
@@ -449,5 +476,5 @@
                   (dissoc :order-by :fields)
                   (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           ;; subvec holds onto references, so create a new vector
-          (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
+          (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))

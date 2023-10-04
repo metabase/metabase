@@ -84,6 +84,13 @@ A subset of our tests depend on the external services that are available through
 
 Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
 
+### Running tests with Snowplow involved
+
+Tests that depend on Snowplow expect a running server. To run them, you need to:
+
+- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
+- pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.
@@ -97,26 +104,32 @@ These snapshot-generating tests have the extension `.cy.snap.js`. When these tes
 ## Running in CI
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
+These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
+The example of the artifacts for a failed test in "Onboarding" directory:
+![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
 
-These files can be found under the “Artifacts” tab in Circle:
-![Circle CI Artifacts tab](https://user-images.githubusercontent.com/691495/72190614-f5995380-33cd-11ea-875e-4203d6dcf1c1.png)
+Additionally, you will find a handy [DeploySentinel](https://www.deploysentinel.com/ci/dashboard) recording link for each failed test in the logs.
 
-## Running Cypress tests against EE version of Metabase
+## Running Cypress tests against Metabase® Enterprise Edition™
 
-Prior to running Cypress, make sure you have a valid enterprise token. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables:
+Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the edition.
 
-- `MB_EDITION`
-- `MB_PREMIUM_EMBEDDING_TOKEN`
+**Enterprise instance will start without a premium token!**
+
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
+You must provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
+
+- `CYPRESS_ALL_FEATURES_TOKEN`
+- `CYPRESS_NO_FEATURES_TOKEN`
 
 ```
-MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
+MB_EDITION=ee CYPRESS_ALL_FEATURES_TOKEN=xxxxxx CYPRESS_NO_FEATURES_TOKEN=xxxxxx yarn test-cypress-open
 ```
 
-If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
+If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
-
-- If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
-- If tests start running but the enterprise features are missing: make sure that the token is still valid.
+- If tests under `describeEE` block are greyed out and not running, make sure you spun up Metabase® Enterprise Edition™.
+- If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
 
 ## Tags
@@ -127,3 +140,31 @@ These are the tags currently in use:
 
 - `@external` - tests that require an external docker container to run
 - `@actions` - tests that use metabase actions and mutate data in a data source
+
+## How to stress-test a flake fix?
+
+Fixing a flaky test locally doesn't mean the fix works in GitHub's CI environment. The only way to be sure the fix works is to stress-test it in CI. That's what `.github/workflows/e2e-stress-test-flake-fix.yml` is made for. It allows you to quickly test the fix in your branch without waiting for the full build to complete.
+
+Please follow these steps:
+### Prepare
+- Create a new branch with your proposed fix and push it to the remote
+- Either skip opening a PR altogether or open a **draft** pull request
+
+### Obtain the artifact ID
+- Go to the latest successful commit on `master` branch
+- Click on the green checkmark next to that commit
+- Choose either "E2E Tests / build (ee)" job or "Build + Docker Uberjar / Build MB ee" job and click on the _Details_ link next to it (it will take you to that job's summary page within a related workflow)
+- Click on the workflow _Summary_
+- Scroll to the bottom of the page where you'll find the _Artifacts_ section that contains `metabase-oss-uberjar` and `metabase-ee-uberjar` artifacts
+- Right click on any of the two (but prefer EE one, unless you specifically need to test OSS changes) and copy its link
+- The link will look like this: `https://github.com/metabase/metabase/suites/13087680507/artifacts/710350560`
+- `710350560` is the artifact id that you'll need in the next step
+
+### Trigger the stress-test workflow manually
+- Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
+- Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
+1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
+2. Provide previously obtained artifact id to the related field
+3. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes
+4. Set the desired number of times to run the test
+5. Click the green "Run workflow" button and wait for the results

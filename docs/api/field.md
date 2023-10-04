@@ -22,7 +22,9 @@ Get `Field` with ID.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** 
+
+*  **`include_editable_data_model`**
 
 ## `GET /api/field/:id/related`
 
@@ -154,7 +156,9 @@ Update `Field` with ID.
 
 *  **`nfc_path`** value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
 
-*  **`id`**
+*  **`id`** 
+
+*  **`json_unfolding`** value may be nil, or if non-nil, value must be a boolean.
 
 ---
 

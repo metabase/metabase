@@ -25,6 +25,7 @@ describe("issue 23421", () => {
 
   it("`visualization_settings` should not break UI (metabase#23421)", () => {
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
     cy.get(".ace_content").should("contain", query);

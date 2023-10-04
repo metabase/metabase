@@ -24,6 +24,7 @@ jobs:
           filters: .github/file-paths.yaml
   analyze:
     needs: files-changed
+    if: needs.files-changed.outputs.codeql == 'true'
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout repository

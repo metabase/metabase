@@ -4,8 +4,8 @@ import _ from "underscore";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 interface EditEventModalProps {
   eventId: number;
@@ -33,6 +33,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   TimelineEvents.load(timelineEventProps),
   connect(mapStateToProps, mapDispatchToProps),

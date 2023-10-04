@@ -1,4 +1,5 @@
-import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef } from "react";
 import ColorRange from "metabase/core/components/ColorRange";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorRangePopover from "./ColorRangePopover";
@@ -56,4 +57,5 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeSelector;

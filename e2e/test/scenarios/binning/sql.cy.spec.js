@@ -1,10 +1,12 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
   snapshot,
   visualize,
   changeBinningForDimension,
   summarize,
-  startNewQuestion,
+  openTable,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -15,12 +17,19 @@ const questionDetails = {
   },
 };
 
+let questionId;
+
 describe("scenarios > binning > from a saved sql question", () => {
   before(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
+    cy.createNativeQuestion(questionDetails, {
+      loadMetadata: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then(id => (questionId = id));
 
     snapshot("binningSql");
   });
@@ -34,9 +43,12 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via simple question", () => {
     beforeEach(() => {
-      startNewQuestion();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("SQL Binning").click();
+      openTable({
+        database: SAMPLE_DB_ID,
+        table: `card__${questionId}`,
+        mode: "notebook",
+      });
+
       visualize();
       cy.findByTextEnsureVisible("LONGITUDE");
       summarize();
@@ -55,6 +67,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
       cy.get("circle");
     });
@@ -68,6 +81,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
       cy.get(".bar");
     });
@@ -81,6 +95,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       waitAndAssertOnRequest("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
       cy.get(".bar");
     });
@@ -88,12 +103,22 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via custom question", () => {
     beforeEach(() => {
-      startNewQuestion();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("SQL Binning").click();
-
-      cy.findByText("Pick the metric you want to see").click();
-      cy.findByText("Count of rows").click();
+      visitQuestionAdhoc(
+        {
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            type: "query",
+            query: {
+              "source-table": `card__${questionId}`,
+              aggregation: [["count"]],
+            },
+          },
+        },
+        { mode: "notebook" },
+      );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Summarize").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
     });
 
@@ -104,6 +129,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "Year",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
 
       visualize(response => {
@@ -120,6 +146,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "50 bins",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
 
       visualize(response => {
@@ -136,6 +163,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         toBinning: "Bin every 10 degrees",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
 
       visualize(response => {
@@ -148,45 +176,58 @@ describe("scenarios > binning > from a saved sql question", () => {
 
   context("via column popover", () => {
     beforeEach(() => {
-      startNewQuestion();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("SQL Binning").click();
-      visualize();
+      openTable({
+        database: SAMPLE_DB_ID,
+        table: `card__${questionId}`,
+      });
       cy.findByTextEnsureVisible("LONGITUDE");
     });
 
     it("should work for time series", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CREATED_AT").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Month");
       cy.get("circle");
 
       // Open a popover with bucket options from the time series footer
       cy.findAllByTestId("select-button-content").contains("Month").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Quarter");
-      cy.findByText("Q1 - 2017");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q1 2023");
     });
 
     it("should work for number", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("TOTAL").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
       cy.get(".bar");
     });
 
     it("should work for longitude", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("LONGITUDE").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
       cy.get(".bar");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
   });

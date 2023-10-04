@@ -82,6 +82,7 @@ describe("scenarios > visualizations > scatter", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization");
     cy.findAllByText("79").should("not.exist");
   });

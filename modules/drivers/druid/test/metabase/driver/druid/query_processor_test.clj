@@ -15,7 +15,8 @@
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -545,16 +546,16 @@
   (mt/test-driver :druid
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
-        (mt/with-temp Metric [metric {:definition (mt/$ids checkins
-                                                    {:aggregation [:sum $venue_price]
-                                                     :filter      [:> $venue_price 1]})}]
+        (t2.with-temp/with-temp [Metric metric {:definition (mt/$ids checkins
+                                                              {:aggregation [:sum $venue_price]
+                                                               :filter      [:> $venue_price 1]})}]
           (is (= [["2" 1231.0]
                   ["3"  346.0]
                   ["4" 197.0]]
                  (mt/rows
-                   (mt/run-mbql-query checkins
-                     {:aggregation [:+ [:metric (u/the-id metric)] 1]
-                      :breakout    [$venue_price]})))))))))
+                  (mt/run-mbql-query checkins
+                    {:aggregation [:+ [:metric (u/the-id metric)] 1]
+                     :breakout    [$venue_price]})))))))))
 
 (deftest order-by-aggregation-test
   (mt/test-driver :druid
@@ -653,7 +654,7 @@
   (mt/test-driver :druid
     (testing "parse-filter should generate the correct filter clauses"
       (tqpt/with-flattened-dbdef
-        (mt/with-everything-store
+        (mt/with-metadata-provider (mt/id)
           (tools.macro/macrolet [(parse-filter [filter-clause]
                                    `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
             (testing "normal non-compound filters should work as expected"

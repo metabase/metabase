@@ -1,16 +1,15 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import {
+import type {
   Dashboard,
   DashboardOrderedCard,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
@@ -62,7 +61,7 @@ function DashCardActionButtons({
     supportPreviewing,
     supportsSeries,
     disableClickBehavior,
-  } = getVisualizationRaw(series).visualization;
+  } = getVisualizationRaw(series) ?? {};
 
   const buttons = [];
 
@@ -71,6 +70,7 @@ function DashCardActionButtons({
       <DashCardActionButton
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
+        aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
         analyticsEvent="Dashboard;Text;edit"
       >
         {isPreviewing ? (
@@ -153,4 +153,5 @@ function DashCardActionButtons({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashCardActionButtons;

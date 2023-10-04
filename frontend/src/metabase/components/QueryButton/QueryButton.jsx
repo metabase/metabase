@@ -1,9 +1,9 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import S from "./QueryButton.css";
 
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
@@ -27,4 +27,4 @@ QueryButton.propTypes = {
   link: PropTypes.string,
 };
 
-export default React.memo(QueryButton);
+export default memo(QueryButton);

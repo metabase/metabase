@@ -1,26 +1,26 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import React from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
 import cx from "classnames";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import AggregationWidget from "./AggregationWidget";
 import BreakoutWidget from "./BreakoutWidget";
 import FilterWidgetList from "./filters/FilterWidgetList";
-import FilterPopover from "./filters/FilterPopover";
+import { FilterPopover } from "./filters/FilterPopover";
 
-export default class GuiQueryEditor extends React.Component {
+export default class GuiQueryEditor extends Component {
   constructor(props) {
     super(props);
 
-    this.filterPopover = React.createRef();
-    this.guiBuilder = React.createRef();
+    this.filterPopover = createRef();
+    this.guiBuilder = createRef();
   }
 
   state = {
@@ -68,7 +68,7 @@ export default class GuiQueryEditor extends React.Component {
   renderAddIcon(targetRefName) {
     return (
       <IconBorder borderRadius="3px" ref={targetRefName}>
-        <Icon name="add" size={14} />
+        <Icon name="add" />
       </IconBorder>
     );
   }
@@ -151,7 +151,7 @@ export default class GuiQueryEditor extends React.Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      const aggregations = query.aggregations();
+      const aggregations = [...query.aggregations()];
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -211,7 +211,7 @@ export default class GuiQueryEditor extends React.Component {
 
     const breakoutList = [];
 
-    const breakouts = query.breakouts();
+    const breakouts = [...query.breakouts()];
 
     // Placeholder breakout for showing the add button
     if (query.canAddBreakout()) {

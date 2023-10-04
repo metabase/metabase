@@ -1,4 +1,3 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Tooltip from "./Tooltip";
 
@@ -25,4 +24,11 @@ CustomContent.args = {
       <div style={{ background: "red" }}>Red</div>
     </div>
   ),
+};
+
+export const LongScalarString = Template.bind({});
+LongScalarString.args = {
+  tooltip:
+    "looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong string",
+  isOpen: true,
 };

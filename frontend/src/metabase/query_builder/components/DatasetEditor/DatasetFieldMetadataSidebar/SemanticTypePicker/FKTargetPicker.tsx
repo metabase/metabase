@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,7 +7,7 @@ import Select from "metabase/core/components/Select";
 
 import Databases from "metabase/entities/databases";
 
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 type FieldObject = {
   id: number;
@@ -59,12 +59,12 @@ function mapStateToProps(
 ) {
   const { databaseId } = formField;
   return {
-    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+    IDFields: Databases.selectors.getIdFields(state, { databaseId }),
   };
 }
 
 const mapDispatchToProps = {
-  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields,
 };
 
 function FKTargetPicker({
@@ -93,6 +93,9 @@ function FKTargetPicker({
       onChange={onChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
+      buttonProps={{
+        "aria-label": t`Foreign key target`,
+      }}
       optionValueFn={getOptionValue}
       optionNameFn={getFieldName}
       optionIconFn={getOptionIcon}
@@ -100,4 +103,5 @@ function FKTargetPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(FKTargetPicker);

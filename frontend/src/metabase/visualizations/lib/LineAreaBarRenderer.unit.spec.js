@@ -1,5 +1,6 @@
 import "__support__/ui-mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
+import registerVisualizations from "metabase/visualizations/register";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer, {
   getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
@@ -12,6 +13,8 @@ import {
   renderLineAreaBar,
   getFormattedTooltips,
 } from "__support__/visualizations";
+
+registerVisualizations();
 
 // jsdom doesn't support layout methods like getBBox, so we need to mock it.
 window.SVGElement.prototype.getBBox = () => ({
@@ -158,14 +161,14 @@ describe("LineAreaBarRenderer", () => {
 
     const hover = onHoverChange.mock.calls[0][0];
     const [formattedWeek] = getFormattedTooltips(hover, settings);
-    expect(formattedWeek).toEqual("January 5 – 11, 2020");
+    expect(formattedWeek).toEqual("January 5–11, 2020");
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual([
-      "January, 2020",
-      "February, 2020",
-      "March, 2020",
-      "April, 2020",
+      "January 2020",
+      "February 2020",
+      "March 2020",
+      "April 2020",
     ]);
   });
 

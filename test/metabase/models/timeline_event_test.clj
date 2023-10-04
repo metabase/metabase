@@ -15,15 +15,15 @@
 
 (deftest hydrate-events-test
   (testing "hydrate-events function hydrates all timelines events"
-    (mt/with-temp* [Collection [_collection {:name "Rasta's Collection"}]
-                    Timeline [tl-a {:name "tl-a"}]
-                    Timeline [tl-b {:name "tl-b"}]
-                    TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "un-1"}]
-                    TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "archived-1"
-                                      :archived true}]
-                    TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "un-2"}]
-                    TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "archived-2"
-                                      :archived true}]]
+    (mt/with-temp [Collection _collection {:name "Rasta's Collection"}
+                   Timeline tl-a {:name "tl-a"}
+                   Timeline tl-b {:name "tl-b"}
+                   TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "un-1"}
+                   TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "archived-1"
+                                    :archived true}
+                   TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "un-2"}
+                   TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "archived-2"
+                                    :archived true}]
       (testing "only unarchived events by default"
         (is (= #{"un-1" "un-2"}
                (names (timeline-event/include-events [tl-a tl-b] {})))))

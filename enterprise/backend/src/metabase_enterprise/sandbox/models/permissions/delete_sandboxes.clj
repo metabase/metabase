@@ -90,7 +90,7 @@
 (defn- delete-gtaps-for-group-database! [{:keys [group-id database-id], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d. Graph changes: %s"
               group-id database-id (pr-str changes))
-  (if (#{:none :all :block} changes)
+  (if (#{:none :all :block :impersonated} changes)
     (do
       (log/debugf "Group %d %s for Database %d, deleting all GTAPs for this DB"
                   group-id
@@ -108,9 +108,10 @@
 (defn- delete-gtaps-for-group! [{:keys [group-id]} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d. Graph changes: %s" group-id (pr-str changes))
   (doseq [database-id (set (keys changes))]
-    (delete-gtaps-for-group-database!
-     {:group-id group-id, :database-id database-id}
-     (get-in changes [database-id :data :schemas]))))
+    (when-let [data-perm-changes (get-in changes [database-id :data :schemas])]
+      (delete-gtaps-for-group-database!
+       {:group-id group-id, :database-id database-id}
+       data-perm-changes))))
 
 (defenterprise delete-gtaps-if-needed-after-permissions-change!
   "For use only inside `metabase.models.permissions`; don't call this elsewhere. Delete GTAPs (sandboxes) that are no

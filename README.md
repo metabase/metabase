@@ -5,7 +5,6 @@
 ![Metabase Product Screenshot](docs/images/metabase-product-screenshot.svg)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
-[![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
 ![Docker Pulls](https://img.shields.io/docker/pulls/metabase/metabase)
 
@@ -34,7 +33,40 @@ Metabase can be run just about anywhere. Check out our [Installation Guides](htt
 
 ## Contributing
 
-To get started with a development installation of the Metabase, check out our [Developers Guide](https://www.metabase.com/docs/latest/developers-guide/start).
+## Quick Setup: Dev environment
+
+In order to spin up a development environment, you need to start the front end and the backend as follows:
+
+### Frontend quick setup
+
+The following command will install the Javascript dependencies:
+
+```
+$ yarn install
+```
+
+To build and run without watching changes:
+
+```
+$ yarn build
+```
+
+To build and run with hot-reload:
+
+```
+$ yarn build-hot 
+```
+
+### Backend  quick setup
+
+In order to run the backend, you'll need to build the drivers first, and then start the backend:
+
+```
+$ ./bin/build-drivers.sh
+$ clojure -M:run
+```
+
+For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
 
 ## Internationalization
 

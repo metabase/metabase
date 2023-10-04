@@ -1,10 +1,8 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import type * as React from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
-import { SingleSeries } from "metabase-types/types/Visualization";
-import { VisualizationSettings } from "metabase-types/api/card";
+import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
 import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 
@@ -52,7 +50,7 @@ const ChartNestedSettingsSeriesSingle = ({
           subtitle={
             seriesCardName === computedSettings.title ? "" : seriesCardName
           }
-          onBlurChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onBlurChange={e =>
             onChangeObjectSettings(object, { title: e.target.value })
           }
         />
@@ -64,4 +62,5 @@ const ChartNestedSettingsSeriesSingle = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartNestedSettingsSeriesSingle;

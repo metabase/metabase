@@ -1,14 +1,31 @@
 import { assocIn } from "icepick";
 
+import { createMockMetadata } from "__support__/metadata";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
   PRODUCTS,
-  MONGO_DATABASE,
-} from "__support__/sample_database_fixture";
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 
 import NativeQuery, {
   updateCardTemplateTagNames,
 } from "metabase-lib/queries/NativeQuery";
+
+const MONGO_DB_ID = SAMPLE_DB_ID + 1;
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase(),
+    createMockDatabase({
+      id: MONGO_DB_ID,
+      engine: "mongo",
+      features: ["basic-aggregations", "nested-fields", "dynamic-schema"],
+    }),
+  ],
+});
+
+const sampleDatabase = metadata.database(SAMPLE_DB_ID);
 
 function makeDatasetQuery(queryText, templateTags, databaseId) {
   return {
@@ -23,15 +40,15 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags) {
   return new NativeQuery(
-    SAMPLE_DATABASE.question(),
-    makeDatasetQuery(query, templateTags, SAMPLE_DATABASE.id),
+    sampleDatabase.question(),
+    makeDatasetQuery(query, templateTags, SAMPLE_DB_ID),
   );
 }
 
 function makeMongoQuery(query, templateTags) {
   return new NativeQuery(
-    SAMPLE_DATABASE.question(),
-    makeDatasetQuery(query, templateTags, MONGO_DATABASE.id),
+    sampleDatabase.question(),
+    makeDatasetQuery(query, templateTags, MONGO_DB_ID),
   );
 }
 
@@ -49,19 +66,19 @@ describe("NativeQuery", () => {
     });
     describe("databaseId()", () => {
       it("returns the Database ID of the wrapped query", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
+        expect(query.databaseId()).toBe(SAMPLE_DB_ID);
       });
     });
     describe("database()", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DATABASE.id);
+        expect(query.database().id).toBe(SAMPLE_DB_ID);
       });
     });
 
     describe("engine() tells you what the engine of the database you are querying is", () => {
       it("identifies the correct engine in H2 queries", () => {
         // This is a magic constant and we should probably pull this up into an enum
-        expect(query.engine()).toBe("h2");
+        expect(query.engine()).toBe("H2");
       });
       it("identifies the correct engine for Mongo queries", () => {
         expect(makeMongoQuery("").engine()).toBe("mongo");
@@ -120,9 +137,9 @@ describe("NativeQuery", () => {
   describe("clean", () => {
     it("should add template-tags: {} if there are none", () => {
       const cleanedQuery = native =>
-        new NativeQuery(SAMPLE_DATABASE.question(), {
+        new NativeQuery(sampleDatabase.question(), {
           type: "native",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           native,
         })
           .clean()
@@ -331,7 +348,7 @@ describe("NativeQuery", () => {
         .setTemplateTag("category", {
           name: "category",
           type: "dimension",
-          dimension: ["field", PRODUCTS.CATEGORY.id, null],
+          dimension: ["field", PRODUCTS.CATEGORY, null],
         });
       const dimensions = q.dimensionOptions().dimensions;
       expect(dimensions).toHaveLength(1);
@@ -346,7 +363,7 @@ describe("NativeQuery", () => {
         .setTemplateTag("category", {
           name: "category",
           type: "dimension",
-          dimension: ["field", PRODUCTS.CATEGORY.id, null],
+          dimension: ["field", PRODUCTS.CATEGORY, null],
         })
         .setTemplateTag("foo", { name: "foo", type: "dimension" })
         .setTemplateTag("bar", { name: "bar", type: "test" });
@@ -354,7 +371,7 @@ describe("NativeQuery", () => {
       expect(q.dependentMetadata()).toEqual([
         {
           type: "field",
-          id: PRODUCTS.CATEGORY.id,
+          id: PRODUCTS.CATEGORY,
         },
       ]);
     });

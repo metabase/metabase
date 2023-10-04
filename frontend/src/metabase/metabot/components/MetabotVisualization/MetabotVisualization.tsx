@@ -1,10 +1,9 @@
-import React from "react";
 import { connect } from "react-redux";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import MetabotMode from "metabase/modes/components/modes/MetabotMode";
-import { State } from "metabase-types/store";
-import Metadata from "metabase-lib/metadata/Metadata";
+import { MetabotMode } from "metabase/visualizations/click-actions/modes/MetabotMode";
+import type { State } from "metabase-types/store";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import { getQueryResultsError, getRawSeries } from "../../selectors";
 import { FullVisualization } from "./MetabotVisualization.styled";
 
@@ -38,4 +37,5 @@ const MetabotVisualization = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(MetabotVisualization);

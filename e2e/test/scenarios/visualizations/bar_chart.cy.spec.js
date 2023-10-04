@@ -46,6 +46,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -58,6 +59,7 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("(empty)");
     });
   });
@@ -79,7 +81,9 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.get(".bar").should("have.length", 5); // there are six bars when null isn't filtered
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1,800"); // correct data has this on the y-axis
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("16,000").should("not.exist"); // If nulls are included the y-axis stretches much higher
     });
   });
@@ -92,11 +96,11 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              "select '2021-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
+              "select '2027-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
+              "select '2027-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
+              "select '2027-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
           },
           database: SAMPLE_DB_ID,
         },
@@ -176,6 +180,12 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
+
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Category is Gadget")
+        .should("exist");
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
@@ -187,7 +197,9 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.icon("eye_outline").click();
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
       cy.findByTestId("filter-field-Category").within(() => {
@@ -202,6 +214,7 @@ describe("scenarios > visualizations > bar chart", () => {
         cy.findByText("Gadget").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Apply Filters").click();
 
       getDraggableElements().should("have.length", 3);
@@ -298,8 +311,10 @@ describe("scenarios > visualizations > bar chart", () => {
       });
 
       cy.findAllByTestId("legend-item").findByText("Doohickey").click();
-      cy.findByText("View these Products").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See these Products").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey").should("be.visible");
     });
   });
@@ -329,10 +344,13 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.findByTestId("viz-settings-button").click();
     cy.get("[data-testid^=draggable-item]").should("have.length", 100);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is less than 101").click();
     cy.findByDisplayValue("101").type("{backspace}2");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );

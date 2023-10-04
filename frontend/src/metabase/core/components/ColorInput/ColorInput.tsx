@@ -1,13 +1,5 @@
-import React, {
-  ChangeEvent,
-  FocusEvent,
-  forwardRef,
-  InputHTMLAttributes,
-  Ref,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import Color from "color";
 import Input from "metabase/core/components/Input";
@@ -77,4 +69,5 @@ const getColorHex = (value?: string) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorInput;

@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time :as t]
+   [metabase.config :as config]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.multi-setting
@@ -14,7 +15,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.task :as task]
    [metabase.task.truncate-audit-log.interface :as truncate-audit-log.i]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -22,7 +22,8 @@
 (set! *warn-on-reflection* true)
 
 ;; Load EE implementation if available
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.task.truncate-audit-log))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.task.truncate-audit-log))
 
 (define-multi-setting-impl truncate-audit-log.i/audit-max-retention-days :oss
   :getter (fn []

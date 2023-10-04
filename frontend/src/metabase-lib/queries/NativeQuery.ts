@@ -5,28 +5,27 @@ import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
 import * as ML from "cljs/metabase.lib.js";
-import {
+import type {
+  Card,
+  DatabaseId,
+  DatasetQuery,
+  DependentMetadataItem,
+  NativeDatasetQuery,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
-import {
-  Card,
-  DatasetQuery,
-  NativeDatasetQuery,
-} from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
-import Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/Question";
+import type Table from "metabase-lib/metadata/Table";
+import type Database from "metabase-lib/metadata/Database";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import { getTemplateTagParameter } from "metabase-lib/parameters/utils/template-tags";
-import Variable from "metabase-lib/variables/Variable";
+import type Variable from "metabase-lib/variables/Variable";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import ValidationError from "metabase-lib/ValidationError";
 import { isFieldReference } from "metabase-lib/references";
-import Dimension, { FieldDimension, TemplateTagDimension } from "../Dimension";
+import type Dimension from "../Dimension";
+import { FieldDimension, TemplateTagDimension } from "../Dimension";
 import DimensionOptions from "../DimensionOptions";
 
 import { getNativeQueryTable } from "./utils/native-query-table";
@@ -85,6 +84,7 @@ export function updateCardTemplateTagNames(
 // QUERY TEXT TAG UTILS END
 ///////////////////////////
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;
@@ -146,7 +146,7 @@ export default class NativeQuery extends AtomicQuery {
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
-  engine(): DatabaseEngine | null | undefined {
+  engine(): string | null | undefined {
     const database = this.database();
     return database && database.engine;
   }
@@ -438,7 +438,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.template_tags(queryText, this.templateTagsMap())
+      ? ML.extract_template_tags(queryText, this.templateTagsMap())
       : {};
   }
 

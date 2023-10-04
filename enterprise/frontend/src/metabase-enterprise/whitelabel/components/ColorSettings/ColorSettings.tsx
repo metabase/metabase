@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorSettings from "../ChartColorSettings";
@@ -65,4 +65,5 @@ const ColorSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSettings;

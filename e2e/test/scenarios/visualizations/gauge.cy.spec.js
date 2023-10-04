@@ -26,7 +26,7 @@ describe("scenarios > visualizations > gauge chart", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 4,
+              size_x: 5,
               size_y: 4,
               parameter_mappings: [],
             },
@@ -38,6 +38,7 @@ describe("scenarios > visualizations > gauge chart", () => {
     );
 
     cy.findByTestId("gauge-arc-1").trigger("mousemove");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Something went wrong").should("not.exist");
   });
 });

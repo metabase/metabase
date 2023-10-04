@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
@@ -194,6 +194,10 @@ const SAML_ATTRS = [
   "saml-attribute-email",
   "saml-attribute-firstname",
   "saml-attribute-lastname",
+  "saml-identity-provider-uri",
+  "saml-identity-provider-issuer",
+  "saml-identity-provider-certificate",
+  "saml-application-name",
 ];
 
 const getAttributeValues = (values, defaults) => {

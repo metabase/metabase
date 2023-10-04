@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]))
 

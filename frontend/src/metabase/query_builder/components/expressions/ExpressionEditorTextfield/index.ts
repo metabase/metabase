@@ -1,1 +1,1 @@
-export { default } from "./ExpressionEditorTextfield";
+export { default as ExpressionEditorTextfield } from "./ExpressionEditorTextfield";

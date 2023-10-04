@@ -35,7 +35,9 @@ describe("issue 14843", () => {
 
     popover().findByText(CC_NAME).click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Equal to").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not equal to").click();
 
     cy.findByPlaceholderText("Enter a number").type("3");
@@ -43,7 +45,9 @@ describe("issue 14843", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
 });

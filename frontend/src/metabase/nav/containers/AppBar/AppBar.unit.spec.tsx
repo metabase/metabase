@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import { screen } from "@testing-library/react";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -9,7 +8,7 @@ import {
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
-import { EmbedOptions } from "metabase-types/store";
+import type { EmbedOptions } from "metabase-types/store";
 import { DEFAULT_EMBED_OPTIONS } from "metabase/redux/embed";
 import AppBar from "./AppBar";
 
@@ -141,7 +140,7 @@ describe("AppBar", () => {
 });
 
 function setup(embedOptions: Partial<EmbedOptions>) {
-  setupCollectionsEndpoints([]);
+  setupCollectionsEndpoints({ collections: [] });
 
   renderWithProviders(<Route path="/question/:slug" component={AppBar} />, {
     withRouter: true,

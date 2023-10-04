@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import D from "metabase/reference/components/Detail.css";
@@ -24,4 +24,4 @@ UsefulQuestions.propTypes = {
   questions: PropTypes.array.isRequired,
 };
 
-export default React.memo(UsefulQuestions);
+export default memo(UsefulQuestions);

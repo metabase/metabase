@@ -6,10 +6,17 @@ import {
   getFullName,
   visitQuestion,
   visitDashboard,
+  setTokenFeatures,
+  setupSMTP,
+  sidebar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -24,6 +31,24 @@ describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setTokenFeatures("all");
+  });
+
+  it("shows permissions help", () => {
+    cy.visit("/admin/permissions/application");
+    cy.get("main").within(() => {
+      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.get("@permissionHelpButton").should("not.exist");
+    });
+
+    cy.findByLabelText("Permissions help reference").within(() => {
+      cy.findAllByText("Applications permissions");
+
+      cy.findByText(
+        "Application settings are useful for granting groups access to some, but not all, of Metabase’s administrative features.",
+      );
+      cy.findByLabelText("Close").click();
+    });
   });
 
   describe("subscriptions permission", () => {
@@ -47,10 +72,10 @@ describeEE("scenarios > admin > permissions > application", () => {
       });
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
         cy.icon("subscription").should("not.exist");
 
-        visitQuestion(1);
+        visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").should("not.exist");
 
         cy.visit("/account/notifications");
@@ -61,19 +86,20 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      beforeEach(() => {
-        cy.signInAsNormalUser();
-      });
-
       it("gives ability to create dashboard subscriptions", () => {
-        visitDashboard(1);
-        cy.icon("subscription").click();
-        cy.findByText("Create a dashboard subscription");
+        setupSMTP();
+        cy.signInAsNormalUser();
+        visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.findByLabelText("subscriptions").click();
+
+        sidebar().findByText("Email this dashboard").should("exist");
       });
 
       it("gives ability to create question alerts", () => {
-        visitQuestion(1);
+        cy.signInAsNormalUser();
+        visitQuestion(ORDERS_QUESTION_ID);
         cy.icon("bell").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(
           "To send alerts, an admin needs to set up email integration.",
         );
@@ -113,21 +139,29 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").click();
 
         // Tools smoke test
         cy.url().should("include", "/admin/tools/errors");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Questions that errored when last run");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("broken_question");
 
         // Audit smoke test
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Audit").click();
         cy.url().should("include", "/admin/audit/members/overview");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("All members").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(getFullName(admin));
 
         // Troubleshooting smoke test
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Troubleshooting").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Diagnostic Info");
       });
     });
@@ -138,15 +172,15 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").should("not.exist");
 
         cy.visit("/admin/tools/errors");
-        cy.findByText("Sorry, you don’t have permission to see that.");
-
-        cy.visit("/admin/tools/errors");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sorry, you don’t have permission to see that.");
 
         cy.visit("/admin/troubleshooting/help");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sorry, you don’t have permission to see that.");
       });
     });
@@ -174,17 +208,22 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Admin settings").click();
 
         cy.url().should("include", "/admin/settings/general");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("License and Billing").should("not.exist");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Setup").should("not.exist");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Updates").should("not.exist");
 
         // General smoke test
         cy.get("#setting-site-name").clear().type("new name").blur();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Saved");
       });
     });

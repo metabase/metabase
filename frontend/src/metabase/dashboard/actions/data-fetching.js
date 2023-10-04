@@ -2,14 +2,14 @@ import { getIn } from "icepick";
 
 import { t } from "ttag";
 
-import { normalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { defer } from "metabase/lib/promise";
 
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import Utils from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import { addParamValues, addFields } from "metabase/redux/metadata";
 
@@ -24,12 +24,17 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
+  getCanShowAutoApplyFiltersToast,
+  getDashboardById,
+  getDashCardById,
+  getSelectedTabId,
 } from "../selectors";
 
 import {
@@ -39,10 +44,10 @@ import {
   getDashboardType,
   fetchDataOrError,
   getDatasetQueryParams,
+  getCurrentTabDashboardCards,
 } from "../utils";
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
-
-const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -57,7 +62,13 @@ export const FETCH_DASHBOARD_CARD_DATA =
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_DASHBOARD_CARD_DATA";
 
+export const FETCH_DASHBOARD_CARD_METADATA =
+  "metabase/dashboard/FETCH_DASHBOARD_CARD_METADATA";
+
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
+export const FETCH_CARD_DATA_PENDING =
+  "metabase/dashboard/FETCH_CARD_DATA/pending";
+
 export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
@@ -90,9 +101,8 @@ function isNewAdditionalSeriesCard(card, dashcard) {
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  () => (dispatch, getState) => {
+  totalCards => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
-    const totalCards = loadingDashCards.dashcardIds.length;
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
   },
@@ -102,6 +112,7 @@ const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
     dispatch(setShowLoadingCompleteFavicon(true));
+
     if (!document.hidden) {
       dispatch(setDocumentTitle(""));
       setTimeout(() => {
@@ -120,16 +131,38 @@ const loadingComplete = createThunkAction(
         { once: true },
       );
     }
+
+    if (getCanShowAutoApplyFiltersToast(getState())) {
+      dispatch(showAutoApplyFiltersToast());
+    }
   },
 );
 
 export const fetchDashboard = createThunkAction(
   FETCH_DASHBOARD,
-  function (dashId, queryParams, preserveParameters) {
+  function (
+    dashId,
+    queryParams,
+    { preserveParameters = false, clearCache = true } = {},
+  ) {
+    let entities;
     let result;
     return async function (dispatch, getState) {
       const dashboardType = getDashboardType(dashId);
-      if (dashboardType === "public") {
+      const loadedDashboard = getDashboardById(getState(), dashId);
+
+      if (!clearCache && loadedDashboard) {
+        entities = {
+          dashboard: { [dashId]: loadedDashboard },
+          dashcard: Object.fromEntries(
+            loadedDashboard.ordered_cards.map(id => [
+              id,
+              getDashCardById(getState(), id),
+            ]),
+          ),
+        };
+        result = denormalize(dashId, dashboard, entities);
+      } else if (dashboardType === "public") {
         result = await PublicApi.dashboard({ uuid: dashId });
         result = {
           ...result,
@@ -171,18 +204,30 @@ export const fetchDashboard = createThunkAction(
       }
 
       if (dashboardType === "normal" || dashboardType === "transient") {
-        await dispatch(loadMetadataForDashboard(result.ordered_cards));
+        const selectedTabId = getSelectedTabId(getState());
+
+        const cards =
+          selectedTabId === undefined
+            ? result.ordered_cards
+            : result.ordered_cards.filter(
+                c => c.dashboard_tab_id === selectedTabId,
+              );
+
+        await dispatch(loadMetadataForDashboard(cards));
       }
 
-      // copy over any virtual cards from the dashcard to the underlying card/question
-      result.ordered_cards.forEach(card => {
-        if (card.visualization_settings.virtual_card) {
-          card.card = Object.assign(
-            card.card || {},
-            card.visualization_settings.virtual_card,
-          );
-        }
-      });
+      const isUsingCachedResults = entities != null;
+      if (!isUsingCachedResults) {
+        // copy over any virtual cards from the dashcard to the underlying card/question
+        result.ordered_cards.forEach(card => {
+          if (card.visualization_settings.virtual_card) {
+            card.card = Object.assign(
+              card.card || {},
+              card.visualization_settings.virtual_card,
+            );
+          }
+        });
+      }
 
       if (result.param_values) {
         dispatch(addParamValues(result.param_values));
@@ -196,20 +241,16 @@ export const fetchDashboard = createThunkAction(
 
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())
-        : getParameterValuesByIdFromQueryParams(
-            parameters,
-            queryParams,
-            metadata,
-            {
-              forcefullyUnsetDefaultedParametersWithEmptyStringValue: true,
-            },
-          );
+        : getParameterValuesByIdFromQueryParams(parameters, queryParams);
+
+      entities = entities ?? normalize(result, dashboard).entities;
 
       return {
-        ...normalize(result, dashboard), // includes `result` and `entities`
+        entities,
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
+        preserveParameters,
       };
     };
   },
@@ -217,8 +258,16 @@ export const fetchDashboard = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clear, ignoreCache } = {}) {
+  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
     return async function (dispatch, getState) {
+      dispatch({
+        type: FETCH_CARD_DATA_PENDING,
+        payload: {
+          dashcard_id: dashcard.id,
+          card_id: card.id,
+        },
+      });
+
       // If the dataset_query was filtered then we don't have permisison to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
@@ -248,7 +297,7 @@ export const fetchCardData = createThunkAction(
         const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
         if (
           lastResult &&
-          Utils.equals(
+          equals(
             getDatasetQueryParams(lastResult.json_query),
             getDatasetQueryParams(datasetQuery),
           )
@@ -263,7 +312,7 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
-      if (clear) {
+      if (clearCache) {
         // clears the card data to indicate the card is reloading
         dispatch(clearCardData(card.id, dashcard.id));
       }
@@ -275,7 +324,7 @@ export const fetchCardData = createThunkAction(
         if (result === null) {
           dispatch(markCardAsSlow(card, datasetQuery));
         }
-      }, DATASET_SLOW_TIMEOUT);
+      }, DASHBOARD_SLOW_TIMEOUT);
 
       const deferred = defer();
       setFetchCardDataCancel(card.id, dashcard.id, deferred);
@@ -367,31 +416,92 @@ export const fetchCardData = createThunkAction(
         dashcard_id: dashcard.id,
         card_id: card.id,
         result: cancelled ? null : result,
+        currentTime: performance.now(),
       };
     };
   },
 );
 
-export const fetchDashboardCardData = createThunkAction(
-  FETCH_DASHBOARD_CARD_DATA,
-  options => (dispatch, getState) => {
+export const fetchDashboardCardData =
+  ({ isRefreshing, ...options } = {}) =>
+  (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
+    const selectedTabId = getSelectedTabId(getState());
 
-    const promises = getAllDashboardCards(dashboard)
-      .map(({ card, dashcard }) => {
-        if (!isVirtualDashCard(dashcard)) {
-          return dispatch(fetchCardData(card, dashcard, options)).then(() => {
-            return dispatch(updateLoadingTitle());
-          });
-        }
-      })
-      .filter(p => !!p);
+    const loadingIds = getLoadingDashCards(getState()).loadingIds;
+    const nonVirtualDashcards = getCurrentTabDashboardCards(
+      dashboard,
+      selectedTabId,
+    ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
 
-    dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
+    let nonVirtualDashcardsToFetch = [];
+    if (isRefreshing) {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards.filter(
+        ({ dashcard }) => {
+          return !loadingIds.includes(dashcard.id);
+        },
+      );
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
+      });
 
-    Promise.all(promises).then(() => {
-      dispatch(loadingComplete());
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: loadingIds.concat(newLoadingIds),
+        },
+      });
+    } else {
+      nonVirtualDashcardsToFetch = nonVirtualDashcards;
+      const newLoadingIds = nonVirtualDashcardsToFetch.map(({ dashcard }) => {
+        return dashcard.id;
+      });
+
+      for (const id of loadingIds) {
+        const dashcard = getDashCardById(getState(), id);
+        dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
+      }
+
+      dispatch({
+        type: FETCH_DASHBOARD_CARD_DATA,
+        payload: {
+          currentTime: performance.now(),
+          loadingIds: newLoadingIds,
+        },
+      });
+    }
+
+    const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
+      return dispatch(fetchCardData(card, dashcard, options)).then(() => {
+        return dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+      });
     });
+
+    if (nonVirtualDashcardsToFetch.length > 0) {
+      dispatch(
+        setDocumentTitle(t`0/${nonVirtualDashcardsToFetch.length} loaded`),
+      );
+
+      // TODO: There is a race condition here, when refreshing a dashboard before
+      // the previous API calls finished.
+      Promise.all(promises).then(() => {
+        dispatch(loadingComplete());
+      });
+    }
+  };
+
+export const fetchDashboardCardMetadata = createThunkAction(
+  FETCH_DASHBOARD_CARD_METADATA,
+  () => async (dispatch, getState) => {
+    const allDashCards = getDashboardComplete(getState()).ordered_cards;
+    const selectedTabId = getSelectedTabId(getState());
+
+    const cards = allDashCards.filter(
+      dc =>
+        selectedTabId !== undefined && dc.dashboard_tab_id === selectedTabId,
+    );
+    await dispatch(loadMetadataForDashboard(cards));
   },
 );
 

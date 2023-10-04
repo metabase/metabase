@@ -1,5 +1,5 @@
 import { restore, visitAlias, popover } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -8,17 +8,14 @@ const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
 
 describe("scenarios > admin > datamodel > field > field type", () => {
   beforeEach(() => {
-    cy.intercept(
-      "GET",
-      "/api/table/*/query_metadata?include_sensitive_fields=true",
-    ).as("metadata");
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
 
     restore();
     cy.signInAsAdmin();
 
     ordersColumns.forEach(column => {
       cy.wrap(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/${ORDERS[column]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[column]}/general`,
       ).as(`ORDERS_${column}_URL`);
     });
 
@@ -27,21 +24,21 @@ describe("scenarios > admin > datamodel > field > field type", () => {
 
   it("should let you change the type to 'No semantic type'", () => {
     visitAlias("@ORDERS_PRODUCT_ID_URL");
-    cy.wait(["@metadata", "@metadata", "@metadata"]);
+    cy.wait(["@metadata", "@metadata"]);
 
     setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
 
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();
-    cy.wait(["@metadata", "@metadata"]);
+    cy.wait("@metadata");
 
     getFieldType("No semantic type");
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     visitAlias("@ORDERS_QUANTITY_URL");
-    cy.wait(["@metadata", "@metadata", "@metadata"]);
+    cy.wait("@metadata");
 
     setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
 
@@ -52,7 +49,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();
-    cy.wait(["@metadata", "@metadata", "@metadata"]);
+    cy.wait(["@metadata", "@metadata"]);
 
     getFieldType("Foreign Key");
     getFKTargetField("Products → ID");
@@ -60,7 +57,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
 
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
     visitAlias("@ORDERS_PRODUCT_ID_URL");
-    cy.wait(["@metadata", "@metadata", "@metadata"]);
+    cy.wait(["@metadata", "@metadata"]);
 
     checkNoFieldType({ oldValue: "Foreign Key", newValue: "Number" });
   });

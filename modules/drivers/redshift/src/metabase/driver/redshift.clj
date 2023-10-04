@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [java-time :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -14,6 +13,7 @@
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
@@ -76,20 +76,6 @@
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
 
-;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
-;; Redshift is always in UTC and doesn't return it's timezone
-(defmethod driver.common/current-db-time-date-formatters :redshift
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :redshift
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(defmethod driver/current-db-time :redshift
-  [& args]
-  (apply driver.common/current-db-time args))
-
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)
@@ -130,22 +116,23 @@
   [_]
   "SET TIMEZONE TO %s;")
 
-;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
-;; connection read-only, because that seems to be causing problems for people
-(defmethod sql-jdbc.execute/connection-with-timezone :redshift
-  [driver database ^String timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
-      (try
-        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-        (catch Throwable e
-          (log/debug e (trs "Error setting default holdability for connection"))))
-      conn
-      (catch Throwable e
-        (.close ^Connection conn)
-        (throw e)))))
+;; This impl is basically the same as the default impl in [[metabase.driver.sql-jdbc.execute]], but doesn't attempt to
+;; make the connection read-only, because that seems to be causing problems for people
+(defmethod sql-jdbc.execute/do-with-connection-with-options :redshift
+  [driver db-or-id-or-spec {:keys [^String session-timezone], :as options} f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (sql-jdbc.execute/set-best-transaction-level! driver conn)
+       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+       (try
+         (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+         (catch Throwable e
+           (log/debug e (trs "Error setting default holdability for connection")))))
+     (f conn))))
 
 (defn- prepare-statement ^PreparedStatement [^Connection conn sql]
   (.prepareStatement conn
@@ -167,10 +154,13 @@
 (defn- quote-literal-for-database
   "This function invokes quote-literal-for-connection with a connection for the given database. See its docstring for
   more detail."
-  [database s]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (with-open [conn (jdbc/get-connection jdbc-spec)]
-      (quote-literal-for-connection conn s))))
+  [driver database s]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [conn]
+     (quote-literal-for-connection conn s))))
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
@@ -179,7 +169,7 @@
    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-   [:raw (quote-literal-for-database (qp.store/database) pattern)]])
+   [:raw (quote-literal-for-database driver (lib.metadata/database (qp.store/metadata-provider)) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
@@ -195,7 +185,10 @@
   (->> args
        (map (partial sql.qp/->honeysql driver))
        (reduce (fn [x y]
-                 [:concat x y]))))
+                 (if x
+                   [:concat x y]
+                   y))
+               nil)))
 
 (defn- extract [unit temporal]
   [::h2x/extract (format "'%s'" (name unit)) temporal])
@@ -312,7 +305,8 @@
                                         [:field (field-id :guard integer?) _]
                                         (when (contains? (set &parents) :dimension)
                                           field-id))]
-                    [(:name (qp.store/field field-id)) (:value param)]))))
+                    [(:name (lib.metadata/field (qp.store/metadata-provider) field-id))
+                     (:value param)]))))
         user-parameters))
 
 (defmethod qp.util/query->remark :redshift

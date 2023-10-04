@@ -28,10 +28,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - name: Set Metabase Enterprise License
-      run: |
-        echo "MB_PREMIUM_EMBEDDING_TOKEN=${{ secrets.ENTERPRISE_TOKEN }}" >> $GITHUB_ENV
-      if: startsWith(matrix.version.source, 'v1') || startsWith(matrix.version.target, 'v1')
     - name: Set source Docker image to OSS
       run: |
         echo "DOCKER_SOURCE_IMAGE=metabase/metabase:${{ matrix.version.source }}" >> $GITHUB_ENV
@@ -47,7 +43,8 @@ jobs:
         docker run -d \
         -v $PWD/my-metabase:/metabase.db \
         -p 3000:3000 \
-        -e MB_PREMIUM_EMBEDDING_TOKEN \
+        -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.ENTERPRISE_TOKEN }} \
+        -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.E2E_STARTER_TOKEN }} \
         --name metabase-${{ matrix.version.source }} \
         ${{ env.DOCKER_SOURCE_IMAGE }}
     - name: Wait for Metabase to start on port 3000
@@ -76,7 +73,8 @@ jobs:
         docker run -d \
           -v $PWD/my-metabase:/metabase.db \
           -p 3001:3000 \
-          -e MB_PREMIUM_EMBEDDING_TOKEN \
+          -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.ENTERPRISE_TOKEN }} \
+          -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.E2E_STARTER_TOKEN }} \
           --name metabase-${{ matrix.version.target }} \
           ${{ env.DOCKER_TARGET_IMAGE }}
     - name: Wait for Metabase to start on port 3001

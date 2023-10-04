@@ -10,4 +10,5 @@ const IconButtonWrapper = styled.button<{ circle?: boolean }>`
 
 IconButtonWrapper.defaultProps = { type: "button" };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default IconButtonWrapper;

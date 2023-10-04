@@ -1,14 +1,20 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
   ORDERS,
+  ORDERS_ID,
   PEOPLE,
-} from "__support__/sample_database_fixture";
-
-import StructuredQuery, {
-  isDimensionOption,
+} from "metabase-types/api/mocks/presets";
+/* eslint-disable import/no-duplicates */
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type {
   DimensionOption,
   SegmentOption,
 } from "metabase-lib/queries/StructuredQuery";
+/* eslint-enable import/no-duplicates */
+import { isDimensionOption } from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 
 import {
@@ -19,15 +25,24 @@ import {
   getSearchHits,
 } from "./utils";
 
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+
 const makeQuery = (query = {}): StructuredQuery => {
-  return new StructuredQuery(ORDERS.question(), {
-    type: "query",
-    database: SAMPLE_DATABASE?.id,
-    query: {
-      "source-table": ORDERS.id,
-      ...query,
-    },
-  });
+  return ordersTable
+    .question()
+    .setDatasetQuery({
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        ...query,
+      },
+      database: SAMPLE_DB_ID,
+    })
+    .query() as StructuredQuery;
 };
 
 const query = makeQuery();
@@ -37,7 +52,7 @@ describe("BulkFilterModal utils", () => {
     it("flags between filters with misordered arguments", () => {
       const filter = new Filter([
         "between",
-        ["field", ORDERS.fields[1].id, null],
+        ["field", ORDERS.CREATED_AT, null],
         20,
         10,
       ]);
@@ -49,7 +64,7 @@ describe("BulkFilterModal utils", () => {
     it("hasBackwardsArguments identifies between filters with correctly ordered arguments", () => {
       const filter = new Filter([
         "between",
-        ["field", ORDERS.fields[1].id, null],
+        ["field", ORDERS.CREATED_AT, null],
         20,
         100,
       ]);
@@ -62,7 +77,7 @@ describe("BulkFilterModal utils", () => {
   describe("swapFilterArguments", () => {
     it("swaps arguments in a between filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 20, 10],
+        ["between", ["field", ORDERS.CREATED_AT, null], 20, 10],
         null,
         query,
       );
@@ -77,7 +92,7 @@ describe("BulkFilterModal utils", () => {
   describe("handleEmptyBetween", () => {
     it("replaces a between filter with an empty second argument with a >= filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 20, null],
+        ["between", ["field", ORDERS.CREATED_AT, null], 20, null],
         null,
         query,
       );
@@ -90,7 +105,7 @@ describe("BulkFilterModal utils", () => {
 
     it("replaces a between filter with an empty first argument with a <= filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], undefined, 30],
+        ["between", ["field", ORDERS.CREATED_AT, null], undefined, 30],
         null,
         query,
       );
@@ -105,7 +120,7 @@ describe("BulkFilterModal utils", () => {
   describe("fixBetweens", () => {
     it("handles empty between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 30, null],
+        ["between", ["field", ORDERS.CREATED_AT, null], 30, null],
         null,
         query,
       );
@@ -118,7 +133,7 @@ describe("BulkFilterModal utils", () => {
 
     it("handles backwards between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 30, 20],
+        ["between", ["field", ORDERS.CREATED_AT, null], 30, 20],
         null,
         query,
       );
@@ -131,7 +146,7 @@ describe("BulkFilterModal utils", () => {
 
     it("ignores valid between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 40, 50],
+        ["between", ["field", ORDERS.CREATED_AT, null], 40, 50],
         null,
         query,
       );
@@ -144,7 +159,7 @@ describe("BulkFilterModal utils", () => {
 
     it("ignores non-between filters", () => {
       const filter = new Filter(
-        ["=", ["field", ORDERS.fields[1].id, null], 40, 50],
+        ["=", ["field", ORDERS.CREATED_AT, null], 40, 50],
         null,
         query,
       );
@@ -159,9 +174,9 @@ describe("BulkFilterModal utils", () => {
       const filter = new Filter(
         [
           "between",
-          ["field", ORDERS.CREATED_AT.id, null],
-          ["field", PEOPLE.BIRTH_DATE.id, { "source-field": PEOPLE.ID.id }],
-          ["field", PEOPLE.CREATED_AT.id, { "source-field": PEOPLE.ID.id }],
+          ["field", ORDERS.CREATED_AT, null],
+          ["field", PEOPLE.BIRTH_DATE, { "source-field": PEOPLE.ID }],
+          ["field", PEOPLE.CREATED_AT, { "source-field": PEOPLE.ID }],
         ],
         null,
         query,
@@ -177,9 +192,9 @@ describe("BulkFilterModal utils", () => {
       const testQuery = makeQuery({
         filter: [
           "and",
-          ["between", ["field", ORDERS.fields[1].id, null], 80, 50],
-          ["between", ["field", ORDERS.fields[1].id, null], 30, null],
-          ["=", ["field", ORDERS.fields[1].id, null], 8, 9, 7],
+          ["between", ["field", ORDERS.CREATED_AT, null], 80, 50],
+          ["between", ["field", ORDERS.CREATED_AT, null], 30, null],
+          ["=", ["field", ORDERS.CREATED_AT, null], 8, 9, 7],
         ],
       });
 
@@ -225,8 +240,8 @@ describe("BulkFilterModal utils", () => {
 
       expect(hitFieldNames).toEqual([
         "ID",
-        "Product ID",
         "User ID",
+        "Product ID",
         "ID",
         "ID",
       ]);

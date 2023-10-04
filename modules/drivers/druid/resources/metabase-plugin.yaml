@@ -17,7 +17,25 @@ driver:
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
+    - name: auth-enabled
+      display-name: Authentication header
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: auth-username
+      display-name: Username
+      type: string
+      visible-if:
+        auth-enabled: true
+    - name: auth-token
+      display-name: Token
+      type: secret
+      secret-kind: password
+      visible-if:
+        auth-enabled: true
     - default-advanced-options
+
 init:
   - step: load-namespace
     namespace: metabase.driver.druid

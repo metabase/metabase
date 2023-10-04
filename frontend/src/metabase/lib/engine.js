@@ -63,6 +63,8 @@ export function getEngineLogo(engine) {
       return `${path}/presto.svg`;
     case "starburst":
       return `${path}/starburst.svg`;
+    case "materialize":
+      return `${path}/materialize.svg`;
   }
 }
 

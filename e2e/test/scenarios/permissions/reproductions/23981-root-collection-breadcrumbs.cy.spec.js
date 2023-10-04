@@ -38,7 +38,9 @@ describe("issue 23981", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${getFullName(nocollection)}'s Personal Collection`).click();
 
     popover().within(() => {

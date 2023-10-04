@@ -1,9 +1,8 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Dataset } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -17,7 +16,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import DashCardMenu from "./DashCardMenu";
 
@@ -50,7 +49,10 @@ const TEST_CARD_UNAUTHORIZED = createMockCard({
 const TEST_RESULT = createMockDataset();
 
 const TEST_RESULT_ERROR = createMockDataset({
-  error: "An error occurred",
+  error: {
+    status: 500,
+    data: "An error occurred",
+  },
 });
 
 interface SetupOpts {
@@ -60,7 +62,7 @@ interface SetupOpts {
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
     }),

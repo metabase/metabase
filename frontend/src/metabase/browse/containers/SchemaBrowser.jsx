@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 
 import Schema from "metabase/entities/schemas";
@@ -8,7 +7,6 @@ import Database from "metabase/entities/databases";
 import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import * as Urls from "metabase/lib/urls";
@@ -16,7 +14,7 @@ import { color } from "metabase/lib/colors";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-import { SchemaGridItem } from "./SchemaBrowser.styled";
+import { SchemaGridItem, SchemaLink } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {
   const { schemas, params } = props;
@@ -46,16 +44,13 @@ function SchemaBrowser(props) {
             <Grid>
               {schemas.map(schema => (
                 <SchemaGridItem key={schema.id}>
-                  <Link
+                  <SchemaLink
                     to={`/browse/${dbId}/schema/${encodeURIComponent(
                       schema.name,
                     )}`}
-                    mb={1}
-                    hover={{ color: color("accent2") }}
                     data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
-                    className="overflow-hidden"
                   >
-                    <Card hoverable px={1}>
+                    <Card hoverable className="px1">
                       <EntityItem
                         name={schema.name}
                         iconName="folder"
@@ -63,7 +58,7 @@ function SchemaBrowser(props) {
                         item={schema}
                       />
                     </Card>
-                  </Link>
+                  </SchemaLink>
                 </SchemaGridItem>
               ))}
             </Grid>

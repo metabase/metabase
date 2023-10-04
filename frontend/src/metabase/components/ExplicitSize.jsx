@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 import _ from "underscore";
+import debounce from "lodash.debounce";
 
 import resizeObserver from "metabase/lib/resize-observer";
 import { isCypressActive } from "metabase/env";
@@ -11,11 +12,16 @@ const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
   throttle: fn => _.throttle(fn, WAIT_TIME),
-  debounce: fn => _.debounce(fn, WAIT_TIME),
-  debounceLeading: fn => _.debounce(fn, WAIT_TIME, true),
+  debounce: fn => debounce(fn, WAIT_TIME),
+  // Using lodash.debounce with leading=true to execute the function immediately and also at the end of the debounce period.
+  // Underscore debounce with immediate=true will not execute the function after the wait period unless it is called again.
+  debounceLeading: fn => debounce(fn, WAIT_TIME, { leading: true }),
   none: fn => fn,
 };
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
   ComposedComponent => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
@@ -48,7 +54,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         this._initResizeObserver();
         // Set the size on the next tick. We had issues with wrapped components
         // not adjusting if the size was fixed during mounting.
-        setTimeout(this._updateSize, 0);
+        this.timeoutId = setTimeout(this._updateSize, 0);
       }
 
       componentDidUpdate() {
@@ -60,6 +66,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
       componentWillUnmount() {
         this._teardownResizeObserver();
         this._teardownQueryMediaListener();
+        clearTimeout(this.timeoutId);
       }
 
       _getRefreshMode = () => {

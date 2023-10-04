@@ -1,15 +1,15 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   [honey.sql :as sql]
    [java-time :as t]
    [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
    [metabase.models.query-cache :refer [QueryCache]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.connection :as t2.connection]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))
@@ -27,18 +27,16 @@
   ;; extra microsecond compiling the same exact query every time. :shrug:
   ;;
   ;; Since application DB can change at run time (during tests) it's not just a plain delay
-  (let [f (memoize (fn [_db-type quoting-style]
-                     (first (sql/format {:select   [:results]
-                                         :from     [:query_cache]
-                                         :where    [:and
-                                                    [:= :query_hash [:raw "?"]]
-                                                    [:>= :updated_at [:raw "?"]]]
-                                         :order-by [[:updated_at :desc]]
-                                         :limit    [:inline 1]}
-                                        {:quoted  true
-                                         :dialect quoting-style}))))]
+  (let [f (memoize (fn [_db-type]
+                     (first (mdb.query/compile {:select   [:results]
+                                                :from     [:query_cache]
+                                                :where    [:and
+                                                           [:= :query_hash [:raw "?"]]
+                                                           [:>= :updated_at [:raw "?"]]]
+                                                :order-by [[:updated_at :desc]]
+                                                :limit    [:inline 1]}))))]
     (fn []
-      (f (mdb/db-type) (db/quoting-style)))))
+      (f (mdb/db-type)))))
 
 (defn- prepare-statement
   ^PreparedStatement [^Connection conn query-hash max-age-seconds]

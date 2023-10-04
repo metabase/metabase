@@ -1,8 +1,8 @@
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 export default class SaveStatus extends Component {
@@ -15,7 +15,7 @@ export default class SaveStatus extends Component {
       error: null,
     };
 
-    _.bindAll(this, "setSaving", "setSaved", "setSaveError");
+    _.bindAll(this, "setSaving", "setSaved", "setSaveError", "clear");
   }
 
   setSaving() {
@@ -38,6 +38,10 @@ export default class SaveStatus extends Component {
 
   setSaveError(error) {
     this.setState({ saving: false, recentlySavedTimeout: null, error: error });
+  }
+
+  clear() {
+    this.setState({ saving: false, recentlySavedTimeout: null, error: null });
   }
 
   render() {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
@@ -21,7 +21,7 @@ import {
 const propTypes = {
   className: PropTypes.string,
   field: PropTypes.instanceOf(Field).isRequired,
-  fieldValues: PropTypes.array.isRequired,
+  fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
   showAllFieldValues: PropTypes.bool,
 };

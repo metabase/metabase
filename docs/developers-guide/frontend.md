@@ -404,23 +404,8 @@ const Foo = () => <div className={style.primary} />;
 ```javascript
 import styled from "@emotion/styled";
 
-const FooWrapper = styled.div`
-  color: ${props => props.color};
-`;
-
-const Bar = ({ color }) => <Foo color={color} />;
-```
-
-### Emotion + [styled-system](https://styled-system.com/)
-
-e.x.
-
-```javascript
-import styled from "@emotion/styled";
-import { color } from "styled-system";
-
 const Foo = styled.div`
-  ${color}
+  color: ${props => props.color};
 `;
 
 const Bar = ({ color }) => <Foo color={color} />;
@@ -436,21 +421,19 @@ In Metabase core, they are visually responsive: they appear above or below the e
 
 #### When creating custom questions
 
-1. From home, click on `Ask a question`
-2. Click on `Custom question`
-3. 👀 The option picker next to `Pick your starting data` is a `<Popover />`.
-4. Choose `Sample Database`
-5. Choose any of the tables, for example `People`
+1. From home, click on `New` and then `Question`
+2. 👀 The option picker that automatically opened next to `Pick your starting data` is a `<Popover />`.
+3. Choose `Sample Database` if not already selected
+4. Choose any of the tables, for example `People`
 
 Here, clicking on the following will open `<Popover />` components:
 
-- `Columns` (right-hand side of section labeled `Data`)
+- `Pick columns` (arrow on the right-hand side of a `FieldsPicker` control in the section labeled `Data`)
 - Gray icon of a grid with + below section labeled `Data`
 - `Add filters to narrow your answers`
 - `Pick the metric you want to see`
 - `Pick a column to group by`
 - `Sort` icon with arrows pointing up and down above `Visualize` button
-
 
 ## Unit testing
 
@@ -477,7 +460,7 @@ const setup = ({ collection }: SetupOpts) => {
     <CollectionHeader
       collection={collection}
       onUpdateCollection={onUpdateCollection}
-    />
+    />,
   );
 
   return { onUpdateCollection };
@@ -500,18 +483,19 @@ describe("CollectionHeader", () => {
     expect(onUpdateCollection).toHaveBeenCalledWith({
       ...collection,
       name: "New name",
-    })
+    });
   });
 });
 ```
 
 Key points:
+
 - `setup` function
 - `renderWithProviders` adds providers used by the app, including `redux`
 
 ### Request mocking
 
-We use `fetchMock` to mock requests:
+We use [`fetch-mock`](https://www.npmjs.com/package/fetch-mock) to mock requests:
 
 ```tsx
 import fetchMock from "fetch-mock";
@@ -522,13 +506,13 @@ interface SetupOpts {
 }
 
 const setup = ({ collections }: SetupOpts) => {
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
 
   // renderWithProviders and other setup
 };
 
 describe("Component", () => {
-  it("renders correclty", async () => {
+  it("renders correctly", async () => {
     setup();
     expect(await screen.findByText("Collection")).toBeInTheDocument();
   });
@@ -536,6 +520,6 @@ describe("Component", () => {
 ```
 
 Key points:
-- Create `scope` in `setup`
+
+- `setup` function
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data
-- Call `nock.clearAll` to remove all mocks

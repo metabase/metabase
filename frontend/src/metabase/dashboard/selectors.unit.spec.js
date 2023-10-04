@@ -7,7 +7,9 @@ import {
   getEditingParameterId,
   getIsEditingParameter,
   getClickBehaviorSidebarDashcard,
+  getDashboardComplete,
 } from "metabase/dashboard/selectors";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 import Field from "metabase-lib/metadata/Field";
 import { SIDEBAR_NAME } from "./constants";
 
@@ -56,6 +58,7 @@ const STATE = {
     segments: {},
     questions: {},
   },
+  settings: createMockSettingsState(),
 };
 
 describe("dashboard/selectors", () => {
@@ -336,6 +339,67 @@ describe("dashboard/selectors", () => {
       expect(getClickBehaviorSidebarDashcard(state)).toEqual(
         state.dashboard.dashcards[1],
       );
+    });
+  });
+
+  describe("getDashboardComplete", () => {
+    const multiCardState = chain(STATE)
+      .assocIn(["dashboard", "dashboards", 0, "ordered_cards"], [0, 1, 2])
+      .assocIn(["dashboard", "dashcards", 2], {
+        card: { id: 2, dataset_query: { type: "query", query: {} } },
+        parameter_mappings: [],
+      })
+      .value();
+
+    const setup = positions => {
+      const newStateChain = chain(multiCardState);
+
+      positions.forEach((position, index) => {
+        newStateChain
+          .assocIn(["dashboard", "dashcards", index, "row"], position.row)
+          .assocIn(["dashboard", "dashcards", index, "col"], position.col);
+      });
+
+      return newStateChain.value();
+    };
+
+    it("should filter out removed dashcards", () => {
+      const state = chain(multiCardState)
+        .assocIn(["dashboard", "dashcards", 0, "isRemoved"], true)
+        .assocIn(["dashboard", "dashcards", 2, "isRemoved"], true)
+        .value();
+
+      expect(getDashboardComplete(state).ordered_cards).toEqual([
+        multiCardState.dashboard.dashcards[1],
+      ]);
+    });
+
+    it("should sort cards based on their positions top to bottom", () => {
+      const state = setup([
+        { row: 2, col: 0 },
+        { row: 1, col: 1 },
+        { row: 0, col: 2 },
+      ]);
+
+      const cards = getDashboardComplete(state).ordered_cards;
+
+      expect(cards[2].card.id).toBe(0);
+      expect(cards[1].card.id).toBe(1);
+      expect(cards[0].card.id).toBe(2);
+    });
+
+    it("should sort cards based on their positions left to right when on the same row", () => {
+      const state = setup([
+        { row: 0, col: 2 },
+        { row: 0, col: 1 },
+        { row: 0, col: 0 },
+      ]);
+
+      const cards = getDashboardComplete(state).ordered_cards;
+
+      expect(cards[2].card.id).toBe(0);
+      expect(cards[1].card.id).toBe(1);
+      expect(cards[0].card.id).toBe(2);
     });
   });
 });

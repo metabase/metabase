@@ -58,3 +58,20 @@ Note that these :+1:, :+0:, and :-1:’s should be explicitly stated in a commen
 * If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer.
 * If there's a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it.
 * In the event of no movement on a PR with a :-1: after a week, @salsakran will chime in.
+
+## How to improve the quality of the code review
+
+For a summary of research on code reviews, check out [How code review works (and doesn't) in the real world](https://www.youtube.com/watch?v=_SJL7vepQvU).
+
+### What PR authors can do to get a better review
+
+- Guide reviewers by commenting on the important sections of the code. 
+- If you need someone's expertise/opinion, tag that person. 
+- Enhance PR descriptions by using [Notes and Warnings](https://github.com/github-community/community/discussions/16925) - these can be effective tools if you want a certain piece of information to stand out.
+
+### What PR reviewers can do to give a better review
+
+- Pay close attention to test files. Be aware of our tendency to assign lower significance to the test files and put a conscious effort to review them thoroughly.
+- Start with the file most important to the change, not the first file presented in an alphabetical order in the PR.
+- If you feel like you're lacking the context, ask the author for more details/better description.
+- Unless the change is trivial, check out that branch and give Metabase a spin locally with the changes included. Make sure everything works as expected.

@@ -3,13 +3,11 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
-   [metabase.db.util :as mdb.u]
    [metabase.models]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -33,14 +31,14 @@
 (defn toucan-models
   "Return a list of all toucan models."
   []
-  (concat (descendants :toucan1/model) (descendants :metabase/model)))
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))))
 
 (defn- make-table-name->model
   "Create a map of (lower-cased) application DB table name -> corresponding Toucan model."
   []
   (into {}
         (for [model (toucan-models)
-              :when (mdb.u/toucan-model? model)
               :let  [table-name (some-> model t2/table-name name)]
               :when table-name
               ;; ignore any models defined in test namespaces.
@@ -72,7 +70,7 @@
 
 (defn- seed-entity-id-for-instance! [model instance]
   (try
-    (let [primary-key (mdb.u/primary-key model)
+    (let [primary-key (first (t2/primary-keys model))
           pk-value    (get instance primary-key)]
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))
@@ -89,7 +87,7 @@
 
 (defn- seed-entity-ids-for-model! [model]
   (log/infof "Seeding Entity IDs for model %s" (name model))
-  (let [reducible-instances (db/select-reducible model :entity_id nil)]
+  (let [reducible-instances (t2/reducible-select model :entity_id nil)]
     (transduce
      (map (fn [instance]
             (seed-entity-id-for-instance! model instance)))

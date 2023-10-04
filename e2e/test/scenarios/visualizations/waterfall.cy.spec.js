@@ -47,7 +47,8 @@ describe("scenarios > visualizations > waterfall", () => {
     openNativeEditor().type(
       "select 'A' as product, 10 as profit union select 'B' as product, -4 as profit",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -59,18 +60,23 @@ describe("scenarios > visualizations > waterfall", () => {
       "select 1 as X, 20 as Y union select 2 as X, -10 as Y",
     );
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("X").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Y").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Axes").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Linear").click();
     cy.get(".List-item").contains("Ordinal").click();
 
@@ -81,12 +87,15 @@ describe("scenarios > visualizations > waterfall", () => {
     openNativeEditor().type(
       "select 1 as X, 10 as Y union select 2 as X, -2 as Y",
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("X").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Y").click();
 
@@ -96,18 +105,24 @@ describe("scenarios > visualizations > waterfall", () => {
   it("should work with time-series data", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     cy.get(".ace_text-input")
-      .type("between([Created At], '2016-01-01', '2016-08-01')")
+      .type("between([Created At], '2022-01-01', '2022-08-01')")
       .blur();
     cy.button("Done").click();
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
@@ -117,12 +132,16 @@ describe("scenarios > visualizations > waterfall", () => {
   it("should hide the Total label if there is no space", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
     switchToWaterfallDisplay();
 
@@ -145,13 +164,16 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     switchToWaterfallDisplay();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Waterfall chart does not support multiple series");
 
     cy.findByTestId("remove-count").click();
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
   });
 
@@ -172,16 +194,20 @@ describe("scenarios > visualizations > waterfall", () => {
       display: "line",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     switchToWaterfallDisplay();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Created At").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a field").click();
     cy.get(".List-item").contains("Count").click();
 
     cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Add another/).should("not.exist");
   });
 
@@ -191,11 +217,12 @@ describe("scenarios > visualizations > waterfall", () => {
         type: "native",
         native: {
           query:
-            "SELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2020-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
+            "SELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 1 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-01', 'yyyy-MM-dd') AS \"d\", 2 AS \"c\" UNION ALL\nSELECT parsedatetime('2026-01-02', 'yyyy-MM-dd') AS \"d\", 3 AS \"c\"",
         },
         database: SAMPLE_DB_ID,
       },
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
     cy.icon("waterfall").click({ force: true });
     cy.get(".Visualization .bar");
@@ -251,27 +278,35 @@ describe("scenarios > visualizations > waterfall", () => {
       cy.signInAsNormalUser();
 
       openNativeEditor().type("select 'A' as X, -4.56 as Y");
-      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.findByTestId("native-query-editor-container").icon("play").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Visualization").click();
       switchToWaterfallDisplay();
     });
 
     it("should have increase, decrease, and total color options", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Increase color").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Decrease color").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total color").click();
     });
 
     it("should allow toggling of the total bar", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
 
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total").should("not.exist");
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show total").next().click();
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total");
@@ -279,10 +314,12 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     it("should allow toggling of value labels", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Display").click();
 
       cy.get(".Visualization .value-label").should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Show values on data points").next().click();
       cy.get(".Visualization .value-label").contains(4.56).should("be.visible");
     });

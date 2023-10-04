@@ -1,15 +1,14 @@
 import _ from "underscore";
 
-import {
+import type {
+  Card,
   Parameter,
   ParameterValuesConfig,
+  ParameterTarget,
   TemplateTag,
 } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type { Card } from "metabase-types/types/Card";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
@@ -42,6 +41,7 @@ export function getTemplateTagParameter(
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
+    options: tag.options,
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,
@@ -49,6 +49,7 @@ export function getTemplateTagParameter(
 }
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+// If this function moves you should update the comment that links to this one
 export function getTemplateTagParameters(
   tags: TemplateTag[],
   parameters: Parameter[] = [],
@@ -123,9 +124,7 @@ export function remapParameterValuesToTemplateTags(
       const templateTagParameter = templateTagParametersByName[tag];
       const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];
-      if (hasParameterValue(parameterValue)) {
-        parameterValues[templateTagParameter.name] = parameterValue;
-      }
+      parameterValues[templateTagParameter.name] = parameterValue;
     }
   });
 

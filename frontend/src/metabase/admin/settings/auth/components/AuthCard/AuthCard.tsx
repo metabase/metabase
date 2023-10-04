@@ -1,4 +1,5 @@
-import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
 import { isNotNull } from "metabase/core/utils/types";
@@ -176,4 +177,5 @@ const AuthCardModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AuthCard;

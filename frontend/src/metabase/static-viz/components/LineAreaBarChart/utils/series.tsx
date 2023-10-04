@@ -3,8 +3,8 @@ import { merge } from "icepick";
 import { isNotNull } from "metabase/core/utils/types";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
-import { ColorPalette } from "metabase/lib/colors/types";
-import {
+import type { ColorPalette } from "metabase/lib/colors/types";
+import type {
   CardSeries,
   ChartSettings,
   Series,

@@ -124,3 +124,14 @@
                   {:$sort {"_id" 1}}
                   {:$project {"_id" false, "count" true}}])
    :collection  (name table-name)})
+
+(defmethod tx/aggregate-column-info :mongo
+  ([driver ag-type]
+   (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+          (when (#{:count :cum-count} ag-type)
+            {:base_type :type/Integer})))
+
+  ([driver ag-type column-metadata]
+   (merge ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type column-metadata)
+          (when (= ag-type :cum-count)
+            {:base_type :type/Integer}))))

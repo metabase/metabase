@@ -1,16 +1,19 @@
-import { restore, startNewQuestion, visualize } from "e2e/support/helpers";
-
-const PG_DB_NAME = "QA Postgres12";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { openTable, restore } from "e2e/support/helpers";
 
 describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
-
-    startNewQuestion();
-    cy.findByTextEnsureVisible(PG_DB_NAME).click();
-    cy.findByTextEnsureVisible("Orders").click();
-    visualize();
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body }) => {
+        const tableId = body.find(table => table.name === "orders").id;
+        openTable({
+          database: WRITABLE_DB_ID,
+          table: tableId,
+        });
+      },
+    );
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {
@@ -25,7 +28,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     // Assertions
     cy.log("Fails in v0.36.6");
     // This could be omitted because real test is searching for "37.65" on the page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });

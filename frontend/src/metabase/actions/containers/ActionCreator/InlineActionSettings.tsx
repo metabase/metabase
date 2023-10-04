@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -27,7 +27,7 @@ import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 
-import { isSavedAction } from "../../utils";
+import { isActionPublic, isSavedAction } from "../../utils";
 import {
   ActionSettingsContent,
   CopyWidgetContainer,
@@ -134,7 +134,7 @@ const InlineActionSettings = ({
           >
             <Toggle
               id={`${id}-public`}
-              value={action.public_uuid != null}
+              value={isActionPublic(action)}
               onChange={handleTogglePublic}
             />
           </FormField>
@@ -172,6 +172,7 @@ const InlineActionSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<StateProps, DispatchProps, OwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

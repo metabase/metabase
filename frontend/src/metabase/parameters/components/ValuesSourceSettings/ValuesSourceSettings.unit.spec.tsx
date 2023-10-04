@@ -1,8 +1,8 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
-import { Parameter, ValuesQueryType } from "metabase-types/api";
+import type { Parameter, ValuesQueryType } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import ValuesSourceSettings from "./ValuesSourceSettings";
 
 interface SetupOpts {
@@ -12,6 +12,7 @@ interface SetupOpts {
 const setup = ({ parameter }: SetupOpts) => {
   const onChangeQueryType = jest.fn();
   const onChangeSourceSettings = jest.fn();
+  setupParameterValuesEndpoints({ values: [], has_more_values: false });
 
   renderWithProviders(
     <ValuesSourceSettings

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import CheckBox from "metabase/core/components/CheckBox";
 
 import { formDomOnlyProps } from "metabase/lib/redux";

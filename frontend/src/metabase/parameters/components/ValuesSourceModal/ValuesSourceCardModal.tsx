@@ -1,29 +1,31 @@
-import React, { ChangeEvent, useCallback, useEffect } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
-import DataPicker, {
+import type {
   DataPickerDataType,
   DataPickerValue,
+} from "metabase/containers/DataPicker";
+import DataPicker, {
   useDataPicker,
   useDataPickerValue,
 } from "metabase/containers/DataPicker";
 import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Card,
+import { coerceCollectionId } from "metabase/collections/utils";
+import type {
   CardId,
   Collection,
   Parameter,
   ValuesSourceConfig,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 import {
   getCollectionVirtualSchemaId,
   getQuestionIdFromVirtualTableId,
@@ -49,16 +51,12 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
+interface ModalQuestionProps {
+  question: Question | undefined;
 }
 
 interface ModalCollectionProps {
   collection: Collection | undefined;
-}
-
-interface ModalStateProps {
-  question: Question | undefined;
 }
 
 interface ModalDispatchProps {
@@ -67,9 +65,8 @@ interface ModalDispatchProps {
 }
 
 type ModalProps = ModalOwnProps &
-  ModalCardProps &
+  ModalQuestionProps &
   ModalCollectionProps &
-  ModalStateProps &
   ModalDispatchProps;
 
 const ValuesSourceCardModal = ({
@@ -180,29 +177,22 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
   }
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
 const mapDispatchToProps: ModalDispatchProps = {
   onFetchCard: (cardId: CardId) => Questions.actions.fetch({ id: cardId }),
   onFetchMetadata: (cardId: CardId) =>
     Tables.actions.fetchMetadata({ id: getQuestionVirtualTableId(cardId) }),
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Collections.load({
-    id: (state: State, { card }: ModalCardProps) =>
-      card?.collection_id ?? "root",
+    id: (state: State, { question }: ModalQuestionProps) =>
+      question ? coerceCollectionId(question?.collectionId()) : undefined,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(ValuesSourceCardModal);

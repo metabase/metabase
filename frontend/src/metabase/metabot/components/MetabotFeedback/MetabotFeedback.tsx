@@ -1,9 +1,8 @@
-import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import { MetabotFeedbackType } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { MetabotFeedbackType } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import { runPromptQuery, submitFeedbackForm } from "../../actions";
 import { getFeedbackType } from "../../selectors";
 import MetabotMessage from "../MetabotMessage";
@@ -81,4 +80,5 @@ const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(MetabotFeedback);

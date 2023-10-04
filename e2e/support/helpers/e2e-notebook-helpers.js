@@ -35,7 +35,13 @@ export function visualize(callback) {
   });
 }
 
-export function addSummaryField({ metric, field, stage = 0, index = 0 }) {
+export function addSummaryField({
+  metric,
+  table,
+  field,
+  stage = 0,
+  index = 0,
+}) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("aggregate-step")
     .findAllByTestId("notebook-cell-item")
@@ -44,13 +50,21 @@ export function addSummaryField({ metric, field, stage = 0, index = 0 }) {
 
   popover().within(() => {
     cy.findByText(metric).click();
+    if (table) {
+      cy.findByText(table).click();
+    }
     if (field) {
       cy.findByText(field).click();
     }
   });
 }
 
-export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
+export function addSummaryGroupingField({
+  table,
+  field,
+  stage = 0,
+  index = 0,
+}) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("breakout-step")
     .findAllByTestId("notebook-cell-item")
@@ -58,6 +72,57 @@ export function addSummaryGroupingField({ field, stage = 0, index = 0 }) {
     .click();
 
   popover().within(() => {
+    if (table) {
+      cy.findByText(table).click();
+    }
     cy.findByText(field).click();
+  });
+}
+
+export function removeSummaryGroupingField({ field, stage = 0, index = 0 }) {
+  getNotebookStep("summarize", { stage, index })
+    .findByTestId("breakout-step")
+    .findByText(field)
+    .icon("close")
+    .click();
+}
+
+/**
+ * Joins a raw table given a table and optional LHS and RHS column names
+ * (for cases when join condition can't be selected automatically)
+ *
+ * Expects a join popover to be open
+ *
+ * @param {string} tableName
+ * @param {string} [lhsColumnName]
+ * @param {string} [rhsColumnName]
+ */
+export function joinTable(tableName, lhsColumnName, rhsColumnName) {
+  popover().findByText(tableName).click();
+  if (lhsColumnName && rhsColumnName) {
+    popover().findByText(lhsColumnName).click();
+    popover().findByText(rhsColumnName).click();
+  }
+}
+
+export function selectSavedQuestionsToJoin(
+  firstQuestionName,
+  secondQuestionName,
+) {
+  cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText("Saved Questions").click();
+  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  cy.findByText(firstQuestionName).click();
+  cy.wait("@loadSchemas");
+
+  // join to question b
+  cy.icon("join_left_outer").click();
+
+  popover().within(() => {
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Raw Data").click();
+    cy.findByTextEnsureVisible("Saved Questions").click();
+    cy.findByText(secondQuestionName).click();
   });
 }

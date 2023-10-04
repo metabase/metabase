@@ -1,5 +1,5 @@
-import { ColorPalette } from "metabase/lib/colors/types";
-import { STATIC_CHART_TYPES } from "./constants";
+import type { ColorPalette } from "metabase/lib/colors/types";
+import type { STATIC_CHART_TYPES } from "./constants";
 
 type StaticChartType = typeof STATIC_CHART_TYPES[number];
 

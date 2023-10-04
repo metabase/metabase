@@ -136,8 +136,9 @@ For example, if your values are:
 then your connection string would be: 
 
 ```
-postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
+postgresql://10.0.2.4:5432/postgres?user=metabase%40metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
+Note: the "@" character has been replaced for "%40", as the "@" will no longer work in versions > 43
 
 Click **Save** and the instance will restart. 
 

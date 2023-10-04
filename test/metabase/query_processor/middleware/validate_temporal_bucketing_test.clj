@@ -12,7 +12,7 @@
 
 (deftest validate-temporal-bucketing-test
   (mt/dataset attempted-murders
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (doseq [field-clause-type [:id :name]]
         (testing (format "With %s clauses" field-clause-type)
           (letfn [(query [field unit]
@@ -51,7 +51,7 @@
 (deftest unix-timestamp-test
   (testing "UNIX Timestamps should be bucketable by anything"
     (mt/dataset sad-toucan-incidents
-      (mt/with-everything-store
+      (mt/with-metadata-provider (mt/id)
         (doseq [unit [:default :hour :day]]
           (testing (format "Unit = %s" unit)
             (is (some? (validate (mt/mbql-query incidents

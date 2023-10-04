@@ -1,4 +1,3 @@
-import React from "react";
 import { InfoBanner } from "./DatabaseInfoField.styled";
 
 export interface DatabaseInfoFieldProps {
@@ -11,4 +10,5 @@ const DatabaseInfoField = ({
   return <InfoBanner>{placeholder}</InfoBanner>;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseInfoField;

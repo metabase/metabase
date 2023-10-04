@@ -19,15 +19,17 @@ describe("dashboard reducers", () => {
   it("should return the initial state", () => {
     expect(initState).toEqual({
       dashboardId: null,
+      selectedTabId: null,
       dashboards: {},
       dashcardData: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
+      isNavigatingBackToDashboard: false,
       isEditing: null,
       loadingDashCards: {
-        dashcardIds: [],
         loadingIds: [],
         startTime: null,
+        endTime: null,
         loadingStatus: "idle",
       },
       parameterValues: {},
@@ -36,6 +38,11 @@ describe("dashboard reducers", () => {
       slowCards: {},
       loadingControls: {},
       missingActionParameters: null,
+      autoApplyFilters: {
+        toastId: null,
+        toastDashboardId: null,
+      },
+      tabDeletions: {},
     });
   });
 
@@ -226,7 +233,6 @@ describe("dashboard reducers", () => {
     it("should change to running when loading cards", () => {
       const dashcardIds = [1, 2, 3];
       const loadingMatch = {
-        dashcardIds: dashcardIds,
         loadingIds: dashcardIds,
         loadingStatus: "running",
         startTime: expect.any(Number),
@@ -237,13 +243,12 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: dashcardIds,
               loadingIds: dashcardIds,
             },
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: {},
+            payload: { currentTime: 100, loadingIds: dashcardIds },
           },
         ),
       ).toMatchObject({
@@ -256,15 +261,15 @@ describe("dashboard reducers", () => {
       expect(
         reducer(initState, {
           type: FETCH_DASHBOARD_CARD_DATA,
-          payload: {},
+          payload: { currentTime: 100, loadingIds: [] },
         }),
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [],
           loadingIds: [],
           loadingStatus: "idle",
           startTime: null,
+          endTime: null,
         },
       });
     });
@@ -275,23 +280,28 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: [1, 2, 3],
               loadingIds: [3],
               loadingStatus: "running",
+              startTime: 100,
             },
           },
           {
             type: FETCH_CARD_DATA,
-            payload: { dashcard_id: 3, card_id: 1, result: {} },
+            payload: {
+              dashcard_id: 3,
+              card_id: 1,
+              result: {},
+              currentTime: 200,
+            },
           },
         ),
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [1, 2, 3],
           loadingIds: [],
           loadingStatus: "complete",
-          startTime: null,
+          startTime: 100,
+          endTime: 200,
         },
         dashcardData: { 3: { 1: {} } },
       });

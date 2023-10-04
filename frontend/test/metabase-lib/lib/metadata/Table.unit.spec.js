@@ -1,12 +1,16 @@
-import { state, ORDERS } from "__support__/sample_database_fixture";
-
-import { getMetadata } from "metabase/selectors/metadata";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
 
 describe("Table", () => {
-  const metadata = getMetadata(state);
-  const table = metadata.table(ORDERS.id);
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+  const table = metadata.table(ORDERS_ID);
 
   it("should be a table", () => {
     expect(table).toBeInstanceOf(Table);

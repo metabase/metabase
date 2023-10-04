@@ -4,7 +4,6 @@ import {
   filterWidget,
   saveDashboard,
   editDashboard,
-  visualize,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -98,14 +97,18 @@ describe("issue 17514", () => {
       cy.location("search").should("eq", "?date_filter=past30years");
       cy.wait("@cardQuery");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Previous 30 Years");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("17514").click();
       cy.wait("@dataset");
       cy.findByTextEnsureVisible("Subtotal");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-      cy.findByText("110.93").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("79.37").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this value");
     });
   });
@@ -122,9 +125,12 @@ describe("issue 17514", () => {
 
       removeJoinedTable();
 
-      visualize();
+      cy.button("Visualize").click();
+      cy.wait("@dataset");
+
       cy.findByTextEnsureVisible("Subtotal");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
       cy.get(".Modal").within(() => {
@@ -135,13 +141,17 @@ describe("issue 17514", () => {
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
       openNotebookMode();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Join data").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products").click();
 
-      visualize();
+      cy.button("Visualize").click();
+      cy.wait("@dataset");
 
       // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
       cy.findByTextEnsureVisible("Subtotal").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this column");
     });
   });

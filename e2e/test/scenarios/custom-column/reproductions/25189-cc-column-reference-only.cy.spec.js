@@ -62,6 +62,7 @@ describe.skip("issue 25189", () => {
     });
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
 
     // 3. We shouldn't see duplication in the breakout fields

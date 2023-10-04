@@ -2,9 +2,13 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.core :as mbc]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Secret]]
@@ -13,27 +17,28 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [next.jdbc :as next.jdbc]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest can-connect-with-details?-test
-  (is (= true
-         (driver.u/can-connect-with-details? :h2 (:details (data/db)))))
-  (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
-  (testing "Random made-up DBs should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres {:host   "localhost"
-                                                          :port   5432
-                                                          :dbname "ABCDEFGHIJKLMNOP"
-                                                          :user   "rasta"}))))
-  (testing "Things that you can connect to, but are not DBs, should fail"
-    (is (= false
-           (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80})))))
+  (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
+    (is (not (driver.u/can-connect-with-details? :h2 (:details (data/db))))))
+  (binding [h2/*allow-testing-h2-connections* true]
+    (is (driver.u/can-connect-with-details? :h2 (:details (data/db))))
+    (testing "Lie and say Test DB is Postgres. `can-connect?` should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres (:details (data/db))))))
+    (testing "Random made-up DBs should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres {:host   "localhost"
+                                                              :port   5432
+                                                              :dbname "ABCDEFGHIJKLMNOP"
+                                                              :user   "rasta"}))))
+    (testing "Things that you can connect to, but are not DBs, should fail"
+      (is (not (driver.u/can-connect-with-details? :postgres {:host "google.com", :port 80}))))))
 
 (deftest db->pooled-connection-spec-test
   (mt/test-driver :h2
@@ -46,28 +51,32 @@
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]
-          (jdbc/with-db-connection [_conn spec]
-            (jdbc/execute! spec ["CREATE TABLE birds (name varchar)"])
-            (jdbc/execute! spec ["INSERT INTO birds values ('rasta'),('lucky')"])
-            (mt/with-temp Database [database {:engine :h2, :details connection-details}]
-              (testing "database id is not in our connection map initially"
-                ;; deref'ing a var to get the atom. looks weird
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
-              (testing "when getting a pooled connection it is now in our connection map"
-                (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-                      birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
-                  (is (seq birds))
-                  (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                 (u/id database)))))
-              (testing "and is no longer in our connection map after cleanup"
-                (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
-                (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                    (u/id database)))))
-              (testing "the pool has been destroyed"
-                (is @destroyed?)))))))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           spec
+           {:write? true}
+           (fn [conn]
+             (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
+             (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
+             (t2.with-temp/with-temp [Database database {:engine :h2, :details connection-details}]
+               (testing "database id is not in our connection map initially"
+                 ;; deref'ing a var to get the atom. looks weird
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                     (u/id database)))))
+               (testing "when getting a pooled connection it is now in our connection map"
+                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
+                   (is (seq birds))
+                   (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                  (u/id database)))))
+               (testing "and is no longer in our connection map after cleanup"
+                 (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)
+                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
+                                     (u/id database)))))
+               (testing "the pool has been destroyed"
+                 (is @destroyed?))))))))))
 
-(deftest c3p0-datasource-name-test
+(deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing "The dataSourceName c3p0 property is set properly for a database"
       (let [db         (mt/db)
@@ -78,7 +87,7 @@
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
         (is (not= db-nm "null"))))))
 
-(deftest same-connection-details-result-in-equal-specs-test
+(deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
     ;; this is only really a concern for drivers like Spark SQL that create custom DataSources instead of plain details
     ;; maps -- those DataSources need to be considered equal based on the connection string/properties
@@ -158,11 +167,11 @@
             ;; restore the original test DB details, no matter what just happened
             (t2/update! Database (mt/id) {:details (:details db)}))))))
   (testing "postgres secrets are stable (#23034)"
-    (mt/with-temp* [Secret [secret {:name       "file based secret"
-                                    :kind       :perm-cert
-                                    :source     nil
-                                    :value      (.getBytes "super secret")
-                                    :creator_id (mt/user->id :crowberto)}]]
+    (mt/with-temp [Secret secret {:name       "file based secret"
+                                  :kind       :perm-cert
+                                  :source     nil
+                                  :value      (.getBytes "super secret")
+                                  :creator_id (mt/user->id :crowberto)}]
       (let [db {:engine  :postgres
                 :details {:ssl                      true
                           :ssl-mode                 "verify-ca"
@@ -178,3 +187,28 @@
         (is (= (#'sql-jdbc.conn/jdbc-spec-hash db)
                (#'sql-jdbc.conn/jdbc-spec-hash db))
             "Same db produced different hashes due to secrets")))))
+
+(deftest connection-pool-does-not-cache-audit-db
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (when config/ee-available?
+      (t2/delete! 'Database {:where [:= :is_audit true]})
+      (let [status (mbc/ensure-audit-db-installed!)
+            audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]})
+            _ (is (= :metabase-enterprise.audit-db/installed status))
+            _ (is (= 13371337 audit-db-id))
+            first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
+            second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
+        (is (= first-pool second-pool))
+        (is (= ::audit-db-not-in-cache!
+               (get @#'sql-jdbc.conn/database-id->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
+
+(deftest ^:parallel include-unreturned-connection-timeout-test
+  (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
+    (is (=? {"unreturnedConnectionTimeout" integer?}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest unreturned-connection-timeout-test
+  (testing "We should be able to set jdbc-data-warehouse-unreturned-connection-timeout-seconds via env var (#33646)"
+    (mt/with-temp-env-var-value [mb-jdbc-data-warehouse-unreturned-connection-timeout-seconds "20"]
+      (is (= 20
+             (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))

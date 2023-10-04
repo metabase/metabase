@@ -1,6 +1,7 @@
-import React, { useCallback, ReactNode } from "react";
-import { IconProps } from "metabase/components/Icon";
-import {
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+import type { IconProps } from "metabase/core/components/Icon";
+import type {
   Series,
   TransformedSeries,
   VisualizationSettings,
@@ -51,4 +52,5 @@ const ChartCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartCaption;

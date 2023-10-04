@@ -1,5 +1,7 @@
+export type ErrorDetails = string | Record<string, any>;
+
 export interface ErrorDetailsProps {
-  details: string | Record<string, any>;
+  details?: ErrorDetails;
   centered?: boolean;
   className?: string;
 }

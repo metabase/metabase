@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 
 import S from "./List.css";
@@ -10,4 +10,4 @@ List.propTypes = {
   children: PropTypes.any.isRequired,
 };
 
-export default React.memo(List);
+export default memo(List);

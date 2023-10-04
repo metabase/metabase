@@ -1,29 +1,19 @@
 (ns metabase.mbql.util
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
-  #?@
-  (:clj
-   [(:require
-     [clojure.string :as str]
-     [metabase.mbql.predicates :as mbql.preds]
-     [metabase.mbql.schema :as mbql.s]
-     [metabase.mbql.schema.helpers :as schema.helpers]
-     [metabase.mbql.util.match :as mbql.match]
-     [metabase.models.dispatch :as models.dispatch]
-     [metabase.shared.util.i18n :as i18n]
-     [metabase.util.i18n]
-     [metabase.util.log :as log]
-     [potemkin :as p]
-     [schema.core :as s])]
-   :cljs
-   [(:require
-     [clojure.string :as str]
-     [metabase.mbql.predicates :as mbql.preds]
-     [metabase.mbql.schema :as mbql.s]
-     [metabase.mbql.schema.helpers :as schema.helpers]
-     [metabase.mbql.util.match :as mbql.match]
-     [metabase.shared.util.i18n :as i18n]
-     [schema.core :as s])]))
+  (:require
+   [clojure.string :as str]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.predicates :as mbql.preds]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.schema.helpers :as schema.helpers]
+   [metabase.mbql.util.match :as mbql.match]
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   #?@(:clj
+       [[metabase.models.dispatch :as models.dispatch]
+        [potemkin :as p]])))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."
@@ -32,7 +22,7 @@
     (str (namespace x) "/" (name x))
     (name x)))
 
-(s/defn normalize-token :- s/Keyword
+(mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
   [token :- schema.helpers/KeywordOrString]
@@ -74,71 +64,74 @@
              [&match])
           subclauses))
 
+(declare simplify-compound-filter)
+
+(defn- simplify-and-or-filter
+  [op args]
+  (let [args (distinct (filter some? args))]
+    (case (count args)
+      ;; an empty filter, toss it
+      0 nil
+      ;; single arg, unwrap it
+      1 (simplify-compound-filter (first args))
+      (if (some (partial is-clause? op) args)
+        ;; clause of the same type embedded, faltten it
+        (recur op (combine-compound-filters-of-type op args))
+        ;; simplify the arguments
+        (let [simplified (map simplify-compound-filter args)]
+          (if (= simplified args)
+            ;; no change, we can stop
+            (into [op] args)
+            ;; there is a change, we might be able to simplify even further
+            (recur op simplified)))))))
+
 (defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
-  [filter-clause]
-  (mbql.match/replace filter-clause
-    seq? (recur (vec &match))
+  [x]
+  (cond
+    ;; look for filters in the values
+    (map? x) (update-vals x simplify-compound-filter)
+    (seq? x) (recur (vec x))
+    ;; not a map and not vector, leave it as is
+    (not (vector? x)) x
+    ;; an empty filter, toss it
+    (not (some some? x)) nil
+    :else (let [[op & [farg :as args]] x]
+            (case op
+              :not (if-not (seqable? farg)
+                     x
+                     (case (first farg)
+                       ;; double negation, eliminate both
+                       :not (recur (second farg))
+                       ;; use de Morgan's law to push the negation down
+                       :and (simplify-and-or-filter :or (map #(vector :not %) (rest farg)))
+                       :or  (simplify-and-or-filter :and (map #(vector :not %) (rest farg)))
+                       x))
+              :and (simplify-and-or-filter :and args)
+              :or  (simplify-and-or-filter :or args)
+              ;; simplify the elements of the vector
+              (mapv simplify-compound-filter x)))))
 
-    ;; if this an an empty filter, toss it
-    nil                                  nil
-    [& (_ :guard (partial every? nil?))] nil
-    []                                   nil
-    [(:or :and :or)]                     nil
-
-    ;; if the COMPOUND clause contains any nils, toss them
-    [(clause-name :guard #{:and :or}) & (args :guard (partial some nil?))]
-    (recur (apply vector clause-name (filterv some? args)))
-
-    ;; Rewrite a `:not` over `:and` using de Morgan's law
-    [:not [:and & args]]
-    (recur (apply vector :or (map #(vector :not %) args)))
-
-    ;; Rewrite a `:not` over `:or` using de Morgan's law
-    [:not [:or & args]]
-    (recur (apply vector :and (map #(vector :not %) args)))
-
-    ;; for `and` or `not` compound filters with only one subclase, just unnest the subclause
-    [(:or :and :or) arg] (recur arg)
-
-    ;; for `and` and `not` compound filters with subclauses of the same type pull up any compounds of the same type
-    ;; e.g. [:and :a [:and b c]] ; -> [:and a b c]
-    [:and & (args :guard (partial some (partial is-clause? :and)))]
-    (recur (apply vector :and (combine-compound-filters-of-type :and args)))
-
-    [:or & (args :guard (partial some (partial is-clause? :or)))]
-    (recur (apply vector :or (combine-compound-filters-of-type :or args)))
-
-    ;; for `and` or `or` clauses with duplicate args, remove the duplicates and recur
-    [(clause :guard #{:and :or}) & (args :guard #(not (apply distinct? %)))]
-    (recur (apply vector clause (distinct args)))
-
-    ;; for `not` that wraps another `not`, eliminate both
-    [:not [:not arg]]
-    (recur arg)
-
-    :else
-    filter-clause))
-
-(s/defn combine-filter-clauses :- mbql.s/Filter
+(mu/defn combine-filter-clauses :- mbql.s/Filter
   "Combine two filter clauses into a single clause in a way that minimizes slapping a bunch of `:and`s together if
   possible."
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(s/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
+(mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
   needed."
-  [inner-query :- mbql.s/MBQLQuery new-clause :- (s/maybe mbql.s/Filter)]
+  [inner-query :- mbql.s/MBQLQuery
+   new-clause  :- [:maybe mbql.s/Filter]]
   (if-not new-clause
     inner-query
     (update inner-query :filter combine-filter-clauses new-clause)))
 
-(s/defn add-filter-clause :- mbql.s/Query
+(mu/defn add-filter-clause :- mbql.s/Query
   "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- (s/maybe mbql.s/Filter)]
+  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query new-clause))
 
 (defn desugar-inside
@@ -288,7 +281,7 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(s/defn desugar-expression :- mbql.s/FieldOrExpressionDef
+(mu/defn desugar-expression :- mbql.s/FieldOrExpressionDef
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
   [expression :- mbql.s/FieldOrExpressionDef]
@@ -299,7 +292,7 @@
   (cond-> clause
     (mbql.preds/FieldOrExpressionDef? clause) desugar-expression))
 
-(s/defn desugar-filter-clause :- mbql.s/Filter
+(mu/defn desugar-filter-clause :- mbql.s/Filter
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
@@ -335,21 +328,21 @@
 (defmethod negate* :starts-with [clause] [:not clause])
 (defmethod negate* :ends-with   [clause] [:not clause])
 
-(s/defn negate-filter-clause :- mbql.s/Filter
+(mu/defn negate-filter-clause :- mbql.s/Filter
   "Return the logical compliment of an MBQL filter clause, generally without using `:not` (except for the string
   filter clause types). Useful for generating highly optimized filter clauses and for drivers that do not support
   top-level `:not` filter clauses."
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause desugar-filter-clause negate* simplify-compound-filter))
 
-(s/defn query->source-table-id :- (s/maybe schema.helpers/IntGreaterThanZero)
+(mu/defn query->source-table-id :- [:maybe ::lib.schema.common/positive-int]
   "Return the source Table ID associated with `query`, if applicable; handles nested queries as well. If `query` is
   `nil`, returns `nil`.
 
   Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
   form), because it cannot return an accurate result for a query that has not yet been preprocessed."
   {:arglists '([outer-query])}
-  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query}]
+  [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
   (cond
     ;; for native queries, there's no source table to resolve
     (not= query-type :query)
@@ -375,15 +368,16 @@
     :else
     source-table-id))
 
-(s/defn join->source-table-id :- (s/maybe schema.helpers/IntGreaterThanZero)
+(mu/defn join->source-table-id :- [:maybe ::lib.schema.common/positive-int]
   "Like `query->source-table-id`, but for a join."
   [join]
   (query->source-table-id {:type :query, :query join}))
 
-(s/defn add-order-by-clause :- mbql.s/MBQLQuery
+(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
+  [inner-query                                        :- mbql.s/MBQLQuery
+   [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
   (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
                                id-or-name))]
     (if (existing-fields id-or-name)
@@ -396,21 +390,26 @@
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
   clause, dispatches off the clause name; otherwise dispatches off `x`'s class."
   ([x]
-   #?(:clj
-      (if (mbql-clause? x)
-        (first x)
-        (or (metabase.models.dispatch/model x)
-            (type x)))
-      :cljs
-      (if (mbql-clause? x)
-        (first x)
-        (type x))))
+   (letfn [(clause-type [x]
+             (when (mbql-clause? x)
+               (first x)))
+           (mlv2-lib-type [x]
+             (when (map? x)
+               (:lib/type x)))
+           (model-type [#?(:clj x :cljs _x)]
+             #?(:clj (models.dispatch/model x)
+                :cljs nil))]
+     (or
+      (clause-type x)
+      (mlv2-lib-type x)
+      (model-type x)
+      (type x))))
   ([x _]
    (dispatch-by-clause-name-or-class x)))
 
-(s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
+(mu/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
-  [inner-query expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
+  [inner-query expression-name :- [:or :keyword ::lib.schema.common/non-blank-string]]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
@@ -428,7 +427,7 @@
                             :tried           allowed-names
                             :found           found}))))))))
 
-(s/defn aggregation-at-index :- mbql.s/Aggregation
+(mu/defn aggregation-at-index :- mbql.s/Aggregation
   "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregation 0]).
    This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations. To
    support nested queries, you'll need to keep tract of how many `:source-query`s deep you've traveled; pass in this
@@ -437,8 +436,8 @@
    (aggregation-at-index query index 0))
 
   ([query         :- mbql.s/Query
-    index         :- schema.helpers/IntGreaterThanOrEqualToZero
-    nesting-level :- schema.helpers/IntGreaterThanOrEqualToZero]
+    index         :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+    nesting-level :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
          (throw (ex-info (i18n/tru "No aggregation at index: {0}" index) {:index index})))
@@ -557,31 +556,37 @@
                              (pr-str candidate)))
                 (recur id candidate))))))))))
 
-(s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
+(mu/defn uniquify-names :- [:and
+                            [:sequential :string]
+                            [:fn
+                             {:error/message "sequence of unique strings"}
+                             distinct?]]
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
-  [names :- [s/Str]]
+  [names :- [:sequential :string]]
   (map (unique-name-generator) names))
 
 (def ^:private NamedAggregation
-  (s/constrained
+  [:and
    mbql.s/aggregation-options
-   #(:name (nth % 2))
-   "`:aggregation-options` with a `:name`"))
+   [:fn
+    {:error/message "`:aggregation-options` with a `:name`"}
+    #(:name (nth % 2))]])
 
 (def ^:private UniquelyNamedAggregations
-  (s/constrained
-   [NamedAggregation]
-   (fn [clauses]
-     (apply distinct? (for [[_ _ {ag-name :name}] clauses]
-                        ag-name)))
-   "sequence of named aggregations with unique names"))
+  [:and
+   [:sequential NamedAggregation]
+   [:fn
+    {:error/message "sequence of named aggregations with unique names"}
+    (fn [clauses]
+      (apply distinct? (for [[_tag _wrapped {ag-name :name}] clauses]
+                         ag-name)))]])
 
-(s/defn uniquify-named-aggregations :- UniquelyNamedAggregations
+(mu/defn uniquify-named-aggregations :- UniquelyNamedAggregations
   "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
-  [named-aggregations :- [NamedAggregation]]
+  [named-aggregations :- [:sequential NamedAggregation]]
   (let [unique-names (uniquify-names
                       (for [[_ _wrapped-ag {ag-name :name}] named-aggregations]
                         ag-name))]
@@ -591,7 +596,7 @@
      named-aggregations
      unique-names)))
 
-(s/defn pre-alias-aggregations :- [NamedAggregation]
+(mu/defn pre-alias-aggregations :- [:sequential NamedAggregation]
   "Wrap every aggregation clause in an `:aggregation-options` clause, using the name returned
   by `(aggregation->name-fn ag-clause)` as names for any clauses that do not already have a `:name` in
   `:aggregation-options`.
@@ -605,7 +610,8 @@
   Most often, `aggregation->name-fn` will be something like `annotate/aggregation-name`, but for purposes of keeping
   the `metabase.mbql` module seperate from the `metabase.query-processor` code we'll let you pass that in yourself."
   {:style/indent 1}
-  [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
+  [aggregation->name-fn :- fn?
+   aggregations         :- [:sequential mbql.s/Aggregation]]
   (mbql.match/replace aggregations
     [:aggregation-options _ (_ :guard :name)]
     &match
@@ -616,13 +622,25 @@
     [(_ :guard keyword?) & _]
     [:aggregation-options &match {:name (aggregation->name-fn &match)}]))
 
-(s/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
+(mu/defn pre-alias-and-uniquify-aggregations :- UniquelyNamedAggregations
   "Wrap every aggregation clause in a `:named` clause with a unique name. Combines `pre-alias-aggregations` with
   `uniquify-named-aggregations`."
   {:style/indent 1}
-  [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
+  [aggregation->name-fn :- fn?
+   aggregations         :- [:sequential mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
+
+(defn- safe-min [& args]
+  (transduce
+   (filter some?)
+   (completing
+    (fn [acc n]
+      (if acc
+        (min acc n)
+        n)))
+   nil
+   args))
 
 (defn query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
@@ -644,10 +662,7 @@
   [{{:keys [max-results max-results-bare-rows]}                      :constraints
     {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
     query-type                                                       :type}]
-  (let [safe-min          (fn [& args]
-                            (when-let [args (seq (filter some? args))]
-                              (reduce min args)))
-        mbql-limit        (when (= query-type :query)
+  (let [mbql-limit        (when (= query-type :query)
                             (safe-min items limit))
         constraints-limit (or
                            (when-not aggregations
@@ -669,10 +684,10 @@
     :else
     x))
 
-(s/defn update-field-options :- mbql.s/FieldOrAggregationReference
+(mu/defn update-field-options :- mbql.s/Reference
   "Like [[clojure.core/update]], but for the options in a `:field`, `:expression`, or `:aggregation` clause."
   {:arglists '([field-or-ag-ref-or-expression-ref f & args])}
-  [[clause-type id-or-name opts] :- mbql.s/FieldOrAggregationReference f & args]
+  [[clause-type id-or-name opts] :- mbql.s/Reference f & args]
   (let [opts (not-empty (remove-empty (apply f opts args)))]
     ;; `:field` clauses should have a `nil` options map if there are no options. `:aggregation` and `:expression`
     ;; should get the arg removed if it's `nil` or empty. (For now. In the future we may change this if we make the
@@ -695,11 +710,9 @@
   (if (or (not base-type)
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
-    #_{:clj-kondo/ignore [:redundant-do]} ; The linter detects that this is redundant in CLJS and warns for it.
     (do
-      #?(:clj
-         (log/warn (metabase.util.i18n/trs "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
-                                           unit base-type (pr-str clause))))
+      (log/warn (i18n/tru "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
+                          unit base-type (pr-str clause)))
       clause)))
 
 (defn remove-namespaced-options
@@ -709,8 +722,7 @@
   considered relevant when comparing clauses for equality."
   [field-or-ref]
   (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
-                                                                (when (keyword? k)
-                                                                  (namespace k)))))))
+                                                                (qualified-keyword? k))))))
 
 (defn referenced-field-ids
   "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a
@@ -723,6 +735,20 @@
          (mbql.match/match coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
+
+(defn matching-locations
+  "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
+  [form pred]
+  (loop [stack [[[] form]], matches []]
+    (if-let [[loc form :as top] (peek stack)]
+      (let [stack (pop stack)
+            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+        (cond
+          (pred form)        (recur stack                                  (conj matches top))
+          (map? form)        (recur (onto-stack form)                      matches)
+          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
+          :else              (recur stack                                  matches)))
+      matches)))
 
 #?(:clj
    (p/import-vars

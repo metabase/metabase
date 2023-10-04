@@ -78,6 +78,8 @@
 
 (driver/register! ::toucanery, :abstract? true)
 
+(defmethod driver/database-supports? [::toucanery :nested-fields] [_driver _feature _database] true)
+
 (defmethod driver/describe-database ::toucanery
   [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals toucanery-tables)
@@ -102,10 +104,6 @@
   (when (= (:name table) "_metabase_metadata")
     [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
      {:keypath "movies.description", :value "A cinematic adventure."}]))
-
-(defmethod driver/supports? [::toucanery :nested-fields]
-  [_ _]
-  true)
 
 (defmethod driver/mbql->native ::toucanery
   [_ query]

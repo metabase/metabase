@@ -1,9 +1,8 @@
-import React from "react";
 import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
 import type { updateQuestion } from "metabase/query_builder/actions";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import QuestionDataSelector from "../../QuestionDataSelector";
 
@@ -28,4 +27,5 @@ function NewQuestionView({ query, updateQuestion }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewQuestionView;

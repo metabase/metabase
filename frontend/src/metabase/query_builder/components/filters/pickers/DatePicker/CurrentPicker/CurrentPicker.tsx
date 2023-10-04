@@ -1,8 +1,6 @@
-import React from "react";
-
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
-import Filter from "metabase-lib/queries/structured/Filter";
+import * as Lib from "metabase-lib";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import { DATE_PERIODS } from "../RelativeDatePicker";
 import {
   CurrentButton,
@@ -18,6 +16,7 @@ type CurrentPickerProps = {
   onCommit: (filter?: any[]) => void;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function CurrentPicker(props: CurrentPickerProps) {
   const {
     className,
@@ -46,7 +45,7 @@ export default function CurrentPicker(props: CurrentPickerProps) {
                   onCommit([operator, field, "current", period]);
                 }}
               >
-                {formatBucketing(period, 1)}
+                {Lib.describeTemporalUnit(period, 1)}
               </CurrentButton>
             </TippyPopover>
           ))}

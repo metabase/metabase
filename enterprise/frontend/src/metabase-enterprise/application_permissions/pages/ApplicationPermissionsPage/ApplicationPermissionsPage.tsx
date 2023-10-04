@@ -1,6 +1,6 @@
 import _ from "underscore";
-import { Route } from "react-router";
-import React, { useCallback, useEffect } from "react";
+import type { Route } from "react-router";
+import { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
@@ -17,7 +17,8 @@ import {
   saveApplicationPermissions,
   updateApplicationPermission,
 } from "metabase-enterprise/application_permissions/reducer";
-import { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
+import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
+import { ApplicationPermissionsHelp } from "metabase/admin/permissions/components/ApplicationPermissionsHelp";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,
@@ -68,6 +69,7 @@ const ApplicationPermissionsPage = ({
       tab="application"
       isDirty={isDirty}
       route={route}
+      helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
       onLoad={() => initialize()}
     >
@@ -81,6 +83,7 @@ const ApplicationPermissionsPage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

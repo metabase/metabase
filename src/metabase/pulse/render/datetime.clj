@@ -93,7 +93,7 @@
                                                                      (str/replace #"EEEE" "EEE")
                                                                      (str/replace #"DDD" "D")))]
                                             (-> conditional-changes
-                                                ;; 'D' formats as Day of Year, we want Day of Month, which is  'd' (issue #27469)
+                                                ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
                                                 (str/replace #"D" "d"))))]
        (case (:unit col)
          ;; these types have special formatting

@@ -1,8 +1,8 @@
-import React, { ChangeEvent, useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
-import {
+import type {
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -47,7 +47,7 @@ const ParameterSettings = ({
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const handleNameChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
+    (event: { target: HTMLInputElement }) => {
       onChangeName(event.target.value);
     },
     [onChangeName],
@@ -108,4 +108,5 @@ const ParameterSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSettings;

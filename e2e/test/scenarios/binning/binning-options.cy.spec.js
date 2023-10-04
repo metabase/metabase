@@ -71,14 +71,14 @@ const TIME_BUCKETS = [
   "Month",
   "Quarter",
   "Year",
-  "Minute of Hour",
-  "Hour of Day",
-  "Day of Week",
-  "Day of Month",
-  "Day of Year",
-  "Week of Year",
-  "Month of Year",
-  "Quarter of Year",
+  "Minute of hour",
+  "Hour of day",
+  "Day of week",
+  "Day of month",
+  "Day of year",
+  "Week of year",
+  "Month of year",
+  "Quarter of year",
 ];
 
 const LONGITUDE_BUCKETS = [
@@ -142,6 +142,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: Auto binned");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total: Auto binned").click();
       openBinningListForDimension("Total", "Auto binned");
 
@@ -157,6 +158,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Month");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Month").click();
       openBinningListForDimension("Created At", "by month");
 
@@ -172,6 +174,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: Auto binned");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude: Auto binned").click();
       openBinningListForDimension("Longitude", "Auto binned");
 
@@ -183,7 +186,9 @@ describe("scenarios > binning > binning options", () => {
     it("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");

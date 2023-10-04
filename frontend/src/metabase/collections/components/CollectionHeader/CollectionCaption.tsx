@@ -1,11 +1,11 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import {
   isPersonalCollection,
   isRootCollection,
 } from "metabase/collections/utils";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import {
   CaptionDescription,
   CaptionRoot,
@@ -74,4 +74,5 @@ const CollectionCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionCaption;

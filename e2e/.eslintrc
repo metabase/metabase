@@ -1,5 +1,6 @@
 {
   "rules": {
+    "no-unscoped-text-selectors": 2,
     "import/no-commonjs": 0,
     "no-color-literals": 0,
     "no-console": 0

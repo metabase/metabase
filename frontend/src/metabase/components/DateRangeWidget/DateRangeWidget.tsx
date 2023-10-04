@@ -1,7 +1,5 @@
-import React from "react";
-
 import moment from "moment-timezone";
-import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 
 interface DateRangeWidgetProps {
   setValue: (value: string | null) => void;
@@ -24,4 +22,5 @@ const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateRangeWidget;

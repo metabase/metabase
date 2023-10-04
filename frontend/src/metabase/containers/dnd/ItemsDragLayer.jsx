@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { DragLayer } from "react-dnd";
 import _ from "underscore";
 
@@ -10,7 +10,7 @@ import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
 // so we exclude files named `*DragLayer.jsx` in webpack.config.js
 
-class ItemsDragLayerInner extends React.Component {
+class ItemsDragLayerInner extends Component {
   render() {
     const {
       isDragging,
@@ -59,7 +59,7 @@ const ItemsDragLayer = DragLayer((monitor, props) => ({
 
 export default BodyComponent(ItemsDragLayer);
 
-class DraggedItems extends React.Component {
+class DraggedItems extends Component {
   shouldComponentUpdate(nextProps) {
     // necessary for decent drag performance
     return (

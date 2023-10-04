@@ -1,8 +1,7 @@
-import React from "react";
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/core/utils/types";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
@@ -13,7 +12,11 @@ import {
   getGroupColor,
   getGroupNameLocalized,
 } from "metabase/lib/groups";
-import { GroupIds, UserGroupType, UserGroupsType } from "metabase/admin/types";
+import type {
+  GroupIds,
+  UserGroupType,
+  UserGroupsType,
+} from "metabase/admin/types";
 import GroupSummary from "metabase/admin/people/components/GroupSummary";
 
 type GroupSelectProps = {
@@ -101,4 +104,5 @@ export const GroupSelect = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GroupSelect;

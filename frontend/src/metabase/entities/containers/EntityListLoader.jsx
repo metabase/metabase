@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
-import { createSelector } from "reselect";
-import { createMemoizedSelector } from "metabase/lib/redux";
 
 import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -72,16 +71,15 @@ const getEntityQuery = (state, props) =>
     ? props.entityQuery(state, props)
     : props.entityQuery;
 
-// NOTE: Memoize entityQuery so we don't re-render even if a new but identical
-// object is created. This works because entityQuery must be JSON serializable
-// NOTE: Technically leaks a small amount of memory because it uses an unbounded
-// memoization cache, but that's probably ok.
-const getMemoizedEntityQuery = createMemoizedSelector(
-  [getEntityQuery],
+const getMemoizedEntityQuery = createSelector(
+  getEntityQuery,
   entityQuery => entityQuery,
+  {
+    equalityFn: _.isEqual,
+  },
 );
 
-class EntityListLoaderInner extends React.Component {
+class EntityListLoaderInner extends Component {
   state = {
     previousList: [],
     isReloading: this.props.reload,
@@ -182,7 +180,7 @@ class EntityListLoaderInner extends React.Component {
       list: currentList,
       listName = entityDef.nameMany,
       loading,
-      reload, // eslint-disable-line no-unused-vars
+      reload,
       keepListWhileLoading,
       ...props
     } = this.props;
@@ -297,6 +295,9 @@ EntityListLoader.defaultProps = defaultProps;
 
 export default EntityListLoader;
 
+/**
+ * @deprecated HOCs are deprecated
+ */
 export const entityListLoader = ellProps => ComposedComponent => {
   function WrappedComponent(props) {
     return (

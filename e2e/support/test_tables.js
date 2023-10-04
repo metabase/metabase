@@ -125,7 +125,7 @@ export const composite_pk_table = async dbClient => {
   ]);
 
   return null;
-}
+};
 
 export const no_pk_table = async dbClient => {
   const tableName = "no_pk_table";
@@ -147,4 +147,4 @@ export const no_pk_table = async dbClient => {
   ]);
 
   return null;
-}
+};

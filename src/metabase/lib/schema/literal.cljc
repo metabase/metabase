@@ -8,14 +8,14 @@
    [metabase.util.malli.registry :as mr]
    #?@(:clj ([metabase.lib.schema.literal.jvm]))))
 
-(defmethod expression/type-of* :dispatch-type/nil
+(defmethod expression/type-of-method :dispatch-type/nil
   [_nil]
   :type/*)
 
 (mr/def ::boolean
   :boolean)
 
-(defmethod expression/type-of* :dispatch-type/boolean
+(defmethod expression/type-of-method :dispatch-type/boolean
   [_bool]
   :type/Boolean)
 
@@ -28,7 +28,7 @@
            :metabase.lib.schema.literal.jvm/big-integer]
      :cljs :int))
 
-(defmethod expression/type-of* :dispatch-type/integer
+(defmethod expression/type-of-method :dispatch-type/integer
   [_int]
   :type/Integer)
 
@@ -41,7 +41,7 @@
            :metabase.lib.schema.literal.jvm/big-decimal]
      :cljs :double))
 
-(defmethod expression/type-of* :dispatch-type/number
+(defmethod expression/type-of-method :dispatch-type/number
   [_non-integer-real]
   ;; `:type/Float` is the 'base type' of all non-integer real number types in [[metabase.types]] =(
   :type/Float)
@@ -85,6 +85,9 @@
 (def ^:private offset-part
   (str "(?:Z|(?:[+-]" time-part "))"))
 
+(def ^:private zone-offset-part-regex
+  (re-pattern (str "(?:Z|(?:[+-]" time-part "))")))
+
 (def ^:private ^:const local-date-regex
   (re-pattern (str \^ date-part \$)))
 
@@ -105,6 +108,11 @@
    {:error/message "date string literal"}
    local-date-regex])
 
+(mr/def ::string.zone-offset
+  [:re
+   {:error/message "timezone offset string literal"}
+   zone-offset-part-regex])
+
 (mr/def ::string.time
   [:or
    [:re
@@ -123,7 +131,7 @@
     {:error/message "offset date time string literal"}
     offset-datetime-regex]])
 
-(defmethod expression/type-of* :dispatch-type/string
+(defmethod expression/type-of-method :dispatch-type/string
   [s]
   (condp mc/validate s
     ::string.datetime #{:type/Text :type/DateTime}
@@ -133,23 +141,23 @@
 
 (mr/def ::date
   #?(:clj  [:or
-            :time/local-date
+            [:time/local-date {:error/message "instance of java.time.LocalDate"}]
             ::string.date]
      :cljs ::string.date))
 
 (mr/def ::time
   #?(:clj [:or
            ::string.time
-           :time/local-time
-           :time/offset-time]
+           [:time/local-time {:error/message "instance of java.time.LocalTime"}]
+           [:time/offset-time {:error/message "instance of java.time.OffsetTime"}]]
      :cljs ::string.time))
 
 (mr/def ::datetime
   #?(:clj [:or
            ::string.datetime
-           :time/local-date-time
-           :time/offset-date-time
-           :time/zoned-date-time]
+           [:time/local-date-time {:error/message "instance of java.time.LocalDateTime"}]
+           [:time/offset-date-time {:error/message "instance of java.time.OffsetDateTime"}]
+           [:time/zoned-date-time {:error/message "instance of java.time.ZonedDateTime"}]]
      :cljs ::string.datetime))
 
 (mr/def ::temporal

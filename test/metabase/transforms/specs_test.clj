@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.transforms.specs :as tf.specs]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]))
 
 (deftest extract-dimensions-test

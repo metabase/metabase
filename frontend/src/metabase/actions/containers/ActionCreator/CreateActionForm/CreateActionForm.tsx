@@ -1,11 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
 import FormFooter from "metabase/core/components/FormFooter";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -59,7 +58,7 @@ function CreateActionForm({
       onSubmit={onCreate}
     >
       {({ isValid }) => (
-        <Form disabled={!isValid}>
+        <Form disabled={!isValid} data-testid="create-action-form">
           <FormInput
             name="name"
             title={t`Name`}
@@ -86,4 +85,5 @@ function CreateActionForm({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateActionForm;

@@ -5,6 +5,7 @@ import {
   editDashboard,
   saveDashboard,
   filterWidget,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -27,7 +28,7 @@ const filter = {
   sectionId: "string",
 };
 
-describe.skip("issue 27768", () => {
+describe("issue 27768", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -49,7 +50,7 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
-    cy.findByText("Select…").click();
+    getDashboardCard().findByText("Select…").click();
     popover().contains("CCategory").click();
     saveDashboard();
 
@@ -63,8 +64,10 @@ describe.skip("issue 27768", () => {
     editDashboard();
     getFilterOptions(filter.name);
 
-    cy.findByText("Select…").should("not.exist");
-    cy.findByText("Column to filter on").parent().contains("Product.CCategory");
+    getDashboardCard().within(() => {
+      cy.findByText("Select…").should("not.exist");
+      cy.contains("Product.CCategory");
+    });
   });
 });
 

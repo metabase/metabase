@@ -1,5 +1,3 @@
-import React from "react";
-
 import type { FieldSettings } from "metabase-types/api";
 
 import { OptionPopover } from "./OptionEditor";

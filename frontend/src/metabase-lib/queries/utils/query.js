@@ -52,6 +52,8 @@ export const clearSegments = query =>
 
 export const canAddFilter = query => F.canAddFilter(query.filter);
 
+export { getFilterClause } from "./filter";
+
 // JOIN
 
 export const getJoins = query => J.getJoins(query.joins);

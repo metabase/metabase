@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { t, ngettext, msgid } from "ttag";
 
 import Value from "metabase/components/Value";

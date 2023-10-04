@@ -1,53 +1,64 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { singularize } from "metabase/lib/formatting";
+import type { ColorName } from "metabase/lib/colors/types";
 
 import * as Lib from "metabase-lib";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
+
+import { BucketPickerPopover } from "./BucketPickerPopover";
+import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
-
-interface QueryColumnPickerProps {
-  className?: string;
-  query: Lib.Query;
-  columnGroups: Lib.ColumnGroup[];
-  maxHeight?: number;
-  onSelect: (column: Lib.ColumnMetadata) => void;
-  onClose?: () => void;
-}
 
 type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
+export interface QueryColumnPickerProps {
+  className?: string;
+  query: Lib.Query;
+  stageIndex: number;
+  columnGroups: Lib.ColumnGroup[];
+  hasBinning?: boolean;
+  hasTemporalBucketing?: boolean;
+  maxHeight?: number;
+  color?: ColorName;
+  checkIsColumnSelected: (item: ColumnListItem) => boolean;
+  onSelect: (column: Lib.ColumnMetadata) => void;
+  onClose?: () => void;
+}
+
 type Sections = {
   name: string;
   items: ColumnListItem[];
-  icon?: string;
+  icon?: IconName;
 };
 
-function QueryColumnPicker({
+export function QueryColumnPicker({
   className,
   query,
+  stageIndex,
   columnGroups,
+  hasBinning = false,
+  hasTemporalBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
+  color = "brand",
+  checkIsColumnSelected,
   onSelect,
   onClose,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
       columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, group);
+        const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map(column => {
-          const displayInfo = Lib.displayInfo(query, column);
-          return {
-            ...displayInfo,
-            column,
-          };
-        });
+        const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
+          ...Lib.displayInfo(query, stageIndex, column),
+          column,
+        }));
 
         return {
           name: getGroupName(groupInfo),
@@ -55,33 +66,104 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, columnGroups],
+    [query, stageIndex, columnGroups],
   );
 
   const handleSelect = useCallback(
-    (item: ColumnListItem) => {
-      onSelect(item.column);
+    (column: Lib.ColumnMetadata) => {
+      onSelect(column);
       onClose?.();
     },
     [onSelect, onClose],
   );
 
+  const handleSelectColumn = useCallback(
+    (item: ColumnListItem) => {
+      const isSameColumn = checkIsColumnSelected(item);
+
+      if (isSameColumn) {
+        onClose?.();
+        return;
+      }
+
+      const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
+      if (hasBinning && isBinnable) {
+        handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
+        return;
+      }
+
+      const isTemporalBucketable = Lib.isTemporalBucketable(
+        query,
+        stageIndex,
+        item.column,
+      );
+      if (hasTemporalBucketing && isTemporalBucketable) {
+        handleSelect(
+          Lib.withDefaultTemporalBucket(query, stageIndex, item.column),
+        );
+        return;
+      }
+
+      handleSelect(item.column);
+    },
+    [
+      query,
+      stageIndex,
+      hasBinning,
+      hasTemporalBucketing,
+      checkIsColumnSelected,
+      handleSelect,
+      onClose,
+    ],
+  );
+
+  const renderItemExtra = useCallback(
+    (item: ColumnListItem) =>
+      hasBinning || hasTemporalBucketing ? (
+        <BucketPickerPopover
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          isEditing={checkIsColumnSelected(item)}
+          hasBinning={hasBinning}
+          hasTemporalBucketing={hasTemporalBucketing}
+          color={color}
+          onSelect={handleSelect}
+        />
+      ) : null,
+    [
+      query,
+      stageIndex,
+      hasBinning,
+      hasTemporalBucketing,
+      color,
+      checkIsColumnSelected,
+      handleSelect,
+    ],
+  );
+
   return (
-    <AccordionList
+    <StyledAccordionList
       className={className}
       sections={sections}
       maxHeight={maxHeight}
       alwaysExpanded={false}
-      onChange={handleSelect}
+      onChange={handleSelectColumn}
+      itemIsSelected={checkIsColumnSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
+      renderItemExtra={renderItemExtra}
+      color={color}
+      // Compat with E2E tests around MLv1-based components
+      // Prefer using a11y role selectors
+      itemTestId="dimension-list-item"
     />
   );
 }
 
 function renderItemName(item: ColumnListItem) {
-  return item.display_name;
+  return item.displayName;
 }
 
 function omitItemDescription() {
@@ -89,26 +171,24 @@ function omitItemDescription() {
 }
 
 function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getIconForField(item)} size={18} />;
+  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }
 
 function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
   const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fk_reference_name || singularize(tableInfo.display_name);
+  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
 function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  if ((groupInfo as Lib.TableDisplayInfo).is_source_table) {
+  if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
     return "table";
   }
-  if (groupInfo.is_from_join) {
+  if (groupInfo.isFromJoin) {
     return "join_left_outer";
   }
-  if (groupInfo.is_implicitly_joinable) {
+  if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
   return;
 }
-
-export default QueryColumnPicker;

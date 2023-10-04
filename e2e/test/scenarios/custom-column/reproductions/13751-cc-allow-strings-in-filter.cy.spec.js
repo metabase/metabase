@@ -15,8 +15,9 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
-    cy.findByText(PG_DB_NAME).should("be.visible").click();
-    cy.findByTextEnsureVisible("People").click();
+    popover().findByText("Raw Data").click();
+    popover().findByText(PG_DB_NAME).should("be.visible").click();
+    popover().findByTextEnsureVisible("People").click();
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
@@ -32,6 +33,7 @@ describe("issue 13751", { tags: "@external" }, () => {
     });
 
     // Add filter based on custom column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filters to narrow your answer").click();
     popover().within(() => {
       cy.findByText(CC_NAME).click();
@@ -49,6 +51,7 @@ describe("issue 13751", { tags: "@external" }, () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Arnold Adams");
   });
 });

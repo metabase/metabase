@@ -1,8 +1,10 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 
 // these tests use ChartSettings directly, but logic we're testing lives in ChartNestedSettingSeries
+import registerVisualizations from "metabase/visualizations/register";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+
+registerVisualizations();
 
 function getSeries(metrics) {
   return [

@@ -7,7 +7,9 @@
 (defn derive
   "Like [[clojure.core/derive]], but affects [[hierarchy]] rather than the global hierarchy."
   [tag parent]
-  (swap! hierarchy clojure.core/derive tag parent))
+  (swap! hierarchy clojure.core/derive tag parent)
+  ;; for REPL convenience so we don't dump a lot of garbage
+  nil)
 
 (defn isa?
   "Like [[clojure.core/isa?]], but uses [[hierarchy]]."

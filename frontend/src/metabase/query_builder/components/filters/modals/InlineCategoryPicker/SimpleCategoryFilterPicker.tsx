@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import Checkbox from "metabase/core/components/CheckBox";
 

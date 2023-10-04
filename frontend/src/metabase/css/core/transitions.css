@@ -12,7 +12,3 @@
 .transition-all {
   transition: all 0.2s linear;
 }
-
-.transition-border {
-  transition: border 0.3s linear;
-}

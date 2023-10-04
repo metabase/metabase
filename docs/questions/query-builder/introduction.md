@@ -67,8 +67,6 @@ You can add subsequent filter steps after each summarize step. This lets you do 
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
-![An active filter](../images/filter-badge.png)
-
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
 ## Filter types
@@ -166,6 +164,14 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 ## Visualizing your data
 
 If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
+
+## Drill-through menu
+
+You can also click through questions to explored the data in greater detail.
+
+![Drill-through menu](../images/drill-through-menu.png)
+
+The drill-through menu will present different options depending on what you click on. You can then optionally save that exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
 
 ## Returning to the notebook editor
 

@@ -10,6 +10,10 @@ import {
   saveDashboard,
   updateDashboardCards,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -30,17 +34,17 @@ describe("scenarios > dashboard > parameters", () => {
         dashboard_id: id,
         cards: [
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 0,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 4,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
         ],
@@ -53,8 +57,11 @@ describe("scenarios > dashboard > parameters", () => {
 
     // add a category filter
     cy.icon("filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Text or Category").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A single value").click();
 
     // connect it to people.name and product.category
@@ -63,10 +70,12 @@ describe("scenarios > dashboard > parameters", () => {
     selectDashboardFilter(getDashboardCard(1), "Category");
 
     // finish editing filter and save dashboard
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     // wait for saving to finish
     cy.wait("@dashboard");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     // confirm that typing searches both fields
@@ -130,7 +139,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -173,41 +182,55 @@ describe("scenarios > dashboard > parameters", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("G");
     // Make sure the dropdown list with values is not populated,
     // because it makes no sense for non-exact parameter string operators.
     // See: https://github.com/metabase/metabase/pull/15477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gadget").should("not.exist");
 
     cy.button("Add filter").click();
 
-    const startsWithSlug = `${startsWith.slug}=G`;
-    cy.location("search").should("eq", `?${startsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("zmo");
     // Make sure the dropdown list with values is not populated,
     // because it makes no sense for non-exact parameter string operators.
     // See: https://github.com/metabase/metabase/pull/15477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo").should("not.exist");
 
     cy.button("Add filter").click();
 
-    const endsWithSlug = `${endsWith.slug}=zmo`;
-    cy.location("search").should("eq", `?${startsWithSlug}&${endsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).find(".Icon-gear").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWithSlug}`);
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
     // Remove filter name (metabase#10829)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).find(".Icon-gear").click();
     cy.findByDisplayValue(endsWith.name).clear().blur();
 
@@ -219,9 +242,9 @@ describe("scenarios > dashboard > parameters", () => {
     cy.log("Filter name should be 'unnamed' and the value cleared");
     filterWidget().contains(/unnamed/i);
 
-    cy.log("URL should reset");
-    cy.location("search").should("eq", "");
+    cy.location("search").should("eq", "?unnamed=");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
   });
 
@@ -269,7 +292,7 @@ describe("scenarios > dashboard > parameters", () => {
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -293,7 +316,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("Column to filter on").parent().contains("Native Filter");
+
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Native Filter");
+      });
 
       // Update the underlying question's query
       cy.request("PUT", `/api/card/${card_id}`, {
@@ -381,7 +408,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 14,
+              size_x: 19,
               size_y: 12,
               parameter_mappings: [
                 {
@@ -434,6 +461,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get("@fetchAllCategories").should("have.been.calledOnce");
 
     cy.button("Update filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").click();
 
     // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
@@ -446,6 +474,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     cy.button("Update filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").should("not.exist");
     filterWidget().contains("Widget");
 
@@ -453,6 +482,7 @@ describe("scenarios > dashboard > parameters", () => {
     // Do not limit number of results (metabase#15695)
     // Prior to the issue being fixed, the cap was 100 results
     cy.findByPlaceholderText("Search the list").type("Syner");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Synergistic Wool Coat");
 
     cy.location("search").should(
@@ -463,7 +493,9 @@ describe("scenarios > dashboard > parameters", () => {
 
     // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Cancel").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.location("search").should(
@@ -475,7 +507,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTextEnsureVisible("Created At");
 
       cy.icon("pencil").click();
@@ -484,11 +516,13 @@ describe("scenarios > dashboard > parameters", () => {
 
       selectDashboardFilter(getDashboardCard(), "User ID");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.signIn("nodata");
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should not see mapping options", () => {
@@ -535,26 +569,32 @@ describe("scenarios > dashboard > parameters", () => {
     );
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter1Details.name).click();
     selectDashboardFilter(getDashboardCard(), "Category");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     selectDashboardFilter(getDashboardCard(), "Vendor");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Linked filters").click();
     sidebar().findByRole("switch").click();
     saveDashboard();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     popover().within(() => {
       cy.findByText("Barrows-Johns").should("exist");
       cy.findByText("Balistreri-Ankunding").should("exist");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter1Details.name).click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     popover().within(() => {
       cy.findByText("Barrows-Johns").should("exist");

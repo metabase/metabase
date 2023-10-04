@@ -10,9 +10,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [ring.mock.request :as ring.mock]
-   [toucan2.core :as t2])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,7 +34,7 @@
       (assoc :metabase-session-id session-id)))
 
 (defn- random-session-id []
-  (str (UUID/randomUUID)))
+  (str (random-uuid)))
 
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"

@@ -16,14 +16,6 @@ export const EmptyStateTitle = styled.div`
   margin-bottom: 0.75rem;
 `;
 
-export const EmptyStateDescription = styled.div`
-  color: ${color("text-medium")};
-  font-size: 1rem;
-  line-height: 1.5rem;
-  margin-bottom: 1.5rem;
-  text-align: center;
-`;
-
 export const EmptyStateIconForeground = styled.path`
   fill: ${color("bg-light")};
   stroke: ${color("brand")};

@@ -8,8 +8,7 @@
   There are 3 mains ways to provide values to a parameter:
   - chain-filter: see [metabase.models.params.chain-filter]
   - field-values: see [metabase.models.params.field-values]
-  - custom-values: see [metabase.models.params.custom-values]
-  "
+  - custom-values: see [metabase.models.params.custom-values]"
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -17,13 +16,16 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.params.field-values :as params.field-values]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -44,7 +46,7 @@
     (throw (ex-info (tru ":parameter_mappings must be a sequence of maps with :parameter_id and :type keys")
                     {:parameter_mappings parameter_mappings}))))
 
-(s/defn unwrap-field-clause :- mbql.s/field
+(mu/defn unwrap-field-clause :- mbql.s/field
   "Unwrap something that contains a `:field` clause, such as a template tag, Also handles unwrapped integers for
   legacy compatibility.
 
@@ -67,6 +69,31 @@
     :else
     field-id-or-form))
 
+(def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
+  "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by
+  Cards and Dashboards. This determines how `:param_values` gets hydrated for Card and Dashboard. Normally, this is
+  `false`, but the public and embed versions of the API endpoints can bind this to `true` to bypass normal perms
+  checks (since there is no current User) and get *all* values."
+  false)
+
+(defn- field-ids->param-field-values-ignoring-current-user
+  [param-field-ids]
+  (not-empty
+   (into {}
+         (map (comp (juxt :field_id identity)
+                    #(select-keys % [:field_id :human_readable_values :values])
+                    field-values/get-or-create-full-field-values!))
+         (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
+
+(defn- field-ids->param-field-values
+  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
+  This map is returned by various endpoints as `:param_values`, if `param-field-ids` is empty, return `nil`"
+  [param-field-ids]
+  (when (seq param-field-ids)
+    ((if *ignore-current-user-perms-and-return-all-field-values*
+       field-ids->param-field-values-ignoring-current-user
+       params.field-values/field-id->field-values-for-current-user) param-field-ids)))
+
 (defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
@@ -74,7 +101,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(s/defn param-target->field-clause :- (s/maybe mbql.s/field)
+(mu/defn param-target->field-clause :- [:maybe mbql.s/field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -114,7 +141,7 @@
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `list` instead of `auto-list`.)
-                              (hydrate :has_field_values)))))
+                              (t2/hydrate :has_field_values)))))
 
 (mi/define-batched-hydration-method add-name-field
   :name_field
@@ -155,10 +182,23 @@
   [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
     (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                        (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
+                        (t2/hydrate :has_field_values :name_field [:dimensions :human_readable_field])
                         remove-dimensions-nonpublic-columns))))
 
-(defmulti ^:private param-fields
+
+(defmulti ^:private ^{:hydrate :param_values} param-values
+  "Add a `:param_values` map (Field ID -> FieldValues) containing FieldValues for the Fields referenced by the
+  parameters of a Card or a Dashboard. Implementations are in respective sections below."
+  t2/model)
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(mi/define-simple-hydration-method ^:private hydrate-param-values
+  :param_values
+  "Hydration method for `:param_fields`."
+  [instance]
+  (param-values instance))
+
+(defmulti ^:private ^{:hydrate :param_fields} param-fields
   "Add a `:param_fields` map (Field ID -> Field) for all of the Fields referenced by the parameters of a Card or
   Dashboard. Implementations are below in respective sections."
   t2/model)
@@ -175,7 +215,7 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private dashcards->parameter-mapping-field-clauses :- (s/maybe #{mbql.s/field})
+(mu/defn ^:private dashcards->parameter-mapping-field-clauses :- [:maybe [:set mbql.s/field]]
   "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashcards]
@@ -192,7 +232,7 @@
   "Return the IDs of any Fields referenced in the 'implicit' template tag field filter parameters for native queries in
   `cards`."
   [cards]
-  (reduce set/union (map card->template-tag-field-ids cards)))
+  (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
 (s/defn dashcards->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
@@ -205,8 +245,18 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
-(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
-  (-> (hydrate dashboard [:ordered_cards :card])
+
+(defn- dashboard->param-field-values
+  "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
+   or `nil` if none are referenced or none of them have FieldValues."
+  [dashboard]
+  (field-ids->param-field-values (dashcards->param-field-ids (:ordered_cards dashboard))))
+
+(defmethod param-values :model/Dashboard [dashboard]
+  (dashboard->param-field-values dashboard))
+
+(defmethod param-fields :model/Dashboard [dashboard]
+  (-> (t2/hydrate dashboard [:ordered_cards :card])
       :ordered_cards
       dashcards->param-field-ids
       param-field-ids->fields))
@@ -215,7 +265,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn card->template-tag-field-clauses :- #{mbql.s/field}
+(mu/defn card->template-tag-field-clauses :- [:set mbql.s/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
@@ -231,6 +281,8 @@
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
+(defmethod param-values :model/Card [card]
+  (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields :model/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

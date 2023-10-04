@@ -1,6 +1,6 @@
 import {
+  clearFilterWidget,
   restore,
-  filterWidget,
   sidebar,
   editDashboard,
   saveDashboard,
@@ -74,12 +74,12 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     cy.findByDisplayValue("Bar");
 
-    removeWidgetFilterValue();
+    clearFilterWidget();
 
     cy.location("search").should("eq", "?text=");
 
     // SQL question defaults
-    cy.findByText("Foo");
+    cy.get(".Card").contains("There was a problem displaying this chart.");
 
     // The empty filter widget
     cy.findByPlaceholderText("Text");
@@ -89,10 +89,11 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
     // This part confirms that the issue metabase#13960 has been fixed
     cy.location("search").should("eq", "?text=");
 
-    cy.findByText("Foo");
+    cy.get(".Card").contains("There was a problem displaying this chart.");
 
     // Let's make sure the default dashboard filter is respected upon a subsequent visit from the root
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Required Filters Dashboard").click();
 
     cy.location("search").should("eq", "?text=Bar");
@@ -108,13 +109,10 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     saveDashboard();
 
-    cy.url().should("not.include", "?text=");
+    // The URL query params should include the parameter with an empty value
+    cy.location("search").should("eq", "?text=");
   });
 });
-
-function removeWidgetFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}
 
 function openFilterOptions(filterDisplayName) {
   cy.findByText(filterDisplayName).parent().find(".Icon-gear").click();

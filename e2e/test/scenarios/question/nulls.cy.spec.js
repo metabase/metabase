@@ -34,10 +34,11 @@ describe("scenarios > question > null", () => {
 
     // find and open previously created question
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13571").click();
 
     cy.log("'No Results since at least v0.34.3");
-    cy.get("#detail-shortcut").click();
+    cy.findByTestId("detail-shortcut").click();
     cy.findByRole("dialog").within(() => {
       cy.findByText(/Discount/i);
       cy.findByText("Empty");
@@ -81,7 +82,7 @@ describe("scenarios > question > null", () => {
         ],
       },
       cardDetails: {
-        size_x: 8,
+        size_x: 11,
         size_y: 6,
       },
     }).then(({ body: { card_id, dashboard_id } }) => {
@@ -133,8 +134,8 @@ describe("scenarios > question > null", () => {
           updateDashboardCards({
             dashboard_id: DASHBOARD_ID,
             cards: [
-              { card_id: Q1_ID, row: 0, col: 0, size_x: 6, size_y: 4 },
-              { card_id: Q2_ID, row: 0, col: 6, size_x: 6, size_y: 4 },
+              { card_id: Q1_ID, row: 0, col: 0, size_x: 8, size_y: 4 },
+              { card_id: Q2_ID, row: 0, col: 6, size_x: 8, size_y: 4 },
             ],
           });
 
@@ -153,6 +154,7 @@ describe("scenarios > question > null", () => {
     openOrdersTable();
 
     // Total of "39.72", and the next cell is the `discount` (which is empty)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72")
       .closest(".TableInteractive-cellWrapper")
       .next()
@@ -163,8 +165,10 @@ describe("scenarios > question > null", () => {
 
     popover().contains("=").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("49.21").should("not.exist");
   });
 
@@ -177,6 +181,7 @@ describe("scenarios > question > null", () => {
         // remove pre-selected "Count"
         cy.icon("close").click();
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add a metric").click();
       // dropdown immediately opens with the new set of metrics to choose from
       popover().within(() => {
@@ -184,9 +189,12 @@ describe("scenarios > question > null", () => {
         cy.findByText("Discount").click();
       });
       // Group by
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Created At").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Cumulative sum of Discount by Created At: Month");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );

@@ -9,8 +9,12 @@ import {
   questionInfoButton,
   rightSidebar,
   appBar,
-  getCollectionIdFromSlug,
 } from "e2e/support/helpers";
+
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -22,28 +26,38 @@ describe("scenarios > question > saved", () => {
     openOrdersTable();
     cy.icon("notebook").click();
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().findByText("Total").click();
     // Save the question
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByText("Save").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("not.exist");
 
     // Add a filter in order to be able to save question again
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover()
       .findByText(/^Total$/)
       .click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Equal to").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Greater than").click();
     cy.findByPlaceholderText("Enter a number").type("60");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
     // Save question - opens "Save question" modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     modal().within(() => {
@@ -72,21 +86,26 @@ describe("scenarios > question > saved", () => {
   });
 
   it("view and filter saved question", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("100").click();
       cy.findByText("Add filter").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows"); // query updated
 
     // check that save will give option to replace
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.findByText('Replace original question, "Orders"');
@@ -95,20 +114,24 @@ describe("scenarios > question > saved", () => {
     });
 
     // click "Started from Orders" and check that the original question is restored
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").within(() => cy.findByText("Orders").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows"); // query updated
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 100").should("not.exist");
   });
 
   it("should duplicate a saved question", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     openQuestionActions();
     popover().within(() => {
-      cy.icon("segment").click();
+      cy.findByText("Duplicate").click();
     });
 
     modal().within(() => {
@@ -126,10 +149,47 @@ describe("scenarios > question > saved", () => {
     });
   });
 
+  it("should duplicate a saved question to a collection created on the go", () => {
+    cy.intercept("POST", "/api/card").as("cardCreate");
+
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Duplicate").click();
+    });
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").click();
+    });
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Duplicate").click();
+      cy.wait("@cardCreate");
+    });
+
+    modal().within(() => {
+      cy.findByText("Not now").click();
+    });
+
+    cy.findByTestId("qb-header-left-side").within(() => {
+      cy.findByDisplayValue("Orders - Duplicate");
+    });
+
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     questionInfoButton().click();
 
     rightSidebar().within(() => {
@@ -146,36 +206,43 @@ describe("scenarios > question > saved", () => {
       cy.findByTestId("question-revert-button").click();
     });
 
-    cy.findByText(/reverted to an earlier revision/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/reverted to an earlier version/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/This is a question/i).should("not.exist");
   });
 
   it("should show table name in header with a table info popover on hover", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("9 columns");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     appBar().within(() => cy.findByText("Our analytics").click());
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
   it("should show collection breadcrumbs for a saved question in a non-root collection", () => {
-    getCollectionIdFromSlug("second_collection", collection_id => {
-      cy.request("PUT", "/api/card/1", { collection_id });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_id: SECOND_COLLECTION_ID,
     });
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     appBar().within(() => cy.findByText("Second collection").click());
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
 
   it("should show the question lineage when a saved question is changed", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
     summarize();
     rightSidebar().within(() => {
@@ -192,8 +259,9 @@ describe("scenarios > question > saved", () => {
 
   it("'read-only' user should be able to resize column width (metabase#9772)", () => {
     cy.signIn("readonly");
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tax")
       .closest(".TableInteractive-headerCellData")
       .as("headerCell")
@@ -222,5 +290,22 @@ describe("scenarios > question > saved", () => {
 
         assertColumnResized();
       });
+  });
+
+  it("should always be possible to view the full title text of the saved question", () => {
+    visitQuestion(ORDERS_QUESTION_ID);
+    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
+    savedQuestionTitle.clear();
+    savedQuestionTitle.type(
+      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+    );
+    savedQuestionTitle.blur();
+
+    savedQuestionTitle.should("be.visible").should($el => {
+      // clientHeight: height of the textarea
+      // scrollHeight: height of the text content, including content not visible on the screen
+      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+      expect(heightDifference).to.eq(0);
+    });
   });
 });

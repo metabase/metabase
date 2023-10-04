@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Database Permissions]]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -13,6 +14,7 @@
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
+   [metabase.query-processor.store :as qp.store]
    [metabase.server.middleware.session :as mw.session]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -20,7 +22,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,7 +37,7 @@
 
 (deftest perms-test
   (testing "After creating a Database, All Users group should get full permissions by default"
-    (mt/with-temp Database [db]
+    (t2.with-temp/with-temp [Database db]
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
                                               (perms/data-perms-path db))))
@@ -43,7 +46,7 @@
                                               (perms/feature-perms-path :download :full db))))))
 
   (testing "After deleting a Database, no permissions for the DB should still exist"
-    (mt/with-temp Database [{db-id :id}]
+    (t2.with-temp/with-temp [Database {db-id :id}]
       (t2/delete! Database :id db-id)
       (is (= [] (t2/select Permissions :object [:like (str "%" (perms/data-perms-path db-id) "%")]))))))
 
@@ -51,7 +54,7 @@
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler
       (task/init! ::task.sync-databases/SyncDatabases)
-      (mt/with-temp Database [{db-id :id}]
+      (t2.with-temp/with-temp [Database {db-id :id}]
         (is (schema= {:description         (s/eq (format "sync-and-analyze Database %d" db-id))
                       :key                 (s/eq (format "metabase.task.sync-and-analyze.trigger.%d" db-id))
                       :misfire-instruction (s/eq "DO_NOTHING")
@@ -97,20 +100,20 @@
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
-      (mt/with-temp Database [database {:engine :sqlite}]
+      (t2.with-temp/with-temp [Database database {:engine :sqlite}]
         (is (= false (driver/database-supports? :sqlite :actions database)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
              (t2/update! Database (:id database) {:settings {:database-enable-actions true}})))))
     (testing "Updating the engine when database-enable-actions is true should fail if the engine doesn't support actions"
-      (mt/with-temp Database [database {:engine :h2 :settings {:database-enable-actions true}}]
+      (t2.with-temp/with-temp [Database database {:engine :h2 :settings {:database-enable-actions true}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"The database does not support actions."
              (t2/update! Database (:id database) {:engine :sqlite})))))))
 
-(deftest sensitive-data-redacted-test
+(deftest ^:parallel sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
@@ -118,6 +121,7 @@
                        Database
                        {:description nil
                         :name        "testpg"
+                        :engine      :postgres
                         :details     {:additional-options            nil
                                       :ssl                           false
                                       :password                      "Password1234"
@@ -149,52 +153,55 @@
     (testing "sensitive fields are redacted when database details are encoded"
       (testing "details removed for non-admin users"
         (mw.session/with-current-user
-            (mt/user->id :rasta)
+          (mt/user->id :rasta)
+          (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider {:database pg-db})
             (is (= {"description" nil
                     "name"        "testpg"
+                    "engine"      "postgres"
                     "settings"    {"database-enable-actions" true}
                     "id"          3}
-                   (encode-decode pg-db)))
-            (is (= {"description" nil
-                    "name"        "testbq"
-                    "id"          2
-                    "engine"      "bigquery-cloud-sdk"
-                    "settings"    {"database-enable-actions" true}}
-                   (encode-decode bq-db)))))
+                   (encode-decode pg-db))))
+          (is (= {"description" nil
+                  "name"        "testbq"
+                  "id"          2
+                  "engine"      "bigquery-cloud-sdk"
+                  "settings"    {"database-enable-actions" true}}
+                 (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
         (mw.session/with-current-user
-            (mt/user->id :crowberto)
-            (is (= {"description" nil
-                    "name"        "testpg"
-                    "details"     {"tunnel-user"                   "a-tunnel-user"
-                                   "dbname"                        "mydb"
-                                   "host"                          "localhost"
-                                   "tunnel-auth-option"            "ssh-key"
-                                   "tunnel-private-key-passphrase" "**MetabasePass**"
-                                   "additional-options"            nil
-                                   "tunnel-port"                   22
-                                   "user"                          "metabase"
-                                   "tunnel-private-key"            "**MetabasePass**"
-                                   "ssl"                           false
-                                   "tunnel-enabled"                true
-                                   "port"                          5432
-                                   "password"                      "**MetabasePass**"
-                                   "tunnel-host"                   "localhost"}
-                    "settings"    {"database-enable-actions" true}
-                    "id"          3}
-                   (encode-decode pg-db)))
-            (is (= {"description" nil
-                    "name"        "testbq"
-                    "details"     {"use-service-account"  nil
-                                   "dataset-id"           "office_checkins"
-                                   "service-account-json" "**MetabasePass**"
-                                   "use-jvm-timezone"     false
-                                   "project-id"           project-id}
-                    "id"          2
-                    "settings"    {"database-enable-actions" true}
-                    "engine"      "bigquery-cloud-sdk"}
-                   (encode-decode bq-db))))))))
+          (mt/user->id :crowberto)
+          (is (= {"description" nil
+                  "name"        "testpg"
+                  "engine"      "postgres"
+                  "details"     {"tunnel-user"                   "a-tunnel-user"
+                                 "dbname"                        "mydb"
+                                 "host"                          "localhost"
+                                 "tunnel-auth-option"            "ssh-key"
+                                 "tunnel-private-key-passphrase" "**MetabasePass**"
+                                 "additional-options"            nil
+                                 "tunnel-port"                   22
+                                 "user"                          "metabase"
+                                 "tunnel-private-key"            "**MetabasePass**"
+                                 "ssl"                           false
+                                 "tunnel-enabled"                true
+                                 "port"                          5432
+                                 "password"                      "**MetabasePass**"
+                                 "tunnel-host"                   "localhost"}
+                  "settings"    {"database-enable-actions" true}
+                  "id"          3}
+                 (encode-decode pg-db)))
+          (is (= {"description" nil
+                  "name"        "testbq"
+                  "details"     {"use-service-account"  nil
+                                 "dataset-id"           "office_checkins"
+                                 "service-account-json" "**MetabasePass**"
+                                 "use-jvm-timezone"     false
+                                 "project-id"           project-id}
+                  "id"          2
+                  "settings"    {"database-enable-actions" true}
+                  "engine"      "bigquery-cloud-sdk"}
+                 (encode-decode bq-db))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
 (driver/register! :test-sensitive-driver, :parent #{:h2})
@@ -255,10 +262,10 @@
                                     (is (= exp-val
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
-            (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                       :name    "Test DB with secrets"
-                                                                       :details {:host           "localhost"
-                                                                                 :password-value "new-password"}}]
+            (t2.with-temp/with-temp [Database {:keys [id details] :as database} {:engine  :secret-test-driver
+                                                                                 :name    "Test DB with secrets"
+                                                                                 :details {:host           "localhost"
+                                                                                           :password-value "new-password"}}]
               (testing " and saved db-details looks correct"
                 (check-db-fn database {:kind    :password
                                        :source  nil
@@ -278,10 +285,10 @@
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
 (deftest user-may-not-update-sample-database-test
-  (mt/with-temp Database [{:keys [id] :as _sample-database} {:engine    :h2
-                                                             :is_sample true
-                                                             :name      "Sample Database"
-                                                             :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
+  (t2.with-temp/with-temp [Database {:keys [id] :as _sample-database} {:engine    :h2
+                                                                       :is_sample true
+                                                                       :name      "Sample Database"
+                                                                       :details   {:db "./resources/sample-database.db;USER=GUEST;PASSWORD=guest"}}]
     (testing " updating the engine of a sample database is not allowed"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -295,13 +302,13 @@
 
 (deftest preserve-driver-namespaces-test
   (testing "Make sure databases preserve namespaced driver names"
-    (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
+    (t2.with-temp/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (t2/select-one-fn :engine Database :id db-id))))))
 
 (deftest identity-hash-test
   (testing "Database hashes are composed of the name and engine"
-    (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
+    (t2.with-temp/with-temp [Database db {:engine :mysql :name "hashmysql"}]
       (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
              (serdes/identity-hash db)))
       (is (= "b6f1a9e8"

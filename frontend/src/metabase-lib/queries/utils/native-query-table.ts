@@ -17,7 +17,7 @@ export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const collection = nativeQuery.collection();
   if (database && collection) {
     return (
-      _.findWhere(database.tables, {
+      _.findWhere(database.getTables(), {
         name: collection,
       }) || null
     );

@@ -33,7 +33,7 @@ export function buildCollectionTree({
   targetModel = "question",
 }: {
   collections: Collection[];
-  rootCollection: Collection;
+  rootCollection: Collection | undefined;
   currentUser: User;
   targetModel?: "model" | "question";
 }) {

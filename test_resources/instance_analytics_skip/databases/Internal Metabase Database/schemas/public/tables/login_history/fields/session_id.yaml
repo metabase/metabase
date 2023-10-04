@@ -1,0 +1,46 @@
+description: ID of the Session created by this login if one is currently active. NULL if Session is no longer active.
+database_type: varchar
+semantic_type: type/FK
+table_id:
+- Internal Metabase Database
+- public
+- login_history
+coercion_strategy: null
+name: session_id
+fingerprint_version: 0
+has_field_values: null
+settings: null
+caveats: null
+fk_target_field_id:
+- Internal Metabase Database
+- public
+- core_session
+- id
+dimensions: []
+custom_position: 0
+effective_type: type/Text
+active: true
+nfc_path: null
+parent_id: null
+last_analyzed: null
+serdes/meta:
+- model: Database
+  id: Internal Metabase Database
+- model: Schema
+  id: public
+- model: Table
+  id: login_history
+- model: Field
+  id: session_id
+database_is_auto_increment: false
+json_unfolding: false
+position: 3
+visibility_type: normal
+preview_display: true
+display_name: Session ID
+database_position: 3
+database_required: false
+fingerprint: null
+created_at: '2023-06-07T23:03:23.533201Z'
+base_type: type/Text
+points_of_interest: null

@@ -5,6 +5,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]

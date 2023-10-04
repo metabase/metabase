@@ -1,5 +1,6 @@
 import { modal, popover, restore } from "e2e/support/helpers";
 
+// TODO: figure out how to test with auditv2
 describe("issue 25144", () => {
   beforeEach(() => {
     restore("setup");
@@ -11,15 +12,19 @@ describe("issue 25144", () => {
   it("should show Saved Questions section after creating the first question (metabase#25144)", () => {
     cy.visit("/");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     popover().findByText("Question").click();
     popover().findByText("Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().findByLabelText("Name").clear().type("Orders question");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     popover().findByText("Question").click();
     popover().findByText("Saved Questions").click();
@@ -29,13 +34,16 @@ describe("issue 25144", () => {
   it("should show Models section after creation the first model (metabase#24878)", () => {
     cy.visit("/");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     popover().findByText("Question").click();
     popover().findByText("Orders").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().findByLabelText("Name").clear().type("Orders model");
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.wait(100);
     modal().button("Not now").click();
 
     cy.findByLabelText("Move, archive, and more...").click();
@@ -43,6 +51,7 @@ describe("issue 25144", () => {
     modal().button("Turn this into a model").click();
     cy.wait("@updateCard");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     popover().findByText("Question").click();
     popover().findByText("Models").click();

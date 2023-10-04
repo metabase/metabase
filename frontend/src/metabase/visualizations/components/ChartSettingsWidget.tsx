@@ -1,4 +1,4 @@
-import React from "react";
+import type * as React from "react";
 import cx from "classnames";
 
 import {
@@ -62,7 +62,7 @@ const ChartSettingsWidget = ({
         <Title
           variant={variant}
           className={cx({ "Form-label": isFormField })}
-          id={extraWidgetProps.id}
+          htmlFor={extraWidgetProps.id}
         >
           {title}
           {hint && (
@@ -83,4 +83,5 @@ const ChartSettingsWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidget;

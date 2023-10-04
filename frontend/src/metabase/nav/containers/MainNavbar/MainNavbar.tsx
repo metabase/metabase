@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -7,16 +7,17 @@ import type { LocationDescriptor } from "history";
 import * as Urls from "metabase/lib/urls";
 
 import { closeNavbar, openNavbar } from "metabase/redux/app";
-import Questions from "metabase/entities/questions";
 
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import { useQuestionQuery } from "metabase/common/hooks";
+import type Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 
-import {
+import type {
   MainNavbarOwnProps,
   MainNavbarDispatchProps,
   SelectedItem,
@@ -28,11 +29,12 @@ import getSelectedItems, {
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface EntityLoaderProps {
-  card?: Card;
+  question?: Question;
 }
 
 interface StateProps {
   dashboard?: Dashboard;
+  questionId?: number;
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
@@ -44,12 +46,14 @@ type Props = MainNavbarOwnProps &
   StateProps &
   DispatchProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
     // Can't use dashboard entity loader instead.
     // The dashboard page uses DashboardsApi.get directly,
     // so we can't re-use data between these components.
     dashboard: getDashboard(state),
+
+    questionId: maybeGetQuestionId(state, props),
   };
 }
 
@@ -63,13 +67,17 @@ function MainNavbar({
   isOpen,
   location,
   params,
-  card,
+  questionId,
   dashboard,
   openNavbar,
   closeNavbar,
   onChangeLocation,
   ...props
 }: Props) {
+  const { data: question } = useQuestionQuery({
+    id: questionId,
+  });
+
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -92,10 +100,10 @@ function MainNavbar({
       getSelectedItems({
         pathname: location.pathname,
         params,
-        card,
+        question,
         dashboard,
       }),
-    [location, params, card, dashboard],
+    [location, params, question, dashboard],
   );
 
   return (
@@ -130,11 +138,7 @@ function maybeGetQuestionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  Questions.load({
-    id: maybeGetQuestionId,
-    loadingAndErrorWrapper: false,
-    entityAlias: "card",
-  }),
-)(MainNavbar);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  MainNavbar,
+);

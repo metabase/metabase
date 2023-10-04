@@ -1,8 +1,22 @@
-import { metadata, ORDERS, PEOPLE } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  ORDERS,
+  PEOPLE,
+} from "metabase-types/api/mocks/presets";
 import { drillDownForDimensions } from "metabase-lib/queries/utils/drilldown";
 
 describe("drilldown", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const latitude = metadata.field(PEOPLE.LATITUDE);
+  const longitude = metadata.field(PEOPLE.LONGITUDE);
+  const state = metadata.field(PEOPLE.STATE);
+  const total = metadata.field(ORDERS.TOTAL);
+  const createdAt = metadata.field(ORDERS.CREATED_AT);
+
   describe("drillDownForDimensions", () => {
     it("should return null if there are no dimensions", () => {
       const drillDown = drillDownForDimensions([], metadata);
@@ -14,37 +28,39 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: ORDERS.CREATED_AT.column({ unit: "year" }),
+            column: createdAt.column({ unit: "year" }),
           },
         ],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "quarter" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "quarter" }],
         ],
       });
     });
+
     it("should return breakout by minute for breakout by hour", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: ORDERS.CREATED_AT.column({ unit: "hour" }),
+            column: createdAt.column({ unit: "hour" }),
           },
         ],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "minute" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "minute" }],
         ],
       });
     });
+
     it("should return null for breakout by minute", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: ORDERS.CREATED_AT.column({
+            column: createdAt.column({
               unit: "minute",
             }),
           },
@@ -59,7 +75,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: ORDERS.TOTAL.column({
+            column: total.column({
               binning_info: {
                 binning_strategy: "num-bins",
                 num_bins: 10,
@@ -71,7 +87,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["field", ORDERS.TOTAL.id, { binning: { strategy: "default" } }],
+          ["field", ORDERS.TOTAL, { binning: { strategy: "default" } }],
         ],
       });
     });
@@ -80,7 +96,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: ORDERS.TOTAL.column({
+            column: total.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 10,
@@ -94,7 +110,7 @@ describe("drilldown", () => {
         breakouts: [
           [
             "field",
-            ORDERS.TOTAL.id,
+            ORDERS.TOTAL,
             { binning: { strategy: "bin-width", "bin-width": 1 } },
           ],
         ],
@@ -104,29 +120,30 @@ describe("drilldown", () => {
     // GEO:
     it("should return breakout by lat/lon for breakout by state", () => {
       const drillDown = drillDownForDimensions(
-        [{ column: PEOPLE.STATE.column() }],
+        [{ column: state.column() }],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
           [
             "field",
-            PEOPLE.LATITUDE.id,
+            PEOPLE.LATITUDE,
             { binning: { strategy: "bin-width", "bin-width": 1 } },
           ],
           [
             "field",
-            PEOPLE.LONGITUDE.id,
+            PEOPLE.LONGITUDE,
             { binning: { strategy: "bin-width", "bin-width": 1 } },
           ],
         ],
       });
     });
+
     it("should return breakout with 10 degree bin-width for lat/lon breakout with 30 degree bin-width", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: PEOPLE.LATITUDE.column({
+            column: latitude.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 30,
@@ -134,7 +151,7 @@ describe("drilldown", () => {
             }),
           },
           {
-            column: PEOPLE.LONGITUDE.column({
+            column: longitude.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 30,
@@ -148,12 +165,12 @@ describe("drilldown", () => {
         breakouts: [
           [
             "field",
-            PEOPLE.LATITUDE.id,
+            PEOPLE.LATITUDE,
             { binning: { strategy: "bin-width", "bin-width": 10 } },
           ],
           [
             "field",
-            PEOPLE.LONGITUDE.id,
+            PEOPLE.LONGITUDE,
             { binning: { strategy: "bin-width", "bin-width": 10 } },
           ],
         ],

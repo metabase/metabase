@@ -6,19 +6,20 @@
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.models.timeline-event :refer [TimelineEvent]]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest timelines-for-collection-test
-  (mt/with-temp Collection [collection {:name "Rasta's Collection"}]
+  (t2.with-temp/with-temp [Collection collection {:name "Rasta's Collection"}]
     (let [coll-id  (u/the-id collection)
           event-names (fn [timelines]
                         (into #{} (comp (mapcat :events) (map :name)) timelines))]
-      (mt/with-temp* [Timeline [tl-a {:name "tl-a" :collection_id coll-id}]
-                      Timeline [tl-b {:name "tl-b" :collection_id coll-id}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "e-a"}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "e-c"}]
-                      TimelineEvent [_ {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]]
+      (mt/with-temp [Timeline tl-a {:name "tl-a" :collection_id coll-id}
+                     Timeline tl-b {:name "tl-b" :collection_id coll-id}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "e-a"}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-a) :name "e-b" :archived true}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "e-c"}
+                     TimelineEvent _ {:timeline_id (u/the-id tl-b) :name "e-d" :archived true}]
         (testing "Fetching timelines"
           (testing "don't include events by default"
             (is (= #{}

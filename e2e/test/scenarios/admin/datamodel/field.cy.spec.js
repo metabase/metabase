@@ -7,19 +7,24 @@ import {
   startNewQuestion,
   resyncDatabase,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
-describe.skip("scenarios > admin > datamodel > field", () => {
+describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
+    restore();
     cy.signInAsAdmin();
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
       cy.wrap(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}/${ORDERS[name]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
     });
 
@@ -59,17 +64,33 @@ describe.skip("scenarios > admin > datamodel > field", () => {
     });
   });
 
+  describe("Formatting", () => {
+    it("should allow you to change field formatting", () => {
+      visitAlias("@ORDERS_QUANTITY_URL");
+      cy.findByRole("link", { name: "Formatting" }).click();
+      cy.findByLabelText("Style").click();
+      popover().findByText("Percent").click();
+      cy.wait("@fieldUpdate");
+      cy.findByRole("list", { name: "undo-list" })
+        .findByText("Updated Quantity")
+        .should("exist");
+    });
+  });
+
   describe("Visibility", () => {
     before(restore);
 
     it("lets you change field visibility", () => {
       visitAlias("@ORDERS_CREATED_AT_URL");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Everywhere").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Do not include").click({ force: true });
       cy.wait("@fieldUpdate");
 
       cy.reload();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Do not include");
     });
   });
@@ -80,11 +101,14 @@ describe.skip("scenarios > admin > datamodel > field", () => {
     it("lets you change to 'Search box'", () => {
       visitAlias("@ORDERS_QUANTITY_URL");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("A list of all values").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Search box").click();
       cy.wait("@fieldUpdate");
 
       cy.reload();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Search box");
     });
   });
@@ -95,13 +119,18 @@ describe.skip("scenarios > admin > datamodel > field", () => {
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
       visitAlias("@ORDERS_PRODUCT_ID_URL");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use original value").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use foreign key").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Title").click();
       cy.wait("@fieldDimensionUpdate");
 
       cy.reload();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use foreign key");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Title");
     });
 
@@ -114,23 +143,29 @@ describe.skip("scenarios > admin > datamodel > field", () => {
         dbId,
         ({ number_with_nulls: { num }, number_with_nulls_ID }) =>
           cy.visit(
-            `/admin/datamodel/database/${dbId}/table/${number_with_nulls_ID}/${num}/general`,
+            `/admin/datamodel/database/${dbId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${number_with_nulls_ID}/field/${num}/general`,
           ),
       );
 
       // change to custom mapping
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       popover().findByText("Custom mapping").click();
 
       // update text for nulls from "null" to "nothin"
       cy.get("input[value=null]").clear().type("nothin");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved!");
 
       // check that it appears in QB
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("sqlite").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Number With Nulls").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("nothin");
     });
   });
@@ -157,9 +192,11 @@ describe("Unfold JSON", () => {
     );
     // Go to field settings
     cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Many Data Types/i).click();
 
     // Check json is unfolded initially
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/json.a/i).should("be.visible");
     cy.findByTestId("column-json").within(() => {
       cy.icon("gear").click();
@@ -176,13 +213,17 @@ describe("Unfold JSON", () => {
 
     // Sync database
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Sync database schema now/i).click();
     cy.wait("@sync_schema");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
 
     // Check json field is not unfolded
     cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Many Data Types/i).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/json.a/i).should("not.exist");
   });
 });

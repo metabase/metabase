@@ -1,16 +1,23 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
-
 import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import registerVisualizations from "metabase/visualizations/register";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-
 import Question from "metabase-lib/Question";
+
+registerVisualizations();
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+const ordersTable = metadata.table(ORDERS_ID);
 
 const setup = ({ vizType }) => {
   const Container = () => {
@@ -20,11 +27,11 @@ const setup = ({ vizType }) => {
           dataset_query: {
             type: "query",
             query: {
-              "source-table": ORDERS.id,
+              "source-table": ORDERS_ID,
             },
-            display: vizType,
+            database: SAMPLE_DB_ID,
           },
-          database: SAMPLE_DATABASE.id,
+          display: vizType,
           visualization_settings: {},
         },
         metadata,
@@ -46,7 +53,7 @@ const setup = ({ vizType }) => {
             card: question.card(),
             data: {
               rows: [],
-              cols: ORDERS.fields.map(f => f.column()),
+              cols: ordersTable.fields.map(f => f.column()),
             },
           },
         ]}
@@ -66,8 +73,8 @@ const setup = ({ vizType }) => {
     it("should show you related columns in structured queries", async () => {
       setup({ vizType });
       expect(await screen.findByText("More columns")).toBeInTheDocument();
-      expect(await screen.findByText("People")).toBeInTheDocument();
-      expect(await screen.findByText("Products")).toBeInTheDocument();
+      expect(await screen.findByText("User")).toBeInTheDocument();
+      expect(await screen.findByText("Product")).toBeInTheDocument();
     });
 
     it("should allow you to show and hide columns", async () => {

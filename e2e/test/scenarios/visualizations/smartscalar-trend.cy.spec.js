@@ -29,6 +29,7 @@ describe("scenarios > visualizations > scalar", () => {
     cy.log("Bug: showing blank visualization");
 
     cy.get(".ScalarValue").contains("100");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nothing to compare for the previous month.");
   });
 });

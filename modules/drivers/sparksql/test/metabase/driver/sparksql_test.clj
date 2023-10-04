@@ -8,7 +8,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (use-fixtures :each (fn [thunk]

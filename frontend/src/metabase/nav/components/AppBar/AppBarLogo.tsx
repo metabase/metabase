@@ -1,4 +1,3 @@
-import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import AppBarToggle from "./AppBarToggle";
 import { LogoLink, LogoRoot, ToggleContainer } from "./AppBarLogo.styled";
@@ -47,4 +46,5 @@ const AppBarLogo = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLogo;

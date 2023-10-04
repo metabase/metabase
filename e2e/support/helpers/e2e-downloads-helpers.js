@@ -1,4 +1,5 @@
 import { getDashboardCardMenu } from "./e2e-dashboard-helpers";
+import { popover } from "./e2e-ui-elements-helpers";
 
 const xlsx = require("xlsx");
 
@@ -11,6 +12,7 @@ const xlsx = require("xlsx");
  * @param {number} [params.questionId] - needed only for saved questions
  * @param {boolean} [params.raw] - tell SheetJs not to parse values
  * @param {boolean} [params.logResults] - preview the results in the console log
+ * @param {boolean} params.isDashboard - downloading is tested on a dashboard
  * @param {function} callback
  */
 export function downloadAndAssert(
@@ -22,16 +24,17 @@ export function downloadAndAssert(
     publicUid,
     dashcardId,
     dashboardId,
+    isDashboard,
   } = {},
   callback,
 ) {
-  const downloadClassName = `.Icon-${fileType}`;
   const endpoint = getEndpoint(
     fileType,
     questionId,
     publicUid,
     dashcardId,
     dashboardId,
+    isDashboard,
   );
   const isPublicDownload = !!publicUid;
   const method = isPublicDownload ? "GET" : "POST";
@@ -60,14 +63,14 @@ export function downloadAndAssert(
 
   cy.log(`Downloading ${fileType} file`);
 
-  if (dashcardId != null && dashboardId != null) {
+  if (isDashboard) {
     getDashboardCardMenu().click();
     cy.findByText("Download results").click();
   } else {
     cy.findByTestId("download-button").click();
   }
   // Initiate the file download
-  cy.get(downloadClassName).click();
+  popover().findByText(`.${fileType}`).click();
 
   cy.wait("@fileDownload")
     .its("request")

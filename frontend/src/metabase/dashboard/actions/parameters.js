@@ -1,7 +1,9 @@
 import { assoc } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   createParameter,
@@ -10,17 +12,24 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
+import { updateDashboard } from "metabase/dashboard/actions/save";
+import {
+  isParameterValueEmpty,
+  PULSE_PARAM_EMPTY,
+} from "metabase-lib/parameters/utils/parameter-values";
 import {
   getDashboard,
   getDraftParameterValues,
   getIsAutoApplyFilters,
   getParameterValues,
   getParameters,
+  getDashboardId,
+  getAutoApplyFiltersToastId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
+import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
@@ -130,6 +139,7 @@ export const setParameterMapping = createThunkAction(
         target,
       });
     }
+
     dispatch(
       setDashCardAttributes({
         id: dashcard_id,
@@ -183,7 +193,12 @@ export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => (_dispatch, getState) => {
     const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
+
+    return {
+      id: parameterId,
+      value: isParameterValueEmpty(value) ? PULSE_PARAM_EMPTY : value,
+      isDraft: isSettingDraftParameterValues,
+    };
   },
 );
 
@@ -311,13 +326,69 @@ export const setOrUnsetParameterValues =
 export const setParameterValuesFromQueryParams =
   queryParams => (dispatch, getState) => {
     const parameters = getParameters(getState());
-    const metadata = getMetadata(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
-      metadata,
-      { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
     );
 
     dispatch(setParameterValues(parameterValues));
   };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  isEnabled => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    if (dashboardId) {
+      dispatch(applyDraftParameterValues());
+      dispatch(
+        setDashboardAttributes({
+          id: dashboardId,
+          attributes: { auto_apply_filters: isEnabled },
+        }),
+      );
+      dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
+      if (!isEnabled) {
+        trackAutoApplyFiltersDisabled(dashboardId);
+      }
+    }
+  },
+);
+
+export const SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const showAutoApplyFiltersToast = createThunkAction(
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const action = toggleAutoApplyFilters(false);
+    const toastId = _.uniqueId();
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        timeout: null,
+        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
+        action,
+        actionLabel: t`Turn off`,
+      }),
+    );
+
+    return { toastId, dashboardId };
+  },
+);
+
+export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/CLOSE_AUTO_APPLY_FILTERS_TOAST";
+export const closeAutoApplyFiltersToast = createThunkAction(
+  CLOSE_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const toastId = getAutoApplyFiltersToastId(getState());
+    if (toastId) {
+      dispatch(dismissUndo(toastId, false));
+    }
+  },
+);

@@ -1,17 +1,16 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, forwardRef, Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 import cx from "classnames";
-import Draggable from "react-draggable";
 import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -30,8 +29,9 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
@@ -39,9 +39,11 @@ import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import MiniBar from "../MiniBar";
 import {
+  TableDraggable,
   ExpandButton,
   HeaderCell,
   ResizeHandle,
+  TableInteractiveRoot,
 } from "./TableInteractive.styled";
 
 // approximately 120 chars
@@ -94,7 +96,7 @@ class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
-    this.detailShortcutRef = React.createRef();
+    this.detailShortcutRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -257,27 +259,29 @@ class TableInteractive extends Component {
     } = this.props;
 
     ReactDOM.render(
-      <div style={{ display: "flex" }}>
-        {cols.map((column, columnIndex) => (
-          <div className="fake-column" key={"column-" + columnIndex}>
-            {this.tableHeaderRenderer({
-              columnIndex,
-              rowIndex: 0,
-              key: "header",
-              style: {},
-              isVirtual: true,
-            })}
-            {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-              this.cellRenderer({
-                rowIndex,
+      <EmotionCacheProvider>
+        <div style={{ display: "flex" }}>
+          {cols.map((column, columnIndex) => (
+            <div className="fake-column" key={"column-" + columnIndex}>
+              {this.tableHeaderRenderer({
                 columnIndex,
-                key: "row-" + rowIndex,
+                rowIndex: 0,
+                key: "header",
                 style: {},
-              }),
-            )}
-          </div>
-        ))}
-      </div>,
+                isVirtual: true,
+              })}
+              {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                this.cellRenderer({
+                  rowIndex,
+                  columnIndex,
+                  key: "row-" + rowIndex,
+                  style: {},
+                }),
+              )}
+            </div>
+          ))}
+        </div>
+      </EmotionCacheProvider>,
       this._div,
       () => {
         const contentWidths = [].map.call(
@@ -347,7 +351,19 @@ class TableInteractive extends Component {
   onColumnReorder(columnIndex, newColumnIndex) {
     const { settings, onUpdateVisualizationSettings } = this.props;
     const columns = settings["table.columns"].slice(); // copy since splice mutates
-    columns.splice(newColumnIndex, 0, columns.splice(columnIndex, 1)[0]);
+
+    const enabledColumns = columns
+      .map((c, index) => ({ ...c, index }))
+      .filter(c => c.enabled);
+
+    const adjustedColumnIndex = enabledColumns[columnIndex].index;
+    const adjustedNewColumnIndex = enabledColumns[newColumnIndex].index;
+
+    columns.splice(
+      adjustedNewColumnIndex,
+      0,
+      columns.splice(adjustedColumnIndex, 1)[0],
+    );
     onUpdateVisualizationSettings({
       "table.columns": columns,
     });
@@ -401,21 +417,12 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(columnIndex) {
+  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
     try {
-      return this._getHeaderClickedObjectCached(
-        this.props.data,
-        columnIndex,
-        this.props.isPivoted,
-        this.props.query,
-      );
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
     } catch (e) {
       console.error(e);
     }
-  }
-  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted, query) {
-    return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
   }
 
   visualizationIsClickable(clicked) {
@@ -490,7 +497,7 @@ class TableInteractive extends Component {
     }
   };
 
-  cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
+  cellRenderer = ({ key, style, rowIndex, columnIndex, isScrolling }) => {
     const { data, settings } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
@@ -515,7 +522,8 @@ class TableInteractive extends Component {
     );
 
     const isLink = cellData && cellData.type === ExternalLink;
-    const isClickable = !isLink && this.visualizationIsClickable(clicked);
+    const isClickable =
+      !isLink && !isScrolling && this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,
@@ -528,6 +536,7 @@ class TableInteractive extends Component {
     return (
       <div
         key={key}
+        role="gridcell"
         style={{
           ...style,
           // use computed left if dragging
@@ -678,15 +687,19 @@ class TableInteractive extends Component {
       hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
+      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-
-    const clicked = this.getHeaderClickedObject(columnIndex);
-
+    const clicked = this.getHeaderClickedObject(
+      data,
+      columnIndex,
+      isPivoted,
+      query,
+    );
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
@@ -703,9 +716,10 @@ class TableInteractive extends Component {
     const isAscending = isSorted && sort[sortIndex][0] === "asc";
 
     return (
-      <Draggable
+      <TableDraggable
         /* needs to be index+name+counter so Draggable resets after each drag */
-        enableUserSelectHack={!isVirtual}
+        enableUserSelectHack={false}
+        enableCustomUserSelectHack={!isVirtual}
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -751,7 +765,7 @@ class TableInteractive extends Component {
         }}
       >
         <HeaderCell
-          data-testid="header-cell"
+          data-testid={isVirtual ? undefined : "header-cell"}
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
@@ -798,7 +812,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon mr1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
                 {columnTitle}
@@ -806,7 +820,7 @@ class TableInteractive extends Component {
                   <Icon
                     className="Icon ml1"
                     name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
+                    size={10}
                   />
                 )}
               </Ellipsified>,
@@ -814,8 +828,9 @@ class TableInteractive extends Component {
               columnIndex,
             )}
           </DimensionInfoPopover>
-          <Draggable
-            enableUserSelectHack={!isVirtual}
+          <TableDraggable
+            enableUserSelectHack={false}
+            enableCustomUserSelectHack={!isVirtual}
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
             position={{
@@ -844,9 +859,9 @@ class TableInteractive extends Component {
                 cursor: "ew-resize",
               }}
             />
-          </Draggable>
+          </TableDraggable>
         </HeaderCell>
-      </Draggable>
+      </TableDraggable>
     );
   };
 
@@ -979,7 +994,7 @@ class TableInteractive extends Component {
             mainGridProps.scrollLeft = scrollLeft;
           }
           return (
-            <div
+            <TableInteractiveRoot
               className={cx(className, "TableInteractive relative", {
                 "TableInteractive--pivot": this.props.isPivoted,
                 "TableInteractive--ready": this.state.contentWidths,
@@ -1091,7 +1106,7 @@ class TableInteractive extends Component {
                 tabIndex={null}
                 overscanRowCount={20}
               />
-            </div>
+            </TableInteractiveRoot>
           );
         }}
       </ScrollSync>
@@ -1132,17 +1147,16 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
-    "_getHeaderClickedObjectCached",
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
     "getDimension",
+    "getHeaderClickedObject",
   ),
 )(TableInteractive);
 
-const DetailShortcut = React.forwardRef((_props, ref) => (
+const DetailShortcut = forwardRef((_props, ref) => (
   <div
-    id="detail-shortcut"
     className="TableInteractive-cellWrapper cursor-pointer"
     ref={ref}
     style={{
@@ -1153,6 +1167,7 @@ const DetailShortcut = React.forwardRef((_props, ref) => (
       width: SIDEBAR_WIDTH,
       zIndex: 3,
     }}
+    data-testid="detail-shortcut"
   >
     <Tooltip tooltip={t`View Details`}>
       <Button

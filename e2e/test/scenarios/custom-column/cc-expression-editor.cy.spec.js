@@ -14,6 +14,7 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.viewport(1280, 800);
 
     openOrdersTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     enterCustomColumnDetails({
@@ -49,6 +50,7 @@ describe("scenarios > question > custom column > expression editor", () => {
       .type("{movetoend}{backspace}", { force: true })
       .blur();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Expected expression");
     cy.button("Done").should("be.disabled");
   });

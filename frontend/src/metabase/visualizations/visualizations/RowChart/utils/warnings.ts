@@ -1,5 +1,5 @@
-import { RowValues } from "metabase-types/api";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { RowValues } from "metabase-types/api";
+import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { unaggregatedDataWarning } from "metabase/visualizations/lib/warnings";
 
 export const getChartWarnings = (

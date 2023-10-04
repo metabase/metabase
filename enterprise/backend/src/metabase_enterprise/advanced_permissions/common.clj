@@ -50,6 +50,24 @@
                                         (perms/feature-perms-path :data-model :all db-id schema table-id)))
      tables)))
 
+(defn filter-schema-by-data-model-perms
+  "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
+  [schema]
+  (cond
+    api/*is-superuser?*
+    schema
+
+    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
+    (not (premium-features/enable-advanced-permissions?))
+    (empty schema)
+
+    :else
+    (filter
+     (fn [{db-id :db_id schema :schema}]
+       (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+                                           (perms/feature-perms-path :data-model :all db-id schema)))
+     schema)))
+
 (defn filter-databases-by-data-model-perms
   "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.
   If databases are already hydrated with their tables, also removes tables for which `*current-user*` has no data

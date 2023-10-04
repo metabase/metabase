@@ -1,7 +1,6 @@
-import React from "react";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
-import { PositionedLegendItem } from "./types";
+import type { PositionedLegendItem } from "./types";
 
 import { LEGEND_CIRCLE_MARGIN_RIGHT, LEGEND_CIRCLE_SIZE } from "./constants";
 

@@ -2,7 +2,7 @@
   "Redefinitions of vars from 3rd-party namespaces to make sure they do extra stuff we want (like initialize things if
   needed when running)."
   (:require
-   [hawk.parallel]
+   [mb.hawk.parallel]
    [metabase.plugins.classloader :as classloader]
    [methodical.core :as methodical]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -19,7 +19,7 @@
   ;;
   ;; TODO -- there's not really a reason that we can't use with-temp in parallel tests -- it depends on the test -- so
   ;; once we're a little more comfortable with the current parallel stuff we should remove this restriction.
-  (hawk.parallel/assert-test-is-not-parallel "with-temp")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp")
   (next-method model attributes f))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
@@ -27,7 +27,7 @@
 (defonce orig-with-redefs-fn with-redefs-fn)
 
 (defn new-with-redefs-fn [& args]
-  (hawk.parallel/assert-test-is-not-parallel "with-redefs")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-redefs")
   (apply orig-with-redefs-fn args))
 
 (alter-var-root #'with-redefs-fn (constantly new-with-redefs-fn))

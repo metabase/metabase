@@ -5,13 +5,21 @@ import {
   visualize,
   startNewQuestion,
   visitQuestionAdhoc,
-  getCollectionIdFromSlug,
   saveQuestion,
   getPersonalCollectionName,
+  visitCollection,
+  modal,
+  setTokenFeatures,
+  describeOSS,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -31,9 +39,10 @@ describe("scenarios > question > new", () => {
       }
 
       startNewQuestion();
-
-      cy.contains("Pick your starting data");
-      cy.findByText("Sample3").isVisibleInPopover();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Sample3").isVisibleInPopover();
+      });
     });
 
     it("new question data picker search should work for both saved questions and database tables", () => {
@@ -43,14 +52,16 @@ describe("scenarios > question > new", () => {
 
       startNewQuestion();
 
-      cy.get(".List-section")
-        .should("have.length", 2)
-        .and("contain", "Sample Database")
+      popover()
+        .findAllByRole("menuitem")
+        .should("have.length", 3)
+        .and("contain", "Models")
+        .and("contain", "Raw Data")
         .and("contain", "Saved Questions");
 
       // should not trigger search for an empty string
-      cy.findByPlaceholderText("Search for a table…").type("  ").blur();
-      cy.findByPlaceholderText("Search for a table…").type("ord");
+      cy.findByPlaceholderText("Search for some data…").type("  ").blur();
+      cy.findByPlaceholderText("Search for some data…").type("ord");
       cy.wait("@search");
       cy.get("@searchQuery").should("have.been.calledOnce");
 
@@ -60,11 +71,13 @@ describe("scenarios > question > new", () => {
         4,
       );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Saved question in Our analytics");
       cy.findAllByRole("link", { name: "Our analytics" })
         .should("have.attr", "href")
         .and("eq", "/collection/root");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Table in Sample Database");
       cy.findAllByRole("link", { name: "Sample Database" })
         .should("have.attr", "href")
@@ -72,9 +85,10 @@ describe("scenarios > question > new", () => {
 
       // Discarding the search query should take us back to the original selector
       // that starts with the list of databases and saved questions
-      cy.findByPlaceholderText("Search for a table…");
+      cy.findByPlaceholderText("Search for some data…");
       cy.findByTestId("input-reset-button").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
 
       // Search is now scoped to questions only
@@ -92,31 +106,39 @@ describe("scenarios > question > new", () => {
         // should display the collection tree on the left side
         .should("contain", "Our analytics");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("not.exist");
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
       cy.icon("notebook").click();
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       // It is now possible to choose another saved question
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
-      popover().contains("Sample Database").click();
-      cy.findByText("Products").click();
+      popover().within(() => {
+        cy.contains("Raw Data").click();
+        cy.contains("Sample Database").click();
+        cy.findByText("Products").click();
+      });
       cy.findByTestId("data-step-cell").contains("Products");
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Rustic Paper Wallet");
     });
 
     it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
-        color: "#509EE3",
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection
-        cy.request("PUT", "/api/card/1", {
+        cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
           collection_id: COLLECTION_ID,
         });
         // Sanity check: make sure Orders is indeed inside new collection
@@ -134,11 +156,9 @@ describe("scenarios > question > new", () => {
     });
 
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
-      getCollectionIdFromSlug("second_collection", id => {
-        // Move first question in a DB snapshot ("Orders") to a "Second collection"
-        cy.request("PUT", "/api/card/1", {
-          collection_id: id,
-        });
+      // Move first question in a DB snapshot ("Orders") to a "Second collection"
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        collection_id: SECOND_COLLECTION_ID,
       });
 
       startNewQuestion();
@@ -182,6 +202,7 @@ describe("scenarios > question > new", () => {
     cy.get(".QueryBuilder .Icon-notebook").click();
     cy.url().should("include", "question/notebook#");
     cy.get(".QueryBuilder .Icon-sql").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Convert this question to SQL").click();
     cy.url().should("include", "question#");
   });
@@ -237,7 +258,117 @@ describe("scenarios > question > new", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID is 1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
+  });
+
+  it("should suggest the currently viewed collection when saving question", () => {
+    visitCollection(THIRD_COLLECTION_ID);
+
+    cy.findByLabelText("Navigation bar").within(() => {
+      cy.findByText("New").click();
+    });
+
+    popover().findByText("Question").click();
+
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("qb-header").within(() => {
+      cy.findByText("Save").click();
+    });
+    modal().within(() => {
+      cy.findByTestId("select-button").should("have.text", "Third collection");
+    });
+  });
+
+  it("should be able to save a question to a collection created on the go", () => {
+    visitCollection(THIRD_COLLECTION_ID);
+
+    cy.findByLabelText("Navigation bar").findByText("New").click();
+    popover().findByText("Question").click();
+    popover().within(() => {
+      cy.findByText("Raw Data").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("qb-header").findByText("Save").click();
+    modal().findByTestId("select-button").click();
+    popover().findByText("New collection").click();
+
+    const NEW_COLLECTION = "Foo";
+    modal().within(() => {
+      cy.findByLabelText("Name").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+      cy.findByText("Save new question");
+      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
+      cy.findByText("Save").click();
+    });
+    cy.get("header").findByText(NEW_COLLECTION);
+  });
+});
+
+// the data picker has different behavior if there are no models in the instance
+// the default instance image has a model in it, so we need to separately test the
+// model-less behavior
+describeOSS("scenarios > question > new > data picker > without models", () => {
+  beforeEach(() => {
+    restore("without-models");
+    cy.signInAsAdmin();
+    setTokenFeatures("none");
+  });
+
+  it("can create a question from the sample database", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+    });
+  });
+
+  it("can create a question from a saved question", () => {
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByText("Models").should("not.exist");
+      cy.findByText("Orders").click();
+    });
+    cy.get("main")
+      .findByText(/Doing Science/)
+      .should("not.exist");
+
+    cy.findByTestId("TableInteractive-root").within(() => {
+      cy.findByText(39.72).should("be.visible");
+    });
+  });
+
+  it("shows models and raw data options after creating a model", () => {
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
+    });
+
+    cy.visit("/question/new");
+
+    cy.get("#DataPopover").within(() => {
+      cy.findByText("Raw Data").should("be.visible");
+      cy.findByText("Saved Questions").should("be.visible");
+      cy.findByText("Models").should("be.visible");
+    });
   });
 });

@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import cx from "classnames";
 import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { Droppable, Draggable } from "react-beautiful-dnd";
 import _ from "underscore";
 import { splice } from "icepick";
 
+import { DragDropContext } from "metabase/core/components/DragDropContext";
 import Label from "metabase/components/type/Label";
 
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
@@ -29,7 +30,7 @@ const columnAdd = (columns, to, column) => {
   return splice(columns, to, 0, column);
 };
 
-class ChartSettingFieldsPartition extends React.Component {
+class ChartSettingFieldsPartition extends Component {
   constructor(props) {
     super(props);
   }
@@ -106,7 +107,7 @@ class ChartSettingFieldsPartition extends React.Component {
     return (
       <DragDropContext onDragEnd={this.handleDragEnd}>
         {this.props.partitions.map(({ name: partitionName, title }, index) => {
-          const columns = value[partitionName];
+          const columns = value[partitionName] ?? [];
           const partitionType = this.getPartitionType(partitionName);
           return (
             <div
@@ -161,7 +162,7 @@ class ChartSettingFieldsPartition extends React.Component {
   }
 }
 
-class Column extends React.Component {
+class Column extends Component {
   constructor(props) {
     super(props);
   }

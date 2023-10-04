@@ -1,11 +1,9 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import visualizations from "metabase/visualizations";
-
-import { Series } from "metabase-types/types/Visualization";
+import type { Series } from "metabase-types/api";
 
 import DashCardActionButton from "../DashCardActionButton";
 import {
@@ -17,12 +15,11 @@ import {
 const { ICON_SIZE } = DashCardActionButton;
 
 function getSeriesIconName(series: Series) {
-  try {
-    const display = series[0].card.display;
-    return visualizations.get(display === "scalar" ? "bar" : display).iconName;
-  } catch (e) {
-    return "bar";
-  }
+  const display = series[0]?.card.display;
+  return (
+    visualizations.get(display === "scalar" ? "bar" : display)?.iconName ??
+    "bar"
+  );
 }
 
 function AddSeriesButton({
@@ -47,4 +44,5 @@ function AddSeriesButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AddSeriesButton;

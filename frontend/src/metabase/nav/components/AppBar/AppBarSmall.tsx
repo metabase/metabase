@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from "react";
-import { User } from "metabase-types/api";
-import SearchBar from "../SearchBar";
+import { useCallback, useState } from "react";
+import type { User } from "metabase-types/api";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import ProfileLink from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
@@ -115,4 +115,5 @@ const AppBarSmall = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarSmall;

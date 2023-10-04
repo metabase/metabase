@@ -41,6 +41,8 @@ describe("snapshots", () => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
+        snapshot("without-models");
+        createModels(SAMPLE_DATABASE);
         cy.writeFile(
           "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
@@ -48,6 +50,13 @@ describe("snapshots", () => {
       });
 
       snapshot("default");
+
+      // we need to do this after the snapshot because hitting the API populates the audit log
+      const instanceData = getDefaultInstanceData();
+      cy.writeFile(
+        "e2e/support/cypress_sample_instance_data.json",
+        instanceData,
+      );
 
       restore("blank");
     });
@@ -67,8 +76,11 @@ describe("snapshots", () => {
         });
       },
     );
-    // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
+
+    cy.request("GET", "/api/user/current").then(({ body: { id } }) => {
+      // Dismiss `it's ok to play around` modal for admin
+      cy.request("PUT", `/api/user/${id}/modal/qbnewb`);
+    });
   }
 
   function updateSettings() {
@@ -148,11 +160,11 @@ describe("snapshots", () => {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
         name,
-        color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
       }).then(({ body }) => callback && callback(body));
     }
+
     postCollection("First collection", undefined, firstCollection =>
       postCollection(
         "Second collection",
@@ -173,22 +185,11 @@ describe("snapshots", () => {
     // dashboard 1: Orders in a dashboard
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            },
-          ],
-        });
-      },
-    );
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+      cardDetails: { size_x: 16, size_y: 8 },
+    });
 
     // question 2: Orders, Count
     cy.createQuestion({
@@ -205,6 +206,15 @@ describe("snapshots", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
+    });
+  }
+
+  function createModels({ ORDERS_ID }) {
+    // Model 1
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
     });
   }
 
@@ -281,3 +291,38 @@ describe("snapshots", () => {
     });
   });
 });
+
+function getDefaultInstanceData() {
+  const instanceData = {};
+
+  cy.request("/api/card").then(({ body: cards }) => {
+    instanceData.questions = cards;
+  });
+
+  cy.request("/api/dashboard").then(async ({ body: dashboards }) => {
+    instanceData.dashboards = [];
+    // we need to hydrate the dashcards on each dashboard
+    for (const dashboard of dashboards) {
+      // this doesn't work with Promise.all because cypress request has fake promises
+      cy.request(`/api/dashboard/${dashboard.id}`).then(
+        ({ body: fullDashboard }) => {
+          instanceData.dashboards.push(fullDashboard);
+        },
+      );
+    }
+  });
+
+  cy.request("/api/user").then(({ body: { data: users } }) => {
+    instanceData.users = users;
+  });
+
+  cy.request("/api/database").then(({ body: { data: databases } }) => {
+    instanceData.databases = databases;
+  });
+
+  cy.request("/api/collection").then(({ body: collections }) => {
+    instanceData.collections = collections;
+  });
+
+  return instanceData;
+}

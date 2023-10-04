@@ -43,6 +43,7 @@ describe("issue 28221", () => {
 
     cy.findByDisplayValue(questionName).should("be.visible");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(customFieldName).should("be.visible");
   });
 });

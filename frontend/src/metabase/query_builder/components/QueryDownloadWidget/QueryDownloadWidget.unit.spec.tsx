@@ -1,8 +1,7 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Dataset } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -11,7 +10,7 @@ import {
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import QueryDownloadWidget from "./QueryDownloadWidget";
 
@@ -33,7 +32,7 @@ interface SetupOpts {
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       questions: [card],
     }),
   });

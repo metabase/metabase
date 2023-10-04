@@ -1,5 +1,5 @@
-import Field from "metabase-lib/metadata/Field";
-import {
+import type Field from "metabase-lib/metadata/Field";
+import type {
   FieldFilterUiParameter,
   UiParameter,
 } from "metabase-lib/parameters/types";

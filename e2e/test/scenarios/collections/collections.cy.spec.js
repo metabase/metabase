@@ -6,13 +6,23 @@ import {
   popover,
   openOrdersTable,
   navigationSidebar,
-  getCollectionIdFromSlug,
   openNavigationSidebar,
   closeNavigationSidebar,
-  openCollectionMenu,
   visitCollection,
+  dragAndDrop,
+  openUnpinnedItemMenu,
+  getPinnedSection,
+  moveOpenedCollectionTo,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  ORDERS_QUESTION_ID,
+  FIRST_COLLECTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
@@ -22,6 +32,7 @@ describe("scenarios > collection defaults", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
   });
 
   describe("new collection modal", () => {
@@ -30,7 +41,6 @@ describe("scenarios > collection defaults", () => {
       _.times(COLLECTIONS_COUNT, index => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
-          color: "#509EE3",
           parent_id: null,
         });
       });
@@ -39,7 +49,9 @@ describe("scenarios > collection defaults", () => {
 
       cy.viewport(800, 500);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Collection").click();
 
       modal().within(() => {
@@ -52,6 +64,7 @@ describe("scenarios > collection defaults", () => {
         cy.findByText(`Collection ${COLLECTIONS_COUNT}`).click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Create").click();
 
       cy.findByTestId("collection-name-heading").should(
@@ -103,9 +116,7 @@ describe("scenarios > collection defaults", () => {
         "navigating directly to a collection should expand it and show its children",
       );
 
-      getCollectionIdFromSlug("second_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(SECOND_COLLECTION_ID);
 
       navigationSidebar().within(() => {
         cy.findByText("Second collection");
@@ -118,21 +129,18 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should correctly display deep nested collections with long names", () => {
-      getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
-        cy.log("Create two more nested collections");
+      cy.log("Create two more nested collections");
 
-        ["Fourth collection", "Fifth collection with a very long name"].forEach(
-          (collection, index) => {
-            cy.request("POST", "/api/collection", {
-              name: collection,
-              parent_id: THIRD_COLLECTION_ID + index,
-              color: "#509ee3",
-            });
-          },
-        );
+      ["Fourth collection", "Fifth collection with a very long name"].forEach(
+        (collection, index) => {
+          cy.request("POST", "/api/collection", {
+            name: collection,
+            parent_id: THIRD_COLLECTION_ID + index,
+          });
+        },
+      );
 
-        visitCollection(THIRD_COLLECTION_ID);
-      });
+      visitCollection(THIRD_COLLECTION_ID);
 
       // 1. Expand so that deeply nested collection is showing
       navigationSidebar().within(() => {
@@ -140,6 +148,7 @@ describe("scenarios > collection defaults", () => {
       });
 
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Fifth collection with a very long name").realHover();
       popover().contains("Fifth collection with a very long name");
     });
@@ -179,7 +188,7 @@ describe("scenarios > collection defaults", () => {
   });
 
   it("should support markdown in collection description", () => {
-    cy.request("PUT", "/api/collection/9", {
+    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
 
@@ -219,6 +228,7 @@ describe("scenarios > collection defaults", () => {
         },
       );
       visitRootCollection();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("admin@metabase.test").trigger("mouseenter");
       cy.findByRole("tooltip").should("not.exist");
     });
@@ -242,6 +252,7 @@ describe("scenarios > collection defaults", () => {
         },
       );
       visitRootCollection();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("averyverylongemail@veryverylongdomain.com").trigger(
         "mouseenter",
       );
@@ -263,26 +274,29 @@ describe("scenarios > collection defaults", () => {
       cy.createNativeQuestion(questionDetails);
 
       visitRootCollection();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard");
     });
 
     it("should be able to drag an item to the root collection (metabase#16498)", () => {
       moveItemToCollection("Orders", "First collection");
 
-      getCollectionIdFromSlug("first_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(FIRST_COLLECTION_ID);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").as("dragSubject");
 
       navigationSidebar().findByText("Our analytics").as("dropTarget");
 
       dragAndDrop("dragSubject", "dropTarget");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Moved question");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("not.exist");
 
       visitRootCollection();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
     });
 
@@ -294,13 +308,11 @@ describe("scenarios > collection defaults", () => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
           name: "Parent",
-          color: "#509EE3",
           parent_id: null,
         }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
           // Create Child collection within Parent collection
           cy.request("POST", "/api/collection", {
             name: "Child",
-            color: "#509EE3",
             parent_id: PARENT_COLLECTION_ID,
           }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
             // Fetch collection permission graph
@@ -310,7 +322,7 @@ describe("scenarios > collection defaults", () => {
                 // Access to everything else is revoked by default - that's why we chose `Data` group
                 groups[DATA_GROUP][CHILD_COLLECTION_ID] = "write";
 
-                // We're chaining these 2 requestes in order to match shema (passing it from GET to PUT)
+                // We're chaining these 2 requestes in order to match schema (passing it from GET to PUT)
                 // Similar to what we did in `sandboxes.cy.spec.js` with the permission graph
                 cy.request("PUT", "/api/collection/graph", {
                   // Pass previously mutated `groups` object
@@ -338,13 +350,16 @@ describe("scenarios > collection defaults", () => {
 
         // Even if user tries to navigate directly to the root collection, we have to make sure its content is not shown
         cy.visit("/collection/root");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("You don't have permissions to do that.");
       });
 
       it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
         openOrdersTable();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(revokedUsersPersonalCollectionName).click();
         popover().within(() => {
           cy.findByText(/Collections/i);
@@ -362,7 +377,7 @@ describe("scenarios > collection defaults", () => {
       // Create Parent collection within admin's personal collection
       cy.createCollection({
         name: COLLECTION,
-        parent_id: 1,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
       visitRootCollection();
@@ -398,9 +413,7 @@ describe("scenarios > collection defaults", () => {
         "when nested child collection is moved to the root collection (metabase#14482)",
       );
 
-      getCollectionIdFromSlug("second_collection", id => {
-        visitCollection(id);
-      });
+      visitCollection(SECOND_COLLECTION_ID);
 
       moveOpenedCollectionTo("Our analytics");
 
@@ -433,8 +446,16 @@ describe("scenarios > collection defaults", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
           cy.visit("/collection/root");
 
+          // Pin one item
+          openUnpinnedItemMenu("Orders, Count");
+          popover().findByText("Pin this").click();
+          getPinnedSection().within(() => {
+            cy.findByText("18,760");
+          });
+
           // Select one
           selectItemUsingCheckbox("Orders");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("1 item selected").should("be.visible");
           cy.icon("dash").should("exist");
           cy.icon("check").should("exist");
@@ -442,26 +463,32 @@ describe("scenarios > collection defaults", () => {
           // Select all
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
-          cy.findByText("5 items selected");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+          cy.findByText(/\d+ items selected/);
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
 
           cy.icon("check").should("not.exist");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
-          cy.request("PUT", "/api/card/1", {
-            collection_id: 1,
+          cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+            collection_id: ADMIN_PERSONAL_COLLECTION_ID,
           });
           cy.visit("/collection/root");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Your personal collection").click();
 
           selectItemUsingCheckbox("Orders");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("1 item selected").should("be.visible");
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Our analytics").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
       });
@@ -471,11 +498,15 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/)
+            .parent()
             .button("Archive")
             .click();
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
       });
@@ -485,7 +516,9 @@ describe("scenarios > collection defaults", () => {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/)
+            .parent()
             .button("Move")
             .click();
 
@@ -494,16 +527,22 @@ describe("scenarios > collection defaults", () => {
             cy.button("Move").click();
           });
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("not.exist");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/item(s)? selected/).should("not.be.visible");
 
           // Check that items were actually moved
           navigationSidebar().findByText("First collection").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders");
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Undo").click();
           navigationSidebar().findByText("Our analytics").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Orders").should("be.visible");
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Undo").should("not.exist");
         });
       });
@@ -522,18 +561,16 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should create new collections within the current collection", () => {
-      getCollectionIdFromSlug("third_collection", collection_id => {
-        visitCollection(collection_id);
-        cy.findByText("New").click();
+      visitCollection(THIRD_COLLECTION_ID);
+      cy.findByTestId("app-bar").findByText("New").click();
 
-        popover().within(() => {
-          cy.findByText("Collection").click();
-        });
+      popover().within(() => {
+        cy.findByText("Collection").click();
+      });
 
-        modal().within(() => {
-          cy.findByText("Collection it's saved in").should("be.visible");
-          cy.findByText("Third collection").should("be.visible");
-        });
+      modal().within(() => {
+        cy.findByText("Collection it's saved in").should("be.visible");
+        cy.findByText("Third collection").should("be.visible");
       });
     });
   });
@@ -546,7 +583,7 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should allow to x-ray models from collection views", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
       cy.visit("/collection/root");
 
       openEllipsisMenuFor("Orders");
@@ -606,27 +643,6 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
         });
       });
   }
-}
-
-function moveOpenedCollectionTo(newParent) {
-  openCollectionMenu();
-  popover().within(() => cy.findByText("Move").click());
-
-  cy.findAllByTestId("item-picker-item").contains(newParent).click();
-
-  modal().within(() => {
-    cy.button("Move").click();
-  });
-  // Make sure modal closed
-  modal().should("not.exist");
-}
-
-function dragAndDrop(subjectAlias, targetAlias) {
-  const dataTransfer = new DataTransfer();
-
-  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
-  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
-  cy.get("@" + subjectAlias).trigger("dragend");
 }
 
 function moveItemToCollection(itemName, collectionName) {

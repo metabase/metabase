@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 export function setupDashboardEndpoints(dashboard: Dashboard) {
@@ -13,4 +13,8 @@ export function setupDashboardEndpoints(dashboard: Dashboard) {
 export function setupDashboardsEndpoints(dashboards: Dashboard[]) {
   fetchMock.get("path:/api/dashboard", dashboards);
   dashboards.forEach(dashboard => setupDashboardEndpoints(dashboard));
+}
+
+export function setupDashboardNotFoundEndpoint(dashboard: Dashboard) {
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}`, 404);
 }

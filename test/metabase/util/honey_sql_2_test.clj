@@ -6,7 +6,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (deftest ^:parallel inline-Ratio-test
@@ -270,3 +270,20 @@
                      "int"
                      nil)
                    (h2x/type-info->db-type (h2x/type-info expr))))))))))
+
+(deftest ^:parallel identifier->name-test
+  (is (= ["public" "db" "table" "field"]
+         (h2x/identifier->components
+          (h2x/identifier :field :public :db :table :field))))
+
+  (is (= ["public" "db" "table"]
+         (h2x/identifier->components
+          (h2x/identifier :table :public :db :table))))
+
+  (is (= ["public" "db"]
+         (h2x/identifier->components
+          (h2x/identifier :database :public :db))))
+
+  (is (=  ["count"]
+         (h2x/identifier->components
+          (h2x/identifier :field-alias :count)))))

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
@@ -11,8 +11,10 @@ import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
+  most_recently_viewed_dashboard: GET(
+    "/api/activity/most_recently_viewed_dashboard",
+  ),
 };
 
 export const BookmarkApi = {
@@ -149,6 +151,10 @@ export const CardApi = {
     ),
   ),
   create: POST("/api/card"),
+  uploadCSV: POST("/api/card/from-csv", {
+    formData: true,
+    fetch: true,
+  }),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
   delete: DELETE("/api/card/:id"),
@@ -168,8 +174,17 @@ export const CardApi = {
   // related
   related: GET("/api/card/:cardId/related"),
   adHocRelated: POST("/api/card/related"),
+  compatibleCards: GET("/api/card/:cardId/series"),
   parameterValues: GET("/api/card/:cardId/params/:paramId/values"),
   parameterSearch: GET("/api/card/:cardId/params/:paramId/search/:query"),
+};
+
+export const ModelIndexApi = {
+  list: GET("/api/model-index"),
+  get: GET("/api/model-index/:id"),
+  create: POST("/api/model-index"),
+  update: PUT("/api/model-index/:id"),
+  delete: DELETE("/api/model-index/:id"),
 };
 
 export const DashboardApi = {
@@ -181,7 +196,7 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  updateCards: PUT("/api/dashboard/:dashId/cards"),
+  updateCardsAndTabs: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
@@ -233,7 +248,7 @@ export const PublicApi = {
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
-  prefetchValues: GET(
+  prefetchDashcardValues: GET(
     "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
 };
@@ -307,7 +322,9 @@ export const MetabaseApi = {
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
   db_schemas: GET("/api/database/:dbId/schemas"),
+  db_syncable_schemas: GET("/api/database/:dbId/syncable_schemas"),
   db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
+  db_virtual_dataset_tables: GET("/api/database/:dbId/datasets/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
@@ -323,7 +340,6 @@ export const MetabaseApi = {
   db_discard_values: POST("/api/database/:dbId/discard_values"),
   db_persist: POST("/api/database/:dbId/persist"),
   db_unpersist: POST("/api/database/:dbId/unpersist"),
-  db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -424,6 +440,8 @@ export const SessionApi = {
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
   password_reset_token_valid: GET("/api/session/password_reset_token_valid"),
+  unsubscribe: POST("/api/session/pulse/unsubscribe"),
+  undo_unsubscribe: POST("/api/session/pulse/unsubscribe/undo"),
 };
 
 export const SettingsApi = {
@@ -464,7 +482,7 @@ export const SetupApi = {
 
 export const UserApi = {
   create: POST("/api/user"),
-  list: GET("/api/user"),
+  list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
   // get:                         GET("/api/user/:userId"),
   update: PUT("/api/user/:id"),
@@ -480,8 +498,14 @@ export const UtilApi = {
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
   bug_report_details: GET("/api/util/bug_report_details"),
-  // this one does not need an HTTP verb because it's opened as an external link
-  connection_pool_details_url: "/api/util/diagnostic_info/connection_pool_info",
+  get_connection_pool_details_url: () => {
+    // this one does not need an HTTP verb because it's opened as an external link
+    // and it can be deployed at subpath
+    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const { href } = new URL(api.basename + path, location.origin);
+
+    return href;
+  },
 };
 
 export const GeoJSONApi = {
@@ -560,7 +584,8 @@ export const ActionsApi = {
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
   execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET(
+  prefetchValues: GET("/api/action/:id/execute"),
+  prefetchDashcardValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
   executeDashcardAction: POST(

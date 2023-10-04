@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 
 import { getErrorPage } from "metabase/selectors/app";
@@ -31,6 +30,7 @@ function PublicApp({ errorPage, children }: Props) {
   return children;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<StateProps, unknown, OwnProps, State>(mapStateToProps)(
   PublicApp,
 );

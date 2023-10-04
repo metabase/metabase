@@ -1,9 +1,9 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { Line, Polygon } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
-import {
+import type {
   FunnelDatum,
   FunnelSettings,
 } from "metabase/static-viz/components/FunnelChart/types";
@@ -169,4 +169,5 @@ const Funnel = ({ data, settings }: FunnelProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Funnel;

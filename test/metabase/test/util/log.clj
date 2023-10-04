@@ -5,7 +5,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [hawk.parallel]
+   [mb.hawk.parallel]
    [metabase.plugins.classloader :as classloader]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
@@ -130,7 +130,7 @@
      (.updateLoggers (logger-context)))))
 
 (defn do-with-log-level [a-namespace level thunk]
-  (hawk.parallel/assert-test-is-not-parallel "with-log-level")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-log-level")
   (ensure-unique-logger! a-namespace)
   (let [original-log-level (ns-log-level a-namespace)
         logger             (exact-ns-logger a-namespace)
@@ -216,7 +216,7 @@
     (:logs @state)))
 
 (defn do-with-log-messages-for-level [a-namespace level f]
-  (hawk.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-log-messages-for-level")
   (ensure-unique-logger! a-namespace)
   (let [state         (atom nil)
         appender-name (format "%s-%s-%s" `InMemoryAppender (logger-name a-namespace) (name level))

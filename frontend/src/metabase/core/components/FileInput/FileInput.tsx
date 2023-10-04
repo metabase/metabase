@@ -1,12 +1,5 @@
-import React, {
-  ChangeEvent,
-  FocusEvent,
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { ChangeEvent, FocusEvent, HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 import { InputButton, InputField, InputRoot } from "./FileInput.styled";
 
@@ -55,4 +48,5 @@ const FileInput = forwardRef(function FileInput(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FileInput;

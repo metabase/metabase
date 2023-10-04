@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -19,6 +20,7 @@
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -31,23 +33,23 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- dir->contents-set [p dir]
+(defn- dir->contents-set [p ^File dir]
   (->> dir
        .listFiles
        (filter p)
-       (map #(.getName %))
+       (map #(.getName ^File %))
        set))
 
-(defn- dir->file-set [dir]
-  (dir->contents-set #(.isFile %) dir))
+(defn- dir->file-set [^File dir]
+  (dir->contents-set #(.isFile ^File %) dir))
 
-(defn- dir->dir-set [dir]
-  (dir->contents-set #(.isDirectory %) dir))
+(defn- dir->dir-set [^File dir]
+  (dir->contents-set #(.isDirectory ^File %) dir))
 
-(defn- subdirs [dir]
+(defn- subdirs [^File dir]
   (->> dir
        .listFiles
-       (remove #(.isFile %))))
+       (remove #(.isFile ^File %))))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))
@@ -101,6 +103,7 @@
  [entity]
  (dissoc entity :created_at :result_metadata))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (let [extraction (atom nil)
@@ -150,10 +153,8 @@
                                               (many-random-fks
                                                100
                                                {:spec-gen {:dataset_query {:database 1
-                                                                           :query {:source-table 3
-                                                                                   :aggregation [[:count]]
-                                                                                   :breakout [[:field 16 nil]]}
-                                                                           :type :query}
+                                                                           :type     :native
+                                                                           :native   {:query "SELECT * FROM whatever;"}}
                                                            :dataset       true}}
                                                {:table_id      [:t    100]
                                                 :collection_id [:coll 100]
@@ -225,7 +226,7 @@
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
-            (reset! extraction (serdes/with-cache (into [] (extract/extract-metabase {}))))
+            (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
             (reset! entities   (reduce (fn [m entity]
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
@@ -432,26 +433,17 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp*
-            [Database   [db1s {:name "my-db"}]
-             Collection [coll1s {:name "My Collection"}]
-             Table      [table1s {:name  "CUSTOMERS"
-                                  :db_id (:id db1s)}]
-             Field      [field1s {:name     "NAME"
-                                  :table_id (:id table1s)}]
-             Card       [card1s  {:name "Source card"}]
-             Card       [card2s  {:name "Card with parameter"
-                                  :database_id (:id db1s)
-                                  :table_id (:id table1s)
-                                  :collection_id (:id coll1s)
-                                  :parameters [{:id                   "abc"
-                                                :type                 "category"
-                                                :name                 "CATEGORY"
-                                                :values_source_type   "card"
-                                                ;; card_id is in a different collection with dashboard's collection
-                                                :values_source_config {:card_id     (:id card1s)
-                                                                       :value_field [:field (:id field1s) nil]}}]}]
-             Dashboard  [dash1s {:name "A dashboard"
+          (mt/with-temp
+            [Database   db1s {:name "my-db"}
+             Collection coll1s {:name "My Collection"}
+             Table      table1s {:name  "CUSTOMERS"
+                                 :db_id (:id db1s)}
+             Field      field1s {:name     "NAME"
+                                 :table_id (:id table1s)}
+             Card       card1s  {:name "Source card"}
+             Card       card2s  {:name "Card with parameter"
+                                 :database_id (:id db1s)
+                                 :table_id (:id table1s)
                                  :collection_id (:id coll1s)
                                  :parameters [{:id                   "abc"
                                                :type                 "category"
@@ -459,14 +451,23 @@
                                                :values_source_type   "card"
                                                ;; card_id is in a different collection with dashboard's collection
                                                :values_source_config {:card_id     (:id card1s)
-                                                                      :value_field [:field (:id field1s) nil]}}]}]]
+                                                                      :value_field [:field (:id field1s) nil]}}]}
+             Dashboard  dash1s {:name "A dashboard"
+                                :collection_id (:id coll1s)
+                                :parameters [{:id                   "abc"
+                                              :type                 "category"
+                                              :name                 "CATEGORY"
+                                              :values_source_type   "card"
+                                              ;; card_id is in a different collection with dashboard's collection
+                                              :values_source_config {:card_id     (:id card1s)
+                                                                     :value_field [:field (:id field1s) nil]}}]}]
 
             (testing "make sure we insert ParameterCard when insert Dashboard/Card"
               ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
               (is (= 2 (t2/count ParameterCard))))
 
             (testing "extract and store"
-              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
@@ -575,7 +576,7 @@
              DashboardCard _                         {:dashboard_id           dashboard-id
                                                       :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
-              (let [extraction          (serdes/with-cache (into [] (extract/extract-metabase {})))
+              (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
                 (is (= [{:model "collection" :id coll-eid}
                         {:model "database"   :id "Linked database"}
@@ -629,3 +630,108 @@
                            (-> (t2/select-one Dashboard :name dashboard-name)
                                (t2/hydrate :ordered_cards)
                                dashboard->link-cards)))))))))))))
+
+(deftest dashboard-with-tabs-test
+  (testing "Dashboard with tabs must be deserialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+     (ts/with-source-and-dest-dbs
+       (ts/with-source-db
+         ;; preparation
+         (t2.with-temp/with-temp
+           [Dashboard           {dashboard-id :id
+                                 dashboard-eid :entity_id} {:name "Dashboard with tab"}
+            Card                {card-id-1 :id
+                                 card-eid-1 :entity_id}    {:name "Card 1"}
+            Card                {card-id-2 :id
+                                 card-eid-2 :entity_id}    {:name "Card 2"}
+            :model/DashboardTab {tab-id-1 :id
+                                 tab-eid-1 :entity_id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
+            :model/DashboardTab {tab-id-2 :id
+                                 tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
+            DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                            :card_id          card-id-1
+                                                            :dashboard_tab_id tab-id-1}
+            DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                            :card_id          card-id-2
+                                                            :dashboard_tab_id tab-id-1}
+            DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                            :card_id          card-id-1
+                                                            :dashboard_tab_id tab-id-2}
+            DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                            :card_id          card-id-2
+                                                            :dashboard_tab_id tab-id-2}]
+           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+             (storage/store! (seq extraction) dump-dir))
+
+           (testing "ingest and load"
+             (ts/with-dest-db
+               ;; ingest
+               (testing "doing ingestion"
+                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                     "successful"))
+               (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
+                                       (t2/hydrate :ordered_tabs :ordered_cards))
+                     new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
+                     new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
+                     new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
+                     new-card-id-2 (t2/select-one-pk Card :entity_id card-eid-2)]
+
+                 (is (=? [{:id           new-tab-id-1
+                           :dashboard_id (:id new-dashboard)
+                           :name         "Tab 1"
+                           :position     0}
+                          {:id           new-tab-id-2
+                           :dashboard_id (:id new-dashboard)
+                           :name         "Tab 2"
+                           :position     1}]
+                         (:ordered_tabs new-dashboard)))
+                 (is (=? [{:card_id          new-card-id-1
+                           :dashboard_id     (:id new-dashboard)
+                           :dashboard_tab_id new-tab-id-1}
+                          {:card_id          new-card-id-2
+                           :dashboard_id     (:id new-dashboard)
+                           :dashboard_tab_id new-tab-id-1}
+                          {:card_id          new-card-id-1
+                           :dashboard_id     (:id new-dashboard)
+                           :dashboard_tab_id new-tab-id-2}
+                          {:card_id          new-card-id-2
+                           :dashboard_id     (:id new-dashboard)
+                           :dashboard_tab_id new-tab-id-2}]
+                         (:ordered_cards new-dashboard))))))))))))
+
+(deftest premium-features-test
+  (testing "with :serialization enabled on the token"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (premium-features-test/with-premium-features #{:serialization}
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            ;; preparation
+            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+              (testing "export (v2-dump) command"
+                (is (cmd/v2-dump dump-dir {})
+                    "works"))
+
+              (testing "import (v2-load) command"
+                (ts/with-dest-db
+                  (testing "doing ingestion"
+                    (is (cmd/v2-load dump-dir {})
+                        "works"))))))))))
+
+  (testing "without :serialization feature enabled"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (premium-features-test/with-premium-features #{}
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            ;; preparation
+            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+              (testing "export (v2-dump) command"
+                (is (thrown-with-msg? Exception #"Please upgrade"
+                                      (cmd/v2-dump dump-dir {}))
+                    "throws"))
+
+              (testing "import (v2-load) command"
+                (ts/with-dest-db
+                  (testing "doing ingestion"
+                    (is (thrown-with-msg? Exception #"Please upgrade"
+                                          (cmd/v2-load dump-dir {}))
+                        "throws")))))))))))

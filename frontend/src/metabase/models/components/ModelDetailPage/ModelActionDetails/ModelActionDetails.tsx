@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,7 +15,7 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   canArchiveAction,
   canEditAction,
@@ -39,7 +39,6 @@ import {
 
 interface OwnProps {
   model: Question;
-  canRunActions: boolean;
 }
 
 interface DispatchProps {
@@ -162,7 +161,7 @@ function ModelActionDetails({
   return (
     <Root>
       {canWrite && (
-        <ActionsHeader>
+        <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
             <ActionMenu
@@ -218,9 +217,10 @@ function NoActionsState({
 
 function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
-  return -createdAt.unix();
+  return -createdAt.valueOf();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({

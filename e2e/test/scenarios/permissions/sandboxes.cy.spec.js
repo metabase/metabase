@@ -13,12 +13,16 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
+  sidebar,
   startNewQuestion,
   sendEmailAndAssert,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-
+import {
+  NORMAL_USER_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const {
@@ -39,29 +43,36 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
       cy.visit("/admin/people");
     });
 
     it("should add key attributes to an existing user", () => {
-      cy.icon("ellipsis").last().click();
+      cy.icon("ellipsis").first().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit user").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
       cy.findByPlaceholderText("Value").type("3");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Update").click();
     });
 
     it("should add key attributes to a new user", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Invite someone").click();
       cy.findByPlaceholderText("Johnny").type("John");
       cy.findByPlaceholderText("Appleseed").type("Smith");
       cy.findByPlaceholderText("nicetoseeyou@email.com").type(
         "john@smith.test",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add an attribute").click();
       cy.findByPlaceholderText("Key").type("User ID");
       cy.findByPlaceholderText("Value").type("1");
       cy.findAllByText("Create").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
     });
   });
@@ -75,9 +86,10 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
 
       // Add user attribute to existing ("normal" / id:2) user
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
       });
 
@@ -149,9 +161,12 @@ describeEE("formatting > sandboxes", () => {
         popover().within(() => {
           cy.findByText("Total").click({ force: true });
         });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Equal to").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Greater than").click();
         cy.findByPlaceholderText("Enter a number").type("100");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Add filter").click();
 
         visualize();
@@ -180,6 +195,7 @@ describeEE("formatting > sandboxes", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -205,7 +221,9 @@ describeEE("formatting > sandboxes", () => {
 
       openOrdersTable({ mode: "notebook" });
       summarize({ mode: "notebook" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
 
       cy.log(
@@ -225,7 +243,9 @@ describeEE("formatting > sandboxes", () => {
 
       visualize();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by User → ID");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("11"); // Sum of orders for user with ID #1
     });
 
@@ -327,6 +347,7 @@ describeEE("formatting > sandboxes", () => {
 
         // Find saved question in "Our analytics"
         cy.visit("/collection/root");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -335,13 +356,16 @@ describeEE("formatting > sandboxes", () => {
           // Click on the first bar in a graph (Category: "Doohickey")
           cy.get(".bar").eq(0).click({ force: true });
         });
-        cy.findByText("View these Orders").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("See these Orders").click();
 
         cy.log("Reported failing on v1.37.0.2");
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
         });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Category is Doohickey");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
       });
     });
@@ -400,6 +424,7 @@ describeEE("formatting > sandboxes", () => {
 
       // Find saved question in "Our analytics"
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(QUESTION_NAME).click();
 
       cy.wait("@cardQuery");
@@ -408,11 +433,14 @@ describeEE("formatting > sandboxes", () => {
         // Click on the first bar in a graph (Category: "Doohickey")
         cy.get(".bar").eq(0).click({ force: true });
       });
-      cy.findByText("View these Orders").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("See these Orders").click();
 
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });
 
@@ -473,6 +501,7 @@ describeEE("formatting > sandboxes", () => {
         });
 
         cy.get(".cellData").contains("Awesome Concrete Shoes").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(/View details/i).click();
 
         cy.log(
@@ -572,6 +601,7 @@ describeEE("formatting > sandboxes", () => {
             "It should show remapped Display Values instead of Product ID",
           );
           cy.get(".cellData").contains("Awesome Concrete Shoes").click();
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/View details/i).click();
 
           cy.log(
@@ -623,6 +653,7 @@ describeEE("formatting > sandboxes", () => {
         });
 
         // Title of the first order for User ID = 1
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Awesome Concrete Shoes");
       });
     });
@@ -686,6 +717,7 @@ describeEE("formatting > sandboxes", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
 
         cy.visit("/collection/root");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(QUESTION_NAME).click();
 
         cy.wait("@cardQuery");
@@ -694,11 +726,13 @@ describeEE("formatting > sandboxes", () => {
           // Click on the second bar in a graph (Category: "Widget")
           cy.get(".bar").eq(1).click({ force: true });
         });
-        cy.findByText("View these Orders").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("See these Orders").click();
 
         cy.wait("@dataset").then(xhr => {
           expect(xhr.response.body.error).not.to.exist;
         });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
       });
     });
@@ -724,11 +758,14 @@ describeEE("formatting > sandboxes", () => {
       cy.icon("eye")
         .eq(1) // No better way of doing this, undfortunately (see table above)
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sandboxed").click();
       cy.button("Change").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Use a saved question to create a custom view for this table",
       ).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(QUESTION_NAME).click();
       cy.button("Save").click();
 
@@ -737,6 +774,7 @@ describeEE("formatting > sandboxes", () => {
         expect(response.body.message).to.eq(ERROR_MESSAGE);
       });
       cy.get(".Modal").scrollTo("bottom");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(ERROR_MESSAGE);
     });
 
@@ -744,11 +782,17 @@ describeEE("formatting > sandboxes", () => {
       createJoinedQuestion("14766_joined");
 
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("14766_joined").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Products? → ID/).click();
 
       visualize(response => {
@@ -794,7 +838,9 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Subtotal").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65").should("not.exist");
     });
 
@@ -859,11 +905,15 @@ describeEE("formatting > sandboxes", () => {
         visitQuestion(QUESTION_ID);
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Twitter");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Row totals");
     });
 
     it("should show dashboard subscriptions for sandboxed user (metabase#14990)", () => {
+      setupSMTP();
+
       cy.sandboxTable({
         table_id: ORDERS_ID,
         attribute_remappings: {
@@ -872,12 +922,11 @@ describeEE("formatting > sandboxes", () => {
       });
 
       cy.signInAsSandboxedUser();
-      visitDashboard(1);
-      cy.icon("subscription").click();
-      // We're starting without email or Slack being set up so it's expected to see the following:
-      cy.findByText("Create a dashboard subscription");
-      cy.findAllByRole("link", { name: "set up email" });
-      cy.findAllByRole("link", { name: "configure Slack" });
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.findByLabelText("subscriptions").click();
+
+      // should forward to email since that is the only one setup
+      sidebar().findByText("Email this dashboard").should("exist");
     });
 
     it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
@@ -897,6 +946,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.visit("/pulse/create");
       cy.wait("@collection");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Where should this data go?")
         .parent()
         .within(() => {
@@ -923,6 +973,7 @@ describeEE("formatting > sandboxes", () => {
         callback: xhr => expect(xhr.response.body.error).not.to.exist,
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("37.65");
     });
 
@@ -993,11 +1044,13 @@ describeEE("formatting > sandboxes", () => {
         });
 
         cy.signInAsSandboxedUser();
-        visitDashboard(1);
-        cy.icon("subscription").click();
-        cy.findByText("Email it").click();
-        cy.findByPlaceholderText("Enter user names or email addresses").click();
-        cy.findByText("User 1").click();
+        visitDashboard(ORDERS_DASHBOARD_ID);
+        cy.findByLabelText("subscriptions").click();
+
+        sidebar()
+          .findByPlaceholderText("Enter user names or email addresses")
+          .click();
+        popover().findByText("User 1").click();
         sendEmailAndAssert(email => {
           expect(email.html).to.include("Orders in a dashboard");
           expect(email.html).to.include("37.65");

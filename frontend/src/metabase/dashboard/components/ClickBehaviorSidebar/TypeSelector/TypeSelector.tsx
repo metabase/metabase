@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import Icon from "metabase/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
 import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
@@ -13,7 +14,7 @@ import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
   option: string;
-  icon: string;
+  icon: IconName;
   hasNextStep: boolean;
   selected: boolean;
   disabled?: boolean;
@@ -97,4 +98,5 @@ function TypeSelector({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TypeSelector;

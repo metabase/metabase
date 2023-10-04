@@ -1,4 +1,3 @@
-import React from "react";
 import { screen, fireEvent } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
@@ -14,7 +13,6 @@ import ProfileLink from "metabase/nav/components/ProfileLink";
 
 const REGULAR_ITEMS = [
   "Account settings",
-  "Activity",
   "Help",
   "About Metabase",
   "Sign out",

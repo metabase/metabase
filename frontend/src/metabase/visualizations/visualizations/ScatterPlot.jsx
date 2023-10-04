@@ -1,4 +1,8 @@
 import { t } from "ttag";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { scatterRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -15,6 +19,9 @@ export default class ScatterPlot extends LineAreaBarChart {
   static identifier = "scatter";
   static iconName = "bubble";
   static noun = t`scatter plot`;
+
+  static minSize = getMinSize("scatter");
+  static defaultSize = getDefaultSize("scatter");
 
   static renderer = scatterRenderer;
 

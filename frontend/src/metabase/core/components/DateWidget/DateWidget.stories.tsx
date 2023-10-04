@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Moment } from "moment-timezone";
+import { useState } from "react";
+import type { Moment } from "moment-timezone";
 import type { ComponentStory } from "@storybook/react";
 import DateWidget from "./DateWidget";
 

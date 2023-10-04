@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
@@ -12,10 +11,8 @@ import { getUpgradeUrl } from "metabase/selectors/settings";
 
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 
-import {
-  TokenStatus,
-  useLicense,
-} from "metabase/admin/settings/hooks/use-license";
+import type { TokenStatus } from "metabase/admin/settings/hooks/use-license";
+import { useLicense } from "metabase/admin/settings/hooks/use-license";
 import {
   ExplorePaidPlansContainer,
   LoaderContainer,
@@ -25,8 +22,9 @@ import {
 } from "metabase/admin/settings/components/SettingsLicense";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
-import { SettingDefinition } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { SettingDefinition } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import { Text, Anchor } from "metabase/ui";
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
@@ -130,13 +128,14 @@ const LicenseAndBillingSettings = ({
         )}
 
         {!isStoreManagedBilling && (
-          <SectionDescription>
-            {jt`To manage your billing preferences, please email ${(
-              <ExternalLink key="email" href="mailto:billing@metabase.com">
+          <>
+            <Text color="text.1">
+              {t`To manage your billing preferences, please email `}
+              <Anchor span href="mailto:billing@metabase.com">
                 billing@metabase.com
-              </ExternalLink>
-            )}`}
-          </SectionDescription>
+              </Anchor>
+            </Text>
+          </>
         )}
       </>
 
@@ -177,6 +176,7 @@ const LicenseAndBillingSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,

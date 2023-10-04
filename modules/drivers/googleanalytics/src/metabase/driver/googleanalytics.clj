@@ -19,7 +19,7 @@
 
 (driver/register! :googleanalytics)
 
-(defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
+(defmethod driver/database-supports? [:googleanalytics :basic-aggregations] [_driver _feature _db] false)
 
 
 ;;; ----------------------------------------------- describe-database ------------------------------------------------

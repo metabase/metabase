@@ -59,7 +59,9 @@ describe("issue 20519", () => {
       expect(response.body.error).not.to.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Doohickey");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Two");
   });
 });

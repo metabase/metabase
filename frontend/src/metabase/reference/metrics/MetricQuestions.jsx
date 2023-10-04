@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
@@ -82,22 +82,19 @@ class MetricQuestions extends Component {
               <div className="wrapper wrapper--trim">
                 <List>
                   {Object.values(entities).map(
-                    (entity, index) =>
+                    entity =>
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            id={entity.id}
-                            index={index}
-                            name={entity.display_name || entity.name}
-                            description={t`Created ${moment(
-                              entity.created_at,
-                            ).fromNow()} by ${entity.creator.common_name}`}
-                            url={Urls.question(entity)}
-                            icon={visualizations.get(entity.display).iconName}
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={t`Created ${moment(
+                            entity.created_at,
+                          ).fromNow()} by ${entity.creator.common_name}`}
+                          url={Urls.question(entity)}
+                          icon={visualizations.get(entity.display).iconName}
+                        />
                       ),
                   )}
                 </List>

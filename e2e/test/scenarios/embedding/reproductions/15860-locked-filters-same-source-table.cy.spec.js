@@ -72,7 +72,7 @@ describe.skip("issue 15860", () => {
         ],
       },
       cardDetails: {
-        size_x: 8,
+        size_x: 11,
         size_y: 6,
       },
     }).then(({ body: { card_id: q1, dashboard_id } }) => {
@@ -89,7 +89,7 @@ describe.skip("issue 15860", () => {
               card_id: q2,
               row: 0,
               col: 8,
-              size_x: 10,
+              size_x: 13,
               size_y: 6,
               parameter_mappings: [
                 {
@@ -140,6 +140,7 @@ describe.skip("issue 15860", () => {
 
   it("should work for locked linked filters connected to different cards with the same source table (metabase#15860)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     setDefaultValueForLockedFilter("Q1 ID", 1);
@@ -147,6 +148,7 @@ describe.skip("issue 15860", () => {
 
     visitIframe();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q1 Category").click();
 
     popover().within(() => {
@@ -155,6 +157,7 @@ describe.skip("issue 15860", () => {
         .and("contain", "Gizmo");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2 Category").click();
 
     popover().within(() => {

@@ -1,6 +1,7 @@
 (ns metabase.cmd.endpoint-dox-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.activity]
    [metabase.cmd.endpoint-dox :as endpoint-dox]
    [metabase.config :as config]))
 
@@ -47,9 +48,9 @@
   (testing "Enterprise API endpoints should be included (#22396)"
     (when config/ee-available?
       (is (some (fn [an-endpoint]
-                  ;; this is just a random EE endpoint namespace; if it gets moved or removed just pick a different
-                  ;; namespace here I guess
-                  (when (= (the-ns 'metabase-enterprise.advanced-permissions.api.application)
-                           (:ns an-endpoint))
-                    an-endpoint))
+                    ;; this is just a random EE endpoint namespace; if it gets moved or removed just pick a different
+                    ;; namespace here I guess
+                    (when (= (the-ns 'metabase-enterprise.advanced-permissions.api.application)
+                             (:ns an-endpoint))
+                      an-endpoint))
                 (#'endpoint-dox/collect-endpoints))))))

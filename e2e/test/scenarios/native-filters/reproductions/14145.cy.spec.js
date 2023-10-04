@@ -41,19 +41,22 @@ describe.skip("issue 14145", () => {
 
   it("`field-id` should update when database source is changed (metabase#14145)", () => {
     // Change the source from "Sample Database" to the other database
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
 
     cy.get(".GuiBuilder-data").as("source").contains("Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sample2").click();
 
     // First assert on the UI
     cy.icon("variable").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Field to map to/)
       .siblings("a")
       .contains("Category");
 
     // Rerun the query and assert on the dimension (field-id) that didn't change
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset").then(xhr => {
       const { dimension } =

@@ -1,10 +1,17 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
-import type { Clause, ColumnMetadata, MetadataProvider, Query } from "./types";
+import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  Clause,
+  ColumnMetadata,
+  MetadataProvider,
+  MetricMetadata,
+  Query,
+} from "./types";
+import type LegacyMetadata from "./metadata/Metadata";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
-  metadata: MetadataProvider,
+  metadata: MetadataProvider | LegacyMetadata,
   datasetQuery: DatasetQuery,
 ): Query {
   return ML.query(databaseId, metadata, datasetQuery);
@@ -14,29 +21,35 @@ export function toLegacyQuery(query: Query): DatasetQuery {
   return ML.legacy_query(query);
 }
 
+export function withDifferentTable(query: Query, tableId: TableId): Query {
+  return ML.with_different_table(query, tableId);
+}
+
 export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
 
-declare function RemoveClauseFn(query: Query, targetClause: Clause): Query;
-declare function RemoveClauseFn(
+export function appendStage(query: Query): Query {
+  return ML.append_stage(query);
+}
+
+export function dropStage(query: Query, stageIndex: number): Query {
+  return ML.drop_stage(query, stageIndex);
+}
+
+export function removeClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
-): Query;
+): Query {
+  return ML.remove_clause(query, stageIndex, targetClause);
+}
 
-export const removeClause: typeof RemoveClauseFn = ML.remove_clause;
-
-declare function ReplaceClauseFn(
-  query: Query,
-  targetClause: Clause,
-  newClause: Clause | ColumnMetadata,
-): Query;
-declare function ReplaceClauseFn(
+export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause,
-  newClause: Clause | ColumnMetadata,
-): Query;
-
-export const replaceClause: typeof ReplaceClauseFn = ML.replace_clause;
+  newClause: Clause | ColumnMetadata | MetricMetadata,
+): Query {
+  return ML.replace_clause(query, stageIndex, targetClause, newClause);
+}

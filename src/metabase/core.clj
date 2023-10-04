@@ -17,6 +17,7 @@
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -62,10 +63,11 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        setup-url (str "http://"
-                       (or hostname "localhost")
-                       (when-not (= 80 port) (str ":" port))
-                       "/setup/")]
+        site-url  (or (public-settings/site-url)
+                      (str "http://"
+                           hostname
+                           (when-not (= 80 port) (str ":" port))))
+        setup-url (str site-url "/setup/")]
     (log/info (u/format-color 'green
                               (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
                                    "\n\n"
@@ -88,6 +90,11 @@
   (server/stop-web-server!)
   (prometheus/shutdown!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
+
+(defenterprise ensure-audit-db-installed!
+  "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
@@ -112,9 +119,6 @@
     (init-status/set-progress! 0.6))
   ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
   (config-from-file/init-from-file-if-code-available!)
-  (init-status/set-progress! 0.65)
-  ;; Bootstrap the event system
-  (events/initialize-events!)
   (init-status/set-progress! 0.7)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
@@ -124,7 +128,7 @@
       ;; create setup token
       (create-setup-token-and-log-setup-url!)
       ;; publish install event
-      (events/publish-event! :install {}))
+      (events/publish-event! :event/install {}))
     (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
     (if new-install?
@@ -133,6 +137,10 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))
+
+  ;; TODO uncomment when audit v2 is ready
+  ; (ensure-audit-db-installed!)
+
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
@@ -184,8 +192,8 @@
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
-(defn -main
-  "Launch Metabase in standalone mode."
+(defn entrypoint
+  "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.bootstrap/-main]].)"
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd

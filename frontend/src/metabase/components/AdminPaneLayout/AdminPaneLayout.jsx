@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Fragment } from "react";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
@@ -19,7 +19,7 @@ const AdminPaneTitle = ({
   return (
     <Container>
       <HeadingContainer>
-        {headingContent && <React.Fragment>{headingContent}</React.Fragment>}
+        {headingContent && <Fragment>{headingContent}</Fragment>}
         {title && <h2 className="PageTitle">{title}</h2>}
         {buttonText && buttonLink && (
           <Link to={buttonLink} className={buttonClassName}>

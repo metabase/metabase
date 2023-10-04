@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -16,6 +16,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   TableCellContent,
   TableCellSpinner,
+  AddSampleDatabaseLink,
 } from "../../containers/DatabaseListApp.styled";
 
 const query = {
@@ -27,7 +28,7 @@ export default class DatabaseList extends Component {
     super(props);
 
     props.databases.map(database => {
-      this["deleteDatabaseModal_" + database.id] = React.createRef();
+      this["deleteDatabaseModal_" + database.id] = createRef();
     });
 
     this.state = {
@@ -72,7 +73,7 @@ export default class DatabaseList extends Component {
     const error = deletionError || addSampleDatabaseError;
 
     return (
-      <div className="wrapper">
+      <div className="wrapper" data-testid="database-list">
         <section className="PageHeader px2 clearfix">
           {isAdmin && (
             <Link
@@ -150,12 +151,11 @@ export default class DatabaseList extends Component {
                     {t`Restoring the sample database...`}
                   </span>
                 ) : (
-                  <a
-                    className="text-light text-brand-hover no-decoration"
+                  <AddSampleDatabaseLink
                     onClick={() => this.props.addSampleDatabase(query)}
                   >
                     {t`Bring the sample database back`}
-                  </a>
+                  </AddSampleDatabaseLink>
                 )}
               </span>
             </div>

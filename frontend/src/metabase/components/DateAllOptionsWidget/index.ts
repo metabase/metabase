@@ -1,1 +1,1 @@
-export { default } from "./DateAllOptionsWidget";
+export { DateAllOptionsWidget } from "./DateAllOptionsWidget";

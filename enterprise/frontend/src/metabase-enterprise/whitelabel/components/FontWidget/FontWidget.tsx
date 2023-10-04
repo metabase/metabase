@@ -1,7 +1,8 @@
-import React, { ChangeEvent, useCallback, useMemo } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
+import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
 import { FontSelect } from "./FontWidget.styled";
 
 export interface FontWidgetProps {
@@ -47,4 +48,5 @@ const FontWidget = ({
   return <FontSelect value={value} options={options} onChange={handleChange} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FontWidget;

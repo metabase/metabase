@@ -1,14 +1,12 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
-import { Filter as FilterExpression } from "metabase-types/types/Query";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type { Filter as FilterExpression } from "metabase-types/api";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
-import {
-  DATE_SHORTCUT_OPTIONS,
-  DateShortcutOptions,
-} from "./DatePickerShortcutOptions";
+import type { DateShortcutOptions } from "./DatePickerShortcutOptions";
+import { DATE_SHORTCUT_OPTIONS } from "./DatePickerShortcutOptions";
 
 type Props = {
   className?: string;
@@ -21,6 +19,7 @@ type Props = {
   onBack?: () => void;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function DatePickerShortcuts({
   className,
   onFilterChange,
@@ -34,9 +33,7 @@ export default function DatePickerShortcuts({
   let title = "";
   if (dimension) {
     const field = dimension.field();
-    title =
-      (field.table ? field.table.displayName() + " – " : "") +
-      field.displayName();
+    title = field.displayName({ includeTable: true });
   }
 
   const { DAY_OPTIONS, MONTH_OPTIONS, MISC_OPTIONS } = useMemo(

@@ -2,13 +2,15 @@ import styled from "@emotion/styled";
 import ColorRange from "metabase/core/components/ColorRange";
 import Button from "metabase/core/components/Button";
 
+import type { ColorRangeProps } from "../ColorRange/ColorRange";
+
 export const ToggleRoot = styled.div`
   display: flex;
 `;
 
-export const ToggleColorRange = styled(ColorRange)`
+export const ToggleColorRange = styled(ColorRange)<ColorRangeProps>`
   flex: 1 1 auto;
-  cursor: default;
+  cursor: ${props => (props.onSelect ? "pointer" : " default")};
 `;
 
 export const ToggleButton = styled(Button)`

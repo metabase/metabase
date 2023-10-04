@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/no-string-refs */
-import React, { Component } from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 import styles from "./Legend.css";

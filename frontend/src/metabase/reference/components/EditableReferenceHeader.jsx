@@ -1,13 +1,13 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import { t } from "ttag";
 import L from "metabase/components/List/List.css";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Button from "metabase/core/components/Button";
 import S from "./ReferenceHeader.css";
 
@@ -107,4 +107,4 @@ EditableReferenceHeader.propTypes = {
   nameFormField: PropTypes.object,
 };
 
-export default React.memo(EditableReferenceHeader);
+export default memo(EditableReferenceHeader);

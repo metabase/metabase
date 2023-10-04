@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 
 import * as QUERY from "./query";
 import * as FieldRef from "./field-ref";
@@ -28,7 +28,7 @@ const NEW_QUERY_TEMPLATES = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-  const dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
+  const dataset_query = copy(NEW_QUERY_TEMPLATES[type]);
 
   if (databaseId) {
     dataset_query.database = databaseId;
@@ -70,7 +70,7 @@ export function cleanQuery(query) {
     _.all(filter, a => a != null),
   );
   if (filters.length > 0) {
-    query.filter = ["and", ...filters];
+    query.filter = QUERY.getFilterClause(filters);
   } else {
     delete query.filter;
   }

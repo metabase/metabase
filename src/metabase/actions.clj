@@ -2,17 +2,21 @@
   "Code related to the new writeback Actions."
   (:require
    [clojure.spec.alpha :as s]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as schema]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -141,7 +145,7 @@
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
    otherwise returns nil."
   [action-or-id]
-  (check-actions-enabled-for-database! (database-for-action action-or-id)))
+  (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
@@ -155,7 +159,8 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (t2/select-one Database :id (:database arg-map)))]
+    (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
+                                                   (lib.metadata/database (qp.store/metadata-provider))))]
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
@@ -202,13 +207,10 @@
   preserving case and `snake_keys` in the request body is important)."
   ([query]
    (let [query (mbql.normalize/normalize (assoc query :type :query))]
-     (try
-       (schema/validate mbql.s/Query query)
-       (catch Exception e
-         (throw (ex-info
-                 (ex-message e)
-                 {:exception-data (ex-data e)
-                  :status-code    400}))))
+     (when-let [error (me/humanize (mc/explain mbql.s/Query query))]
+       (throw (ex-info
+               (i18n/tru "Invalid query: {0}" (pr-str error))
+               {:status-code 400, :type qp.error-type/invalid-query})))
      query))
 
   ([query & {:keys [exclude]}]

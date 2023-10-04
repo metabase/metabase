@@ -1,0 +1,37 @@
+description: null
+archived: false
+collection_position: null
+ordered_cards:
+- size_x: 15
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings: []
+  card_id: 3E5v6qwg_gPIbEGKMduFi
+  entity_id: ifEJXWx0-orl38ouNpMJC
+  visualization_settings:
+    column_settings: null
+  size_y: 7
+  created_at: '2023-06-07T23:06:38.669473Z'
+  row: 0
+enable_embedding: false
+collection_id: tYhkn_-pFTWcCTSwhgCBP
+show_in_getting_started: false
+name: IA Dash
+caveats: null
+creator_id: a@a.a
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+ordered_tabs: []
+serdes/meta:
+- model: Dashboard
+  id: WFmN9gRmW1LCfzHneB4QH
+  label: ia_dash
+position: null
+entity_id: WFmN9gRmW1LCfzHneB4QH
+parameters: []
+auto_apply_filters: true
+created_at: '2023-06-07T23:05:41.204825Z'
+public_uuid: null
+points_of_interest: null

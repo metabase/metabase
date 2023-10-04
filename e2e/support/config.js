@@ -1,18 +1,11 @@
 import * as dbTasks from "./db_tasks";
+const replay = require("@replayio/cypress");
 const { verifyDownloadTasks } = require("cy-verify-downloads");
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
-/**
- * This env var provides the token to the backend.
- * If it is not present, we skip some tests that depend on a valid token.
- *
- * @type {boolean}
- */
-const hasEnterpriseToken =
-  process.env["MB_PREMIUM_EMBEDDING_TOKEN"] &&
-  process.env["MB_EDITION"] === "ee";
+const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -22,10 +15,15 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
+const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
+
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor");
+const {
+  removeDirectory,
+} = require("./commands/downloads/deleteDownloadsFolder");
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -76,6 +74,7 @@ const defaultConfig = {
     on("task", {
       ...dbTasks,
       ...verifyDownloadTasks,
+      removeDirectory,
     });
 
     /********************************************************************
@@ -91,7 +90,7 @@ const defaultConfig = {
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
 
-    config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
+    config.env.IS_ENTERPRISE = isEnterprise;
     config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
@@ -99,23 +98,27 @@ const defaultConfig = {
 
     require("@cypress/grep/src/plugin")(config);
 
+    if (runWithReplay) {
+      replay.default(on, config);
+    }
+
     return config;
   },
   supportFile: "e2e/support/cypress.js",
   videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
-};
-
-const mainConfig = {
-  ...defaultConfig,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.js",
-  projectId: "KetpiS",
+};
+
+const mainConfig = {
+  ...defaultConfig,
   viewportHeight: 800,
   viewportWidth: 1280,
+  numTestsKeptInMemory: 1,
   reporter: "mochawesome",
   reporterOptions: {
     reportDir: "cypress/reports/mochareports",
@@ -125,7 +128,7 @@ const mainConfig = {
     json: true,
   },
   retries: {
-    runMode: 5,
+    runMode: 2,
     openMode: 0,
   },
 };
@@ -147,9 +150,15 @@ const crossVersionTargetConfig = {
   specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.js",
 };
 
+const stressTestConfig = {
+  ...defaultConfig,
+  retries: 0,
+};
+
 module.exports = {
   mainConfig,
   snapshotsConfig,
+  stressTestConfig,
   crossVersionSourceConfig,
   crossVersionTargetConfig,
 };

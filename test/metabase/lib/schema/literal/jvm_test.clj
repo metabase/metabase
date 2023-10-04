@@ -8,4 +8,4 @@
 
 (deftest ^:parallel temporal-literal-type-of-test
   (is (= :type/DateTimeWithZoneID
-         (expression/type-of* #t "2019-01-01T00:00Z[UTC]"))))
+         (expression/type-of-method #t "2019-01-01T00:00Z[UTC]"))))

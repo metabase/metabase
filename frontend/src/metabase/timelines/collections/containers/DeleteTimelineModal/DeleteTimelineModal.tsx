@@ -3,10 +3,10 @@ import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
-import { Timeline } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Timeline } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
-import { ModalParams } from "../../types";
+import type { ModalParams } from "../../types";
 
 interface DeleteTimelineModalProps {
   params: ModalParams;
@@ -28,6 +28,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Timelines.load(timelineProps),
   connect(null, mapDispatchToProps),

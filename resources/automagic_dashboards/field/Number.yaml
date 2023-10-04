@@ -1,6 +1,6 @@
-title: A look at your [[this]]
-transient_title: We crunched the numbers for your [[this]]
-description: A breakdown of your [[this]] over time, and its min, max, average and more.
+title: A look at [[this]]
+transient_title: We crunched the numbers for [[this]]
+description: A breakdown of [[this]] over time, and its min, max, average and more.
 applies_to: GenericTable.Number
 metrics:
 - Sum: [sum, [dimension, this]]

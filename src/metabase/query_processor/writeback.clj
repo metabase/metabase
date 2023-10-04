@@ -43,3 +43,16 @@
     (throw (ex-info (tru "Only native queries can be executed as write queries.")
                     {:type qp.error-type/invalid-query, :status-code 400, :query query})))
   ((writeback-qp) query nil nil))
+
+(defn execute-write-sql!
+  "Execute a write query in SQL against a database given by `db-id`."
+  [db-id sql-or-sql+params]
+  (if (sequential? sql-or-sql+params)
+    (let [[sql & params] sql-or-sql+params]
+      (execute-write-query! {:type     :native
+                             :database db-id
+                             :native   {:query  sql
+                                        :params params}}))
+    (execute-write-query! {:type     :native
+                           :database db-id
+                           :native   {:query sql-or-sql+params}})))

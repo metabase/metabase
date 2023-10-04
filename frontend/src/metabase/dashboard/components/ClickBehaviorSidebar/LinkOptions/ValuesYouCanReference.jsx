@@ -1,15 +1,14 @@
-/* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import {
   withUserAttributes,
   isMappableColumn,
 } from "metabase/dashboard/components/ClickMappings";
+import { PopoverTrigger } from "./ValuesYouCanReference.styled";
 
 function prefixIfNeeded(values, prefix, otherLists) {
   const otherValues = otherLists.flat().map(s => s.toLowerCase());
@@ -54,10 +53,10 @@ const ValuesYouCanReference = withUserAttributes(
     return (
       <PopoverWithTrigger
         triggerElement={
-          <div className="flex align-center cursor-pointer my2 text-medium text-brand-hover">
+          <PopoverTrigger>
             <h4>{t`Values you can reference`}</h4>
             <Icon name="chevrondown" className="ml1" size={12} />
-          </div>
+          </PopoverTrigger>
         }
       >
         <AccordionList

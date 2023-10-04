@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle } from "react";
+import { useEffect, useRef, useImperativeHandle } from "react";
 import PropTypes from "prop-types";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
 import {
   DataReferenceTriggerButton,
   DataReferenceInline,
@@ -43,6 +44,7 @@ interface ActionCreatorProps extends ActionCreatorUIProps {
 
 const DEFAULT_SIDE_VIEW: SideView = "actionForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionCreatorView({
   action,
   formSettings,
@@ -85,7 +87,7 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot>
+    <ModalRoot data-testid="action-creator">
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader
@@ -120,6 +122,7 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
+              actionType={action.type ?? "query"}
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}

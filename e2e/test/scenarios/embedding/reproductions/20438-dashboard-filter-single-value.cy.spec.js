@@ -59,7 +59,7 @@ describe("issue 20438", () => {
             card_id,
             row: 0,
             col: 0,
-            size_x: 18,
+            size_x: 24,
             size_y: 8,
             parameter_mappings: [
               {
@@ -84,6 +84,7 @@ describe("issue 20438", () => {
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();

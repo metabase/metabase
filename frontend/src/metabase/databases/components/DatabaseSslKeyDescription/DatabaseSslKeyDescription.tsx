@@ -1,9 +1,8 @@
-import React from "react";
 import { useFormikContext } from "formik";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { DatabaseData } from "metabase-types/api";
+import type { DatabaseData } from "metabase-types/api";
 
 const DatabaseSslKeyDescription = (): JSX.Element | null => {
   const { values } = useFormikContext<DatabaseData>();
@@ -27,4 +26,5 @@ const DatabaseSslKeyDescription = (): JSX.Element | null => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSslKeyDescription;

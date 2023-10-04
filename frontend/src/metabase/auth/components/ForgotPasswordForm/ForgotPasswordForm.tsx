@@ -1,13 +1,12 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import FormProvider from "metabase/core/components/FormProvider";
-import Form from "metabase/core/components/Form";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import * as Errors from "metabase/core/utils/errors";
-import { ForgotPasswordData } from "../../types";
+import type { ForgotPasswordData } from "../../types";
 import {
   PasswordFormFooter,
   PasswordFormLink,
@@ -18,12 +17,12 @@ const FORGOT_PASSWORD_SCHEMA = Yup.object({
   email: Yup.string().required(Errors.required).email(Errors.email),
 });
 
-export interface ForgotPasswordFormProps {
+interface ForgotPasswordFormProps {
   initialEmail?: string;
   onSubmit: (email: string) => void;
 }
 
-const ForgotPasswordForm = ({
+export const ForgotPasswordForm = ({
   initialEmail = "",
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
@@ -66,5 +65,3 @@ const ForgotPasswordForm = ({
     </div>
   );
 };
-
-export default ForgotPasswordForm;

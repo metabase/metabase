@@ -26,7 +26,7 @@ Currently, the only algorithm Metabase supports is [HS256](https://en.wikipedia.
 Assuming your site is localhost serving on port 3000:
 
 1. Person attempts to view a question, e.g., `http://localhost:3000/question/1-superb-question`.
-2. If the person isn't logged in, Metabase redirects them to `http://localhost:3000/auth/sso`.
+2. If the person isn't logged in, Metabase redirects them to `http://localhost:3000/auth/sso/`.
 3. Retaining the original `/question/1-superb-question` URI, Metabase redirects the person to the SSO provider (the authentication app).
 4. Person logs in using the basic form.
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
@@ -36,9 +36,7 @@ Assuming your site is localhost serving on port 3000:
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication** tab. Click the **Configure** button in the JWT section of this page, and you'll see this form:
 
-![SAML form](images/JWT-auth-form.png)
-
-Click the toggle at the top of the form to enable JWT-based authentication. **Make sure to set the toggle to Enabled**, otherwise JWT authentication won't work, even if all of your other settings are correct.
+![JWT form](images/JWT-auth-form.png)
 
 Here's a breakdown of each of the settings:
 

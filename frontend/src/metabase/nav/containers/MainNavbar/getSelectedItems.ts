@@ -2,9 +2,10 @@ import * as Urls from "metabase/lib/urls";
 
 import { coerceCollectionId } from "metabase/collections/utils";
 
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
+import type Question from "metabase-lib/Question";
 
-import { SelectedItem } from "./types";
+import type { SelectedItem } from "./types";
 
 type Opts = {
   pathname: string;
@@ -12,7 +13,7 @@ type Opts = {
     slug?: string;
     pageId?: string;
   };
-  card?: Card;
+  question?: Question;
   dashboard?: Dashboard;
 };
 
@@ -39,7 +40,7 @@ function isDashboardPath(pathname: string): boolean {
 function getSelectedItems({
   pathname,
   params,
-  card,
+  question,
   dashboard,
 }: Opts): SelectedItem[] {
   const { slug } = params;
@@ -66,14 +67,14 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath(pathname) || isModelPath(pathname)) && card) {
+  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
     return [
       {
-        id: card.id,
+        id: question.id(),
         type: "card",
       },
       {
-        id: coerceCollectionId(card.collection_id),
+        id: coerceCollectionId(question.collectionId()),
         type: "collection",
       },
     ];
@@ -81,4 +82,5 @@ function getSelectedItems({
   return [{ url: pathname, type: "non-entity" }];
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default getSelectedItems;

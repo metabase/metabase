@@ -9,12 +9,12 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.net MalformedURLException URL URLDecoder)
-   (java.util UUID)))
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +32,7 @@
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
   [user :- UserAttributes]
-  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (UUID/randomUUID))})))
+  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
@@ -53,15 +53,14 @@
           (t2/select-one User :id id))))))
 
 (defn check-sso-redirect
-  "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
+  "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
-  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
-                    ;; In this case, this just means that we don't have a specified host in redirect,
-                    ;; meaning it can't be an open redirect
-        no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
-        host        (try
-                      (.getHost (new URL decoded-url))
-                      (catch MalformedURLException _ ""))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-   (api/check (or no-host (= host our-host))
-     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
+  (try
+    (let [host        (some-> redirect-url (URI.) (.getHost))
+          our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
+      (api/check-400 (or (nil? redirect-url) (nil? host) (= host our-host))))
+    (catch Exception e
+      (log/error e "Invalid redirect URL")
+      (throw (ex-info (tru "Invalid redirect URL")
+                      {:status-code 400
+                       :redirect-url redirect-url})))))

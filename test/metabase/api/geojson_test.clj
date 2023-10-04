@@ -7,9 +7,12 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [ring.adapter.jetty9 :as ring-jetty]
-   [schema.core :as s]))
+   [schema.core :as s])
+  (:import
+   (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,11 +38,10 @@
                   :region_key  nil
                   :region_name nil}})
 
-(deftest geojson-schema-test
-  (is (= true
-         (boolean (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))))
+(deftest ^:parallel geojson-schema-test
+  (is (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))
 
-(deftest validate-geojson-test
+(deftest ^:parallel validate-geojson-test
   (testing "It validates URLs and files appropriately"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
@@ -135,27 +137,7 @@
                                          {:value resource-geojson})
                    (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
 
-(defprotocol GeoJsonTestServer
-  (-port [_]))
-
-(defn- non-responding-server
-  "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
-  call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
-  ^java.io.Closeable []
-  (let [server (ring-jetty/run-jetty (fn silent-async-handler
-                                       [_request _respond _raise])
-                                     {:join?         false
-                                      :async?        true
-                                      :port          0
-                                      :async-timeout 60000})]
-    (reify
-      java.io.Closeable
-      (close [_] (.stop server))
-
-      GeoJsonTestServer
-      (-port [_] (.. server getURI getPort)))))
-
-(deftest url-proxy-endpoint-test
+(deftest ^:parallel url-proxy-endpoint-test
   (testing "GET /api/geojson"
     (testing "test the endpoint that fetches JSON files given a URL"
       (is (= {:type        "Point"
@@ -165,7 +147,38 @@
       (is (= "GeoJSON URL failed to load"
              (mt/user-http-request :crowberto :get 400 "geojson"
                                    :url test-broken-geojson-url))))
-    (testing "error is returned if URL server never responds (#28752)"
+    (testing "error is returned if URL is invalid"
+      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                  "prohibited.")
+             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
+    (testing "cannot be called by non-admins"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+
+(defprotocol GeoJsonTestServer
+  (-port [_]))
+
+(defn- non-responding-server
+  "Returns a server which accepts requests but never responds to them. Implements [[GeoJsonTestServer]] so you can
+  call [[-port]] to get the port. Implements java.io.Closeable so can be used in a `with-open`."
+  ^java.io.Closeable []
+  (let [^Server server (ring-jetty/run-jetty (fn silent-async-handler
+                                               [_request _respond _raise])
+                                             {:join?         false
+                                              :async?        true
+                                              :port          0
+                                              :async-timeout 60000})]
+    (reify
+      java.io.Closeable
+      (close [_] (.stop server))
+
+      GeoJsonTestServer
+      (-port [_] (.. server getURI getPort)))))
+
+(deftest url-proxy-endpoint-non-responding-server-test
+  (testing "error is returned if URL server never responds (#28752)"
+    (with-redefs [api.geojson/connection-timeout-ms 200]
       ;; use a webserver which accepts a connection and never responds. The geojson endpoint opens a reader to the url
       ;; and responds with it. And if there are never any bytes going across, the whole thing just sits there. Our
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
@@ -175,15 +188,7 @@
           (testing "error is returned if URL connection fails"
             (is (= "GeoJSON URL failed to load"
                    (mt/user-http-request :crowberto :get 400 "geojson"
-                                         :url never-responds-url)))))))
-    (testing "error is returned if URL is invalid"
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                  "prohibited.")
-             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
-    (testing "cannot be called by non-admins"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+                                         :url never-responds-url)))))))))
 
 (deftest key-proxy-endpoint-test
   (testing "GET /api/geojson/:key"
@@ -195,7 +200,7 @@
       (testing "should be able to fetch the GeoJSON even if you aren't logged in"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
-               (client/client :get 200 "geojson/middle-earth"))))
+               (client/real-client :get 200 "geojson/middle-earth"))))
       (testing "try fetching an invalid key; should fail"
         (is (= "Invalid custom GeoJSON key: invalid-key"
                (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
@@ -242,7 +247,7 @@
       (mt/with-temp-env-var-value [mb-custom-geojson-enabled false]
         (testing "Should not be able to fetch GeoJSON via URL proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))
+                 (mt/user-real-request :crowberto :get 400 "geojson" :url test-geojson-url))))
         (testing "Should not be able to fetch custom GeoJSON via key proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson/middle-earth"))))))))
+                 (mt/user-real-request :crowberto :get 400 "geojson/middle-earth"))))))))

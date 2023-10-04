@@ -1,15 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import api from "metabase/lib/api";
 import { getCardKey } from "metabase/visualizations/lib/utils";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
-import {
+import type {
   DashboardId,
   DashCardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -132,10 +133,12 @@ const getDatasetResponse = ({
   method,
   params,
 }: DownloadQueryResultsParams) => {
+  const requestUrl = new URL(api.basename + url, location.origin);
+
   if (method === "POST") {
-    return fetch(url, { method, body: params });
+    return fetch(requestUrl.href, { method, body: params });
   } else {
-    return fetch(`${url}?${params}`);
+    return fetch(`${requestUrl.href}?${params}`);
   }
 };
 

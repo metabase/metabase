@@ -10,7 +10,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private nested-schema
@@ -81,8 +81,12 @@
             query        (-> (mt/native-query {:query sql, :params args})
                              (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (is (= [#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]" #t "05:03"]
-                 (mt/first-row (qp/process-query query)))))))))
+          (let [[ts t] (mt/first-row (qp/process-query query))]
+            (is (#{#t "2022-11-16T04:21:00.000-08:00[America/Los_Angeles]"
+                   #t "2022-11-16T04:21:00.000-08:00[US/Pacific]"}
+                   ts))
+            (is (= #t "05:03"
+                   t))))))))
 
 (deftest set-time-and-timestamp-with-time-zone-test
   (mt/test-driver :athena

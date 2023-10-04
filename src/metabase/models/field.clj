@@ -15,9 +15,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
@@ -69,11 +66,17 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Field :metabase_field)
+(def Field
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Field symbol in our codebase."
+  :model/Field)
 
-(doto Field
-  (derive ::mi/read-policy.partial-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+(methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
+
+(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
@@ -102,23 +105,57 @@
             (log/warn (trs "Invalid Field {0} {1}: falling back to {2}" column-name k fallback-type))
             fallback-type))))))
 
-(models/add-type! ::base-type
-  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
+(def ^:private transform-field-base-type
+  {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
+   :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(models/add-type! ::effective-type
-  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
+(def ^:private transform-field-effective-type
+  {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
+   :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(models/add-type! ::semantic-type
-  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
-  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
+(def ^:private transform-field-semantic-type
+  {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+   :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
 
-(models/add-type! ::coercion-strategy
-  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
-  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
+(def ^:private transform-field-coercion-strategy
+  {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
+   :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
 
-(defn- pre-insert [field]
+(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
+  (if (string? maybe-double-value)
+    (or (u/ignore-exceptions (Double/parseDouble maybe-double-value)) maybe-double-value)
+    maybe-double-value))
+
+(defn- update-semantic-numeric-values
+  "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
+  yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
+  [fingerprint]
+  (m/update-existing-in fingerprint [:type :type/Number]
+                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
+
+(def ^:private transform-json-fingerprints
+  {:in  mi/json-in
+   :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
+
+(t2/deftransforms :model/Field
+  {:base_type         transform-field-base-type
+   :effective_type    transform-field-effective-type
+   :coercion_strategy transform-field-coercion-strategy
+   :semantic_type     transform-field-semantic-type
+   :visibility_type   mi/transform-keyword
+   :has_field_values  mi/transform-keyword
+   :fingerprint       transform-json-fingerprints
+   :settings          mi/transform-json
+   :nfc_path          mi/transform-json})
+
+(doto :model/Field
+  (derive :metabase/model)
+  (derive ::mi/read-policy.partial-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?))
+
+(t2/define-before-insert :model/Field
+  [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
@@ -158,7 +195,7 @@
 
 ;;; Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
 ;;; same as permissions to access its parent Table.
-(defmethod mi/perms-objects-set Field
+(defmethod mi/perms-objects-set :model/Field
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
@@ -166,38 +203,7 @@
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (cached-perms-object-set table-id read-or-write)))
 
-(defn- maybe-parse-semantic-numeric-values [maybe-double-value]
-  (if (string? maybe-double-value)
-    (u/ignore-exceptions (Double/parseDouble maybe-double-value))
-    maybe-double-value))
-
-(defn- update-semantic-numeric-values
-  "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
-  yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
-  [fingerprint]
-  (m/update-existing-in fingerprint [:type :type/Number]
-                        (partial m/map-vals maybe-parse-semantic-numeric-values)))
-
-(models/add-type! :json-for-fingerprints
-  :in  mi/json-in
-  :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
-
-(mi/define-methods
- Field
- {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-  :types          (constantly {:base_type         ::base-type
-                               :effective_type    ::effective-type
-                               :coercion_strategy ::coercion-strategy
-                               :semantic_type     ::semantic-type
-                               :visibility_type   :keyword
-                               :has_field_values  :keyword
-                               :fingerprint       :json-for-fingerprints
-                               :settings          :json
-                               :nfc_path          :json})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert})
-
-(defmethod serdes/hash-fields Field
+(defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table)])
 
@@ -307,7 +313,7 @@
 (defn readable-fields-only
   "Efficiently checks if each field is readable and returns only readable fields"
   [fields]
-  (for [field (hydrate fields :table)
+  (for [field (t2/hydrate fields :table)
         :when (mi/can-read? field)]
     (dissoc field :table)))
 
@@ -325,6 +331,15 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
+(defn hydrate-target-with-write-perms
+  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
+  [field]
+  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
+                          (:fk_target_field_id field))
+        target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
+                          (when (mi/can-write? (t2/hydrate target-field :table))
+                            target-field))]
+    (assoc field :target target-field)))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
@@ -336,11 +351,6 @@
                          [schema])
                        table-name))))
         field-name))
-
-(defn json-field?
-  "Return true if field is a JSON field, false if not."
-  [field]
-  (some? (:nfc_path field)))
 
 (defn qualified-name
   "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
@@ -393,7 +403,7 @@
         dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (db/select-reducible Field))))
+              (t2/reducible-select Field))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
@@ -424,7 +434,8 @@
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
         (update :table_id           serdes/*export-table-fk*)
-        (update :fk_target_field_id serdes/*export-field-fk*))))
+        (update :fk_target_field_id serdes/*export-field-fk*)
+        (dissoc :fingerprint :last_analyzed :fingerprint_version))))
 
 (defmethod serdes/load-xform "Field"
   [field]

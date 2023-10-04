@@ -8,6 +8,8 @@
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.resolve-database-and-driver
+    :as qp.resolve-database-and-driver]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -220,7 +222,7 @@
    (run-pivot-query query info nil))
   ([query info context]
    (binding [qp.perms/*card-id* (get info :card-id)]
-     (qp.store/with-store
+     (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
        (let [context                 (merge (context.default/default-context) context)
              query                   (mbql.normalize/normalize query)
              main-breakout           (:breakout (:query query))

@@ -309,7 +309,7 @@
   [settings col-key action]
   (-> settings
       with-col-settings
-      (update-in [::column-settings] assoc col-key {::click-behavior action})))
+      (update ::column-settings assoc col-key {::click-behavior action})))
 
 (s/fdef with-click-action
   :args (s/cat :settings map? :col-key ::column-ref :action ::click-behavior)
@@ -627,7 +627,7 @@
   "Creates the DB form of a column ref (i.e. the key in the column settings map) for the given normalized args. Either
   `::field-id` or `::field-str` keys will be checked in the arg map to build the corresponding column ref map."
   {:added "0.40.0"}
-  [{:keys [::field-id ::field-str ::column-name ::field-metadata]}]
+  [{::keys [field-id field-str column-name field-metadata]}]
   (-> (cond
         (some? field-id) ["ref" ["field" field-id field-metadata]]
         (some? field-str) ["ref" ["field" field-str field-metadata]]

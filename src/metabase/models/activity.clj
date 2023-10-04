@@ -8,7 +8,7 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
@@ -45,19 +45,27 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Activity :activity)
+(def Activity
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Activity)
 
-(defn- pre-insert [activity]
+(methodical/defmethod t2/table-name :model/Activity [_model] :activity)
+
+(t2/define-before-insert :model/Activity
+  [activity]
   (let [defaults {:timestamp :%now
                   :details   {}}]
     (merge defaults activity)))
 
-(mi/define-methods
- Activity
- {:types      (constantly {:details :json, :topic :keyword})
-  :pre-insert pre-insert})
+(t2/deftransforms :model/Activity
+ {:details mi/transform-json
+  :topic   mi/transform-keyword})
 
-(defmethod mi/can-read? Activity
+(doto :model/Activity
+  (derive :metabase/model))
+
+(defmethod mi/can-read? :model/Activity
   [& args]
   (apply can-? mi/can-read? args))
 
@@ -89,17 +97,17 @@
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
    ex: (record-activity!
-         :topic       :segment-update
-         :object      segment
-         :database-id 1
-         :table-id    13
-         :details-fn  #(dissoc % :some-key))"
-  {:style/indent 0}
+        :topic       :event/segment-update
+        :object      segment
+        :database-id 1
+        :table-id    13
+        :details-fn  #(dissoc % :some-key))"
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]
     (first (t2/insert-returning-instances! Activity
-                                           :topic       topic
+                                           ;; strip off the `:event/` namespace of the topic, added in 0.48.0
+                                           :topic       (keyword (name topic))
                                            :user_id     (or user-id (events/object->user-id object))
                                            :model       (or model (events/topic->model topic))
                                            :model_id    (or model-id (events/object->model-id topic object))

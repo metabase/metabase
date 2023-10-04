@@ -1,1 +1,1 @@
-export { default } from "./QueryColumnPicker";
+export { QueryColumnPicker } from "./QueryColumnPicker";

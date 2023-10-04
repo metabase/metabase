@@ -3,18 +3,24 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.models.setting :as setting]
+   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [metabase.util.ssh :as ssh]
    [schema.core :as s]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -35,7 +41,7 @@
   WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
   CONNECTION SPEC."
   {:arglists '([driver details-map])}
-  driver/dispatch-on-initialized-driver
+  driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
 
@@ -76,6 +82,24 @@
             :catalog)
    details))
 
+(setting/defsetting jdbc-data-warehouse-max-connection-pool-size
+  "Maximum size of the c3p0 connection pool."
+  :visibility :internal
+  :type :integer
+  :default 15)
+
+(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
+  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
+  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
+  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
+  timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
+  :visibility :internal
+  :type       :integer
+  :getter     (fn []
+                (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+                    (long (/ context.default/query-timeout-ms 1000))))
+  :setter     :none)
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -85,8 +109,7 @@
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1
    "initialPoolSize"              1
-   "maxPoolSize"                  (or (config/config-int :mb-jdbc-data-warehouse-max-connection-pool-size)
-                                      15)
+   "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -111,6 +134,10 @@
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
+   ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
+   ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
+   ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
+   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
@@ -217,15 +244,23 @@
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
           db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            db-or-id-or-spec) ; passed in
-                          (t2/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
-                          (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                   {:status-code 404
-                                    :type        qp.error-type/invalid-query
-                                    :database-id database-id})))
+                            (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
+                          (when (= (:lib/type db-or-id-or-spec) :metadata/database)
+                            db-or-id-or-spec)
+                          (qp.store/with-metadata-provider database-id
+                            (lib.metadata/database (qp.store/metadata-provider))))
           get-fn      (fn [db-id log-invalidation?]
-                        (when-let [details (get @database-id->connection-pool db-id)]
+                        (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
+                            ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                            ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
+                            ;; not in [[database-id->connection-pool]].
+                            (:is-audit db)
+                            {:datasource (mdb.connection/data-source)}
+
+                            (= ::not-found details)
+                            nil
+
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
                                   new-hash  (jdbc-spec-hash db)]
@@ -235,9 +270,8 @@
                                 ;; our app DB, and see if it STILL doesn't match
                                 (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
-                            (if log-invalidation?
-                              (log-jdbc-spec-hash-change-msg! db-id)
-                              nil)
+                            (when log-invalidation?
+                              (log-jdbc-spec-hash-change-msg! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details
@@ -246,9 +280,8 @@
                             details
 
                             :else ; tunnel in use, and not open; invalid
-                            (if log-invalidation?
-                              (log-ssh-tunnel-reconnect-msg! db-id)
-                              nil))))]
+                            (when log-invalidation?
+                              (log-ssh-tunnel-reconnect-msg! db-id)))))]
       (or
        ;; we have an existing pool for this database, so use it
        (get-fn database-id true)

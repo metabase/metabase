@@ -6,6 +6,7 @@ describe("metabase > scenarios > navbar > new menu", () => {
     cy.signInAsAdmin();
 
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
   });
 

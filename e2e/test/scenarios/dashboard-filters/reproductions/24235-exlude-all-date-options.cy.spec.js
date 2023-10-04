@@ -1,10 +1,15 @@
-import { popover, restore, visitDashboard } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  filterWidget,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  query: { "source-table": PRODUCTS_ID },
+  query: { "source-table": PRODUCTS_ID, limit: 5 },
 };
 
 const parameter = {
@@ -37,7 +42,7 @@ describe("issue 24235", () => {
       },
     );
 
-    cy.findByText(parameter.name).click();
+    filterWidget().contains(parameter.name).click();
 
     popover().within(() => {
       cy.findByText("Exclude...").click();
@@ -48,7 +53,7 @@ describe("issue 24235", () => {
     });
 
     cy.wait("@getCardQuery");
-    cy.findByText("Rows 1-13 of 200").should("be.visible");
+    cy.get(".cellData").should("contain", "Price, Schultz and Daniel");
   });
 });
 
@@ -60,7 +65,7 @@ const mapParameterToDashboardCard = ({ id, card_id, dashboard_id }) => {
         card_id,
         row: 0,
         col: 0,
-        size_x: 18,
+        size_x: 24,
         size_y: 10,
         parameter_mappings: [
           {

@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -10,13 +10,21 @@ import Collections, {
 } from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { nonPersonalOrArchivedCollection } from "metabase/collections/utils";
-import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/lib/groups";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
 
-export const collectionsQuery = { tree: true, "exclude-archived": true };
+export const collectionsQuery = {
+  tree: true,
+  "exclude-other-user-collections": true,
+  "exclude-archived": true,
+};
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.collectionPermissions,
@@ -180,10 +188,11 @@ export const getCollectionsPermissionEditor = createSelector(
 
       return {
         id: group.id,
-        name: group.name,
+        name: getGroupNameLocalized(group),
         permissions: [
           {
             toggleLabel,
+            hasChildren,
             isDisabled: isAdmin,
             disabledTooltip: isAdmin
               ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
@@ -208,7 +217,7 @@ export const getCollectionsPermissionEditor = createSelector(
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
-      columns: [{ name: `Group name` }, { name: t`Collection access` }],
+      columns: [{ name: t`Group name` }, { name: t`Collection access` }],
       entities,
     };
   },

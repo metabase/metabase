@@ -1,6 +1,6 @@
-title: A look at your [[this]]
-transient_title: It looks like your [[this]] has transactions, so here''s a look at them
-description: Some metrics we found about your transactions.
+title: A look at [[this]]
+transient_title: It looks like [[this]] has transactions, so here''s a look at them
+description: Some metrics we found about transactions.
 metrics:
 - AvgDiscount:
     metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]

@@ -28,10 +28,13 @@
 
   * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
   (:require
+   [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.setup :as mdb.setup]
-   [potemkin :as p]))
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan2.pipeline :as t2.pipeline]))
 
 ;; TODO - determine if we *actually* need to import any of these
 ;;
@@ -66,3 +69,12 @@
           (mdb.setup/setup-db! db-type data-source auto-migrate?))
         (reset! (:status mdb.connection/*application-db*) ::setup-finished))))
   :done)
+
+(methodical/defmethod t2.pipeline/transduce-query :before :default
+  "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
+  early in the pipeline so the stacktrace when this fails isn't super enormous."
+  [_rf _query-type₁ _model₂ _parsed-args resolved-query]
+  (when (a.impl.dispatch/in-dispatch-thread?)
+    (throw (ex-info "Application database calls are not allowed inside core.async dispatch pool threads."
+                    {})))
+  resolved-query)

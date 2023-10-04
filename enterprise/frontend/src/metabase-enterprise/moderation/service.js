@@ -112,7 +112,7 @@ function getModerationReviewEventText(review, moderatorDisplayName) {
 }
 
 export function getModerationTimelineEvents(reviews, usersById, currentUser) {
-  return reviews.map((review, index) => {
+  return reviews.map(review => {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = getModeratorDisplayName(
       moderator,
@@ -124,7 +124,7 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
       : getIconForReview(review);
 
     return {
-      timestamp: new Date(review.created_at).valueOf(),
+      timestamp: new Date(review.created_at).toISOString(),
       icon,
       title: text,
     };

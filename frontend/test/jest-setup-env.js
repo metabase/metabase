@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
 
-afterEach(() => {
+beforeEach(() => {
   fetchMock.restore();
 });

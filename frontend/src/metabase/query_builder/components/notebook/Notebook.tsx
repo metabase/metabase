@@ -1,13 +1,10 @@
-import React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { State } from "metabase-types/store";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
@@ -30,15 +27,11 @@ interface NotebookOwnProps {
   readOnly?: boolean;
 }
 
-interface NotebookCardProps {
-  sourceCard?: Card;
-}
-
-interface NotebookStateProps {
+interface EntityLoaderProps {
   sourceQuestion?: Question;
 }
 
-type NotebookProps = NotebookOwnProps & NotebookCardProps & NotebookStateProps;
+type NotebookProps = NotebookOwnProps & EntityLoaderProps;
 
 const Notebook = ({ className, ...props }: NotebookProps) => {
   const {
@@ -52,10 +45,16 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     setQueryBuilderMode,
   } = props;
 
-  // When switching out of the notebook editor, cleanupQuestion accounts for
-  // post aggregation filters and otherwise nested queries with duplicate column names.
   async function cleanupQuestion() {
-    let cleanQuestion = question.setQuery(question.query().clean());
+    // Converting a query to MLv2 and back performs a clean-up
+    let cleanQuestion = question.setDatasetQuery(
+      Lib.toLegacyQuery(question._getMLv2Query()),
+    );
+
+    // MLv2 doesn't clean up redundant stages, so we do it with MLv1 for now
+    const query = cleanQuestion.query() as StructuredQuery;
+    cleanQuestion = cleanQuestion.setQuery(query.clean());
+
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
     }
@@ -89,7 +88,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
   );
 };
 
-function getSourceCardId(question: Question) {
+function getSourceQuestionId(question: Question) {
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const sourceTableId = query.sourceTableId();
@@ -99,21 +98,12 @@ function getSourceCardId(question: Question) {
   }
 }
 
-function mapStateToProps(
-  state: State,
-  { sourceCard }: NotebookCardProps,
-): NotebookStateProps {
-  return {
-    sourceQuestion: sourceCard && new Question(sourceCard, getMetadata(state)),
-  };
-}
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (state: State, { question }: NotebookOwnProps) =>
-      getSourceCardId(question),
-    entityAlias: "sourceCard",
+      getSourceQuestionId(question),
+    entityAlias: "sourceQuestion",
     loadingAndErrorWrapper: false,
   }),
-  connect(mapStateToProps),
 )(Notebook);

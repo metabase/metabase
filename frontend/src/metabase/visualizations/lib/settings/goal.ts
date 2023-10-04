@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { VisualizationSettings } from "metabase-types/api";
-import { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { VisualizationSettings } from "metabase-types/api";
+import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>

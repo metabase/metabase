@@ -1,5 +1,4 @@
-import React from "react";
-import { Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import CacheSection from "../CacheSection";
 
 interface DashboardCacheSectionProps {
@@ -14,4 +13,5 @@ const DashboardCacheSection = ({
   return <CacheSection initialCacheTTL={dashboard.cache_ttl} onSave={onSave} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashboardCacheSection;

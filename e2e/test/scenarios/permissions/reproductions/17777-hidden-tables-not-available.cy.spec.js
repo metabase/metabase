@@ -17,6 +17,7 @@ describe.skip("issue 17777", () => {
   it("should still be able to set permissions on individual tables, even though they are hidden in data model (metabase#17777)", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Permissions for the All Users group");
     cy.findByTextEnsureVisible("Sample Database").click();
 

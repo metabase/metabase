@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -9,11 +9,10 @@ import type {
 } from "metabase-types/api";
 
 import Button from "metabase/core/components/Button";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   FieldLabel,
   FieldLabelContainer,
@@ -117,6 +116,7 @@ export function ActionSidebarFn({
           ref={actionSettingsModalRef}
           fit
           enableMouseEvents
+          closeOnClickOutside
           triggerElement={
             !dashcard.action ? (
               <Button primary={!dashcard.action} fullWidth>

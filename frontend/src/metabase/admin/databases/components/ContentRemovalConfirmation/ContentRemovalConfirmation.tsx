@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import type * as React from "react";
 import { msgid, ngettext } from "ttag";
-import { DatabaseUsageInfo } from "metabase-types/api";
+import type { DatabaseUsageInfo } from "metabase-types/api";
 import { color } from "metabase/lib/colors";
 import { ConfirmationCheckbox } from "./ContentRemovalConfirmation.styled";
 
@@ -90,4 +91,5 @@ const ContentRemovalConfirmation = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ContentRemovalConfirmation;

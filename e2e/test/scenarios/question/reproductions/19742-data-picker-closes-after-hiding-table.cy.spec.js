@@ -10,21 +10,29 @@ describe("issue 19742", () => {
   // and don't refresh the app state (like by doing cy.visit)
   it("shouldn't auto-close the data selector after a table was hidden", () => {
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+    selectFromDropdown("Raw Data");
+
+    popover().within(() => {
+      cy.findByText("Orders").should("exist");
+    });
 
     openNavigationSidebar();
     cy.icon("gear").click();
     selectFromDropdown("Admin settings");
 
-    cy.findByText("Data Model").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Table Metadata").click();
     hideTable("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
-    selectFromDropdown("Sample Database");
+    selectFromDropdown("Raw Data");
 
     popover().within(() => {
       cy.findByText("Products");

@@ -61,6 +61,7 @@ describe("issue 17524", () => {
       cy.icon("play").last().click();
 
       cy.get("polygon");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.exist");
     });
   });

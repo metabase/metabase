@@ -87,7 +87,7 @@
 
 (def ^:private h2-lock (Object.))
 
-(defn update-if-needed
+(defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
    to version 1 H2 database."
   [jdbc-url]

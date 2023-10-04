@@ -13,7 +13,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -23,18 +22,23 @@
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Secret :secret)
+(def Secret
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Secret)
+
+(methodical/defmethod t2/table-name :model/Secret [_model] :secret)
 
 (doto Secret
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(mi/define-methods
- Secret
- {:types      (constantly {:value  :secret-value
-                           :kind   :keyword
-                           :source :keyword})
-  :properties (constantly {::mi/timestamped? true})})
+(t2/deftransforms :model/Secret
+  {:value  mi/transform-secret-value
+   :kind   mi/transform-keyword
+   :source mi/transform-keyword})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -199,11 +203,21 @@
   [details secret-property]
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
-        value (if id
-                (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")
-                (value-kw details))]
+        ;; When a secret is updated, we get both a new value as well as the ID of old secret.
+        value (or (when-let [value (value-kw details)]
+                    (if (string? value)
+                      value
+                      (String. ^bytes value "UTF-8")))
+                  (when id
+                    (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")))]
     (case (options-kw details)
-      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+      "uploaded" (try
+                   ;; When a secret is updated, the value has already been decoded
+                   ;; instead of checking if the string is base64 encoded, we just
+                   ;; try to decoded it and leave it as is if the attempt fails.
+                   (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+                   (catch IllegalArgumentException _
+                     value))
       "local" (slurp (if id value (path-kw details)))
       value)))
 

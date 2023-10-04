@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.interface
   (:require
    [potemkin.types :as p.types]))
+
 (defmulti stream-options
   "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
   available options."

@@ -1,16 +1,17 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment-timezone";
 import AdminLayout from "metabase/components/AdminLayout";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { SettingDefinition } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { SettingDefinition } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import { LicenseInput } from "../../components/LicenseInput";
 import { initializeSettings } from "../../settings";
 import { getSettings } from "../../selectors";
-import { TokenStatus, useLicense } from "../../hooks/use-license";
+import type { TokenStatus } from "../../hooks/use-license";
+import { useLicense } from "../../hooks/use-license";
 import {
   LicenseInputTitle,
   Loader,
@@ -123,6 +124,7 @@ const PremiumEmbeddingLicensePage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

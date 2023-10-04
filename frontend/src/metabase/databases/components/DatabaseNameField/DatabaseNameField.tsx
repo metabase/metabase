@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 import FormInput from "metabase/core/components/FormInput";
-import { Engine } from "metabase-types/api";
+import type { Engine } from "metabase-types/api";
 
 export interface DatabaseNameFieldProps {
   engine: Engine;
@@ -21,4 +20,5 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseNameField;

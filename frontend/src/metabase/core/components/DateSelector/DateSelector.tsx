@@ -1,11 +1,7 @@
-import React, {
-  CSSProperties,
-  forwardRef,
-  Ref,
-  useCallback,
-  useMemo,
-} from "react";
-import moment, { Moment } from "moment-timezone";
+import type { CSSProperties, Ref } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
+import type { Moment } from "moment-timezone";
+import moment from "moment-timezone";
 import { t } from "ttag";
 import TimeInput from "metabase/core/components/TimeInput";
 import Calendar from "metabase/components/Calendar";
@@ -98,4 +94,5 @@ const DateSelector = forwardRef(function DateSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateSelector;

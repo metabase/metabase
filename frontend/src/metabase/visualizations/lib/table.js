@@ -89,12 +89,14 @@ export function getTableHeaderClickedObject(
       return null; // FIXME?
     }
   } else {
+    const dimension =
+      typeof query?.dimensionForColumn === "function"
+        ? query?.dimensionForColumn(column)
+        : null;
+
     return {
       column,
-      dimension:
-        typeof query?.dimensionForColumn === "function"
-          ? query?.dimensionForColumn(column)
-          : null,
+      dimension,
     };
   }
 }

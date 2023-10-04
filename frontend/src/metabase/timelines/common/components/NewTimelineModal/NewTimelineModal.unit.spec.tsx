@@ -1,11 +1,11 @@
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockCollection,
   createMockTimelineData,
 } from "metabase-types/api/mocks";
-import NewTimelineModal, { NewTimelineModalProps } from "./NewTimelineModal";
+import type { NewTimelineModalProps } from "./NewTimelineModal";
+import NewTimelineModal from "./NewTimelineModal";
 
 describe("NewTimelineModal", () => {
   it("should submit modal", async () => {

@@ -7,11 +7,13 @@
   these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
   [[metabase.driver.sql-jdbc]] for more details."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
@@ -86,6 +88,7 @@
 (defn do-with-driver
   "Impl for `with-driver`."
   [driver f]
+  {:pre [(keyword? driver)]}
   (binding [*driver* (the-driver driver)]
     (f)))
 
@@ -258,6 +261,20 @@
   [_]
   nil)
 
+(defn dispatch-on-initialized-driver-safe-keys
+  "Dispatch on initialized driver, except checks for `classname`,
+  `subprotocol`, `connection-uri` in the details map in order to
+  prevent a mismatch in spec type vs driver."
+  [driver details-map]
+  (let [invalid-keys #{"classname" "subprotocol" "connection-uri"}
+        ks           (->> details-map keys
+                          (map name)
+                          (map u/lower-case-en) set)]
+    (when (seq (set/intersection ks invalid-keys))
+      (throw (ex-info "Cannot specify subname, protocol, or connection-uri in details map"
+                      {:invalid-keys (set/intersection ks invalid-keys)})))
+    (dispatch-on-initialized-driver driver)))
+
 (defmulti can-connect?
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
@@ -265,7 +282,7 @@
   connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
   in order to suppress logging expected driver validation messages during setup."
   {:arglists '([driver details])}
-  dispatch-on-initialized-driver
+  dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)
 
 (defmulti dbms-version
@@ -490,12 +507,32 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support storing table privileges in the application database for the current user?
+    :table-privileges
+
+    ;; Does the driver support uploading files
+    :uploads
+
+    ;; Does the driver support schemas (aka namespaces) for tables
+    ;; DEFAULTS TO TRUE
+    :schemas
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
 
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
-    :test/jvm-timezone-setting})
+    :test/jvm-timezone-setting
+
+    ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
+    :connection-impersonation
+
+    ;; Does the driver require specifying the default connection role for connection impersonation to work?
+    :connection-impersonation-requires-role
+
+    ;; Does the driver require specifying a collection (table) for native queries? (mongo)
+    :native-requires-specified-collection})
+
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -503,9 +540,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
-  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature]), :deprecated "0.41.0"}
+  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
+  {:arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -514,12 +550,7 @@
 
 (defmethod supports? :default [_ _] false)
 
-(defmethod supports? [::driver :basic-aggregations] [_ _] true)
-(defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
-(defmethod supports? [::driver :date-arithmetics] [_ _] true)
-(defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
-(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
+(defmethod supports? [::driver :schemas] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -545,6 +576,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
+
+(doseq [[feature supported?] {:basic-aggregations                     true
+                              :case-sensitivity-string-filter-options true
+                              :date-arithmetics                       true
+                              :temporal-extract                       true
+                              :convert-timezone                       false
+                              :test/jvm-timezone-setting              true}]
+  (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -633,6 +672,9 @@
   query)
 
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
+;;
+;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
+;; effects?
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -684,28 +726,14 @@
   implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
   this? Who knows, but it's something you should keep in mind.
 
-  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
-  {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
+  This method should return a [[String]], a [[java.time.ZoneId]], or a [[java.time.ZoneOffset]]."
+  {:added "0.34.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod db-default-timezone ::driver
   [_driver _database]
   nil)
-
-;; TIMEZONE FIXME — remove this method entirely
-(defmulti current-db-time
-  "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
-
-  deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
-  [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
-  method will be removed in a future release."
-  {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod current-db-time ::driver [_ _] nil)
 
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
@@ -808,5 +836,78 @@
   `:truncation-size`: size to truncate text fields to if the driver supports
   expressions."
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti set-role!
+  "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
+  impersonation (an EE-only feature)."
+  {:arglists '([driver conn role])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Upload                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti table-name-length-limit
+  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  {:added "0.47.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-table!
+  "Create a table named `table-name`. If the table already exists it will throw an error."
+  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-table!
+  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
+  {:added "0.47.0", :arglists '([driver db-id table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti insert-into!
+  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
+   `column-names`."
+  {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti syncable-schemas
+  "Returns the set of syncable schemas in the database (as strings)."
+  {:added "0.47.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod syncable-schemas ::driver [_ _] #{})
+
+(defmulti upload-type->database-type
+  "Returns the database type for a given `metabase.upload` type."
+  {:added "0.47.0", :arglists '([driver upload-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti current-user-table-privileges
+  "Returns the rows of data as arrays needed to populate the tabel_privileges table
+   with the DB connection's current user privileges.
+   The data contains the privileges that the user has on the given `database`.
+   The privileges include select, insert, update, and delete.
+
+   The rows have the following keys and value types:
+     - role            :- [:maybe :string]
+     - schema          :- [:maybe :string]
+     - table           :- :string
+     - select          :- :boolean
+     - update          :- :boolean
+     - insert          :- :boolean
+     - delete          :- :boolean
+
+   Either:
+   (1) role is null, corresponding to the privileges of the DB connection's current user
+   (2) role is not null, corresponing to the privileges of the role"
+  {:added "0.48.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

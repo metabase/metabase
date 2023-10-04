@@ -29,7 +29,7 @@
     (throw (Exception. (trs "Invalid connection property {0}: not a string or map." prop)))
 
     (:merge prop)
-    (reduce merge (map parse-connection-property (:merge prop)))
+    (into {} (map parse-connection-property) (:merge prop))
 
     :else
     prop))

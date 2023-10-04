@@ -71,6 +71,8 @@ On the Slack site page for your Slack app, on the left in the **Features** secti
 
 In your Slack workspace, create a public channel named whatever you want — we think something like "metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Make sure the channel you create is the same channel that you enter in this field in Metabase (omit the "#" prefix).
 
+> If you rename the channel in Slack, you'll need to update the **Slack Channel Name** in Metabase to that new name.
+
 ## Save your changes in Metabase
 
 In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token and your dedicated Slack channel are working properly. If something goes wrong, it'll give you an error message.

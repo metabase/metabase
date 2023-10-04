@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { SettingDefinition } from "metabase-types/api";
+import type { SettingDefinition } from "metabase-types/api";
 
 const REQUIRED_SCHEMA = {
   is: (isEnabled: boolean, setting?: SettingDefinition) =>

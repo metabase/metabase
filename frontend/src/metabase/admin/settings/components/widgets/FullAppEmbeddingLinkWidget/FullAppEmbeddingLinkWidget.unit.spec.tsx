@@ -1,6 +1,5 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-import FullAppEmbeddingLinkWidget from "./FullAppEmbeddingLinkWidget";
+import { FullAppEmbeddingLinkWidget } from "./FullAppEmbeddingLinkWidget";
 
 const setup = () => {
   renderWithProviders(<FullAppEmbeddingLinkWidget />);

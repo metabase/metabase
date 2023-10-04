@@ -1,12 +1,13 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 
 import Popover from "metabase/components/Popover";
 import FilterComponent from "metabase/query_builder/components/Filter";
 
-import Filter from "metabase-lib/queries/structured/Filter";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import FilterPopover from "./FilterPopover";
+import type Filter from "metabase-lib/queries/structured/Filter";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { FilterPopover } from "./FilterPopover";
 import {
   FilterField,
   FilterOperator,
@@ -69,6 +70,7 @@ type State = {
   isOpen: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class FilterWidget extends Component<Props, State> {
   rootRef: React.RefObject<HTMLDivElement>;
 

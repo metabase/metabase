@@ -1,6 +1,4 @@
-import React from "react";
-
-import ExpressionWidget from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
@@ -45,4 +43,5 @@ const ExpressionStep = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ExpressionStep;

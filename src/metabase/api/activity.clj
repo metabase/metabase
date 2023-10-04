@@ -1,12 +1,11 @@
 (ns metabase.api.activity
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.db.util :as mdb.u]
    [metabase.events.view-log :as view-log]
-   [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -14,84 +13,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
-
-(defn- dashcard-activity? [activity]
-  (#{:dashboard-add-cards :dashboard-remove-cards}
-   (:topic activity)))
-
-(defn- activities->referenced-objects
-  "Get a map of model name to a set of referenced IDs in these `activities`.
-
-     (activities->referenced-objects <some-activities>) -> {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}"
-  [activities]
-  (apply merge-with set/union (for [{:keys [model model_id], :as activity} activities
-                                    :when                                  model]
-                                (merge {model #{model_id}}
-                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites
-                                       ;; that involve adding/removing cards
-                                       (when (dashcard-activity? activity)
-                                         {"card" (set (for [dashcard (get-in activity [:details :dashcards])]
-                                                        (:card_id dashcard)))})))))
-
-(defn- referenced-objects->existing-objects
-  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of
-   models to IDs of objects *that exist*.
-
-     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
-     ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
-  [referenced-objects]
-  (merge
-   (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
-                                                                   :id [:in card-ids])
-           {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
-                                                        ;; only existing ids go back
-                                                        (keys id->dataset?))]
-       (cond-> {}
-         (seq dataset-ids) (assoc "dataset" (set dataset-ids))
-         (seq card-ids')   (assoc "card" (set card-ids')))))
-   (into {} (for [[model ids] (dissoc referenced-objects "card")
-                  :when       (seq ids)]
-              [model (case model
-                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
-                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
-                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
-                       nil)])))) ; don't care about other models
-
-(defn- add-model-exists-info
-  "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
-  [activities]
-  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
-        model-exists? (fn [model id] (contains? (get existing-objects model) id))
-        existing-dataset? (partial model-exists? "dataset")
-        existing-card? (partial model-exists? "card")]
-    (for [{:keys [model_id], :as activity} activities]
-      (let [model (if (and (= (:model activity) "card")
-                           (existing-dataset? (:model_id activity)))
-                    "dataset"
-                    (:model activity))]
-        (cond-> (assoc activity
-                       :model_exists (model-exists? model model_id)
-                       :model model)
-          (dashcard-activity? activity)
-          (update-in [:details :dashcards]
-                     (fn [dashcards]
-                       (for [dashcard dashcards]
-                         (assoc dashcard :exists
-                                (or (existing-dataset? (:card_id dashcard))
-                                    (existing-card? (:card_id dashcard))))))))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
-  "Get recent activity."
-  []
-  (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                           (hydrate :user :table :database)
-                           add-model-exists-info)))
 
 (defn- models-query
   [model ids]
@@ -110,14 +32,14 @@
                      :display_name :initial_sync_status
                      :visibility_type])
       (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(db/qualify model-symb %)]
+            self-qualify #(mdb.u/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
           (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
-    (for [model (hydrate (models-query model ids) :moderation_reviews)
+    (for [model (t2/hydrate (models-query model ids) :moderation_reviews)
           :let [reviews (:moderation_reviews model)
                 status  (->> reviews
                              (filter :most_recent)
@@ -155,7 +77,7 @@
                                               [:%max.timestamp :max_ts]]
                                              {:group-by  [:model :model_id]
                                               :where     [:and
-                                                          (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                          (when-not all-users? [:= (mdb.u/qualify ViewLog :user_id) *current-user-id*])
                                                           [:in :model #{"dashboard" "table"}]
                                                           [:= :bm.id nil]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
@@ -167,10 +89,10 @@
                                                            [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (t2/select [QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(db/qualify QueryExecution :card_id) :model_id]
+                                                   [(mdb.u/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(db/qualify QueryExecution :card_id) :context]
+                                                  {:group-by [(mdb.u/qualify QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               (when-not all-users? [:= :executor_id *current-user-id*])
                                                               [:= :context (h2x/literal :question)]
@@ -180,7 +102,7 @@
                                                    :left-join [[:card_bookmark :bm]
                                                                [:and
                                                                 [:= :bm.user_id *current-user-id*]
-                                                                [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
+                                                                [:= (mdb.u/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
@@ -208,6 +130,17 @@
            (cond-> (assoc view-log :model_object model-object)
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
+
+(api/defendpoint GET "/most_recently_viewed_dashboard"
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
+   in the last 24 hours."
+  []
+  (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
+    (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
+      (if (mi/can-read? dashboard)
+        dashboard
+        api/generic-204-no-content))
+    api/generic-204-no-content))
 
 (defn- official?
   "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
@@ -254,10 +187,9 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/popular_items"
+(api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
-  finds anything archived, deleted, etc it can hopefully still get 5."
+  finds anything archived, deleted, etc it can usually still get 5."
   []
   ;; we can do a weighted score which incorporates:
   ;; total count -> higher = higher score

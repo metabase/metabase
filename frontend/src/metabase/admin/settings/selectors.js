@@ -1,20 +1,30 @@
-/* eslint-disable react/display-name */
-import React from "react";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+
 import MetabaseSettings from "metabase/lib/settings";
 import { PersistedModelsApi, UtilApi } from "metabase/services";
-import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_EMBEDDING,
+} from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
+import { refreshCurrentUser } from "metabase/redux/user";
+
+import { isPersonalCollectionOrChild } from "metabase/collections/utils";
+
+import { updateSetting } from "./settings";
+
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import EmbeddingCustomizationInfo from "./components/widgets/EmbeddingCustomizationInfo";
+import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -25,14 +35,18 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
+import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
+
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
-import { trackTrackingPermissionChanged } from "./analytics";
+import {
+  trackTrackingPermissionChanged,
+  trackCustomHomepageDashboardEnabled,
+} from "./analytics";
 
 import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
@@ -59,17 +73,17 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-const SECTIONS = updateSectionsWithPlugins({
+export const ADMIN_SETTINGS_SECTIONS = {
   setup: {
     name: t`Setup`,
-    order: 1,
+    order: 10,
     settings: [],
     component: SetupCheckList,
     adminOnly: true,
   },
   general: {
     name: t`General`,
-    order: 2,
+    order: 20,
     settings: [
       {
         key: "site-name",
@@ -82,6 +96,41 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         widget: SiteUrlWidget,
         warningMessage: t`Only change this if you know what you're doing!`,
+      },
+      {
+        key: "custom-homepage",
+        display_name: t`Custom Homepage`,
+        type: "boolean",
+        postUpdateActions: [refreshCurrentUser],
+        onChanged: (oldVal, newVal, _settings, handleChangeSetting) => {
+          if (!newVal && oldVal) {
+            handleChangeSetting("custom-homepage-dashboard", null);
+          }
+        },
+      },
+      {
+        key: "custom-homepage-dashboard",
+        description: null,
+        getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
+        widget: DashboardSelector,
+        postUpdateActions: [
+          () =>
+            updateSetting({
+              key: "dismissed_custom_dashboard_toast",
+              value: true,
+            }),
+          refreshCurrentUser,
+        ],
+        getProps: setting => ({
+          value: setting.value,
+          collectionFilter: (collection, index, allCollections) =>
+            !isPersonalCollectionOrChild(collection, allCollections),
+        }),
+        onChanged: (oldVal, newVal) => {
+          if (newVal && !oldVal) {
+            trackCustomHomepageDashboardEnabled("admin");
+          }
+        },
       },
       {
         key: "redirect-all-requests-to-https",
@@ -134,7 +183,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   updates: {
     name: t`Updates`,
-    order: 3,
+    order: 30,
     component: SettingsUpdatesForm,
     settings: [
       {
@@ -147,7 +196,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   email: {
     name: t`Email`,
-    order: 4,
+    order: 40,
     component: SettingsEmailForm,
     settings: [
       {
@@ -157,7 +206,6 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: true,
         autoFocus: true,
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -166,7 +214,6 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -175,7 +222,6 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
@@ -183,7 +229,6 @@ const SECTIONS = updateSectionsWithPlugins({
         description: null,
         placeholder: "nicetoseeyou",
         type: "string",
-        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -221,19 +266,19 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   slack: {
     name: "Slack",
-    order: 5,
+    order: 50,
     component: SlackSettings,
     settings: [],
   },
   authentication: {
     name: t`Authentication`,
-    order: 6,
+    order: 60,
     settings: [], // added by plugins
     adminOnly: true,
   },
   maps: {
     name: t`Maps`,
-    order: 7,
+    order: 70,
     settings: [
       {
         key: "map-tile-server-url",
@@ -252,7 +297,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   localization: {
     name: t`Localization`,
-    order: 8,
+    order: 80,
     settings: [
       {
         display_name: t`Instance language`,
@@ -305,9 +350,46 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+  uploads: {
+    name: t`Uploads`,
+    order: 85,
+    adminOnly: false,
+    component: UploadSettings,
+    settings: [
+      {
+        key: "uploads-enabled",
+        display_name: t`Data Uploads`,
+        description: t`Enable admins to upload data to new database tables from CSV files.`,
+        type: "boolean",
+      },
+      {
+        key: "uploads-database-id",
+        getHidden: settings => !settings["uploads-enabled"],
+        display_name: t`Database`,
+        description: t`Identify a database where upload tables will be created.`,
+        placeholder: t`Select a database`,
+      },
+      {
+        key: "uploads-schema-name",
+        display_name: t`Schema name`,
+        description: t`Identify a database schema where data upload tables will be created.`,
+        type: "string",
+        placeholder: "uploads",
+      },
+      {
+        key: "uploads-table-prefix",
+        display_name: t`Table prefix`,
+        description: t`Identify a table prefix for tables created by data uploads.`,
+        placeholder: "uploaded_",
+        type: "string",
+        required: false,
+      },
+    ],
+  },
+
   "public-sharing": {
     name: t`Public Sharing`,
-    order: 9,
+    order: 90,
     settings: [
       {
         key: "enable-public-sharing",
@@ -337,7 +419,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   "embedding-in-other-applications": {
     name: t`Embedding`,
-    order: 10,
+    order: 100,
     settings: [
       {
         key: "enable-embedding",
@@ -388,17 +470,19 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
+        key: "-static-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Standalone embeds`,
-        embedDescription: t`Securely embed individual questions and dashboards within other applications.`,
+        embedName: t`Static embedding`,
+        embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
         embedType: "standalone",
       },
       {
+        key: "-interactive-embedding",
         widget: EmbeddingOption,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Full-app embedding`,
-        embedDescription: t`With this Pro/Enterprise feature you can embed the full Metabase app. Enable your users to drill-through to charts, browse collections, and use the graphical query builder.`,
+        embedName: t`Interactive embedding`,
+        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
         embedType: "full-app",
       },
     ],
@@ -415,7 +499,7 @@ const SECTIONS = updateSectionsWithPlugins({
                   t`Embedding`,
                   "/admin/settings/embedding-in-other-applications",
                 ],
-                [t`Standalone embeds`],
+                [t`Static embedding`],
               ]}
             />
           );
@@ -427,6 +511,12 @@ const SECTIONS = updateSectionsWithPlugins({
         description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
         widget: SecretKeyWidget,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        props: {
+          confirmation: {
+            header: t`Regenerate embedding key?`,
+            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
+          },
+        },
       },
       {
         key: "-embedded-dashboards",
@@ -441,10 +531,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        widget: EmbeddingCustomizationInfo,
+        widget: EmbeddingCustomizationWidget,
         getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
+          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         widget: () => (
@@ -466,7 +555,7 @@ const SECTIONS = updateSectionsWithPlugins({
                   t`Embedding`,
                   "/admin/settings/embedding-in-other-applications",
                 ],
-                [t`Full-app embedding`],
+                [t`Interactive embedding`],
               ]}
             />
           );
@@ -475,8 +564,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] ||
-          MetabaseSettings.isEnterprise(),
+          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         widget: () => (
@@ -488,13 +576,13 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   license: {
     name: t`License`,
-    order: 11,
+    order: 110,
     component: SettingsLicense,
     settings: [],
   },
   caching: {
     name: t`Caching`,
-    order: 12,
+    order: 120,
     settings: [
       {
         key: "enable-query-caching",
@@ -588,14 +676,9 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   metabot: {
     name: t`Metabot`,
-    order: 13,
+    order: 130,
+    getHidden: settings => !settings["is-metabot-enabled"],
     settings: [
-      {
-        key: "is-metabot-enabled",
-        display_name: t`Enable Metabot`,
-        description: t`Metabot is in alpha, and in general you should always examine SQL queries generated by large language models (LLMs) before using their results in critical applications. By using Metabot, you agree to share your prompts and their resultant queries with Metabase to help us improve Metabot’s performance.`,
-        type: "boolean",
-      },
       {
         key: "openai-api-key",
         display_name: t`OpenAI API Key`,
@@ -627,7 +710,11 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-});
+};
+
+const getSectionsWithPlugins = _.once(() =>
+  updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
+);
 
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
@@ -666,10 +753,13 @@ export const getSections = createSelector(
       return {};
     }
 
+    const sections = getSectionsWithPlugins();
     const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
-      if (section.adminOnly && !isAdmin) {
+    for (const [slug, section] of Object.entries(sections)) {
+      const isHidden = section.getHidden?.(derivedSettingValues);
+
+      if (isHidden || (section.adminOnly && !isAdmin)) {
         continue;
       }
 

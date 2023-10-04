@@ -6,6 +6,7 @@ import {
   saveDashboard,
   visitDashboard,
   setFilter,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -16,6 +17,10 @@ describe("scenarios > dashboard > filters > nested questions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   it("dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113)", () => {
@@ -55,7 +60,9 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     });
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(filter.name).find(".Icon-gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
 
     // This part reproduces metabase#13186
@@ -75,25 +82,30 @@ describe("scenarios > dashboard > filters > nested questions", () => {
       "Gizmo{enter}Gadget{enter}",
     );
     cy.button("Add filter").click();
-    cy.wait("@dashcardQuery2");
+    cy.wait("@dashcardQuery");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
     cy.get("tbody > tr").should("have.length", 2);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").should("not.exist");
 
     cy.reload();
-    cy.wait("@dashcardQuery2");
+    cy.wait("@dashcardQuery");
 
     cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(filter.name).find(".Icon-gear").click();
-    cy.findByText("Column to filter on")
-      .parent()
-      .contains(/Category/i)
-      .click();
+
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("18113 Source.CATEGORY").click();
+    });
 
     // This part reproduces metabase#12614
     popover().within(() => {
@@ -125,8 +137,10 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     setFilter("ID");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No valid fields").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("ID").click();
   });

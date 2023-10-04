@@ -1,1 +1,1 @@
-export { default } from "./ActionFormFieldWidget";
+export { ActionFormFieldWidget } from "./ActionFormFieldWidget";

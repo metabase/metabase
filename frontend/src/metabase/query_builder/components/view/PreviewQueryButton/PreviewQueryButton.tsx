@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { PreviewButton, PreviewButtonIcon } from "./PreviewQueryButton.styled";
 
@@ -10,7 +10,7 @@ interface PreviewQueryButtonProps {
   onOpenModal?: (modalType: string) => void;
 }
 
-const PreviewQueryButton = ({
+export const PreviewQueryButton = ({
   onOpenModal,
 }: PreviewQueryButtonProps): JSX.Element => {
   const handleClick = useCallback(() => {
@@ -39,5 +39,3 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
     query.hasVariableTemplateTags()
   );
 };
-
-export default PreviewQueryButton;

@@ -4,11 +4,14 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.util.log :as log]))
+
+(comment metabase.driver.sql/keep-me)
 
 (driver/register! :sql/test-extensions, :abstract? true)
 
@@ -194,7 +197,7 @@
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null?], :as field-definition}]
+  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
   (let [field-name (format-and-quote-field-name driver field-name)
         field-type (or (cond
                          (and (map? base-type) (contains? base-type :native))
@@ -211,8 +214,10 @@
                                         :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
+        unique         (when unique?
+                         "UNIQUE")
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null inline-comment]))))
+    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]

@@ -1,8 +1,7 @@
-import React from "react";
-import { CollectionId, User } from "metabase-types/api";
+import type { CollectionId, User } from "metabase-types/api";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import NewItemButton from "../NewItemButton";
 import ProfileLink from "../ProfileLink";
-import SearchBar from "../SearchBar";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import AppBarLogo from "./AppBarLogo";
@@ -82,4 +81,5 @@ const AppBarLarge = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLarge;

@@ -32,7 +32,9 @@ describe("issue 25927", () => {
 
   it("column filter should work for questions with custom column (metabase#25927)", () => {
     cy.findAllByTestId("header-cell").contains("Created At: Month").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Last 30 Days").click();
 
     cy.wait("@dataset");

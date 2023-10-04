@@ -1,7 +1,6 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { SetupCheckListItem } from "metabase-types/api";
+import type { SetupCheckListItem } from "metabase-types/api";
 import {
   createMockSetupCheckListItem,
   createMockSetupCheckListTask,

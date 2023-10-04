@@ -139,14 +139,20 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 ## Setting complex default values in the query
 
-You can also define default values directly in your query, which is useful when defining complex default values (for example, using a function to generate a value).
+You can also define default values directly in your query by enclosing a comment inside the end brackets of an optional parameter:
 
-Here's an example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
+```
+WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} #]]your_default_value
+```
+
+This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`).
+
+Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE()`:
 
 ```
 SELECT *
-FROM products
-WHERE DATE(created_at) = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
+FROM accounts
+{% raw %}WHERE DATE(created_at) = [[ {{dateOfCreation}} #]]CURRENT_DATE{% endraw %}
 ```
 
 Note that the hash (`#`) used to comment the text might need to be replaced by the comment syntax specific to the database you're using. Some databases use double-dashes (`--`) as comment syntax.
@@ -169,7 +175,7 @@ Field Filters ONLY work with the following field types:
 - State
 - ZIP or Postal Code
 
-The field can also be a date or timestamp, which can be left as "No semantic type" in the data model.
+The field can also be a date or timestamp, which can be left as "No semantic type" in the Table Metadata.
 
 When you set the **Variable type** to "Field Filter", Metabase will present an option to set the **Field to map to**, as well as the **Filter widget type**. The options available for the Filter widget type depend on the field's type. For example, if you map to a field of type Category, you'll see options for either "Category" or None. If you map to a Date Field, you'll see options for None, Month and year, Quarter and year, Single date, Date range, or Date filter.
 
@@ -211,7 +217,7 @@ The kind of filter widget that Metabase displays when you create a Field Filter 
 
 Date fields will either have a simple date filter (for Date variables) or a dynamic date picker (for Field Filters mapped to a date field).
 
-If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the data model](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
+If you want to change the filter widget for a particular field, you'll need to ask an Admin to update that field in [the Table Metadata](../../data-modeling/metadata-editing.md) and set the desired "Filtering on this field" option.
 
 ### Filter widget with plain input box
 

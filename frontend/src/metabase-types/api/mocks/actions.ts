@@ -1,4 +1,4 @@
-import {
+import type {
   CardId,
   PublicWritebackAction,
   WritebackParameter,
@@ -44,6 +44,8 @@ export const createMockQueryAction = ({
     archived: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    visualization_settings: { fields: {} },
+    database_enabled_actions: true,
     public_uuid: null,
     ...opts,
     type: "query",
@@ -67,6 +69,7 @@ export const createMockImplicitQueryAction = ({
   archived: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  database_enabled_actions: true,
   public_uuid: null,
   ...opts,
   type: "implicit",
@@ -74,21 +77,22 @@ export const createMockImplicitQueryAction = ({
 
 export const createMockImplicitCUDActions = (
   modelId: CardId,
+  startId: number = 0,
 ): WritebackImplicitQueryAction[] => [
   createMockImplicitQueryAction({
-    id: 1,
+    id: startId + 1,
     name: "Create",
     kind: "row/create",
     model_id: modelId,
   }),
   createMockImplicitQueryAction({
-    id: 2,
+    id: startId + 2,
     name: "Update",
     kind: "row/update",
     model_id: modelId,
   }),
   createMockImplicitQueryAction({
-    id: 3,
+    id: startId + 3,
     name: "Delete",
     kind: "row/delete",
     model_id: modelId,
@@ -100,6 +104,7 @@ export const createMockPublicAction = (
 ): PublicWritebackAction => ({
   id: 1,
   name: "Public Action",
+  database_id: 1,
   parameters: [],
   ...opts,
 });
@@ -124,3 +129,12 @@ export const createMockFieldSettings = (
   width: "medium",
   ...opts,
 });
+
+export const createMockImplicitActionFieldSettings = (
+  opts?: Partial<FieldSettings>,
+) =>
+  ({
+    id: "",
+    hidden: false,
+    ...opts,
+  } as FieldSettings);

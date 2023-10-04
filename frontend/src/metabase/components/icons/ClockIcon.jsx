@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 const ClockIcon = ({
   hour = 12,
   minute = 40,

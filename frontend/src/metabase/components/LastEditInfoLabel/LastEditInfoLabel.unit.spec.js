@@ -1,4 +1,3 @@
-import React from "react";
 import mockDate from "mockdate";
 import moment from "moment-timezone";
 import { renderWithProviders, screen } from "__support__/ui";

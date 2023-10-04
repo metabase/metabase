@@ -12,6 +12,7 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]))

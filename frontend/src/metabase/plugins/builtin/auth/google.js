@@ -16,7 +16,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
     name: "google",
     // circular dependencies
-    Button: require("metabase/auth/containers/GoogleButton").default,
+    Button: require("metabase/auth/components/GoogleButton").GoogleButton,
   };
 
   return MetabaseSettings.isGoogleAuthEnabled()

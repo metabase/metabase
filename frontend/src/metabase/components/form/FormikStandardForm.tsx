@@ -1,10 +1,9 @@
-import React from "react";
 import { t } from "ttag";
 
-import { BaseFieldValues } from "metabase-types/forms";
+import type { BaseFieldValues } from "metabase-types/forms";
 
-import { BaseFormProps } from "./FormikCustomForm/types";
-import { CustomFormFooterProps } from "./FormikCustomForm/CustomFormFooter";
+import type { BaseFormProps } from "./FormikCustomForm/types";
+import type { CustomFormFooterProps } from "./FormikCustomForm/CustomFormFooter";
 import CustomForm from "./FormikCustomForm";
 
 interface Props<Values extends BaseFieldValues>
@@ -45,4 +44,5 @@ function StandardForm<Values extends BaseFieldValues>({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StandardForm;

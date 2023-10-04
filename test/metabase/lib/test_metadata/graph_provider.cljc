@@ -7,11 +7,12 @@
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))
 
+(defn- find-table [metadata-graph table-id]
+  (m/find-first #(= (:id %) table-id)
+                (:tables metadata-graph)))
+
 (defn- graph-table [metadata-graph table-id]
-  (some (fn [table-metadata]
-          (when (= (:id table-metadata) table-id)
-            (dissoc table-metadata :fields :metrics :segments)))
-        (:tables metadata-graph)))
+  (dissoc (find-table metadata-graph table-id) :fields :metrics :segments))
 
 (defn- graph-field [metadata-graph field-id]
   (some (fn [table-metadata]
@@ -40,10 +41,13 @@
     (dissoc table-metadata :fields :metrics :segments)))
 
 (defn- graph-fields [metadata-graph table-id]
-  (some (fn [table-metadata]
-          (when (= (:id table-metadata) table-id)
-            (:fields table-metadata)))
-        (:tables metadata-graph)))
+  (:fields (find-table metadata-graph table-id)))
+
+(defn- graph-metrics [metadata-graph table-id]
+  (:metrics (find-table metadata-graph table-id)))
+
+(defn- graph-segments [metadata-graph table-id]
+  (:segments (find-table metadata-graph table-id)))
 
 (deftype ^{:doc "A simple implementation of [[MetadataProvider]] that returns data from a complete graph
   e.g. the response provided by `GET /api/database/:id/metadata`."} SimpleGraphMetadataProvider [metadata-graph]
@@ -56,6 +60,8 @@
   (card     [_this card-id]    (graph-card     metadata-graph card-id))
   (tables   [_this]            (graph-tables   metadata-graph))
   (fields   [_this table-id]   (graph-fields   metadata-graph table-id))
+  (metrics  [_this table-id]   (graph-metrics  metadata-graph table-id))
+  (segments [_this table-id]   (graph-segments metadata-graph table-id))
 
   clojure.core.protocols/Datafiable
   (datafy [_this]

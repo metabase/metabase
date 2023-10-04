@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import { duration } from "metabase/lib/formatting";

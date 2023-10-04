@@ -1,7 +1,7 @@
 import moment from "moment";
-import { Moment } from "moment-timezone";
-import { NumberLike, StringLike } from "@visx/scale";
-import {
+import type { Moment } from "moment-timezone";
+import type { NumberLike, StringLike } from "@visx/scale";
+import type {
   DatasetColumn,
   RowValue,
   VisualizationSettings,
@@ -13,14 +13,14 @@ import {
 } from "metabase/lib/formatting/date";
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatCoordinate } from "metabase/lib/formatting/geography";
-import {
+import type {
   ChartTicksFormatters,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
-import { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
-import { RemappingHydratedDatasetColumn } from "metabase/visualizations/shared/types/data";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import {
   isCoordinate,
   isDate,

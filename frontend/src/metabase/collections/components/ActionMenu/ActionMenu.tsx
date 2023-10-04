@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import EventSandbox from "metabase/components/EventSandbox";
 import { getSetting } from "metabase/selectors/settings";
@@ -11,10 +11,10 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import { EntityItemMenu } from "./ActionMenu.styled";
 
 interface OwnProps {
@@ -127,4 +127,5 @@ function ActionMenu({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(ActionMenu);

@@ -1,8 +1,20 @@
-import { restore, setupSMTP, visitQuestion } from "e2e/support/helpers";
+import {
+  restore,
+  setupSMTP,
+  visitQuestion,
+  modal,
+  openTable,
+} from "e2e/support/helpers";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
+const { PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/alert").as("savedAlert");
+    cy.intercept("POST", "/api/card").as("saveCard");
 
     restore();
     cy.signInAsAdmin();
@@ -19,7 +31,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should set up an email alert", () => {
-    openAlertForQuestion();
+    openAlertForQuestion(ORDERS_QUESTION_ID);
     cy.button("Done").click();
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
@@ -30,7 +42,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
-    openAlertForQuestion();
+    openAlertForQuestion(ORDERS_QUESTION_ID);
 
     // Turn off email
     toggleChannel("Email");
@@ -47,9 +59,34 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       expect(body.channels[0].enabled).to.eq(false);
     });
   });
+
+  it("should set up an email alert for newly created question", () => {
+    openTable({
+      table: PEOPLE_ID,
+    });
+
+    cy.icon("bell").click();
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByLabelText("Name").type(" alert");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    cy.wait("@saveCard");
+
+    modal().within(() => {
+      cy.findByRole("button", { name: "Set up an alert" }).click();
+    });
+    cy.findByRole("button", { name: "Done" }).click();
+
+    cy.wait("@savedAlert").then(({ response: { body } }) => {
+      expect(body.channels[0].channel_type).to.eq("email");
+      expect(body.channels[0].enabled).to.eq(true);
+    });
+  });
 });
 
-function openAlertForQuestion(id = 1) {
+function openAlertForQuestion(id) {
   visitQuestion(id);
   cy.icon("bell").click();
 

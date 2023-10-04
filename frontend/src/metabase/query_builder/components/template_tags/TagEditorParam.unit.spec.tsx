@@ -1,28 +1,30 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
+import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { TemplateTag } from "metabase-types/api";
+import type { TemplateTag } from "metabase-types/api";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
+  createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   PEOPLE,
+  REVIEWS,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
-import TagEditorParam from "./TagEditorParam";
+import { TagEditorParam } from "./TagEditorParam";
 
 interface SetupOpts {
   tag?: TemplateTag;
@@ -36,11 +38,14 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
         dataset_query: createMockNativeDatasetQuery(),
       }),
     }),
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
     }),
   });
+
   const metadata = getMetadata(state);
+
+  const databaseMetadata = checkNotNull(metadata.database(database.id));
 
   setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
@@ -52,8 +57,9 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
   renderWithProviders(
     <TagEditorParam
       tag={tag}
-      database={metadata.database(database.id)}
+      database={databaseMetadata}
       databases={metadata.databasesList()}
+      parameter={createMockParameter()}
       setTemplateTag={setTemplateTag}
       setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}
@@ -122,6 +128,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.SOURCE, null],
         "widget-type": "string/=",
+        options: undefined,
       });
     });
 
@@ -140,6 +147,7 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", PEOPLE.NAME, null],
         "widget-type": "string/contains",
+        options: { "case-sensitive": false },
       });
     });
 
@@ -158,6 +166,26 @@ describe("TagEditorParam", () => {
         ...tag,
         dimension: ["field", ORDERS.QUANTITY, null],
         "widget-type": "number/=",
+        options: undefined,
+      });
+    });
+
+    it("should default to number/= for a new reviews->rating field filter (metabase#16151)", async () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: undefined,
+        "widget-type": undefined,
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(await screen.findByText("Reviews"));
+      userEvent.click(await screen.findByText("Rating"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        dimension: ["field", REVIEWS.RATING, null],
+        "widget-type": "number/=",
+        options: undefined,
       });
     });
 
@@ -180,20 +208,40 @@ describe("TagEditorParam", () => {
   });
 
   describe("tag widget type", () => {
-    it("should be able to change the widget type", () => {
+    it("should be able to set the widget type with options", () => {
       const tag = createMockTemplateTag({
         type: "dimension",
         dimension: ["field", PEOPLE.NAME, null],
-        "widget-type": "string/starts-with",
+        "widget-type": "string/=",
       });
       const { setTemplateTag } = setup({ tag });
 
-      userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByText("String"));
       userEvent.click(screen.getByText("String contains"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
         "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+      });
+    });
+
+    it("should be able to set the widget type without options", () => {
+      const tag = createMockTemplateTag({
+        type: "dimension",
+        dimension: ["field", PEOPLE.NAME, null],
+        "widget-type": "string/starts-with",
+        options: { "case-sensitive": false },
+      });
+      const { setTemplateTag } = setup({ tag });
+
+      userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByText("String"));
+
+      expect(setTemplateTag).toHaveBeenCalledWith({
+        ...tag,
+        "widget-type": "string/=",
+        options: undefined,
       });
     });
 

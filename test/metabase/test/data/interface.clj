@@ -9,8 +9,9 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [environ.core :as env]
-   [hawk.init]
+   [mb.hawk.init]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -23,6 +24,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -54,7 +56,9 @@
    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
    ;; datasets e.g. [[mt/with-actions-test-data]]
+   ;; default is nullable
    (s/optional-key :not-null?)         (s/maybe s/Bool)
+   (s/optional-key :unique?)           (s/maybe s/Bool)
    (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
    (s/optional-key :effective-type)    (s/maybe su/FieldType)
    (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
@@ -75,13 +79,14 @@
 
 (def ^:private ValidDatabaseDefinition
   (s/constrained
-   {:database-name     su/NonBlankString
+   {:database-name     su/NonBlankString ; this must be unique
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
 ;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
-  "Return a definition of a dataset, so a test database can be created from it."
+  "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
+  the [[ValidDatabaseDefinition]] schema."
   {:arglists '([this])}
   class)
 
@@ -164,7 +169,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
+  (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -330,17 +335,6 @@
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
-(defmulti has-questionable-timezone-support?
-  "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
-  `US/Pacific` when we're testing?). Defaults to `(not (driver/supports? driver) :set-timezone)`."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod has-questionable-timezone-support? ::test-extensions [driver]
-  (not (driver/supports? driver :set-timezone)))
-
-
 (defmulti id-field-type
   "Return the `base_type` of the `id` Field (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."
   {:arglists '([driver])}
@@ -386,8 +380,7 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - Can `:cum-count` be used without args as well ??
-   (assert (= aggregation-type :count))
+   (assert (#{:count :cum-count} aggregation-type))
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity
     :name          "count"
@@ -397,10 +390,14 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
-                                    :type     :query
-                                    :query    {:source-table table-id
-                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
+   (merge
+    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+                                     :type     :query
+                                     :query    {:source-table table-id
+                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+    (when (= aggregation-type :cum-count)
+      {:base_type     :type/BigInteger
+       :semantic_type :type/Quantity}))))
 
 
 (defmulti count-with-template-tag-query
@@ -488,7 +485,7 @@
 
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
-   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
+   `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
       (apply dataset-definition ~(name dataset-name) ~definition))))
 
 

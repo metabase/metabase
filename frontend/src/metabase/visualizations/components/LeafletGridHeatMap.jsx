@@ -66,8 +66,6 @@ export default class LeafletGridHeatMap extends LeafletMap {
       const longitureValues = points.map(row => row[longitudeIndex]);
 
       for (let i = 0; i < totalSquares; i++) {
-        const [latitude, longiture, metric] = points[i];
-
         if (i >= points.length) {
           gridLayer.removeLayer(gridSquares[i]);
         }
@@ -78,6 +76,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
         }
 
         if (i < points.length) {
+          const [latitude, longiture, metric] = points[i];
+
           gridSquares[i].setStyle({ color: colorScale(metric) });
 
           const [latMin, latMax] = getValueRange(

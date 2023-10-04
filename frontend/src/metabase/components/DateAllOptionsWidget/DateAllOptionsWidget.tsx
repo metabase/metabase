@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -22,7 +22,7 @@ interface DateAllOptionsWidgetProps {
   disableOperatorSelection?: boolean;
 }
 
-const DateAllOptionsWidget = ({
+export const DateAllOptionsWidget = ({
   setValue,
   onClose,
   disableOperatorSelection,
@@ -41,13 +41,13 @@ const DateAllOptionsWidget = ({
     const filterValues = filter.slice(2);
     return filterValues.every((value: any) => value != null);
   };
+
   return (
     <WidgetRoot>
       <DatePicker
         filter={filter as any}
         onFilterChange={setFilter}
         onCommit={commitAndClose}
-        hideTimeSelectors
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
         supportsExpressions
@@ -64,5 +64,3 @@ const DateAllOptionsWidget = ({
     </WidgetRoot>
   );
 };
-
-export default DateAllOptionsWidget;

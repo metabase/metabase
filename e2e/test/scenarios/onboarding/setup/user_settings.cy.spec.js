@@ -15,6 +15,7 @@ describe("user > settings", () => {
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
     cy.visit("/account/profile");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(fullName);
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
@@ -42,6 +43,7 @@ describe("user > settings", () => {
     cy.intercept("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
     cy.findByDisplayValue(first_name).click().clear().type("John");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 
@@ -55,6 +57,7 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
     cy.wait("@getUser");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Password").should("exist");
   });
 
@@ -62,6 +65,7 @@ describe("user > settings", () => {
     cy.signOut();
     cy.visit("/account/profile");
     cy.url().should("include", "/auth/login");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -71,11 +75,15 @@ describe("user > settings", () => {
     cy.findByLabelText("Current password").type(password);
     cy.findByLabelText("Create a password").type(password);
     cy.findByLabelText("Confirm your password").type(password);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success");
 
     cy.findByLabelText("gear icon").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign out").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
   });
 
@@ -89,6 +97,7 @@ describe("user > settings", () => {
       .type("qwerty123")
       .blur();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("password is too common");
     cy.get("@passwordInput").clear();
 
@@ -101,6 +110,7 @@ describe("user > settings", () => {
     cy.findByLabelText("Confirm your password").type("new_password1");
 
     cy.button("Save").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Invalid password");
   });
 
@@ -109,7 +119,9 @@ describe("user > settings", () => {
 
     cy.visit("/account/profile");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Use site default").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
@@ -149,6 +161,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
   });
@@ -162,6 +175,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -181,6 +195,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 
@@ -199,6 +214,7 @@ describe("user > settings", () => {
     });
 
     it("should hide change password tab", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("not.exist");
     });
 

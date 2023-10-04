@@ -1,5 +1,5 @@
-import React from "react";
 import type { ComponentProps } from "react";
+import { isValidElement, cloneElement } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 
@@ -26,8 +26,8 @@ const Template: ComponentStory<typeof FormField> = ({
   return (
     <div style={{ maxWidth: 400 }}>
       <FormField {...args}>
-        {React.isValidElement<inputProps>(children) &&
-          React.cloneElement(children, {
+        {isValidElement<inputProps>(children) &&
+          cloneElement(children, {
             value,
             onChange: handleChange,
           })}

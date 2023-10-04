@@ -1,13 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
+import { t } from "ttag";
 import MappingEditor from "./MappingEditor";
 
 const LoginAttributesWidget = ({ field }) => (
   <MappingEditor
     value={field.value || {}}
     onChange={field.onChange}
-    addText="Add an attribute"
+    addText={t`Add an attribute`}
   />
 );
 

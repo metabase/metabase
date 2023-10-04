@@ -1,6 +1,7 @@
 import {
   restore,
   openNativeEditor,
+  clearFilterWidget,
   filterWidget,
   popover,
 } from "e2e/support/helpers";
@@ -38,24 +39,29 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
-      SQLFilter.toggleRequired();
-
-      FieldFilter.openEntryForm({ isFilterRequired: true });
+      cy.log("the default value should apply");
       FieldFilter.addDefaultStringFilter("2");
-
       SQLFilter.runQuery();
-
       cy.get(".Visualization").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
+      cy.log("the default value should not apply when the value is cleared");
+      clearFilterWidget();
+      SQLFilter.runQuery();
+      cy.get(".Visualization").within(() => {
+        cy.findByText("Small Marble Shoes");
+        cy.findByText("Rustic Paper Wallet");
+      });
+
+      cy.log("set the value through the filter widget");
+      SQLFilter.toggleRequired();
       FieldFilter.openEntryForm();
       FieldFilter.addWidgetStringFilter("1");
-
       SQLFilter.runQuery();
-
       cy.get(".Visualization").within(() => {
         cy.findByText("Rustic Paper Wallet");
+        cy.findByText("Small Marble Shoes").should("not.exist");
       });
     });
   });
@@ -75,6 +81,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("None").should("be.visible");
 
       filterWidget().should("not.exist");
@@ -84,11 +91,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.get(".RunButton").first().click();
 
       cy.wait("@dataset");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Hudson Borer");
     });
 
     it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Address").click();
 
       FieldFilter.setWidgetType("String contains");
@@ -129,9 +139,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("should work despite it not showing up in the widget type list", () => {
       cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
-      clearFilterValue();
+      clearFilterWidget();
       filterWidget().click();
 
       popover().within(() => {
@@ -140,11 +151,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open Editor").click();
       cy.icon("variable").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
         .findAllByTestId("select-button")
@@ -152,7 +166,3 @@ describe("scenarios > filters > sql filters > field filter", () => {
     });
   });
 });
-
-function clearFilterValue() {
-  filterWidget().find(".Icon-close").click();
-}

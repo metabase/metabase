@@ -19,7 +19,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
         parseSpecialCharSequences: false,
       },
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
 
@@ -30,7 +30,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     // Filter by Product ID = 1 (its category is Gizmo)
     cy.findByPlaceholderText(/Id/i).click().type("1");
 
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.get("@queryPreview").contains("Widget").should("not.exist");
 
@@ -41,14 +41,16 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     openNativeEditor({ databaseName: MYSQL_DB_NAME }).type(
       `SELECT * FROM ORDERS`,
     );
-    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.findByTestId("native-query-editor-container").icon("play").click();
 
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     // Save the query
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -61,6 +63,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     cy.findByTextEnsureVisible("Not now").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").should("not.exist");
     cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });

@@ -1,12 +1,29 @@
-import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
 import Join from "metabase-lib/queries/structured/Join";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = metadata.table(ORDERS_ID);
+const orderCreatedAt = metadata.field(ORDERS.CREATED_AT);
+const productCreatedAt = metadata.field(PRODUCTS.CREATED_AT);
 
 function getOrdersJoinQuery({
   alias = "Products",
   condition,
-  sourceTable = PRODUCTS.id,
+  sourceTable = PRODUCTS_ID,
 } = {}) {
-  return ORDERS.query().join({
+  return ordersTable.query().join({
     alias,
     condition,
     "source-table": sourceTable,
@@ -25,24 +42,23 @@ function getDateFieldRef(field, { temporalUnit = "month", joinAlias } = {}) {
   return ["field", field.id, opts];
 }
 
-const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.PRODUCT_ID.id, null];
+const ORDERS_PRODUCT_ID_FIELD_REF = ["field", ORDERS.PRODUCT_ID, null];
 
-const ORDERS_CREATED_AT_FIELD_REF = getDateFieldRef(ORDERS.CREATED_AT);
+const ORDERS_CREATED_AT_FIELD_REF = getDateFieldRef(orderCreatedAt);
 
-const PRODUCTS_ID_FIELD_REF = ["field", PRODUCTS.ID.id, null];
+const PRODUCTS_ID_FIELD_REF = ["field", PRODUCTS.ID, null];
 
-const PRODUCTS_CREATED_AT_FIELD_REF = getDateFieldRef(PRODUCTS.CREATED_AT);
+const PRODUCTS_CREATED_AT_FIELD_REF = getDateFieldRef(productCreatedAt);
 
 const PRODUCTS_ID_JOIN_FIELD_REF = [
   "field",
-  PRODUCTS.ID.id,
+  PRODUCTS.ID,
   { "join-alias": "Products" },
 ];
 
-const PRODUCTS_CREATED_AT_JOIN_FIELD_REF = getDateFieldRef(
-  PRODUCTS.CREATED_AT,
-  { joinAlias: "Products" },
-);
+const PRODUCTS_CREATED_AT_JOIN_FIELD_REF = getDateFieldRef(productCreatedAt, {
+  joinAlias: "Products",
+});
 
 const ORDERS_PRODUCT_JOIN_CONDITION = [
   "=",
@@ -64,7 +80,7 @@ const ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION = [
 
 const REVIEWS_PRODUCT_ID_FIELD_REF = [
   "field",
-  REVIEWS.PRODUCT_ID.id,
+  REVIEWS.PRODUCT_ID,
   { "join-alias": "Reviews - Products" },
 ];
 
@@ -77,14 +93,14 @@ const ORDERS_REVIEWS_JOIN_CONDITION = [
 describe("Join", () => {
   describe("setJoinSourceTableId", () => {
     it("should pick an alias based on the source table name by default", () => {
-      const query = ORDERS.query();
-      const join = new Join({}, 0, query).setJoinSourceTableId(PRODUCTS.id);
+      const query = ordersTable.query();
+      const join = new Join({}, 0, query).setJoinSourceTableId(PRODUCTS_ID);
       expect(join.alias).toEqual("Products");
     });
 
     it("should deduplicate aliases", () => {
       const join = new Join({}, 1, getOrdersJoinQuery()).setJoinSourceTableId(
-        PRODUCTS.id,
+        PRODUCTS_ID,
       );
       expect(join.alias).toEqual("Products_2");
     });
@@ -99,7 +115,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
   });
@@ -110,7 +126,7 @@ describe("Join", () => {
         query: getOrdersJoinQuery({
           alias: "x",
           condition: ORDERS_REVIEWS_JOIN_CONDITION,
-          sourceTable: REVIEWS.id,
+          sourceTable: REVIEWS_ID,
         }),
       });
 
@@ -119,7 +135,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Reviews - Product",
         condition: ORDERS_REVIEWS_JOIN_CONDITION,
-        "source-table": REVIEWS.id,
+        "source-table": REVIEWS_ID,
       });
     });
 
@@ -131,7 +147,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -147,7 +163,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
   });
@@ -163,7 +179,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -181,7 +197,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -199,7 +215,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ["=", null, PRODUCTS_ID_JOIN_FIELD_REF],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -222,7 +238,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -245,12 +261,12 @@ describe("Join", () => {
           ORDERS_PRODUCT_JOIN_CONDITION,
           ["=", ORDERS_CREATED_AT_FIELD_REF, null],
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
     it("inherits join dimension's temporal unit", () => {
-      const joinDimension = getDateFieldRef(PRODUCTS.CREATED_AT, {
+      const joinDimension = getDateFieldRef(productCreatedAt, {
         joinAlias: "Products",
         temporalUnit: "day",
       });
@@ -268,10 +284,10 @@ describe("Join", () => {
         alias: "Products",
         condition: [
           "=",
-          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "day" }),
+          getDateFieldRef(orderCreatedAt, { temporalUnit: "day" }),
           joinDimension,
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -283,7 +299,7 @@ describe("Join", () => {
       });
 
       join = join.setParentDimension({
-        dimension: getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
+        dimension: getDateFieldRef(orderCreatedAt, { temporalUnit: "week" }),
         overwriteTemporalUnit: true,
       });
 
@@ -291,13 +307,13 @@ describe("Join", () => {
         alias: "Products",
         condition: [
           "=",
-          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
-          getDateFieldRef(PRODUCTS.CREATED_AT, {
+          getDateFieldRef(orderCreatedAt, { temporalUnit: "week" }),
+          getDateFieldRef(productCreatedAt, {
             joinAlias: "Products",
             temporalUnit: "week",
           }),
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -319,7 +335,7 @@ describe("Join", () => {
           ORDERS_PRODUCT_ID_FIELD_REF,
           PRODUCTS_ID_JOIN_FIELD_REF,
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
   });
@@ -335,7 +351,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ["=", null, PRODUCTS_ID_FIELD_REF],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -353,7 +369,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -371,7 +387,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ["=", ORDERS_PRODUCT_ID_FIELD_REF, null],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -394,7 +410,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -417,12 +433,12 @@ describe("Join", () => {
           ORDERS_PRODUCT_JOIN_CONDITION,
           ["=", null, PRODUCTS_CREATED_AT_FIELD_REF],
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
     it("inherits parent dimension's temporal unit", () => {
-      const parentDimension = getDateFieldRef(ORDERS.CREATED_AT, {
+      const parentDimension = getDateFieldRef(orderCreatedAt, {
         temporalUnit: "day",
       });
       let join = getJoin({
@@ -440,12 +456,12 @@ describe("Join", () => {
         condition: [
           "=",
           parentDimension,
-          getDateFieldRef(PRODUCTS.CREATED_AT, {
+          getDateFieldRef(productCreatedAt, {
             temporalUnit: "day",
             joinAlias: "Products",
           }),
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -457,7 +473,7 @@ describe("Join", () => {
       });
 
       join = join.setJoinDimension({
-        dimension: getDateFieldRef(PRODUCTS.CREATED_AT, {
+        dimension: getDateFieldRef(productCreatedAt, {
           temporalUnit: "week",
           joinAlias: "Products",
         }),
@@ -468,13 +484,13 @@ describe("Join", () => {
         alias: "Products",
         condition: [
           "=",
-          getDateFieldRef(ORDERS.CREATED_AT, { temporalUnit: "week" }),
-          getDateFieldRef(PRODUCTS.CREATED_AT, {
+          getDateFieldRef(orderCreatedAt, { temporalUnit: "week" }),
+          getDateFieldRef(productCreatedAt, {
             temporalUnit: "week",
             joinAlias: "Products",
           }),
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -496,7 +512,7 @@ describe("Join", () => {
           PRODUCTS_ID_JOIN_FIELD_REF,
           ORDERS_PRODUCT_ID_FIELD_REF,
         ],
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
   });
@@ -587,7 +603,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: undefined,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -599,7 +615,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: undefined,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -615,7 +631,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -624,11 +640,7 @@ describe("Join", () => {
         query: getOrdersJoinQuery({
           condition: [
             ...ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-            [
-              "=",
-              ["field", ORDERS.TAX.id, null],
-              ["field", PRODUCTS.PRICE.id, null],
-            ],
+            ["=", ["field", ORDERS.TAX, null], ["field", PRODUCTS.PRICE, null]],
           ],
         }),
       });
@@ -638,7 +650,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -654,7 +666,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
 
@@ -670,7 +682,7 @@ describe("Join", () => {
       expect(join).toEqual({
         alias: "Products",
         condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-        "source-table": PRODUCTS.id,
+        "source-table": PRODUCTS_ID,
       });
     });
   });
@@ -834,14 +846,14 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: ORDERS_PRODUCT_JOIN_CONDITION,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
       it("removes the condition if missing parent dimension", () => {
         const join = getJoin({
           query: getOrdersJoinQuery({
-            condition: ["=", null, PRODUCTS.ID.id],
+            condition: ["=", null, PRODUCTS.ID],
           }),
         });
 
@@ -850,14 +862,14 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: null,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
       it("removes the condition if missing join dimension", () => {
         const join = getJoin({
           query: getOrdersJoinQuery({
-            condition: ["=", ORDERS.PRODUCT_ID.id, null],
+            condition: ["=", ORDERS.PRODUCT_ID, null],
           }),
         });
 
@@ -866,7 +878,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: null,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
@@ -882,7 +894,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: null,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
     });
@@ -900,7 +912,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
@@ -909,11 +921,11 @@ describe("Join", () => {
           query: getOrdersJoinQuery({
             condition: [
               ...ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-              ["=", null, PRODUCTS.CATEGORY.id],
-              ["=", ORDERS.TAX.id, null],
-              ["=", null, PRODUCTS.PRICE.id],
+              ["=", null, PRODUCTS.CATEGORY],
+              ["=", ORDERS.TAX, null],
+              ["=", null, PRODUCTS.PRICE],
               ["=", null, null],
-              ["=", ORDERS.TOTAL.id, null],
+              ["=", ORDERS.TOTAL, null],
             ],
           }),
         });
@@ -923,7 +935,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: ORDERS_PRODUCT_MULTI_FIELD_JOIN_CONDITION,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
@@ -943,7 +955,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: ORDERS_PRODUCT_JOIN_CONDITION,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 
@@ -952,11 +964,11 @@ describe("Join", () => {
           query: getOrdersJoinQuery({
             condition: [
               "and",
-              ["=", null, PRODUCTS.CATEGORY.id],
-              ["=", ORDERS.TAX.id, null],
-              ["=", null, PRODUCTS.PRICE.id],
+              ["=", null, PRODUCTS.CATEGORY],
+              ["=", ORDERS.TAX, null],
+              ["=", null, PRODUCTS.PRICE],
               ["=", null, null],
-              ["=", ORDERS.TOTAL.id, null],
+              ["=", ORDERS.TOTAL, null],
             ],
           }),
         });
@@ -966,7 +978,7 @@ describe("Join", () => {
         expect(cleanJoin).toEqual({
           alias: "Products",
           condition: null,
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
         });
       });
 

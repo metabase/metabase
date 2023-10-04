@@ -73,7 +73,7 @@ import createCachedSelector from "re-reselect";
 // NOTE: need to use inflection directly here due to circular dependency
 import inflection from "inflection";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
 import _ from "underscore";
@@ -243,7 +243,7 @@ export function createEntity(def) {
       (entityObject, updatedObject = null, { notify } = {}) =>
         async (dispatch, getState) => {
           // save the original object for undo
-          const originalObject = entity.selectors.getObject(getState(), {
+          const originalObject = getObject(getState(), {
             entityId: entityObject.id,
           });
           // If a second object is provided just take the id from the first and
@@ -351,7 +351,7 @@ export function createEntity(def) {
   // HACK: the above actions return the normalizr results
   // (i.e. { entities, result }) rather than the loaded object(s), except
   // for fetch and fetchList when the data is cached, in which case it returns
-  // the noralized object.
+  // the normalized object.
   //
   // This is a problem when we use the result of one of the actions as though
   // though the action creator was an API client.
@@ -382,6 +382,7 @@ export function createEntity(def) {
   // SELECTORS
 
   const getEntities = state => state.entities;
+  const getSettings = state => state.settings;
 
   // OBJECT SELECTORS
 
@@ -425,12 +426,14 @@ export function createEntity(def) {
   );
 
   const getList = createCachedSelector(
-    [getEntities, getEntityIds],
+    [getEntities, getEntityIds, getSettings],
     // delegate to getObject
-    (entities, entityIds) =>
+    (entities, entityIds, settings) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
+        .map(entityId =>
+          entity.selectors.getObject({ entities, settings }, { entityId }),
+        )
         .filter(e => e != null), // deleted entities might remain in lists,
   )((state, { entityQuery } = {}) =>
     entityQuery ? JSON.stringify(entityQuery) : "",
@@ -474,6 +477,7 @@ export function createEntity(def) {
   );
 
   const defaultSelectors = {
+    getEntityIds,
     getList,
     getObject,
     getFetched,

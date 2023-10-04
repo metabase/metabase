@@ -4,9 +4,10 @@
 import app from "metabase/redux/app";
 import embed from "metabase/redux/embed";
 import requests from "metabase/redux/requests";
-import settings from "metabase/redux/settings";
+import { settings } from "metabase/redux/settings";
 import undo from "metabase/redux/undo";
-// eslint-disable-next-line import/no-named-as-default
+import upload from "metabase/redux/uploads";
+import { reducer as auth } from "metabase/redux/auth";
 import entities, { enhanceRequestsReducer } from "metabase/redux/entities";
 
 /* user */
@@ -22,4 +23,6 @@ export default {
   settings,
   undo,
   entities,
+  upload,
+  auth,
 };

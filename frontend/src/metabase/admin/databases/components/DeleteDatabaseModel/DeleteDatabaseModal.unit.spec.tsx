@@ -1,12 +1,10 @@
 import { render, waitForElementToBeRemoved } from "@testing-library/react";
-import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
-import DeleteDatabaseModal, {
-  DeleteDatabaseModalProps,
-} from "./DeleteDatabaseModal";
+import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
+import DeleteDatabaseModal from "./DeleteDatabaseModal";
 
 const getUsageInfo = (hasContent: boolean) => ({
   question: hasContent ? 10 : 0,

@@ -1,7 +1,6 @@
-import React from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
-import { Engine } from "metabase-types/api";
+import type { Engine } from "metabase-types/api";
 import { Warning, WarningLink } from "./DatabaseEngineWarning.styled";
 
 export interface DatabaseEngineWarningProps {
@@ -139,4 +138,5 @@ const PartnerEngineWarning = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineWarning;

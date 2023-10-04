@@ -1,18 +1,8 @@
-export const table = userId => ({
-  card: {
-    name: "Most-viewed Dashboards",
-    display: "table",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.user-detail/table",
-      args: [userId],
-    },
-  },
-});
+import { t } from "ttag";
 
 export const mostViewedDashboards = userId => ({
   card: {
-    name: "Most-viewed Dashboards",
+    name: t`Most-viewed Dashboards`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -28,7 +18,7 @@ export const mostViewedDashboards = userId => ({
 
 export const mostViewedQuestions = userId => ({
   card: {
-    name: "Most-viewed Queries",
+    name: t`Most-viewed Queries`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -44,7 +34,7 @@ export const mostViewedQuestions = userId => ({
 
 export const objectViewsByTime = userId => ({
   card: {
-    name: "Query views",
+    name: t`Query views`,
     display: "line",
     dataset_query: {
       type: "internal",
@@ -54,7 +44,7 @@ export const objectViewsByTime = userId => ({
   },
   series: [
     {
-      name: "Dashboard views",
+      name: t`Dashboard views`,
       display: "line",
       dataset_query: {
         type: "internal",
@@ -102,30 +92,6 @@ export const dashboardViews = userId => ({
         { name: "collection_id", enabled: true },
         { name: "timestamp", enabled: true },
       ],
-    },
-  },
-});
-
-export const createdDashboards = userId => ({
-  card: {
-    name: "Created dashboards",
-    display: "table",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.user-detail/created-dashboards",
-      args: [userId],
-    },
-  },
-});
-
-export const createdQuestions = userId => ({
-  card: {
-    name: "Created questions",
-    display: "table",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit-app.pages.user-detail/created-questions",
-      args: [userId],
     },
   },
 });

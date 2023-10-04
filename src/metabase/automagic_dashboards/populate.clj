@@ -29,12 +29,11 @@
 
 (defn create-collection!
   "Create and return a new collection."
-  [title color description parent-collection-id]
+  [title description parent-collection-id]
   (first (t2/insert-returning-instances!
            'Collection
            (merge
              {:name        title
-              :color       color
               :description description}
              (when parent-collection-id
                {:location (collection/children-location (t2/select-one ['Collection :location :id]
@@ -46,10 +45,10 @@
   (or (t2/select-one 'Collection
         :name     "Automatically Generated Dashboards"
         :location "/")
-      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
+      (create-collection! "Automatically Generated Dashboards" nil nil)))
 
 (defn colors
-  "A vector of colors used for coloring charts and collections. Uses [[public-settings/application-colors]] for user choices."
+  "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."
   []
   (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
         colors-map (merge {:brand   "#509EE3"
@@ -126,6 +125,14 @@
 
                                      y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
+
+(defn card-defaults
+  "Default properties for a dashcard on magic dashboard."
+  []
+  {:id                     (gensym)
+   :dashboard_tab_id       nil
+   :visualization_settings {}})
+
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
@@ -137,33 +144,34 @@
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
-    (update dashboard :ordered_cards conj {:col                    y
-                                           :row                    x
-                                           :size_x                 width
-                                           :size_y                 height
-                                           :card                   card
-                                           :card_id                (:id card)
-                                           :visualization_settings {}
-                                           :id                     (gensym)})))
+    (update dashboard :ordered_cards conj
+            (merge (card-defaults)
+             {:col                    y
+              :row                    x
+              :size_x                 width
+              :size_y                 height
+              :card                   card
+              :card_id                (:id card)
+              :visualization_settings {}}))))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height visualization-settings]} [x y]]
   (update dashboard :ordered_cards conj
-          {:creator_id             api/*current-user-id*
-           :visualization_settings (merge
-                                    {:text         text
-                                     :virtual_card {:name                   nil
-                                                    :display                :text
-                                                    :dataset_query          {}
-                                                    :visualization_settings {}}}
-                                    visualization-settings)
-           :col                    y
-           :row                    x
-           :size_x                 width
-           :size_y                 height
-           :card                   nil
-           :id                     (gensym)}))
+          (merge (card-defaults)
+                 {:creator_id             api/*current-user-id*
+                  :visualization_settings (merge
+                                            {:text         text
+                                             :virtual_card {:name                   nil
+                                                            :display                :text
+                                                            :dataset_query          {}
+                                                            :visualization_settings {}}}
+                                            visualization-settings)
+                  :col                    y
+                  :row                    x
+                  :size_x                 width
+                  :size_y                 height
+                  :card                   nil})))
 
 (defn- make-grid
   [width height]
@@ -325,7 +333,7 @@
   "Merge dashboards `dashboard` into dashboard `target`."
   ([target dashboard] (merge-dashboards target dashboard {}))
   ([target dashboard {:keys [skip-titles?]}]
-   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+   (let [[parameters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
                                              :ordered_cards
                                              (map #(+ (:row %) (:size_y %)))
@@ -345,7 +353,7 @@
                                                          (for [mapping parameter-mappings]
                                                            (assoc mapping :card_id card-id)))))))]
      (-> target
-         (assoc :parameters paramters)
+         (assoc :parameters parameters)
          (cond->
            (not skip-titles?)
            (add-text-card {:width                  grid-width

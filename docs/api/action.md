@@ -12,7 +12,7 @@ summary: |
 
 ### PARAMS:
 
-*  **`action-id`**
+*  **`action-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/action/:id/public_link`
 

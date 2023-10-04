@@ -36,7 +36,7 @@ There are two basic types of expressions, **Aggregations** and **Functions**. Ch
 
 ## Basic mathematical operators
 
-Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` ad `)`, to group parts of your expression.
+Use `+`, `-`, `*` (multiply), `/` (divide) on numeric columns with numeric values, like integers, floats, and double. You can use parentheses, `(` and `)`, to group parts of your expression.
 
 For example, you could create a new column that calculates the difference between the total and subtotal of a order: `= [Total] - [Subtotal]`.
 

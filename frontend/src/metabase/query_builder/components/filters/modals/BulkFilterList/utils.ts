@@ -1,5 +1,5 @@
 import { isDate } from "metabase-lib/types/utils/isa";
-import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
+import type { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 
 type PriorityMap = { [key: string]: number | undefined };
 

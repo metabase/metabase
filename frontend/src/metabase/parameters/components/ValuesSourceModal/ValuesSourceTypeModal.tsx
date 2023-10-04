@@ -1,41 +1,34 @@
-import React, {
-  ChangeEvent,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
-import Radio, { RadioOption } from "metabase/core/components/Radio";
-import Select, {
-  Option,
-  SelectChangeEvent,
-} from "metabase/core/components/Select";
+import type { RadioOption } from "metabase/core/components/Radio";
+import Radio from "metabase/core/components/Radio";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import ModalContent from "metabase/components/ModalContent";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Card,
+import type {
   ValuesSourceConfig,
   ValuesSourceType,
   Parameter,
   ParameterValues,
   ParameterValue,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
-import { fetchParameterValues, FetchParameterValuesOpts } from "../../actions";
+import type { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
+import type { FetchParameterValuesOpts } from "../../actions";
+import { fetchParameterValues } from "../../actions";
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
   ModalHelpMessage,
@@ -62,11 +55,7 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
-}
-
-interface ModalStateProps {
+interface ModalQuestionProps {
   question: Question | undefined;
 }
 
@@ -76,10 +65,7 @@ interface ModalDispatchProps {
   ) => Promise<ParameterValues>;
 }
 
-type ModalProps = ModalOwnProps &
-  ModalCardProps &
-  ModalStateProps &
-  ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
   parameter,
@@ -495,28 +481,22 @@ const useParameterValues = ({
   return state;
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ModalOwnProps & ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
 const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
+    fetchType: "fetchMetadata",
     requestType: "fetchMetadata",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);

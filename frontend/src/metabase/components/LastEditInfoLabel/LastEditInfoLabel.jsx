@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -21,8 +20,8 @@ LastEditInfoLabel.propTypes = {
     "last-edit-info": PropTypes.shape({
       id: PropTypes.number.isRequired,
       email: PropTypes.string.isRequired,
-      first_name: PropTypes.string.isRequired,
-      last_name: PropTypes.string.isRequired,
+      first_name: PropTypes.string,
+      last_name: PropTypes.string,
       timestamp: PropTypes.string.isRequired,
     }).isRequired,
   }),

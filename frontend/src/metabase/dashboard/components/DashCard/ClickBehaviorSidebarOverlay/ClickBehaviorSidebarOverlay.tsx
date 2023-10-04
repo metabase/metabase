@@ -1,9 +1,9 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import { DashboardOrderedCard } from "metabase-types/api";
+import type { DashboardOrderedCard } from "metabase-types/api";
 
 import {
   Root,
@@ -55,4 +55,5 @@ function ClickBehaviorSidebarOverlay({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ClickBehaviorSidebarOverlay;

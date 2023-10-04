@@ -1,6 +1,8 @@
+import { t } from "ttag";
+
 export const viewsAndAvgExecutionTimeByDay = () => ({
   card: {
-    name: "Query views and speed per day",
+    name: t`Query views and speed per day`,
     display: "line",
     dataset_query: {
       type: "internal",
@@ -20,7 +22,7 @@ export const viewsAndAvgExecutionTimeByDay = () => ({
 
 export const mostPopular = () => ({
   card: {
-    name: "Most popular queries",
+    name: t`Most popular queries`,
     display: "row",
     dataset_query: {
       type: "internal",
@@ -36,7 +38,7 @@ export const mostPopular = () => ({
 
 export const slowest = () => ({
   card: {
-    name: "Slowest queries",
+    name: t`Slowest queries`,
     display: "row",
     dataset_query: {
       type: "internal",

@@ -1,19 +1,20 @@
-import React from "react";
 import { jt, t } from "ttag";
-import Settings from "metabase/lib/settings";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import HelpCard from "metabase/components/HelpCard";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 export interface DatabaseHelpCardProps {
   className?: string;
-  isHosted?: boolean;
 }
 
-const DatabaseHelpCard = ({
+export const DatabaseHelpCard = ({
   className,
-  isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = Settings.docsUrl("databases/connecting");
+  const docsUrl = useSelector(state =>
+    getDocsUrl(state, { page: "databases/connecting" }),
+  );
+  const isHosted = useSelector(state => getSetting(state, "is-hosted?"));
 
   return (
     <HelpCard
@@ -35,5 +36,3 @@ const DatabaseHelpCard = ({
     </HelpCard>
   );
 };
-
-export default DatabaseHelpCard;

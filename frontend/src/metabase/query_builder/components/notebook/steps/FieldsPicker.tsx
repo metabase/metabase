@@ -1,9 +1,9 @@
-import React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CheckBox from "metabase/core/components/CheckBox";
-import StackedCheckBox from "metabase/components/StackedCheckBox";
+import { StackedCheckBox } from "metabase/components/StackedCheckBox";
 
 import type Dimension from "metabase-lib/Dimension";
 
@@ -78,4 +78,5 @@ function FieldsPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldsPicker;

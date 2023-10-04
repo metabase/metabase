@@ -26,8 +26,8 @@
    [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
 
@@ -156,7 +156,7 @@
                         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
                         (when (use-permanent-cookies? request)
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
-    (when (and (= config/mb-session-cookie-samesite :none) (request.u/https? request))
+    (when (and (= config/mb-session-cookie-samesite :none) (not (request.u/https? request)))
       (log/warn
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
@@ -227,7 +227,7 @@
   (memoize
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
-      (db/honeysql->sql
+      (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.locale :user-locale]]
@@ -296,22 +296,33 @@
   (when user-id
     (t2/select-one current-user-fields, :id user-id)))
 
-(defn- user-local-settings [user-id]
-  (when user-id
-    (or (:settings (t2/select-one [User :settings] :id user-id))
-        {})))
+(def ^:private ^:dynamic *user-local-values-user-id*
+  "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
+  calls to [[with-current-user]] if it is already bound, as this can mess things up since things
+  like [[metabase.models.setting/set-user-local-value!]] will only update the values for the top-level binding."
+  ;; placeholder value so we will end up rebinding [[*user-local-values*]] it if you call
+  ;;
+  ;;    (with-current-user nil
+  ;;      ...)
+  ;;
+  ::none)
 
 (defn do-with-current-user
-  "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?]} thunk]
+  "Impl for [[with-current-user]]."
+  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
-            *user-local-values*            (delay (atom (or settings
-                                                            (user-local-settings metabase-user-id))))]
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
+            ;; as mentioned above, do not rebind this to something new, because changes to its value will not be
+            ;; propagated to frames further up the stack
+            *user-local-values*            (if (= *user-local-values-user-id* metabase-user-id)
+                                             *user-local-values*
+                                             (delay (atom (or settings
+                                                              (user/user-local-settings metabase-user-id)))))
+            *user-local-values-user-id*    metabase-user-id]
     (thunk)))
 
 (defmacro ^:private with-current-user-for-request
@@ -328,7 +339,7 @@
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*current-user-permissions-set*`   delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
@@ -342,8 +353,19 @@
     (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
+(defmacro as-admin
+  "Execude code in body as an admin user."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-current-user
+    (merge
+      (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
+      {:is-superuser? true
+       :permissions-set #{"/"}})
+    (fn [] ~@body)))
+
 (defmacro with-current-user
-  "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
+  "Execute code in body with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
   {:style/indent :defn}
   [current-user-id & body]

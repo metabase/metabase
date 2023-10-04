@@ -1,20 +1,29 @@
-import {
-  metadata,
-  PRODUCTS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
-import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
+import { createMockMetadata } from "__support__/metadata";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Card } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type { Card, ParameterDimensionTarget } from "metabase-types/api";
+import { createMockTemplateTag } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
   isVariableTarget,
   getTemplateTagFromTarget,
   getTargetFieldFromCard,
 } from "metabase-lib/parameters/utils/targets";
+import type Field from "metabase-lib/metadata/Field";
 
 describe("parameters/utils/targets", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const db = metadata.database(SAMPLE_DB_ID) as Database;
+
   describe("isDimensionTarget", () => {
     it("should return false for non-dimension targets", () => {
       expect(isDimensionTarget(["variable", ["template-tag", "foo"]])).toBe(
@@ -72,12 +81,12 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
-      const question = SAMPLE_DATABASE.nativeQuestion({
+      const question = db.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "text",
-          },
+          }),
         },
       });
 
@@ -95,19 +104,19 @@ describe("parameters/utils/targets", () => {
         "dimension",
         ["template-tag", "foo"],
       ];
-      const question = SAMPLE_DATABASE.nativeQuestion({
+      const question = db.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "dimension",
-            dimension: ["field", PRODUCTS.CATEGORY.id, null],
-          },
+            dimension: ["field", PRODUCTS.CATEGORY, null],
+          }),
         },
       });
 
       expect(getParameterTargetField(target, metadata, question)).toEqual(
         expect.objectContaining({
-          id: PRODUCTS.CATEGORY.id,
+          id: PRODUCTS.CATEGORY,
         }),
       );
     });
@@ -115,14 +124,14 @@ describe("parameters/utils/targets", () => {
     it("should return the target field", () => {
       const target: ParameterDimensionTarget = [
         "dimension",
-        ["field", PRODUCTS.CATEGORY.id, null],
+        ["field", PRODUCTS.CATEGORY, null],
       ];
-      const question = SAMPLE_DATABASE.question({
-        "source-table": PRODUCTS.id,
+      const question = db.question({
+        "source-table": PRODUCTS_ID,
       });
       expect(getParameterTargetField(target, metadata, question)).toEqual(
         expect.objectContaining({
-          id: PRODUCTS.CATEGORY.id,
+          id: PRODUCTS.CATEGORY,
         }),
       );
     });
@@ -131,33 +140,37 @@ describe("parameters/utils/targets", () => {
   describe("getTargetFieldFromCard", () => {
     const target = [
       "dimension",
-      ["field", PRODUCTS.CATEGORY.id, null],
+      ["field", PRODUCTS.CATEGORY, null],
     ] as ParameterDimensionTarget;
 
-    it("should return null when given a card without a `dataset_query`", () => {
+    it("should return the field that maps to the mapping target event given a card without a `dataset_query` (metabase#20656)", () => {
+      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
+
       const card = {
         id: 1,
       } as Card;
 
-      expect(getTargetFieldFromCard(target, card, metadata)).toBe(null);
+      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
+        expect.objectContaining({ id: expectedField.id }),
+      );
     });
 
     it("should return the field that maps to the mapping target", () => {
-      const field = PRODUCTS.CATEGORY;
+      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
 
       const card = {
         id: 1,
         dataset_query: {
           type: "query",
-          database: (SAMPLE_DATABASE as Database).id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": PRODUCTS.id,
+            "source-table": PRODUCTS_ID,
           },
         },
       } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: field.id }),
+        expect.objectContaining({ id: expectedField.id }),
       );
     });
   });

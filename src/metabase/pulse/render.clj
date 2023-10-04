@@ -2,11 +2,13 @@
   (:require
    [hiccup.core :refer [h]]
    [metabase.models.dashboard-card :as dashboard-card]
+   [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.common :as common]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
+   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
@@ -57,7 +59,7 @@
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
                                             :margin-bottom :8px})}
-                 description]})))
+                 (markdown/process-markdown description :html)]})))
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
@@ -148,11 +150,17 @@
 - render/text : raw text suitable for substituting on clients when text is preferable. (Currently slack uses this for
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
-  (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
-        {description :content}                           (make-description-if-needed dashcard card)
+  (let [{title             :content
+         title-attachments :attachments} (make-title-if-needed render-type card dashcard)
+        {description :content}           (make-description-if-needed dashcard card)
+        results                          (update-in results
+                                                    [:data :viz-settings]
+                                                    (fn [viz-settings]
+                                                      (merge viz-settings (mb.viz/db->norm
+                                                                           (:visualization_settings dashcard)))))
         {pulse-body       :content
          body-attachments :attachments
-         text             :render/text}                  (render-pulse-card-body render-type timezone-id card dashcard results)]
+         text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.

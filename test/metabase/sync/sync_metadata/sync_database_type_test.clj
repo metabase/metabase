@@ -7,11 +7,12 @@
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest update-database-type-test
   (testing "make sure that if a driver reports back a different database-type the Field gets updated accordingly"
-    (mt/with-temp Database [db (select-keys (mt/db) [:details :engine])]
+    (t2.with-temp/with-temp [Database db (select-keys (mt/db) [:details :engine])]
       (sync/sync-database! db)
       (let [venues-table (t2/select-one Table :db_id (u/the-id db), :display_name "Venues")]
         ;; ok, now give all the Fields `?` as their `database_type`. (This is what the DB migration does for existing
@@ -35,7 +36,7 @@
 
 (deftest update-base-type-test
   (testing "make sure that if a driver reports back a different base-type the Field gets updated accordingly"
-    (mt/with-temp Database [db (select-keys (mt/db) [:details :engine])]
+    (t2.with-temp/with-temp [Database db (select-keys (mt/db) [:details :engine])]
       (let [{new-step-info :step-info, new-task-history :task-history} (sync.util-test/sync-database! "sync-fields" db)
             venues-table                                               (t2/select-one Table :db_id (u/the-id db), :display_name "Venues")]
         ;; ok, now give all the Fields `:type/*` as their `base_type`

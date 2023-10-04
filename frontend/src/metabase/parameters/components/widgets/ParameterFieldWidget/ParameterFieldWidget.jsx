@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -26,7 +26,10 @@ const propTypes = {
   parameters: PropTypes.array.isRequired,
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
-  value: PropTypes.string,
+  value: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.arrayOf(PropTypes.string),
+  ]),
   question: PropTypes.object,
   dashboard: PropTypes.object,
 };

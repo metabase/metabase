@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import _ from "underscore";
+import { t } from "ttag";
+
 import Button from "metabase/core/components/Button";
 
 const DefaultRenderInput = ({ value, onChange, placeholder }) => (
@@ -20,8 +20,8 @@ const MappingEditor = ({
   style,
   keyHeader,
   valueHeader,
-  keyPlaceholder = "Key",
-  valuePlaceholder = "Value",
+  keyPlaceholder = t`Key`,
+  valuePlaceholder = t`Value`,
   renderKeyInput = DefaultRenderInput,
   renderValueInput = DefaultRenderInput,
   divider,

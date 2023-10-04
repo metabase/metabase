@@ -1,5 +1,6 @@
 import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
@@ -34,7 +35,7 @@ describe("issue 23076", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/user/1", {
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
       locale: "de",
     });
 
@@ -46,6 +47,6 @@ describe("issue 23076", () => {
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai, 2017");
+      .should("eq", "Summen für Mai 2023");
   });
 });

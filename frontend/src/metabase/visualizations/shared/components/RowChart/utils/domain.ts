@@ -1,10 +1,10 @@
 import { extent } from "d3-array";
 import { isNotNull } from "metabase/core/utils/types";
-import {
+import type {
   ContinuousDomain,
   ContinuousScaleType,
 } from "metabase/visualizations/shared/types/scale";
-import { SeriesData } from "../types";
+import type { SeriesData } from "../types";
 
 const getExtent = (values: number[]) => {
   const [min, max] = extent(values);

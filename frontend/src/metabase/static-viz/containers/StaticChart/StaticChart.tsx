@@ -1,5 +1,3 @@
-import React from "react";
-
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import RowChart from "metabase/static-viz/components/RowChart";
 import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
@@ -40,4 +38,5 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StaticChart;

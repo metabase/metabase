@@ -16,13 +16,6 @@
   [username]
   (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
-(defenterprise greeting-with-valid-token
-  "Returns an extra special greeting for a user if the instance has a valid premium features token. Else, returns the
-  default (OSS) greeting."
-  :feature :any
-  [username]
-  (format "Hi %s, you're an EE customer with a valid token!" (name username)))
-
 (defenterprise special-greeting
   "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
   returns the default (OSS) greeting."

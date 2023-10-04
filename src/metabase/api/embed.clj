@@ -36,8 +36,8 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -84,20 +84,19 @@
   (check-params-exist object-embedding-params (set/union token-params user-params)))
 
 (defn- valid-param?
-  "Is V a valid param value? (Is it non-`nil`, and, if a String, non-blank?)"
+  "Is V a valid param value? (If it is a String, is it non-blank?)"
   [v]
-  (and (some? v)
-       (or (not (string? v))
-           (not (str/blank? v)))))
+  (or (not (string? v))
+      (not (str/blank? v))))
 
-(s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
+(mu/defn ^:private validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- su/EmbeddingParams
-   token-params            :- {s/Keyword s/Any}
-   user-params             :- {s/Keyword s/Any}]
+  [object-embedding-params :- ms/EmbeddingParams
+   token-params            :- [:map-of :keyword :any]
+   user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
                     (set (keys (m/filter-vals valid-param? token-params)))
                     (set (keys (m/filter-vals valid-param? user-params))))
@@ -114,11 +113,11 @@
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
-(s/defn ^:private remove-locked-and-disabled-params
+(mu/defn ^:private remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
-  [dashboard-or-card embedding-params :- su/EmbeddingParams]
+  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
   (let [params-to-remove (set (concat (for [[param status] embedding-params
                                             :when          (not= status "enabled")]
                                         param)
@@ -157,23 +156,26 @@
                 card))
             ordered-cards))))
 
-(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
-                                                  :type   s/Keyword
-                                                  :target s/Any
-                                                  :value  s/Any}])
+(mu/defn ^:private apply-slug->value :- [:maybe [:sequential
+                                                 [:map
+                                                  [:slug ms/NonBlankString]
+                                                  [:type :keyword]
+                                                  [:target :any]
+                                                  [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]
   (when (seq parameters)
     (for [param parameters
-          :let  [value (get slug->value (keyword (:slug param)))
+          :let  [slug  (keyword (:slug param))
+                 value (get slug->value slug)
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
                  value (if (and (some? value)
                                 (params.ops/operator? (:type param)))
                          (u/one-or-many value)
                          value)]
-          :when (some? value)]
+          :when (contains? slug->value slug)]
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
@@ -184,12 +186,12 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
+(mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/run-query-for-dashcard-async]]."
-  [dashboard-id :- su/IntGreaterThanZero
-   slug->value  :- {s/Any s/Any}]
+  [dashboard-id :- ms/PositiveInt
+   slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters Dashboard :id dashboard-id)
         slug->id   (into {} (map (juxt :slug :id)) parameters)]
     (vec (for [[slug value] slug->value
@@ -202,13 +204,16 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
+(mu/defn ^:private normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
-  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect."
+  not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
+  Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (m/map-keys keyword query-params))
+  (-> query-params
+      (update-keys keyword)
+      (update-vals (fn [v] (if (= v "") nil v)))))
 
 
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
@@ -336,8 +341,7 @@
       :constraints       constraints
       :options           options)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/query"
+(api/defendpoint GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -347,11 +351,10 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+(api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
-  {export-format api.dataset/ExportFormat}
+  {export-format (into [:enum] api.dataset/export-formats)}
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
@@ -406,11 +409,12 @@
       :constraints      constraints
       :qp-runner        qp-runner)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
+  {dashcard-id ms/PositiveInt
+   card-id     ms/PositiveInt}
   (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
 
 
@@ -420,19 +424,19 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/field/:field-id/values"
+(api/defendpoint GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
+  {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/values"
+(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
+  {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -441,23 +445,25 @@
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
-  {value su/NonBlankString
-   limit (s/maybe su/IntStringGreaterThanZero)}
+  {field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/search/:search-field-id"
+(api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
-  {value su/NonBlankString
-   limit (s/maybe su/IntStringGreaterThanZero)}
+  {field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -467,35 +473,38 @@
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/field/:field-id/remapping/:remapped-id"
+(api/defendpoint GET "/card/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
   [token field-id remapped-id value]
-  {value su/NonBlankString}
+  {field-id    ms/PositiveInt
+   remapped-id ms/PositiveInt
+   value       ms/NonBlankString}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
+(api/defendpoint GET "/dashboard/:token/field/:field-id/remapping/:remapped-id"
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
   [token field-id remapped-id value]
-  {value su/NonBlankString}
+  {field-id    ms/PositiveInt
+   remapped-id ms/PositiveInt
+   value       ms/NonBlankString}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id, :as {:keys [query-params]}]
-  {export-format api.dataset/ExportFormat}
+  {dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   export-format (into [:enum] api.dataset/export-formats)}
   (dashcard-results-for-signed-token-async token
     dashcard-id
     card-id
@@ -515,7 +524,7 @@
 ;; variables whose name includes `id-` e.g. `id-query-params` below are ones that are keyed by ID; ones whose name
 ;; includes `slug-` are keyed by slug.
 
-(s/defn ^:private param-values-merged-params :- {su/NonBlankString s/Any}
+(mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -615,20 +624,17 @@
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/values"
+(api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
   (dashboard-param-values token param-key nil query-params))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/params/:param-key/search/:prefix"
+(api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
   (dashboard-param-values token param-key prefix query-params))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/params/:param-key/values"
+(api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [token param-key]
   (let [unsigned (embed/unsign token)
@@ -639,8 +645,7 @@
                         :card           card
                         :param-key      param-key})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/params/:param-key/search/:prefix"
+(api/defendpoint GET "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix]
   (let [unsigned (embed/unsign token)
@@ -652,8 +657,7 @@
                         :param-key      param-key
                         :search-prefix  prefix})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/pivot/card/:token/query"
+(api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -663,11 +667,12 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
+  {dashcard-id ms/PositiveInt
+   card-id ms/PositiveInt}
   (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
 
 (api/define-routes)

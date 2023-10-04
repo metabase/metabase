@@ -8,7 +8,6 @@
    [java-time :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -20,6 +19,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -31,21 +31,14 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
-(defmethod driver/supports? [:sqlserver :percentile-aggregations] [_ _] false)
-;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-;; users in the UI
-(defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
-(defmethod driver/supports? [:sqlserver :now] [_ _] true)
-(defmethod driver/supports? [:sqlserver :datetime-diff] [_ _] true)
-
-(defmethod driver/database-supports? [:sqlserver :convert-timezone]
-  [_driver _feature _database]
-  true)
-(defmethod driver/database-supports? [:sqlserver :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:regex                                  false
+                              :percentile-aggregations                false
+                              :case-sensitivity-string-filter-options false
+                              :now                                    true
+                              :datetime-diff                          true
+                              :convert-timezone                       true
+                              :test/jvm-timezone-setting              false}]
+  (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
@@ -483,17 +476,16 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-(defmethod driver.common/current-db-time-date-formatters :sqlserver
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
-
-(defmethod driver.common/current-db-time-native-query :sqlserver
-  [_]
-  "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
-
-(defmethod driver/current-db-time :sqlserver
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :sqlserver
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT sysdatetimeoffset();")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (when-let [offset-date-time (.getObject rset 1 java.time.OffsetDateTime)]
+           (t/zone-offset offset-date-time)))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :sqlserver
   [_]

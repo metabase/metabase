@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -74,7 +74,7 @@
     map?
     (as-> &match entity
       (m/update-existing entity :database (fn [db-id]
-                                            (if (= db-id mbql.s/saved-questions-virtual-database-id)
+                                            (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (fully-qualified-name Database db-id))))
       (m/update-existing entity :card_id (partial fully-qualified-name Card)) ; attibutes that refer to db fields use _

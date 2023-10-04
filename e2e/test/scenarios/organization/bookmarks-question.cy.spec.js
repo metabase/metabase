@@ -5,6 +5,8 @@ import {
   openNavigationSidebar,
   visitQuestion,
 } from "e2e/support/helpers";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 describe("scenarios > question > bookmarks", () => {
@@ -15,7 +17,7 @@ describe("scenarios > question > bookmarks", () => {
   });
 
   it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     toggleBookmark();
 
     openNavigationSidebar();
@@ -33,7 +35,9 @@ describe("scenarios > question > bookmarks", () => {
 
     // Convert to model
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn into a model").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn this into a model").click();
 
     navigationSidebar().within(() => {
@@ -42,6 +46,7 @@ describe("scenarios > question > bookmarks", () => {
 
     // Convert back to question
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn back to saved question").click();
 
     navigationSidebar().within(() => {

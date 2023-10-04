@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 import Collection, {
   PERSONAL_COLLECTIONS,

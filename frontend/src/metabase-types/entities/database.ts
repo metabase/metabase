@@ -1,5 +1,5 @@
-import { Database } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 export interface DatabaseEntity extends Database {
-  fetchIdfields: (query: any) => void;
+  fetchIdFields: (query: any) => void;
 }

@@ -45,6 +45,7 @@ describe("collection permissions", () => {
                   appBar().within(() => {
                     cy.icon("add").click();
                   });
+                  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                   cy.findByText("Dashboard").click();
                   cy.findByTestId("select-button").findByText(
                     "Second collection",
@@ -54,6 +55,7 @@ describe("collection permissions", () => {
                 onlyOn(user === "admin", () => {
                   it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
                     cy.visit("/collection/root");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders in a dashboard").click();
                     appBar().within(() => {
                       cy.icon("add").click();
@@ -73,10 +75,14 @@ describe("collection permissions", () => {
                   cy.findByTestId("pinned-items").should("not.exist");
 
                   pinItem("Orders in a dashboard");
-                  unpinnedItemsLeft(5);
+                  cy.findByTestId("collection-table")
+                    .findByText("Orders in a dashboard")
+                    .should("not.exist");
 
                   pinItem("Orders, Count");
-                  unpinnedItemsLeft(4);
+                  cy.findByTestId("collection-table")
+                    .findByText("Orders, Count")
+                    .should("not.exist");
 
                   // Should see "pinned items" and items should be in that section
                   cy.findByTestId("pinned-items").within(() => {
@@ -84,13 +90,6 @@ describe("collection permissions", () => {
                     cy.findByText("Orders, Count");
                   });
                 });
-
-                function unpinnedItemsLeft(count) {
-                  cy.findAllByTestId("collection-entry").should(
-                    "have.length",
-                    count,
-                  );
-                }
               });
 
               describe("move", () => {
@@ -192,6 +191,7 @@ describe("collection permissions", () => {
                     });
                     popover().findByText("View archive").click();
                     cy.location("pathname").should("eq", "/archive");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Orders");
                   });
                 });
@@ -200,6 +200,7 @@ describe("collection permissions", () => {
                   it("shouldn't be able to archive/edit root or personal collection", () => {
                     cy.visit("/collection/root");
                     cy.icon("edit").should("not.exist");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Your personal collection").click();
                     cy.icon("edit").should("not.exist");
                   });
@@ -220,6 +221,7 @@ describe("collection permissions", () => {
                     });
 
                     openCollectionMenu();
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     popover().within(() => cy.findByText("Archive").click());
                     cy.get(".Modal").findByText("Archive").click();
 
@@ -236,11 +238,14 @@ describe("collection permissions", () => {
                     });
 
                     // While we're here, we can test unarchiving the collection as well
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Archived collection");
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText("Undo").click();
 
                     cy.wait("@editCollection");
 
+                    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                     cy.findByText(
                       "Sorry, you don’t have permission to see that.",
                     ).should("not.exist");
@@ -348,6 +353,7 @@ describe("collection permissions", () => {
             it("should not show pins or a helper text (metabase#20043)", () => {
               cy.visit("/collection/root");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard");
               cy.icon("pin").should("not.exist");
             });
@@ -365,6 +371,7 @@ describe("collection permissions", () => {
             it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
               cy.visit("/collection/root");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders")
                 .closest("tr")
                 .within(() => {
@@ -372,6 +379,7 @@ describe("collection permissions", () => {
                   cy.findByRole("checkbox").should("not.exist");
                 });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard")
                 .closest("tr")
                 .within(() => {
@@ -385,6 +393,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
@@ -417,6 +426,7 @@ describe("collection permissions", () => {
     cy.signIn("normal");
 
     openNativeEditor().type("select * from people");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByTestId("select-button").findByText("Our analytics");
@@ -429,7 +439,7 @@ function clickButton(name) {
 
 function pinItem(item) {
   openCollectionItemMenu(item);
-  popover().within(() => cy.icon("pin").click());
+  popover().icon("pin").click();
 }
 
 function exposeChildrenFor(collectionName) {

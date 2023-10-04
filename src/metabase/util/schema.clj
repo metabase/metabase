@@ -1,4 +1,5 @@
-(ns ^{:deprecated "0.46.0"} metabase.util.schema
+(ns ^{:deprecated "0.46.0"}
+ metabase.util.schema
   "Various schemas that are useful throughout the app.
 
   Schemas defined are deprecated and should be replaced with Malli schema defined in [[metabase.util.malli.schema]].
@@ -8,6 +9,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -39,7 +41,7 @@
                          {:value value, :error error}))
       value)))
 
-(alter-var-root #'schema.core/validator (constantly schema-core-validator))
+(alter-var-root #'s/validator (constantly schema-core-validator))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -49,7 +51,7 @@
 (defn with-api-error-message
   "Return `schema` with an additional `api-error-message` that will be used to explain the error if a parameter fails
   validation."
-  {:style/indent [:defn]}
+  {:style/indent [:form]}
   [schema api-error-message]
   (if-not (record? schema)
     ;; since this only works for record types, if `schema` isn't already one just wrap it in `s/named` to make it one
@@ -288,7 +290,7 @@
 (def Field
   "Schema for a valid Field for API usage."
   (with-api-error-message (s/pred
-                            (comp (complement (s/checker mbql.s/Field))
+                            (comp (mc/validator mbql.s/Field)
                                   mbql.normalize/normalize-tokens))
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 

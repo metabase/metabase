@@ -13,7 +13,7 @@
 
 (deftest audit-max-retention-days-test
   ;; Tests for the EE implementation are in `metabase-enterprise.task.truncate-audit-log-test`
-  (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+  (with-redefs [premium-features/enable-audit-app? (constantly false)]
     (testing "Self-hosted OSS instances default to infinite retention and cannot be changed"
         (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
@@ -55,14 +55,14 @@
 
 (deftest query-execution-cleanup-test
   (testing "When the task runs, rows in `query_execution` older than the configured threshold are deleted"
-    (mt/with-temp* [QueryExecution [{qe1-id :id} (merge query-execution-defaults
-                                                        {:started_at (t/offset-date-time)})]
-                    ;; 31 days ago
-                    QueryExecution [{qe2-id :id} (merge query-execution-defaults
-                                                        {:started_at (t/minus (t/offset-date-time) (t/days 31))})]
-                    ;; 1 year ago
-                    QueryExecution [{qe3-id :id} (merge query-execution-defaults
-                                                        {:started_at (t/minus (t/offset-date-time) (t/years 1))})]]
+    (mt/with-temp [QueryExecution {qe1-id :id} (merge query-execution-defaults
+                                                      {:started_at (t/offset-date-time)})
+                   ;; 31 days ago
+                   QueryExecution {qe2-id :id} (merge query-execution-defaults
+                                                      {:started_at (t/minus (t/offset-date-time) (t/days 31))})
+                   ;; 1 year ago
+                   QueryExecution {qe3-id :id} (merge query-execution-defaults
+                                                      {:started_at (t/minus (t/offset-date-time) (t/years 1))})]
       ;; Mock a cloud environment so that we can change the setting value via env var
       (with-redefs [premium-features/is-hosted? (constantly true)]
        (testing "When the threshold is 0 (representing infinity), no rows are deleted"

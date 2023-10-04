@@ -1,5 +1,17 @@
-import { popover, restore } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  dragAndDrop,
+  getPinnedSection,
+  openPinnedItemMenu,
+  openUnpinnedItemMenu,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -62,7 +74,7 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("dashboard").should("be.visible");
       cy.findByText("A dashboard").should("be.visible");
       cy.findByText(DASHBOARD_NAME).click();
-      cy.url().should("include", "/dashboard/1");
+      cy.url().should("include", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
   });
 
@@ -75,7 +87,7 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().within(() => {
       cy.findByText("18,760").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
@@ -95,7 +107,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a model", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
 
     openRootCollection();
     openUnpinnedItemMenu(MODEL_NAME);
@@ -106,12 +118,14 @@ describe("scenarios > collection pinned items overview", () => {
       cy.icon("model").should("be.visible");
       cy.findByText(MODEL_NAME).should("be.visible");
       cy.findByText("A model").click();
-      cy.url().should("include", "/model/1");
+      cy.url().should("include", `/model/${ORDERS_QUESTION_ID}`);
     });
   });
 
   it("should be able to unpin a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -122,29 +136,37 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to move a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Move").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
   });
 
   it("should be able to duplicate a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Duplicate").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
       "be.visible",
     );
   });
 
   it("should be able to archive a pinned dashboard", () => {
-    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
@@ -152,11 +174,14 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 
   it("should be able to hide the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", { collection_position: 1 });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      collection_position: 1,
+    });
 
     openRootCollection();
     openPinnedItemMenu(QUESTION_NAME);
@@ -167,12 +192,12 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("18,760").should("not.exist");
       cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
   });
 
   it("should be able to show the visualization for a pinned question", () => {
-    cy.request("PUT", "/api/card/2", {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       collection_position: 1,
       collection_preview: false,
     });
@@ -199,33 +224,59 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText("A question").should("be.visible");
     });
   });
+
+  it("should be able to pin a visualization by dragging it up", () => {
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      collection_position: 1,
+      collection_preview: false,
+    });
+    openRootCollection();
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .as("draggingViz");
+
+    cy.findByTestId("pinned-items").as("pinnedItems");
+
+    // this test can give us some degree of confidence, but its effectiveness is limited
+    // because we are manually firing events on the correct elements. It doesn't seem that there's
+    // a way to actually simulate the raw user interaction of dragging a certain distance in cypress.
+    // this will not guarantee that the drag and drop functionality will work in the real world, e.g
+    // when our various drag + drop libraries start interfering with events on one another.
+    // for example, this test would not have caught https://github.com/metabase/metabase/issues/30614
+    // even libraries like https://github.com/dmtrKovalenko/cypress-real-events rely on firing events
+    // on specific elements rather than truly simulating mouse movements across the screen
+    dragAndDrop("draggingViz", "pinnedItems");
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("not.exist");
+
+    cy.findByTestId("pinned-items")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("exist");
+  });
+
+  it("should allow switching between different pages for a pinned question (metabase#23515)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      collection_position: 1,
+    });
+
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
+    cy.wait("@getCardQuery");
+
+    cy.findByLabelText("Next page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 4-6 of first 2000").should("be.visible");
+
+    cy.findByLabelText("Previous page").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Rows 1-3 of first 2000").should("be.visible");
+  });
 });
-
-const getPinnedSection = () => {
-  return cy.findByTestId("pinned-items");
-};
-
-const getUnpinnedSection = () => {
-  return cy.findByRole("table");
-};
 
 const openRootCollection = () => {
   cy.visit("/collection/root");
   cy.wait("@getPinnedItems");
-};
-
-const openPinnedItemMenu = name => {
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .within(() => cy.icon("ellipsis").click({ force: true }));
-  });
-};
-
-const openUnpinnedItemMenu = name => {
-  getUnpinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("tr")
-      .within(() => cy.icon("ellipsis").click());
-  });
 };

@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import { Motion, spring } from "react-motion";
+import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
@@ -13,6 +14,9 @@ import { Container } from "./EntityMenu.styled";
 
 const MENU_SHIFT_Y = 10;
 
+/**
+ * @deprecated: use Menu from "metabase/ui"
+ */
 class EntityMenu extends Component {
   state = {
     open: false,
@@ -20,10 +24,14 @@ class EntityMenu extends Component {
     menuItemContent: null,
   };
 
+  static defaultProps = {
+    horizontalAttachments: ["left", "right"],
+  };
+
   constructor(props, context) {
     super(props, context);
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
   }
 
   toggleMenu = () => {
@@ -51,15 +59,24 @@ class EntityMenu extends Component {
       triggerIcon,
       triggerProps,
       className,
+      openClassNames,
+      closedClassNames,
+      horizontalAttachments,
+      minWidth,
       tooltip,
       trigger,
       renderTrigger,
       targetOffsetY,
       triggerAriaLabel,
+      tooltipPlacement,
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <Container className={className} open={open} ref={this.rootRef}>
+      <Container
+        className={cx(className, open ? openClassNames : closedClassNames)}
+        open={open}
+        ref={this.rootRef}
+      >
         {renderTrigger ? (
           renderTrigger({ open, onClick: this.toggleMenu })
         ) : (
@@ -70,6 +87,7 @@ class EntityMenu extends Component {
             onClick={this.toggleMenu}
             open={open}
             tooltip={tooltip}
+            tooltipPlacement={tooltipPlacement}
             triggerProps={triggerProps}
           />
         )}
@@ -79,7 +97,7 @@ class EntityMenu extends Component {
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["left", "right"]}
+          horizontalAttachments={horizontalAttachments}
           targetOffsetY={targetOffsetY || 0}
           ignoreTrigger
         >
@@ -118,7 +136,7 @@ class EntityMenu extends Component {
                 >
                   <Card>
                     {menuItemContent || (
-                      <ol className="p1" style={{ minWidth: 184 }}>
+                      <ol className="p1" style={{ minWidth: minWidth ?? 184 }}>
                         {items.map(item => {
                           if (!item) {
                             return null;

@@ -1,7 +1,4 @@
 import styled from "@emotion/styled";
-
-import Link from "metabase/core/components/Link";
-
 import { color } from "metabase/lib/colors";
 
 export const ErrorBox = styled.div`
@@ -15,10 +12,6 @@ export const ErrorBox = styled.div`
   font-weight: 400;
   font-size: 12px;
   line-height: 20px;
-`;
-
-export const StyledLink = styled(Link)`
-  color: ${color("brand")};
 `;
 
 export const IconButtonContainer = styled.button`

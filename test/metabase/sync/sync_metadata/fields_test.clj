@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (defn- with-test-db-before-and-after-altering
@@ -93,7 +92,7 @@
            (with-test-db-before-and-after-altering
             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
             (fn [database]
-              (let [table (hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
+              (let [table (t2/hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
                 (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
@@ -188,3 +187,25 @@
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))))))
+
+(deftest case-sensitive-conflict-test
+  (testing "Two columns with same lower-case name can be synced (#17387)"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "CREATE TABLE \"birds\" (\"event\" VARCHAR, \"eVent\" VARCHAR);"
+                         "GRANT ALL ON \"birds\" TO GUEST;"
+                         (str "INSERT INTO \"birds\" (\"event\", \"eVent\") VALUES "
+                              "('a', 'b'),  "
+                              "('c', 'd');")]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (let [sync-info (sync/sync-database! (mt/db))
+            field-sync-info (->> sync-info
+                                 (m/find-first (comp #{"metadata"} :name))
+                                 :steps
+                                 (m/find-first (comp #{"sync-fields"} first)))]
+        (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))

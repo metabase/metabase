@@ -1,6 +1,7 @@
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getSidebar } from "../selectors";
+import { closeAutoApplyFiltersToast } from "./parameters";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const setSidebar = createAction(SET_SIDEBAR);
@@ -37,3 +38,11 @@ export const openAddQuestionSidebar = () => dispatch => {
     }),
   );
 };
+
+export const CLOSE_DASHBOARD = "metabase/dashboard/CLOSE_DASHBOARD";
+export const closeDashboard = createThunkAction(
+  CLOSE_DASHBOARD,
+  () => dispatch => {
+    dispatch(closeAutoApplyFiltersToast());
+  },
+);

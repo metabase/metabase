@@ -1,5 +1,5 @@
-import { ORDERS } from "__support__/sample_database_fixture";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
+import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {
@@ -49,10 +49,15 @@ describe("Legacy Q_DEPRECATED library", () => {
 
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
-      const datasetQuery = ORDERS.query().aggregate(["count"]).datasetQuery();
+      const datasetQuery = createMockStructuredDatasetQuery({
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+        },
+      });
 
       // We have to take a copy because the original object isn't extensible
-      const copiedDatasetQuery = Utils.copy(datasetQuery);
+      const copiedDatasetQuery = copy(datasetQuery);
       Q_DEPRECATED.cleanQuery(copiedDatasetQuery);
 
       expect(copiedDatasetQuery).toBeDefined();
@@ -194,79 +199,6 @@ describe("Legacy Q_DEPRECATED library", () => {
       };
       query = Q_DEPRECATED.removeBreakout(query, 0);
       expect(query["order-by"]).toEqual(undefined);
-    });
-  });
-
-  describe("getFieldTarget", () => {
-    const field2 = {
-      display_name: "field2",
-    };
-    const table2 = {
-      display_name: "table2",
-      fields_lookup: {
-        2: field2,
-      },
-    };
-    const field1 = {
-      display_name: "field1",
-      target: {
-        table: table2,
-      },
-    };
-    const table1 = {
-      display_name: "table1",
-      fields_lookup: {
-        1: field1,
-      },
-    };
-
-    it("should return field object for new-style local field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(["field", 1, null], table1);
-      expect(target.table).toEqual(table1);
-      expect(target.field).toEqual(field1);
-      expect(target.path).toEqual([]);
-      expect(target.unit).toEqual(undefined);
-    });
-    it("should return unit object for field with temporal bucketing", () => {
-      const target = Q_DEPRECATED.getFieldTarget(
-        ["field", 1, { "temporal-unit": "day" }],
-        table1,
-      );
-      expect(target.table).toEqual(table1);
-      expect(target.field).toEqual(field1);
-      expect(target.path).toEqual([]);
-      expect(target.unit).toEqual("day");
-    });
-
-    it("should return field object and table for new-style fk field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(
-        ["field", 2, { "source-field": 1 }],
-        table1,
-      );
-      expect(target.table).toEqual(table2);
-      expect(target.field).toEqual(field2);
-      expect(target.path).toEqual([field1]);
-      expect(target.unit).toEqual(undefined);
-    });
-
-    it("should return field object and table and unit for fk + datetime field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(
-        ["field", 2, { "source-field": 1, "temporal-unit": "day" }],
-        table1,
-      );
-      expect(target.table).toEqual(table2);
-      expect(target.field).toEqual(field2);
-      expect(target.path).toEqual([field1]);
-      expect(target.unit).toEqual("day");
-    });
-
-    it("should return field object and table for expression", () => {
-      const target = Q_DEPRECATED.getFieldTarget(["expression", "foo"], table1);
-      expect(target.table).toEqual(table1);
-      expect(target.field.display_name).toEqual("foo");
-      expect(target.path).toEqual([]);
-      expect(target.unit).toEqual(undefined);
-      expect(target.field.constructor.name).toEqual("Field");
     });
   });
 });

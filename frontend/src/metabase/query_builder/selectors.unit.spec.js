@@ -6,11 +6,18 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
+import { createMockEntitiesState } from "__support__/store";
 import {
+  createSampleDatabase,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
-  state as sampleState,
-} from "__support__/sample_database_fixture";
+} from "metabase-types/api/mocks/presets";
+import {
+  createMockState,
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+} from "metabase-types/store/mocks";
 import Question from "metabase-lib/Question";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
 import Breakout from "metabase-lib/queries/structured/Breakout";
@@ -18,16 +25,16 @@ import Filter from "metabase-lib/queries/structured/Filter";
 import Join from "metabase-lib/queries/structured/Join";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
-  return {
-    ...sampleState,
-    qb: {
+  return createMockState({
+    entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
+    qb: createMockQueryBuilderState({
       ...state,
-      uiControls: {
+      uiControls: createMockQueryBuilderUIControlsState({
         queryBuilderMode: "view",
         ...uiControls,
-      },
-    },
-  };
+      }),
+    }),
+  });
 }
 
 function getBaseCard(opts) {
@@ -143,14 +150,14 @@ describe("getIsResultDirty", () => {
 
     it("converts clauses into plain MBQL objects", () => {
       const aggregation = ["count"];
-      const breakout = ORDERS.CREATED_AT.reference();
-      const filter = [">=", ORDERS.TOTAL.reference(), 20];
+      const breakout = ["field", ORDERS.CREATED_AT, null];
+      const filter = [">=", ["field", ORDERS.TOTAL, null], 20];
       const join = {
         alias: "Products",
         condition: [
           "=",
-          ["field", ORDERS.PRODUCT_ID.id, null],
-          ["field", PRODUCTS.ID.id, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+          ["field", PRODUCTS.ID, null],
         ],
       };
 
@@ -213,19 +220,18 @@ describe("getIsResultDirty", () => {
     });
 
     it("should not be dirty if fields were just made explicit", () => {
+      const orderTableFieldIds = Object.values(ORDERS);
+      const orderTableFieldRefs = orderTableFieldIds.map(id => [
+        "field",
+        id,
+        null,
+      ]);
+
       const state = getState(
-        { "source-table": 1 },
+        { "source-table": ORDERS_ID },
         {
-          "source-table": 1,
-          fields: [
-            ["field", 1, null],
-            ["field", 2, null],
-            ["field", 3, null],
-            ["field", 4, null],
-            ["field", 5, null],
-            ["field", 6, null],
-            ["field", 7, null],
-          ],
+          "source-table": ORDERS_ID,
+          fields: orderTableFieldRefs,
         },
       );
       expect(getIsResultDirty(state)).toBe(false);

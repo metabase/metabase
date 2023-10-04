@@ -1,13 +1,13 @@
 (ns metabase.domain-entities.converters
   (:require
-    [camel-snake-kebab.core :as csk]
     [malli.core :as mc]
-    [malli.transform :as mtx]))
+    [malli.transform :as mtx]
+    [metabase.util :as u]))
 
 (defn- decode-map [schema _]
   (let [by-prop (into {} (for [[map-key props] (mc/children schema)]
                            [(or (get props :js/prop)
-                                (csk/->snake_case_string map-key))
+                                (u/->snake_case_en (u/qualified-name map-key)))
                             {:map-key map-key}]))]
     {:enter (fn [x]
               (cond
@@ -16,7 +16,7 @@
                 (into {} (for [prop (js-keys x)
                                :let [js-val  (unchecked-get x prop)
                                      map-key (or (get-in by-prop [prop :map-key])
-                                                 (csk/->kebab-case-keyword prop))]]
+                                                 (keyword (u/->kebab-case-en prop)))]]
                            [map-key js-val]))))
      :leave (fn [x]
               (if (object? x)
@@ -127,7 +127,7 @@
                                                                  :when (:js/prop props)]
                                                              [k (:js/prop props)]))
                                          keyenc   (fn [k] (or (get js-props k)
-                                                              (csk/->snake_case_string k)))]
+                                                              (u/->snake_case_en (u/qualified-name k))))]
                                      {:leave #(encode-map % keyenc)}))}
              :map-of            {:leave #(encode-map % name)}})}))
 

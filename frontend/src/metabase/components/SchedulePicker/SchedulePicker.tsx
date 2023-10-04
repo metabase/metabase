@@ -1,7 +1,8 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
-import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select from "metabase/core/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import { capitalize } from "metabase/lib/formatting/strings";
 import type {
@@ -273,4 +274,5 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SchedulePicker;

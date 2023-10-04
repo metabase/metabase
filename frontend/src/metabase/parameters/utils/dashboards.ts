@@ -2,13 +2,13 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
   DashboardOrderedCard,
   Parameter,
+  ParameterMappingOptions,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -22,6 +22,7 @@ import {
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
+import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -141,20 +142,34 @@ function buildFieldFilterUiParameter(
   );
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
-    return getTargetFieldFromCard(target, card, metadata);
+    const question = new Question(card, metadata);
+    const field = getTargetFieldFromCard(target, card, metadata);
+
+    return { field, shouldResolveFkField: !question.isNative() };
   });
-  const fields = mappedFields.filter((field): field is Field => field != null);
+
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
     return isVariableTarget(mapping.target);
   });
-  const uniqueFieldsWithFKResolved = _.uniq(
-    fields.map(field => field.target ?? field),
+
+  const uniqueFields = _.uniq(
+    mappedFields
+      .filter(
+        (
+          mappedField,
+        ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+          return mappedField.field != null;
+        },
+      )
+      .map(({ field, shouldResolveFkField }) => {
+        return shouldResolveFkField ? field.target ?? field : field;
+      }),
     field => field.id,
   );
 
   return {
     ...parameter,
-    fields: uniqueFieldsWithFKResolved,
+    fields: uniqueFields,
     hasVariableTemplateTagTarget,
   };
 }

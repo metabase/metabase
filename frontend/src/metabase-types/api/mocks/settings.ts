@@ -1,4 +1,4 @@
-import {
+import type {
   Engine,
   EngineField,
   EngineSource,
@@ -6,6 +6,7 @@ import {
   SettingDefinition,
   Settings,
   TokenFeatures,
+  TokenStatus,
   Version,
   VersionInfo,
   VersionInfoRecord,
@@ -84,36 +85,38 @@ export const createMockVersionInfo = (
   ...opts,
 });
 
-export const createMockTokenStatus = () => ({
+export const createMockTokenStatus = (
+  opts?: Partial<TokenStatus>,
+): TokenStatus => ({
   status: "Token is Valid.",
   valid: true,
   trial: false,
-  features: [
-    "audit-app",
-    "advanced-permissions",
-    "embedding",
-    "whitelabel",
-    "no-upsell",
-    "advanced-config",
-    "content-management",
-    "sso",
-    "sandboxes",
-  ],
   "valid-thru": "2022-12-30T23:00:00Z",
+  ...opts,
 });
 
 export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
-  advanced_config: false,
   advanced_permissions: false,
   audit_app: false,
-  content_management: false,
+  cache_granular_controls: false,
+  disable_password_login: false,
+  content_verification: false,
   embedding: false,
   hosting: false,
+  official_collections: false,
   sandboxes: false,
-  sso: false,
+  sso_google: false,
+  sso_jwt: false,
+  sso_ldap: false,
+  sso_saml: false,
+  session_timeout_config: false,
   whitelabel: false,
+  dashboard_subscription_filters: false,
+  snippet_collections: false,
+  email_allow_list: false,
+  email_restrict_recipients: false,
   ...opts,
 });
 
@@ -137,12 +140,16 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "available-locales": null,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
+  "custom-homepage": false,
+  "custom-homepage-dashboard": null,
   "deprecation-notice-version": undefined,
   "email-configured?": false,
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
   "enable-query-caching": undefined,
+  "query-caching-ttl-ratio": 10,
+  "query-caching-min-ttl": 60,
   "enable-password-login": true,
   "enable-public-sharing": false,
   "enable-xrays": false,
@@ -161,6 +168,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "ldap-configured?": false,
   "ldap-enabled": false,
   "loading-message": "doing-science",
+  "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "openai-api-key": null,
   "openai-organization": null,
   "openai-model": null,
@@ -198,5 +206,11 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
+  "uploads-enabled": false,
+  "uploads-database-id": null,
+  "uploads-table-prefix": null,
+  "uploads-schema-name": null,
+  "user-visibility": null,
+  "last-acknowledged-version": "v1",
   ...opts,
 });

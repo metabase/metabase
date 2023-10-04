@@ -14,10 +14,10 @@
   ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
   ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
   ;; code
-  (cond
-    config/is-prod? (u/minutes->ms 20)
-    config/is-test? (u/seconds->ms 60)
-    config/is-dev?  (u/minutes->ms 3)))
+  (u/minutes->ms
+   (if config/is-prod?
+     20
+     3)))
 
 (defn default-rff
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.audit-app.pages-test
+(ns ^:mb/once metabase-enterprise.audit-app.pages-test
   (:require
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
@@ -17,7 +17,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [ring.util.codec :as codec]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -96,7 +97,7 @@
                               {:namespace ns-symb, :file file}))
 
               (and (seq? form)
-                   (#{'defmethod 's/defmethod} (first form))
+                   (#{'defmethod 'mu/defmethod} (first form))
                    (= (second form) 'audit.i/internal-query)
                    (= (nth form 2) query-type))
               form
@@ -172,11 +173,11 @@
                    (qp/process-query query))))))
 
 (defn- do-with-temp-objects [f]
-  (mt/with-temp* [Database      [database]
-                  Table         [table {:db_id (u/the-id database)}]
-                  Card          [card {:table_id (u/the-id table), :database_id (u/the-id database)}]
-                  Dashboard     [dash]
-                  DashboardCard [_ {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]]
+  (t2.with-temp/with-temp [Database      database {}
+                           Table         table    {:db_id (u/the-id database)}
+                           Card          card     {:table_id (u/the-id table), :database_id (u/the-id database)}
+                           Dashboard     dash     {}
+                           DashboardCard _        {:card_id (u/the-id card), :dashboard_id (u/the-id dash)}]
     (f {:database database, :table table, :card card, :dash dash})))
 
 (defmacro ^:private with-temp-objects [[objects-binding] & body]
@@ -194,9 +195,9 @@
   (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
     (mt/with-test-user :crowberto
       (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-temp* [User [a {:first_name "a" :last_name nil :email "a@metabase.com"}]
-                        User [b {:first_name nil :last_name "b" :email "b@metabase.com"}]
-                        User [c {:first_name nil :last_name nil :email "c@metabase.com"}]]
+        (t2.with-temp/with-temp [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
+                                 User b {:first_name nil :last_name "b" :email "b@metabase.com"}
+                                 User c {:first_name nil :last_name nil :email "c@metabase.com"}]
           (is (= #{"a" "b" "c@metabase.com"}
                  (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
                                                     {:type :internal
@@ -210,11 +211,11 @@
   (testing "User login method takes into account both the google_auth and sso_source columns"
     (mt/with-test-user :crowberto
       (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil}]
-                        User [b {:email "b@metabase.com" :sso_source :google}]
-                        User [c {:email "c@metabase.com" :sso_source :saml}]
-                        User [d {:email "d@metabase.com" :sso_source :jwt}]
-                        User [e {:email "e@metabase.com" :sso_source :ldap}]]
+        (t2.with-temp/with-temp [User a {:email "a@metabase.com" :sso_source nil}
+                                 User b {:email "b@metabase.com" :sso_source :google}
+                                 User c {:email "c@metabase.com" :sso_source :saml}
+                                 User d {:email "d@metabase.com" :sso_source :jwt}
+                                 User e {:email "e@metabase.com" :sso_source :ldap}]
           (is (= ["Email" "Google Sign-In" "SAML" "JWT" "LDAP"]
                  (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
                                                     {:type :internal
@@ -223,3 +224,14 @@
                       (sort-by first)
                       (filter #((set (map u/the-id [a b c d e])) (first %)))
                       (map #(nth % 6))))))))))
+
+(deftest active-and-new-by-time-test
+  (testing "The active-and-new-by-time audit query correctly returns results (#32244)"
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (let [results (mt/user-http-request :crowberto :post 202 "dataset"
+                                            {:type :internal
+                                             :fn   "metabase-enterprise.audit-app.pages.users/active-and-new-by-time"
+                                             :args ["day"]})]
+          (is (not= 0
+                    (count (-> results :data :rows)))))))))

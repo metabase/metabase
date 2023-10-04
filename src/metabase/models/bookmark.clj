@@ -3,20 +3,33 @@
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel CardBookmark :card_bookmark)
-(models/defmodel DashboardBookmark :dashboard_bookmark)
-(models/defmodel CollectionBookmark :collection_bookmark)
-(models/defmodel BookmarkOrdering :bookmark_ordering)
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+;; We'll keep this till we replace all the symbols in our codebase."
+(def CardBookmark       "CardBookmark model"       :model/CardBookmark)
+(def DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
+(def CollectionBookmark "CollectionBookmark model" :model/CollectionBookmark)
+(def BookmarkOrdering   "BookmarkOrdering model"   :model/BookmarkOrdering)
+
+(methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
+(methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
+(methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
+(methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
+
+(derive :model/CardBookmark :metabase/model)
+(derive :model/DashboardBookmark :metabase/model)
+(derive :model/CollectionBookmark :metabase/model)
+(derive :model/BookmarkOrdering :metabase/model)
 
 (defn- unqualify-key
   [k]
@@ -87,18 +100,18 @@
         {:select    [[:bookmark.created_at        :created_at]
                      [:bookmark.type              :type]
                      [:bookmark.item_id           :item_id]
-                     [:card.name                  (db/qualify Card :name)]
-                     [:card.dataset               (db/qualify Card :dataset)]
-                     [:card.display               (db/qualify Card :display)]
-                     [:card.description           (db/qualify Card :description)]
-                     [:card.archived              (db/qualify Card :archived)]
-                     [:dashboard.name             (db/qualify Dashboard :name)]
-                     [:dashboard.description      (db/qualify Dashboard :description)]
-                     [:dashboard.archived         (db/qualify Dashboard :archived)]
-                     [:collection.name            (db/qualify Collection  :name)]
-                     [:collection.authority_level (db/qualify Collection :authority_level)]
-                     [:collection.description     (db/qualify Collection :description)]
-                     [:collection.archived        (db/qualify Collection :archived)]]
+                     [:card.name                  (mdb.u/qualify Card :name)]
+                     [:card.dataset               (mdb.u/qualify Card :dataset)]
+                     [:card.display               (mdb.u/qualify Card :display)]
+                     [:card.description           (mdb.u/qualify Card :description)]
+                     [:card.archived              (mdb.u/qualify Card :archived)]
+                     [:dashboard.name             (mdb.u/qualify Dashboard :name)]
+                     [:dashboard.description      (mdb.u/qualify Dashboard :description)]
+                     [:dashboard.archived         (mdb.u/qualify Dashboard :archived)]
+                     [:collection.name            (mdb.u/qualify Collection  :name)]
+                     [:collection.authority_level (mdb.u/qualify Collection :authority_level)]
+                     [:collection.description     (mdb.u/qualify Collection :description)]
+                     [:collection.archived        (mdb.u/qualify Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
                      [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]

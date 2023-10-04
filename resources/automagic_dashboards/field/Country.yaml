@@ -1,5 +1,5 @@
-title: A look at your [[this]]
-transient_title: Here''s a closer look at your [[this]] field
+title: A look at [[this]]
+transient_title: Here''s a closer look at [[this]]
 description: The number of [[GenericTable]] per country, and how each country is represented in different categories.
 applies_to: GenericTable.Country
 metrics:

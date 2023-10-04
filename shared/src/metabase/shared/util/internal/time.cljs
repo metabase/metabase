@@ -148,3 +148,10 @@
   "Parses a time string that has been stripped of any time zone."
   [value]
   (moment value parse-time-formats))
+
+;;; ------------------------------------------------ arithmetic ------------------------------------------------------
+
+(defn day-diff
+  "Returns the time elapsed between `before` and `after` in days."
+  [^moment/Moment before ^moment/Moment after]
+  (.diff after before "day"))

@@ -1,4 +1,3 @@
-// Imported from drillthroughs.e2e.spec.js
 import {
   addOrUpdateDashboardCard,
   restore,
@@ -7,14 +6,15 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
   name: "Orders, Count",
-  id: 2,
-  expectedPath: "2-orders-count",
+  id: ORDERS_COUNT_QUESTION_ID,
+  expectedPath: `${ORDERS_COUNT_QUESTION_ID}-orders-count`,
 };
 
 describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
@@ -34,6 +34,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
@@ -42,6 +43,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.log("Assert that the url is correct");
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
       });
     });
@@ -66,12 +68,14 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
 
       it("should result in a correct query result", () => {
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("5,755");
       });
     });
@@ -99,7 +103,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             name: DASHBOARD_NAME,
           },
           cardDetails: {
-            size_x: 16,
+            size_x: 21,
             size_y: 12,
           },
         }).then(({ body: { dashboard_id, card_id } }) => {
@@ -114,6 +118,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
 
       it("should result in a correct query result", () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Affiliate");
         cy.get(".dot").should("have.length.of.at.least", 100);
       });
@@ -177,7 +182,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           visitDashboard(dashboard_id);
           cy.findByText(QUESTION_NAME).click();
           cy.findByText("Category is Doohickey");
-          cy.findByText("177"); // Doohickeys for 2016
+          cy.findByText("177"); // Doohickeys for 2022
         });
       });
     });

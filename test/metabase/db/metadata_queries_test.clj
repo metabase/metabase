@@ -30,7 +30,7 @@
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map int (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
+           (map (comp int first) (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
 
 (deftest table-rows-sample-test
   (let [expected [["20th Century Cafe"]
@@ -60,17 +60,17 @@
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
-          (with-redefs [driver/supports? (constantly true)]
+          (with-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (seq (get-in query [:query :expressions]))))))
         (testing "doesnt' use substrings if driver doesn't support expressions"
-          (with-redefs [driver/supports? (constantly false)]
+          (with-redefs [driver/database-supports? (constantly false)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (mi/instance Table {:id 1234})
               fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
-          (with-redefs [driver/supports? (constantly true)]
+          (with-redefs [driver/database-supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 

@@ -37,15 +37,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+(driver/register! :oracle, :parent #{:sql-jdbc
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
-
-(defmethod driver/database-supports? [:oracle :datetime-diff] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:oracle :convert-timezone]
-  [_driver _feat _db]
-  true)
+(doseq [[feature supported?] {:datetime-diff    true
+                              :now              true
+                              :convert-timezone true}]
+  (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
@@ -508,16 +506,15 @@
   [driver query context respond]
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
 
-(defmethod driver.common/current-db-time-date-formatters :oracle
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :oracle
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
-
-(defmethod driver/current-db-time :oracle [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :oracle
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT DBTIMEZONE FROM dual")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 ;; don't redef if already definied -- test extensions override this impl
 (when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
@@ -557,9 +554,9 @@
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
   [_driver ^Connection conn _ table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
-    (into #{} (sql-jdbc.sync.common/reducible-results
-               #(.getPrimaryKeys metadata nil nil (:name table))
-               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+    (into [] (sql-jdbc.sync.common/reducible-results
+              #(.getPrimaryKeys metadata nil nil (:name table))
+              (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle
   [_]

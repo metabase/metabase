@@ -26,22 +26,31 @@ describe("issue 29082", () => {
   it("should handle nulls in quick filters (metabase#29082)", () => {
     visitQuestionAdhoc(questionDetails);
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");
 
     cy.get(".TableInteractive-emptyCell").first().click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("=").click());
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 8 rows").should("exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discount is empty").should("exist");
 
-    cy.findByText("Discount is empty").within(() => cy.icon("close").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Discount is empty").icon("close").click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 11 rows").should("exist");
 
     cy.get(".TableInteractive-emptyCell").first().click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("≠").click());
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 3 rows").should("exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discount is not empty").should("exist");
   });
 });

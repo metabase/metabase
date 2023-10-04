@@ -19,7 +19,6 @@ import type { Dispatch } from "metabase-types/store";
 
 import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
-import { reloadDashboardCards } from "./data-fetching";
 import { closeSidebar, setSidebar } from "./ui";
 
 interface DashboardAttributes {
@@ -71,7 +70,6 @@ export const executeRowAction = async ({
       parameters,
     });
 
-    dispatch(reloadDashboardCards());
     const message = getActionExecutionMessage(
       dashcard.action as WritebackAction,
       result,
@@ -100,7 +98,7 @@ export const executeRowAction = async ({
       );
     }
 
-    return { success: false, error: message, message };
+    return { success: false, error, message };
   }
 };
 

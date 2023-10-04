@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { memo } from "react";
+import { memo } from "react";
 
 import Text from "metabase/components/type/Text";
 
-import { ITreeNodeItem } from "metabase/components/tree/types";
+import type { ITreeNodeItem } from "metabase/components/tree/types";
 import { FilterableTree } from "../FilterableTree";
 
 import { EntityViewSwitch } from "../EntityViewSwitch";

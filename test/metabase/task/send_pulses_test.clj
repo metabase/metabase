@@ -10,22 +10,23 @@
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
    [metabase.pulse.test-util :refer [checkins-query-card]]
    [metabase.task.send-pulses :as send-pulses]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest send-pulses-test
-  (mt/with-temp* [Card                 [{card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
-                                                              :name "My Question Name")]
-                  Pulse                [{pulse-id :id} {:alert_condition  "rows"
-                                                        :alert_first_only false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id      pulse-id
-                                                        :schedule_hour nil
-                                                        :schedule_type "hourly"
-                                                        :channel_type  :email}]
-                  PulseChannelRecipient [_             {:user_id          (mt/user->id :rasta)
-                                                        :pulse_channel_id pc-id}]]
+  (mt/with-temp [Card                 {card-id :id}  (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
+                                                            :name "My Question Name")
+                 Pulse                {pulse-id :id} {:alert_condition  "rows"
+                                                      :alert_first_only false}
+                 PulseCard             _             {:pulse_id pulse-id
+                                                      :card_id  card-id
+                                                      :position 0}
+                 PulseChannel          {pc-id :id}   {:pulse_id      pulse-id
+                                                      :schedule_hour nil
+                                                      :schedule_type "hourly"
+                                                      :channel_type  :email}
+                 PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
+                                                      :pulse_channel_id pc-id}]
     (et/with-fake-inbox
       (let [exceptions (atom [])
             on-error   (fn [_ exception]
@@ -35,7 +36,8 @@
         (testing "emails"
           (is (= (et/email-to :rasta
                               {:subject "Alert: My Question Name has results",
-                               :body    {"My Question Name" true}})
+                               :body    {"My Question Name" true}
+                               :bcc?    true})
                  (et/regex-email-bodies #"My Question Name"))))
         (testing "exceptions"
           (is (= []
@@ -44,18 +46,18 @@
 (deftest dont-send-archived-pulses-test
   (testing (str "Test that when we attempt to send a pulse that is archived, it just skips the pulse and sends "
                 "nothing. Previously this failed schema validation (see metabase#8581)")
-    (mt/with-temp* [Card                 [{card-id :id}    (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
-                                                                  :name "My Question Name")]
-                    Pulse                [{pulse-id :id}   {:name "Test", :archived true}]
-                    PulseCard             [_               {:pulse_id pulse-id
-                                                            :card_id  card-id
-                                                            :position 0}]
-                    PulseChannel          [{pc-id :id}     {:pulse_id      pulse-id
-                                                            :schedule_hour nil
-                                                            :schedule_type "hourly"
-                                                            :channel_type  :email}]
-                    PulseChannelRecipient [_               {:user_id          (mt/user->id :rasta)
-                                                            :pulse_channel_id pc-id}]]
+    (mt/with-temp [Card                 {card-id :id}    (assoc (checkins-query-card {:breakout [[:field (mt/id :checkins :date) {:temporal-unit :day}]]})
+                                                                :name "My Question Name")
+                   Pulse                {pulse-id :id}   {:name "Test", :archived true}
+                   PulseCard             _               {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}
+                   PulseChannel          {pc-id :id}     {:pulse_id      pulse-id
+                                                          :schedule_hour nil
+                                                          :schedule_type "hourly"
+                                                          :channel_type  :email}
+                   PulseChannelRecipient _               {:user_id          (mt/user->id :rasta)
+                                                          :pulse_channel_id pc-id}]
       (et/with-fake-inbox
         (let [exceptions (atom [])
               on-error   (fn [_ exception]
@@ -79,3 +81,40 @@
           (testing "There shouldn't be any failures, just skipping over the archived pulse"
             (is (= []
                    @exceptions))))))))
+
+(deftest clear-pulse-channels-test
+  (testing "Removes empty PulseChannel"
+    (mt/with-temp [Pulse        {pulse-id :id} {}
+                   PulseChannel _ {:pulse_id pulse-id}]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 0
+             (t2/count PulseChannel)))
+      (is (:archived (t2/select-one Pulse :id pulse-id)))))
+
+  (testing "Has PulseChannelRecipient"
+    (mt/with-temp [Pulse                 {pulse-id :id} {}
+                   PulseChannel          {pc-id :id} {:pulse_id     pulse-id
+                                                      :channel_type :email}
+                   PulseChannelRecipient _           {:user_id          (mt/user->id :rasta)
+                                                      :pulse_channel_id pc-id}]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel)))))
+
+  (testing "Has email"
+    (mt/with-temp [Pulse        {pulse-id :id} {}
+                   PulseChannel _ {:pulse_id     pulse-id
+                                   :channel_type :email
+                                   :details      {:emails ["test@metabase.com"]}}]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel)))))
+
+  (testing "Has channel"
+    (mt/with-temp [Pulse        {pulse-id :id} {}
+                   PulseChannel _ {:pulse_id     pulse-id
+                                   :channel_type :slack
+                                   :details      {:channel ["#test"]}}]
+      (#'send-pulses/clear-pulse-channels!)
+      (is (= 1
+             (t2/count PulseChannel))))))

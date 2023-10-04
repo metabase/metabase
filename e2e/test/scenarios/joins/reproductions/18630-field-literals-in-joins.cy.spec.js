@@ -1,12 +1,10 @@
 import { restore } from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("issue 18630", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsAdmin();
   });
@@ -48,17 +46,21 @@ describe("issue 18630", () => {
         alias: "People",
       },
     ],
+    limit: 3,
+  };
+
+  const questionDetails = {
+    name: "18630",
+    query: QUERY_WITH_FIELD_CLAUSE,
   };
 
   it("should normally open queries with field literals in joins (metabase#18630)", () => {
-    cy.createQuestion(
-      { query: QUERY_WITH_FIELD_CLAUSE },
-      { visitQuestion: true },
-    );
+    cy.createQuestion(questionDetails, { visitQuestion: true });
 
     // The query runs and we assert the page is not blank,
-    // rather than an infinite loop and stack overflow.
-    // 'test question' is the name of the question.
-    cy.findByText("test question");
+    // which was caused by an infinite loop and a stack overflow.
+    cy.findByDisplayValue(questionDetails.name);
+    cy.get(".cellData").contains("29494 Anderson Drive");
+    cy.findByTestId("question-row-count").should("have.text", "Showing 3 rows");
   });
 });

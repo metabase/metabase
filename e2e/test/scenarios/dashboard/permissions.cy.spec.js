@@ -21,7 +21,6 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.request("POST", "/api/collection", {
       name: "locked down collection",
-      color: "#509EE3",
       parent_id: null,
     }).then(({ body: { id: collection_id } }) => {
       cy.request("GET", "/api/collection/graph").then(
@@ -72,8 +71,8 @@ describe("scenarios > dashboard > permissions", () => {
       updateDashboardCards({
         dashboard_id: dashId,
         cards: [
-          { card_id: firstQuestionId, row: 0, col: 0, size_x: 6, size_y: 6 },
-          { card_id: secondQuestionId, row: 0, col: 6, size_x: 6, size_y: 6 },
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 8, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 8, size_y: 6 },
         ],
       });
     });
@@ -82,23 +81,31 @@ describe("scenarios > dashboard > permissions", () => {
   it("should let admins view all cards in a dashboard", () => {
     visitDashboard(dashboardId);
     // Admin can see both questions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("First Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display dashboards with some cards locked down", () => {
     cy.signIn("nodata");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Second Question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("bar");
   });
 
   it("should display an error if they don't have perms for the dashboard", () => {
     cy.signIn("nocollection");
     visitDashboard(dashboardId);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });

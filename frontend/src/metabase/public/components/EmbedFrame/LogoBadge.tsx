@@ -1,12 +1,7 @@
-import React from "react";
 import { t, jt } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
-import {
-  MetabaseLink,
-  MetabaseName,
-  Message,
-  Variant,
-} from "./LogoBadge.styled";
+import type { Variant } from "./LogoBadge.styled";
+import { MetabaseLink, MetabaseName, Message } from "./LogoBadge.styled";
 
 function LogoBadge({
   dark,
@@ -33,4 +28,5 @@ function LogoBadge({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LogoBadge;

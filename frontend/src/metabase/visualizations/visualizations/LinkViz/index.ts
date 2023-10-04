@@ -1,1 +1,1 @@
-export { default } from "./LinkViz";
+export { LinkViz } from "./LinkViz";

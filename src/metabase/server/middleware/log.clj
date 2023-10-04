@@ -194,7 +194,7 @@
   ;; don't log calls to /health or /util/logs because they clutter up the logs (especially the window in admin) with
   ;; useless lines
   (and (request.u/api-call? request)
-       (not (#{"/api/health" "/api/util/logs"} uri))))
+       (not (#{"/api/util/logs"} uri))))
 
 (defn log-api-call
   "Logs info about request such as status code, number of DB calls, and time taken to complete."

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -9,8 +9,6 @@ import {
   getSignTokenOptions,
 } from "../../lib/code";
 import CodeSample from "./CodeSample";
-
-import "metabase/lib/ace/theme-metabase";
 
 import "ace/mode-clojure";
 import "ace/mode-javascript";

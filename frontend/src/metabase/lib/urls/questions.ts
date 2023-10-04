@@ -3,18 +3,16 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { CardId } from "metabase-types/api";
-import { Card as BaseCard } from "metabase-types/types/Card";
-import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
+import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type { QuestionCreatorOpts } from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
-type Card = Partial<BaseCard> & {
-  id?: number | string;
-  card_id?: string;
-  name?: string;
+type Card = Partial<SavedCard> & {
+  card_id?: CardId | string;
   model?: "card" | "dataset";
-  dataset?: boolean;
 };
 
 export const newQuestionFlow = () => "/question/new";
@@ -41,8 +39,11 @@ export function question(
 
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
-      .filter(([key, value]) => value !== undefined)
-      .map(kv => kv.map(encodeURIComponent).join("="))
+      .map(([key, value]) =>
+        value == null
+          ? `${encodeURIComponent(key)}=`
+          : [key, value].map(encodeURIComponent).join("="),
+      )
       .join("&");
   }
 
@@ -106,7 +107,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
   const question = Question.create(options);
-  const url = question.getUrl({
+  const url = ML_Urls.getUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });

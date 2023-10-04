@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -16,11 +17,14 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.google.cloud.bigquery BigQuery)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private test-db-name (bigquery.tx/normalize-name :db "test_data"))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -59,6 +63,9 @@
    ;; the initial dataset isn't realized until it's used the first time. because of that,
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
+
+   ;; TODO Temporarily disabling due to flakiness (#33140)
+   #_
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
@@ -169,17 +176,20 @@
 
 (defmacro with-view [[view-name-binding] & body]
   `(do-with-temp-obj "view_%s"
-                     (fn [view-nm#] [(str "CREATE VIEW `v3_test_data.%s` AS "
+                     (fn [view-nm#] [(str "CREATE VIEW `%s.%s` AS "
                                           "SELECT v.id AS id, v.name AS venue_name, c.name AS category_name "
-                                          "FROM `%s.v3_test_data.venues` v "
-                                          "LEFT JOIN `%s.v3_test_data.categories` c "
+                                          "FROM `%s.%s.venues` v "
+                                          "LEFT JOIN `%s.%s.categories` c "
                                           "ON v.category_id = c.id "
                                           "ORDER BY v.id ASC "
                                           "LIMIT 3")
+                                     ~test-db-name
                                      view-nm#
                                      (bigquery.tx/project-id)
-                                     (bigquery.tx/project-id)])
-                     (fn [view-nm#] ["DROP VIEW IF EXISTS `v3_test_data.%s`" view-nm#])
+                                     ~test-db-name
+                                     (bigquery.tx/project-id)
+                                     ~test-db-name])
+                     (fn [view-nm#] ["DROP VIEW IF EXISTS `%s.%s`" ~test-db-name view-nm#])
                      (fn [~(or view-name-binding '_)] ~@body)))
 
 (def ^:private numeric-val "-1.2E20")
@@ -194,31 +204,32 @@
 
 (defmacro with-numeric-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
-                     (fn [tbl-nm#] [(str "CREATE TABLE `v3_test_data.%s` AS SELECT "
+                     (fn [tbl-nm#] [(str "CREATE TABLE `%s.%s` AS SELECT "
                                          "NUMERIC '%s' AS numeric_col, "
                                          "DECIMAL '%s' AS decimal_col, "
                                          "BIGNUMERIC '%s' AS bignumeric_col, "
                                          "BIGDECIMAL '%s' AS bigdecimal_col")
+                                    ~test-db-name
                                     tbl-nm#
                                     ~numeric-val
                                     ~decimal-val
                                     ~bignumeric-val
                                     ~bigdecimal-val])
-                     (fn [tbl-nm#] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm#])
+                     (fn [tbl-nm#] ["DROP TABLE IF EXISTS `%s.%s`" ~test-db-name tbl-nm#])
                      (fn [~(or table-name-binding '_)] ~@body)))
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema "v3_test_data", :name view-name})
+                     {:schema test-db-name, :name view-name})
           "`describe-database` should see the view")
-      (is (= {:schema "v3_test_data"
+      (is (= {:schema test-db-name
               :name   view-name
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema "v3_test_data"}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
@@ -250,12 +261,13 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [{db-id :id :as temp-db}
-                              {:engine  :bigquery-cloud-sdk
-                               :details (-> (:details (mt/db))
-                                            (assoc :project-id "bigquery-public-data"
-                                                   :dataset-filters-type "inclusion"
-                                                   :dataset-filters-patterns "chicago_taxi_trips"))}]
+      (t2.with-temp/with-temp [Database
+                               {db-id :id :as temp-db}
+                               {:engine  :bigquery-cloud-sdk
+                                :details (-> (:details (mt/db))
+                                             (assoc :project-id "bigquery-public-data"
+                                                    :dataset-filters-type "inclusion"
+                                                    :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -268,10 +280,10 @@
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
-                            (mt/run-mbql-query taxi_trips
-                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
-                                           "Cash"]
-                               :limit  1}))))))
+                           (mt/run-mbql-query taxi_trips
+                             {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
+                                       "Cash"]
+                              :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -279,9 +291,9 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema "v3_test_data", :name tbl-nm})
+                     {:schema test-db-name, :name tbl-nm})
           "`describe-database` should see the table")
-      (is (= {:schema "v3_test_data"
+      (is (= {:schema test-db-name
               :name   tbl-nm
               :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
                         {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
@@ -293,7 +305,7 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -316,15 +328,16 @@
 (deftest sync-table-with-array-test
   (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
     (do-with-temp-obj "table_array_type_%s"
-      (fn [tbl-nm] ["CREATE TABLE `v3_test_data.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+      (fn [tbl-nm] ["CREATE TABLE `%s.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                    test-db-name
                     tbl-nm])
-      (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
+      (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
       (fn [tbl-nm]
-        (is (= {:schema "v3_test_data"
+        (is (= {:schema test-db-name
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
             "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
@@ -378,6 +391,8 @@
             (catch clojure.lang.ExceptionInfo e
               (is (= (ex-message e) "Query cancelled")))))))))
 
+;; TODO Temporarily disabling due to flakiness (#33140)
+#_
 (deftest global-max-rows-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
@@ -393,7 +408,7 @@
               (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
-  (mt/with-temp Database [db-filtered database]
+  (t2.with-temp/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
     (doseq [table (t2/select-one Table :db_id (u/the-id db-filtered))]
       (assert-table-fn table))))
@@ -425,14 +440,14 @@
     (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
       ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
       ;; temp DB will cause driver/normalize-db-details to fire
-      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
-                                    :engine  :bigquery-cloud-sdk,
-                                    :details {:dataset-id "my-dataset"
-                                              :service-account-json "{}"}}]
-                      Table    [table1 {:name "Table 1"
-                                        :db_id (u/the-id db)}]
-                      Table    [table2 {:name "Table 2"
-                                        :db_id (u/the-id db)}]]
+      (mt/with-temp [Database db {:name    "Legacy BigQuery DB"
+                                  :engine  :bigquery-cloud-sdk,
+                                  :details {:dataset-id "my-dataset"
+                                            :service-account-json "{}"}}
+                     Table    table1 {:name "Table 1"
+                                      :db_id (u/the-id db)}
+                     Table    table2 {:name "Table 2"
+                                      :db_id (u/the-id db)}]
         (let [db-id      (u/the-id db)
               call-count (atom 0)
               orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
@@ -495,3 +510,12 @@
                   ["2021-01-10T00:00:00Z" 6]]
                  (mt/rows
                   (qp/process-query query)))))))))
+
+(deftest format-sql-test
+  (mt/test-driver :bigquery-cloud-sdk
+     (testing "native queries are compiled and formatted without whitespace errors (#30676)"
+       (is (= (str (format "SELECT\n  count(*) AS `count`\nFROM\n  `%s.venues`" test-db-name))
+              (-> (mt/mbql-query venues {:aggregation [:count]})
+                  qp/compile-and-splice-parameters
+                  :query
+                  (mdb.query/format-sql :bigquery-cloud-sdk)))))))

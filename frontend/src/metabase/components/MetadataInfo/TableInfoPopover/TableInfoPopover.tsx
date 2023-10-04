@@ -1,10 +1,9 @@
-import React, { ReactElement } from "react";
+import type { ReactElement } from "react";
 import { hideAll } from "tippy.js";
 
 import PropTypes from "prop-types";
-import TippyPopover, {
-  ITippyPopoverProps,
-} from "metabase/components/Popover/TippyPopover";
+import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
@@ -82,4 +81,5 @@ function TableInfoPopover({
 
 TableInfoPopover.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableInfoPopover;

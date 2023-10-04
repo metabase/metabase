@@ -1,4 +1,8 @@
-import { restore, popover, startNewQuestion } from "e2e/support/helpers";
+import { restore, popover, openTable } from "e2e/support/helpers";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("operators in questions", () => {
   beforeEach(() => {
@@ -65,10 +69,7 @@ describe("operators in questions", () => {
 
   describe("fields have proper operators", () => {
     it("text operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("Title").click();
@@ -82,10 +83,7 @@ describe("operators in questions", () => {
     });
 
     it("number operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("Price").click();
@@ -99,10 +97,7 @@ describe("operators in questions", () => {
     });
 
     it("relative date operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("Created At").click();
@@ -127,10 +122,7 @@ describe("operators in questions", () => {
     });
 
     it("specific date operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("Created At").click();
@@ -155,10 +147,7 @@ describe("operators in questions", () => {
     });
 
     it("exclude date operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("Created At").click();
@@ -180,10 +169,7 @@ describe("operators in questions", () => {
     });
 
     it("id operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("Products").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PRODUCTS_ID);
 
       popover().within(() => {
         cy.findByText("ID").click();
@@ -197,10 +183,7 @@ describe("operators in questions", () => {
     });
 
     it("geo operators", () => {
-      startNewQuestion();
-      cy.contains("Sample Database").click();
-      cy.contains("People").click();
-      cy.findByText("Add filters to narrow your answer").click();
+      setup(PEOPLE_ID);
 
       popover().within(() => {
         cy.findByText("State").click({ force: true });
@@ -214,3 +197,8 @@ describe("operators in questions", () => {
     });
   });
 });
+
+function setup(tableId) {
+  openTable({ table: tableId, mode: "notebook" });
+  cy.findByRole("button", { name: "Filter" }).click();
+}

@@ -18,7 +18,7 @@ Cypress.Commands.add(
                   // Add sane defaults for the dashboard card size and position
                   row: 0,
                   col: 0,
-                  size_x: 8,
+                  size_x: 11,
                   size_y: 8,
                   ...card,
                 },
@@ -26,7 +26,7 @@ Cypress.Commands.add(
             })
             .then(response => ({
               ...response,
-              body: response.body[0],
+              body: response.body.cards[0],
             })),
         ),
     ),

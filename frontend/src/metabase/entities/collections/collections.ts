@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { GET } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
@@ -80,11 +80,16 @@ const Collections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      [state => state.entities.collections || {}, getUserPersonalCollectionId],
-      (collections, currentUserPersonalCollectionId) =>
+      [
+        state => Collections.selectors.getList(state),
+        getUserPersonalCollectionId,
+        (_state, props) => props?.collectionFilter,
+      ],
+      (collections, currentUserPersonalCollectionId, collectionFilter) =>
         getExpandedCollectionsById(
-          Object.values(collections),
+          collections || [],
           currentUserPersonalCollectionId,
+          collectionFilter,
         ),
     ),
     getInitialCollectionId,
@@ -102,4 +107,5 @@ const Collections = createEntity({
 
 export { getExpandedCollectionsById };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;

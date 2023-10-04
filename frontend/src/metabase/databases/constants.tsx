@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
@@ -9,7 +8,7 @@ import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleFiel
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
 import DatabaseSyncScheduleField from "./components/DatabaseSyncScheduleField";
-import { EngineFieldOverride } from "./types";
+import type { EngineFieldOverride } from "./types";
 
 export const SAVED_QUESTIONS_DATABASE = {
   id: SAVED_QUESTIONS_VIRTUAL_DB_ID,

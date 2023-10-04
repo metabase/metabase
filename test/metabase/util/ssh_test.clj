@@ -5,14 +5,15 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.ssh :as ssh])
+   [metabase.util.ssh :as ssh]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io BufferedReader InputStreamReader PrintWriter)
    (java.net InetSocketAddress ServerSocket Socket)
@@ -189,6 +190,15 @@
          :host                          "127.0.0.1"
          :port                          1234}))))
 
+(deftest connects-with-default-tunnel-port-test
+  (with-redefs [ssh/default-ssh-tunnel-port ssh-mock-server-with-password-port]
+    (#'ssh/start-ssh-tunnel!
+     {:tunnel-user ssh-username
+      :tunnel-host "127.0.0.1"
+      :tunnel-pass ssh-password
+      :host        "127.0.0.1"
+      :port        1234})))
+
 (deftest ssh-tunnel-works
   (testing "ssh tunnel can properly tunnel"
     (with-open [server (doto (ServerSocket. 0) ; 0 -- let ServerSocket pick a random port
@@ -229,7 +239,7 @@
                                      :tunnel-port ssh-mock-server-with-password-port
                                      :tunnel-user ssh-username
                                      :tunnel-pass ssh-password)]
-        (mt/with-temp Database [tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
+        (t2.with-temp/with-temp [Database tunneled-db {:engine (tx/driver), :details tunnel-db-details}]
           (mt/with-db tunneled-db
             (sync/sync-database! (mt/db))
             (letfn [(check-row []
@@ -251,7 +261,7 @@
       (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed (H2 version)"
         (let [h2-port (tu/find-free-port)
               server  (init-h2-tcp-server h2-port)
-              ; Use ACCESS_MODE_DATA=r to avoid updating the DB file
+              ;; Use ACCESS_MODE_DATA=r to avoid updating the DB file
               uri     (format "tcp://localhost:%d/./test_resources/ssh/tiny-db;USER=GUEST;PASSWORD=guest;ACCESS_MODE_DATA=r" h2-port)
               h2-db   {:port               h2-port
                        :host               "localhost"
@@ -263,7 +273,7 @@
                        :tunnel-user        ssh-username
                        :tunnel-pass        ssh-password}]
           (try
-            (mt/with-temp Database [db {:engine :h2, :details h2-db}]
+            (t2.with-temp/with-temp [Database db {:engine :h2, :details h2-db}]
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
@@ -284,7 +294,7 @@
                                               (-> {:query "SELECT col1, col2 FROM my_tbl;"}
                                                   (mt/native-query)
                                                   (qp/process-query)
-                                                  (qp.test/rows-and-cols)))))]
+                                                  (qp.test-util/rows-and-cols)))))]
                   ;; check that some data can be queried
                   (check-data)
                   ;; kill the ssh tunnel; fortunately, we have an existing function that can do that

@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- test-endpoint []
-  (format "transform/%s/%s/%s" (mt/id) "PUBLIC" "Test transform"))
+  (format "transform/%s/%s/%s" (mt/id) "PUBLIC" "Test%20transform"))
 
 (deftest transform-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"
