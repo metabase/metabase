@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
 
 (deftest ^:parallel basic-filter-parts-test
@@ -110,3 +111,12 @@
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:+ {} [:field {:lib/uuid string?} (meta/id :products :id)] 2] 1]
           (lib/expression-clause := [(lib/expression-clause :+ [(meta/field-metadata :products :id) 2] {}) 1] {}))))
+
+(deftest ^:parallel invisible-expression-parts-test
+  (is (=? {:lib/type :mbql/expression-parts
+           :operator :=
+           :args [{:lib/type :metadata/column
+                   :display-name "ID"}
+                  1]}
+          (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
+                                                              1)))))
