@@ -2,7 +2,9 @@
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.walk :as walk]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+    [metabase.models.interface :as mi]
     [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,18 +66,18 @@
   "For a given metric, determine adjacent fields and return a map of them by
   semantic type grouping."
   [metric]
-  (let [semantic-groups      (semantic-groups metric)]
+  (let [semantic-groups (semantic-groups metric)]
     (for [{:keys [affinity-set] :as affinity-spec} affinity-specs
           :when (every? semantic-groups affinity-set)
           :let [bindings (map semantic-groups affinity-set)]
           dimensions (apply math.combo/cartesian-product bindings)]
       (assoc affinity-spec
-        :metric       metric
-        :dimensions   dimensions))))
+        :metric metric
+        :dimensions dimensions))))
 
 ;; This is SUPER important
 ;; It can be sourced internally or from other data
-(defn identify-metrics [thing]
+(defn find-metrics [thing]
   ;;Can come from linked entities or templates
   ;; Maybe will be returned as queries, as is done with linked metrics above
   )
@@ -122,12 +124,139 @@
        dash-gen/do-layout)
   )
 
-(defn find-metrics
-  ;; what should this return?
+(defmulti linked-metrics mi/model)
 
-  ;; the metric should include the aggregation clause grounded on a field id.
-  ;;
-  [])
+(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
+  [{:metric-name            metric-name
+    :metric-title           metric-name
+    :metric-definition      definition
+    :metric-interestingness :???}])
+
+(defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
+  (mapcat
+    linked-metrics
+    (t2/select :model/Metric :table_id table-id)))
+
+(defmethod linked-metrics :default [_] [])
+
+(defmulti potential-dimensions mi/model)
+
+(defmethod potential-dimensions :model/Metric [{table-id :table_id}]
+  (group-by
+    (fn [{:keys [semantic_type effective_type]}]
+      (or semantic_type effective_type))
+    (t2/select :model/Field :table_id table-id)))
+
+(defmethod potential-dimensions :model/Table [{table-id :id}]
+  (group-by
+    (fn [{:keys [semantic_type effective_type]}]
+      (or semantic_type effective_type))
+    (t2/select :model/Field :table_id table-id)))
+
+(defmethod potential-dimensions :default [_] {})
+
+(comment
+  (potential-dimensions (t2/select-one :model/Table :name "ORDERS"))
+  (potential-dimensions (t2/select-one :model/Metric :name "Churn"))
+  )
+
+(defn transform-metric-aggregate
+  "Map a metric aggregate definition from nominal types to semantic types."
+  [m decoder]
+  (walk/prewalk
+    (fn [v]
+      (if (vector? v)
+        (let [[d n] v]
+          (if (= "dimension" d)
+            (decoder n)
+            v))
+        v))
+    m))
+
+(defn generate-metric-definitions
+  "Given a set of metrics and dimensions, produce a sequence of metric definitions containing semantic information
+  such that it can be easily bound to real dimensions/fields."
+  [{:keys [dimensions metrics]}
+   semantic-type->fields]
+  (let [nominal-dims->semantic-types
+        (->> dimensions
+             (map first)
+             (map (fn [[dimension-name {:keys [field_type]}]]
+                    [dimension-name (peek field_type)]))
+             (reduce
+               (fn [acc [dimension-name semantic-type]]
+                 (update acc dimension-name (fnil conj #{}) semantic-type))
+               {}))]
+    (->> metrics
+         (map first)
+         (mapcat (fn [[metric-name {metric-title :name metric-definition :metric}]]
+                   (let [dims (dashboard-templates/collect-dimensions metric-definition)]
+                     (->> (map nominal-dims->semantic-types dims)
+                          (apply math.combo/cartesian-product)
+                          (map (partial zipmap dims))
+                          (mapcat (fn [nm->st]
+                                 (->> (map semantic-type->fields (vals nm->st))
+                                      (apply math.combo/cartesian-product)
+                                      (map (partial zipmap (keys nm->st))))))
+                          (map (fn [nm->field]
+                                 (let [xform (update-vals nm->field (fn [{field-id :id}]
+                                                                      [:field field-id nil]))
+                                       interestingness (->> nm->field
+                                                            vals
+                                                            (map :semantic_type)
+                                                            affinity-set-interestingness)]
+                                   {:metric-name                 metric-name
+                                    :metric-title                metric-title
+                                    :metric-interestingness      interestingness
+                                    ;:nominal-query               metric-definition
+                                    :metric-definition           {:aggregation
+                                                                  (transform-metric-aggregate metric-definition xform)}
+                                    ;:nominal-type->field nm->field
+                                    }))))))))
+    ))
+
+(defn generate-metrics
+  "Given a thing to create metrics for and some template containing metric definitions, create a sequence of
+   \"grounded\" metrics, each of which contains a partial query defining the metric bound to actual fields.
+
+   Note that we currently take the dashboard-template as an argument because we need both the metric and dimension
+   definitions from this template. We could, in the future, provide only metrics defined semantically to eliminate the
+   larger data structure from being passed.
+   "
+  [thing dashboard-template]
+  (let [semantic-type->fields (potential-dimensions thing)]
+    (generate-metric-definitions
+      dashboard-template
+      semantic-type->fields)))
+
+(defn find-metrics
+  "Create a sequence of metrics, each of which follows the shape of this fragment:
+
+   {:metric-name \"MinJoinDate\"
+    :metric-title \"Earliest Joint Date\"
+    :metric-interestingness 5
+    :metric-definition {:aggregation [\"min\" [:field 13 nil]]}}
+  "
+  [thing dashboard-template]
+  (let [linked-metrics    (linked-metrics thing)
+        generated-metrics (generate-metrics thing dashboard-template)]
+    (into
+      linked-metrics
+      generated-metrics)))
 
 (defn find-dimensions
-  [])
+  [_])
+
+(comment
+  (find-metrics
+    (t2/select-one :model/Metric :name "Churn")
+    (dashboard-templates/get-dashboard-template ["table" "UserTable"]))
+
+  (find-metrics
+    (t2/select-one :model/Table :name "ACCOUNTS")
+    nil)
+
+  (find-metrics
+    (t2/select-one :model/Table :name "ORDERS")
+    nil)
+  )
