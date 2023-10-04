@@ -1,6 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
-import { Stack, TextInput } from "metabase/ui";
+import { Stack, FileInput } from "metabase/ui";
 
 export const args = {
   variant: "default",
@@ -15,10 +15,9 @@ export const args = {
 };
 
 export const sampleArgs = {
-  value: "Metabase",
-  label: "Company or team name",
-  description: "Name used for this instance",
-  placeholder: "Department of awesome",
+  label: "SSL Client Certificate (PEM)",
+  description: "A certificate to authenticate the instance to the server",
+  placeholder: "Select a file",
   error: "required",
 };
 
@@ -46,47 +45,39 @@ export const argTypes = {
   disabled: {
     control: { type: "boolean" },
   },
-  readOnly: {
-    control: { type: "boolean" },
-  },
   withAsterisk: {
     control: { type: "boolean" },
   },
 };
 
 <Meta
-  title="Inputs/TextInput"
-  component={TextInput}
+  title="Inputs/FileInput"
+  component={FileInput}
   args={args}
   argTypes={argTypes}
 />
 
-# TextInput
+# FileInput
 
-Our themed wrapper around [Mantine TextInput](https://mantine.dev/core/text-input/).
+Our themed wrapper around [Mantine FileInput](https://mantine.dev/core/file-input/).
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine TextInput Docs](https://mantine.dev/core/text-input/)
+- [Mantine FileInput Docs](https://mantine.dev/core/file-input/)
 
 ## Examples
 
-export const DefaultTemplate = args => <TextInput {...args} />;
+export const DefaultTemplate = args => <FileInput {...args} />;
 
 export const VariantTemplate = args => (
   <Stack>
-    <TextInput {...args} variant="default" />
-    <TextInput {...args} variant="unstyled" />
+    <FileInput {...args} variant="default" />
+    <FileInput {...args} variant="unstyled" />
   </Stack>
 );
 
 export const IconTemplate = args => (
-  <VariantTemplate {...args} icon={<Icon name="dashboard" />} />
-);
-
-export const RightSectionTemplate = args => (
-  <VariantTemplate {...args} rightSection={<Icon name="chevrondown" />} />
+  <VariantTemplate {...args} icon={<Icon name="attachment" />} />
 );
 
 export const Default = DefaultTemplate.bind({});
@@ -101,19 +92,6 @@ export const EmptyMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story name="Empty, md">{EmptyMd}</Story>
-</Canvas>
-
-#### Filled
-
-export const FilledMd = VariantTemplate.bind({});
-FilledMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  placeholder: sampleArgs.placeholder,
-};
-
-<Canvas>
-  <Story name="Filled, md">{FilledMd}</Story>
 </Canvas>
 
 #### Asterisk
@@ -186,35 +164,6 @@ IconMd.args = {
   <Story name="Icon, md">{IconMd}</Story>
 </Canvas>
 
-#### Right section
-
-export const RightSectionMd = RightSectionTemplate.bind({});
-RightSectionMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  withAsterisk: true,
-};
-
-<Canvas>
-  <Story name="Right section, md">{RightSectionMd}</Story>
-</Canvas>
-
-#### Read only
-
-export const ReadOnlyMd = RightSectionTemplate.bind({});
-RightSectionMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  readOnly: true,
-};
-
-<Canvas>
-  <Story name="Read only, md">{ReadOnlyMd}</Story>
-</Canvas>
-
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
@@ -225,18 +174,6 @@ EmptyXs.args = {
 
 <Canvas>
   <Story name="Empty, xs">{EmptyXs}</Story>
-</Canvas>
-
-#### Filled
-
-export const FilledXs = VariantTemplate.bind({});
-FilledXs.args = {
-  ...FilledMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Filled, xs">{FilledXs}</Story>
 </Canvas>
 
 #### Asterisk
@@ -297,28 +234,4 @@ IconXs.args = {
 
 <Canvas>
   <Story name="Icon, xs">{IconXs}</Story>
-</Canvas>
-
-#### Right section
-
-export const RightSectionXs = RightSectionTemplate.bind({});
-RightSectionXs.args = {
-  ...RightSectionMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Right section, xs">{RightSectionXs}</Story>
-</Canvas>
-
-#### Read only
-
-export const ReadOnlyXs = RightSectionTemplate.bind({});
-RightSectionXs.args = {
-  ...ReadOnlyMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Read only, xs">{ReadOnlyXs}</Story>
 </Canvas>

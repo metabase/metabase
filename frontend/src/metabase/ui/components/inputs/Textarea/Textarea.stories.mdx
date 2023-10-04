@@ -1,7 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { Icon } from "metabase/core/components/Icon";
-import { Stack } from "metabase/ui";
-import { NumberInput } from "./";
+import { Stack, Textarea } from "metabase/ui";
 
 export const args = {
   variant: "default",
@@ -13,22 +12,17 @@ export const args = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
-  min: undefined,
-  max: undefined,
-  step: undefined,
-  hideControls: true,
-  precision: undefined,
-  decimalSeparator: undefined,
+  autosize: false,
+  minRows: undefined,
+  maxRows: undefined,
 };
 
 export const sampleArgs = {
-  value: 1234,
-  label: "Goal value",
-  description: "Constant line added as a marker to the chart",
-  placeholder: "0",
+  value: "Metabase",
+  label: "Company or team name",
+  description: "Name used for this instance",
+  placeholder: "Department of awesome",
   error: "required",
-  min: 0,
-  max: 100,
 };
 
 export const argTypes = {
@@ -41,16 +35,16 @@ export const argTypes = {
     control: { type: "inline-radio" },
   },
   label: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   description: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   placeholder: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   error: {
-    control: { type: "number" },
+    control: { type: "text" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -61,55 +55,41 @@ export const argTypes = {
   withAsterisk: {
     control: { type: "boolean" },
   },
-  min: {
-    control: { type: "number" },
-  },
-  max: {
-    control: { type: "number" },
-  },
-  step: {
-    control: { type: "number" },
-  },
-  hideControls: {
+  autosize: {
     control: { type: "boolean" },
   },
-  precision: {
+  minRows: {
     control: { type: "number" },
   },
-  decimalSeparator: {
-    control: { type: "text" },
+  maxRows: {
+    control: { type: "number" },
   },
 };
 
 <Meta
-  title="Inputs/NumberInput"
-  component={NumberInput}
+  title="Inputs/Textarea"
+  component={Textarea}
   args={args}
   argTypes={argTypes}
 />
 
-# NumberInput
+# Textarea
 
-Our themed wrapper around [Mantine NumberInput](https://mantine.dev/core/number-input/).
+Our themed wrapper around [Mantine Textarea](https://mantine.dev/core/textarea/).
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/YWyb541aUHtYXJVPzyYSbg/Input-%2F-Numbers?type=design&node-id=1-96&mode=design&t=1bDfUrJc5alZmVpx-0)
-- [Mantine NumberInput Docs](https://mantine.dev/core/number-input/)
+- [Mantine Textarea Docs](https://mantine.dev/core/textarea/)
 
 ## Examples
 
-export const DefaultTemplate = args => <NumberInput {...args} />;
+export const DefaultTemplate = args => <Textarea {...args} />;
 
 export const VariantTemplate = args => (
   <Stack>
-    <NumberInput {...args} variant="default" />
-    <NumberInput {...args} variant="unstyled" />
+    <Textarea {...args} variant="default" />
+    <Textarea {...args} variant="unstyled" />
   </Stack>
-);
-
-export const IconTemplate = args => (
-  <VariantTemplate {...args} icon={<Icon name="int" />} />
 );
 
 export const Default = DefaultTemplate.bind({});
@@ -199,23 +179,9 @@ ErrorMd.args = {
   <Story name="Error, md">{ErrorMd}</Story>
 </Canvas>
 
-#### Icon
-
-export const IconMd = IconTemplate.bind({});
-IconMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  withAsterisk: true,
-};
-
-<Canvas>
-  <Story name="Icon, md">{IconMd}</Story>
-</Canvas>
-
 #### Read only
 
-export const ReadOnlyMd = IconTemplate.bind({});
+export const ReadOnlyMd = VariantTemplate.bind({});
 ReadOnlyMd.args = {
   defaultValue: sampleArgs.value,
   label: sampleArgs.label,
@@ -228,66 +194,18 @@ ReadOnlyMd.args = {
   <Story name="Read only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
-#### Min / max
+#### Autosize
 
-export const MinMaxMd = args => IconTemplate.bind({});
-MinMaxMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  min: sampleArgs.min,
-  max: sampleArgs.max,
-};
-
-<Canvas>
-  <Story name="Min / max, md">{MinMaxMd}</Story>
-</Canvas>
-
-#### Controls
-
-export const ControlsMd = IconTemplate.bind({});
-ControlsMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  min: sampleArgs.min,
-  max: sampleArgs.max,
-  hideControls: false,
-};
-
-<Canvas>
-  <Story name="Controls, md">{ControlsMd}</Story>
-</Canvas>
-
-#### Precision and decimal separator
-
-export const PrecisionMd = IconTemplate.bind({});
-PrecisionMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  precision: 2,
-  decimalSeparator: ".",
-};
-
-<Canvas>
-  <Story name="Precision and decimal separator, md">{PrecisionMd}</Story>
-</Canvas>
-
-#### Parser and formatter
-
-export const ParserFormatterMd = IconTemplate.bind({});
-VariantTemplate.args = {
-  defaultValue: sampleArgs.value,
+export const AutosizeMd = VariantTemplate.bind({});
+AutosizeMd.args = {
   label: sampleArgs.label,
   description: sampleArgs.description,
   placeholder: sampleArgs.placeholder,
-  parser: value => value.replace(/^\$/, ""),
-  formatter: value => (value != null ? `$${value}` : "$"),
+  autosize: true,
 };
 
 <Canvas>
-  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
+  <Story name="Autosize, md">{AutosizeMd}</Story>
 </Canvas>
 
 ### Size - xs
@@ -362,18 +280,6 @@ ErrorXs.args = {
   <Story name="Error, xs">{ErrorXs}</Story>
 </Canvas>
 
-#### Icon
-
-export const IconXs = VariantTemplate.bind({});
-IconXs.args = {
-  ...IconMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Icon, xs">{IconXs}</Story>
-</Canvas>
-
 #### Read only
 
 export const ReadOnlyXs = VariantTemplate.bind({});
@@ -386,50 +292,14 @@ ReadOnlyXs.args = {
   <Story name="Read only, xs">{ReadOnlyXs}</Story>
 </Canvas>
 
-#### Min / max
+#### Autosize
 
-export const MinMaxXs = args => VariantTemplate.bind({});
-MinMaxXs.args = {
-  ...MinMaxMd.args,
+export const AutosizeXs = VariantTemplate.bind({});
+AutosizeXs.args = {
+  ...AutosizeXs.args,
   size: "xs",
 };
 
 <Canvas>
-  <Story name="Min / max, xs">{MinMaxXs}</Story>
-</Canvas>
-
-#### Controls
-
-export const ControlsXs = VariantTemplate.bind({});
-ControlsXs.args = {
-  ...ControlsMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Controls, xs">{ControlsXs}</Story>
-</Canvas>
-
-#### Precision and decimal separator
-
-export const PrecisionXs = VariantTemplate.bind({});
-PrecisionXs.args = {
-  ...PrecisionMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Precision and decimal separator, xs">{PrecisionXs}</Story>
-</Canvas>
-
-#### Parser and formatter
-
-export const ParserFormatterXs = VariantTemplate.bind({});
-ParserFormatterXs.args = {
-  ...ParserFormatterMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
+  <Story name="Autosize, xs">{AutosizeXs}</Story>
 </Canvas>

@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.query :as lib.query]
@@ -791,3 +792,13 @@
                   lib/available-aggregation-operators
                   (m/find-first #(= (:short %) :sum))
                   lib/aggregation-operator-columns))))))
+
+(deftest ^:parallel aggregation-at-index-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/count)))]
+    (are [index expected] (=? expected
+                              (lib.aggregation/aggregation-at-index query -1 index))
+      0 [:count {}]
+      1 [:count {}]
+      2 nil)))
