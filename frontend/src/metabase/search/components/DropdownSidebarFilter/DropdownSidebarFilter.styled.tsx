@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { Group, Stack } from "metabase/ui";
+import { Group } from "metabase/ui";
 
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
+import { Icon } from "metabase/core/components/Icon";
 
 export const DropdownFieldSet = styled(FieldSet)<{
   fieldHasValueOrFocus?: boolean;
@@ -41,11 +42,10 @@ export const DropdownFieldSet = styled(FieldSet)<{
   }
 `;
 
-export const DropdownDisplay = styled(Group)`
-  overflow: hidden;
+export const DropdownLabelIcon = styled(Icon)`
+  overflow: visible;
 `;
-
-export const DropdownContent = styled(Stack)`
+export const GroupOverflowHidden = styled(Group)`
   overflow: hidden;
 `;
 

@@ -427,7 +427,7 @@ describe("scenarios > search", () => {
       });
     });
 
-    describe.only("last_edited_by filter", () => {
+    describe("last_edited_by filter", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         // We'll create a question as a normal user, then edit it as an admin user
@@ -565,7 +565,7 @@ describe("scenarios > search", () => {
 
       it("should remove last_edited_by filter when `X` is clicked on filter", () => {
         cy.visit(
-          `/search?q=reviews&created_by=${NORMAL_USER_ID}&created_by=${ADMIN_USER_ID}`,
+          `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&created_by=${ADMIN_USER_ID}`,
         );
 
         expectSearchResultItemNameContent({
@@ -575,7 +575,7 @@ describe("scenarios > search", () => {
           ],
         });
 
-        cy.findByTestId("created_by-search-filter").within(() => {
+        cy.findByTestId("last_edited_by-search-filter").within(() => {
           cy.findByText("2 users selected").should("exist");
           cy.findByLabelText("close icon").click();
         });
