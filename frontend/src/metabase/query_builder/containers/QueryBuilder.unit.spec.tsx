@@ -622,6 +622,62 @@ describe("QueryBuilder", () => {
             ),
           ).not.toBeInTheDocument();
         });
+
+        it("does not show custom warning modal when saving edited query", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+
+          await waitFor(() => {
+            expect(rowLimitInput).toHaveValue(10);
+          });
+
+          userEvent.tab();
+
+          await waitFor(() => {
+            expect(
+              screen.getByRole("button", { name: "Save changes" }),
+            ).toBeEnabled();
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+          const slug = [
+            TEST_MODEL_CARD.id,
+            TEST_MODEL_CARD.name.toLowerCase(),
+          ].join("-");
+
+          await waitFor(() => {
+            expect(history.getCurrentLocation().pathname).toEqual(
+              `/model/${slug}`,
+            );
+          });
+
+          expect(
+            screen.queryByText("Changes were not saved"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByText(
+              "Navigating away from here will cause you to lose any changes you have made.",
+            ),
+          ).not.toBeInTheDocument();
+        });
       });
 
       describe("editing metadata", () => {
