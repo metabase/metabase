@@ -783,6 +783,58 @@ describe("QueryBuilder", () => {
             ),
           ).not.toBeInTheDocument();
         });
+
+        it("does not show custom warning modal when saving edited metadata", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const columnDisplayName = await screen.findByTitle("Display name");
+
+          userEvent.click(columnDisplayName);
+          userEvent.type(columnDisplayName, "X");
+
+          await waitFor(() => {
+            expect(columnDisplayName).toHaveValue(
+              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+            );
+          });
+
+          userEvent.tab();
+
+          await waitFor(() => {
+            expect(
+              screen.getByRole("button", { name: "Save changes" }),
+            ).toBeEnabled();
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+          await waitFor(() => {
+            expect(history.getCurrentLocation().pathname).toEqual(
+              `/model/${TEST_MODEL_CARD_SLUG}`,
+            );
+          });
+
+          expect(
+            screen.queryByText("Changes were not saved"),
+          ).not.toBeInTheDocument();
+          expect(
+            screen.queryByText(
+              "Navigating away from here will cause you to lose any changes you have made.",
+            ),
+          ).not.toBeInTheDocument();
+        });
       });
     });
 
