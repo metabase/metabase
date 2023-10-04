@@ -120,10 +120,10 @@ export function PermissionsTable({
                   )}
                 </PermissionsTableCell>
 
-                {entity.permissions.map(permission => {
+                {entity.permissions.map((permission, index) => {
                   return (
                     <PermissionsTableCell
-                      key={permission.type ?? permission.value}
+                      key={permission.type ?? String(index)}
                     >
                       <PermissionsSelect
                         {...permission}
