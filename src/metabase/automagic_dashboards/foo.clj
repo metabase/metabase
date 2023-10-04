@@ -29,7 +29,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
 
-(defn find-field-ids [m]
+(defn find-field-ids
+  "A utility function for pulling field definitions from mbql queries and return their IDs.
+   Does something like this already exist in our utils? I was unable to find anything like it."
+  [m]
   (let [fields (atom #{})]
     (walk/prewalk
       (fn [v]
@@ -42,6 +45,10 @@
     @fields))
 
 (defn semantic-groups
+  "From a :model/Metric, construct a mapping of semantic types of linked fields to
+   sets of fields that can satisfy that type. A linked field is one that is in the
+   source table for the metric contribute to the metric itself, is not a PK, and
+   has a semantic_type (we assume nil semantic_type fields are boring)."
   [{:keys [table_id definition]}]
   (let [field-ids            (find-field-ids definition)
         potential-dimensions (t2/select :model/Field
@@ -51,9 +58,11 @@
     (update-vals
       (->> potential-dimensions
            (group-by :semantic_type))
-      (fn [vs] (set vs)))))
+      set)))
 
 (defn instantiate-affinities
+  "For a given metric, determine adjacent fields and return a map of them by
+  semantic type grouping."
   [metric]
   (let [semantic-groups      (semantic-groups metric)]
     (for [{:keys [affinity-set] :as affinity-spec} affinity-specs
@@ -88,6 +97,9 @@
   (->> (t2/select :model/Metric)
        (map (fn [{:keys [name id] :as metric}]
               [name id (keys (semantic-groups metric))])))
+
+  (semantic-groups
+    (t2/select-one :model/Metric :name "Churn"))
 
   (let [{metric-name :name :as metric} (t2/select-one :model/Metric :name "Churn")]
     (->> metric
