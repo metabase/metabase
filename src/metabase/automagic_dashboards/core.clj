@@ -1227,20 +1227,24 @@
                              :score  100}}]
               :dimensions dimensions
               :cards      [{(unique-name "CARD" metric-id)
-                            {:title (deferred-tru "A look at the {0} metric" metric-name)
+                            {:title         (deferred-tru "A look at the {0} metric" metric-name)
                              :score         100
                              :dimensions    (mapv (fn [dim] (update-vals dim empty)) dimensions)
                              :metrics       [card-metric-name]
                              :query-literal definition
-                             :height 8
-                             :width 8
+                             :height        8
+                             :width         8
                              :visualization ["scalar" {}]
-                             :group "Overview"}}]}))))
+                             :group         card-metric-name}}]
+              :groups     [{card-metric-name {:title metric-name}}]}))))
 
 (defmethod dashboard-enhancements :default [_] nil)
 
 (comment
   (dashboard-enhancements (t2/select-one :model/Table :name "ACCOUNTS"))
+  (select-keys
+    (t2/select-one :model/Metric :name "Churn")
+    [:name :definition])
   )
 
 (s/defn ^:private apply-dashboard-template
@@ -1251,13 +1255,18 @@
   [{{:keys [entity] :as root} :root :as base-context}
    {:keys [dashboard-template-name] :as original-dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [enhancements           (dashboard-enhancements entity)
+  (let [{extra-groups :groups :as enhancements}           (dashboard-enhancements entity)
         {template-dimensions :dimensions
          template-metrics    :metrics
          template-filters    :filters
          template-cards      :cards
          :keys               [dashboard_filters]
-         :as                 dashboard-template} (merge-with concat original-dashboard-template enhancements)
+         :as                 dashboard-template} (->
+                                                   (merge-with
+                                                     concat
+                                                     original-dashboard-template
+                                                     (select-keys enhancements [:dimensions :metrics :cards]))
+                                                   (update :groups into (apply merge extra-groups)))
         available-dimensions   (->> (bind-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
