@@ -1,4 +1,4 @@
-(ns dev.optimize
+(ns dev.explain
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
