@@ -70,7 +70,7 @@
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
                [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
-    :order-by [[:timestamp :desc]]}))
+    :order-by [[:id :desc]]}))
 
 (defn user-recent-views
   "Returns the most recent `n` unique views for a given user."
@@ -81,7 +81,7 @@
    (let [all-user-views (t2/select-fn-vec #(select-keys % [:model :model_id])
                                           :model/RecentViews
                                           :user_id user-id
-                                          {:order-by [[:timestamp :desc]]
+                                          {:order-by [[:id :desc]]
                                            :limit    *recent-views-stored-per-user*})]
      (->> (distinct all-user-views)
           (take n)
