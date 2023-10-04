@@ -7,15 +7,11 @@
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.api.common.internal
-    :refer [add-route-param-regexes
-            add-route-param-schema
+    :refer [add-route-param-schema
             auto-coerce
-            auto-parse
-            malli-route-dox
-            malli-validate-params
             route-dox
-            route-fn-name
             validate-params
+            route-fn-name
             wrap-response-if-needed]]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
@@ -235,25 +231,6 @@
 (defn- parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
-      (throw (ex-info (str "Invalid defendpoint-schema args: " (s/explain-str ::defendpoint-args args))
-                      (s/explain-data ::defendpoint-args args))))
-    (let [{:keys [method route docstr args arg->schema body]} parsed
-          fn-name                                             (route-fn-name method route)
-          route                                               (add-route-param-regexes route)
-          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-          ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                         body)]
-      ;; Don't i18n this, it's dev-facing only
-      (when-not docstr
-        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
-                                  (ns-name *ns*) fn-name)))
-      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
-
-(defn- malli-parse-defendpoint-args [args]
-  (let [parsed (s/conform ::defendpoint-args args)]
-    (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
@@ -261,7 +238,7 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (malli-route-dox method route docstr args
+          docstr                                              (route-dox method route docstr args
                                                                                (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
                                                                                body)]
       ;; Don't i18n this, it's dev-facing only
@@ -317,37 +294,6 @@
            (compojure/let-request [~args request#]
                                   ~@body)))))))
 
-;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
-;; e.g. `auto-parse`
-(defmacro defendpoint-schema
-  "Define an API function with Plumatic Schema.
-   This automatically does several things:
-
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
-
-   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
-
-   -  sequentially applies specified annotation functions on args to validate them.
-
-   -  automatically calls `wrap-response-if-needed` on the result of `body`
-
-   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
-      the function in the generated `defroutes` form.
-
-   -  Generates a super-sophisticated Markdown-formatted docstring.
-
-  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
-  {:arglists   '([method route docstr? args schemas-map? & body])
-   :deprecated "0.46.0"}
-  [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
-                                     ~@(validate-params arg->schema)
-                                     (wrap-response-if-needed
-                                      (do ~@body))))))))
-
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -365,26 +311,12 @@
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-coerce ~args ~arg->schema
-                                                ~@(malli-validate-params arg->schema)
-                                                (wrap-response-if-needed
-                                                 (do ~@body))))))))
-
-(defmacro defendpoint-async-schema
-  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
-
-  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
-  {:arglists   '([method route docstr? args schemas-map? & body])
-   :deprecated "0.46.0"}
-  [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :args []
-                           :body `((fn ~args
-                                     ~@(validate-params arg->schema)
-                                     ~@body))))))
+                           :body `((auto-coerce ~args ~arg->schema
+                                                ~@(validate-params arg->schema)
+                                                (wrap-response-if-needed
+                                                 (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -394,7 +326,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(malli-validate-params arg->schema)
+                                     ~@(validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns

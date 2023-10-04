@@ -104,9 +104,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Changes were not saved");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Navigating away from here will cause you to lose any changes you have made.",
         );
 
         cy.button("Cancel").click();
@@ -118,7 +118,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.button("Discard changes").click();
+        cy.button("Leave anyway").click();
       });
 
       cy.url().should("include", "/admin/permissions/data/group");
@@ -306,9 +306,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.findByText("Discard your unsaved changes?");
+        cy.findByText("Changes were not saved");
         cy.findByText(
-          "If you leave this page now, your changes won't be saved.",
+          "Navigating away from here will cause you to lose any changes you have made.",
         );
 
         cy.button("Cancel").click();
@@ -320,7 +320,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.button("Discard changes").click();
+        cy.button("Leave anyway").click();
       });
 
       cy.url().should("include", "/admin/permissions/collections");

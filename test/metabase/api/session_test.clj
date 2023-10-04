@@ -90,21 +90,21 @@
   (reset-throttlers!)
   (testing "POST /api/session"
     (testing "Test for required params"
-      (is (= {:errors {:username "value must be a non-blank string."}}
-             (mt/client :post 400 "session" {})))
+      (is (=? {:errors {:username "value must be a non-blank string."}}
+              (mt/client :post 400 "session" {})))
 
-      (is (= {:errors {:password "value must be a non-blank string."}}
-             (mt/client :post 400 "session" {:username "anything@metabase.com"}))))
+      (is (=? {:errors {:password "value must be a non-blank string."}}
+              (mt/client :post 400 "session" {:username "anything@metabase.com"}))))
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
-      (is (= {:errors {:_error "Your account is disabled."}}
-             (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
+      (is (=? {:errors {:_error "Your account is disabled."}}
+              (mt/client :post 401 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
-      (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
-                                             (assoc :password "something else"))))))))
+      (is (=? {:errors {:password "did not match stored password"}}
+              (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
+                                                 (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
   (reset-throttlers!)
@@ -255,8 +255,8 @@
                                     {:email (:username (mt/user->credentials :rasta))})
               (is (mt/received-email-body? :rasta (re-pattern my-url)))))))
       (testing "test that email is required"
-        (is (= {:errors {:email "value must be a valid email address."}}
-               (mt/client :post 400 "session/forgot_password" {}))))
+        (is (=? {:errors {:email "value must be a valid email address."}}
+                (mt/client :post 400 "session/forgot_password" {}))))
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
@@ -317,27 +317,27 @@
   (reset-throttlers!)
   (testing "POST /api/session/reset_password"
     (testing "Test that token and password are required"
-      (is (= {:errors {:token "value must be a non-blank string."}}
-             (mt/client :post 400 "session/reset_password" {})))
-      (is (= {:errors {:password "password is too common."}}
-             (mt/client :post 400 "session/reset_password" {:token "anything"}))))
+      (is (=? {:errors {:token "value must be a non-blank string."}}
+              (mt/client :post 400 "session/reset_password" {})))
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/reset_password" {:token "anything"}))))
 
     (testing "Test that malformed token returns 400"
-      (is (= {:errors {:password "Invalid reset token"}}
-             (mt/client :post 400 "session/reset_password" {:token    "not-found"
-                                                            :password "whateverUP12!!"}))))
+      (is (=? {:errors {:password "Invalid reset token"}}
+              (mt/client :post 400 "session/reset_password" {:token    "not-found"
+                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that invalid token returns 400"
-      (is (= {:errors {:password "Invalid reset token"}}
-             (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
-                                                            :password "whateverUP12!!"}))))
+      (is (=? {:errors {:password "Invalid reset token"}}
+              (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
+                                                             :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
-        (is (= {:errors {:password "Invalid reset token"}}
-               (mt/client :post 400 "session/reset_password" {:token    token
-                                                              :password "whateverUP12!!"})))))))
+        (is (=? {:errors {:password "Invalid reset token"}}
+                (mt/client :post 400 "session/reset_password" {:token    token
+                                                               :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
   (reset-throttlers!)

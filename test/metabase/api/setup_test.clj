@@ -1,7 +1,6 @@
 (ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require
-   [clojure.core.async :as a]
    [clojure.spec.alpha :as s]
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -20,6 +19,7 @@
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as schema]
    [toucan2.core :as t2]))
 
@@ -27,7 +27,7 @@
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
-(use-fixtures :once (fixtures/initialize :test-users :events))
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- wait-for-result
   "Call thunk up to 10 times, until it returns a truthy value. Wait 50ms between tries. Useful for waiting for something
@@ -89,15 +89,13 @@
           (testing "Creating a new admin user should set the `admin-email` Setting"
             (is (= email
                    (public-settings/admin-email))))
-
           (testing "Should record :user-joined Activity (#12933)"
             (let [user-id (u/the-id (t2/select-one-pk User :email email))]
-              (is (schema= {:topic         (schema/eq :user-joined)
-                            :model_id      (schema/eq user-id)
-                            :user_id       (schema/eq user-id)
-                            :model         (schema/eq "user")
-                            schema/Keyword schema/Any}
-                           (wait-for-result #(t2/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+              (is (=? {:topic         :user-joined
+                       :model_id      user-id
+                       :user_id       user-id
+                       :model         "user"}
+                      (t2/select-one Activity :topic "user-joined", :user_id user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -110,8 +108,8 @@
                 last-name (mt/random-name)
                 invitor-first-name (mt/random-name)]
             (with-setup! {:invite {:email email, :first_name first-name, :last_name last-name}
-                         :user {:first_name invitor-first-name}
-                         :site_name "Metabase"}
+                          :user {:first_name invitor-first-name}
+                          :site_name "Metabase"}
               (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
@@ -176,39 +174,44 @@
               v                     [true false nil]]
         (let [db-name (mt/random-name)]
           (with-setup! {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details details
-                                  k        v}}
+                                   :name    db-name
+                                   :details details
+                                   k        v}}
             (testing "Database should be created"
               (is (t2/exists? Database :name db-name)))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
                      (t2/select-one-fn k Database :name db-name))))))))))
 
+(def ^:private create-database-trigger-sync-test-event (atom nil))
+
+(derive :event/database-create ::create-database-trigger-sync-test-events)
+
+(methodical/defmethod events/publish-event! ::create-database-trigger-sync-test-events
+  [topic event]
+  (reset! create-database-trigger-sync-test-event {:topic topic, :item event}))
+
 (deftest create-database-trigger-sync-test
   (testing "POST /api/setup"
     (testing "Setup should trigger sync right away for the newly created Database (#12826)"
       (let [db-name (mt/random-name)]
-        (mt/with-open-channels [chan (a/chan)]
-          (events/subscribe-to-topics! #{:database-create} chan)
-          (with-setup! {:database {:engine  "h2"
-                                  :name    db-name
-                                  :details (:details (mt/db))}}
-            (testing ":database-create events should have been fired"
-              (is (schema= {:topic (schema/eq :database-create)
-                            :item  {:id            su/IntGreaterThanZero
-                                    :name          (schema/eq db-name)
-                                    schema/Keyword schema/Any}}
-                           (mt/wait-for-result chan 100))))
-
-            (testing "Database should be synced"
-              (let [db (t2/select-one Database :name db-name)]
-                (assert (some? db))
-                (is (= 4
-                       (wait-for-result (fn []
-                                          (let [cnt (t2/count Table :db_id (u/the-id db))]
-                                            (when (= cnt 4)
-                                              cnt))))))))))))))
+        (reset! create-database-trigger-sync-test-event nil)
+        (with-setup! {:database {:engine  "h2"
+                                 :name    db-name
+                                 :details (:details (mt/db))}}
+          (testing ":database-create events should have been fired"
+            (is (=? {:topic :event/database-create
+                     :item  {:id   pos-int?
+                             :name db-name}}
+                    @create-database-trigger-sync-test-event)))
+          (testing "Database should be synced"
+            (let [db (t2/select-one Database :name db-name)]
+              (assert (some? db))
+              (is (= 4
+                     (wait-for-result (fn []
+                                        (let [cnt (t2/count Table :db_id (u/the-id db))]
+                                          (when (= cnt 4)
+                                            cnt)))))))))))))
 
 (deftest create-database-test-error-conditions-test
   (testing "POST /api/setup"

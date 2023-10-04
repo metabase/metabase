@@ -4,10 +4,9 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import ModalContent from "metabase/components/ModalContent";
-import FormProvider from "metabase/core/components/FormProvider/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
-import Form from "metabase/core/components/Form";
 import FormInput from "metabase/core/components/FormInput";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormTextArea from "metabase/core/components/FormTextArea";
@@ -170,7 +169,12 @@ export const SaveQuestionModal = ({
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
-        <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
+        <ModalContent
+          data-testid="save-question-modal"
+          id="SaveQuestionModal"
+          title={title}
+          onClose={onClose}
+        >
           <FormProvider
             initialValues={{ ...initialValues, ...resumedValues }}
             onSubmit={handleSubmit}

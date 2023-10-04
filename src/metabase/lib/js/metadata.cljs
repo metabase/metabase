@@ -231,7 +231,9 @@
                            (walk/keywordize-keys v)
                            (js->clj v :keywordize-keys true))
       :has-field-values  (keyword v)
-      :lib/source        (keyword "source" v)
+      :lib/source        (if (= v "aggregation")
+                           :source/aggregations
+                           (keyword "source" v))
       :semantic-type     (keyword v)
       :visibility-type   (keyword v)
       :id                (parse-field-id v)

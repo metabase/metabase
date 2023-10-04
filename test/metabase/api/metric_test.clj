@@ -60,25 +60,25 @@
                                          :definition {}}))))
 
     (testing "test validations"
-      (is (= {:errors {:name "value must be a non-blank string."}}
+      (is (=? {:errors {:name "value must be a non-blank string."}}
              (mt/user-http-request
               :crowberto :post 400 "metric" {})))
 
-      (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+      (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
              (mt/user-http-request
               :crowberto :post 400 "metric" {:name "abc"})))
 
-      (is (= {:errors {:table_id "value must be an integer greater than zero."}}
+      (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
              (mt/user-http-request
               :crowberto :post 400 "metric" {:name     "abc"
                                              :table_id "foobar"})))
 
-      (is (= {:errors {:definition "value must be a map."}}
+      (is (=? {:errors {:definition "map"}}
              (mt/user-http-request
               :crowberto :post 400 "metric" {:name     "abc"
                                              :table_id 123})))
 
-      (is (= {:errors {:definition "value must be a map."}}
+      (is (=? {:errors {:definition "map"}}
              (mt/user-http-request
               :crowberto :post 400 "metric" {:name       "abc"
                                              :table_id   123
@@ -116,24 +116,24 @@
                  :revision_message "something different"})))))
 
     (testing "test validations"
-      (is (= {:errors {:revision_message "value must be a non-blank string."}}
-             (mt/user-http-request
-              :crowberto :put 400 "metric/1" {})))
+      (is (=? {:errors {:revision_message "value must be a non-blank string."}}
+              (mt/user-http-request
+               :crowberto :put 400 "metric/1" {})))
 
-      (is (= {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
-             (mt/user-http-request
-              :crowberto :put 400 "metric/1" {:revision_message "Wow", :name ""})))
+      (is (=? {:errors {:name "nullable value must be a non-blank string."}}
+              (mt/user-http-request
+               :crowberto :put 400 "metric/1" {:revision_message "Wow", :name ""})))
 
-      (is (= {:errors {:revision_message "value must be a non-blank string."}}
-             (mt/user-http-request
-              :crowberto :put 400 "metric/1" {:name             "abc"
-                                              :revision_message ""})))
+      (is (=? {:errors {:revision_message "value must be a non-blank string."}}
+              (mt/user-http-request
+               :crowberto :put 400 "metric/1" {:name             "abc"
+                                               :revision_message ""})))
 
-      (is (= {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
-             (mt/user-http-request
-              :crowberto :put 400 "metric/1" {:name             "abc"
-                                              :revision_message "123"
-                                              :definition       "foobar"}))))
+      (is (=? {:errors {:definition "nullable map"}}
+              (mt/user-http-request
+               :crowberto :put 400 "metric/1" {:name             "abc"
+                                               :revision_message "123"
+                                               :definition       "foobar"}))))
 
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
@@ -184,13 +184,15 @@
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
 
-
     (testing "test validations"
-      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+      (is (= {:errors {:revision_message "value must be a non-blank string."}
+              :specific-errors {:revision_message ["should be a string, received: nil" "non-blank string, received: nil"]}}
              (mt/user-http-request
               :crowberto :delete 400 "metric/1" {:name "abc"})))
 
-      (is (= {:errors {:revision_message "value must be a non-blank string."}}
+      (is (= {:errors {:revision_message "value must be a non-blank string."},
+              :specific-errors
+              {:revision_message ["should be at least 1 characters, received: \"\"" "non-blank string, received: \"\""]}}
              (mt/user-http-request
               :crowberto :delete 400 "metric/1" :revision_message ""))))))
 
@@ -296,11 +298,11 @@
                 :rasta :post 403 (format "metric/%d/revert" id)
                 {:revision_id 56})))))
 
-    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "metric/1/revert" {})))
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "metric/1/revert" {})))
 
-    (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-           (mt/user-http-request :crowberto :post 400 "metric/1/revert" {:revision_id "foobar"})))))
+    (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
+            (mt/user-http-request :crowberto :post 400 "metric/1/revert" {:revision_id "foobar"})))))
 
 (deftest metric-revisions-test-2
   (mt/with-temp [Database {database-id :id} {}

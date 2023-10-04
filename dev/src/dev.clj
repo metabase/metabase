@@ -2,8 +2,8 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
-   [dev.model-tracking :as model-tracking]
    [dev.debug-qp :as debug-qp]
+   [dev.model-tracking :as model-tracking]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
@@ -26,8 +26,8 @@
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.core :as t2]
    [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
@@ -69,7 +69,7 @@
 (defn stop!
   []
   (malli-dev/stop!)
-  (metabase.server/stop-web-server!))
+  (server/stop-web-server!))
 
 (defn restart!
   []

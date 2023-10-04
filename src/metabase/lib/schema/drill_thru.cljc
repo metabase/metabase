@@ -4,10 +4,14 @@
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
   (:require
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::pivot-types
@@ -18,39 +22,50 @@
    [:type     keyword?]
    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
 
-(mr/def ::drill-thru.keyed
+(mr/def ::drill-thru.object-details
   [:merge
    ::drill-thru.common
    [:map
+    [:column    [:ref ::lib.schema.metadata/column]]
     [:object-id :any]
     [:many-pks? :boolean]]])
 
 (mr/def ::drill-thru.pk
   [:merge
-   ::drill-thru.keyed
+   ::drill-thru.object-details
    [:map
     [:type [:= :drill-thru/pk]]]])
 
+(mr/def ::drill-thru.fk-details.fk-column
+  [:merge
+   [:ref ::lib.schema.metadata/column]
+   [:map
+    [:fk-target-field-id ::lib.schema.id/field]]])
+
 (mr/def ::drill-thru.fk-details
   [:merge
-   ::drill-thru.keyed
+   ::drill-thru.object-details
    [:map
-    [:type [:= :drill-thru/fk-details]]]])
+    [:type   [:= :drill-thru/fk-details]]
+    [:column [:ref ::drill-thru.fk-details.fk-column]]]])
 
 (mr/def ::drill-thru.zoom
   [:merge
-   ::drill-thru.keyed
+   ::drill-thru.object-details
    [:map
     [:type [:= :drill-thru/zoom]]]])
+
+(mr/def ::drill-thru.quick-filter.operator
+  [:map
+   [:name   ::lib.schema.common/non-blank-string]
+   [:filter [:ref ::lib.schema.expression/boolean]]])
 
 (mr/def ::drill-thru.quick-filter
   [:merge
    ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/quick-filter]]
-    [:operators [:sequential [:map
-                              [:name   string?]
-                              [:filter ::lib.schema.expression/boolean]]]]]])
+    [:operators [:sequential ::drill-thru.quick-filter.operator]]]])
 
 (mr/def ::drill-thru.fk-filter
   [:merge
@@ -64,14 +79,14 @@
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/distribution]]
-    [:column lib.metadata/ColumnMetadata]]])
+    [:column [:ref ::lib.schema.metadata/column]]]])
 
 (mr/def ::drill-thru.pivot
   [:merge
    ::drill-thru.common
    [:map
     [:type   [:= :drill-thru/pivot]]
-    [:pivots [:map-of ::pivot-types [:sequential lib.metadata/ColumnMetadata]]]]])
+    [:pivots [:map-of ::pivot-types [:sequential [:ref ::lib.schema.metadata/column]]]]]])
 
 (mr/def ::drill-thru.sort
   [:merge
@@ -80,28 +95,32 @@
     [:type            [:= :drill-thru/sort]]
     [:sort-directions [:sequential ::lib.schema.order-by/direction]]]])
 
+(mr/def ::drill-thru.summarize-column.aggregation-type
+  [:enum :avg :distinct :sum])
+
 (mr/def ::drill-thru.summarize-column
   [:merge
    ::drill-thru.common
    [:map
     [:type         [:= :drill-thru/summarize-column]]
-    [:column       lib.metadata/ColumnMetadata]
-    [:aggregations [:sequential [:enum :avg :distinct :sum]]]]])
+    [:column       [:ref ::lib.schema.metadata/column]]
+    [:aggregations [:sequential [:ref ::drill-thru.summarize-column.aggregation-type]]]]])
 
 (mr/def ::drill-thru.summarize-column-by-time
   [:merge
    ::drill-thru.common
    [:map
     [:type     [:= :drill-thru/summarize-column-by-time]]
-    [:column   lib.metadata/ColumnMetadata]
-    [:breakout lib.metadata/ColumnMetadata]]])
+    [:column   [:ref ::lib.schema.metadata/column]]
+    [:breakout [:ref ::lib.schema.metadata/column]]
+    [:unit     ::lib.schema.temporal-bucketing/unit]]])
 
 (mr/def ::drill-thru.column-filter
   [:merge
    ::drill-thru.common
    [:map
     [:type       [:= :drill-thru/column-filter]]
-    [:column     lib.metadata/ColumnMetadata]
+    [:column     [:ref ::lib.schema.metadata/column]]
     [:initial-op [:maybe ::lib.schema.filter/operator]]]])
 
 (mr/def ::drill-thru.underlying-records
@@ -118,7 +137,7 @@
    [:map
     [:type     [:= :drill-thru/automatic-insights]]
     [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
-    [:column   lib.metadata/ColumnMetadata]]])
+    [:column   [:ref ::lib.schema.metadata/column]]]])
 
 (mr/def ::drill-thru.zoom-in.timeseries.next-unit
   [:enum :quarter :month :week :day :hour :minute])
@@ -128,7 +147,7 @@
    ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/zoom-in.timeseries]]
-    [:column    lib.metadata/ColumnMetadata]
+    [:column    [:ref ::lib.schema.metadata/column]]
     [:value     some?]
     [:next-unit [:ref ::drill-thru.zoom-in.timeseries.next-unit]]]])
 
@@ -155,7 +174,7 @@
 
 (mr/def ::context
   [:map
-   [:column lib.metadata/ColumnMetadata]
+   [:column [:ref ::lib.schema.metadata/column]]
    [:value  [:maybe :any]]
    [:row    {:optional true} [:sequential [:map
                                            [:column-name string?]

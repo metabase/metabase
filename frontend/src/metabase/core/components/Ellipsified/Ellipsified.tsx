@@ -19,7 +19,7 @@ interface EllipsifiedProps {
   "data-testid"?: string;
 }
 
-const Ellipsified = ({
+export const Ellipsified = ({
   style,
   className,
   showTooltip = true,
@@ -31,11 +31,14 @@ const Ellipsified = ({
   placement = "top",
   "data-testid": dataTestId,
 }: EllipsifiedProps) => {
-  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>();
+  const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
+  const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
+    disabled: canSkipTooltipRendering,
+  });
 
   return (
     <Tooltip
-      tooltip={tooltip || children || " "}
+      tooltip={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       isEnabled={(showTooltip && (isTruncated || alwaysShowTooltip)) || false}
       maxWidth={tooltipMaxWidth}
       placement={placement}
@@ -52,6 +55,3 @@ const Ellipsified = ({
     </Tooltip>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Ellipsified;

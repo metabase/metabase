@@ -9,28 +9,26 @@ import { t } from "ttag";
 import CollapseSection from "metabase/components/CollapseSection";
 import ParametersList from "metabase/parameters/components/ParametersList";
 
+import { getPulseParameters } from "metabase/lib/pulse";
 import {
-  getPulseParameters,
-  getActivePulseParameters,
-} from "metabase/lib/pulse";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
+  getDefaultValuePopulatedParameters,
+  PULSE_PARAM_USE_DEFAULT,
+} from "metabase-lib/parameters/utils/parameter-values";
 
 function MutableParametersSection({
   className,
   parameters,
-  defaultParametersById,
   dashboard,
   pulse,
   setPulseParameters,
 }) {
   const pulseParameters = getPulseParameters(pulse);
-  const activeParameters = getActivePulseParameters(pulse, parameters);
-  const pulseParamValuesById = activeParameters.reduce((map, parameter) => {
+  const pulseParamValuesById = pulseParameters.reduce((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
 
-  const valuePopulatedParameters = getValuePopulatedParameters(
+  const valuePopulatedParameters = getDefaultValuePopulatedParameters(
     parameters,
     pulseParamValuesById,
   );
@@ -41,7 +39,7 @@ function MutableParametersSection({
       parameter => parameter.id !== id,
     );
     const newParameters =
-      value == null
+      value === PULSE_PARAM_USE_DEFAULT
         ? filteredParameters
         : filteredParameters.concat({
             ...parameter,
@@ -72,7 +70,6 @@ function MutableParametersSection({
 MutableParametersSection.propTypes = {
   className: PropTypes.string,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   pulse: PropTypes.object.isRequired,
   setPulseParameters: PropTypes.func.isRequired,

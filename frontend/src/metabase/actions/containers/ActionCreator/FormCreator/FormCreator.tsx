@@ -11,8 +11,7 @@ import type {
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+import { Form, FormProvider } from "metabase/forms";
 
 import MetabaseSettings from "metabase/lib/settings";
 

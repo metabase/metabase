@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { recipientIsValid } from "metabase/lib/pulse";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
+import { isEmail } from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import { Text } from "metabase/ui";
@@ -82,7 +82,7 @@ export default class RecipientPicker extends Component {
             filterOption={filterOption}
             validateValue={value => recipientIsValid(value)}
             parseFreeformValue={inputValue => {
-              if (MetabaseUtils.isEmail(inputValue)) {
+              if (isEmail(inputValue)) {
                 return { email: inputValue };
               }
             }}

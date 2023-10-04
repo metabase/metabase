@@ -32,7 +32,11 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -88,7 +92,8 @@ describe("scenarios > dashboard", () => {
         .click();
 
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByPlaceholderText(/Search for some/).type("Pro");
+        // cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
@@ -747,8 +752,8 @@ describe("scenarios > dashboard", () => {
           cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
             cards: [
               {
-                id: 1,
-                card_id: 1,
+                id: ORDERS_DASHBOARD_DASHCARD_ID,
+                card_id: ORDERS_QUESTION_ID,
                 row: 0,
                 col: 0,
                 size_x: 16,
@@ -792,8 +797,8 @@ describe("scenarios > dashboard", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -836,8 +841,8 @@ describe("scenarios > dashboard", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -845,7 +850,7 @@ describe("scenarios > dashboard", () => {
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
-              card_id: 1,
+              card_id: ORDERS_QUESTION_ID,
               target: ["dimension", ["field", ORDERS.ID]],
             },
           ],
@@ -959,7 +964,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
       expectGoodSnowplowEvent(
         {
           event: "card_set_to_hide_when_no_results",
-          dashboard_id: 1,
+          dashboard_id: ORDERS_DASHBOARD_ID,
         },
         2,
       );

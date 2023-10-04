@@ -21,8 +21,9 @@ jobs:
       - name: Check for labels containing team name
         id: check_labels
         run: |
+          labels_json=$(sed 's/&/\$/g' <<< '${{ toJson(github.event.issue.labels) }}')
           echo "has_team_label=false" >> "$GITHUB_OUTPUT"
-          for label in "${{ toJson(github.event.issue.labels) }}"
+          for label in "$labels_json"
           do
             if [[ $label == *".Team"* ]]; then
               echo "Label contains the team name."

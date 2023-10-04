@@ -11,7 +11,6 @@
    [java-time :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -251,17 +250,17 @@
 (defmethod sql.qp/datetime-diff [:presto-jdbc :minute]  [_driver _unit x y] (date-diff :minute x y))
 (defmethod sql.qp/datetime-diff [:presto-jdbc :second]  [_driver _unit x y] (date-diff :second x y))
 
-(defmethod driver.common/current-db-time-date-formatters :presto-jdbc
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))
-
-(defmethod driver.common/current-db-time-native-query :presto-jdbc
-  [_]
-  "select to_iso8601(current_timestamp)")
-
-(defmethod driver/current-db-time :presto-jdbc
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :presto-jdbc
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     ;; TODO -- this is the session timezone, right? As opposed to the default timezone? Ick. Not sure how to get the
+     ;; default timezone if session timezone is unspecified.
+     (with-open [stmt (.prepareStatement conn "SELECT current_timezone()")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Custom HoneySQL Clause Impls                                          |

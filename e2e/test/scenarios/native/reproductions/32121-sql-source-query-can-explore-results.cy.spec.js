@@ -14,7 +14,7 @@ describe("issue 32121", () => {
       startNewQuestion();
 
       // Query the entire Orders table, then convert to SQL.
-      cy.get("#DataPopover").findByText("Sample Database").click();
+      cy.get("#DataPopover").findByText("Raw Data").click();
       cy.get("#DataPopover").findByText("Orders").click();
       cy.findByTestId("qb-header").find(".Icon-sql").click();
       cy.get(".Modal").findByText("Convert this question to SQL").click();
@@ -43,6 +43,7 @@ describe("issue 32121", () => {
       cy.signInAsAdmin();
 
       startNewQuestion();
+      cy.get("#DataPopover").findByText("Raw Data").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(MONGO_DB_NAME).click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -68,7 +68,7 @@
                                            :where     [:= :vl.model (h2x/literal "dashboard")]
                                            :group-by  [:d.id]
                                            :order-by  [[:%count.* :desc]]
-                                           :limit     10}]
+                                           :limit     [:inline 10]}]
                            [:card_running_time {:select   [:qe.card_id
                                                            [[:avg :qe.running_time] :avg_running_time]]
                                                 :from     [[:query_execution :qe]]

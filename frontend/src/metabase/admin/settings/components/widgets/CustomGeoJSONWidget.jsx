@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import cx from "classnames";
-import Utils from "metabase/lib/utils";
+import { uuid } from "metabase/lib/utils";
 import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -150,7 +150,7 @@ export default class CustomGeoJSONWidget extends Component {
               onClick={() =>
                 this.setState({
                   map: {
-                    id: Utils.uuid(),
+                    id: uuid(),
                     name: "",
                     url: "",
                     region_key: null,

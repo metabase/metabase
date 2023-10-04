@@ -1,23 +1,23 @@
-import {
-  restore,
-  popover,
-  visualize,
-  startNewQuestion,
-} from "e2e/support/helpers";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { restore, popover, visualize, openTable } from "e2e/support/helpers";
 
 describe("issue 17963", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
 
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QA Mongo4").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/`).then(({ body }) => {
+      const tableId = body.find(table => table.name === "orders").id;
+      openTable({
+        database: WRITABLE_DB_ID,
+        table: tableId,
+        mode: "notebook",
+      });
+    });
   });
 
   it("should be able to compare two fields using filter expression (metabase#17963)", () => {
+    cy.findByRole("button", { name: "Filter" }).click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filters to narrow your answer").click();
 
@@ -33,6 +33,8 @@ describe("issue 17963", { tags: "@external" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discount > Quantity");
+
+    cy.findByRole("button", { name: "Summarize" }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();

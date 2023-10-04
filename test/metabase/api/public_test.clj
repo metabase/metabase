@@ -31,7 +31,6 @@
    [metabase.util :as u]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -48,8 +47,7 @@
 (defn- native-query-with-template-tag []
   {:database (mt/id)
    :type     :native
-   :native   {:query         (format "SELECT count(*) AS %s FROM venues [[WHERE id = {{venue_id}}]]"
-                                     ((db/quote-fn) "Count"))
+   :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
               :template-tags {"venue_id" {:name         "venue_id"
                                           :display-name "Venue ID"
                                           :type         :number
@@ -288,8 +286,7 @@
                            :dataset_query
                            {:database (mt/id)
                             :type     :native
-                            :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
-                                                              ((db/quote-fn) "Count"))
+                            :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
                                        :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil],
                                                                    :display-name "Venue ID",
                                                                    :id           "_VENUE_ID_",
@@ -516,6 +513,39 @@
                        :parameters}
                      (set (keys public-action))))))))))))
 
+(deftest public-dashboard-param-link-to-a-field-without-full-field-values-test
+  (testing "GET /api/public/dashboard/:uuid"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (t2.with-temp/with-temp
+        [:model/Dashboard
+         {dashboard-id :id
+          uuid         :public_uuid}
+         {:name        "Test Dashboard"
+          :public_uuid (str (java.util.UUID/randomUUID))}
+
+         :model/Card
+         {card-id :id}
+         {:name "Dashboard Test Card"}
+
+         :model/DashboardCard
+         _
+         {:dashboard_id       dashboard-id
+          :card_id            card-id
+          :parameter_mappings [{:card_id      card-id
+                                :parameter_id "foo"
+                                :target       [:dimension
+                                               [:field (mt/id :venues :name) nil]]}]}]
+        (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+        (testing "Request triggers computation of field values if missing (#30218)"
+          (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                                 "25°"
+                                                                 "33 Taps"]
+                                         :field_id              (mt/id :venues :name)
+                                         :human_readable_values []}}
+                 (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "public/dashboard/" uuid)))]
+                   (into {} (for [[field-id m] response]
+                              [field-id (update m :values (partial take 3))]))))))))))
+
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
 (defn- dashcard-url
@@ -586,8 +616,7 @@
                              :dataset_query
                              {:database (mt/id)
                               :type     :native
-                              :native   {:query         (format "SELECT count(*) AS %s FROM venues where {{venue_id}}"
-                                                                ((db/quote-fn) "Count"))
+                              :native   {:query         "SELECT count(*) AS Count FROM venues where {{venue_id}}"
                                          :template-tags {"venue_id" {:dimension    [:field (mt/id :venues :id) nil]
                                                                      :display-name "Venue ID"
                                                                      :id           "_VENUE_ID_"

@@ -12,9 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -44,14 +41,13 @@
     (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
                     {:status-code 400}))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `NativeQuerySnippet`."
   [:as {{:keys [content description name collection_id]} :body}]
-  {content       s/Str
-   description   (s/maybe s/Str)
+  {content       :string
+   description   [:maybe :string]
    name          native-query-snippet/NativeQuerySnippetName
-   collection_id (s/maybe su/IntGreaterThanZero)}
+   collection_id [:maybe ms/PositiveInt]}
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
@@ -77,15 +73,15 @@
       (t2/update! NativeQuerySnippet id changes))
     (hydrated-native-query-snippet id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update an existing `NativeQuerySnippet`."
   [id :as {{:keys [archived content description name collection_id] :as body} :body}]
-  {archived      (s/maybe s/Bool)
-   content       (s/maybe s/Str)
-   description   (s/maybe s/Str)
-   name          (s/maybe native-query-snippet/NativeQuerySnippetName)
-   collection_id (s/maybe su/IntGreaterThanZero)}
+  {id            ms/PositiveInt
+   archived      [:maybe :boolean]
+   content       [:maybe :string]
+   description   [:maybe :string]
+   name          [:maybe native-query-snippet/NativeQuerySnippetName]
+   collection_id [:maybe ms/PositiveInt]}
   (check-perms-and-update-snippet! id body))
 
 (api/define-routes)

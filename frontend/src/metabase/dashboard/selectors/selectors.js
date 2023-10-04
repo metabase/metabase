@@ -284,18 +284,6 @@ export const getParameterMappingOptions = createSelector(
   },
 );
 
-export const getDefaultParametersById = createSelector(
-  [getDashboard],
-  dashboard =>
-    ((dashboard && dashboard.parameters) || []).reduce((map, parameter) => {
-      if (parameter.default) {
-        map[parameter.id] = parameter.default;
-      }
-
-      return map;
-    }, {}),
-);
-
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,

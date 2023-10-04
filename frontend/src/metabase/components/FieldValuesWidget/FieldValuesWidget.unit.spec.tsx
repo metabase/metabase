@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "__support__/ui";
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
+import Fields from "metabase/entities/fields";
 
 import { checkNotNull } from "metabase/core/utils/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
@@ -42,7 +43,12 @@ async function setup({
 } & Omit<Partial<IFieldValuesWidgetProps>, "fields">) {
   const fetchFieldValues = jest.fn(({ id }) => ({
     payload: fields.filter(checkNotNull).find(f => f?.id === id),
+    type: "__MOCK__",
   }));
+
+  jest
+    .spyOn(Fields.objectActions, "fetchFieldValues")
+    .mockImplementation(fetchFieldValues);
 
   if (searchValue) {
     fields.forEach(field => {
@@ -55,11 +61,6 @@ async function setup({
       value={[]}
       fields={fields.filter(checkNotNull)}
       onChange={jest.fn()}
-      fetchFieldValues={fetchFieldValues as any}
-      fetchParameterValues={jest.fn()}
-      fetchDashboardParameterValues={jest.fn()}
-      fetchCardParameterValues={jest.fn()}
-      addRemappings={jest.fn()}
       prefix={prefix}
       {...props}
     />,

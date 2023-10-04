@@ -294,4 +294,5 @@ If you've written scripts to automate serialization, you'll need to:
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
-- Need help? contact [support@metabase.com](mailto:support@metabase.com).
+- [Setting up a git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
+- Need help? Contact [support@metabase.com](mailto:support@metabase.com).

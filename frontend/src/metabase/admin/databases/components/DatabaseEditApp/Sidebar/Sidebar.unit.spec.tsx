@@ -8,6 +8,7 @@ import {
   COMMON_DATABASE_FEATURES,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
@@ -40,6 +41,12 @@ function setup({
     }),
   });
   const metadata = getMetadata(state);
+  setupDatabaseUsageInfo(database, {
+    question: 0,
+    dataset: 0,
+    metric: 0,
+    segment: 0,
+  });
 
   // Using mockResolvedValue since `ActionButton` component
   // the Sidebar is using is expecting these callbacks to be async
@@ -140,7 +147,6 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(
         within(getModal()).getByRole("button", { name: "Cancel" }),
       );
-      await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
       expect(discardSavedFieldValues).not.toHaveBeenCalled();
@@ -304,7 +310,6 @@ describe("DatabaseEditApp/Sidebar", () => {
       userEvent.click(
         await within(modal).findByRole("button", { name: "Cancel" }),
       );
-      await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();
       expect(deleteDatabase).not.toHaveBeenCalled();

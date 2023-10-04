@@ -297,17 +297,6 @@
      "/:id/etc/:org" [:id :org]
      "/:card-id"     [:card-id])))
 
-(deftest type-args-test
-  (no-route-regexes
-   (are [args expected] (= expected
-                           (#'internal/typify-args args))
-     []             []
-     [:fish]        []
-     [:fish :fry]   []
-     [:id]          [:id "#[0-9]+"]
-     [:id :fish]    [:id "#[0-9]+"]
-     [:id :card-id] [:id "#[0-9]+" :card-id "#[0-9]+"])))
-
 (deftest add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
@@ -334,21 +323,6 @@
     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
-
-(deftest add-route-param-regexes-test
-  (no-route-regexes
-   (are [route expected] (= expected
-                            (internal/add-route-param-regexes route))
-     "/"                                    "/"
-     "/:id"                                 ["/:id" :id "#[0-9]+"]
-     "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
-     "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
-     "/:fish"                               "/:fish"
-     "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
-     ;; don't try to typify route that's already typified
-     ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
-     ;; Check :uuid args
-     "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)])))
 
 (deftest let-form-for-arg-test
   (are [arg expected] (= expected

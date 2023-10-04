@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import Utils from "metabase/lib/utils";
+import { isUUID, isJWT } from "metabase/lib/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
   getGenericErrorMessage,
@@ -147,9 +147,9 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (Utils.isUUID(id)) {
+  } else if (isUUID(id)) {
     return "public";
-  } else if (Utils.isJWT(id)) {
+  } else if (isJWT(id)) {
     return "embed";
   } else if (typeof id === "string" && /\/auto\/dashboard/.test(id)) {
     return "transient";

@@ -12,7 +12,7 @@
 
 (deftest db-timezone-test
   (mt/test-driver :vertica
-    (is (= "America/Los_Angeles"
+    (is (= "UTC"
            (driver/db-default-timezone :vertica (mt/db))))))
 
 (deftest ^:parallel additional-connection-string-options-test

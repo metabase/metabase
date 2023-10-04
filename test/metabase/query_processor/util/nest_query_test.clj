@@ -313,6 +313,7 @@
                   :expressions {"CC" [:+ 1 1]}
                   :limit 2})))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel nest-expressions-with-joins-test
   (driver/with-driver :h2
     (qp.store/with-metadata-provider meta/metadata-provider

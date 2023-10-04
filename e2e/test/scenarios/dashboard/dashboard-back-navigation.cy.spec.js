@@ -24,6 +24,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -123,7 +124,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     () => {
       const cardTitle = "Orders by Subtotal";
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { dataset: true });
-      cy.visit("/auto/dashboard/model/1");
+      cy.visit(`/auto/dashboard/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
       getDashboardCards()
@@ -235,7 +236,10 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
   });
 
   it("should return to dashboard with specific tab selected", () => {
-    visitDashboardAndCreateTab({ dashboardId: 1, save: false });
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
 
     // Add card to second tab
     cy.icon("pencil").click();
@@ -528,7 +532,7 @@ const createDashboardWithPermissionError = () => {
   const question2Details = {
     name: "Orders 2",
     query: { "source-table": ORDERS_ID },
-    collection_id: 1,
+    collection_id: ADMIN_PERSONAL_COLLECTION_ID,
   };
 
   const dashboardDetails = {

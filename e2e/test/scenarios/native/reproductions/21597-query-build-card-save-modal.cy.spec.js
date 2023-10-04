@@ -60,7 +60,7 @@ describe("issue 21597", { tags: "@external" }, () => {
     });
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains('Invalid output: ["Valid column metadata"]');
+    cy.contains(`Can\'t find field with ID: ${PRODUCTS.CATEGORY}`);
 
     // Try to save the native query
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();

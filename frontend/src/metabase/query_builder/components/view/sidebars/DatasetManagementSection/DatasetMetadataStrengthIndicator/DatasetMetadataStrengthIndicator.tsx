@@ -34,7 +34,7 @@ function getTooltipMessage(percentage: number) {
     percentage <= 0.5 ? t`Most` : percentage >= 0.8 ? t`Some` : t`Many`;
 
   return (
-    <TooltipContent>
+    <TooltipContent data-testid="tooltip-content">
       <TooltipParagraph>
         {t`${columnCountDescription} columns are missing a column type, description, or friendly name.`}
       </TooltipParagraph>

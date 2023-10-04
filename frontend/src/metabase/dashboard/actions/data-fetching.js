@@ -9,7 +9,7 @@ import { defer } from "metabase/lib/promise";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
-import Utils from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import { addParamValues, addFields } from "metabase/redux/metadata";
 
@@ -297,7 +297,7 @@ export const fetchCardData = createThunkAction(
         const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
         if (
           lastResult &&
-          Utils.equals(
+          equals(
             getDatasetQueryParams(lastResult.json_query),
             getDatasetQueryParams(datasetQuery),
           )

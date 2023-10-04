@@ -37,7 +37,7 @@ type Sections = {
   icon?: IconName;
 };
 
-function QueryColumnPicker({
+export function QueryColumnPicker({
   className,
   query,
   stageIndex,
@@ -192,6 +192,3 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   }
   return;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryColumnPicker;

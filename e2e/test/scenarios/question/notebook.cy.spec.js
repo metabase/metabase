@@ -7,8 +7,10 @@ import {
   filterField,
   getNotebookStep,
   join,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
+  openTable,
   popover,
   restore,
   startNewQuestion,
@@ -17,7 +19,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -48,12 +50,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should allow post-aggregation filters", () => {
-    // start a custom question with orders
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByRole("button", { name: "Summarize" }).click();
 
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -372,11 +374,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
     cy.findByTestId("fields-picker").click();
 
     popover().within(() => {
@@ -385,6 +387,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Tax").click();
       cy.findByLabelText("ID").should("be.enabled").click();
     });
+
+    cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
 
     visualize();
 
@@ -438,6 +442,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
+    cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
+
     cy.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
@@ -445,16 +451,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     });
 
-    cy.createQuestion({
-      name: "Orders model",
-      query: { "source-table": ORDERS_ID },
-      dataset: true,
-      display: "table",
-    });
+    cy.createQuestion(
+      {
+        name: "Orders model",
+        query: { "source-table": ORDERS_ID },
+        dataset: true,
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
 
-    startNewQuestion();
-    popover().findByText("Models").click();
-    popover().findByText("Products model").click();
+    openNotebook();
+
     join();
     popover().findByText("Orders model").click();
     popover().findByText("ID").click();
@@ -521,7 +529,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();
     popover().within(() => {
-      cy.contains("Sample Database").click();
+      cy.contains("Raw Data").click();
       cy.contains("Orders").click();
     });
 
@@ -538,15 +546,21 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
+
+      cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+        ({ body }) => {
+          const tableId = body.find(table => table.name === "products").id;
+          openTable({
+            database: WRITABLE_DB_ID,
+            table: tableId,
+            mode: "notebook",
+          });
+        },
+      );
     });
 
     it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature', () => {
-      // add a question with "Products" and "Median of Price" aggregation by "Category"
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      cy.findByRole("button", { name: "Summarize" }).click();
 
       addSummaryField({ metric: "Median of ...", field: "Price" });
 
@@ -562,11 +576,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support custom columns", () => {
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      // startNewQuestion();
+      // popover().within(() => {
+      //   cy.findByText("QA Postgres12").click();
+      //   cy.findByText("Products").click();
+      // });
 
       addCustomColumn();
       enterCustomColumnDetails({
@@ -574,6 +588,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         name: "Mega price",
       });
       cy.button("Done").click();
+
+      cy.findByRole("button", { name: "Summarize" }).click();
 
       addSummaryField({ metric: "Median of ...", field: "Mega price" });
       addSummaryField({ metric: "Count of rows" });
@@ -598,11 +614,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should support Summarize side panel", () => {
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      // startNewQuestion();
+      // popover().within(() => {
+      //   cy.findByText("QA Postgres12").click();
+      //   cy.findByText("Products").click();
+      // });
 
       visualize();
 

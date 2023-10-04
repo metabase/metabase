@@ -6,7 +6,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/core/components/Tooltip";
