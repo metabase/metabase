@@ -414,9 +414,9 @@ describe("scenarios > search", () => {
       });
 
       it("should remove last_edited_by filter when `X` is clicked on filter", () => {
-        cy.visit(`/search?q=e&created_by=${NORMAL_USER_ID}`);
+        cy.visit(`/search?q=e&last_edited_by=${NORMAL_USER_ID}`);
 
-        cy.findByTestId("created_by-search-filter").within(() => {
+        cy.findByTestId("last_edited_by-search-filter").within(() => {
           cy.findByText("Robert Tableton").should("exist");
           cy.findByLabelText("close icon").click();
         });

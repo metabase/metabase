@@ -18,6 +18,7 @@ import { isNotNull } from "metabase/core/utils/types";
 import {
   DropdownDisplayContent,
   DropdownFieldSet,
+  DropdownLabelIcon,
   SearchEventSandbox,
 } from "./DropdownSidebarFilter.styled";
 
@@ -112,8 +113,10 @@ export const DropdownSidebarFilter = ({
             <DisplayComponent value={value} />
           ) : (
             <Group noWrap>
-              {iconName && <Icon name={iconName} />}
-              <Text weight={700}>{label}</Text>
+              {iconName && <DropdownLabelIcon size={16} name={iconName} />}
+              <Text lineClamp={2} weight={700}>
+                {label.repeat(5)}
+              </Text>
             </Group>
           )}
           <Button
