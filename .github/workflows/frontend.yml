@@ -33,7 +33,7 @@ jobs:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
