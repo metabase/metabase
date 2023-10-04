@@ -780,8 +780,15 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
+
+          /**
+           * When initialRoute is `/model/${TEST_MODEL_CARD.id}/metadata`,
+           * the QueryBuilder gets incompletely intialized.
+           * This seems to affect only tests.
+           */
+          userEvent.click(screen.getByText("Metadata"));
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
