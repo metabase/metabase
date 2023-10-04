@@ -58,7 +58,7 @@ const mapStateToProps = (state: State, props: CollectionIdProps) => {
   };
 };
 
-type UpdateCollectionPermissionProps = {
+type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;
@@ -76,7 +76,7 @@ type CollectionPermissionsPageProps = {
     collection,
     value,
     shouldPropagate,
-  }: UpdateCollectionPermissionProps) => void;
+  }: UpdateCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
   loadPermissions: () => void;
