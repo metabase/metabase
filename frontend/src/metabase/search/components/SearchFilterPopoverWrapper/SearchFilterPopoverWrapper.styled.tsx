@@ -4,6 +4,7 @@ import { Stack } from "metabase/ui";
 
 export const SearchPopoverContainer = styled(Stack)`
   overflow: hidden;
+  width: 100%;
 `;
 export const DropdownApplyButtonDivider = styled.hr<{ width?: string }>`
   border-width: 1px 0 0 0;

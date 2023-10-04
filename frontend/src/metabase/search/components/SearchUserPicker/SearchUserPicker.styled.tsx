@@ -10,11 +10,13 @@ export const SearchUserPickerContainer = styled(Stack)`
 
 export const SearchUserPickerContent = styled(Stack)`
   overflow-y: auto;
+  flex: 1;
 `;
 
 export const SearchUserSelectBox = styled(Group)`
   border: ${({ theme }) => theme.colors.border[0]} 1px solid;
   border-radius: ${({ theme }) => theme.radius.md};
+  //overflow-y: auto;
 `;
 
 export const SelectedUserButton = styled(Button)<

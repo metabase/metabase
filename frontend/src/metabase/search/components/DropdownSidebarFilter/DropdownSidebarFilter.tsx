@@ -7,7 +7,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Group, Text, Box, Center, Button } from "metabase/ui";
+import { Group, Text, Box, Stack, Center, Button } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -16,7 +16,8 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
 import {
-  DropdownDisplayContent,
+  DropdownContent,
+  DropdownDisplay,
   DropdownFieldSet,
   SearchEventSandbox,
 } from "./DropdownSidebarFilter.styled";
@@ -102,7 +103,7 @@ export const DropdownSidebarFilter = ({
         legend={fieldHasValue ? label : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
-        <DropdownDisplayContent position="apart" noWrap w="100%">
+        <DropdownDisplay position="apart" noWrap w="100%">
           {fieldHasValue ? (
             <DisplayComponent value={value} />
           ) : (
@@ -125,7 +126,7 @@ export const DropdownSidebarFilter = ({
               </Center>
             }
           />
-        </DropdownDisplayContent>
+        </DropdownDisplay>
       </DropdownFieldSet>
 
       <Popover
@@ -138,12 +139,12 @@ export const DropdownSidebarFilter = ({
       >
         <SearchEventSandbox>
           {popoverWidth && (
-            <Box w={popoverWidth}>
+            <DropdownContent w={popoverWidth} h="100%">
               <ContentComponent
                 value={value}
                 onChange={selected => onApplyFilter(selected)}
               />
-            </Box>
+            </DropdownContent>
           )}
         </SearchEventSandbox>
       </Popover>

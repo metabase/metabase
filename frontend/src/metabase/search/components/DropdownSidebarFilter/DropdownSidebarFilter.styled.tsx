@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Group } from "metabase/ui";
+import { Group, Stack } from "metabase/ui";
 
 import FieldSet from "metabase/components/FieldSet";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -41,7 +41,11 @@ export const DropdownFieldSet = styled(FieldSet)<{
   }
 `;
 
-export const DropdownDisplayContent = styled(Group)`
+export const DropdownDisplay = styled(Group)`
+  overflow: hidden;
+`;
+
+export const DropdownContent = styled(Stack)`
   overflow: hidden;
 `;
 

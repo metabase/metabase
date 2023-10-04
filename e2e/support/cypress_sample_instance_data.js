@@ -73,6 +73,10 @@ export const NORMAL_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
   email: "normal@metabase.test",
 }).id;
 
+export const SANDBOXED_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
+  email: "u1@metabase.test",
+}).id;
+
 export const NODATA_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
   email: "nodata@metabase.test",
 }).id;
