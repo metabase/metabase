@@ -49,6 +49,7 @@ jobs:
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
       - name: Check types
+        if: needs.files-changed.outputs.frontend_all == 'true'
         run: yarn type-check-pure
 
   fe-tests-unit:
