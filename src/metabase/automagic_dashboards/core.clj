@@ -96,7 +96,7 @@
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.filters :as filters]
-    ;[metabase.automagic-dashboards.foo :as foo]
+    [metabase.automagic-dashboards.foo :as foo]
     [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]

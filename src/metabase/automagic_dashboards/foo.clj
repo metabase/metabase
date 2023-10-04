@@ -174,33 +174,14 @@
                    :dimension-affinities (vec named-dimensions)
                    :nominal-type->field  xform}))))))
 
-(defn generate-metric-definitions
-  "Given a set of metrics and dimensions, produce a sequence of metric definitions containing semantic information
-  such that it can be easily bound to real dimensions/fields."
-  [metrics ground-dimensions]
-  (mapcat #(ground-metric % ground-dimensions) metrics))
-
-(defn find-metrics
-  "Create a sequence of metrics, each of which follows the shape of this fragment:
-
-   {:metric-name \"MinJoinDate\"
-    :metric-title \"Earliest Joint Date\"
-    :metric-interestingness 5
-    :metric-definition {:aggregation [\"min\" [:field 13 nil]]}}
-  "
-  ;; dashboard-template is only needed here is metrics and **dimensions**
-  [thing metric-specs ground-dimensions]
-  (let [linked-metrics    (linked-metrics thing)
-        generated-metrics (generate-metric-definitions
-                            metric-specs
-                            ground-dimensions)]
-    (into
-      linked-metrics
-      generated-metrics)))
+(defn grounded-metrics
+  "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
+  [metric-templates ground-dimensions]
+  (mapcat #(ground-metric % ground-dimensions) metric-templates))
 
 (defn normalize-metrics
   "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
-  [{:keys [metrics]}]
+  [metrics]
   (->> metrics
        (map first)
        (map (fn [[metric-name metric-definition]]
@@ -295,7 +276,7 @@
   ;; field matches which are all the same field except they are merged with the binding.
   ;; What we want instead is just a map of field to potential bindings.
   ;; Just rack and stack the bindings then return that with the field or something.
-  (let [all-bindings (for [dimension dimension-specs
+  (let [all-bindings (for [dimension      dimension-specs
                            :let [[identifier definition] (first dimension)]
                            matching-field (matching-fields context definition)]
                        {(name identifier)
@@ -367,32 +348,32 @@
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
                            (case (compare (:score a) (:score b))
-                             1  a
-                             0  (update a :matches concat (:matches b))
+                             1 a
+                             0 (update a :matches concat (:matches b))
                              -1 b))
               {})))
 
 (comment
   (require '[metabase.automagic-dashboards.core :as magic])
-  (let [template-name    "GenericTable"
-        entity           (t2/select-one :model/Metric :name "Churn")
+  (let [template-name     "GenericTable"
+        entity            (t2/select-one :model/Metric :name "Churn")
         {template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context     (#'magic/make-base-context (magic/->root entity))
-        bound-dimensions (find-dimensions base-context template-dimensions)]
-    (find-metrics
-      entity
-      (normalize-metrics dashboard-template)
-      bound-dimensions))
+         template-metrics    :metrics} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context      (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions (find-dimensions base-context template-dimensions)
+        metric-templates  (concat
+                            (normalize-metrics template-metrics)
+                            (linked-metrics entity))]
+    (grounded-metrics metric-templates ground-dimensions))
 
-  (let [template-name    "GenericTable"
-        entity           (t2/select-one :model/Table :name "ACCOUNTS")
+  (let [template-name     "GenericTable"
+        entity            (t2/select-one :model/Table :name "ACCOUNTS")
         {template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context     (#'magic/make-base-context (magic/->root entity))
-        bound-dimensions (find-dimensions base-context template-dimensions)]
-    (find-metrics
-      entity
-      (normalize-metrics dashboard-template)
-      bound-dimensions))
+         template-metrics    :metrics} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context      (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions (find-dimensions base-context template-dimensions)
+        metric-templates  (concat
+                            (normalize-metrics template-metrics)
+                            (linked-metrics entity))]
+    (grounded-metrics metric-templates ground-dimensions))
   )
