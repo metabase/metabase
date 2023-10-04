@@ -4,7 +4,11 @@ import { t } from "ttag";
 
 import _ from "underscore";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   getChartColumns,
@@ -48,7 +52,9 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   RemappingHydratedChartData,
+  VisualizationProperties,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 import { getChartWarnings } from "./utils/warnings";
@@ -307,112 +313,115 @@ const RowChartVisualization = ({
   );
 };
 
-RowChartVisualization.uiName = t`Row`;
-RowChartVisualization.identifier = "row";
-RowChartVisualization.iconName = "horizontal_bar";
-RowChartVisualization.noun = t`row chart`;
+function makeSettings(): VisualizationSettingsDefinitions<Series> {
+  const settings = {
+    ...ROW_CHART_SETTINGS,
+    ...GRAPH_DATA_SETTINGS,
+  };
+  settings["graph.metrics"] = {
+    ...settings["graph.metrics"],
+    title: t`X-axis`,
+  };
+  settings["graph.dimensions"] = {
+    ...settings["graph.dimensions"],
+    title: t`Y-axis`,
+  };
+  return settings;
+}
 
-RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = getMinSize("row");
-RowChartVisualization.defaultSize = getDefaultSize("row");
+Object.assign(RowChartVisualization, {
+  uiName: t`Row`,
+  identifier: "row",
+  iconName: "horizontal_bar",
+  noun: t`row chart`,
 
-RowChartVisualization.settings = {
-  ...ROW_CHART_SETTINGS,
-  ...GRAPH_DATA_SETTINGS,
-};
+  noHeader: true,
+  minSize: getMinSize("row"),
+  defaultSize: getDefaultSize("row"),
 
-RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
-  return (
-    rows.length > 1 &&
-    cols.length >= 2 &&
-    cols.filter(isDimension).length > 0 &&
-    cols.filter(isMetric).length > 0
-  );
-};
+  settings: makeSettings(),
 
-RowChartVisualization.isLiveResizable = (series: any[]) => {
-  const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
-  return totalRows < 10;
-};
-
-RowChartVisualization.settings["graph.metrics"] = {
-  ...RowChartVisualization.settings["graph.metrics"],
-  title: t`X-axis`,
-};
-RowChartVisualization.settings["graph.dimensions"] = {
-  ...RowChartVisualization.settings["graph.dimensions"],
-  title: t`Y-axis`,
-};
-
-/**
- * Required to make it compatible with series settings without rewriting them fully
- * It expands a single card + dataset into multiple "series" and sets _seriesKey which is needed for settings to work
- */
-RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
-  const [series] = originalMultipleSeries;
-  const settings: any = getComputedSettingsForSeries(originalMultipleSeries);
-  const { card, data } = series;
-
-  if (series.card._transformed || !hasValidColumnsSelected(settings, data)) {
-    return originalMultipleSeries;
-  }
-
-  const chartColumns = getChartColumns(data, settings);
-
-  const computedSeries = getSeries(
-    data,
-    chartColumns,
-    getColumnValueFormatter(),
-  ).map(series => {
-    const seriesCard = {
-      ...card,
-      name: series.seriesName,
-      _seriesKey: series.seriesKey,
-      _transformed: true,
-    };
-
-    const newData = {
-      ...data,
-      cols: [
-        series.seriesInfo?.dimensionColumn,
-        series.seriesInfo?.metricColumn,
-      ],
-    };
-
-    return { card: seriesCard, data: newData };
-  });
-
-  return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
-};
-
-RowChartVisualization.checkRenderable = (
-  series: any[],
-  settings: VisualizationSettings,
-) => {
-  validateDatasetRows(series);
-  validateChartDataSettings(settings);
-  validateStacking(settings);
-};
-
-RowChartVisualization.placeholderSeries = [
-  {
-    card: {
-      display: "row",
-      visualization_settings: {
-        "graph.metrics": ["x"],
-        "graph.dimensions": ["y"],
-      },
-      dataset_query: { type: "null" },
-    },
-    data: {
-      rows: _.range(0, 11).map(i => [i, i]),
-      cols: [
-        { name: "x", base_type: "type/Integer" },
-        { name: "y", base_type: "type/Integer" },
-      ],
-    },
+  isSensible: ({ cols, rows }: DatasetData) => {
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
   },
-];
+
+  isLiveResizable: (series: any[]) => {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
+  },
+
+  checkRenderable: (series: any[], settings: VisualizationSettings) => {
+    validateDatasetRows(series);
+    validateChartDataSettings(settings);
+    validateStacking(settings);
+  },
+
+  placeholderSeries: [
+    {
+      card: {
+        display: "row",
+        visualization_settings: {
+          "graph.metrics": ["x"],
+          "graph.dimensions": ["y"],
+        },
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: _.range(0, 11).map(i => [i, i]),
+        cols: [
+          { name: "x", base_type: "type/Integer" },
+          { name: "y", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ],
+
+  /**
+   * Required to make it compatible with series settings without rewriting them fully
+   * It expands a single card + dataset into multiple "series" and sets _seriesKey which is needed for settings to work
+   */
+  transformSeries: (originalMultipleSeries: any) => {
+    const [series] = originalMultipleSeries;
+    const settings: any = getComputedSettingsForSeries(originalMultipleSeries);
+    const { card, data } = series;
+
+    if (series.card._transformed || !hasValidColumnsSelected(settings, data)) {
+      return originalMultipleSeries;
+    }
+
+    const chartColumns = getChartColumns(data, settings);
+
+    const computedSeries = getSeries(
+      data,
+      chartColumns,
+      getColumnValueFormatter(),
+    ).map(series => {
+      const seriesCard = {
+        ...card,
+        name: series.seriesName,
+        _seriesKey: series.seriesKey,
+        _transformed: true,
+      };
+
+      const newData = {
+        ...data,
+        cols: [
+          series.seriesInfo?.dimensionColumn,
+          series.seriesInfo?.metricColumn,
+        ],
+      };
+
+      return { card: seriesCard, data: newData };
+    });
+
+    return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
+  },
+} as VisualizationProperties);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;

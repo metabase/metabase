@@ -252,6 +252,7 @@ export type VisualizationProperties = {
   columnSettings?: (
     column: DatasetColumn,
   ) => VisualizationColumnSettingsDefinitions;
+  shouldRender?: (props: any) => boolean;
 };
 
 // TODO: add component property for the react component instead of the intersection

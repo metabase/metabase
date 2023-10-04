@@ -10,6 +10,14 @@ import Action from "./Action";
 const isForm = (object: any, computedSettings: VisualizationSettings) =>
   computedSettings.actionDisplayType === "form";
 
+export const buttonVariantOptions = [
+  { name: t`Primary`, value: "primary" },
+  { name: t`Outline`, value: "default" },
+  { name: t`Danger`, value: "danger" },
+  { name: t`Success`, value: "success" },
+  { name: t`Borderless`, value: "borderless" },
+];
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Action, {
   uiName: t`Action`,
@@ -60,15 +68,7 @@ export default Object.assign(Action, {
       widget: "select",
       default: "primary",
       getHidden: isForm,
-      props: {
-        options: [
-          { name: t`Primary`, value: "primary" },
-          { name: t`Outline`, value: "default" },
-          { name: t`Danger`, value: "danger" },
-          { name: t`Success`, value: "success" },
-          { name: t`Borderless`, value: "borderless" },
-        ],
-      },
+      props: { options: buttonVariantOptions },
     },
   },
 } as VisualizationProperties);

@@ -23,7 +23,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
 import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
-import ActionViz from "metabase/actions/components/ActionViz";
+import { buttonVariantOptions } from "metabase/actions/components/ActionViz/ActionViz";
 
 import { closeSidebar } from "metabase/dashboard/actions";
 import { isActionDashCard } from "metabase/actions/utils";
@@ -35,8 +35,6 @@ import {
   SidebarFooter,
   ChangeActionContainer,
 } from "./ActionSidebar.styled";
-
-const buttonVariantOptions = ActionViz.settings["button.variant"].props.options;
 
 const mapDispatchToProps = {
   closeSidebar,
