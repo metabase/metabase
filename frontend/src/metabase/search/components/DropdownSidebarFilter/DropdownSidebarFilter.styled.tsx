@@ -45,7 +45,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
 export const DropdownLabelIcon = styled(Icon)`
   overflow: visible;
 `;
-export const DropdownDisplayContent = styled(Group)`
+export const GroupOverflowHidden = styled(Group)`
   overflow: hidden;
 `;
 
