@@ -298,7 +298,7 @@
     "lint-eslint": "yarn build:cljs && yarn lint-eslint-pure",
     "lint-eslint-pure": "eslint --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 --report-unused-disable-directives enterprise/frontend/src frontend/src frontend/test e2e/test",
     "lint-prettier": "yarn && yarn lint-prettier-pure",
-    "lint-prettier-pure": "prettier -l '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
+    "lint-prettier-pure": "prettier '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' --check",
     "lint-docs-links": "yarn && ./bin/verify-doc-links",
     "lint-yaml": "yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}",
     "test": "yarn test-unit && yarn test-timezones && yarn test-cypress",
