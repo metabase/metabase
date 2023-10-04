@@ -10,6 +10,7 @@ import {
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
@@ -299,6 +300,132 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
         });
+
+        describe("whether we should render dashboards in a collection", () => {
+          it("should not render dashboards when opening public collections", async () => {
+            const dashboardInPublicCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in public collection",
+              // `null` means it's in the root collection
+              collection_id: null,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPublicCollection,
+              noRecentDashboard: true,
+            });
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.queryByRole("heading", {
+                name: dashboardInPublicCollection.name,
+              }),
+            ).not.toBeInTheDocument();
+          });
+
+          it("should not render dashboards when opening public subcollections", async () => {
+            const dashboardInPublicSubcollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in public subcollection",
+              collection_id: COLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPublicSubcollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: COLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.queryByRole("heading", {
+                name: dashboardInPublicSubcollection.name,
+              }),
+            ).not.toBeInTheDocument();
+          });
+
+          it("should render dashboards when opening personal collections", async () => {
+            const dashboardInPersonalCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal collection",
+              collection_id: PERSONAL_COLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPersonalCollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPersonalCollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+
+          it("should render dashboards when opening personal subcollections", async () => {
+            const dashboardInPersonalSubcollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal subcollection",
+              collection_id: PERSONAL_SUBCOLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPersonalSubcollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_SUBCOLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPersonalSubcollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+        });
       });
 
       describe("question is in a public collection", () => {
@@ -370,6 +497,128 @@ describe("AddToDashSelectDashModal", () => {
             expect(
               screen.getByRole("heading", {
                 name: "Create a new dashboard",
+              }),
+            ).toBeInTheDocument();
+          });
+        });
+
+        describe("whether we should render dashboards in a collection", () => {
+          it("should render dashboards when opening public collections", async () => {
+            const dashboardInPublicCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in public collection",
+              // `null` means it's in the root collection
+              collection_id: null,
+              model: "dashboard",
+            });
+
+            await setup({
+              dashboard: dashboardInPublicCollection,
+              noRecentDashboard: true,
+            });
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPublicCollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+
+          it("should render dashboards when opening public subcollections", async () => {
+            const dashboardInPublicSubcollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in public subcollection",
+              collection_id: COLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              dashboard: dashboardInPublicSubcollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: COLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPublicSubcollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+
+          it("should render dashboards when opening personal collections", async () => {
+            const dashboardInPersonalCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal collection",
+              collection_id: PERSONAL_COLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              dashboard: dashboardInPersonalCollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPersonalCollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+
+          it("should render dashboards when opening personal subcollections", async () => {
+            const dashboardInPersonalSubcollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal subcollection",
+              collection_id: PERSONAL_SUBCOLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              dashboard: dashboardInPersonalSubcollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_SUBCOLLECTION.name,
+              }),
+            );
+
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
+            expect(
+              screen.getByRole("heading", {
+                name: dashboardInPersonalSubcollection.name,
               }),
             ).toBeInTheDocument();
           });
