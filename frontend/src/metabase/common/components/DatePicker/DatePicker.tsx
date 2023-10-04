@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { DateShortcutPicker } from "./DateShortcutPicker";
+import { RelativeDatePicker } from "./RelativeDatePicker";
+import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
@@ -39,7 +40,13 @@ export function DatePicker({
 
   switch (type) {
     case "relative":
-      return null;
+      return (
+        <RelativeDatePicker
+          value={value?.type === type ? value : undefined}
+          onChange={onChange}
+          onBack={handleBack}
+        />
+      );
     case "exclude":
       return (
         <ExcludeDatePicker
