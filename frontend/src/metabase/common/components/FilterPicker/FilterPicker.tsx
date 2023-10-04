@@ -23,6 +23,7 @@ export function FilterPicker({
   stageIndex,
   filter,
   onSelect,
+  onClose,
 }: FilterPickerProps) {
   const [column, setColumn] = useState<Lib.ColumnMetadata | undefined>(
     getInitialColumn(query, stageIndex, filter),
@@ -34,6 +35,11 @@ export function FilterPicker({
   }, [query, stageIndex]);
 
   const checkColumnSelected = () => false;
+
+  const handleChange = (filter: Lib.ExpressionClause) => {
+    onSelect(filter);
+    onClose?.();
+  };
 
   const renderContent = () => {
     if (!column) {
@@ -56,7 +62,7 @@ export function FilterPicker({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        onChange={onSelect}
+        onChange={handleChange}
         onBack={() => setColumn(undefined)}
       />
     );
