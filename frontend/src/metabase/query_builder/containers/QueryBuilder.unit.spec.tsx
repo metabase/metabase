@@ -404,9 +404,15 @@ describe("QueryBuilder", () => {
 
           userEvent.tab();
 
+          await waitFor(() => {
+            expect(
+              screen.getByRole("button", { name: "Save changes" }),
+            ).toBeEnabled();
+          });
+
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-          expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-          expect(mockEvent.returnValue).toBe(undefined);
+          expect(mockEvent.preventDefault).toHaveBeenCalled();
+          expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
         });
 
         it("should not trigger beforeunload event when model metadata is unedited", async () => {
