@@ -2,6 +2,7 @@
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.walk :as walk]
+    [metabase.automagic-dashboards.core :as magic]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
     [metabase.models.interface :as mi]
@@ -127,10 +128,9 @@
 (defmulti linked-metrics mi/model)
 
 (defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
-  [{:metric-name            metric-name
-    :metric-title           metric-name
-    :metric-definition      definition
-    :metric-interestingness :???}])
+  [{:metric-name       metric-name
+    :metric-title      metric-name
+    :metric-definition definition}])
 
 (defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
   (mapcat
@@ -138,27 +138,6 @@
     (t2/select :model/Metric :table_id table-id)))
 
 (defmethod linked-metrics :default [_] [])
-
-(defmulti potential-dimensions mi/model)
-
-(defmethod potential-dimensions :model/Metric [{table-id :table_id}]
-  (group-by
-    (fn [{:keys [semantic_type effective_type]}]
-      (or semantic_type effective_type))
-    (t2/select :model/Field :table_id table-id)))
-
-(defmethod potential-dimensions :model/Table [{table-id :id}]
-  (group-by
-    (fn [{:keys [semantic_type effective_type]}]
-      (or semantic_type effective_type))
-    (t2/select :model/Field :table_id table-id)))
-
-(defmethod potential-dimensions :default [_] {})
-
-(comment
-  (potential-dimensions (t2/select-one :model/Table :name "ORDERS"))
-  (potential-dimensions (t2/select-one :model/Metric :name "Churn"))
-  )
 
 (defn transform-metric-aggregate
   "Map a metric aggregate definition from nominal types to semantic types."
@@ -173,61 +152,32 @@
         v))
     m))
 
+(defn ground-metric
+  "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
+   Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
+  [{metric-name :metric-name metric-definition :metric} ground-dimensions]
+  (let [named-dimensions (dashboard-templates/collect-dimensions metric-definition)]
+    (->> (map (comp :matches ground-dimensions) named-dimensions)
+         (apply math.combo/cartesian-product)
+         (map (partial zipmap named-dimensions))
+         (map (fn [nm->field]
+                (let [xform (update-vals nm->field (fn [{field-id :id}]
+                                                     [:field field-id nil]))]
+                  {:metric-name          metric-name
+                   :metric-title         metric-name
+                   :metric-definition    {:aggregation
+                                          (transform-metric-aggregate metric-definition xform)}
+                   :semantic-affinities  (mapv (comp
+                                                 (some-fn :semantic_type :effective_type)
+                                                 nm->field) named-dimensions)
+                   :dimension-affinities (vec named-dimensions)
+                   :nominal-type->field  xform}))))))
+
 (defn generate-metric-definitions
   "Given a set of metrics and dimensions, produce a sequence of metric definitions containing semantic information
   such that it can be easily bound to real dimensions/fields."
-  [{:keys [dimensions metrics]}
-   semantic-type->fields]
-  (let [nominal-dims->semantic-types
-        (->> dimensions
-             (map first)
-             (map (fn [[dimension-name {:keys [field_type]}]]
-                    [dimension-name (peek field_type)]))
-             (reduce
-               (fn [acc [dimension-name semantic-type]]
-                 (update acc dimension-name (fnil conj #{}) semantic-type))
-               {}))]
-    (->> metrics
-         (map first)
-         (mapcat (fn [[metric-name {metric-title :name metric-definition :metric}]]
-                   (let [dims (dashboard-templates/collect-dimensions metric-definition)]
-                     (->> (map nominal-dims->semantic-types dims)
-                          (apply math.combo/cartesian-product)
-                          (map (partial zipmap dims))
-                          (mapcat (fn [nm->st]
-                                 (->> (map semantic-type->fields (vals nm->st))
-                                      (apply math.combo/cartesian-product)
-                                      (map (partial zipmap (keys nm->st))))))
-                          (map (fn [nm->field]
-                                 (let [xform (update-vals nm->field (fn [{field-id :id}]
-                                                                      [:field field-id nil]))
-                                       interestingness (->> nm->field
-                                                            vals
-                                                            (map :semantic_type)
-                                                            affinity-set-interestingness)]
-                                   {:metric-name                 metric-name
-                                    :metric-title                metric-title
-                                    :metric-interestingness      interestingness
-                                    ;:nominal-query               metric-definition
-                                    :metric-definition           {:aggregation
-                                                                  (transform-metric-aggregate metric-definition xform)}
-                                    ;:nominal-type->field nm->field
-                                    }))))))))
-    ))
-
-(defn generate-metrics
-  "Given a thing to create metrics for and some template containing metric definitions, create a sequence of
-   \"grounded\" metrics, each of which contains a partial query defining the metric bound to actual fields.
-
-   Note that we currently take the dashboard-template as an argument because we need both the metric and dimension
-   definitions from this template. We could, in the future, provide only metrics defined semantically to eliminate the
-   larger data structure from being passed.
-   "
-  [thing dashboard-template]
-  (let [semantic-type->fields (potential-dimensions thing)]
-    (generate-metric-definitions
-      dashboard-template
-      semantic-type->fields)))
+  [metrics ground-dimensions]
+  (mapcat #(ground-metric % ground-dimensions) metrics))
 
 (defn find-metrics
   "Create a sequence of metrics, each of which follows the shape of this fragment:
@@ -237,9 +187,12 @@
     :metric-interestingness 5
     :metric-definition {:aggregation [\"min\" [:field 13 nil]]}}
   "
-  [thing dashboard-template]
+  ;; dashboard-template is only needed here is metrics and **dimensions**
+  [thing metric-specs ground-dimensions]
   (let [linked-metrics    (linked-metrics thing)
-        generated-metrics (generate-metrics thing dashboard-template)]
+        generated-metrics (generate-metric-definitions
+                            metric-specs
+                            ground-dimensions)]
     (into
       linked-metrics
       generated-metrics)))
@@ -247,16 +200,35 @@
 (defn find-dimensions
   [_])
 
+(defn normalize-metrics
+  "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
+  [{:keys [metrics]}]
+  (->> metrics
+       (map first)
+       (map (fn [[metric-name metric-definition]]
+              (assoc metric-definition :metric-name metric-name)))))
+
 (comment
-  (find-metrics
-    (t2/select-one :model/Metric :name "Churn")
-    (dashboard-templates/get-dashboard-template ["table" "UserTable"]))
+  (let [template-name    "GenericTable"
+        entity           (t2/select-one :model/Metric :name "Churn")
+        {template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context     (#'magic/make-base-context (magic/->root entity))
+        bound-dimensions (#'magic/bind-dimensions base-context template-dimensions)]
+    (find-metrics
+      entity
+      (normalize-metrics dashboard-template)
+      bound-dimensions))
 
-  (find-metrics
-    (t2/select-one :model/Table :name "ACCOUNTS")
-    nil)
-
-  (find-metrics
-    (t2/select-one :model/Table :name "ORDERS")
-    nil)
+  (let [template-name    "GenericTable"
+        entity           (t2/select-one :model/Table :name "ACCOUNTS")
+        {template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" template-name])
+        base-context     (#'magic/make-base-context (magic/->root entity))
+        bound-dimensions (#'magic/bind-dimensions base-context template-dimensions)]
+    (find-metrics
+      entity
+      (normalize-metrics dashboard-template)
+      bound-dimensions))
   )
+

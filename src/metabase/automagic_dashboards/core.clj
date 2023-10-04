@@ -96,7 +96,7 @@
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.filters :as filters]
-    [metabase.automagic-dashboards.foo :as foo]
+    ;[metabase.automagic-dashboards.foo :as foo]
     [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.visualization-macros :as visualization]
@@ -1184,29 +1184,36 @@
       (all-satisfied-bindings distinct-affinity-sets available-dimensions)
       (fn [v]
         (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
+
+  (let [{template-dimensions :dimensions
+         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+        model        (t2/select-one :model/Card 2)
+        base-context (make-base-context (->root model))]
+    (bind-dimensions base-context template-dimensions))
   )
 
 (declare make-combinations make-layout dashboard-ify)
-(defn apply-dashboard-template-refactor
-  [{root :root :as base-context} dashboard-template]
-  ;; guiding principals:
-  ;; make this work
 
-  ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
-  ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
-  ;; bespoke to what it needs to do and not constrained by the dash template
-  (let [metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
-                                     (:metrics dashboard-template))
-        dimensions (foo/find-dimensions base-context #_? )
-        ;; maybe massage metrics from dashboard template. But dashboard-template is not
-        combinations nil]
-    ;; this empty map is new information that we might want from the yaml
-
-    ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
-    ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
-    (->> (make-combinations combinations {})
-         (make-layout :web)
-         (dashboard-ify dashboard-template))))
+;(defn apply-dashboard-template-refactor
+;  [{root :root :as base-context} dashboard-template]
+;  ;; guiding principals:
+;  ;; make this work
+;
+;  ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
+;  ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
+;  ;; bespoke to what it needs to do and not constrained by the dash template
+;  (let [metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
+;                                     (:metrics dashboard-template))
+;        dimensions (foo/find-dimensions base-context #_? )
+;        ;; maybe massage metrics from dashboard template. But dashboard-template is not
+;        combinations nil]
+;    ;; this empty map is new information that we might want from the yaml
+;
+;    ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
+;    ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
+;    (->> (make-combinations combinations {})
+;         (make-layout :web)
+;         (dashboard-ify dashboard-template))))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
