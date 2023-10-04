@@ -81,7 +81,6 @@ describe("personal collections", () => {
       // Let's use the API to create a sub-collection "Foo" in admin's personal collection
       cy.request("POST", "/api/collection", {
         name: "Foo",
-        color: "#ff9a9a",
         parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 

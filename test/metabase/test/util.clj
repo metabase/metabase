@@ -117,8 +117,6 @@
 
    :model/Collection
    (fn [_] (default-created-at-timestamped
-             {:name  (tu.random/random-name)
-              :color "#ABCDEF"}))
 
    :model/Dashboard
    (fn [_] (default-timestamped

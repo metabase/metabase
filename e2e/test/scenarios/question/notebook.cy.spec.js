@@ -7,6 +7,7 @@ import {
   filterField,
   getNotebookStep,
   join,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
   openTable,
@@ -441,6 +442,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
+    cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
+
     cy.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
@@ -448,16 +451,18 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       display: "table",
     });
 
-    cy.createQuestion({
-      name: "Orders model",
-      query: { "source-table": ORDERS_ID },
-      dataset: true,
-      display: "table",
-    });
+    cy.createQuestion(
+      {
+        name: "Orders model",
+        query: { "source-table": ORDERS_ID },
+        dataset: true,
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
 
-    startNewQuestion();
-    popover().findByText("Models").click();
-    popover().findByText("Products model").click();
+    openNotebook();
+
     join();
     popover().findByText("Orders model").click();
     popover().findByText("ID").click();
