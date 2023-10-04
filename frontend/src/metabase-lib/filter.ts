@@ -686,6 +686,8 @@ function relativeDateFilterPartsWithoutOffset(
     column,
     value,
     bucket,
+    offsetValue: null,
+    offsetBucket: null,
     options,
   };
 }
