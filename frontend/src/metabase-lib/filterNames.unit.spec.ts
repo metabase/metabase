@@ -18,8 +18,23 @@ import {
 import type Field from "./metadata/Field";
 import * as Lib from "./v2";
 
+console.warn = jest.fn();
+
+const TIME_FIELD_ID = 998;
 const BOOLEAN_FIELD_ID = 999;
 const _peopleTable = createPeopleTable();
+
+_peopleTable.fields?.push(
+  createMockField({
+    id: TIME_FIELD_ID,
+    table_id: PEOPLE_ID,
+    name: "LAST_ONLINE_TIME",
+    display_name: "Last Online Time",
+    base_type: "type/Time",
+    effective_type: "type/Time",
+    semantic_type: null,
+  }),
+);
 
 _peopleTable.fields?.push(
   createMockField({
@@ -53,6 +68,8 @@ const fk = (metadata.field(ORDERS.USER_ID) as Field).reference();
 const tax = (metadata.field(ORDERS.TAX) as Field).reference();
 const createdAt = (metadata.field(ORDERS.CREATED_AT) as Field).reference();
 const name = (metadata.field(PEOPLE.NAME) as Field).reference();
+const longitude = (metadata.field(PEOPLE.LONGITUDE) as Field).reference();
+const lastOnlineTime = (metadata.field(TIME_FIELD_ID) as Field).reference();
 const isActive = (metadata.field(BOOLEAN_FIELD_ID) as Field).reference();
 
 function createdAtWithUnit(temporalUnit: string) {
@@ -135,6 +152,36 @@ const STRING_FILTERS = [
   },
   { clause: ["starts-with", name, "ABC"], name: "Name starts with ABC" },
   { clause: ["ends-with", name, "ABC"], name: "Name ends with ABC" },
+];
+
+const COORDINATE_FILTERS = [
+  {
+    clause: ["inside", longitude, PEOPLE.LONGITUDE, 1, 2, 3, 4],
+    name: "Longitude inside 1 2 3 4",
+  },
+];
+
+const TIME_FILTERS = [
+  {
+    clause: ["<", lastOnlineTime, "00:00:00.000"],
+    name: "Last Online Time is before 00:00:00.000",
+  },
+  {
+    clause: [">", lastOnlineTime, "12:00:00.000"],
+    name: "Last Online Time is after 12:00:00.000",
+  },
+  {
+    clause: ["between", lastOnlineTime, "12:00:00.000", "00:00:00.000+00:00"],
+    name: "Last Online Time between 12:00:00.000 00:00:00.000+00:00",
+  },
+  {
+    clause: ["is-null", lastOnlineTime],
+    name: "Last Online Time is empty",
+  },
+  {
+    clause: ["not-null", lastOnlineTime],
+    name: "Last Online Time is not empty",
+  },
 ];
 
 const BOOLEAN_FILTERS = [
@@ -518,6 +565,22 @@ describe("Number filters", () => {
 
 describe("String filters", () => {
   STRING_FILTERS.forEach(({ clause, name }) => {
+    test(`${name}`, () => {
+      expect(getFilterName(clause, PEOPLE_ID)).toEqual(name);
+    });
+  });
+});
+
+describe("Coordinate filters", () => {
+  COORDINATE_FILTERS.forEach(({ clause, name }) => {
+    test(`${name}`, () => {
+      expect(getFilterName(clause, PEOPLE_ID)).toEqual(name);
+    });
+  });
+});
+
+describe("Time filters", () => {
+  TIME_FILTERS.forEach(({ clause, name }) => {
     test(`${name}`, () => {
       expect(getFilterName(clause, PEOPLE_ID)).toEqual(name);
     });
