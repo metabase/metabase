@@ -85,14 +85,14 @@
         (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
         [:and
          [:= (search.config/column-with-model-alias model :query_type) "native"]
-         [:like [:lower column] (search.util/wildcard-match token)]]
+         [:like [:lower column] token]]
 
         (and (#{"action"} model)
              (= column (search.config/column-with-model-alias model :dataset_query)))
-        [:like [:lower :query_action.dataset_query] (search.util/wildcard-match token)]
+        [:like [:lower :query_action.dataset_query] token]
 
         :else
-        [:like [:lower column] (search.util/wildcard-match token)])))))
+        [:like [:lower column] token])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;

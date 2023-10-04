@@ -372,7 +372,7 @@
     (testing model
       (testing "do not search for native query by default"
         (is (= [:and
-                [:or [:like [:lower :card.name] "%%foo%%"] [:like [:lower :card.description] "%%foo%%"]]
+                [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -381,9 +381,9 @@
 
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and [:or
-                      [:like [:lower :card.name] "%%foo%%"]
-                      [:and [:= :card.query_type "native"] [:like [:lower :card.dataset_query] "%%foo%%"]]
-                      [:like [:lower :card.description] "%%foo%%"]]
+                      [:like [:lower :card.name] "%foo%"]
+                      [:and [:= :card.query_type "native"] [:like [:lower :card.dataset_query] "%foo%"]]
+                      [:like [:lower :card.description] "%foo%"]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -393,7 +393,7 @@
     (testing "action"
       (testing "do not search for native query by default"
         (is (= [:and
-                [:or [:like [:lower :action.name] "%%foo%%"] [:like [:lower :action.description] "%%foo%%"]]
+                [:or [:like [:lower :action.name] "%foo%"] [:like [:lower :action.description] "%foo%"]]
                 [:= :action.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -403,9 +403,9 @@
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and
                 [:or
-                 [:like [:lower :action.name] "%%foo%%"]
-                 [:like [:lower :query_action.dataset_query] "%%foo%%"]
-                 [:like [:lower :action.description] "%%foo%%"]]
+                 [:like [:lower :action.name] "%foo%"]
+                 [:like [:lower :query_action.dataset_query] "%foo%"]
+                 [:like [:lower :action.description] "%foo%"]]
                 [:= :action.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
