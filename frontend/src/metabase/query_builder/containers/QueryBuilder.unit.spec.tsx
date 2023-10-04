@@ -622,6 +622,54 @@ describe("QueryBuilder", () => {
             ),
           ).not.toBeInTheDocument();
         });
+
+        describe("editing metadata", () => {
+          it("shows custom warning modal when leaving edited metadata via SPA navigation", async () => {
+            const { history } = await setup({
+              card: TEST_MODEL_CARD,
+              dataset: TEST_MODEL_DATASET,
+              initialRoute: "/home",
+            });
+
+            history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
+
+            await waitFor(() => {
+              expect(
+                screen.queryByTestId("loading-spinner"),
+              ).not.toBeInTheDocument();
+            });
+
+            const columnDisplayName = await screen.findByTitle("Display name");
+
+            userEvent.click(columnDisplayName);
+            userEvent.type(columnDisplayName, "X");
+
+            await waitFor(() => {
+              expect(columnDisplayName).toHaveValue(
+                `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+              );
+            });
+
+            userEvent.tab();
+
+            await waitFor(() => {
+              expect(
+                screen.getByRole("button", { name: "Save changes" }),
+              ).toBeEnabled();
+            });
+
+            history.goBack();
+
+            expect(
+              screen.getByText("Changes were not saved"),
+            ).toBeInTheDocument();
+            expect(
+              screen.getByText(
+                "Navigating away from here will cause you to lose any changes you have made.",
+              ),
+            ).toBeInTheDocument();
+          });
+        });
       });
     });
 
