@@ -85,7 +85,9 @@
    :model_name          :text
    ;; returned for indexed-entity
    :pk_ref              :text
-   :model_index_id      :integer))
+   :model_index_id      :integer
+   ;; returned for Card and Action
+   :dataset_query       :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -156,10 +158,6 @@
   (-> {:select (select-clause-for-model model)
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
-
-#_(base-query-for-model "dataset" search-ctx)
-
-#_(metabase.test/user-http-request :crowberto :get "search" :q "x")
 
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection

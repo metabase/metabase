@@ -97,7 +97,7 @@
     [:table-db-id         {:optional true} ms/PositiveInt]
     [:limit-int           {:optional true} ms/Int]
     [:offset-int          {:optional true} ms/Int]
-    [:search-native-query {:optional true} boolean?]
+    [:search-native-query {:optional true} [:maybe true?]]
     ;; true to search for verified items only,
     ;; nil will return all items
     [:verified            {:optional true} [:maybe true?]]]))
@@ -119,11 +119,13 @@
 (defmethod searchable-columns-for-model "action"
   [_]
   [:name
+   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "card"
   [_]
   [:name
+   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "dataset"
@@ -188,11 +190,12 @@
         [:model.collection_id        :collection_id]
         [:model.id                   :model_id]
         [:model.name                 :model_name]
-        [:query_action.database_id   :database_id]))
+        [:query_action.database_id   :database_id]
+        [:query_action.dataset_query :dataset_query]))
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position
+  (conj default-columns :collection_id :collection_position :dataset_query
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]

@@ -47,6 +47,7 @@
    :context                    nil
    :dashboardcard_count        nil
    :database_id                false
+   :dataset_query              nil
    :description                nil
    :id                         true
    :initial_sync_status        nil
@@ -93,13 +94,14 @@
 
 (def ^:private action-model-params {:name "ActionModel", :dataset true})
 
+
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :dataset_query nil)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :dataset_query nil)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true :dataset_query (update (mt/query venues) :type  name))
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
      (table-search-results))
@@ -236,6 +238,7 @@
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -334,7 +337,7 @@
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false))]
+                         :model "card", :bookmark false :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -735,6 +738,21 @@
               (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
+(deftest card-dataset-query-test
+  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one. (#24132)"
+    (let [native-card {:name          "Another SQL query"
+                       :query_type    "native"
+                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
+      (mt/with-temp
+        [Card _mbql-card   {:name          "Venues Count"
+                            :query_type    "query"
+                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+         Card _native-card native-card
+         Card _dataset     (assoc native-card :name "Dataset" :dataset true)]
+        (is (= ["Another SQL query" "Dataset"]
+               (->> (search-request-data :rasta :q "aggregation" :search_native_query true)
+                    (map :name))))))))
+
 (deftest search-db-call-count-test
   (t2.with-temp/with-temp
     [Card      _              {:name "card db count test 1"}
@@ -792,34 +810,6 @@
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
 
 ;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;
-
-(mt/with-temp
-  [:model/Card card  {:dataset_query (mt/native-query {:query (format "select * from %s" "a")})}]
-  card)
-
-(deftest search-native-query-test
-  (let [search-term "search-native-query"]
-    (t2.with-temp/with-temp
-      [:model/Card {card-id :id}    {:name search-term}
-       :model/Card {card-id-2 :id}  {:dataset_query (mt/native-query {:query (format "select * from %s" search-term)})}
-       :model/Card {model-id :id}   {:dataset true :name search-term :query_type :native}
-       :model/Card {model-id-2 :id} {:dataset true :dataset_query (mt/native-query {:query (format "select * from %s" search-term)})}]
-
-      #_(testing "do not search for native queries by default"
-          (is (= #{[card-id "card"]
-                   [model-id "dataset"]}
-               (->> (:data (mt/user-http-request :crowberto :get "search" :q search-term))
-                    (map (juxt :id :model))
-                    set))))
-
-      (testing "can search for native queries"
-        (is (= #{[card-id "card"]
-                 [card-id-2 "card"]
-                 [model-id "dataset"]
-                 [model-id-2 "dataset"]}
-             (->> (:data (mt/user-http-request :crowberto :get "search" :q search-term :search_native_query true :models "dataset"))
-                  (map (juxt :id :model))
-                  set)))))))
 
 (deftest filter-by-creator-test
   (let [search-term "Created by Filter"]
@@ -1288,3 +1278,42 @@
 
         (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+
+(deftest search-native-query-test
+  (let [search-term "search-native-query"]
+    (mt/with-temp
+      [:model/Card {mbql-card :id}             {:name search-term}
+       :model/Card {native-card-in-name :id}   {:name search-term}
+       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:name search-term :dataset true}
+       :model/Card {native-model-in-name :id}  {:name search-term :dataset true}
+       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :dataset true}]
+      (mt/with-actions
+        [_                         {:dataset true :dataset_query (mt/mbql-query venues)}
+         {http-action :action-id}  {:type :http :name search-term}
+         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
+        (testing "by default do not search for native content"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+        (testing "if search-native-query is true, search both dataset_query and the name"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]
+
+                   ["card" native-card-in-query]
+                   ["dataset" native-model-in-query]
+                   ["action" query-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                    :data
+                    (map (juxt :model :id))
+                    set))))))))

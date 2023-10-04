@@ -362,24 +362,46 @@
                       (merge default-search-ctx {:search-string "foo"}))))))))
 
 (deftest build-filters-search-native-query
-  (testing "do not search for native query by default"
-    (is (=
-         [:and
-           [:or
-            [:like [:lower :card.name] "%foo%"]
-            [:like [:lower :card.description] "%foo%"]]
-           [:= :card.archived false]]
-         (:where (search.filter/build-filters
-                  base-search-query
-                  "card"
-                  (merge default-search-ctx {:search-string "foo"})))))
+  (doseq [model ["dataset" "card"]]
+    (testing model
+      (testing "do not search for native query by default"
+        (is (= [:and
+                [:or [:like [:lower :card.name] "%%foo%%"] [:like [:lower :card.description] "%%foo%%"]]
+                [:= :card.archived false]]
+               (:where (search.filter/build-filters
+                        base-search-query
+                        model
+                        (merge default-search-ctx {:search-string "foo"}))))))
 
-    (is (= [:and
-            [:or [:like [:lower :card.name] "%foo%"] [:like [:lower :card.description] "%foo%"]]
-            [:= :card.query_type "native"]
-            [:like [:lower :card.dataset_query] "%foo%"]
-            [:= :card.archived false]]
-           (:where (search.filter/build-filters
-                    base-search-query
-                    "card"
-                    (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))
+      (testing "search in both name, description and dataset_query if is enabled"
+        (is (= [:and [:or
+                      [:like [:lower :card.name] "%%foo%%"]
+                      [:and [:= :card.query_type "native"] [:like [:lower :card.dataset_query] "%%foo%%"]]
+                      [:like [:lower :card.description] "%%foo%%"]]
+                [:= :card.archived false]]
+               (:where (search.filter/build-filters
+                        base-search-query
+                        model
+                        (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))
+
+    (testing "action"
+      (testing "do not search for native query by default"
+        (is (= [:and
+                [:or [:like [:lower :action.name] "%%foo%%"] [:like [:lower :action.description] "%%foo%%"]]
+                [:= :action.archived false]]
+               (:where (search.filter/build-filters
+                        base-search-query
+                        "action"
+                        (merge default-search-ctx {:search-string "foo"}))))))
+
+      (testing "search in both name, description and dataset_query if is enabled"
+        (is (= [:and
+                [:or
+                 [:like [:lower :action.name] "%%foo%%"]
+                 [:like [:lower :query_action.dataset_query] "%%foo%%"]
+                 [:like [:lower :action.description] "%%foo%%"]]
+                [:= :action.archived false]]
+               (:where (search.filter/build-filters
+                        base-search-query
+                        "action"
+                        (merge default-search-ctx {:search-string "foo" :search-native-query true})))))))))

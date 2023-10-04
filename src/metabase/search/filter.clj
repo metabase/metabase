@@ -62,24 +62,37 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
-(defn- search-string-clause
-  [model query searchable-columns]
-  (when query
-    (into [:or]
-          (for [column searchable-columns
-                token (search.util/tokenize (search.util/normalize query))]
-            (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
-              [:= 0 1]
-              [:like
-               [:lower column]
-               (search.util/wildcard-match token)])))))
-
 (mu/defn ^:private search-string-clause-for-model
-  [model          :- SearchableModel
-   search-context :- SearchContext]
-  (search-string-clause model (:search-string search-context)
-                        (map #(search.config/column-with-model-alias model %)
-                             (search.config/searchable-columns-for-model model))))
+  [model                :- SearchableModel
+   search-context       :- SearchContext
+   search-native-query? :- [:maybe :boolean]]
+  (when-let [query (:search-string search-context)]
+    (into
+     [:or]
+     (for [column (cond->> (search.config/searchable-columns-for-model model)
+                    (not search-native-query?)
+                    (remove #{:dataset_query})
+
+                    true
+                    (map #(search.config/column-with-model-alias model %)))
+           token (->> (search.util/normalize query)
+                      search.util/tokenize
+                      (map search.util/wildcard-match))]
+       (cond
+        (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
+        [:= 0 1]
+
+        (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
+        [:and
+         [:= (search.config/column-with-model-alias model :query_type) "native"]
+         [:like [:lower column] (search.util/wildcard-match token)]]
+
+        (and (#{"action"} model)
+             (= column (search.config/column-with-model-alias model :dataset_query)))
+        [:like [:lower :query_action.dataset_query] (search.util/wildcard-match token)]
+
+        :else
+        [:like [:lower column] (search.util/wildcard-match token)])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
@@ -213,17 +226,6 @@
       ;; to be consistent we use revision.timestamp to do the filtering
       (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
 
-;; native query
-(doseq [model ["card" "dataset"]]
-  (defmethod build-optional-filter-query [:search-native-query model]
-    [_filter model query search-string]
-    (sql.helpers/where
-     query
-     [:and
-      [:= (search.config/column-with-model-alias model :query_type) "native"]
-      [:like [:lower (search.config/column-with-model-alias model :dataset_query)]
-       (search.util/wildcard-match search-string)]])))
-
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
   [_filter model query last-edited-at]
@@ -266,8 +268,8 @@
       (some? created-by)          (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
       (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
-      (some? search-native-query) (set/intersection (:search-native-query feature->supported-models))
-      (some? verified)            (set/intersection (:verified feature->supported-models)))))
+      (true? search-native-query) (set/intersection #{"action" "card" "dataset"})
+      (true? verified)            (set/intersection (:verified feature->supported-models)))))
 
 (mu/defn build-filters :- map?
   "Build the search filters for a model."
@@ -284,10 +286,7 @@
                 verified]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
-      (sql.helpers/where (search-string-clause-for-model model search-context))
-
-      (and (not (str/blank? search-string)) search-native-query)
-      (#(build-optional-filter-query :search-native-query model % search-string))
+      (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))
