@@ -111,6 +111,11 @@ const TEST_MODEL_CARD = createMockCard({
   description: "Test description",
 });
 
+const TEST_MODEL_CARD_SLUG = [
+  TEST_MODEL_CARD.id,
+  TEST_MODEL_CARD.name.toLowerCase(),
+].join("-");
+
 const TEST_NATIVE_CARD = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
     database: SAMPLE_DB_ID,
@@ -658,14 +663,9 @@ describe("QueryBuilder", () => {
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
-          const slug = [
-            TEST_MODEL_CARD.id,
-            TEST_MODEL_CARD.name.toLowerCase(),
-          ].join("-");
-
           await waitFor(() => {
             expect(history.getCurrentLocation().pathname).toEqual(
-              `/model/${slug}`,
+              `/model/${TEST_MODEL_CARD_SLUG}`,
             );
           });
 
