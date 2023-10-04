@@ -323,5 +323,6 @@ describe("scenarios > admin > datamodel > metrics", () => {
 });
 
 function selectTable(tableName) {
+  cy.findByText("Select a table").click();
   popover().findByText(tableName).click();
 }
