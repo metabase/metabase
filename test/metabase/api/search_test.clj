@@ -649,7 +649,7 @@
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
-      (do-test-users [user [:crowberto :crowberto]]
+      (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
@@ -1084,6 +1084,8 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
+#_(mt/user-http-request :crowberto :get 200 "search" :q "a" :models "card" :last_edited_by (mt/user->id :crowberto))
+
 (deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
         new          #t "2023-05-04T10:00Z[UTC]"
@@ -1270,3 +1272,39 @@
 
         (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+
+(deftest search-result-with-user-metadata-test
+  (let [search-term "with-user-metadata"]
+    (mt/with-temp
+      [:model/User {user-id-1 :id} {:first_name "Ngoc"
+                                    :last_name  "Khuat"}
+       :model/User {user-id-2 :id} {:first_name nil
+                                    :last_name  nil
+                                    :email      "ngoc@metabase.com"}
+       :model/Card {card-id-1 :id} {:creator_id user-id-1
+                                    :name       search-term}
+       :model/Card {card-id-2 :id} {:creator_id user-id-2
+                                    :name       search-term}]
+
+      (revision/push-revision!
+       :entity      :model/Card
+       :id          card-id-1
+       :user-id     user-id-1
+       :is_creation true
+       :object      {:id card-id-1})
+
+      (revision/push-revision!
+       :entity      :model/Card
+       :id          card-id-2
+       :user-id     user-id-2
+       :is_creation true
+       :object      {:id card-id-2})
+
+      (testing "search result should returns creator_common_name and last_editor_common_name"
+        (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
+                 ;; for user that doesn't have first_name or last_name, should fall backs to email
+                 ["card" card-id-2 "ngoc@metabase.com" "ngoc@metabase.com"]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                    :data
+                    (map (juxt :model :id :creator_common_name :last_editor_common_name))
+                    set)))["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]))))
