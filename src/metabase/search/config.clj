@@ -223,6 +223,7 @@
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
+   :created_at
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]
@@ -247,17 +248,17 @@
   (conj default-columns :collection_id :collection_position :creator_id
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
-        #_[{:select   [:status]
-            :from     [:moderation_review]
-            :where    [:and
-                       [:= :moderated_item_type "card"]
-                       [:= :moderated_item_id :card.id]
-                       [:= :most_recent true]]
-            ;; order by and limit just in case a bug violates the invariant of only one most_recent. We don't want to
-            ;; error in this query
-            :order-by [[:id :desc]]
-            :limit    1}
-           :moderated_status]
+        [{:select   [:status]
+          :from     [:moderation_review]
+          :where    [:and
+                     [:= :moderated_item_type "card"]
+                     [:= :moderated_item_id :card.id]
+                     [:= :most_recent true]]
+          ;; order by and limit just in case a bug violates the invariant of only one most_recent. We don't want to
+          ;; error in this query
+          :order-by [[:id :desc]]
+          :limit    1}
+         :moderated_status]
         bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "indexed-entity" [_]
@@ -280,7 +281,7 @@
 
 (defmethod columns-for-model "database"
   [_]
-  [:id :name :description :updated_at :initial_sync_status])
+  [:id :name :description :created_at :updated_at :initial_sync_status])
 
 (defmethod columns-for-model "collection"
   [_]
@@ -302,6 +303,7 @@
   [_]
   [:id
    :name
+   :created_at
    :display_name
    :description
    :updated_at

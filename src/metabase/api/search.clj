@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [compojure.core :refer [GET]]
-   [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -167,27 +166,17 @@
       (throw (ex-info "Failed to replace selector" {:status-code  400
                                                     :target-alias target-alias
                                                     :with         with})))))
-(defn- with-last-editing-info
-  [query model]
-  (cond
-   (#{"dashboard" "card" "dataset" "metric"} model)
-   (-> query
+
+(mu/defn ^:private with-last-editing-info :- :map
+  [query :- :map
+   model :- [:enum "card" "dataset" "dashboard" "metric"]]
+  (-> query
        (replace-select :last_editor_id [:r.user_id :last_editor_id])
        (replace-select :last_edited_at [:r.timestamp :last_edited_at])
        (sql.helpers/left-join [:revision :r]
                               [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                                [:= :r.most_recent true]
-                               [:= :r.model (search.filter/search-model->revision-model model)]]))))
-
-(defn- with-moderated-status
-  [query model]
-  (-> query
-      (replace-select :moderated_status [:mr.status])
-      (sql.helpers/left-join [:moderation_review :mr]
-                             [:and
-                              [:= :mr.moderated_item_type "card"]
-                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
-                              [:= :mr.most_recent true]])))
+                               [:= :r.model (search.filter/search-model->revision-model model)]])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -208,8 +197,7 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)
-      (with-moderated-status model)))
+      (with-last-editing-info model)))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -223,7 +211,7 @@
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
-  (shared-card-impl "card"search-ctx))
+  (shared-card-impl "card" search-ctx))
 
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
@@ -284,7 +272,7 @@
            {:select (:select base-query)
             :from   [[(merge
                        base-query
-                       {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
+                       {:select [:id :schema :db_id :name :description :display_name :created_at :updated_at :initial_sync_status
                                  [(h2x/concat (h2x/literal "/db/")
                                               :db_id
                                               (h2x/literal "/schema/")
@@ -377,7 +365,9 @@
   [results]
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
-        user-id->common-name (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])]
+        user-id->common-name (if (pos? (count user-ids))
+                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+                               {})]
     (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
             (assoc result
                    :creator_common_name (get user-id->common-name creator_id)
