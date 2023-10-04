@@ -62,7 +62,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
             click_behavior: {
               type: "link",
               linkType: "dashboard",
-              targetId: 1, // Orders in a dashboard
+              targetId: ORDERS_DASHBOARD_ID,
               parameterMapping: {},
             },
           },
