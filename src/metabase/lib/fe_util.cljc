@@ -33,7 +33,8 @@
                         (lib.filter/add-column-operators
                           (lib.field/extend-column-metadata-from-ref
                             query stage-number
-                            (lib.metadata.calculation/metadata query stage-number) %)))]
+                            (lib.metadata.calculation/metadata query stage-number %)
+                            %)))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options

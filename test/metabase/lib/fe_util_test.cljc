@@ -116,6 +116,7 @@
   (is (=? {:lib/type :mbql/expression-parts
            :operator :=
            :args [{:lib/type :metadata/column
+                   :name "ID"
                    :display-name "ID"}
                   1]}
           (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
