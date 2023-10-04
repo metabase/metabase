@@ -16,7 +16,34 @@ export function getPickerValue(
   stageIndex: number,
   filterClause: Lib.FilterClause,
 ): DatePickerValue | undefined {
-  return getExcludeDateValue(query, stageIndex, filterClause);
+  return (
+    getRelativeDateValue(query, stageIndex, filterClause) ??
+    getExcludeDateValue(query, stageIndex, filterClause)
+  );
+}
+
+function getRelativeDateValue(
+  query: Lib.Query,
+  stageIndex: number,
+  filterClause: Lib.FilterClause,
+): RelativeDatePickerValue | undefined {
+  const filterParts = Lib.relativeDateFilterParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (filterParts == null) {
+    return undefined;
+  }
+
+  return {
+    type: "relative",
+    unit: filterParts.bucket,
+    value: filterParts.value,
+    offsetUnit: filterParts.offsetBucket,
+    offsetValue: filterParts.offsetValue,
+    options: filterParts.options,
+  };
 }
 
 function getExcludeDateValue(

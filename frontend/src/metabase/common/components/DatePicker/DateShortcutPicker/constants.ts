@@ -9,6 +9,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: "current",
       unit: "day",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -18,6 +20,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -1,
       unit: "day",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -27,6 +31,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -1,
       unit: "week",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -36,6 +42,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -7,
       unit: "day",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -45,6 +53,8 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -30,
       unit: "day",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
 ];
@@ -57,6 +67,8 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -1,
       unit: "month",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -66,6 +78,8 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -3,
       unit: "month",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
   {
@@ -75,6 +89,8 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
       type: "relative",
       value: -12,
       unit: "month",
+      offsetUnit: null,
+      offsetValue: null,
     },
   },
 ];

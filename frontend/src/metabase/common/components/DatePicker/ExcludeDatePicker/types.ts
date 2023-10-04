@@ -1,4 +1,7 @@
-import type { DatePickerExtractionUnit, DatePickerOperator } from "../types";
+import type {
+  DatePickerExtractionUnit,
+  ExcludeDatePickerOperator,
+} from "../types";
 
 export interface ExcludeUnitOption {
   unit: DatePickerExtractionUnit;
@@ -6,7 +9,7 @@ export interface ExcludeUnitOption {
 }
 
 export interface ExcludeOperatorOption {
-  operator: DatePickerOperator;
+  operator: ExcludeDatePickerOperator;
   label: string;
 }
 

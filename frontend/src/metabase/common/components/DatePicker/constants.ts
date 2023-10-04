@@ -1,11 +1,19 @@
-export const DATE_PICKER_OPERATORS = [
+export const SPECIFIC_DATE_PICKER_OPERATORS = [
   "=",
-  "!=",
   "<",
   ">",
   "between",
+] as const;
+
+export const EXCLUDE_DATE_PICKER_OPERATORS = [
+  "!=",
   "is-null",
   "not-null",
+] as const;
+
+export const DATE_PICKER_OPERATORS = [
+  ...SPECIFIC_DATE_PICKER_OPERATORS,
+  ...EXCLUDE_DATE_PICKER_OPERATORS,
 ] as const;
 
 export const DATE_PICKER_SHORTCUTS = [
@@ -24,8 +32,8 @@ export const DATE_PICKER_TRUNCATION_UNITS = [
   "hour",
   "day",
   "week",
-  "quarter",
   "month",
+  "quarter",
   "year",
 ] as const;
 

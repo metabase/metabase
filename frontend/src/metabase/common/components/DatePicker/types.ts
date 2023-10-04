@@ -1,11 +1,20 @@
 import type {
-  DATE_PICKER_OPERATORS,
+  SPECIFIC_DATE_PICKER_OPERATORS,
+  EXCLUDE_DATE_PICKER_OPERATORS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_TRUNCATION_UNITS,
   DATE_PICKER_EXTRACTION_UNITS,
 } from "./constants";
 
-export type DatePickerOperator = typeof DATE_PICKER_OPERATORS[number];
+export type DatePickerOperator =
+  | SpecificDatePickerOperator
+  | ExcludeDatePickerOperator;
+
+export type SpecificDatePickerOperator =
+  typeof SPECIFIC_DATE_PICKER_OPERATORS[number];
+
+export type ExcludeDatePickerOperator =
+  typeof EXCLUDE_DATE_PICKER_OPERATORS[number];
 
 export type DatePickerShortcut = typeof DATE_PICKER_SHORTCUTS[number];
 
@@ -19,8 +28,8 @@ export interface RelativeDatePickerValue {
   type: "relative";
   unit: DatePickerTruncationUnit;
   value: number | "current";
-  offsetUnit?: DatePickerTruncationUnit;
-  offsetValue?: number;
+  offsetUnit: DatePickerTruncationUnit | null;
+  offsetValue: number | null;
   options?: RelativeDatePickerOptions;
 }
 
@@ -30,8 +39,8 @@ export interface RelativeDatePickerOptions {
 
 export interface ExcludeDatePickerValue {
   type: "exclude";
-  operator: DatePickerOperator;
-  unit?: DatePickerExtractionUnit;
+  operator: ExcludeDatePickerOperator;
+  unit: DatePickerExtractionUnit | null;
   values: number[];
 }
 

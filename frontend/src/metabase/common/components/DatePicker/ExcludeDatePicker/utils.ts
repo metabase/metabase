@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
 import { EXCLUDE_UNIT_OPTIONS, EXCLUDE_OPERATOR_OPTIONS } from "./constants";
@@ -81,11 +82,12 @@ function getExcludeQuarterOption(quarter: number): ExcludeValueOption {
 }
 
 export function getExcludeOperatorValue(
-  operator: DatePickerOperator,
+  operator: ExcludeDatePickerOperator,
 ): ExcludeDatePickerValue {
   return {
     type: "exclude",
     operator,
+    unit: null,
     values: [],
   };
 }

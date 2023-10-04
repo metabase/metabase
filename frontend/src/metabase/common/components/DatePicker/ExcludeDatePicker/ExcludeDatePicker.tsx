@@ -6,6 +6,7 @@ import { OptionButton } from "../OptionButton";
 import type {
   DatePickerExtractionUnit,
   DatePickerOperator,
+  ExcludeDatePickerOperator,
   ExcludeDatePickerValue,
 } from "../types";
 import type { ExcludeValueOption } from "./types";
@@ -90,7 +91,7 @@ export function ExcludeOptionPicker({
     return getExcludeOperatorOptions(availableOperators);
   }, [availableOperators]);
 
-  const handleChange = (operator: DatePickerOperator) => {
+  const handleChange = (operator: ExcludeDatePickerOperator) => {
     onChange(getExcludeOperatorValue(operator));
   };
 
