@@ -2,10 +2,11 @@
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.walk :as walk]
-    [metabase.automagic-dashboards.core :as magic]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+    [metabase.automagic-dashboards.util :as magic.util]
     [metabase.models.interface :as mi]
+    [metabase.util :as u]
     [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -197,9 +198,6 @@
       linked-metrics
       generated-metrics)))
 
-(defn find-dimensions
-  [_])
-
 (defn normalize-metrics
   "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
   [{:keys [metrics]}]
@@ -209,6 +207,7 @@
               (assoc metric-definition :metric-name metric-name)))))
 
 (comment
+  (require '[metabase.automagic-dashboards.core :as magic])
   (let [template-name    "GenericTable"
         entity           (t2/select-one :model/Metric :name "Churn")
         {template-dimensions :dimensions
@@ -216,9 +215,9 @@
         base-context     (#'magic/make-base-context (magic/->root entity))
         bound-dimensions (#'magic/bind-dimensions base-context template-dimensions)]
     (find-metrics
-      entity
-      (normalize-metrics dashboard-template)
-      bound-dimensions))
+     entity
+     (normalize-metrics dashboard-template)
+     bound-dimensions))
 
   (let [template-name    "GenericTable"
         entity           (t2/select-one :model/Table :name "ACCOUNTS")
@@ -232,3 +231,169 @@
       bound-dimensions))
   )
 
+
+;;; dimensions
+
+(defn- fieldspec-matcher
+  "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
+  [fieldspec]
+  (if (and (string? fieldspec)
+           (dashboard-templates/ga-dimension? fieldspec))
+    (comp #{fieldspec} :name)
+    (fn [{:keys [semantic_type target] :as field}]
+      (cond
+        ;; This case is mostly relevant for native queries
+        (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
+        target (recur target)
+        :else (and (not (magic.util/key-col? field)) (magic.util/field-isa? field fieldspec))))))
+
+(defn- name-regex-matcher
+  "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
+  [name-pattern]
+  (comp (->> name-pattern
+             u/lower-case-en
+             re-pattern
+             (partial re-find))
+        u/lower-case-en
+        :name))
+
+(defn- max-cardinality-matcher
+  "Generate a predicate of the form (f field) -> true | false based on the provided cardinality.
+  Returns true if the distinct count of fingerprint values is less than or equal to the cardinality."
+  [cardinality]
+  (fn [field]
+    (some-> field
+            (get-in [:fingerprint :global :distinct-count])
+            (<= cardinality))))
+
+(def ^:private field-filters
+  {:fieldspec       fieldspec-matcher
+   :named           name-regex-matcher
+   :max-cardinality max-cardinality-matcher})
+
+(defn- filter-fields
+  "Find all fields belonging to table `table` for which all predicates in
+   `preds` are true. `preds` is a map with keys :fieldspec, :named, and :max-cardinality."
+  [preds fields]
+  (filter (->> preds
+               (keep (fn [[k v]]
+                       (when-let [pred (field-filters k)]
+                         (some-> v pred))))
+               (apply every-pred))
+          fields))
+
+(defn- matching-fields
+  "Given a context and a dimension definition, find all fields from the context
+   that match the definition of this dimension."
+  [{{:keys [fields]} :source :keys [tables] :as context}
+   {:keys [field_type links_to named max_cardinality] :as constraints}]
+  (if links_to
+    (filter (comp (->> (magic.util/filter-tables links_to tables)
+                       (keep :link)
+                       set)
+                  u/the-id)
+            (matching-fields context (dissoc constraints :links_to)))
+    (let [[tablespec fieldspec] field_type]
+      (if fieldspec
+        (mapcat (fn [table]
+                  (some->> table
+                           :fields
+                           (filter-fields {:fieldspec       fieldspec
+                                           :named           named
+                                           :max-cardinality max_cardinality})
+                           (map #(assoc % :link (:link table)))))
+                (magic.util/filter-tables tablespec tables))
+        (filter-fields {:fieldspec       tablespec
+                        :named           named
+                        :max-cardinality max_cardinality}
+                       fields)))))
+
+;; util candidate
+(def ^:private ^{:arglists '([field])} id-or-name
+  (some-fn :id :name))
+
+(defn- candidate-bindings
+  "For every field in a given context determine all potential dimensions each field may map to.
+  This will return a map of field id (or name) to collection of potential matching dimensions."
+  [context dimension-specs]
+  ;; TODO - Fix this so that the intermediate representations aren't so crazy.
+  ;; all-bindings a map of binding dim identifier to binding def which contains
+  ;; field matches which are all the same field except they are merged with the binding.
+  ;; What we want instead is just a map of field to potential bindings.
+  ;; Just rack and stack the bindings then return that with the field or something.
+  (let [all-bindings (for [dimension dimension-specs
+                           :let [[identifier definition] (first dimension)]
+                           matching-field (matching-fields context definition)]
+                       {(name identifier)
+                        (assoc definition :matches [(merge matching-field definition)])})]
+    (group-by (comp id-or-name first :matches val first) all-bindings)))
+
+(defn- score-bindings
+  "Assign a value to each potential binding.
+  Takes a seq of potential bindings and returns a seq of vectors in the shape
+  of [score binding], where score is a 3 element vector. This is computed as:
+     1) Number of ancestors `field_type` has (if field_type has a table prefix,
+        ancestors for both table and field are counted);
+     2) Number of fields in the definition, which would include additional filters
+        (`named`, `max_cardinality`, `links_to`, ...) etc.;
+     3) The manually assigned score for the binding definition
+  "
+  [candidate-binding-values]
+  (letfn [(score [a]
+            (let [[_ definition] a]
+              [(reduce + (map (comp count ancestors) (:field_type definition)))
+               (count definition)
+               (:score definition)]))]
+    (map (juxt (comp score first) identity) candidate-binding-values)))
+
+(defn- most-specific-matched-dimension
+  "Return the most specific dimension from one or more dimensions that all
+   match the same field. Specificity is determined based on:
+   1) how many ancestors `field_type` has (if field_type has a table prefix,
+      ancestors for both table and field are counted);
+   2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
+      `links_to`, ...) are used;
+   3) if there is still a tie, `score`.
+
+   candidate-binding-values is a sequence of maps. Each map is a has a key
+   of dimension spec name to potential dimension binding spec along with a
+   collection of matches, all of which are merges of this spec with the same
+   column.
+
+   Note that it would make a lot more sense to refactor this to return a
+   map of column to potential binding dimensions. This return value is kind of
+   the opposite of what makes sense.
+
+   Here's an example input with :matches updated as just the names of the
+   columns in the matches. IRL, matches are the entire field n times, with
+   each field a merge of the spec with the field.
+
+   ({\"Timestamp\" {:field_type [:type/DateTime],
+                    :score 60,
+                    :matches [\"CREATED_AT\"]}}
+    {\"CreateTimestamp\" {:field_type [:type/CreationTimestamp],
+                          :score 80
+                          :matches [\"CREATED_AT\"]}})
+   "
+  [candidate-binding-values]
+  (let [scored-bindings (score-bindings candidate-binding-values)]
+    (second (last (sort-by first scored-bindings)))))
+
+(defn find-dimensions
+  "Bind fields to dimensions from the dashboard template and resolve overloaded cases in which multiple fields match the
+  dimension specification.
+
+   Each field will be bound to only one dimension. If multiple dimension definitions match a single field, the field
+  is bound to the most specific definition used
+   (see `most-specific-definition` for details).
+
+  The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
+  [context dimension-specs]
+  (->> (candidate-bindings context dimension-specs)
+       (map (comp most-specific-matched-dimension val))
+       (apply merge-with (fn [a b]
+                           (case (compare (:score a) (:score b))
+                             1  a
+                             0  (update a :matches concat (:matches b))
+                             -1 b))
+              {})))

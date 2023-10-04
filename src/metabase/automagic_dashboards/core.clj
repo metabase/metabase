@@ -99,6 +99,7 @@
     ;[metabase.automagic-dashboards.foo :as foo]
     [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.util :as magic.util]
     [metabase.automagic-dashboards.visualization-macros :as visualization]
     [metabase.db.query :as mdb.query]
     [metabase.driver :as driver]
@@ -457,80 +458,13 @@
         (map? form) ((some-fn :full-name :name) form))
       form))
 
-(defn- field-isa?
-  [{:keys [base_type semantic_type]} t]
-  (or (isa? (keyword semantic_type) t)
-      (isa? (keyword base_type) t)))
-
-(defn- key-col?
-  "Workaround for our leaky type system which conflates types with properties."
-  [{:keys [base_type semantic_type name]}]
-  (and (isa? base_type :type/Number)
-       (or (#{:type/PK :type/FK} semantic_type)
-           (let [name (u/lower-case-en name)]
-             (or (= name "id")
-                 (str/starts-with? name "id_")
-                 (str/ends-with? name "_id"))))))
-
-(defn- fieldspec-matcher
-  "Generate a predicate of the form (f field) -> truthy value based on a fieldspec."
-  [fieldspec]
-  (if (and (string? fieldspec)
-           (dashboard-templates/ga-dimension? fieldspec))
-    (comp #{fieldspec} :name)
-    (fn [{:keys [semantic_type target] :as field}]
-      (cond
-        ;; This case is mostly relevant for native queries
-        (#{:type/PK :type/FK} fieldspec) (isa? semantic_type fieldspec)
-        target (recur target)
-        :else (and (not (key-col? field)) (field-isa? field fieldspec))))))
-
-(defn- name-regex-matcher
-  "Generate a truthy predicate of the form (f field) -> truthy value based on a regex applied to the field name."
-  [name-pattern]
-  (comp (->> name-pattern
-             u/lower-case-en
-             re-pattern
-             (partial re-find))
-        u/lower-case-en
-        :name))
-
-(defn- max-cardinality-matcher
-  "Generate a predicate of the form (f field) -> true | false based on the provided cardinality.
-  Returns true if the distinct count of fingerprint values is less than or equal to the cardinality."
-  [cardinality]
-  (fn [field]
-    (some-> field
-            (get-in [:fingerprint :global :distinct-count])
-            (<= cardinality))))
-
-(def ^:private field-filters
-  {:fieldspec       fieldspec-matcher
-   :named           name-regex-matcher
-   :max-cardinality max-cardinality-matcher})
-
-(defn- filter-fields
-  "Find all fields belonging to table `table` for which all predicates in
-   `preds` are true. `preds` is a map with keys :fieldspec, :named, and :max-cardinality."
-  [preds fields]
-  (filter (->> preds
-               (keep (fn [[k v]]
-                       (when-let [pred (field-filters k)]
-                         (some-> v pred))))
-               (apply every-pred))
-          fields))
-
-(defn- filter-tables
-  [tablespec tables]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
-
 (defn- fill-templates
   [template-type {:keys [root tables]} bindings s]
   (let [bindings (some-fn (merge {"this" (-> root
                                              :entity
                                              (assoc :full-name (:full-name root)))}
                                  bindings)
-                          (comp first #(filter-tables % tables) dashboard-templates/->entity)
+                          (comp first #(magic.util/filter-tables % tables) dashboard-templates/->entity)
                           identity)]
     (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
                  (fn [[_ identifier attribute]]
@@ -539,116 +473,6 @@
                      (str (or (and (ifn? entity) (entity attribute))
                               (root attribute)
                               (->reference template-type entity))))))))
-
-(defn- matching-fields
-  "Given a context and a dimension definition, find all fields from the context
-   that match the definition of this dimension."
-  [{{:keys [fields]} :source :keys [tables] :as context}
-   {:keys [field_type links_to named max_cardinality] :as constraints}]
-  (if links_to
-    (filter (comp (->> (filter-tables links_to tables)
-                       (keep :link)
-                       set)
-                  u/the-id)
-            (matching-fields context (dissoc constraints :links_to)))
-    (let [[tablespec fieldspec] field_type]
-      (if fieldspec
-        (mapcat (fn [table]
-                  (some->> table
-                           :fields
-                           (filter-fields {:fieldspec       fieldspec
-                                           :named           named
-                                           :max-cardinality max_cardinality})
-                           (map #(assoc % :link (:link table)))))
-                (filter-tables tablespec tables))
-        (filter-fields {:fieldspec       tablespec
-                        :named           named
-                        :max-cardinality max_cardinality}
-                       fields)))))
-
-(defn- score-bindings
-  "Assign a value to each potential binding.
-  Takes a seq of potential bindings and returns a seq of vectors in the shape
-  of [score binding], where score is a 3 element vector. This is computed as:
-     1) Number of ancestors `field_type` has (if field_type has a table prefix,
-        ancestors for both table and field are counted);
-     2) Number of fields in the definition, which would include additional filters
-        (`named`, `max_cardinality`, `links_to`, ...) etc.;
-     3) The manually assigned score for the binding definition
-  "
-  [candidate-binding-values]
-  (letfn [(score [a]
-            (let [[_ definition] a]
-              [(reduce + (map (comp count ancestors) (:field_type definition)))
-               (count definition)
-               (:score definition)]))]
-    (map (juxt (comp score first) identity) candidate-binding-values)))
-
-(defn- most-specific-matched-dimension
-  "Return the most specific dimension from one or more dimensions that all
-   match the same field. Specificity is determined based on:
-   1) how many ancestors `field_type` has (if field_type has a table prefix,
-      ancestors for both table and field are counted);
-   2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
-      `links_to`, ...) are used;
-   3) if there is still a tie, `score`.
-
-   candidate-binding-values is a sequence of maps. Each map is a has a key
-   of dimension spec name to potential dimension binding spec along with a
-   collection of matches, all of which are merges of this spec with the same
-   column.
-
-   Note that it would make a lot more sense to refactor this to return a
-   map of column to potential binding dimensions. This return value is kind of
-   the opposite of what makes sense.
-
-   Here's an example input with :matches updated as just the names of the
-   columns in the matches. IRL, matches are the entire field n times, with
-   each field a merge of the spec with the field.
-
-   ({\"Timestamp\" {:field_type [:type/DateTime],
-                    :score 60,
-                    :matches [\"CREATED_AT\"]}}
-    {\"CreateTimestamp\" {:field_type [:type/CreationTimestamp],
-                          :score 80
-                          :matches [\"CREATED_AT\"]}})
-   "
-  [candidate-binding-values]
-  (let [scored-bindings (score-bindings candidate-binding-values)]
-    (second (last (sort-by first scored-bindings)))))
-
-(defn- candidate-bindings
-  "For every field in a given context determine all potential dimensions each field may map to.
-  This will return a map of field id (or name) to collection of potential matching dimensions."
-  [context dimension-specs]
-  ;; TODO - Fix this so that the intermediate representations aren't so crazy.
-  ;; all-bindings a map of binding dim identifier to binding def which contains
-  ;; field matches which are all the same field except they are merged with the binding.
-  ;; What we want instead is just a map of field to potential bindings.
-  ;; Just rack and stack the bindings then return that with the field or something.
-  (let [all-bindings (for [dimension dimension-specs
-                           :let [[identifier definition] (first dimension)]
-                           matching-field (matching-fields context definition)]
-                       {(name identifier)
-                        (assoc definition :matches [(merge matching-field definition)])})]
-    (group-by (comp id-or-name first :matches val first) all-bindings)))
-
-(defn- bind-dimensions
-  "Bind fields to dimensions from the dashboard template and resolve overloaded cases
-  in which multiple fields match the dimension specification.
-
-   Each field will be bound to only one dimension. If multiple dimension definitions
-   match a single field, the field is bound to the most specific definition used
-   (see `most-specific-definition` for details)."
-  [context dimension-specs]
-  (->> (candidate-bindings context dimension-specs)
-       (map (comp most-specific-matched-dimension val))
-       (apply merge-with (fn [a b]
-                           (case (compare (:score a) (:score b))
-                             1  a
-                             0  (update a :matches concat (:matches b))
-                             -1 b))
-              {})))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -882,7 +706,7 @@
                    (let [[entity-type field-type] applies_to]
                      (and (isa? table-type entity-type)
                           (or (nil? field-type)
-                              (field-isa? entity field-type))))))
+                              (magic.util/field-isa? entity field-type))))))
          (sort-by :specificity >))))
 
 (defn- linked-tables
@@ -1192,28 +1016,111 @@
     (bind-dimensions base-context template-dimensions))
   )
 
-(declare make-combinations make-layout dashboard-ify)
+(defn make-combinations
+  [dimensions metrics info]
+  (letfn [(normalize-scores [xs]
+            (let [max-score  (apply max (map :score xs))
+                  normalizer (fn [x] (long (* (/ x max-score) 100)))]
+              (map #(update % :score normalizer) xs)))
+          (compute-score [metric-score dimension-semantic-type]
+            ;; todo: info will bring some dimension rankings. or/and use affinities here to get some sort of
+            ;; semantic/effective type from the metric
+            (let [semantic-score {:type/Category          100
+                                  :type/Company           50
+                                  :type/Score             90
+                                  :type/CreationTimestamp 100
+                                  nil                     40}]
+              (+ metric-score (semantic-score dimension-semantic-type))))]
+    (->> (for [d dimensions
+               m metrics]
+           {:metrics    [m]
+            :dimensions [d]
+            :score      (compute-score (:score m) (:semantic_type d))})
+         normalize-scores)))
 
-;(defn apply-dashboard-template-refactor
-;  [{root :root :as base-context} dashboard-template]
-;  ;; guiding principals:
-;  ;; make this work
-;
-;  ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
-;  ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
-;  ;; bespoke to what it needs to do and not constrained by the dash template
-;  (let [metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
-;                                     (:metrics dashboard-template))
-;        dimensions (foo/find-dimensions base-context #_? )
-;        ;; maybe massage metrics from dashboard template. But dashboard-template is not
-;        combinations nil]
-;    ;; this empty map is new information that we might want from the yaml
-;
-;    ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
-;    ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
-;    (->> (make-combinations combinations {})
-;         (make-layout :web)
-;         (dashboard-ify dashboard-template))))
+(comment
+  (make-combinations
+   [{:semantic_type :type/Category,
+     :name "CATEGORY",
+     :field_ref [:field 58 nil],
+     :effective_type :type/Text,
+     :base_type :type/Text}
+    {:semantic_type :type/Company,
+     :name "VENDOR",
+     :field_ref [:field 60 nil],
+     :effective_type :type/Text,
+     :base_type :type/Text}
+    {:semantic_type nil,
+     :name "PRICE",
+     :field_ref [:field 59 nil],
+     :effective_type :type/Float,
+     :base_type :type/Float}
+    {:semantic_type :type/Score,
+     :name "RATING",
+     :field_ref [:field 61 nil],
+     :effective_type :type/Float,
+     :base_type :type/Float}
+    {:semantic_type :type/CreationTimestamp,
+     :name "CREATED_AT",
+     :field_ref [:field 64 {:temporal-unit :default}],
+     :effective_type :type/DateTime,
+     :base_type :type/DateTime}]
+
+
+   [{:metric [[:aggregation-options
+               [:/ [:sum [:field 59 nil]] [:count]]
+               {:name "My average",
+                :display-name "My average"}]]
+     :name "Custom average"
+     :score 100}
+    {:metric ["sum" [:field 59 #_price nil]]
+     :name "Sum"
+     :score 100}]
+
+
+   {})
+
+  (dash-template->affinities template)
+  ;; making affinities be grounded and take grounded stuff
+
+  (:affinities (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+  (make-base-context (->root (t2/select-one :model/Table :id 1)))
+
+  (t2/select :model/Metric :table_id 1)
+  (let [context (make-base-context (->root (t2/select-one :model/Table :id 1)))
+        template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
+    (-> (foo/find-dimensions context (:dimensions template))
+        (update-vals (fn [dimension-match]
+                       ;; trim down the size of the fields for the repl
+                       (update dimension-match :matches
+                               (fn [fields]
+                                 (map #(select-keys % [:id :name :effective_type :semantic_type])
+                                      fields)))))))
+
+  )
+
+
+(declare make-layout dashboard-ify)
+(defn apply-dashboard-template-refactor
+  [{root :root :as base-context} dashboard-template]
+  ;; guiding principals:
+  ;; make this work
+
+  ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
+  ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
+  ;; bespoke to what it needs to do and not constrained by the dash template
+  (let [metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
+                                     (:metrics dashboard-template))
+        dimensions (foo/find-dimensions base-context (:dimensions dashboard-template))
+        ;; maybe massage metrics from dashboard template. But dashboard-template is not
+        ]
+    ;; this empty map is new information that we might want from the yaml
+
+    ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
+    ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
+    (->> (make-combinations dimensions metrics {} #_info)
+         (make-layout :web)
+         (dashboard-ify dashboard-template))))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
@@ -1228,7 +1135,7 @@
     :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions   (->> (bind-dimensions base-context template-dimensions)
+  (let [available-dimensions   (->> (foo/find-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
         available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)
@@ -1278,7 +1185,7 @@
   (-> root
       :entity
       related/related
-      (update :fields (partial remove key-col?))
+      (update :fields (partial remove magic.util/key-col?))
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (s/defn ^:private indepth
