@@ -145,7 +145,7 @@ describe("AddToDashSelectDashModal", () => {
       await setup();
 
       const createNewDashboard = screen.getByRole("heading", {
-        name: /create a new dashboard/i,
+        name: "Create a new dashboard",
       });
 
       userEvent.click(createNewDashboard);
@@ -231,7 +231,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.queryByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).not.toBeInTheDocument();
         });
@@ -250,7 +250,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.getByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument();
         });
@@ -274,7 +274,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.getByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument();
         });
@@ -288,7 +288,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.getByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument();
         });
@@ -306,7 +306,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.getByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument();
         });
@@ -329,7 +329,7 @@ describe("AddToDashSelectDashModal", () => {
 
           expect(
             screen.getByRole("heading", {
-              name: /create a new dashboard/i,
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument();
         });
