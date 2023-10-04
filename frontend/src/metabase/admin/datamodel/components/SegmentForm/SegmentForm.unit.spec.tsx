@@ -27,7 +27,7 @@ const setup = () => {
 describe("SegmentForm", () => {
   beforeEach(() => {
     setupDatabasesEndpoints([createSampleDatabase()]);
-     setupSearchEndpoints([]);
+    setupSearchEndpoints([]);
   });
 
   afterEach(() => {
