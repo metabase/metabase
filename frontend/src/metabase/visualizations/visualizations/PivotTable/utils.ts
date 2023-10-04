@@ -11,6 +11,7 @@ import type {
   DatasetColumn,
   DatasetData,
   FieldReference,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -188,7 +189,7 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-export function databaseSupportsPivotTables(query: StructuredQuery) {
+export function databaseSupportsPivotTables(query?: StructuredQuery) {
   if (query && query.database && query.database() != null) {
     // if we don't have metadata, we can't check this
     return query.database()?.supportsPivots();
@@ -196,10 +197,7 @@ export function databaseSupportsPivotTables(query: StructuredQuery) {
   return true;
 }
 
-export function isSensible(
-  { cols }: { cols: DatasetColumn[] },
-  query: StructuredQuery,
-) {
+export function isSensible({ cols }: DatasetData, query?: StructuredQuery) {
   return (
     cols.length >= 2 &&
     cols.every(isColumnValid) &&
@@ -208,7 +206,7 @@ export function isSensible(
 }
 
 export function checkRenderable(
-  [{ data }]: [{ data: DatasetData }],
+  [{ data }]: Series,
   settings: VisualizationSettings,
   query: StructuredQuery,
 ) {

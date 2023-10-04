@@ -5,6 +5,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import LineAreaBarChart from "../components/LineAreaBarChart";
 import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
 
@@ -14,19 +15,21 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
 } from "../lib/settings/graph";
 
-export default class WaterfallChart extends LineAreaBarChart {
-  static uiName = t`Waterfall`;
-  static identifier = "waterfall";
-  static iconName = "waterfall";
-  static noun = t`waterfall chart`;
+export class WaterfallChart extends LineAreaBarChart {}
 
-  static minSize = getMinSize("waterfall");
-  static defaultSize = getDefaultSize("waterfall");
+Object.assign(WaterfallChart, {
+  uiName: t`Waterfall`,
+  identifier: "waterfall",
+  iconName: "waterfall",
+  noun: t`waterfall chart`,
 
-  static maxMetricsSupported = 1;
-  static maxDimensionsSupported = 1;
+  minSize: getMinSize("waterfall"),
+  defaultSize: getDefaultSize("waterfall"),
 
-  static settings = {
+  maxMetricsSupported: 1,
+  maxDimensionsSupported: 1,
+
+  settings: {
     ...GRAPH_AXIS_SETTINGS,
     "waterfall.increase_color": {
       section: t`Display`,
@@ -58,13 +61,13 @@ export default class WaterfallChart extends LineAreaBarChart {
     },
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
-  };
+  },
 
-  static renderer = waterfallRenderer;
+  renderer: waterfallRenderer,
 
-  static placeholderSeries = assocIn(
+  placeholderSeries: assocIn(
     LineAreaBarChart.placeholderSeries,
     [0, "card", "display"],
     "waterfall",
-  );
-}
+  ),
+} as VisualizationProperties);

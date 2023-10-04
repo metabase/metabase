@@ -3,6 +3,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { lineRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -15,16 +16,18 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
 } from "../lib/settings/graph";
 
-export default class LineChart extends LineAreaBarChart {
-  static uiName = t`Line`;
-  static identifier = "line";
-  static iconName = "line";
-  static noun = t`line chart`;
+export class LineChart extends LineAreaBarChart {}
 
-  static minSize = getMinSize("line");
-  static defaultSize = getDefaultSize("line");
+Object.assign(LineChart, {
+  uiName: t`Line`,
+  identifier: "line",
+  iconName: "line",
+  noun: t`line chart`,
 
-  static settings = {
+  minSize: getMinSize("line"),
+  defaultSize: getDefaultSize("line"),
+
+  settings: {
     ...LINE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_TREND_SETTINGS,
@@ -32,7 +35,7 @@ export default class LineChart extends LineAreaBarChart {
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
-  };
+  },
 
-  static renderer = lineRenderer;
-}
+  renderer: lineRenderer,
+} as VisualizationProperties);

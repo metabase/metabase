@@ -3,6 +3,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { scatterRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -14,23 +15,25 @@ import {
   GRAPH_AXIS_SETTINGS,
 } from "../lib/settings/graph";
 
-export default class ScatterPlot extends LineAreaBarChart {
-  static uiName = t`Scatter`;
-  static identifier = "scatter";
-  static iconName = "bubble";
-  static noun = t`scatter plot`;
+export class ScatterPlot extends LineAreaBarChart {}
 
-  static minSize = getMinSize("scatter");
-  static defaultSize = getDefaultSize("scatter");
+Object.assign(ScatterPlot, {
+  uiName: t`Scatter`,
+  identifier: "scatter",
+  iconName: "bubble",
+  noun: t`scatter plot`,
 
-  static renderer = scatterRenderer;
+  minSize: getMinSize("scatter"),
+  defaultSize: getDefaultSize("scatter"),
 
-  static settings = {
+  renderer: scatterRenderer,
+
+  settings: {
     ...GRAPH_BUBBLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_TREND_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
-  };
-}
+  },
+} as VisualizationProperties);

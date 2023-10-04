@@ -4,6 +4,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -16,16 +17,18 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
 } from "../lib/settings/graph";
 
-export default class BarChart extends LineAreaBarChart {
-  static uiName = t`Bar`;
-  static identifier = "bar";
-  static iconName = "bar";
-  static noun = t`bar chart`;
+export class BarChart extends LineAreaBarChart {}
 
-  static minSize = getMinSize("bar");
-  static defaultSize = getDefaultSize("bar");
+Object.assign(BarChart, {
+  uiName: t`Bar`,
+  identifier: "bar",
+  iconName: "bar",
+  noun: t`bar chart`,
 
-  static settings = {
+  minSize: getMinSize("bar"),
+  defaultSize: getDefaultSize("bar"),
+
+  settings: {
     ...STACKABLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_TREND_SETTINGS,
@@ -33,20 +36,20 @@ export default class BarChart extends LineAreaBarChart {
     ...GRAPH_AXIS_SETTINGS,
     ...GRAPH_DISPLAY_VALUES_SETTINGS,
     ...GRAPH_DATA_SETTINGS,
-  };
+  },
 
-  static renderer = barRenderer;
+  renderer: barRenderer,
 
-  static placeholderSeries = assocIn(
+  placeholderSeries: assocIn(
     LineAreaBarChart.placeholderSeries,
     [0, "card", "display"],
     "bar",
-  );
+  ),
 
-  static onDisplayUpdate = settings => {
+  onDisplayUpdate: settings => {
     if (settings["stackable.stack_display"]) {
       settings["stackable.stack_display"] = "bar";
     }
     return settings;
-  };
-}
+  },
+} as VisualizationProperties);

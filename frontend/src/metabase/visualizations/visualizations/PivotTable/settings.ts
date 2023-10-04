@@ -18,14 +18,12 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
-import type {
-  Card,
-  DatasetColumn,
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
+import type {
+  VisualizationColumnSettingsDefinitions,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import { isDimension } from "metabase-lib/types/utils/isa";
 
 import { partitions } from "./partitions";
@@ -45,22 +43,19 @@ export const getTitleForColumn = (
   return settings.column?.(column)?.column_title ?? formatColumn(column);
 };
 
-export const settings = {
+export const settings: VisualizationSettingsDefinitions = {
   ...columnSettings({ hidden: true }),
   [COLLAPSED_ROWS_SETTING]: {
     hidden: true,
     readDependencies: [COLUMN_SPLIT_SETTING],
-    getValue: (
-      series: Series,
-      settings: Partial<VisualizationSettings> = {},
-    ) => {
+    getValue: (series, settings = {}) => {
       // This is hack. Collapsed rows depend on the current column split setting.
       // If the query changes or the rows are reordered, we ignore the current collapsed row setting.
       // This is accomplished by snapshotting part of the column split setting *inside* this setting.
       // `value` the is the actual data for this setting
       // `rows` is value we check against the current setting to see if we should use `value`
-      const { rows, value } = settings[COLLAPSED_ROWS_SETTING] || {};
-      const { rows: currentRows } = settings[COLUMN_SPLIT_SETTING] || {};
+      const { rows = [], value = [] } = settings[COLLAPSED_ROWS_SETTING] || {};
+      const { rows: currentRows = [] } = settings[COLUMN_SPLIT_SETTING] || {};
       if (!_.isEqual(rows, currentRows)) {
         return { value: [], rows: currentRows };
       }
@@ -71,13 +66,10 @@ export const settings = {
     section: t`Columns`,
     widget: "fieldsPartition",
     persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
+    getHidden: ([{ data }]) =>
       // hide the setting widget if there are invalid columns
       !data || data.cols.some(col => !isColumnValid(col)),
-    getProps: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ) => ({
+    getProps: ([{ data }], settings) => ({
       partitions,
       columns: data == null ? [] : data.cols,
       settings,
@@ -85,10 +77,7 @@ export const settings = {
         return getTitleForColumn(column, settings);
       },
     }),
-    getValue: (
-      [{ data, card }]: [{ data: DatasetData; card: Card }],
-      settings: Partial<VisualizationSettings> = {},
-    ) => {
+    getValue: ([{ data, card }], settings = {}) => {
       const storedValue = settings[COLUMN_SPLIT_SETTING];
       if (data == null) {
         return undefined;
@@ -151,36 +140,24 @@ export const settings = {
     section: t`Conditional Formatting`,
     widget: ChartSettingsTableFormatting,
     default: [],
-    getDefault: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ) => {
+    getDefault: ([{ data }], settings) => {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
-
       return columnFormats
-        .map(columnFormat => {
-          const hasOnlyFormattableColumns =
+        .filter(
+          columnFormat =>
+            // hasOnlyFormattableColumns
             columnFormat.columns
-              .map((columnName: string) =>
+              .map(columnName =>
                 data.cols.find(column => column.name === columnName),
               )
-              .filter(Boolean) ?? [].every(isFormattablePivotColumn);
-
-          if (!hasOnlyFormattableColumns) {
-            return null;
-          }
-
-          return {
-            ...columnFormat,
-            highlight_row: false,
-          };
-        })
-        .filter(Boolean);
+              .filter(Boolean) ?? [].every(isFormattablePivotColumn),
+        )
+        .map(columnFormat => ({
+          ...columnFormat,
+          highlight_row: false,
+        }));
     },
-    isValid: (
-      [{ data }]: [{ data: DatasetData }],
-      settings: VisualizationSettings,
-    ): boolean => {
+    isValid: ([{ data }], settings) => {
       const columnFormats = settings[COLUMN_FORMATTING_SETTING] ?? [];
 
       return columnFormats.every(columnFormat => {
@@ -196,18 +173,18 @@ export const settings = {
         return hasOnlyFormattableColumns && !columnFormat.highlight_row;
       });
     },
-    getProps: (series: Series) => ({
+    getProps: series => ({
       canHighlightRow: false,
       cols: (series[0].data.cols as DatasetColumn[]).filter(
         isFormattablePivotColumn,
       ),
     }),
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
+    getHidden: ([{ data }]) =>
       !data?.cols.some(col => isFormattablePivotColumn(col)),
   },
 };
 
-export const _columnSettings = {
+export const _columnSettings: VisualizationColumnSettingsDefinitions = {
   [COLUMN_SORT_ORDER]: {
     title: t`Sort order`,
     widget: ChartSettingIconRadio,
@@ -233,8 +210,8 @@ export const _columnSettings = {
     widget: "toggle",
     inline: true,
     getDefault: (
-      column: DatasetColumn,
-      columnSettings: DatasetColumn,
+      column,
+      columnSettings,
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
@@ -242,8 +219,8 @@ export const _columnSettings = {
       return rows.slice(0, -1).some(row => _.isEqual(row, column.field_ref));
     },
     getHidden: (
-      column: DatasetColumn,
-      columnSettings: DatasetColumn,
+      column,
+      columnSettings,
       { settings }: { settings: VisualizationSettings },
     ) => {
       const rows = settings[COLUMN_SPLIT_SETTING]?.rows ?? [];

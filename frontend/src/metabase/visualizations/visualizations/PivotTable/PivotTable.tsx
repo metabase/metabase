@@ -26,6 +26,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationProperties } from "metabase/visualizations/types";
 import type { PivotTableClicked, HeaderWidthType } from "./types";
 
 import { RowToggleIcon } from "./RowToggleIcon";
@@ -44,7 +45,6 @@ import {
 
 import {
   getLeftHeaderWidths,
-  databaseSupportsPivotTables,
   isSensible,
   checkRenderable,
   leftHeaderCellSizeAndPositionGetter,
@@ -496,12 +496,11 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   minSize: getMinSize("pivot"),
   defaultSize: getDefaultSize("pivot"),
   canSavePng: false,
-  databaseSupportsPivotTables,
   isSensible,
   checkRenderable,
   settings,
   columnSettings,
   isLiveResizable: () => false,
-});
+} as VisualizationProperties);
 
 export { PivotTable };

@@ -15,6 +15,7 @@ import type { IconName, IconProps } from "metabase/core/components/Icon";
 import type Query from "metabase-lib/queries/Query";
 
 import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { HoveredObject } from "./hover";
 
 type OnChangeCardAndRunOpts = {
@@ -100,6 +101,7 @@ export type VisualizationSettingDefinition<
   useRawSeries?: boolean;
   group?: string;
   noPadding?: boolean;
+  borderBottom?: boolean;
 
   // is the setting visible in the dashboard card viz settings
   dashboard?: boolean;
@@ -178,7 +180,7 @@ export type VisualizationSettingDefinition<
   onUpdate?: (value: TValue, extra: TExtra) => void;
 };
 
-export type VisualizationSettingsDefinitions<TObject = unknown> = {
+export type VisualizationSettingsDefinitions<TObject = Series> = {
   [id in VisualizationSettingId]?: VisualizationSettingDefinition<
     TObject,
     VisualizationSettings[id]
@@ -239,19 +241,22 @@ export type VisualizationProperties = {
 
   transformSeries?: (series: Series) => TransformedSeries;
   // TODO: remove dependency on metabase-lib
-  isSensible?: (data: DatasetData, query?: Query) => boolean;
+  isSensible?: (
+    data: DatasetData,
+    query?: Query | StructuredQuery,
+  ) => boolean | undefined;
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable?: (
     series: Series,
     settings: VisualizationSettings,
-    query: Query,
+    query: Query | StructuredQuery,
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
 
-  columnSettings?: (
-    column: DatasetColumn,
-  ) => VisualizationColumnSettingsDefinitions;
+  columnSettings?:
+    | ((column: DatasetColumn) => VisualizationColumnSettingsDefinitions)
+    | VisualizationColumnSettingsDefinitions;
   shouldRender?: (props: any) => boolean;
 };
 

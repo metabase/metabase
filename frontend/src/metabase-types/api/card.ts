@@ -288,6 +288,7 @@ export type VisualizationColumnSettings = {
   column?: DatasetColumn;
   _column_title_full?: string;
   "pivot_table.column_show_totals"?: boolean;
+  "pivot_table.column_sort_order"?: "ascending" | "descending";
 } & BasicVisualizationSettings;
 export type VisualizationColumnSettingsId = keyof VisualizationColumnSettings;
 
