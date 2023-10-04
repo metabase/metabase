@@ -40,7 +40,6 @@
   assert-file-exists
   copy-file!
   create-directory-unless-exists!
-  delete-file!
   delete-file-if-exists!
   download-file!
   file-exists?

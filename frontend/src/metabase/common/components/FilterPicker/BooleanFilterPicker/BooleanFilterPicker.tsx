@@ -1,10 +1,9 @@
-import { t } from "ttag";
 import { useMemo, useState } from "react";
-import { Box, Button, Radio, Stack } from "metabase/ui";
+import { t } from "ttag";
+import { Icon } from "metabase/core/components/Icon";
+import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
-import { Header } from "../Header";
-import { Footer } from "../Footer";
 import type { FilterPickerWidgetProps } from "../types";
 import { getFilterClause, getOptions, getOptionType } from "./utils";
 import type { OptionType } from "./types";
@@ -46,12 +45,11 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <>
-      <Header>
-        <BackButton onClick={onBack}>{columnInfo.displayName}</BackButton>
-      </Header>
-      <Stack p="md">
-        <Radio.Group value={optionType} onChange={handleOptionChange}>
+    <div>
+      <BackButton onClick={onBack}>{columnInfo.longDisplayName}</BackButton>
+      <Divider />
+      <Radio.Group value={optionType} onChange={handleOptionChange}>
+        <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
           {visibleOptions.map(option => (
             <Radio
               key={option.type}
@@ -61,19 +59,24 @@ export function BooleanFilterPicker({
               size="xs"
             />
           ))}
-        </Radio.Group>
-        {!isExpanded && (
-          <Button variant="subtle" onClick={() => setIsExpanded(true)}>
-            {t`More options`}
-          </Button>
-        )}
-      </Stack>
-      <Footer>
-        <Box />
-        <Button onClick={handleSubmit}>
+        </Stack>
+      </Radio.Group>
+      {!isExpanded && (
+        <Button
+          c="text.1"
+          variant="subtle"
+          rightIcon={<Icon name="chevrondown" />}
+          onClick={() => setIsExpanded(true)}
+        >
+          {t`More options`}
+        </Button>
+      )}
+      <Divider />
+      <Group p="sm" position="right">
+        <Button variant="filled" onClick={handleSubmit}>
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
-      </Footer>
-    </>
+      </Group>
+    </div>
   );
 }

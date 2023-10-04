@@ -596,7 +596,7 @@ function isExcludeDateBucket(
   return buckets.includes(bucketName);
 }
 
-const DATE_FORMAT = "yyyy-MM-dd";
+const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
@@ -668,7 +668,7 @@ function relativeDateFilterPartsWithoutOffset(
   stageIndex: number,
   { operator, args, options }: ExpressionParts,
 ): RelativeDateFilterParts | null {
-  if (operator !== "time-interval" || args.length === 3) {
+  if (operator !== "time-interval" || args.length !== 3) {
     return null;
   }
 
@@ -686,6 +686,8 @@ function relativeDateFilterPartsWithoutOffset(
     column,
     value,
     bucket,
+    offsetValue: null,
+    offsetBucket: null,
     options,
   };
 }

@@ -3,6 +3,7 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
+import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
 import { StringFilterPicker } from "./StringFilterPicker";
 
@@ -85,7 +86,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
     return BooleanFilterPicker;
   }
   if (Lib.isDate(column)) {
-    return NotImplementedPicker;
+    return DateFilterPicker;
   }
   if (Lib.isNumber(column)) {
     return NumberFilterPicker;
