@@ -1,6 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
 import type {
   Parameter,
@@ -8,6 +7,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { TextInput } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
@@ -46,11 +46,28 @@ const ParameterSettings = ({
   onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
+  const [internalValue, setInternalValue] = useState(parameter.name);
+
+  useLayoutEffect(() => {
+    setInternalValue(parameter.name);
+  }, [parameter.name]);
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInternalValue(event.target.value);
+    },
+    [],
+  );
+
   const handleNameChange = useCallback(
     (event: { target: HTMLInputElement }) => {
-      onChangeName(event.target.value);
+      if (event.target.value !== "") {
+        onChangeName(event.target.value);
+      } else {
+        setInternalValue(parameter.name);
+      }
     },
-    [onChangeName],
+    [onChangeName, parameter.name],
   );
 
   const handleSourceSettingsChange = useCallback(
@@ -65,9 +82,12 @@ const ParameterSettings = ({
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <InputBlurChange
-          value={parameter.name}
-          onBlurChange={handleNameChange}
+        <TextInput
+          onChange={handleChange}
+          value={internalValue}
+          onBlur={handleNameChange}
+          error={internalValue === "" && t`Required`}
+          aria-label={t`Label`}
         />
       </SettingSection>
       {canUseCustomSource(parameter) && (
