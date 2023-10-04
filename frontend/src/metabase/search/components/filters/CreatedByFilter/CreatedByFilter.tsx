@@ -4,7 +4,7 @@ import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
 import {
-  convertUserIdToString,
+  stringifyUserId,
   parseUserId,
 } from "metabase/search/utils/user-search-params";
 
@@ -17,5 +17,5 @@ export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   ),
   ContentComponent: SearchUserPicker,
   fromUrl: parseUserId,
-  toUrl: convertUserIdToString,
+  toUrl: stringifyUserId,
 };
