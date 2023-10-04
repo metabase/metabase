@@ -42,7 +42,7 @@
     stage-number                 :- :int
     {:keys [column], :as _drill} :- ::lib.schema.drill-thru/drill-thru.sort
     direction                    :- [:enum :asc :desc]]
-   (lib.order-by/order-by query stage-number column direction)))
+   (lib.order-by/order-by query stage-number column (keyword direction))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/sort
   [_query _stage-number {directions :sort-directions}]

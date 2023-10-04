@@ -21,7 +21,6 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.request("POST", "/api/collection", {
       name: "locked down collection",
-      color: "#509EE3",
       parent_id: null,
     }).then(({ body: { id: collection_id } }) => {
       cy.request("GET", "/api/collection/graph").then(
