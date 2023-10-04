@@ -1,6 +1,6 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
-   [metabase-enterprise.audit-db :refer [default-audit-collection-entity-id
+   [metabase-enterprise.audit-db :refer [default-audit-collection
                                          default-audit-db-id]]
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -16,8 +16,7 @@
   "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
   :feature :audit-app
   [group-id changes]
-    (let [audit-collection-id (t2/select-one-fn :id 'Collection :entity_id (default-audit-collection-entity-id))
-          [change-id type]    (first (filter #(= (first %) audit-collection-id) changes))]
+    (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
         (when change-id
           (let [change-permissions! (case type
                                       :read  perms/grant-permissions!
