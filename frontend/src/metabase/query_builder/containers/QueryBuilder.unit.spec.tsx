@@ -631,15 +631,7 @@ describe("QueryBuilder", () => {
         it("does not show custom warning modal when saving edited query", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
-          });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
           const rowLimitInput = await within(
@@ -788,15 +780,7 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
-          });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
-
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
           const columnDisplayName = await screen.findByTitle("Display name");
