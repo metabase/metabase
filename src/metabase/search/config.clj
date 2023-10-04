@@ -248,17 +248,6 @@
   (conj default-columns :collection_id :collection_position :creator_id
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
-        [{:select   [:status]
-          :from     [:moderation_review]
-          :where    [:and
-                     [:= :moderated_item_type "card"]
-                     [:= :moderated_item_id :card.id]
-                     [:= :most_recent true]]
-          ;; order by and limit just in case a bug violates the invariant of only one most_recent. We don't want to
-          ;; error in this query
-          :order-by [[:id :desc]]
-          :limit    1}
-         :moderated_status]
         bookmark-col dashboardcard-count-col))
 
 (defmethod columns-for-model "indexed-entity" [_]

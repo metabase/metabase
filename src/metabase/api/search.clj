@@ -178,6 +178,17 @@
                                [:= :r.most_recent true]
                                [:= :r.model (search.filter/search-model->revision-model model)]])))
 
+(mu/defn ^:private with-moderated-status :- :map
+  [query :- :map
+   model :- [:enum "card" "dataset"]]
+  (-> query
+      (replace-select :moderated_status [:mr.status])
+      (sql.helpers/left-join [:moderation_review :mr]
+                             [:and
+                              [:= :mr.moderated_item_type "card"]
+                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                              [:= :mr.most_recent true]])))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -197,7 +208,8 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)))
+      (with-last-editing-info model)
+      (with-moderated-status model)))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]

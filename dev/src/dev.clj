@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [dev.debug-qp :as debug-qp]
    [dev.model-tracking :as model-tracking]
+   [dev.optimize :as dev.optimize]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
@@ -43,6 +44,8 @@
  [debug-qp
   process-query-debug
   pprint-sql]
+ [dev.optimize
+  explain-query]
  [model-tracking
   track!
   untrack!
