@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { DatePicker } from "metabase/common/components/DatePicker";
 import type { DatePickerValue } from "metabase/common/components/DatePicker";
+import { DatePicker } from "metabase/common/components/DatePicker";
+import * as Lib from "metabase-lib";
+import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
 import {
   getFilterClause,
-  getPickerUnits,
   getPickerOperators,
+  getPickerUnits,
   getPickerValue,
 } from "./utils";
 
@@ -17,6 +19,10 @@ export function DateFilterPicker({
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
+  const columnInfo = useMemo(() => {
+    return Lib.displayInfo(query, stageIndex, column);
+  }, [query, stageIndex, column]);
+
   const value = useMemo(() => {
     return filter && getPickerValue(query, stageIndex, filter);
   }, [query, stageIndex, filter]);
@@ -38,6 +44,11 @@ export function DateFilterPicker({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
+      backButton={
+        <BackButton pl="sm" onClick={onBack}>
+          {columnInfo.longDisplayName}
+        </BackButton>
+      }
       onChange={handleChange}
     />
   );

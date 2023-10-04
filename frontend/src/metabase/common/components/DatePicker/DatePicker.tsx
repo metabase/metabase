@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { DateShortcutPicker } from "./DateShortcutPicker";
 import {
@@ -18,6 +19,7 @@ export interface DatePickerProps {
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
   availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
+  backButton?: ReactNode;
   onChange: (value: DatePickerValue) => void;
 }
 
@@ -26,6 +28,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
+  backButton,
   onChange,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
@@ -52,6 +55,7 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
+          backButton={backButton}
           onChange={onChange}
           onSelectType={setType}
         />

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
 import { getFilterClause, getOptions, getOptionType } from "./utils";
 import type { OptionType } from "./types";
@@ -45,18 +46,10 @@ export function BooleanFilterPicker({
 
   return (
     <div>
-      <Button
-        c="text.2"
-        fz="1rem"
-        variant="subtle"
-        leftIcon={<Icon name="chevronleft" />}
-        onClick={onBack}
-      >
-        {columnInfo.displayName}
-      </Button>
+      <BackButton onClick={onBack}>{columnInfo.longDisplayName}</BackButton>
       <Divider />
       <Radio.Group value={optionType} onChange={handleOptionChange}>
-        <Stack p="md" spacing="sm">
+        <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
           {visibleOptions.map(option => (
             <Radio
               key={option.type}
