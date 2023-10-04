@@ -827,6 +827,62 @@ describe("QueryBuilder", () => {
           ).not.toBeInTheDocument();
         });
       });
+
+      it("does not show custom warning modal when navigating between tabs with unsaved changes", async () => {
+        await setup({
+          card: TEST_MODEL_CARD,
+          dataset: TEST_MODEL_DATASET,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+        });
+
+        const rowLimitInput = await within(
+          screen.getByTestId("step-limit-0-0"),
+        ).findByPlaceholderText("Enter a limit");
+
+        userEvent.click(rowLimitInput);
+        userEvent.type(rowLimitInput, "0");
+
+        await waitFor(() => {
+          expect(rowLimitInput).toHaveValue(10);
+        });
+
+        userEvent.tab();
+
+        userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+
+        const columnDisplayName = await screen.findByTitle("Display name");
+
+        userEvent.click(columnDisplayName);
+        userEvent.type(columnDisplayName, "X");
+
+        await waitFor(() => {
+          expect(columnDisplayName).toHaveValue(
+            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+          );
+        });
+
+        userEvent.tab();
+
+        userEvent.click(screen.getByTestId("editor-tabs-query-name"));
+
+        expect(
+          screen.queryByText("Changes were not saved"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Navigating away from here will cause you to lose any changes you have made.",
+          ),
+        ).not.toBeInTheDocument();
+      });
     });
 
     describe("native queries", () => {
