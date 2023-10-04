@@ -11,7 +11,10 @@ import {
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import type { CollectionEndpoints } from "__support__/server-mocks";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
+} from "__support__/server-mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -35,6 +38,16 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
+const BOBBY_TEST_COLLECTION = createMockCollection({
+  archived: false,
+  can_write: true,
+  description: null,
+  id: 1,
+  location: "/",
+  name: "Bobby Tables's Personal Collection",
+  personal_owner_id: 100,
+});
+
 const TEST_COLLECTIONS = [
   {
     can_write: false,
@@ -44,17 +57,7 @@ const TEST_COLLECTIONS = [
     name: "Our analytics",
     parent_id: null,
   },
-  {
-    archived: false,
-    can_write: true,
-    description: null,
-    id: 1,
-    location: "/",
-    name: "Bobby Tables's Personal Collection",
-    namespace: null,
-    personal_owner_id: 100,
-    slug: "bobby_tables_s_personal_collection",
-  },
+  BOBBY_TEST_COLLECTION,
 ];
 
 const setup = async (
@@ -76,7 +79,8 @@ const setup = async (
     setupCollectionsEndpoints(collectionEndpoints);
   } else {
     fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
-    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS);
+    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS[0]);
+    setupCollectionByIdEndpoint({ collections: [BOBBY_TEST_COLLECTION] });
   }
 
   const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
@@ -714,6 +718,7 @@ describe("SaveQuestionModal", () => {
             rootCollection: COLLECTION.ROOT,
           },
         });
+        setupCollectionByIdEndpoint({ collections: [COLLECTION.PARENT] });
       });
 
       it("should create collection inside nested folder", async () => {
