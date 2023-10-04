@@ -26,10 +26,6 @@ result_metadata:
   - user_id
   visibility_type: normal
   display_name: User ID
-  fingerprint:
-    global:
-      distinct-count: 171
-      nil%: 0
   base_type: type/Integer
 - description: null
   semantic_type: type/PK
@@ -51,7 +47,6 @@ result_metadata:
   - group_id
   visibility_type: normal
   display_name: Group ID
-  fingerprint: null
   base_type: type/Integer
 - description: null
   semantic_type: type/Name
@@ -73,17 +68,6 @@ result_metadata:
   - group_name
   visibility_type: normal
   display_name: Group Name
-  fingerprint:
-    global:
-      distinct-count: 15
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 11.598540145985401
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false

@@ -26,7 +26,6 @@ result_metadata:
   - id
   visibility_type: normal
   display_name: ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -48,17 +47,6 @@ result_metadata:
   - entity_type
   visibility_type: normal
   display_name: Entity Type
-  fingerprint:
-    global:
-      distinct-count: 5
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 5.7705
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
@@ -81,14 +69,6 @@ result_metadata:
   - created_at
   visibility_type: normal
   display_name: Created At
-  fingerprint:
-    global:
-      distinct-count: 1942
-      nil%: 0
-    type:
-      type/DateTime:
-        earliest: '2015-10-24T05:35:13.572Z'
-        latest: '2023-06-08T13:46:53.234124Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -111,14 +91,6 @@ result_metadata:
   - updated_at
   visibility_type: normal
   display_name: Updated At
-  fingerprint:
-    global:
-      distinct-count: 1830
-      nil%: 0.0705
-    type:
-      type/DateTime:
-        earliest: '2016-04-21T23:01:51.892Z'
-        latest: '2023-06-08T14:24:07.718273Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/FK
@@ -140,10 +112,6 @@ result_metadata:
   - creator_id
   visibility_type: normal
   display_name: Creator ID
-  fingerprint:
-    global:
-      distinct-count: 84
-      nil%: 0
   base_type: type/Integer
 - description: null
   semantic_type: type/Name
@@ -165,17 +133,6 @@ result_metadata:
   - name
   visibility_type: normal
   display_name: Name
-  fingerprint:
-    global:
-      distinct-count: 1830
-      nil%: 0
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 28.8385
   base_type: type/Text
 - description: null
   semantic_type: type/Description
@@ -197,17 +154,6 @@ result_metadata:
   - description
   visibility_type: normal
   display_name: Description
-  fingerprint:
-    global:
-      distinct-count: 256
-      nil%: 0.854
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0.004
-        percent-email: 0
-        percent-state: 0
-        average-length: 10.7395
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -229,10 +175,6 @@ result_metadata:
   - collection_id
   visibility_type: normal
   display_name: Collection ID
-  fingerprint:
-    global:
-      distinct-count: 375
-      nil%: 0
   base_type: type/Integer
 - description: null
   semantic_type: type/FK
@@ -254,10 +196,6 @@ result_metadata:
   - made_public_by_user
   visibility_type: normal
   display_name: Made Public By User
-  fingerprint:
-    global:
-      distinct-count: 16
-      nil%: 0
   base_type: type/Integer
 - description: null
   semantic_type: type/Category
@@ -279,10 +217,6 @@ result_metadata:
   - is_embedding_enabled
   visibility_type: normal
   display_name: Is Embedding Enabled
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.0985
   base_type: type/Boolean
 - description: null
   semantic_type: type/Enum
@@ -304,10 +238,6 @@ result_metadata:
   - archived
   visibility_type: normal
   display_name: Archived
-  fingerprint:
-    global:
-      distinct-count: 2
-      nil%: 0
   base_type: type/Boolean
 - description: null
   semantic_type: type/Category
@@ -329,17 +259,6 @@ result_metadata:
   - action_type
   visibility_type: normal
   display_name: Action Type
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.994
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 0.045
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -361,10 +280,6 @@ result_metadata:
   - action_model_id
   visibility_type: normal
   display_name: Action Model ID
-  fingerprint:
-    global:
-      distinct-count: 10
-      nil%: 0
   base_type: type/Integer
 - description: null
   semantic_type: type/Category
@@ -386,10 +301,6 @@ result_metadata:
   - collection_is_official
   visibility_type: normal
   display_name: Collection Is Official
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.9295
   base_type: type/Boolean
 - description: null
   semantic_type: type/Category
@@ -411,10 +322,6 @@ result_metadata:
   - collection_is_personal
   visibility_type: normal
   display_name: Collection Is Personal
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.9295
   base_type: type/Boolean
 - description: null
   semantic_type: type/Category
@@ -436,17 +343,6 @@ result_metadata:
   - question_viz_type
   visibility_type: normal
   display_name: Question Viz Type
-  fingerprint:
-    global:
-      distinct-count: 19
-      nil%: 0.2015
-    type:
-      type/Text:
-        percent-json: 0
-        percent-url: 0
-        percent-email: 0
-        percent-state: 0
-        average-length: 3.707
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -468,10 +364,6 @@ result_metadata:
   - question_database_id
   visibility_type: normal
   display_name: Question Database ID
-  fingerprint:
-    global:
-      distinct-count: 21
-      nil%: 0.2015
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -493,10 +385,6 @@ result_metadata:
   - question_is_native
   visibility_type: normal
   display_name: Question Is Native
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.2015
   base_type: type/Boolean
 - description: null
   semantic_type: null
@@ -519,14 +407,6 @@ result_metadata:
   - event_timestamp
   visibility_type: normal
   display_name: Event Timestamp
-  fingerprint:
-    global:
-      distinct-count: 43
-      nil%: 0.978
-    type:
-      type/DateTime:
-        earliest: '2018-04-30T22:00:00Z'
-        latest: '2023-03-29T04:00:00Z'
   base_type: type/DateTimeWithLocalTZ
 database_id: Internal Metabase Database
 enable_embedding: false
