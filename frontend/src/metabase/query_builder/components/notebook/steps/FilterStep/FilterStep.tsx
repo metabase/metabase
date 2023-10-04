@@ -26,13 +26,13 @@ export function FilterStep({
   };
 
   const handleUpdateFilter = (
-    filter: Lib.FilterClause,
+    targetFilter: Lib.FilterClause,
     nextFilter: Lib.ExpressionClause,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
       stageIndex,
-      filter,
+      targetFilter,
       nextFilter,
     );
     updateQuery(nextQuery);
@@ -55,20 +55,52 @@ export function FilterStep({
       isLastOpened={isLastOpened}
       renderName={renderFilterName}
       renderPopover={filter => (
-        <FilterPicker
+        <FilterPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
           filter={filter}
-          onSelect={nextFilter => {
-            if (filter) {
-              handleUpdateFilter(filter, nextFilter);
-            } else {
-              handleAddFilter(nextFilter);
-            }
-          }}
+          onAddFilter={handleAddFilter}
+          onUpdateFilter={handleUpdateFilter}
         />
       )}
       onRemove={handleRemoveFilter}
+    />
+  );
+}
+
+interface FilterPopoverProps {
+  query: Lib.Query;
+  stageIndex: number;
+  filter: Lib.FilterClause | undefined;
+  onAddFilter: (filter: Lib.ExpressionClause) => void;
+  onUpdateFilter: (
+    targetFilter: Lib.FilterClause,
+    nextFilter: Lib.ExpressionClause,
+  ) => void;
+  onClose?: () => void;
+}
+
+function FilterPopover({
+  query,
+  stageIndex,
+  filter,
+  onAddFilter,
+  onUpdateFilter,
+  onClose,
+}: FilterPopoverProps) {
+  return (
+    <FilterPicker
+      query={query}
+      stageIndex={stageIndex}
+      filter={filter}
+      onSelect={newFilter => {
+        if (filter) {
+          onUpdateFilter(filter, newFilter);
+        } else {
+          onAddFilter(newFilter);
+        }
+        onClose?.();
+      }}
     />
   );
 }
