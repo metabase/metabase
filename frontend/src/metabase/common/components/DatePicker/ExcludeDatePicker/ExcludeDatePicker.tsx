@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
+import { Box, Button, Checkbox, Divider, Group, Stack } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import { OptionButton } from "../OptionButton";
 import type {
@@ -98,24 +98,26 @@ export function ExcludeOptionPicker({
   return (
     <div>
       <BackButton onClick={onBack}>{t`Exclude…`}</BackButton>
-      <Divider mx="md" />
-      {unitOptions.map((option, index) => (
-        <OptionButton key={index} onClick={() => onSelectUnit(option.unit)}>
-          {option.label}
-        </OptionButton>
-      ))}
-      {unitOptions.length > 0 && operatorOptions.length > 0 && (
-        <Divider mx="md" />
-      )}
-      {operatorOptions.map((option, index) => (
-        <OptionButton
-          key={index}
-          isSelected={option.operator === value?.operator}
-          onClick={() => handleChange(option.operator)}
-        >
-          {option.label}
-        </OptionButton>
-      ))}
+      <Divider />
+      <Box p="sm">
+        {unitOptions.map((option, index) => (
+          <OptionButton key={index} onClick={() => onSelectUnit(option.unit)}>
+            {option.label}
+          </OptionButton>
+        ))}
+        {unitOptions.length > 0 && operatorOptions.length > 0 && (
+          <Divider mx="md" my="sm" />
+        )}
+        {operatorOptions.map((option, index) => (
+          <OptionButton
+            key={index}
+            isSelected={option.operator === value?.operator}
+            onClick={() => handleChange(option.operator)}
+          >
+            {option.label}
+          </OptionButton>
+        ))}
+      </Box>
     </div>
   );
 }
@@ -173,8 +175,8 @@ function ExcludeValuePicker({
   return (
     <div>
       <BackButton onClick={onBack}>{option?.label}</BackButton>
-      <Stack px="md" pb="md">
-        <Divider />
+      <Divider />
+      <Stack p="md">
         <Checkbox
           checked={isEmpty}
           label={isEmpty ? t`Select none…` : t`Select all…`}
@@ -197,13 +199,13 @@ function ExcludeValuePicker({
             </Stack>
           ))}
         </Group>
-        <Divider />
-        <Group position="right">
-          <Button variant="filled" disabled={isEmpty} onClick={handleSubmit}>
-            {isNew ? t`Add filter` : t`Update filter`}
-          </Button>
-        </Group>
       </Stack>
+      <Divider />
+      <Group p="sm" position="right">
+        <Button variant="filled" disabled={isEmpty} onClick={handleSubmit}>
+          {isNew ? t`Add filter` : t`Update filter`}
+        </Button>
+      </Group>
     </div>
   );
 }

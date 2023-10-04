@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { Divider } from "metabase/ui";
+import { Box, Divider } from "metabase/ui";
 import { OptionButton } from "../OptionButton";
 import type {
   DatePickerOperator,
@@ -31,10 +31,10 @@ export function DateShortcutPicker({
   }, [availableOperators]);
 
   return (
-    <div>
+    <Box p="sm">
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
-          {groupIndex > 0 && <Divider mx="md" />}
+          {groupIndex > 0 && <Divider mx="md" my="sm" />}
           {group.map((option, optionIndex) => (
             <OptionButton
               key={optionIndex}
@@ -46,7 +46,7 @@ export function DateShortcutPicker({
         </Fragment>
       ))}
       {shortcutGroups.length > 0 && typeOptions.length > 0 && (
-        <Divider mx="md" />
+        <Divider mx="md" my="sm" />
       )}
       {typeOptions.map((option, optionIndex) => (
         <OptionButton
@@ -56,6 +56,6 @@ export function DateShortcutPicker({
           {option.label}
         </OptionButton>
       ))}
-    </div>
+    </Box>
   );
 }
