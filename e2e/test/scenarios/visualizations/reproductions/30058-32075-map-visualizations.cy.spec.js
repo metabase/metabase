@@ -113,7 +113,7 @@ describe("issue 30058", () => {
 
 const addCountGreaterThan2Filter = () => {
   openNotebook();
-  cy.button("Filter").click();
+  cy.findAllByTestId("action-buttons").last().button("Filter").click();
   popover().within(() => {
     cy.findByText("Count").click();
     cy.icon("chevrondown").click();

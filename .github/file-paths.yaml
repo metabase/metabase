@@ -64,7 +64,6 @@ backend_all: &backend_all
   - *ci
   - *backend_sources
   - *backend_specs
-  - *frontend_sources # keep it here until we detect static viz changes
 
 sources: &sources
   - *shared_sources
@@ -80,7 +79,6 @@ e2e_specs: &e2e_specs
 e2e_all:
   - *default
   - *ci
-  - *e2e_specs
   - *sources
 
 snowplow:

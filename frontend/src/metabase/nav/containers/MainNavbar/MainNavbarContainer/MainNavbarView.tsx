@@ -15,6 +15,7 @@ import * as Urls from "metabase/lib/urls";
 
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
+import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import type { SelectedItem } from "../types";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 
@@ -161,6 +162,7 @@ function MainNavbarView({
           </SidebarSection>
         )}
       </div>
+      <WhatsNewNotification />
     </SidebarContentRoot>
   );
 }

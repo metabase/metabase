@@ -8,6 +8,8 @@ import {
   toggleDashboardInfoSidebar,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 describeEE("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     restore();
@@ -17,8 +19,10 @@ describeEE("scenarios > dashboard > caching", () => {
   });
 
   it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", "/api/dashboard/1").as("updateDashboard");
-    visitDashboard(1);
+    cy.intercept("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+      "updateDashboard",
+    );
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     toggleDashboardInfoSidebar();
 

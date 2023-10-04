@@ -11,15 +11,16 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
+(mu/defn ^:private update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
-  [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
+  [table          :- i/TableInstance
+   field-metadata :- i/TableMetadataField
+   metabase-field :- common/TableMetadataFieldWithID]
   (let [{old-database-type              :database-type
          old-base-type                  :base-type
          old-field-comment              :field-comment
@@ -130,21 +131,23 @@
 
 (declare update-metadata!)
 
-(s/defn ^:private update-nested-fields-metadata! :- su/IntGreaterThanOrEqualToZero
+(mu/defn ^:private update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
-  [table :- i/TableInstance, field-metadata :- i/TableMetadataField, metabase-field :- common/TableMetadataFieldWithID]
+  [table          :- i/TableInstance
+   field-metadata :- i/TableMetadataField
+   metabase-field :- common/TableMetadataFieldWithID]
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
       (update-metadata! table (set nested-fields-metadata) (set metabase-nested-fields))
       0)))
 
-(s/defn update-metadata! :- su/IntGreaterThanOrEqualToZero
+(mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
   nested Fields. Returns total number of Fields updated."
   [table        :- i/TableInstance
-   db-metadata  :- #{i/TableMetadataField}
-   our-metadata :- #{common/TableMetadataFieldWithID}]
+   db-metadata  :- [:set i/TableMetadataField]
+   our-metadata :- [:set common/TableMetadataFieldWithID]]
   (sync-util/sum-for [metabase-field our-metadata]
     ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
     ;; database) and that are still considered active (i.e., present in DB metadata)

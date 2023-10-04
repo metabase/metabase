@@ -61,7 +61,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     openNativeEditor();
     cy.icon("reference").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1 model");
+    cy.findByText("2 models");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Native Products Model").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

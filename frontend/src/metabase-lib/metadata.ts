@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, FieldReference } from "metabase-types/api";
+import type { DatabaseId, FieldReference, TableId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
@@ -20,8 +20,8 @@ import type {
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
-  FilterOperator,
-  FilterOperatorDisplayInfo,
+  JoinConditionOperator,
+  JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -68,7 +68,7 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  joinable: CardMetadata | TableMetadata,
+  tableLike: CardMetadata | TableMetadata,
 ): CardDisplayInfo | TableDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
@@ -113,8 +113,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  filterOperator: FilterOperator,
-): FilterOperatorDisplayInfo;
+  joinConditionOperator: JoinConditionOperator,
+): JoinConditionOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -160,7 +160,7 @@ export function describeRelativeDatetime(
 
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
-  tableID: number | string,
+  tableID: TableId,
 ): CardMetadata | TableMetadata {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
@@ -175,4 +175,15 @@ export function findColumnForLegacyRef(
   columns: ColumnMetadata[],
 ): ColumnMetadata | null {
   return ML.find_column_for_legacy_ref(query, stageIndex, legacyRef, columns);
+}
+
+export function visibleColumns(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.visible_columns(query, stageIndex);
+}
+
+export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.is_column_metadata(arg);
 }

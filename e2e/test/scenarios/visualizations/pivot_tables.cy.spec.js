@@ -31,7 +31,7 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME },
 ];
 
-describe("scenarios > visualizations > pivot tables", () => {
+describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -958,8 +958,15 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["field", REVIEWS.RATING, null],
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+            [
+              "field",
+              REVIEWS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+                "base-type": "type/DateTimeWithLocalTZ",
+              },
+            ],
           ],
         },
         type: "query",

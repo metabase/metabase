@@ -13,6 +13,8 @@
 (defn- normalize* [query]
   (try
     (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
+          _          (assert query-type
+                             (format "Invalid query, missing query :type or :lib/type: %s" (pr-str query)))
           normalized (case query-type
                        :mbql/query      ; pMBQL pipeline query
                        (lib.convert/->legacy-MBQL (lib/normalize query))
@@ -22,7 +24,7 @@
       (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str normalized))
       normalized)
     (catch Throwable e
-      (throw (ex-info (.getMessage e)
+      (throw (ex-info (format "Error normalizing query: %s" (.getMessage e))
                       {:type  qp.error-type/qp
                        :query query}
                       e)))))

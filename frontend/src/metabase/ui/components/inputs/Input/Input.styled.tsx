@@ -2,7 +2,7 @@ import { getSize, rem } from "@mantine/core";
 import type { InputStylesParams, MantineThemeOverride } from "@mantine/core";
 
 const SIZES = {
-  xs: rem(28),
+  xs: rem(32),
   md: rem(40),
 };
 
@@ -73,9 +73,6 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
           "&:focus": {
             borderColor: theme.colors.brand[1],
           },
-          "&:read-only:not(:disabled)": {
-            borderColor: theme.colors.text[0],
-          },
           "&[data-with-icon]": {
             paddingLeft: rem(DEFAULT_ICON_WIDTH - BORDER_WIDTH),
           },
@@ -119,17 +116,17 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.sm,
         fontWeight: "bold",
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       description: {
         color: theme.colors.text[2],
         fontSize: theme.fontSizes.xs,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       error: {
         color: theme.colors.error[0],
         fontSize: theme.fontSizes.xs,
-        lineHeight: "1rem",
+        lineHeight: theme.lineHeight,
       },
       required: {
         color: theme.colors.error[0],

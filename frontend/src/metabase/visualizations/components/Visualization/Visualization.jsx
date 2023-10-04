@@ -10,7 +10,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
-import Utils from "metabase/lib/utils";
+import { equals } from "metabase/lib/utils";
 
 import {
   getVisualizationTransformed,
@@ -85,9 +85,9 @@ class Visualization extends PureComponent {
   UNSAFE_componentWillReceiveProps(newProps) {
     if (
       !isSameSeries(newProps.rawSeries, this.props.rawSeries) ||
-      !Utils.equals(newProps.settings, this.props.settings) ||
-      !Utils.equals(newProps.timelineEvents, this.props.timelineEvents) ||
-      !Utils.equals(
+      !equals(newProps.settings, this.props.settings) ||
+      !equals(newProps.timelineEvents, this.props.timelineEvents) ||
+      !equals(
         newProps.selectedTimelineEventIds,
         this.props.selectedTimelineEventIds,
       )
@@ -101,9 +101,7 @@ class Visualization extends PureComponent {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (
-      !Utils.equals(this.getWarnings(prevProps, prevState), this.getWarnings())
-    ) {
+    if (!equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
       this.updateWarnings();
     }
   }

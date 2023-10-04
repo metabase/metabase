@@ -151,7 +151,7 @@ export default class GuiQueryEditor extends Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      const aggregations = query.aggregations();
+      const aggregations = [...query.aggregations()];
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -211,7 +211,7 @@ export default class GuiQueryEditor extends Component {
 
     const breakoutList = [];
 
-    const breakouts = query.breakouts();
+    const breakouts = [...query.breakouts()];
 
     // Placeholder breakout for showing the add button
     if (query.canAddBreakout()) {

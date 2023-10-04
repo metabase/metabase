@@ -8,7 +8,6 @@
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -137,36 +136,44 @@
                       (fingerprinters/fingerprinter (mi/instance Field {:base_type :type/Text}))
                       ["metabase" "more" "like" "metabae" truncated-json])))))
 
-(deftest fingerprints-in-db-test
+(deftest ^:parallel fingerprints-in-db-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
-        (is (schema= {:global {:distinct-count (s/eq 100)
-                               :nil%           (s/eq 0.0)}
-                      :type   {:type/Text {:percent-json   (s/eq 0.0)
-                                           :percent-url    (s/eq 0.0)
-                                           :percent-email  (s/eq 0.0)
-                                           :percent-state  (s/eq 0.0)
-                                           :average-length (s/pred #(< 15 % 16) "between 15 and 16")}}}
-                     (t2/select-one-fn :fingerprint Field :id (mt/id :venues :name)))))
+        (is (=? {:global {:distinct-count 100
+                          :nil%           0.0}
+                 :type   {:type/Text {:percent-json   0.0
+                                      :percent-url    0.0
+                                      :percent-email  0.0
+                                      :percent-state  0.0
+                                      :average-length #(< 15 % 16)}}}
+                (t2/select-one-fn :fingerprint Field :id (mt/id :venues :name))))))))
+
+(deftest ^:parallel fingerprints-in-db-test-2
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Fingerprints should actually get saved with the correct values"
       (testing "date fingerprints"
-        (is (schema= {:global {:distinct-count (s/eq (if (= driver/*driver* :mongo)
-                                                       383 ; mongo samples the last 500 rows only
-                                                       618))
-                               :nil%           (s/eq 0.0)}
-                      :type   {:type/DateTime {:earliest (s/pred #(str/starts-with? % "2013-01-03"))
-                                               :latest   (s/pred #(str/starts-with? % "2015-12-29"))}}}
-                     (t2/select-one-fn :fingerprint Field :id (mt/id :checkins :date)))))
+        (is (=? {:global {:distinct-count (if (= driver/*driver* :mongo)
+                                            383 ; mongo samples the last 500 rows only
+                                            618)
+                          :nil%           0.0}
+                 :type   {:type/DateTime {:earliest #(str/starts-with? % "2013-01-03")
+                                          :latest   #(str/starts-with? % "2015-12-29")}}}
+                (t2/select-one-fn :fingerprint Field :id (mt/id :checkins :date))))))))
+
+(deftest ^:parallel fingerprints-in-db-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "Fingerprints should actually get saved with the correct values"
       (testing "number fingerprints"
-        (is (schema= {:global {:distinct-count (s/eq 4)
-                               :nil%           (s/eq 0.0)}
-                      :type   {:type/Number {:min (s/eq 1.0)
-                                             :q1  (s/pred #(< 1.44 % 1.46) "approx 1.4591129021415095")
-                                             :q3  (s/pred #(< 2.4 % 2.5) "approx 2.493086095768049")
-                                             :max (s/eq 4.0)
-                                             :sd  (s/pred #(< 0.76 % 0.78) "between 0.76 and 0.78")
-                                             :avg (s/eq 2.03)}}}
-                     (t2/select-one-fn :fingerprint Field :id (mt/id :venues :price))))))))
+        (is (=? {:global {:distinct-count 4
+                          :nil%           0.0}
+                 :type   {:type/Number {:min 1.0
+                                        :q1  #(< 1.44 % 1.46)
+                                        :q3  #(< 2.4 % 2.5)
+                                        :max 4.0
+                                        :sd  #(< 0.76 % 0.78)
+                                        :avg 2.03}}}
+                (t2/select-one-fn :fingerprint Field :id (mt/id :venues :price))))))))
 
 (deftest ^:parallel valid-serialized-json?-test
   (testing "recognizes substrings of json"

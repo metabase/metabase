@@ -203,11 +203,21 @@
   [details secret-property]
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
         id (id-kw details)
-        value (if id
-                (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")
-                (value-kw details))]
+        ;; When a secret is updated, we get both a new value as well as the ID of old secret.
+        value (or (when-let [value (value-kw details)]
+                    (if (string? value)
+                      value
+                      (String. ^bytes value "UTF-8")))
+                  (when id
+                    (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")))]
     (case (options-kw details)
-      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+      "uploaded" (try
+                   ;; When a secret is updated, the value has already been decoded
+                   ;; instead of checking if the string is base64 encoded, we just
+                   ;; try to decoded it and leave it as is if the attempt fails.
+                   (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+                   (catch IllegalArgumentException _
+                     value))
       "local" (slurp (if id value (path-kw details)))
       value)))
 

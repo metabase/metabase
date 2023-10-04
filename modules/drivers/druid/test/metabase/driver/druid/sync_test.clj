@@ -1,16 +1,17 @@
 (ns metabase.driver.druid.sync-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.error :as me]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
-(deftest sync-test
+(deftest ^:parallel sync-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
@@ -39,7 +40,7 @@
   (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (s/check sync-dbms-ver/DBMSVersion dbms-version))
+  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-driver :druid

@@ -262,8 +262,10 @@ export default class Dimension {
 
     const otherDimension: Dimension | null | undefined =
       other instanceof Dimension ? other : this.parseMBQL(other);
-    const baseDimensionA = this.baseDimension();
-    const baseDimensionB = otherDimension && otherDimension.baseDimension();
+    const baseDimensionA = this.getMLv1CompatibleDimension().baseDimension();
+    const baseDimensionB =
+      otherDimension &&
+      otherDimension.getMLv1CompatibleDimension().baseDimension();
     return (
       !!baseDimensionA &&
       !!baseDimensionB &&

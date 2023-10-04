@@ -9,7 +9,10 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -25,7 +28,7 @@ describe("search > recently viewed", () => {
     visitQuestion(ORDERS_QUESTION_ID);
 
     // "Orders in a dashboard" dashboard
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findByTextEnsureVisible("Product ID");
 
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
@@ -45,10 +48,10 @@ describe("search > recently viewed", () => {
       0,
       "Orders in a dashboard",
       "Dashboard",
-      "/dashboard/1-orders-in-a-dashboard",
+      `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
     );
     assertRecentlyViewedItem(
-      ORDERS_QUESTION_ID,
+      1,
       "Orders",
       "Question",
       `/question/${ORDERS_QUESTION_ID}-orders`,
@@ -68,7 +71,7 @@ describe("search > recently viewed", () => {
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "Enter" });
 
-    cy.url().should("match", /\/question\/1-orders$/);
+    cy.url().should("match", /\/question\/\d+-orders$/);
   });
 });
 
@@ -80,7 +83,7 @@ describeEE("search > recently viewed > enterprise features", () => {
 
     cy.request("POST", "/api/moderation-review", {
       status: "verified",
-      moderated_item_id: 1,
+      moderated_item_id: ORDERS_QUESTION_ID,
       moderated_item_type: "card",
     });
 

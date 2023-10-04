@@ -1,12 +1,6 @@
 import { useState } from "react";
 import userEvent from "@testing-library/user-event";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForElementToBeRemoved,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -82,10 +76,13 @@ function getJoinedQuery() {
   const productsId = findRHSColumn("PRODUCTS", "ID");
 
   const condition = Lib.joinConditionClause(
+    query,
+    0,
     defaultOperator,
     ordersProductId,
     productsId,
   );
+
   const join = Lib.withJoinFields(Lib.joinClause(table, [condition]), "all");
 
   return Lib.join(query, 0, join);
@@ -103,10 +100,13 @@ function getJoinedQueryWithMultipleConditions() {
   const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
 
   const condition = Lib.joinConditionClause(
+    query,
+    0,
     defaultOperator,
     ordersCreatedAt,
     productsCreatedAt,
   );
+
   const nextJoin = Lib.withJoinConditions(currentJoin, [
     ...currentConditions,
     condition,
@@ -205,9 +205,6 @@ describe("Notebook Editor > Join Step", () => {
 
     userEvent.click(screen.getByLabelText("Right table"));
     const popover = await screen.findByTestId("popover");
-    await waitForElementToBeRemoved(() =>
-      within(popover).queryByText(/Loading/),
-    );
 
     expect(within(popover).getByText("Sample Database")).toBeInTheDocument();
     expect(within(popover).getByText("Products")).toBeInTheDocument();

@@ -1,8 +1,8 @@
 import {
   getNotebookStep,
   openQuestionActions,
-  restore,
   popover,
+  restore,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -41,12 +41,12 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
     removeExpression("CC2");
     // The UI shows us the "play" icon, indicating we should refresh the query,
     // but the point of this repro is to save without refreshing
-    refreshButton().should("have.length", 1);
-    cy.findByRole("button", { name: "Save changes" }).click();
+    cy.button("Get Answer").should("be.visible");
+    cy.button("Save changes").click();
     cy.wait(["@updateCard", "@dataset"]);
 
     dragColumn(0, 100);
-    refreshButton().first().click();
+    cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
     cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
   });
@@ -67,7 +67,3 @@ const dragColumn = (index, distance) => {
     .trigger("mousemove", distance, 0, { force: true })
     .trigger("mouseup", distance, 0, { force: true });
 };
-
-function refreshButton() {
-  return cy.findAllByRole("button", { name: "Get Answer" });
-}

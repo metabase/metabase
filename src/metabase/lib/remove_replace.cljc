@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
@@ -209,7 +210,7 @@
 (defn- field-clause-with-join-alias?
   [field-clause join-alias]
   (and (lib.util/field-clause? field-clause)
-       (= (lib.join/current-join-alias field-clause) join-alias)))
+       (= (lib.join.util/current-join-alias field-clause) join-alias)))
 
 (defn- replace-join-alias
   [a-join old-name new-name]

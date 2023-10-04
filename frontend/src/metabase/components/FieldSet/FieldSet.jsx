@@ -10,13 +10,21 @@ export default function FieldSet({
   const fieldSetClassName = cx("bordered rounded", { "px2 pb2": !noPadding });
 
   return (
-    <fieldset className={cx(className, fieldSetClassName)}>
+    <fieldset
+      data-testid="field-set"
+      className={cx(className, fieldSetClassName)}
+    >
       {legend && (
-        <legend className="h5 text-bold text-uppercase px1 text-nowrap text-medium">
+        <legend
+          data-testid="field-set-legend"
+          className="h5 text-bold text-uppercase px1 text-nowrap text-medium"
+        >
           {legend}
         </legend>
       )}
-      <div className="w-full">{children}</div>
+      <div data-testid="field-set-content" className="w-full">
+        {children}
+      </div>
     </fieldset>
   );
 }

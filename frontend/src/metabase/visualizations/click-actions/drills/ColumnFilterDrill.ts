@@ -1,9 +1,9 @@
 import { t } from "ttag";
-import type { Drill } from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import { getColumnFilterDrillPopover } from "metabase/visualizations/click-actions/components/ColumnFilterDrillPopover";
 import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
 
-export const ColumnFilterDrill: Drill = ({ question, clicked }) => {
+export const ColumnFilterDrill: LegacyDrill = ({ question, clicked }) => {
   const drill = columnFilterDrill({ question, clicked });
   if (!drill) {
     return [];

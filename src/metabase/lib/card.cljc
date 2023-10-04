@@ -21,6 +21,17 @@
   (cond-> card-metadata
     (not display-name) (assoc :display-name (u.humanization/name->human-readable-name :simple card-name))))
 
+(defmethod lib.metadata.calculation/visible-columns-method :metadata/card
+  [query
+   stage-number
+   {:keys [fields result-metadata] :as card-metadata}
+   {:keys [include-implicitly-joinable? unique-name-fn] :as options}]
+  (concat
+    (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
+    (when include-implicitly-joinable?
+      (lib.metadata.calculation/implicitly-joinable-columns
+        query stage-number (concat fields result-metadata) unique-name-fn))))
+
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
   [card-id :- ::lib.schema.id/card]
@@ -95,8 +106,8 @@
 (mu/defn ^:private card-metadata-columns :- CardColumns
   [metadata-providerable :- lib.metadata/MetadataProviderable
    card                  :- Card]
-  (when-let [result-metadata (or (:result-metadata card)
-                                 (:fields card)
+  (when-let [result-metadata (or (:fields card)
+                                 (:result-metadata card)
                                  (infer-returned-columns metadata-providerable (:dataset-query card)))]
     ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
     ;; contains` :columns` as well.

@@ -68,10 +68,10 @@
   {:arglists '([export-format query] [export-format query column-names])}
   [export-format query & args]
   (let [byytes (if (= export-format :api)
-                 (mt/user-http-request :crowberto :post "dataset"
+                 (mt/user-real-request :crowberto :post "dataset"
                                        {:request-options {:as :byte-array}}
                                        (assoc-in query [:middleware :js-int-to-string?] false))
-                 (mt/user-http-request :crowberto :post (format "dataset/%s" (name export-format))
+                 (mt/user-real-request :crowberto :post (format "dataset/%s" (name export-format))
                                        {:request-options {:as :byte-array}}
                                        :query (json/generate-string query)))]
     (with-open [is (ByteArrayInputStream. byytes)]

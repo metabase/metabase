@@ -11,7 +11,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > model indexes", () => {
-  const modelId = 4;
+  let modelId;
 
   beforeEach(() => {
     restore();
@@ -23,10 +23,17 @@ describe("scenarios > model indexes", () => {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     cy.intercept("GET", "/api/card/*").as("cardGet");
 
-    cy.createQuestion({
-      name: "Products Model",
-      query: { "source-table": PRODUCTS_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "Products Model",
+        query: { "source-table": PRODUCTS_ID },
+        dataset: true,
+      },
+      { wrapId: true, idAlias: "modelId" },
+    );
+
+    cy.get("@modelId").then(_modelId => {
+      modelId = _modelId;
     });
   });
 
@@ -147,12 +154,25 @@ describe("scenarios > model indexes", () => {
   });
 
   it("should be able to see details of a record outside the first 2000", () => {
-    cy.createQuestion({
-      name: "People Model",
-      query: { "source-table": PEOPLE_ID },
-      dataset: true,
+    cy.createQuestion(
+      {
+        name: "People Model",
+        query: { "source-table": PEOPLE_ID },
+        dataset: true,
+      },
+      {
+        wrapId: true,
+        idAlias: "people_model_id",
+      },
+    );
+
+    cy.get("@people_model_id").then(peopleModelId => {
+      createModelIndex({
+        modelId: peopleModelId,
+        pkName: "ID",
+        valueName: "NAME",
+      });
     });
-    createModelIndex({ modelId: 5, pkName: "ID", valueName: "NAME" });
 
     cy.visit("/");
 
@@ -194,8 +214,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Doohickey");
     });
 
-    // for some reason we hit this endpoint twice on initial load
-    expectCardQueries(2);
+    expectCardQueries(1);
 
     cy.get("body").type("{esc}");
 
@@ -212,7 +231,7 @@ describe("scenarios > model indexes", () => {
       cy.findByText("Upton, Kovacek and Halvorson");
     });
 
-    expectCardQueries(2);
+    expectCardQueries(1);
   });
 });
 

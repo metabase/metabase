@@ -10,9 +10,12 @@ title: Driver interface changelog
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
   
+- Another driver feature has been added: `:table-privileges`. This feature signals whether we can store
+  the table-level privileges for the database on database sync.
+  
 - The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
   the set of privileges the database connection's current user has. It needs to be implemented if the database 
-  supports the `:actions` feature.
+  supports the `:table-privileges` feature.
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
 
@@ -59,6 +62,14 @@ title: Driver interface changelog
   the two is that the latter is passed Field metadata with `kebab-case` keys while the former is passed legacy
   metadata with `snake_case` keys.
 
+- `metabase.driver/current-db-time`, deprecated in 0.34, and related methods and helper functions, have been removed.
+  Implement `metabase.driver/db-default-timezone` instead.
+
+- `metabase.driver.sql-jdbc.sync.interface/db-default-timezone`, a helper for writing
+  `metabase.driver/db-default-timezone` implementations for JDBC-based drivers, has been deprecated, and will be
+  removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
+  `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -92,6 +103,10 @@ title: Driver interface changelog
 
 - The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
   of a set.
+
+- The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
+  `database` argument for the arity which previously had one argument. This function might be used in the implementation
+  of a driver's multimethods.
 
 ## Metabase 0.46.0
 

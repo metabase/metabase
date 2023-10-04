@@ -180,7 +180,7 @@
            (test-download-response-headers "dataset/csv")))
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
             "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.json\""
-            "Content-Type"        "application/json;charset=utf-8"
+            "Content-Type"        "application/json; charset=utf-8"
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
            (test-download-response-headers "dataset/json")))

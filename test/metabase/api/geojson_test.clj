@@ -200,7 +200,7 @@
       (testing "should be able to fetch the GeoJSON even if you aren't logged in"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
-               (client/client :get 200 "geojson/middle-earth"))))
+               (client/real-client :get 200 "geojson/middle-earth"))))
       (testing "try fetching an invalid key; should fail"
         (is (= "Invalid custom GeoJSON key: invalid-key"
                (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
@@ -247,7 +247,7 @@
       (mt/with-temp-env-var-value [mb-custom-geojson-enabled false]
         (testing "Should not be able to fetch GeoJSON via URL proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))
+                 (mt/user-real-request :crowberto :get 400 "geojson" :url test-geojson-url))))
         (testing "Should not be able to fetch custom GeoJSON via key proxy endpoint"
           (is (= "Custom GeoJSON is not enabled"
-                 (mt/user-http-request :crowberto :get 400 "geojson/middle-earth"))))))))
+                 (mt/user-real-request :crowberto :get 400 "geojson/middle-earth"))))))))

@@ -10,6 +10,10 @@ import {
   saveDashboard,
   updateDashboardCards,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -30,14 +34,14 @@ describe("scenarios > dashboard > parameters", () => {
         dashboard_id: id,
         cards: [
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 0,
             size_x: 5,
             size_y: 4,
           },
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 4,
             size_x: 5,
@@ -503,7 +507,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTextEnsureVisible("Created At");
 
       cy.icon("pencil").click();
@@ -518,7 +522,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.signIn("nodata");
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should not see mapping options", () => {

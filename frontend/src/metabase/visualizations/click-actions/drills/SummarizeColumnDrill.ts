@@ -4,7 +4,7 @@ import type {
   ClickAction,
   ClickActionProps,
   ClickActionBase,
-  Drill,
+  LegacyDrill,
 } from "metabase/visualizations/types";
 import type { Dispatch } from "metabase-types/store";
 import {
@@ -53,7 +53,7 @@ function getAction(
   };
 }
 
-const SummarizeColumnDrill: Drill = opts => {
+const SummarizeColumnDrill: LegacyDrill = opts => {
   const { question, clicked } = opts;
 
   const drill = summarizeColumnDrill({ question, clicked });

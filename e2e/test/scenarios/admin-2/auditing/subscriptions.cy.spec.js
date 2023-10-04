@@ -81,7 +81,6 @@ describeEE("audit > auditing > subscriptions", () => {
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
           cy.wrap(dashboard_id).as("dashboardId");
-
           cy.createPulse(
             getSubscriptionsDetails({ card_id, dashboard_id, user_id }),
           );
@@ -131,6 +130,7 @@ describeEE("audit > auditing > subscriptions", () => {
       cy.getCurrentUser().then(({ body: { id: user_id } }) => {
         cy.createQuestion(getQuestionDetails()).then(
           ({ body: { id: card_id } }) => {
+            cy.wrap(card_id).as("questionId");
             cy.createAlert(getAlertDetails({ card_id, user_id }));
           },
         );
@@ -152,7 +152,12 @@ describeEE("audit > auditing > subscriptions", () => {
     it("opens a question audit page when question title clicked", () => {
       cy.get("tbody").within(() => {
         cy.findByText("Test Question").click();
-        cy.url().should("include", "/admin/audit/question/4/activity");
+        cy.get("@questionId").then(questionId => {
+          cy.url().should(
+            "include",
+            `/admin/audit/question/${questionId}/activity`,
+          );
+        });
       });
     });
 

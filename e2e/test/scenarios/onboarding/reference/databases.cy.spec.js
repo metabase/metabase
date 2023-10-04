@@ -95,7 +95,7 @@ function checkReferenceDatabasesOrder() {
 
 function checkQuestionSourceDatabasesOrder(question_type) {
   // Last item is "Saved Questions" for UI based questions so we have to check for the one before that (-2), and the last one for "Native" (-1)
-  const lastDatabaseIndex = question_type === "Native query" ? -1 : -2;
+  const lastDatabaseIndex = -1;
   const selector =
     question_type === "Native query"
       ? ".List-item-title"
@@ -103,7 +103,8 @@ function checkQuestionSourceDatabasesOrder(question_type) {
 
   startNewQuestion();
   popover().within(() => {
-    cy.get(selector).as("databaseName").first().should("have.text", "a");
+    cy.findByText("Raw Data").click();
+    cy.get(selector).as("databaseName").eq(1).should("have.text", "a");
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
       .should("have.text", "Sample Database");

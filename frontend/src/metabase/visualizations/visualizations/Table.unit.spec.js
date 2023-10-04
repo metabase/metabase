@@ -8,8 +8,11 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import registerVisualizations from "metabase/visualizations/register";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import Question from "metabase-lib/Question";
+
+registerVisualizations();
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -70,8 +73,8 @@ const setup = ({ vizType }) => {
     it("should show you related columns in structured queries", async () => {
       setup({ vizType });
       expect(await screen.findByText("More columns")).toBeInTheDocument();
-      expect(await screen.findByText("People")).toBeInTheDocument();
-      expect(await screen.findByText("Products")).toBeInTheDocument();
+      expect(await screen.findByText("User")).toBeInTheDocument();
+      expect(await screen.findByText("Product")).toBeInTheDocument();
     });
 
     it("should allow you to show and hide columns", async () => {

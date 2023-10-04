@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { updateIn } from "icepick";
 
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
@@ -53,7 +53,7 @@ export function applyParameters(
   parameterValues = {},
   parameterMappings = [],
 ) {
-  const datasetQuery = Utils.copy(card.dataset_query);
+  const datasetQuery = copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
     datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);

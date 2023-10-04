@@ -20,7 +20,6 @@
    [metabase.util.schema :as su]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -100,8 +99,8 @@
   (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
              (merge
                (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-               {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
-                :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
+               {:order-by [[(mdb.u/qualify DashboardCardSeries :position) :asc]]
+                :where    [:= (mdb.u/qualify DashboardCardSeries :dashboardcard_id) id]})))
 
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------

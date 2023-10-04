@@ -1,8 +1,12 @@
 (ns metabase.api.automagic-dashboards-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.automagic-dashboards :as api.magic]
    [metabase.automagic-dashboards.core :as magic]
-   [metabase.models :refer [Card Collection Dashboard Metric Segment]]
+   [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
+                            ModelIndexValue Segment]]
+   [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -16,6 +20,7 @@
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
    [schema.core :as s]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
@@ -264,3 +269,215 @@
                                       :card
                                       :dataset_query
                                       qp/process-query))))))))))))
+
+;;; ------------------- Index Entities Xrays -------------------
+
+(deftest add-source-model-link-auto-width-test
+  (testing "An empty set of input cards will return a default card of width 4"
+    (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} nil)]
+      (is (= 4 size_x))))
+  (testing "The source model card has a width of at least 4, even if the included content is narrower"
+    (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} [{:col 1 :size_x 1}])]
+      (is (= 4 size_x))))
+  (testing "The source model card is as wide as the widest card in the sequence"
+    (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} [{:col 1 :size_x 1}
+                                                                    {:col 10 :size_x 10}])]
+      (is (= 20 size_x)))))
+
+(defn- do-with-testing-model
+  [{:keys [query pk-ref value-ref]} f]
+  (t2.with-temp/with-temp [Card model {:dataset       true
+                                       :dataset_query query}]
+    (mt/with-model-cleanup [ModelIndex]
+      (let [model-index (model-index/create {:model-id   (:id model)
+                                             :pk-ref     pk-ref
+                                             :value-ref  value-ref
+                                             :creator-id (mt/user->id :crowberto)})]
+        (model-index/add-values! model-index)
+        (f {:model             model
+            :model-index       (t2/select-one ModelIndex :id (:id model-index))
+            :model-index-value (t2/select-one ModelIndexValue
+                                              :model_index_id (:id model-index)
+                                              :model_pk 1)})))))
+
+(defmacro with-indexed-model
+  "Creates a model based on `query-info`, which is indexed.
+
+  `query-info` is a map with keys:
+  - query: a dataset_query for the model
+  - pk-ref: a field_ref for the model's pk
+  - value-ref: a field_ref for the model's label."
+  [[bindings query-info] & body]
+  `(do-with-testing-model ~query-info
+                          (fn [~bindings] ~@body)))
+
+(def Tab-Id-Schema
+  "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
+  (s/pred neg-int? 'ui-temp-id?))
+
+(defn- expected-filters
+  [{:keys [model-index-value] :as info}]
+  (let [linked-tables (api.magic/linked-entities info)]
+    (into #{} (map (fn [{fk-id :linked-field-id}]
+                     [:= [:field fk-id nil] (:model_pk model-index-value)]))
+          linked-tables)))
+
+(defn- cards-have-filters?
+  "Ensure that each of the `dashcards` which has a query includes one of the expected `filters`. Filters will be of the
+  form `[:= [:field <fk-id> nil] <pk-value>]`."
+  [dashcards filters]
+  (doseq [dashcard dashcards
+          :let [query (-> dashcard :card :dataset_query :query)]
+          :when query
+          :let [filter-tree (into #{} (tree-seq sequential? seq (:filter query)))]]
+    (is (some filters filter-tree)
+        (str "Card: " (-> dashcard :card :name)
+             "\nwith filter: " (-> dashcard :card :dataset_query :query :filter)
+             "\nis missing one of " filters))))
+
+(deftest create-linked-dashboard-test-no-linked
+  (testing "If there are no linked-tables, create a default view explaining the situation."
+    (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
+                                                       :link         {:entity {:model   "dataset"
+                                                                               :display "table"}}}}
+                             {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
+                                                       :virtual_card        {:display :text},
+                                                       :dashcard.background false,
+                                                       :text.align_vertical :bottom}}]}
+            (#'api.magic/create-linked-dashboard {:model             nil
+                                                  :linked-tables     ()
+                                                  :model-index       nil
+                                                  :model-index-value nil})))))
+
+(deftest create-linked-dashboard-test-regular-queries
+  (mt/dataset sample-dataset
+    (testing "x-ray an mbql model"
+      (with-indexed-model [{:keys [model model-index model-index-value]}
+                           {:query     (mt/mbql-query products)
+                            :pk-ref    (mt/$ids :products $id)
+                            :value-ref (mt/$ids :products $title)}]
+        (let [dash (#'api.magic/create-linked-dashboard
+                    {:model             model
+                     :model-index       model-index
+                     :model-index-value model-index-value
+                     :linked-tables     (mt/$ids [{:linked-table-id $$reviews
+                                                   :linked-field-id %reviews.product_id}
+                                                  {:linked-table-id $$orders
+                                                   :linked-field-id %orders.product_id}])})]
+          (is (=? [{:id   #hawk/schema Tab-Id-Schema
+                    :name "A look at Reviews" :position 0}
+                   {:id   #hawk/schema Tab-Id-Schema
+                    :name "A look at Orders" :position 1}]
+                  (:ordered_tabs dash)))
+          (testing "The first card for each tab is a linked model card to the source model"
+            (is (=? (repeat
+                     (count (:ordered_tabs dash))
+                     {:visualization_settings
+                      {:virtual_card {:display "link", :archived false}
+                       :link         {:entity {:id      (:id model)
+                                               :name    (:name model)
+                                               :model   "dataset"
+                                               :display "table"}}}})
+                    (->> (:ordered_cards dash)
+                         (group-by :dashboard_tab_id)
+                         vals
+                         (map first)))))
+          (testing "The generated dashboard has a meaningful name and description"
+            (is (true?
+                 (and
+                  (str/includes? (:name dash) (:name model))
+                  (str/includes? (:name dash) (:name model-index-value)))))
+            (is (true? (str/includes? (:description dash) (:name model-index-value)))))
+          (testing "All query cards have the correct filters"
+            (let [pk-filters (expected-filters {:model             model
+                                                :model-index       model-index
+                                                :model-index-value model-index-value})]
+              (cards-have-filters? (:ordered_cards dash) pk-filters))))))
+    (testing "X-ray a native model"
+      (letfn [(lower [x] (u/lower-case-en x))
+              (by-id [cols col-name] (or (some (fn [col]
+                                                 (when (= (lower (:name col)) (lower col-name))
+                                                   col))
+                                               cols)
+                                         (throw (ex-info (str "could not find column " col-name)
+                                                         {:name    col-name
+                                                          :present (map :name cols)}))))
+              (annotating [cols ref f]
+                (map (fn [{:keys [field_ref] :as col}]
+                       (if (= ref field_ref) (f col) col))
+                     cols))]
+        (let [query           (mt/native-query {:query "select * from products"})
+              results-meta    (->> (qp/process-userland-query query)
+                                   :data :results_metadata :columns)
+              id-field-ref    (:field_ref (by-id results-meta "id"))
+              title-field-ref (:field_ref (by-id results-meta "title"))
+              id-field-id     (mt/id :products :id)]
+          (with-indexed-model [{:keys [model model-index model-index-value]}
+                               {:query     (mt/native-query {:query "select * from products"})
+                                :pk-ref    id-field-ref
+                                :value-ref title-field-ref}]
+            ;; need user metadata edits to find linked tables to an otherwise opaque native query
+            (t2/update! :model/Card (:id model)
+                        {:result_metadata (annotating results-meta id-field-ref
+                                                      #(assoc % :id id-field-id))})
+            (assert (= (-> (t2/select-one-fn :result_metadata :model/Card
+                                             :id (:id model))
+                           (by-id "id") :id)
+                       id-field-id)
+                    "Metadata not updated with the mapping to the database column")
+            (let [model (t2/select-one 'Card :id (:id model))
+                  dash  (#'api.magic/create-linked-dashboard
+                         {:model             model
+                          :model-index       model-index
+                          :model-index-value model-index-value
+                          :linked-tables     (mt/$ids [{:linked-table-id $$reviews
+                                                        :linked-field-id %reviews.product_id}
+                                                       {:linked-table-id $$orders
+                                                        :linked-field-id %orders.product_id}])})]
+              (is (=? [{:id   #hawk/schema Tab-Id-Schema
+                        :name "A look at Reviews" :position 0}
+                       {:id   #hawk/schema Tab-Id-Schema
+                        :name "A look at Orders" :position 1}]
+                      (:ordered_tabs dash)))
+              (testing "All query cards have the correct filters"
+                (let [pk-filters (expected-filters {:model             model
+                                                    :model-index       model-index
+                                                    :model-index-value model-index-value})]
+                  (cards-have-filters? (:ordered_cards dash) pk-filters))))))))))
+
+(deftest create-linked-dashboard-test-single-link
+  (mt/dataset sample-dataset
+    (testing "with only single linked table"
+      (with-indexed-model [{:keys [model model-index model-index-value]}
+                           {:query     (mt/mbql-query people)
+                            :pk-ref    (mt/$ids :people $id)
+                            :value-ref (mt/$ids :people $email)}]
+        (let [dash (#'api.magic/create-linked-dashboard
+                    {:model             model
+                     :model-index       model-index
+                     :model-index-value model-index-value
+                     :linked-tables     (mt/$ids [{:linked-table-id $$orders
+                                                   :linked-field-id %orders.user_id}])})]
+          ;; FE has a bug where it doesn't fire off queries for cards if there's only a single tab. So we hack around
+          ;; that by not creating tabs if there would only be one.
+          (testing "Has no tabs"
+            (is (empty? (:ordered_tabs dash))))
+          (testing "The first card for each tab is a linked model card to the source model"
+            (is (=? {:visualization_settings
+                     {:virtual_card {:display "link", :archived false}
+                      :link         {:entity {:id      (:id model)
+                                              :name    (:name model)
+                                              :model   "dataset"
+                                              :display "table"}}}}
+                    (->> dash :ordered_cards first))))
+          (testing "The generated dashboard has a meaningful name and description"
+            (is (true?
+                 (and
+                  (str/includes? (:name dash) (:name model))
+                  (str/includes? (:name dash) (:name model-index-value)))))
+            (is (true? (str/includes? (:description dash) (:name model-index-value)))))
+          (testing "All query cards have the correct filters"
+            (let [pk-filters (expected-filters {:model             model
+                                                :model-index       model-index
+                                                :model-index-value model-index-value})]
+              (cards-have-filters? (:ordered_cards dash) pk-filters))))))))

@@ -110,15 +110,15 @@
 
 (def ^:private default-post-card-ref-validation-error
   {:errors
-   {:cards (str "value must be an array. Each value must satisfy one of the following requirements: "
-                "1) value must be a map with the following keys "
-                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
-                "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
+   {:cards (str "one or more value must be a map with the following keys "
+                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
           {{}
-           {:errors {:name "value must be a non-blank string."}}
+           {:errors {:name "value must be a non-blank string."}
+            :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
 
            {:name "abc"}
            default-post-card-ref-validation-error
@@ -134,22 +134,22 @@
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                     {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]}
-           {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+           {:errors {:channels "one or more map"}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels "foobar"}
-           {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
+           {:errors {:channels "one or more map"}}
 
            {:name     "abc"
             :cards    [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                        {:id 200, :include_csv false, :include_xls false, :dashboard_card_id nil}]
             :channels ["abc"]}
-           {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}}]
+           {:errors {:channels "one or more map"}}}]
     (testing (pr-str input)
-      (is (= expected-error
-             (mt/user-http-request :rasta :post 400 "pulse" input))))))
+      (is (=? expected-error
+              (mt/user-http-request :rasta :post 400 "pulse" input))))))
 
 (defn- remove-extra-channels-fields [channels]
   (for [channel channels]
@@ -381,17 +381,16 @@
 
 (def ^:private default-put-card-ref-validation-error
   {:errors
-   {:cards (str   "value may be nil, or if non-nil, value must be an array. "
-                  "Each value must satisfy one of the following requirements: "
-                  "1) value must be a map with the following keys "
-                  "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` "
-                  "2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.")}})
+   {:cards (str "nullable one or more value must be a map with the following keys "
+                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
     (doseq [[input expected-error]
             {{:name 123}
-             {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+             {:errors {:name "nullable value must be a non-blank string."},
+              :specific-errors {:name ["should be a string, received: 123" "non-blank string, received: 123"]}}
 
              {:cards 123}
              default-put-card-ref-validation-error
@@ -403,19 +402,16 @@
              default-put-card-ref-validation-error
 
              {:channels 123}
-             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                      "The array cannot be empty.")}}
+             {:errors {:channels "nullable one or more map"}}
 
              {:channels "foobar"}
-             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                      "The array cannot be empty.")}}
+             {:errors {:channels "nullable one or more map"}}
 
              {:channels ["abc"]}
-             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                      "The array cannot be empty.")}}}]
+             {:errors {:channels "nullable one or more map"}}}]
       (testing (pr-str input)
-        (is (= expected-error
-               (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
+        (is (=? expected-error
+                (mt/user-http-request :rasta :put 400 "pulse/1" input)))))))
 
 (deftest update-test
   (testing "PUT /api/pulse/:id"
@@ -910,7 +906,8 @@
                                                                                            :recipients    [(mt/fetch-user :rasta)]}]
                                                                           :skip_if_empty false})))
               (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                                          :body    {"Daily Sad Toucans" true}})
+                                          :body    {"Daily Sad Toucans" true}
+                                          :bcc?    true})
                      (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 (deftest send-test-pulse-validate-emails-test
@@ -979,7 +976,8 @@
                                                                                      :recipients    [(mt/fetch-user :rasta)]}]
                                                                     :skip_if_empty false})))
         (is (= (mt/email-to :rasta {:subject "Daily Sad Toucans"
-                                    :body    {"Daily Sad Toucans" true}})
+                                    :body    {"Daily Sad Toucans" true}
+                                    :bcc?    true})
                (mt/regex-email-bodies #"Daily Sad Toucans")))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
@@ -1020,7 +1018,8 @@
               (is (= {:ok true}
                      (mt/user-http-request :rasta :post 200 "pulse/test" (assoc result :channels [email-channel]))))
               (is (= (mt/email-to :rasta {:subject "Pulse: A Pulse"
-                                          :body    {"A Pulse" true}})
+                                          :body    {"A Pulse" true}
+                                          :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
 (deftest pulse-card-query-results-test
@@ -1096,7 +1095,7 @@
                                                                          {}
                                                                          (NullPointerException.))))]
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
-              (is (= "application/json;charset=utf-8"
+              (is (= "application/json; charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")
                             :trace    s/Any

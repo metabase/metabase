@@ -12,6 +12,8 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 describeEE("database prompt banner", () => {
   beforeEach(() => {
     restore();
@@ -66,7 +68,7 @@ describeEE("database prompt banner", () => {
     "should show info sidebar correctly on Firefox",
     { browser: "firefox" },
     function () {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByRole("main").findByText("Loading...").should("not.exist");
       cy.findByRole("main").icon("info").click();
 

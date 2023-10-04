@@ -15288,6 +15288,40 @@ databaseChangeLog:
                   name: role
       rollback: # not needed, it will be removed with the table
 
+  - changeSet:
+      id: v48.00-016
+      author: calherries
+      comment: Added 0.48.0 - Change the type of collection.slug to varchar(510)
+      changes:
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(510)
+      rollback:
+        - modifyDataType:
+            tableName: collection
+            columnName: slug
+            newDataType: varchar(254)
+
+  - changeSet:
+      id: v48.00-019
+      author: nemanjaglumac
+      comment: 'Collection color is removed in 0.48.0'
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: color
+      rollback:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: color
+                  type: char(7)
+                  remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
+                  constraints:
+                    nullable: false
+                  defaultValue: '#31698A'
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time :as t]
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.core :as mbc]
@@ -35,7 +36,7 @@
     (is (= ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
            (#'h2/connection-string->file+options "file:my-file;OPTION_1=TRUE;OPTION_2=100;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY")))))
 
-(deftest build-connection-string-test
+(deftest ^:parallel build-connection-string-test
   (testing "Check that we can build connection string out of parsed results"
     (is (= "file:my-file;OPTION_1=TRUE;OPTION_2=100;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"
            (#'h2/file+options->connection-string "file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"})))))
@@ -66,7 +67,7 @@
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db;USER=cam"})))))
 
-(deftest only-connect-to-existing-dbs-test
+(deftest ^:parallel only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
     (binding [h2/*allow-testing-h2-connections* true]
       (is (thrown-with-msg?
@@ -110,14 +111,12 @@
                  (ex-message result)))
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :h2
-    ;; [[driver/db-default-timezone]] returns `nil`. This *probably* doesn't make sense. We should go in an fix it, by
-    ;; implementing [[metabase.driver.sql-jdbc.sync.interface/db-default-timezone]], which is what the default
-    ;; `:sql-jdbc` implementation of `db-default-timezone` hands off to. In the mean time, here is a placeholder test we
-    ;; can update when things are fixed.
-    (is (= nil
-           (driver/db-default-timezone :h2 (mt/db))))))
+    (is (= (t/zone-id "Z")
+           (-> (driver/db-default-timezone :h2 (mt/db))
+               t/zone-id
+               .normalized)))))
 
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
@@ -144,7 +143,7 @@
                     (hx/with-database-type-info (hx/call :cast :%now (hx/raw "datetime")) "datetime"))
            (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))
 
-(deftest clob-test
+(deftest ^:parallel clob-test
   (mt/test-driver :h2
     (testing "Make sure we properly handle rows that come back as `org.h2.jdbc.JdbcClob`"
       (let [results (qp/process-query (mt/native-query {:query "SELECT cast('Conchúr Tihomir' AS clob) AS name;"}))]
@@ -160,7 +159,7 @@
                    :name         "NAME"}]
                  (mt/cols results))))))))
 
-(deftest native-query-date-trunc-test
+(deftest ^:parallel native-query-date-trunc-test
   (mt/test-driver :h2
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
@@ -171,13 +170,13 @@
                :name         "D"}]
              (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))
 
-(deftest timestamp-with-timezone-test
+(deftest ^:parallel timestamp-with-timezone-test
   (testing "Make sure TIMESTAMP WITH TIME ZONEs come back as OffsetDateTimes."
     (is (= [{:t #t "2020-05-28T18:06-07:00"}]
            (jdbc/query (mdb.spec/spec :h2 {:db "mem:test_db"})
                        "SELECT TIMESTAMP WITH TIME ZONE '2020-05-28 18:06:00.000 America/Los_Angeles' AS t")))))
 
-(deftest native-query-parameters-test
+(deftest ^:parallel native-query-parameters-test
   (testing "Native query parameters should work with filters."
     (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
            (mt/rows
@@ -199,7 +198,7 @@
       (str/replace #"\"" "")
       (str/replace #"PUBLIC\." "")))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (mt/test-driver :h2
     (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
       (mt/dataset attempted-murders
@@ -212,7 +211,7 @@
                       "ORDER BY ATTEMPTS.DATE ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-(deftest check-action-commands-test
+(deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
       "select 1"
@@ -262,7 +261,7 @@
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
-(deftest check-read-only-test
+(deftest ^:parallel check-read-only-test
   (testing "read only statements should pass"
     (are [query] (nil?
                   (#'h2/check-read-only-statements
@@ -320,7 +319,7 @@
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
 
-(deftest syncable-schemas-test
+(deftest ^:parallel syncable-schemas-test
   (mt/test-driver :h2
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
@@ -348,15 +347,16 @@
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
 ;; API tests are in [[metabase.api.action-test]]
-(deftest actions-maybe-parse-sql-error-test
+(deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint
             :message "Ranking must have values."
             :errors  {"RANKING" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-not-null-constraint nil :row/created
-            "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])"))))
+            "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")))))
 
+(deftest actions-maybe-parse-sql-error-test-2
   (testing "violate unique constraint"
     (is (= {:type :metabase.actions.error/violate-unique-constraint,
             :message "Ranking already exists.",
@@ -365,31 +365,37 @@
                                                                ["RANKING"])]
              (sql-jdbc.actions/maybe-parse-sql-error
               :h2 actions.error/violate-unique-constraint nil nil
-              "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]")))))
+              "Unique index or primary key violation: \"PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.\"\"GROUP\"\"(RANKING NULLS FIRST) VALUES ( /* 1 */ 1 )\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\", \"RANKING\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23505-214]"))))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-3
   (testing "incorrect type"
     (is (= {:type :metabase.actions.error/incorrect-value-type,
             :message "Some of your values aren’t of the correct type for the database.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/incorrect-value-type nil nil
-            "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]"))))
+            "Data conversion error converting \"S\"; SQL statement:\nUPDATE \"PUBLIC\".\"GROUP\" SET \"RANKING\" = CAST(? AS INTEGER) WHERE \"PUBLIC\".\"GROUP\".\"ID\" = 1 [22018-214]")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
-            "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))
+            "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-5
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
             :errors {"GROUP-ID" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
             :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
-            "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))
+            "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
 
+(deftest ^:parallel actions-maybe-parse-sql-error-test-6
+  (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
             :errors {"GROUP-ID" "This Group-id does not exist."}}

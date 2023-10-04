@@ -7,7 +7,7 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-import { USERS, QA_DB_CONFIG } from "e2e/support/cypress_data";
+import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
@@ -234,69 +234,64 @@ describe("scenarios > setup", () => {
     });
   });
 
-  ["postgres", "mysql"].forEach(engine => {
-    it(`should allow you to connect a ${engine} db during setup`, () => {
-      cy.intercept("GET", "api/collection/root").as("getRootCollection");
-      cy.intercept("GET", "api/database").as("getDatabases");
+  it(`should allow you to connect a db during setup`, () => {
+    const dbName = "SQLite db";
 
-      cy.visit(`/setup#123456`);
+    cy.intercept("GET", "api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "api/database").as("getDatabases");
 
-      cy.findByTestId("welcome-page").within(() => {
-        cy.findByText("Welcome to Metabase");
-        cy.findByTextEnsureVisible("Let's get started").click();
-      });
+    cy.visit(`/setup#123456`);
 
-      cy.findByTestId("setup-forms").within(() => {
-        cy.findByText("What's your preferred language?");
-        cy.findByLabelText("English");
-
-        cy.findByText("Next").click();
-
-        const strongPassword = "QJbHYJN3tPW[";
-        cy.findByLabelText(/^Create a password/)
-          .clear()
-          .type(strongPassword);
-        cy.findByLabelText(/^Confirm your password/)
-          .clear()
-          .type(strongPassword)
-          .blur();
-
-        cy.findByText("Next").click();
-
-        cy.findByText(new RegExp(engine, "i")).click();
-
-        cy.findByLabelText("Display name").type(`QA ${engine} db`);
-        cy.findByLabelText("Host").type("localhost");
-        cy.findByLabelText("Port").type(QA_DB_CONFIG[engine].connection.port);
-        cy.findByLabelText("Database name").type(
-          QA_DB_CONFIG[engine].connection.database,
-        );
-        cy.findByLabelText("Username").type(
-          QA_DB_CONFIG[engine].connection.user,
-        );
-        cy.findByLabelText("Password").type(
-          QA_DB_CONFIG[engine].connection.password,
-        );
-
-        cy.button("Connect database").click();
-
-        // usage data
-        cy.findByRole("switch").click();
-        cy.button("Finish").click();
-
-        // done
-        cy.findByText("Take me to Metabase").click();
-      });
-
-      // in app
-      cy.location("pathname").should("eq", "/");
-      cy.wait(["@getRootCollection", "@getDatabases"]);
-
-      cy.findByTestId("main-navbar-root").findByText("Browse data").click();
-      cy.location("pathname").should("eq", "/browse");
-
-      cy.findByTestId("database-browser").findByText(`QA ${engine} db`);
+    cy.findByTestId("welcome-page").within(() => {
+      cy.findByText("Welcome to Metabase");
+      cy.findByTextEnsureVisible("Let's get started").click();
     });
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByText("What's your preferred language?");
+      cy.findByLabelText("English");
+
+      cy.findByText("Next").click();
+
+      const strongPassword = "QJbHYJN3tPW[";
+      cy.findByLabelText(/^Create a password/)
+        .clear()
+        .type(strongPassword, { delay: 0 });
+      cy.findByLabelText(/^Confirm your password/)
+        .clear()
+        .type(strongPassword, { delay: 0 })
+        .blur();
+
+      cy.findByText("Next").click();
+    });
+
+    cy.findByTestId("database-form").within(() => {
+      cy.findByPlaceholderText("Search for a database…").type("lite").blur();
+      cy.findByText("SQLite").click();
+      cy.findByLabelText("Display name").type(dbName);
+      cy.findByLabelText("Filename").type("./resources/sqlite-fixture.db", {
+        delay: 0,
+      });
+      cy.button("Connect database").click();
+    });
+
+    // usage data
+    cy.get("section").last().button("Finish").click();
+
+    // done
+    cy.get("section").last().findByText("Take me to Metabase").click();
+
+    // in app
+    cy.location("pathname").should("eq", "/");
+    cy.wait(["@getRootCollection", "@getDatabases"]);
+
+    cy.get("main").within(() => {
+      cy.findByText("Here are some explorations of");
+      cy.findAllByRole("link").should("contain", dbName);
+    });
+
+    cy.visit("/browse");
+    cy.findByTestId("database-browser").findByText(dbName);
   });
 });
 

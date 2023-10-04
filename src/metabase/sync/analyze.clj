@@ -12,7 +12,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; How does analysis decide which Fields should get analyzed?
@@ -53,28 +53,28 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
-(s/defn ^:private update-last-analyzed!
-  [tables :- [i/TableInstance]]
+(mu/defn ^:private update-last-analyzed!
+  [tables :- [:sequential i/TableInstance]]
   (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
     (t2/update! Field {:table_id            [:in ids]
-                       :fingerprint_version i/latest-fingerprint-version
+                       :fingerprint_version i/*latest-fingerprint-version*
                        :last_analyzed       nil}
                 {:last_analyzed :%now})))
 
-(s/defn ^:private update-fields-last-analyzed!
+(mu/defn ^:private update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [table :- i/TableInstance]
   (update-last-analyzed! [table]))
 
-(s/defn ^:private update-fields-last-analyzed-for-db!
+(mu/defn ^:private update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [_database :- i/DatabaseInstance
-   tables :- [i/TableInstance]]
+   tables    :- [:sequential i/TableInstance]]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (update-last-analyzed! tables))
 
-(s/defn analyze-table!
+(mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
   [table :- i/TableInstance]
   (fingerprint/fingerprint-fields! table)
@@ -111,7 +111,7 @@
                                #(classify/classify-tables-for-db! % tables log-fn)
                                classify-tables-summary)])
 
-(s/defn analyze-db!
+(mu/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field."
@@ -122,7 +122,7 @@
         (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
           (update-fields-last-analyzed-for-db! database tables))))))
 
-(s/defn refingerprint-db!
+(mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
   [[fingerprint/max-refingerprint-field-count]]."
   [database :- i/DatabaseInstance]

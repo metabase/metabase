@@ -32,6 +32,11 @@ import {
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -87,7 +92,8 @@ describe("scenarios > dashboard", () => {
         .click();
 
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByPlaceholderText(/Search for some/).type("Pro");
+        // cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
 
@@ -155,7 +161,7 @@ describe("scenarios > dashboard", () => {
     it("adding question to one dashboard shouldn't affect previously visited unrelated dashboards (metabase#26826)", () => {
       cy.intercept("POST", "/api/card").as("saveQuestion");
 
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
 
       cy.log("Save new question from an ad-hoc query");
       openProductsTable();
@@ -263,7 +269,7 @@ describe("scenarios > dashboard", () => {
       });
 
       it("should allow navigating to the notebook editor directly from a dashboard card", () => {
-        visitDashboard(1);
+        visitDashboard(ORDERS_DASHBOARD_ID);
         showDashboardCardActions();
         getDashboardCardMenu().click();
         popover().findByText("Edit question").should("be.visible").click();
@@ -459,7 +465,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should add a filter", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     cy.icon("pencil").click();
     cy.icon("filter").click();
     // Adding location/state doesn't make much sense for this case,
@@ -670,7 +676,7 @@ describe("scenarios > dashboard", () => {
     const FILTER_ID = "d7988e02";
 
     cy.log("Add filter to the dashboard");
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [
         {
           id: FILTER_ID,
@@ -682,7 +688,7 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", "/api/dashboard/1/cards", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
           id: 1,
@@ -711,7 +717,7 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.intercept(
-      `/api/dashboard/1/params/${FILTER_ID}/values`,
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/params/${FILTER_ID}/values`,
       cy.spy().as("fetchDashboardParams"),
     );
     cy.intercept(`/api/field/${PRODUCTS.CATEGORY}`, cy.spy().as("fetchField"));
@@ -720,7 +726,7 @@ describe("scenarios > dashboard", () => {
       cy.spy().as("fetchFieldValues"),
     );
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     filterWidget().as("filterWidget").click();
 
@@ -743,11 +749,11 @@ describe("scenarios > dashboard", () => {
         }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
           const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
           // Add click behavior to the existing "Orders in a dashboard" dashboard
-          cy.request("PUT", "/api/dashboard/1/cards", {
+          cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
             cards: [
               {
-                id: 1,
-                card_id: 1,
+                id: ORDERS_DASHBOARD_DASHCARD_ID,
+                card_id: ORDERS_QUESTION_ID,
                 row: 0,
                 col: 0,
                 size_x: 16,
@@ -777,7 +783,7 @@ describe("scenarios > dashboard", () => {
       },
     );
     cy.signInAsNormalUser();
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.wait("@loadDashboard");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -788,11 +794,11 @@ describe("scenarios > dashboard", () => {
 
   it("should be possible to scroll vertically after fullscreen layer is closed (metabase#15596)", () => {
     // Make this dashboard card extremely tall so that it spans outside of visible viewport
-    cy.request("PUT", "/api/dashboard/1/cards", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -804,7 +810,7 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
     assertScrollBarExists();
@@ -820,7 +826,7 @@ describe("scenarios > dashboard", () => {
     const FILTER_ID = "d7988e02";
 
     cy.log("Add filter to the dashboard");
-    cy.request("PUT", "/api/dashboard/1", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       parameters: [
         {
           id: FILTER_ID,
@@ -832,11 +838,11 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.log("Connect filter to the existing card");
-    cy.request("PUT", "/api/dashboard/1/cards", {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -844,7 +850,7 @@ describe("scenarios > dashboard", () => {
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
-              card_id: 1,
+              card_id: ORDERS_QUESTION_ID,
               target: ["dimension", ["field", ORDERS.ID]],
             },
           ],
@@ -853,7 +859,7 @@ describe("scenarios > dashboard", () => {
       ],
     });
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
@@ -912,7 +918,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   });
 
   it("should allow users to add link cards to dashboards", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
     cy.findByTestId("dashboard-header").icon("link").click();
 
@@ -940,7 +946,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   });
 
   it("should track enabling the hide empty cards setting", () => {
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
 
     cy.findByTestId("dashboardcard-actions-panel").within(() => {
@@ -958,7 +964,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
       expectGoodSnowplowEvent(
         {
           event: "card_set_to_hide_when_no_results",
-          dashboard_id: 1,
+          dashboard_id: ORDERS_DASHBOARD_ID,
         },
         2,
       );

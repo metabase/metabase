@@ -7,11 +7,9 @@ import { breakpointMinMedium } from "metabase/styled-components/theme/media-quer
 import TableFooter from "../TableSimple/TableFooter";
 
 import { ObjectDetailBodyWrapper } from "./ObjectDetailBody.styled";
-import {
-  ObjectDetailContainer,
-  ObjectDetailsTable,
-  ObjectRelationships,
-} from "./ObjectDetailView.styled";
+import { ObjectDetailContainer } from "./ObjectDetailView.styled";
+import { ObjectDetailsTable } from "./ObjectDetailsTable.styled";
+import { ObjectRelationships } from "./ObjectRelationships.styled";
 
 export const RootModal = styled(Modal)`
   ${ObjectDetailContainer} {

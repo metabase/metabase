@@ -13,6 +13,8 @@ import {
   expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+
 describe("scenarios > dashboard > text and headings", () => {
   beforeEach(() => {
     resetSnowplow();
@@ -23,7 +25,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
   describeWithSnowplow("text", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     afterEach(() => {
@@ -156,7 +158,7 @@ describe("scenarios > dashboard > text and headings", () => {
 
   describeWithSnowplow("heading", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     afterEach(() => {

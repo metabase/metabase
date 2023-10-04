@@ -1,6 +1,6 @@
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
-  getCollectionIdFromSlug,
   assertPermissionTable,
   modifyPermission,
   modal,
@@ -11,7 +11,6 @@ import {
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 const FIRST_COLLECTION = "First collection";
-const FIRST_COLLECTION_SLUG = "first_collection";
 
 describe("issue 20911", () => {
   beforeEach(() => {
@@ -65,13 +64,11 @@ describe("issue 20911", () => {
       ["readonly", "View"],
     ]);
 
-    getCollectionIdFromSlug(FIRST_COLLECTION_SLUG, id => {
-      cy.signInAsNormalUser();
-      cy.visit("/collection/root");
-      cy.findByText("You don't have permissions to do that.");
+    cy.signInAsNormalUser();
+    cy.visit("/collection/root");
+    cy.get("main").findByText("You don't have permissions to do that.");
 
-      cy.visit(`/collection/${id}`);
-      cy.findByText("Sorry, you don’t have permission to see that.");
-    });
+    cy.visit(`/collection/${FIRST_COLLECTION_ID}`);
+    cy.get("main").findByText("Sorry, you don’t have permission to see that.");
   });
 });

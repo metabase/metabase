@@ -159,15 +159,15 @@
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                        "?date=Q1-2014")))))))
+                                                                         "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                      "?date="))))))
+                                                                       "?date="))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
-                                                                                       :params {:date nil}}))))))))
+                                                                                            :params {:date nil}}))))))))
       (testing "if the param is disabled"
         (t2.with-temp/with-temp
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "disabled"})]
@@ -183,11 +183,11 @@
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                       :params {:date nil}})))))
+                                                                                            :params {:date nil}})))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                      :params {:date "Q2-2014"}})))))))
+                                                                                              :params {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
@@ -517,8 +517,8 @@
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]
-                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer")))
-                     (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?NAME=Hudson%20Borer&NAME=x")))))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer"))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
           (testing "Dashcard"
             (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
                                                          :embedding_params {:name "enabled"}
@@ -536,5 +536,5 @@
                                                                          :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
-                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer")))
-                       (mt/rows (mt/user-http-request :crowberto :get 202 (str url "?name=Hudson%20Borer&name=x")))))))))))))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))

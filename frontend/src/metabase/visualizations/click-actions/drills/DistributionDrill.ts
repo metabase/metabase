@@ -1,11 +1,11 @@
 import { t } from "ttag";
-import type { Drill } from "metabase/visualizations/types";
+import type { LegacyDrill } from "metabase/visualizations/types";
 import {
   distributionDrill,
   distributionDrillQuestion,
 } from "metabase-lib/queries/drills/distribution-drill";
 
-const DistributionDrill: Drill = ({ question, clicked }) => {
+const DistributionDrill: LegacyDrill = ({ question, clicked }) => {
   if (!distributionDrill({ question, clicked })) {
     return [];
   }

@@ -107,10 +107,11 @@
 
 (def ^:private EmailMessage
   (s/constrained
-   {:subject      s/Str
-    :recipients   [(s/pred u/email?)]
-    :message-type (s/enum :text :html :attachments)
-    :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
+   {:subject               s/Str
+    :recipients            [(s/pred u/email?)]
+    :message-type          (s/enum :text :html :attachments)
+    :message               (s/cond-pre s/Str [su/Map]) ; TODO - what should this be a sequence of?
+    (s/optional-key :bcc?) (s/maybe s/Bool)}
    (fn [{:keys [message-type message]}]
      (if (= message-type :attachments)
        (and (sequential? message) (every? map? message))
@@ -122,25 +123,26 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
-  [{:keys [subject recipients message-type message]} :- EmailMessage]
+  [{:keys [subject recipients message-type message], :as email} :- EmailMessage]
   (try
     (when-not (email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
-    (send-email! (smtp-settings)
-                 (merge
-                  {:from    (if-let [from-name (email-from-name)]
-                              (str from-name " <" (email-from-address) ">")
-                              (email-from-address))
-                   :to      recipients
-                   :subject subject
-                   :body    (case message-type
-                              :attachments message
-                              :text        message
-                              :html        [{:type    "text/html; charset=utf-8"
-                                             :content message}])}
-                  (when-let [reply-to (email-reply-to)]
-                    {:reply-to reply-to})))
+    (let [to-type (if (:bcc? email) :bcc :to)]
+      (send-email! (smtp-settings)
+                   (merge
+                    {:from    (if-let [from-name (email-from-name)]
+                                (str from-name " <" (email-from-address) ">")
+                                (email-from-address))
+                     to-type  recipients
+                     :subject subject
+                     :body    (case message-type
+                                :attachments message
+                                :text        message
+                                :html        [{:type    "text/html; charset=utf-8"
+                                               :content message}])}
+                    (when-let [reply-to (email-reply-to)]
+                      {:reply-to reply-to}))))
     (catch Throwable e
       (prometheus/inc :metabase-email/message-errors)
       (throw e))

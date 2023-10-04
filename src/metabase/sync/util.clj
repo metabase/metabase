@@ -20,15 +20,38 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time.temporal Temporal)))
 
 (set! *warn-on-reflection* true)
+
+(derive ::event :metabase/event)
+
+(def ^:private sync-event-topics
+  #{:event/sync-begin
+    :event/sync-end
+    :event/analyze-begin
+    :event/analyze-end
+    :event/refingerprint-begin
+    :event/refingerprint-end
+    :event/cache-field-values-begin
+    :event/cache-field-values-end
+    :event/sync-metadata-begin
+    :event/sync-metadata-end})
+
+(doseq [topic sync-event-topics]
+  (derive topic ::event))
+
+(def ^:private Topic
+  [:and
+   events/Topic
+   [:fn
+    {:error/message "Sync event deriving from :metabase.sync.util/event"}
+    #(isa? % ::event)]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -58,7 +81,6 @@
     ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
     (with-duplicate-ops-prevented :sync database-id
       #(sync-db! database-id))"
-  {:style/indent 2}
   [operation database-or-id f]
   (fn []
     (when-not (contains? (@operation->db-ids operation) (u/the-id database-or-id))
@@ -72,18 +94,25 @@
         (finally
           (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
-
-(defn- with-sync-events
+(mu/defn ^:private with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
   `database-id`. `f` is executed between the logging of the two events."
+  {:style/indent [:form]}
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
-   (with-sync-events
-    (keyword (str (name event-name-prefix) "-begin"))
-    (keyword (str (name event-name-prefix) "-end"))
+   (letfn [(event-keyword [prefix suffix]
+             (keyword (or (namespace event-name-prefix) "event")
+                      (str (name prefix) suffix)))]
+     (with-sync-events
+      (event-keyword event-name-prefix "-begin")
+      (event-keyword event-name-prefix "-end")
+      database-or-id
+      f)))
+
+  ([begin-event-name :- Topic
+    end-event-name   :- Topic
     database-or-id
-    f))
-  ([begin-event-name end-event-name database-or-id f]
+    f]
    (fn []
      (let [start-time    (System/nanoTime)
            tracking-hash (str (random-uuid))]
@@ -98,7 +127,7 @@
 
 (defn- with-start-and-finish-logging*
   "Logs start/finish messages using `log-fn`, timing `f`"
-  {:style/indent 1}
+  {:style/indent [:form]}
   [log-fn message f]
   (let [start-time (System/nanoTime)
         _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
@@ -109,44 +138,45 @@
     result))
 
 (defn- with-start-and-finish-logging
-  "Log MESSAGE about a process starting, then run F, and then log a MESSAGE about it finishing.
-   (The final message includes a summary of how long it took to run F.)"
-  {:style/indent 1}
+  "Log `message` about a process starting, then run `f`, and then log a `message` about it finishing.
+   (The final message includes a summary of how long it took to run `f`.)"
+  {:style/indent [:form]}
   [message f]
   (fn []
     (with-start-and-finish-logging* #(log/info %) message f)))
 
 (defn with-start-and-finish-debug-logging
   "Similar to `with-start-and-finish-logging except invokes `f` and returns its result and logs at the debug level"
+  {:style/indent [:form]}
   [message f]
   (with-start-and-finish-logging* #(log/info %) message f))
 
 (defn- with-db-logging-disabled
   "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid
   cluttering the logs.)"
-  {:style/indent 0}
+  {:style/indent [:form]}
   [f]
   (fn []
-    (binding [qp.i/*disable-qp-logging* true
-              db/*disable-db-logging*  true]
+    (binding [qp.i/*disable-qp-logging* true]
       (f))))
 
 (defn- sync-in-context
   "Pass the sync operation defined by `body` to the `database`'s driver's implementation of `sync-in-context`.
   This method is used to do things like establish a connection or other driver-specific steps needed for sync
   operations."
-  {:style/indent 1}
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
       f)))
 
-(def ^:private exception-classes-not-to-retry
-  ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
-  ;; list of exception classes (like, driver-specific exceptions)
-  [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
-   com.mchange.v2.resourcepool.CannotAcquireResourceException
-   javax.net.ssl.SSLHandshakeException])
+;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
+;; list of exception classes (like, driver-specific exceptions)
+(doseq [klass [java.net.ConnectException
+               java.net.NoRouteToHostException
+               java.net.UnknownHostException
+               com.mchange.v2.resourcepool.CannotAcquireResourceException
+               javax.net.ssl.SSLHandshakeException]]
+  (derive klass ::exception-class-not-to-retry))
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
@@ -154,7 +184,7 @@
   true)
 
 (defn do-with-error-handling
-  "Internal implementation of `with-error-handling`; use that instead of calling this directly."
+  "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
    (do-with-error-handling (trs "Error running sync step") f))
 
@@ -172,15 +202,19 @@
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
   `message` to help provide information about what failed for the log message.
 
-  The exception classes in `exception-classes-not-to-retry` are a list of classes tested against exceptions thrown.
-  If there is a match found, the sync is aborted as that error is not considered recoverable for this sync run."
+  The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
+  against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
+  recoverable for this sync run."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (fn [] ~@body)))
 
-(defn do-sync-operation
-  "Internal implementation of `sync-operation`; use that instead of calling this directly."
-  [operation database message f]
+(mu/defn do-sync-operation
+  "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
+  [operation :- :keyword ; something like `:sync-metadata` or `:refingerprint`
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
   ((with-duplicate-ops-prevented operation database
      (with-sync-events operation database
        (with-start-and-finish-logging message
@@ -317,46 +351,58 @@
 (defmethod name-for-logging :default [{field-name :name}]
   (trs "Field ''{0}''" field-name))
 
-(s/defn calculate-duration-str :- s/Str
+(mu/defn calculate-duration-str :- :string
   "Given two datetimes, caculate the time between them, return the result as a string"
-  [begin-time :- Temporal, end-time :- Temporal]
+  [begin-time :- (ms/InstanceOfClass Temporal)
+   end-time   :- (ms/InstanceOfClass Temporal)]
   (u/format-nanoseconds (.toNanos (t/duration begin-time end-time))))
-
-(def StepSpecificMetadata
-  "A step function can return any metadata and is used by the related LogSummaryFunction to provide step-specific
-  details about run"
-  {s/Keyword s/Any})
 
 (def ^:private TimedSyncMetadata
   "Metadata common to both sync steps and an entire sync/analyze operation run"
-  {:start-time Temporal
-   :end-time   Temporal})
+  [:map
+   [:start-time (ms/InstanceOfClass Temporal)]
+   [:end-time   (ms/InstanceOfClass Temporal)]])
 
-(def StepRunMetadata
+(mr/def ::StepRunMetadata
+  [:merge
+   TimedSyncMetadata
+   [:map
+    [:log-summary-fn [:maybe [:=> [:cat :string] [:ref ::StepRunMetadata]]]]]])
+
+(def ^:private StepRunMetadata
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
   specific information"
-  (merge TimedSyncMetadata
-         {:log-summary-fn (s/maybe (s/=> s/Str StepRunMetadata))}
-         StepSpecificMetadata))
+  [:ref ::StepRunMetadata])
+
+(mr/def ::StepNameWithMetadata
+  [:tuple
+   ;; step name
+   :string
+   ;; step metadata
+   StepRunMetadata])
 
 (def StepNameWithMetadata
   "Pair with the step name and metadata about the completed step run"
-  [(s/one s/Str "step name") (s/one StepRunMetadata "step metadata")])
+  [:ref ::StepNameWithMetadata])
 
-(def SyncOperationMetadata
+(def ^:private SyncOperationMetadata
   "Timing and step information for the entire sync or analyze run"
-  (assoc TimedSyncMetadata :steps [StepNameWithMetadata]))
+  [:merge
+   TimedSyncMetadata
+   [:map
+    [:steps [:maybe [:sequential StepNameWithMetadata]]]]])
 
-(def LogSummaryFunction
+(def ^:private LogSummaryFunction
   "A log summary function takes a `StepRunMetadata` and returns a string with a step-specific log message"
-  (s/=> s/Str StepRunMetadata))
+  [:=> [:cat :string] StepRunMetadata])
 
-(def StepDefinition
+(def ^:private StepDefinition
   "Defines a step. `:sync-fn` runs the step, returns a map that contains step specific metadata. `log-summary-fn`
   takes that metadata and turns it into a string for logging"
-  {:sync-fn        (s/=> StepRunMetadata i/DatabaseInstance)
-   :step-name      s/Str
-   :log-summary-fn (s/maybe LogSummaryFunction)})
+  [:map
+   [:sync-fn        [:=> [:cat StepRunMetadata] i/DatabaseInstance]]
+   [:step-name      :string]
+   [:log-summary-fn [:maybe LogSummaryFunction]]])
 
 (defn create-sync-step
   "Creates and returns a step suitable for `run-step-with-metadata`. See `StepDefinition` for more info."
@@ -368,7 +414,7 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(s/defn run-step-with-metadata :- StepNameWithMetadata
+(mu/defn run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
@@ -391,10 +437,10 @@
                       :end-time end-time
                       :log-summary-fn log-summary-fn)]))
 
-(s/defn ^:private make-log-sync-summary-str
+(mu/defn ^:private make-log-sync-summary-str
   "The logging logic from `log-sync-summary`. Separated for testing purposes as the `log/debug` macro won't invoke
   this function unless the logging level is at debug (or higher)."
-  [operation :- s/Str
+  [operation :- :string
    database :- i/DatabaseInstance
    {:keys [start-time end-time steps]} :- SyncOperationMetadata]
   (str
@@ -422,9 +468,9 @@
                         (trs "Duration: {0}" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
-(s/defn ^:private  log-sync-summary
+(mu/defn ^:private  log-sync-summary
   "Log a sync/analyze summary message with info from each step"
-  [operation :- s/Str
+  [operation :- :string
    database :- i/DatabaseInstance
    sync-metadata :- SyncOperationMetadata]
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
@@ -432,14 +478,14 @@
   (log/debug (make-log-sync-summary-str operation database sync-metadata)))
 
 (def ^:private SyncOperationOrStepRunMetadata
-  (s/conditional
-   #(contains? % :steps)
-   SyncOperationMetadata
-   :else
-   StepRunMetadata))
+  [:multi
+   {:dispatch
+    #(contains? % :steps)}
+   [true  SyncOperationMetadata]
+   [false StepRunMetadata]])
 
-(s/defn ^:private create-task-history
-  [task-name :- su/NonBlankString
+(mu/defn ^:private create-task-history
+  [task-name :- ms/NonBlankString
    database  :- i/DatabaseInstance
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
   {:task       task-name
@@ -448,8 +494,8 @@
    :ended_at   end-time
    :duration   (.toMillis (t/duration start-time end-time))})
 
-(s/defn ^:private store-sync-summary!
-  [operation :- s/Str
+(mu/defn ^:private store-sync-summary!
+  [operation :- :string
    database  :- i/DatabaseInstance
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
   (try
@@ -466,21 +512,21 @@
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))
 
-(defn abandon-sync?
-  "Given the results of a sync step, returns true if a non-recoverable exception occurred"
-  [step-results]
-  (when (contains? step-results :throwable)
-    (let [caught-exception (:throwable step-results)
-          exception-classes (u/full-exception-chain caught-exception)]
-      (some true? (for [ex      exception-classes
-                        test-ex exception-classes-not-to-retry]
-                    (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName)))))))
+(defn- do-not-retry-exception? [e]
+  (or (isa? (class e) ::exception-class-not-to-retry)
+      (some-> (ex-cause e) recur)))
 
-(s/defn run-sync-operation
+(defn abandon-sync?
+  "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
+  [step-results]
+  (when-let [caught-exception (:throwable step-results)]
+    (do-not-retry-exception? caught-exception)))
+
+(mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
-  [operation :- s/Str
+  [operation :- :string
    database :- i/DatabaseInstance
-   sync-steps :- [StepDefinition]]
+   sync-steps :- [:maybe [:sequential StepDefinition]]]
   (let [start-time    (t/zoned-date-time)
         step-metadata (loop [[step-defn & rest-defns] sync-steps
                              result                   []]

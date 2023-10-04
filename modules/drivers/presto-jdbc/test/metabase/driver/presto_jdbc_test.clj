@@ -88,7 +88,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest page-test
+(deftest ^:parallel page-test
   (testing ":page clause"
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
@@ -106,9 +106,9 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest template-tag-timezone-test

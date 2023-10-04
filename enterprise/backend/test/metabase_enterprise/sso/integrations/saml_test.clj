@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
@@ -96,14 +95,14 @@
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"
   [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client args)))
+  (binding [client/*url-prefix* ""]
+    (apply client/real-client args)))
 
 (defn client-full-response
   "Same as `client/client-full-response` but doesn't include the `/api` in the URL prefix"
   [& args]
-  (binding [client/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port))]
-    (apply client/client-full-response args)))
+  (binding [client/*url-prefix* ""]
+    (apply client/client-real-response args)))
 
 (defn successful-login?
   "Return true if the response indicates a successful user login"

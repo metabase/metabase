@@ -350,18 +350,25 @@ export const getStackedTooltipModel = (
   const tooltipRows = seriesWithGroupedData
     .map(series => {
       const { card, groupedData, data } = series;
-      const datum = groupedData?.find(
+      const dataForXValue = groupedData?.filter(
         datum => datum[DIMENSION_INDEX] === xValue,
       );
 
-      if (!datum) {
+      if (dataForXValue.length === 0) {
         return null;
       }
 
-      const value = datum[METRIC_INDEX];
+      const value = dataForXValue.reduce((totalValue, datum) => {
+        const datumValue = datum[METRIC_INDEX];
+        if (totalValue == null && datumValue == null) {
+          return null;
+        }
+        return totalValue + datum[METRIC_INDEX];
+      }, null);
+
       const valueColumn = data.cols[METRIC_INDEX];
 
-      let name = null;
+      let name;
       if (hasBreakout) {
         name = settings.series(series)?.["title"] ?? card.name;
       } else {

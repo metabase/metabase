@@ -4,8 +4,8 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.util.malli :as mu]))
@@ -13,8 +13,8 @@
 (mu/defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
   persisted version."
-  [card           :- lib.metadata/CardMetadata
-   persisted-info :- [:maybe ::lib.metadata/persisted-info]]
+  [card           :- ::lib.schema.metadata/card
+   persisted-info :- [:maybe ::lib.schema.metadata/persisted-info]]
   (and persisted-info
        persisted-info/*allow-persisted-substitution*
        (:active persisted-info)
@@ -30,7 +30,7 @@
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
   persistence is appropriate. Use [[can-substitute?]] for that check."
   [database-id                              :- ::lib.schema.id/database
-   {:keys [table-name] :as _persisted-info} :- ::lib.metadata/persisted-info]
+   {:keys [table-name] :as _persisted-info} :- ::lib.schema.metadata/persisted-info]
   (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
     ;; select * because we don't actually know the name of the fields when in the actual query. See #28902
     (format "select * from %s.%s"

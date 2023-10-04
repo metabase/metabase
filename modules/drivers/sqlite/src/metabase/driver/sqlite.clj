@@ -5,7 +5,6 @@
    [java-time :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -338,17 +337,9 @@
     [:datetime (h2x/literal (u.date/format-sql t))]))
 
 ;; SQLite defaults everything to UTC
-(defmethod driver.common/current-db-time-date-formatters :sqlite
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
-
-(defmethod driver.common/current-db-time-native-query :sqlite
-  [_]
-  "select cast(datetime('now') as text);")
-
-(defmethod driver/current-db-time :sqlite
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :sqlite
+  [_driver _database]
+  "UTC")
 
 (defmethod sql-jdbc.sync/active-tables :sqlite
   [& args]

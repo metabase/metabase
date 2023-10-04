@@ -14,7 +14,7 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (java.net URI URLDecoder)))
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -56,10 +56,9 @@
   "Check if open redirect is being exploited in SSO. If so, or if the redirect-url is invalid, throw a 400."
   [redirect-url]
   (try
-    (let [decoded-url (some-> ^String redirect-url (URLDecoder/decode "UTF-8"))
-          host        (some-> decoded-url (URI.) (.getHost))
+    (let [host        (some-> redirect-url (URI.) (.getHost))
           our-host    (some-> (public-settings/site-url) (URI.) (.getHost))]
-      (api/check-400 (or (nil? decoded-url) (nil? host) (= host our-host))))
+      (api/check-400 (or (nil? redirect-url) (nil? host) (= host our-host))))
     (catch Exception e
       (log/error e "Invalid redirect URL")
       (throw (ex-info (tru "Invalid redirect URL")

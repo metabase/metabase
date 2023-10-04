@@ -37,6 +37,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -186,11 +187,13 @@
      :message-type :html
      :message      message-body)))
 
-(defn send-login-from-new-device-email!
+(mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
-  [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+                         (throw (ex-info (tru "User {0} does not exist" user-id)
+                                         {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
@@ -594,12 +597,18 @@
 
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
-  [alert channel]
+  [alert channel non-user-email]
   (let [{card-id :id, card-name :name} (first-card alert)]
-    {:title         card-name
-     :titleUrl      (urls/card-url card-id)
-     :alertSchedule (alert-schedule-text channel)
-     :creator       (-> alert :creator :common_name)}))
+    {:title                     card-name
+     :titleUrl                  (urls/card-url card-id)
+     :alertSchedule             (alert-schedule-text channel)
+     :notificationManagementUrl (if (nil? non-user-email)
+                                  (urls/notification-management-url)
+                                  (str (urls/unsubscribe-url)
+                                       "?hash=" (generate-pulse-unsubscribe-hash (:id alert) non-user-email)
+                                       "&email=" non-user-email
+                                       "&pulse-id=" (:id alert)))
+     :creator                   (-> alert :creator :common_name)}))
 
 (defn- alert-results-condition-text [goal-value]
   {:meets (format "This question has reached its goal of %s." goal-value)
@@ -607,10 +616,10 @@
 
 (defn render-alert-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone {:keys [alert_first_only] :as alert} channel results goal-value]
+  [timezone {:keys [alert_first_only] :as alert} channel results goal-value non-user-email]
   (let [message-ctx  (merge
                       (common-alert-context alert (alert-results-condition-text goal-value))
-                      (alert-context alert channel))]
+                      (alert-context alert channel non-user-email))]
     (render-message-body alert
                          :alert
                          (assoc message-ctx :firstRunOnly? alert_first_only)

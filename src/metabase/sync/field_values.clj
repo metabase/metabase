@@ -11,10 +11,11 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
+(mu/defn ^:private clear-field-values-for-field!
+  [field :- i/FieldInstance]
   (when (t2/exists? FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
@@ -22,7 +23,8 @@
     (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
 
-(s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]
+(mu/defn ^:private update-field-values-for-field!
+  [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
   (let [field-values (t2/select-one FieldValues :field_id (u/the-id field) :type :full)]
     (if (field-values/inactive? field-values)
@@ -47,8 +49,8 @@
   [table]
   (t2/select Field :table_id (u/the-id table), :active true, :visibility_type "normal"))
 
-(s/defn update-field-values-for-table!
-  "Update the FieldValues for all Fields (as needed) for TABLE."
+(mu/defn update-field-values-for-table!
+  "Update the FieldValues for all Fields (as needed) for `table`."
   [table :- i/TableInstance]
   (reduce (fn [fv-change-counts field]
             (let [result (sync-util/with-error-handling (format "Error updating field values for %s" (sync-util/name-for-logging field))
@@ -59,9 +61,9 @@
           {:errors 0, :created 0, :updated 0, :deleted 0}
           (table->fields-to-scan table)))
 
-(s/defn ^:private update-field-values-for-database!
+(mu/defn ^:private update-field-values-for-database!
   [_database :- i/DatabaseInstance
-   tables :- [i/TableInstance]]
+   tables    :- [:maybe [:sequential i/TableInstance]]]
   (apply merge-with + (map update-field-values-for-table! tables)))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
@@ -85,7 +87,7 @@
       (apply t2/delete! FieldValues conditions)
       rows-count)))
 
-(s/defn delete-expired-advanced-field-values-for-table!
+(mu/defn delete-expired-advanced-field-values-for-table!
   "Delete all expired advanced FieldValues for a table and returns the number of deleted rows.
   For more info about advanced FieldValues, check the docs in [[metabase.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
@@ -93,9 +95,9 @@
        (map delete-expired-advanced-field-values-for-field!)
        (reduce +)))
 
-(s/defn ^:private delete-expired-advanced-field-values-for-database!
+(mu/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
-   tables :- [i/TableInstance]]
+   tables :- [:maybe [:sequential i/TableInstance]]]
   {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
                              (map (fn [result]
                                     (if (instance? Throwable result)
@@ -114,7 +116,7 @@
                                #(update-field-values-for-database! % tables)
                                update-field-values-summary)])
 
-(s/defn update-field-values!
+(mu/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in `database` (as needed)."
   [database :- i/DatabaseInstance]

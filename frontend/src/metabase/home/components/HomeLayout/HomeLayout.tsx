@@ -29,7 +29,7 @@ export const HomeLayout = ({
   const hasIllustration = useSelector(getHasIllustration);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot data-testid="home-page">
       {hasIllustration && <LayoutIllustration />}
       {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       {isAdmin && (

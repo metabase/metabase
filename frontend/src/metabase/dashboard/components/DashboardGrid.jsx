@@ -358,6 +358,7 @@ class DashboardGrid extends Component {
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
         isPublic={this.props.isPublic}
+        isXray={this.props.isXray}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
@@ -450,7 +451,7 @@ class DashboardGrid extends Component {
   render() {
     const { width } = this.props;
     return (
-      <div className="flex layout-centered">
+      <div className="flex layout-centered" data-testid="dashboard-grid">
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
       </div>

@@ -18,6 +18,10 @@ import {
 
 describe("scenarios > dashboard > filters > SQL > date", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -57,7 +61,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery2");
+        cy.wait("@dashcardQuery");
       },
     );
   });

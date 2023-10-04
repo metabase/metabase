@@ -9,6 +9,7 @@
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn describe-temporal-unit :- :string
@@ -138,12 +139,21 @@
   [_x]
   nil)
 
+(mu/defmethod temporal-bucket-method :option/temporal-bucketing :- ::lib.schema.temporal-bucketing/unit
+  [option]
+  (:unit option))
+
+(mu/defn raw-temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
+  "Get the raw temporal bucketing `unit` associated with something e.g. a `:field` ref or a ColumnMetadata."
+  [x]
+  (temporal-bucket-method x))
+
 (mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/option]
   "Get the current temporal bucketing option associated with something, if any."
   [x]
-  (when-let [unit (temporal-bucket-method x)]
+  (when-let [unit (raw-temporal-bucket x)]
     {:lib/type :option/temporal-bucketing
-     :unit unit}))
+     :unit     unit}))
 
 (def ^:private hidden-bucketing-options
   "Options that are technically legal in MBQL, but that should be hidden in the UI."
@@ -186,7 +196,8 @@
 
 (defmethod lib.metadata.calculation/display-info-method :option/temporal-bucketing
   [query stage-number option]
-  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
+          :short-name (u/qualified-name (raw-temporal-bucket option))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method

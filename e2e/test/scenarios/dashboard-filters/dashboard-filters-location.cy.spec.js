@@ -8,6 +8,10 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
@@ -17,7 +21,7 @@ describe("scenarios > dashboard > filters > location", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -43,7 +47,7 @@ describe("scenarios > dashboard > filters > location", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery1");
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
   });
