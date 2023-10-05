@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -44,20 +44,23 @@ const UpdateMetricForm = Metrics.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateMetricFormInner);
 
-class CreateMetricForm extends Component {
-  onSubmit = async metric => {
-    await this.props.createMetric({
-      ...metric,
-      table_id: metric.definition["source-table"],
-    });
-    MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(`/admin/datamodel/metrics`);
-  };
+const CreateMetricForm = props => {
+  const { createMetric, onChangeLocation } = props;
 
-  render() {
-    return <MetricForm {...this.props} onSubmit={this.onSubmit} />;
-  }
-}
+  const handleSubmit = useCallback(
+    async metric => {
+      await createMetric({
+        ...metric,
+        table_id: metric.definition["source-table"],
+      });
+      MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+      onChangeLocation(`/admin/datamodel/metrics`);
+    },
+    [createMetric, onChangeLocation],
+  );
+
+  return <MetricForm {...props} onSubmit={handleSubmit} />;
+};
 
 class MetricApp extends Component {
   render() {
