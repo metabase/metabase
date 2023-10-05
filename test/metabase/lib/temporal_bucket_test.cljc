@@ -173,3 +173,24 @@
             option))
     (is (= :month
            (lib.temporal-bucket/raw-temporal-bucket option)))))
+
+(deftest ^:parallel short-name-display-info-test
+  (let [query lib.tu/venues-query]
+    (is (= #{"minute"
+             "hour"
+             "day"
+             "week"
+             "month"
+             "quarter"
+             "year"
+             "minute-of-hour"
+             "hour-of-day"
+             "day-of-week"
+             "day-of-month"
+             "day-of-year"
+             "week-of-year"
+             "month-of-year"
+             "quarter-of-year"}
+           (into #{}
+                 (map #(:short-name (lib/display-info query -1 %)))
+                 (lib.temporal-bucket/available-temporal-buckets query (meta/field-metadata :products :created-at)))))))

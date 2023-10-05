@@ -1,11 +1,12 @@
 (ns metabase-enterprise.audit-db
   (:require
+   [babashka.fs :as fs]
    [clojure.core :as c]
    [clojure.java.io :as io]
-   [clojure.java.shell :as sh]
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
@@ -25,11 +26,32 @@
   []
   13371337)
 
-(defenterprise default-audit-collection-entity-id
+(def ^:private default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
+  "vG58R8k-QddHWA7_47umn")
+
+(def ^:private default-custom-reports-entity-id
+  "Default custom reports entity id."
+  "okNLSZKdSxaoG58JSQY54")
+
+(defn collection-entity-id->collection
+  "Returns the collection from entity id for collections. Memoizes from entity id."
+  [entity-id]
+  ((mdb.connection/memoize-for-application-db
+    (fn [entity-id]
+      (t2/select-one :model/Collection :entity_id entity-id))) entity-id))
+
+(defenterprise default-custom-reports-collection
+  "Default custom reports collection."
   :feature :none
   []
-  "vG58R8k-QddHWA7_47umn")
+  (collection-entity-id->collection default-custom-reports-entity-id))
+
+(defenterprise default-audit-collection
+  "Default audit collection (instance analytics) collection."
+  :feature :none
+  []
+  (collection-entity-id->collection default-audit-collection-entity-id))
 
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
@@ -121,9 +143,9 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def plugin-dir
-  "The directory analytics content is unzipped or moved to, and loaded into the app from on startup."
-  (plugins/plugins-dir))
+(def instance-analytics-plugin-dir
+  "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
+  (fs/path (plugins/plugins-dir) "instance_analytics"))
 
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
@@ -131,19 +153,21 @@
   [zip-resource dir-resource]
   (cond
     zip-resource
-    (do (log/info "Unzipping instance_analytics to " plugin-dir "...")
+    (do (log/info (str "Unzipping instance_analytics to " (u.files/relative-path instance-analytics-plugin-dir)))
         (u.files/unzip-file analytics-zip-resource
-                            (fn [entry-name]
-                              (str/replace entry-name
-                                           "resources/instance_analytics/"
-                                           "plugins/instance_analytics/")))
-        (log/info "Unzipping done."))
+                               (fn [entry-name]
+                                 (str/replace-first
+                                  entry-name
+                                  #"instance_analytics/|resources/instance_analytics/"
+                                  "plugins/instance_analytics/")))
+        (log/info "Unzipping complete."))
     dir-resource
     (do
-      (log/info "Copying resources/instance_analytics to " plugin-dir "...")
-      ;; TODO add a recursive copy to u.files
-      (sh/sh "cp" "-r" "resources/instance_analytics" (str plugin-dir))
-      (log/info "Copying done."))))
+      (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " instance-analytics-plugin-dir))
+      (fs/copy-tree (u.files/relative-path (fs/path analytics-dir-resource))
+                    (u.files/relative-path instance-analytics-plugin-dir)
+                    {:replace-existing true})
+      (log/info "Copying complete."))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."

@@ -1,6 +1,6 @@
 description: Data from alerts and subscriptions including recipients
 archived: false
-collection_position: 4
+collection_position: 6
 table_id:
 - Internal Metabase Database
 - public
@@ -33,7 +33,6 @@ result_metadata:
   - id
   visibility_type: normal
   display_name: ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -62,7 +61,6 @@ result_metadata:
   - entity_type
   visibility_type: normal
   display_name: Entity Type
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
@@ -92,7 +90,6 @@ result_metadata:
   - created_at
   visibility_type: normal
   display_name: Created At
-  fingerprint: null
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
@@ -122,7 +119,6 @@ result_metadata:
   - updated_at
   visibility_type: normal
   display_name: Updated At
-  fingerprint: null
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/FK
@@ -151,7 +147,6 @@ result_metadata:
   - creator_id
   visibility_type: normal
   display_name: Creator ID
-  fingerprint: null
   base_type: type/Integer
 - description: null
   semantic_type: type/Name
@@ -180,7 +175,6 @@ result_metadata:
   - name
   visibility_type: normal
   display_name: Name
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/Description
@@ -209,7 +203,6 @@ result_metadata:
   - description
   visibility_type: normal
   display_name: Description
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -238,7 +231,6 @@ result_metadata:
   - collection_id
   visibility_type: normal
   display_name: Collection ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -267,7 +259,6 @@ result_metadata:
   - made_public_by_user
   visibility_type: normal
   display_name: Made Public By User
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -296,7 +287,6 @@ result_metadata:
   - archived
   visibility_type: normal
   display_name: Archived
-  fingerprint: null
   base_type: type/Boolean
 - description: null
   semantic_type: null
@@ -325,7 +315,6 @@ result_metadata:
   - is_official
   visibility_type: normal
   display_name: Is Official
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -354,7 +343,6 @@ result_metadata:
   - action_type
   visibility_type: normal
   display_name: Action Type
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -383,7 +371,6 @@ result_metadata:
   - action_model_id
   visibility_type: normal
   display_name: Action Model ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -412,7 +399,6 @@ result_metadata:
   - collection_is_personal
   visibility_type: normal
   display_name: Collection Is Personal
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -441,7 +427,6 @@ result_metadata:
   - subscription_dashboard_id
   visibility_type: normal
   display_name: Subscription Dashboard ID
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -470,7 +455,6 @@ result_metadata:
   - alert_question_id
   visibility_type: normal
   display_name: Alert Question ID
-  fingerprint: null
   base_type: type/Integer
 - description: null
   semantic_type: type/Category
@@ -499,7 +483,6 @@ result_metadata:
   - recipient_type
   visibility_type: normal
   display_name: Recipient Type
-  fingerprint: null
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -528,7 +511,6 @@ result_metadata:
   - recipient_external
   visibility_type: normal
   display_name: Recipient External
-  fingerprint: null
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false

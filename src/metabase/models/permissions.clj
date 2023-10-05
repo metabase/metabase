@@ -1086,8 +1086,13 @@
   version."
   metabase-enterprise.audit-db [] ::noop)
 
-(defenterprise default-audit-collection-entity-id
-  "OSS implementation of `audit-db/default-audit-collection-entity-id`, which is an enterprise feature, so does nothing in the OSS
+(defenterprise default-audit-collection
+  "OSS implementation of `audit-db/default-audit-collection`, which is an enterprise feature, so does nothing in the OSS
+  version."
+  metabase-enterprise.audit-db [] ::noop)
+
+(defenterprise default-custom-reports-collection
+  "OSS implementation of `audit-db/default-custom-reports-collection`, which is an enterprise feature, so does nothing in the OSS
   version."
   metabase-enterprise.audit-db [] ::noop)
 
@@ -1103,6 +1108,29 @@
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
+
+(defn is-collection-id-audit?
+  "Check if an id is one of the audit collection ids."
+  [id]
+  (contains? (set [(:id (default-audit-collection)) (:id (default-custom-reports-collection))]) id))
+
+(defn is-parent-collection-audit?
+  "Check if an instance's parent collection is the audit collection."
+  [instance]
+  (let [parent-id (:collection_id instance)]
+    (and (some? parent-id) (is-collection-id-audit? parent-id))))
+
+(defn can-read-audit-helper
+  "Audit instances should only be fetched if audit app is enabled."
+  [model instance]
+  (if (and (not (premium-features/enable-audit-app?))
+           (case model
+             :model/Collection (is-collection-id-audit? (:id instance))
+             (is-parent-collection-audit? instance)))
+    false
+    (case model
+      :model/Collection (mi/current-user-has-full-permissions? :read instance)
+      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
 
 ; Audit permissions helper fns end
 

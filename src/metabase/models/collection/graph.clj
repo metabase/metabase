@@ -9,7 +9,7 @@
     :as c-perm-revision
     :refer [CollectionPermissionGraphRevision]]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.permissions-group :refer [PermissionsGroup]]
+   [metabase.models.permissions-group :as perms-group :as perms-group :refer [PermissionsGroup]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -83,6 +83,15 @@
                                                               (group-id->perms group-id)
                                                               collection-ids)}))})))
 
+(defn- modify-instance-analytics-for-admins
+  "In the graph, override the instance analytics collection within the admin group to read."
+  [graph]
+  (let [admin-group-id      (:id (perms-group/admin))
+        audit-collection-id (:id (perms/default-audit-collection))]
+    (if (nil? audit-collection-id)
+      graph
+      (assoc-in graph [:groups admin-group-id audit-collection-id] :read))))
+
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every group and all permissioned collections. This
   works just like the function of the same name in `metabase.models.permissions`; see also the documentation for that
@@ -103,7 +112,8 @@
    (t2/with-transaction [_conn]
      (-> collection-namespace
          non-personal-collection-ids
-         (collection-permission-graph collection-namespace)))))
+         (collection-permission-graph collection-namespace)
+         modify-instance-analytics-for-admins))))
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 

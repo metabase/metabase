@@ -1,6 +1,6 @@
 description: Each row describes one user event
 archived: false
-collection_position: 3
+collection_position: 5
 table_id:
 - Internal Metabase Database
 - public
@@ -26,7 +26,6 @@ result_metadata:
   - id
   visibility_type: normal
   display_name: ID
-  fingerprint: null
   base_type: type/BigInteger
 - description: null
   semantic_type: type/Category
@@ -48,17 +47,6 @@ result_metadata:
   - topic
   visibility_type: normal
   display_name: Topic
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.0
-    type:
-      type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
-        average-length: 13.3124
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
@@ -81,14 +69,6 @@ result_metadata:
   - timestamp
   visibility_type: normal
   display_name: Timestamp
-  fingerprint:
-    global:
-      distinct-count: 9999
-      nil%: 0.0
-    type:
-      type/DateTime:
-        earliest: '2015-10-24T15:03:46.941Z'
-        latest: '2023-04-05T19:12:53.768915Z'
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: null
@@ -110,17 +90,6 @@ result_metadata:
   - end_timestamp
   visibility_type: normal
   display_name: End Timestamp
-  fingerprint:
-    global:
-      distinct-count: 1
-      nil%: 1.0
-    type:
-      type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
-        average-length: 0.0
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -143,18 +112,6 @@ result_metadata:
   - user_id
   visibility_type: normal
   display_name: User ID
-  fingerprint:
-    global:
-      distinct-count: 55
-      nil%: 0.0208
-    type:
-      type/Number:
-        min: 1.0
-        q1: 1.1751828410841485
-        q3: 135.79773790552096
-        max: 161.0
-        sd: 63.12930913321324
-        avg: 60.00071486928105
   base_type: type/Integer
 - description: null
   semantic_type: type/Category
@@ -176,17 +133,6 @@ result_metadata:
   - model
   visibility_type: normal
   display_name: Model
-  fingerprint:
-    global:
-      distinct-count: 3
-      nil%: 0.0
-    type:
-      type/Text:
-        percent-json: 0.0
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
-        average-length: 6.186
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -208,18 +154,6 @@ result_metadata:
   - model_id
   visibility_type: normal
   display_name: Model ID
-  fingerprint:
-    global:
-      distinct-count: 773
-      nil%: 0.0
-    type:
-      type/Number:
-        min: 1.0
-        q1: 17.00948990804476
-        q3: 6017.086550431709
-        max: 37846.0
-        sd: 5704.15845424433
-        avg: 3276.8677
   base_type: type/Text
 - description: null
   semantic_type: type/Category
@@ -241,17 +175,6 @@ result_metadata:
   - details
   visibility_type: normal
   display_name: Details
-  fingerprint:
-    global:
-      distinct-count: 6
-      nil%: 0.4754
-    type:
-      type/Text:
-        percent-json: 0.5246
-        percent-url: 0.0
-        percent-email: 0.0
-        percent-state: 0.0
-        average-length: 18.6105
   base_type: type/Text
 database_id: Internal Metabase Database
 enable_embedding: false

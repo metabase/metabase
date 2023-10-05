@@ -48,29 +48,16 @@
 
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
-    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards", :color "#ABCDEF"}]
+    (t2.with-temp/with-temp [Collection collection {:name "My Favorite Cards"}]
       (is (partial= (merge
                      (mt/object-defaults Collection)
                      {:name              "My Favorite Cards"
                       :slug              "my_favorite_cards"
                       :description       nil
-                      :color             "#ABCDEF"
                       :archived          false
                       :location          "/"
                       :personal_owner_id nil})
                     collection)))))
-
-(deftest color-validation-test
-  (testing "Collection colors should be validated when inserted into the DB"
-    (doseq [[input msg] {nil        "Missing color"
-                         "#ABC"     "Too short"
-                         "#BCDEFG"  "Invalid chars"
-                         "#ABCDEFF" "Too long"
-                         "ABCDEF"   "Missing hash prefix"}]
-      (testing msg
-        (is (thrown?
-             Exception
-             (t2/insert! Collection {:name "My Favorite Cards", :color input})))))))
 
 (deftest with-temp-defaults-test
   (testing "double-check that `with-temp-defaults` are working correctly for Collection"
@@ -363,7 +350,7 @@
 (defmacro ^:private with-collection-in-location [[collection-binding location] & body]
   `(let [name# (mt/random-name)]
      (try
-       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :color "#ABCDEF", :location ~location))]
+       (let [~collection-binding (first (t2/insert-returning-instances! Collection :name name#, :location ~location))]
          ~@body)
        (finally
          (t2/delete! Collection :name name#)))))
@@ -1435,7 +1422,6 @@
              #"Collection must be in the same namespace as its parent"
              (t2/insert! Collection
                          {:location  (format "/%d/" (:id parent-collection))
-                          :color     "#F38630"
                           :name      "Child Collection"
                           :namespace child-namespace}))))
 
@@ -1461,8 +1447,7 @@
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
            (t2/insert! Collection
-                       {:color             "#F38630"
-                        :name              "Personal Collection"
+                       {:name              "Personal Collection"
                         :namespace         "x"
                         :personal_owner_id user-id}))))))
 
@@ -1661,15 +1646,32 @@
 
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
-    (premium-features-test/with-premium-features #{:audit-app}
-      (with-redefs [perms/default-audit-collection-entity-id (constantly "vG58R8k-QddHWA7_47um1")]
-        (t2.with-temp/with-temp [Collection collection {:entity_id "vG58R8k-QddHWA7_47um1"}
-                                 Card       card       {:collection_id (:id collection)}
-                                 Dashboard  dashboard  {:collection_id (:id collection)}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (is (not (mi/can-write? collection))
+    (t2.with-temp/with-temp [Collection audit-collection {}
+                             Card       audit-card       {:collection_id (:id audit-collection)}
+                             Dashboard  audit-dashboard  {:collection_id (:id audit-collection)}
+                             Collection cr-collection    {}
+                             Card       cr-card          {:collection_id (:id cr-collection)}
+                             Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
+      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
+                    perms/default-custom-reports-collection (constantly cr-collection)]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (premium-features-test/with-premium-features #{:audit-app}
+            (is (not (mi/can-write? audit-collection))
                 "Admin isn't able to write to audit collection")
-            (is (not (mi/can-write? card))
+            (is (not (mi/can-write? audit-card))
                 "Admin isn't able to write to audit collection card")
-            (is (not (mi/can-write? dashboard))
-                "Admin isn't able to write to audit collection dashboard")))))))
+            (is (not (mi/can-write? audit-dashboard))
+                "Admin isn't able to write to audit collection dashboard"))
+          (premium-features-test/with-premium-features #{}
+            (is (not (mi/can-read? audit-collection))
+                "Admin isn't able to read audit collection when audit app isn't enabled")
+            (is (not (mi/can-read? audit-card))
+                "Admin isn't able to read audit collection card when audit app isn't enabled")
+            (is (not (mi/can-read? audit-dashboard))
+                "Admin isn't able to read audit collection dashboard when audit app isn't enabled")
+            (is (not (mi/can-read? cr-collection))
+                "Admin isn't able to read custom reports collection when audit app isn't enabled")
+            (is (not (mi/can-read? cr-card))
+                "Admin isn't able to read custom reports card when audit app isn't enabled")
+            (is (not (mi/can-read? cr-dashboard))
+                "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))

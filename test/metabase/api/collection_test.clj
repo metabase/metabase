@@ -143,33 +143,35 @@
 (deftest list-collections-visible-collections-test
   (testing "GET /api/collection"
     (testing "You should only see your collection and public collections"
-      (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
-            crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
-        (t2.with-temp/with-temp [Collection collection          {}
-                                 Collection {collection-id :id} {:name "Collection with Items"}
-                                 Collection _                   {:name            "subcollection"
-                                                                 :location        (format "/%d/" collection-id)
-                                                                 :authority_level "official"}
-                                 Collection _                   {:name     "Crowberto's Child Collection"
-                                                                 :location (collection/location-path crowberto-root)}]
-          (let [public-collection-names (into #{"Our analytics"
-                                                (:name collection)
-                                                "Collection with Items"
-                                                "subcollection"}
-                                              (instance-analytics-collection-names))
-                crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-            (is (= (into (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})
-                         public-collection-names)
-                   crowbertos))
-            (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                   crowbertos-with-excludes))
-            (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-            (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-            (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
-                   luckys))
-            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))))
+      ;; Set audit-app feature so that we can assert that audit collections are also visible when running EE
+      (premium-features-test/with-premium-features #{:audit-app}
+       (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
+             crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]
+         (t2.with-temp/with-temp [Collection collection          {}
+                                  Collection {collection-id :id} {:name "Collection with Items"}
+                                  Collection _                   {:name            "subcollection"
+                                                                  :location        (format "/%d/" collection-id)
+                                                                  :authority_level "official"}
+                                  Collection _                   {:name     "Crowberto's Child Collection"
+                                                                  :location (collection/location-path crowberto-root)}]
+           (let [public-collection-names (into #{"Our analytics"
+                                                 (:name collection)
+                                                 "Collection with Items"
+                                                 "subcollection"}
+                                               (instance-analytics-collection-names))
+                 crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                 crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                 luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+             (is (= (into (t2/select-fn-set :name Collection {:where [:and [:= :type nil] [:= :archived false]]})
+                          public-collection-names)
+                    crowbertos))
+             (is (= (into public-collection-names #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                    crowbertos-with-excludes))
+             (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+             (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+             (is (= (conj public-collection-names (:name collection) "Lucky Pigeon's Personal Collection")
+                    luckys))
+             (is (false? (contains? luckys "Crowberto Corv's Personal Collection"))))))))))
 
 (deftest list-collections-personal-collection-locale-test
   (testing "GET /api/collection"
@@ -290,7 +292,6 @@
                            :archived          false
                            :entity_id         (:entity_id personal-collection)
                            :slug              "rasta_toucan_s_personal_collection"
-                           :color             "#31698A"
                            :name              "Rasta Toucan's Personal Collection"
                            :personal_owner_id (mt/user->id :rasta)
                            :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
@@ -367,7 +368,6 @@
                        :archived          false
                        :entity_id         (:entity_id collection)
                        :slug              "collection_personnelle_de_taco_bell"
-                       :color             "#ABCDEF"
                        :name              "Collection personnelle de Taco Bell"
                        :personal_owner_id (:id user)
                        :id                (:id collection)
@@ -923,7 +923,6 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
-    :color               "#31698A"
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
@@ -1457,12 +1456,11 @@
                        (mt/object-defaults Collection)
                        {:name              "Stamp Collection"
                         :slug              "stamp_collection"
-                        :color             "#123456"
                         :archived          false
                         :location          "/"
                         :personal_owner_id nil})
                       (-> (mt/user-http-request :crowberto :post 200 "collection"
-                                                {:name "Stamp Collection", :color "#123456"})
+                                                {:name "Stamp Collection"})
                           (dissoc :id :entity_id))))))))
 
 (deftest non-admin-create-collection-in-root-perms-test
@@ -1471,7 +1469,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 "collection"
-                                     {:name "Stamp Collection", :color "#123456"})))))
+                                     {:name "Stamp Collection"})))))
     (testing "\nCan a non-admin user with Root Collection perms add a new collection to the Root Collection? (#8949)"
       (mt/with-model-cleanup [Collection]
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1481,11 +1479,10 @@
             (is (partial= (merge
                            (mt/object-defaults Collection)
                            {:name     "Stamp Collection"
-                            :color    "#123456"
                             :location "/"
                             :slug     "stamp_collection"})
                           (dissoc (mt/user-http-request :rasta :post 200 "collection"
-                                                        {:name "Stamp Collection", :color "#123456"})
+                                                        {:name "Stamp Collection"})
                                   :id :entity_id)))))))))
 
 (deftest create-child-collection-test
@@ -1500,11 +1497,9 @@
                           :name        "Trading Card Collection"
                           :slug        "trading_card_collection"
                           :description "Collection of basketball cards including limited-edition holographic Draymond Green"
-                          :color       "#ABCDEF"
                           :location    "/A/C/D/"})
                         (-> (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name        "Trading Card Collection"
-                                                   :color       "#ABCDEF"
                                                    :description "Collection of basketball cards including limited-edition holographic Draymond Green"
                                                    :parent_id   (u/the-id d)})
                             (update :location collection-test/location-path-ids->names)
@@ -1521,7 +1516,6 @@
                         s/Keyword  s/Any}
                        (mt/user-http-request :crowberto :post 200 "collection"
                                              {:name       collection-name
-                                              :color      "#f38630"
                                               :descrption "My SQL Snippets"
                                               :namespace  "snippets"})))
           (finally
@@ -1541,7 +1535,6 @@
                         :name            "My Beautiful Collection"
                         :slug            "my_beautiful_collection"
                         :entity_id       (:entity_id collection)
-                        :color           "#ABCDEF"
                         :location        "/"
                         :effective_ancestors [{:metabase.models.collection.root/is-root? true
                                                :name                                     "Our analytics"
@@ -1552,13 +1545,13 @@
 
                         :parent_id       nil})
                       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection))
-                                            {:name "My Beautiful Collection" :color "#ABCDEF"})))))
+                                            {:name "My Beautiful Collection"})))))
     (testing "check that users without write perms aren't allowed to update a Collection"
       (mt/with-non-admin-groups-no-root-collection-perms
         (t2.with-temp/with-temp [Collection collection]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection))
-                                       {:name "My Beautiful Collection", :color "#ABCDEF"}))))))))
+                                       {:name "My Beautiful Collection"}))))))))
 
 (deftest archive-collection-test
   (testing "PUT /api/collection/:id"
@@ -1580,7 +1573,7 @@
         (mt/with-fake-inbox
           (mt/with-expected-messages 2
             (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id)
-                                  {:name "My Beautiful Collection", :color "#ABCDEF", :archived true}))
+                                  {:name "My Beautiful Collection", :archived true}))
           (testing "emails"
             (is (= (merge (mt/email-to :crowberto {:subject "One of your alerts has stopped working",
                                                    :body    {"the question was archived by Crowberto Corv" true}})
@@ -1620,7 +1613,6 @@
                         :entity_id true
                         :name      "E"
                         :slug      "e"
-                        :color     "#ABCDEF"
                         :location  "/A/B/"
                         :parent_id (u/the-id b)})
                       (-> (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id e))

@@ -169,7 +169,12 @@ export const SaveQuestionModal = ({
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
-        <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
+        <ModalContent
+          data-testid="save-question-modal"
+          id="SaveQuestionModal"
+          title={title}
+          onClose={onClose}
+        >
           <FormProvider
             initialValues={{ ...initialValues, ...resumedValues }}
             onSubmit={handleSubmit}

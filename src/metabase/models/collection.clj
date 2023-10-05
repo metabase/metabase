@@ -68,29 +68,25 @@
 
 (defmethod mi/can-write? Collection
   ([instance]
-   (if (= (:entity_id instance) (perms/default-audit-collection-entity-id))
+   (mi/can-write? :model/Collection (:id instance)))
+  ([model pk]
+   (if (= pk (:id (perms/default-audit-collection)))
      false
-     (mi/current-user-has-full-permissions? :write instance)))
+     (mi/current-user-has-full-permissions? :write model pk))))
+
+(defmethod mi/can-read? Collection
+  ([instance]
+   (perms/can-read-audit-helper :model/Collection instance))
   ([_ pk]
-   (mi/can-write? (t2/select-one 'Collection :id pk))))
+   (mi/can-read? (t2/select-one :model/Collection :id pk))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
   [:enum "official"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Slug & Hex Color & Validation                                          |
+;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:const ^java.util.regex.Pattern hex-color-regex
-  "Regex for a valid value of `:color`, a 7-character hex string including the preceding hash sign."
-  #"^#[0-9A-Fa-f]{6}$")
-
-(defn- assert-valid-hex-color [^String hex-color]
-  (when (or (not (string? hex-color))
-            (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info (tru "Invalid color")
-                    {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
@@ -703,10 +699,9 @@
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
 (t2/define-before-insert :model/Collection
-  [{collection-name :name, color :color, :as collection}]
+  [{collection-name :name, :as collection}]
   (assert-valid-location collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -872,7 +867,6 @@
   [collection]
   (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
         {collection-name :name
-         color           :color
          :as collection-updates}  (or (t2/changes collection) {})]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
@@ -890,9 +884,6 @@
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
-    ;; (5) make sure hex color is valid
-    (when (api/column-will-change? :color collection-before-updates collection-updates)
-     (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -1115,9 +1106,7 @@
       (try
         (first (t2/insert-returning-instances! Collection
                                                {:name              (user->personal-collection-name user-or-id :site)
-                                                :personal_owner_id (u/the-id user-or-id)
-                                                ;; a nice slate blue color
-                                                :color             "#31698A"}))
+                                                :personal_owner_id (u/the-id user-or-id)}))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
         (catch Throwable e

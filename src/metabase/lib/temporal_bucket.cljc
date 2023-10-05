@@ -9,6 +9,7 @@
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn describe-temporal-unit :- :string
@@ -195,7 +196,8 @@
 
 (defmethod lib.metadata.calculation/display-info-method :option/temporal-bucketing
   [query stage-number option]
-  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
+          :short-name (u/qualified-name (raw-temporal-bucket option))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
