@@ -1167,7 +1167,7 @@
     ;; These are all breakouts
     (->> (make-combinations dimensions
                             metrics
-                            affinities
+                            #_affinities
                             {} #_info)
          (make-layout :web)
          (dashboard-ify dashboard-template))))
