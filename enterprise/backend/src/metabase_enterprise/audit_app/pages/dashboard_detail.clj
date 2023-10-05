@@ -8,7 +8,8 @@
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase-enterprise.audit-db :as audit-db]))
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
 (mu/defmethod audit.i/internal-query ::views-by-time
@@ -48,7 +49,9 @@
                                             [:dc.created_at :dashcard_created_at]]
                                    :from   [[:report_dashboardcard :dc]]
                                    :join   [[:report_card :card] [:= :card.id :dc.card_id]]
-                                   :where  [:= :dc.dashboard_id dashboard-id]}]
+                                   :where  [:and
+                                            [:= :dc.dashboard_id dashboard-id]
+                                            [:not= :card.database_id (audit-db/default-audit-db-id)]]}]
                            cards/avg-exec-time
                            cards/views]
                :select    [[:card.id :card_id]

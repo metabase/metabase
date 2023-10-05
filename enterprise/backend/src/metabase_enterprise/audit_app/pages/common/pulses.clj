@@ -7,7 +7,9 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.util :as u]))
 
 (def table-metadata
   "Common Metadata for the columns returned by both the [[metabase-enterprise.audit-app.pages.dashboard-subscriptions]]
@@ -74,7 +76,10 @@
                :user_recipients               [:= :channel.id :user_recipients.channel_id]]
    :where     [:and
                [:not= :pulse.archived true]
-               [:= :channel.enabled true]]})
+               [:= :channel.enabled true]
+               [:or
+                [:= :collection.id nil]
+                [:not= :collection.id (u/id (audit-db/default-audit-collection))]]]})
 
 (defn- describe-frequency [row]
   (-> (select-keys row [:schedule_type :schedule_hour :schedule_day :schedule_frame])
