@@ -12,7 +12,7 @@ import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 interface DateShortcutPickerProps {
   availableOperators: ReadonlyArray<DatePickerOperator>;
   availableShortcuts: ReadonlyArray<DatePickerShortcut>;
-  backButton?: ReactNode;
+  children?: ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
 }
@@ -20,7 +20,7 @@ interface DateShortcutPickerProps {
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
-  backButton,
+  children,
   onChange,
   onSelectType,
 }: DateShortcutPickerProps) {
@@ -34,7 +34,7 @@ export function DateShortcutPicker({
 
   return (
     <Box p="sm">
-      {backButton}
+      {children}
       {shortcutGroups.map((group, groupIndex) => (
         <Fragment key={groupIndex}>
           {groupIndex > 0 && <Divider mx="md" my="sm" />}

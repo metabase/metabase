@@ -40,8 +40,8 @@ function getRelativeDateValue(
     type: "relative",
     unit: filterParts.bucket,
     value: filterParts.value,
-    offsetUnit: filterParts.offsetBucket,
-    offsetValue: filterParts.offsetValue,
+    offsetUnit: filterParts.offsetBucket ?? undefined,
+    offsetValue: filterParts.offsetValue ?? undefined,
     options: filterParts.options,
   };
 }
@@ -92,8 +92,8 @@ function getRelativeFilterClause(
     column,
     bucket: value.unit,
     value: value.value,
-    offsetBucket: value.offsetUnit,
-    offsetValue: value.offsetValue,
+    offsetBucket: value.offsetUnit ?? null,
+    offsetValue: value.offsetValue ?? null,
     options: {},
   });
 }

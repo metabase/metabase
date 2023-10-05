@@ -44,12 +44,11 @@ export function DateFilterPicker({
       value={value}
       availableOperators={availableOperators}
       availableUnits={availableUnits}
-      backButton={
-        <BackButton pl="sm" onClick={onBack}>
-          {columnInfo.longDisplayName}
-        </BackButton>
-      }
       onChange={handleChange}
-    />
+    >
+      <BackButton pl="sm" onClick={onBack}>
+        {columnInfo.longDisplayName}
+      </BackButton>
+    </DatePicker>
   );
 }

@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import type { DatePickerTruncationUnit } from "../types";
 import type { Tab } from "./types";
 
 export const TABS: Tab[] = [
@@ -7,10 +8,13 @@ export const TABS: Tab[] = [
   { type: "next", label: t`Next` },
 ];
 
+export const UNIT_GROUPS: DatePickerTruncationUnit[][] = [
+  ["day", "week", "month"],
+  ["quarter", "year"],
+];
+
 export const DEFAULT_VALUE = {
   type: "relative",
   unit: "day",
   value: -30,
-  offsetUnit: null,
-  offsetValue: null,
 } as const;

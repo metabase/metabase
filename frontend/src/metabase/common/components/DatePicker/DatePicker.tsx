@@ -20,7 +20,7 @@ export interface DatePickerProps {
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
   availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
-  backButton?: ReactNode;
+  children?: ReactNode;
   onChange: (value: DatePickerValue) => void;
 }
 
@@ -29,7 +29,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
-  backButton,
+  children,
   onChange,
 }: DatePickerProps) {
   const [type, setType] = useState(value?.type);
@@ -62,10 +62,11 @@ export function DatePicker({
         <DateShortcutPicker
           availableOperators={availableOperators}
           availableShortcuts={availableShortcuts}
-          backButton={backButton}
           onChange={onChange}
           onSelectType={setType}
-        />
+        >
+          {children}
+        </DateShortcutPicker>
       );
   }
 }

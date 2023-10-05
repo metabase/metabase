@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { Icon } from "metabase/core/components/Icon";
-import { Button, Flex, Tabs } from "metabase/ui";
-import type { RelativeDatePickerValue } from "../types";
-import { DEFAULT_VALUE, TABS } from "./constants";
-import { getTabType, getValueAfterTabChange } from "./utils";
+import { Button, Flex, Group, Stack, Tabs } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import { BackButton } from "../BackButton";
+import type {
+  DatePickerTruncationUnit,
+  RelativeDatePickerValue,
+} from "../types";
+import { TABS, UNIT_GROUPS } from "./constants";
+import { getCurrentValue, getTabType, getValueAfterTabChange } from "./utils";
 
 interface RelativeDatePickerProps {
   value?: RelativeDatePickerValue;
@@ -12,45 +16,24 @@ interface RelativeDatePickerProps {
 }
 
 export function RelativeDatePicker({
-  value: initialValue = DEFAULT_VALUE,
+  value: initialValue,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
   const [value, setValue] = useState(initialValue);
-
-  return (
-    <div>
-      <PickerHeader value={value} onChange={setValue} onBack={onBack} />
-    </div>
-  );
-}
-
-interface PickerHeaderProps {
-  value: RelativeDatePickerValue;
-  onChange: (value: RelativeDatePickerValue) => void;
-  onBack: () => void;
-}
-
-function PickerHeader({ value, onChange, onBack }: PickerHeaderProps) {
   const type = getTabType(value);
 
   const handleChange = (type: string | null) => {
     const tab = TABS.find(tab => tab.type === type);
     if (tab) {
-      onChange(getValueAfterTabChange(tab.type, value));
+      setValue(getValueAfterTabChange(tab.type, value));
     }
   };
 
   return (
-    <Flex>
-      <Button
-        c="text.1"
-        display="block"
-        variant="subtle"
-        leftIcon={<Icon name="chevronleft" />}
-        onClick={onBack}
-      />
-      <Tabs value={type} onTabChange={handleChange}>
+    <Tabs value={type} onTabChange={handleChange}>
+      <Flex>
+        <BackButton onClick={onBack} />
         <Tabs.List>
           {TABS.map(tab => (
             <Tabs.Tab key={tab.type} value={tab.type}>
@@ -58,7 +41,40 @@ function PickerHeader({ value, onChange, onBack }: PickerHeaderProps) {
             </Tabs.Tab>
           ))}
         </Tabs.List>
-      </Tabs>
-    </Flex>
+      </Flex>
+      <Tabs.Panel value="current">
+        <CurrentPicker value={value} onChange={onChange} />
+      </Tabs.Panel>
+    </Tabs>
+  );
+}
+
+interface CurrentPickerProps {
+  value?: RelativeDatePickerValue;
+  onChange: (value: RelativeDatePickerValue) => void;
+}
+
+function CurrentPicker({ value, onChange }: CurrentPickerProps) {
+  const handleClick = (unit: DatePickerTruncationUnit) => {
+    onChange(getCurrentValue(unit));
+  };
+
+  return (
+    <Stack p="md">
+      {UNIT_GROUPS.map((group, groupIndex) => (
+        <Group key={groupIndex}>
+          {group.map(unit => (
+            <Button
+              key={unit}
+              variant={unit === value?.unit ? "filled" : "default"}
+              radius="xl"
+              onClick={() => handleClick(unit)}
+            >
+              {Lib.describeTemporalUnit(unit)}
+            </Button>
+          ))}
+        </Group>
+      ))}
+    </Stack>
   );
 }
