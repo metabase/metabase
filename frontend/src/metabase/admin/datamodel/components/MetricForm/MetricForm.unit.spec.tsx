@@ -22,7 +22,8 @@ const setup = ({
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
-  renderWithProviders(
+
+  const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
       <Route path="/admin/datamodel/metric/create" component={MetricApp} />
