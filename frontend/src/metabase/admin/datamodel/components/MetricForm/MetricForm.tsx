@@ -74,33 +74,39 @@ const MetricForm = ({
         </FormLabel>
         <FormBodyContent>
           <FormLabel
+            htmlFor="name"
             title={t`Name Your Metric`}
             description={t`Give your metric a name to help others find it.`}
           >
             <FormInput
               {...getFieldProps("name")}
               {...getFieldMeta("name")}
+              id="name"
               placeholder={t`Something descriptive but not too long`}
             />
           </FormLabel>
           <FormLabel
+            htmlFor="description"
             title={t`Describe Your Metric`}
             description={t`Give your metric a description to help others understand what it's about.`}
           >
             <FormTextArea
               {...getFieldProps("description")}
               {...getFieldMeta("description")}
+              id="description"
               placeholder={t`This is a good place to be more specific about less obvious metric rules`}
             />
           </FormLabel>
           {!isNew && (
             <FieldSet legend={t`Reason For Changes`} noPadding={false}>
               <FormLabel
+                htmlFor="revision_message"
                 description={t`Leave a note to explain what changes you made and why they were required.`}
               >
                 <FormTextArea
                   {...getFieldProps("revision_message")}
                   {...getFieldMeta("revision_message")}
+                  id="revision_message"
                   placeholder={t`This will show up in the revision history for this metric to help everyone remember why things changed`}
                 />
               </FormLabel>
