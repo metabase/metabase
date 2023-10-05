@@ -37,7 +37,7 @@ function getDefaultValuesForOperator(
   operatorName: Lib.TimeFilterOperatorName,
 ): Lib.TimeParts[] {
   const valueCount = timeFilterValueCountMap[operatorName];
-  return valueCount > 0 ? Array(valueCount).fill(defaultTimeValue) : [];
+  return Array(valueCount).fill(defaultTimeValue);
 }
 
 export function TimeFilterPicker({
