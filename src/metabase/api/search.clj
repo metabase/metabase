@@ -176,7 +176,7 @@
        (sql.helpers/left-join [:revision :r]
                               [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                                [:= :r.most_recent true]
-                               [:= :r.model (search.filter/search-model->revision-model model)]])))
+                               [:= :r.model (search.config/search-model->revision-model model)]])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |

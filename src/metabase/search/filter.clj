@@ -178,13 +178,6 @@
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
-(defn search-model->revision-model
-  "Return the apporpriate revision model given a search model."
-  [model]
-  (case model
-    "dataset" (recur "card")
-    (str/capitalize model)))
-
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
@@ -193,7 +186,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search.config/search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -208,7 +201,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search.config/search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column

@@ -1084,8 +1084,6 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
-#_(mt/user-http-request :crowberto :get 200 "search" :q "a" :models "card" :last_edited_by (mt/user->id :crowberto))
-
 (deftest created-at-correctness-test
   (let [search-term "created-at-filtering"
         new          #t "2023-05-04T10:00Z[UTC]"
@@ -1307,4 +1305,4 @@
                (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
                     :data
                     (map (juxt :model :id :creator_common_name :last_editor_common_name))
-                    set)))["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]))))
+                    set)))))))

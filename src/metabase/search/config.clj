@@ -1,5 +1,6 @@
 (ns metabase.search.config
   (:require
+   [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
    [metabase.models.permissions :as perms]
@@ -322,3 +323,12 @@
 (defmethod column->string :default
   [value _ _]
   value)
+
+;;; ----------------------------------------- Helper Fns -----------------------------------------
+
+(defn search-model->revision-model
+  "Return the apporpriate revision model given a search model."
+  [model]
+  (case model
+    "dataset" (recur "card")
+    (str/capitalize model)))
