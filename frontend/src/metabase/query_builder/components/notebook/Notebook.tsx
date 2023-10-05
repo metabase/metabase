@@ -119,6 +119,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     if (isResultDirty) {
       await runQuestionQuery();
     }
+    setJoinsToRemove([]);
   }
 
   return (
