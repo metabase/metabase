@@ -11,7 +11,7 @@
   [user-id]
   (t2/select-one [:model/RecentViews :user_id :model :model_id]
                  :user_id user-id
-                 {:order-by [[:timestamp :desc] [:id :desc]]}))
+                 {:order-by [[:id :desc]]}))
 
 (deftest card-query-test
   (mt/with-temp [Card card {:creator_id (mt/user->id :rasta)}]
