@@ -6,6 +6,7 @@ import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
 import { StringFilterPicker } from "./StringFilterPicker";
+import { TimeFilterPicker } from "./TimeFilterPicker";
 
 export interface FilterPickerProps {
   query: Lib.Query;
@@ -90,6 +91,9 @@ const NotImplementedPicker = () => <div />;
 function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isBoolean(column)) {
     return BooleanFilterPicker;
+  }
+  if (Lib.isTime(column)) {
+    return TimeFilterPicker;
   }
   if (Lib.isDate(column)) {
     return DateFilterPicker;
