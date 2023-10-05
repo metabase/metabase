@@ -47,7 +47,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     setQueryBuilderMode,
   } = props;
 
-  const [, setJoinsToRemove] = useState<JoinToRemove[]>([]);
+  const [joinsToRemove, setJoinsToRemove] = useState<JoinToRemove[]>([]);
 
   const addJoinToRemove = (joinToRemove: JoinToRemove) => {
     setJoinsToRemove(joins => [...joins, joinToRemove]);
@@ -65,14 +65,40 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
   };
 
   async function cleanupQuestion() {
+    let query = question._getMLv2Query();
+
+    const joinsToRemoveByStageIndex = _.groupBy(joinsToRemove, "stageIndex");
+    const stageIndexes = Object.keys(joinsToRemoveByStageIndex)
+      .map(index => Number(index))
+      .sort((index1, index2) => index2 - index1); // desc
+
+    stageIndexes.forEach(stageIndex => {
+      const stageJoins = Lib.joins(query, stageIndex);
+      const stageJoinEntries = stageJoins.map(join => [
+        Lib.displayInfo(query, stageIndex, join).name,
+        join,
+      ]);
+      const joinByAlias = Object.fromEntries(stageJoinEntries);
+      const joinsToRemove = joinsToRemoveByStageIndex[stageIndex];
+
+      joinsToRemove.forEach(({ alias }) => {
+        const join = joinByAlias[alias];
+        if (join) {
+          try {
+            query = Lib.removeClause(query, stageIndex, join);
+          } catch (e) {
+            // ignore
+          }
+        }
+      });
+    });
+
     // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question.setDatasetQuery(
-      Lib.toLegacyQuery(question._getMLv2Query()),
-    );
+    let cleanQuestion = question.setDatasetQuery(Lib.toLegacyQuery(query));
 
     // MLv2 doesn't clean up redundant stages, so we do it with MLv1 for now
-    const query = cleanQuestion.query() as StructuredQuery;
-    cleanQuestion = cleanQuestion.setQuery(query.clean());
+    const legacyQuery = cleanQuestion.query() as StructuredQuery;
+    cleanQuestion = cleanQuestion.setQuery(legacyQuery.clean());
 
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
