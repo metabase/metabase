@@ -416,15 +416,15 @@
       (grounded-metrics metric-templates ground-dimensions)
       (linked-metrics entity)))
 
-  (require '[metabase.query-processor :as qp])
   (let [template-name          "GenericTable"
-        {:keys [id db_id] :as entity} (t2/select-one :model/Table :name "ACCOUNTS")
+        entity (t2/select-one :model/Table :name "ACCOUNTS")
         template               (dashboard-templates/get-dashboard-template ["table" template-name])
         {template-dimensions :dimensions
          template-metrics    :metrics} template
-        semantic-affinity-sets (keys (magic/semantic-affinities template))
         base-context           (#'magic/make-base-context (magic/->root entity))
         ground-dimensions      (find-dimensions base-context template-dimensions)
+        affinities             (->> (#'magic/dash-template->affinities template ground-dimensions)
+                                    (map :affinity-set))
         metric-templates       (normalize-metrics template-metrics)
         grounded-metrics       (concat
                                  (grounded-metrics metric-templates ground-dimensions)
@@ -432,7 +432,30 @@
     (->> (make-combinations
            grounded-metrics
            ground-dimensions
-           semantic-affinity-sets)
+           affinities)
+         (mapv (fn [ground-metric-with-dimensions]
+                 (-> ground-metric-with-dimensions
+                     (update :grounded-metric-fields (partial map (juxt :id :name)))
+                     (update :dimensions #(update-vals % (juxt :id :name))))))))
+
+  (require '[metabase.query-processor :as qp])
+  (let [template-name          "GenericTable"
+        {:keys [id db_id] :as entity} (t2/select-one :model/Table :name "ACCOUNTS")
+        template               (dashboard-templates/get-dashboard-template ["table" template-name])
+        {template-dimensions :dimensions
+         template-metrics    :metrics} template
+        base-context           (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions      (find-dimensions base-context template-dimensions)
+        affinities             (->> (#'magic/dash-template->affinities template ground-dimensions)
+                                    (map :affinity-set))
+        metric-templates       (normalize-metrics template-metrics)
+        grounded-metrics       (concat
+                                 (grounded-metrics metric-templates ground-dimensions)
+                                 (linked-metrics entity))]
+    (->> (make-combinations
+           grounded-metrics
+           ground-dimensions
+           affinities)
          (mapv (fn [ground-metric-with-dimensions]
                  (-> ground-metric-with-dimensions
                      (update :grounded-metric-fields (partial map (juxt :id :name)))

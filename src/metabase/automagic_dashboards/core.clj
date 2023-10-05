@@ -859,25 +859,6 @@
             (ordered-map)
             met-affinities)))
 
-(comment
-  (dash-template->affinities
-    (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
-
-  ;; example call
-  (let [affinities (-> ["table" "GenericTable"]
-                       dashboard-templates/get-dashboard-template
-                       dash-template->affinities)]
-    (match-affinities affinities #{"JoinDate"}))
-
-  ;; example call where one affinity matches on two sets of dimensions: "OrdersBySource" matches
-  ;; on [#{"SourceSmall" "Timestamp"} #{"SourceMedium"}]
-  (let [affinities (-> ["table" "TransactionTable"]
-                       dashboard-templates/get-dashboard-template
-                       dash-template->affinities)]
-    (match-affinities affinities
-                      #{"SourceSmall" "Timestamp" "SourceMedium"}))
-  )
-
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
 
@@ -1129,30 +1110,6 @@
 
 (defn affinity-set-interestingness [affinity-set]
   (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
-
-(defn semantic-affinities
-  "Convert nominal affinities into semantic affinities."
-  [{:keys [dimensions] :as dashboard-template}]
-  (let [dim->sems  (dimension-name->satisfiable-semantic-types dimensions)
-        affinities (->> (dash-template->affinities dashboard-template)
-                        (mapcat (fn [{:keys [base-dims] :as affinity}]
-                                  (let [sematic-dims (apply math.combo/cartesian-product (map dim->sems base-dims))]
-                                    (map #(assoc affinity :semantic-dims (set %)) sematic-dims)))))]
-    (update-vals
-      (group-by :semantic-dims affinities)
-      (fn [vs]
-        (->> vs
-             (mapv (fn [{:keys [semantic-dims] :as v}]
-                     (-> v
-                         (dissoc :base-dims)
-                         (select-keys [:affinity-name :score])
-                         (assoc :semantic-interestingness (affinity-set-interestingness semantic-dims))))))))))
-
-(comment
-  (semantic-affinities (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-  (semantic-affinities (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
-
-  )
 
 (declare make-layout dashboard-ify)
 (defn apply-dashboard-template-refactor
