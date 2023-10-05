@@ -24,6 +24,12 @@ export const getSetting = <T extends SettingKey>(
   key: T,
 ): Settings[T] => getSettings(state)[key];
 
+export const getTimeFormat = createSelector(
+  (state: State) => getSetting(state, "custom-formatting"),
+  formattingSettings =>
+    formattingSettings["type/Temporal"]?.time_style || "h:mm A",
+);
+
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
 };
