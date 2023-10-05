@@ -174,8 +174,8 @@
     (u/slugify (str/trim raw-name))))
 
 (defn- is-pk?
-  [[type name]]
-  (and (#{"id" "pk" (u/lower-case-en name)})
+  [[col-name type]]
+  (and (#{"id" "pk"} (u/lower-case-en (name col-name)))
        (isa? type ::int)))
 
 (defn- add-pk-column
@@ -183,13 +183,13 @@
   a new ID column to the columns list."
   [driver name-type-pairs]
   (let [found-it   (atom false)
-        pked-pairs (map (fn [[name type :as p]]
-                          (if (and (not @found-it)
-                                   (is-pk? p))
-                            (do (reset! found-it true)
-                                [(keyword name) {:type ::pk :opts (driver/pk-options driver)}])
-                            p))
-                        name-type-pairs)]
+        pked-pairs (doall (map (fn [[name _type :as p]]
+                                 (if (and (not @found-it)
+                                          (is-pk? p))
+                                   (do (reset! found-it true)
+                                       [(keyword name) {:type ::pk :opts (driver/pk-options driver)}])
+                                   p))
+                               name-type-pairs))]
     (if @found-it ;; we already have a PK, just return them
       pked-pairs
       ;;otherwise, prepend a new ID column
@@ -343,6 +343,7 @@
     - ::text
     - ::date
     - ::datetime
+    - ::pk
 
   A column that is completely blank is assumed to be of type ::text."
   [driver csv-file]
