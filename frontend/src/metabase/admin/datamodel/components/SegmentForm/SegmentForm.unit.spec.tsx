@@ -9,19 +9,34 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets/sample_database";
+import { checkNotNull } from "metabase/core/utils/types";
 
-const setup = () => {
-  renderWithProviders(
-    <Route path="/admin/datamodel/segment/create" component={SegmentApp} />,
+const TestHome = () => <div />;
+
+interface SetupOpts {
+  initialRoute?: string;
+}
+
+const setup = ({
+  initialRoute = "/admin/datamodel/segment/create",
+}: SetupOpts = {}) => {
+  const { history } = renderWithProviders(
+    <>
+      <Route path="/" component={TestHome} />
+      <Route path="/admin/datamodel/segment/create" component={SegmentApp} />
+    </>,
     {
-      initialRoute: "/admin/datamodel/segment/create",
+      initialRoute,
       withRouter: true,
     },
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 };
 
 describe("SegmentForm", () => {
