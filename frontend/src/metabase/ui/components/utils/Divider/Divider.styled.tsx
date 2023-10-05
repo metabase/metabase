@@ -11,11 +11,9 @@ export const getDividerOverrides = (): MantineThemeOverride["components"] => ({
       },
       label: {
         "&::before": {
-          marginRight: theme.spacing.sm,
           borderTopColor: theme.colors.border[0],
         },
         "&::after": {
-          marginLeft: theme.spacing.sm,
           borderTopColor: theme.colors.border[0],
         },
       },
