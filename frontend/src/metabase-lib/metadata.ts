@@ -20,6 +20,8 @@ import type {
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
+  Join,
+  JoinDisplayInfo,
   JoinConditionOperator,
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
@@ -105,6 +107,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  join: Join,
+): JoinDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

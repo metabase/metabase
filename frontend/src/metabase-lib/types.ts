@@ -229,6 +229,11 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
+export type JoinDisplayInfo = {
+  name: string;
+  displayName: string;
+};
+
 export type JoinConditionOperatorDisplayInfo = {
   displayName: string;
   shortName: string;
