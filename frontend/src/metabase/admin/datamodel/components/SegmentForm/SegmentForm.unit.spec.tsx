@@ -20,6 +20,9 @@ interface SetupOpts {
 const setup = ({
   initialRoute = "/admin/datamodel/segment/create",
 }: SetupOpts = {}) => {
+  setupDatabasesEndpoints([createSampleDatabase()]);
+  setupSearchEndpoints([]);
+
   const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
@@ -40,11 +43,6 @@ const setup = ({
 };
 
 describe("SegmentForm", () => {
-  beforeEach(() => {
-    setupDatabasesEndpoints([createSampleDatabase()]);
-    setupSearchEndpoints([]);
-  });
-
   afterEach(() => {
     jest.restoreAllMocks();
   });
