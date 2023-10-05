@@ -137,13 +137,10 @@
   card affinity, but the key element in the structure is `:base-dims`, which are a
    set of dimensions which, when satisfied, enable this affinity object."
   (mc/schema
-    [:map
-     [:dimensions {:optional true} [:vector string?]]
-     [:metrics {:optional true} [:vector string?]]
-     [:filters {:optional true} [:vector string?]]
-     [:score {:optional true} nat-int?]
-     [:affinity-name string?]
-     [:base-dims dimension-set]]))
+   [:map
+    [:affinity-name string?]
+    [:score {:optional true} nat-int?]
+    [:affinity-set [:set keyword?]]]))
 
 (def affinities
   "A sequence of affinity objects."
