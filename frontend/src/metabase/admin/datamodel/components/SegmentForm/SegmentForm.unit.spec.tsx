@@ -49,7 +49,7 @@ describe("SegmentForm", () => {
     expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
   });
 
-  it("should not have an beforeunload event when metric is segment", async () => {
+  it("should not have an beforeunload event when segment is unedited", async () => {
     const { mockEventListener } = setup();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
