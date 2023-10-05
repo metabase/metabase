@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
@@ -6,10 +7,11 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import { checkNotNull } from "metabase/core/utils/types";
 import { Route } from "metabase/hoc/Title";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+
+import MetricApp from "./MetricApp";
 
 const TestHome = () => <div />;
 
@@ -42,7 +44,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   };
 };
 
-describe("MetricForm", () => {
+describe("MetricApp", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
