@@ -70,4 +70,21 @@ describe("SegmentForm", () => {
     expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     expect(mockEvent.returnValue).toBe(undefined);
   });
+
+  it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+    const { history } = await setup({ initialRoute: "/" });
+
+    history.push("/admin/datamodel/segment/create");
+
+    history.goBack();
+
+    expect(
+      screen.queryByText("Changes were not saved"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Navigating away from here will cause you to lose any changes you have made.",
+      ),
+    ).not.toBeInTheDocument();
+  });
 });
