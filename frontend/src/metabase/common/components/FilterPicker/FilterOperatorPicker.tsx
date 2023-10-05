@@ -13,6 +13,7 @@ type FilterOperatorPickerProps = {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   value: Lib.FilterOperatorName | null;
+  supportedOperators?: ReadonlyArray<Lib.FilterOperatorName>;
   onChange: (operator: Lib.FilterOperatorName) => void;
 };
 
@@ -21,11 +22,12 @@ export function FilterOperatorPicker({
   stageIndex,
   column,
   value,
+  supportedOperators,
   onChange,
 }: FilterOperatorPickerProps) {
   const options: Option[] = useMemo(
-    () => getOptions(query, stageIndex, column),
-    [query, stageIndex, column],
+    () => getOptions(query, stageIndex, column, supportedOperators),
+    [query, stageIndex, column, supportedOperators],
   );
 
   return (
@@ -45,15 +47,21 @@ function getOptions(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
+  supportedOperators?: ReadonlyArray<Lib.FilterOperatorName>,
 ): Option[] {
   const operators = Lib.filterableColumnOperators(column);
+  let operatorInfos = operators.map(operator =>
+    Lib.displayInfo(query, stageIndex, operator),
+  );
 
-  return operators.map(operator => {
-    const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
+  if (Array.isArray(supportedOperators)) {
+    operatorInfos = operatorInfos.filter(operatorInfo =>
+      supportedOperators.includes(operatorInfo.shortName),
+    );
+  }
 
-    return {
-      name: operatorInfo.longDisplayName,
-      value: operatorInfo.shortName,
-    };
-  });
+  return operatorInfos.map(operatorInfo => ({
+    name: operatorInfo.longDisplayName,
+    value: operatorInfo.shortName,
+  }));
 }
