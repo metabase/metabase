@@ -62,7 +62,7 @@ describe("MetricForm", () => {
     expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
   });
 
-  it("should not have an beforeunload event when metric is unedited", async () => {
+  it("should not have an beforeunload event when metric is unedited", () => {
     const { mockEventListener } = setup();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
@@ -71,8 +71,8 @@ describe("MetricForm", () => {
     expect(mockEvent.returnValue).toBe(undefined);
   });
 
-  it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
-    const { history } = await setup({ initialRoute: "/" });
+  it("does not show custom warning modal when leaving with no changes via SPA navigation", () => {
+    const { history } = setup({ initialRoute: "/" });
 
     history.push(FORM_URL);
 
@@ -88,8 +88,8 @@ describe("MetricForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
-    const { history } = await setup({ initialRoute: "/" });
+  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", () => {
+    const { history } = setup({ initialRoute: "/" });
 
     history.push(FORM_URL);
 
