@@ -105,4 +105,46 @@ describe("SegmentApp", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("does not show custom warning modal when saving changes", async () => {
+    const { history } = setup();
+
+    userEvent.click(screen.getByText("Select a table"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    });
+
+    userEvent.click(screen.getByText("Orders"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    });
+
+    userEvent.click(screen.getByText("Add filters to narrow your answer"));
+    userEvent.click(screen.getByText("ID"));
+    userEvent.type(screen.getByPlaceholderText("Enter an ID"), "1");
+    userEvent.click(screen.getByText("Add filter"));
+    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
+    userEvent.type(
+      screen.getByLabelText("Describe Your Segment"),
+      "Description",
+    );
+    userEvent.click(screen.getByText("Save changes"));
+
+    await waitFor(() => {
+      expect(history.getCurrentLocation().pathname).toBe(
+        "/admin/datamodel/segments",
+      );
+    });
+
+    expect(
+      screen.queryByText("Changes were not saved"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Navigating away from here will cause you to lose any changes you have made.",
+      ),
+    ).not.toBeInTheDocument();
+  });
 });
