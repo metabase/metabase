@@ -227,6 +227,6 @@
 (mu/defn describe-temporal-pair :- :string
   "Return a string describing the temporal pair.
    Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
-  [temporal-column :- lib.metadata/ColumnMetadata
+  [temporal-column
    temporal-value :- [:or :int :string]]
   (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
