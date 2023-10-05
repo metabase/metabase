@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { callMockEvent } from "__support__/events";
 import {
+  setupCardDataset,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -24,6 +25,7 @@ interface SetupOpts {
 const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
+  setupCardDataset();
 
   const { history } = renderWithProviders(
     <>
