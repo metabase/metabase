@@ -6,7 +6,7 @@ import {
 import { Flex, Stack } from "metabase/ui";
 
 const SEARCH_BODY_WIDTH = "90rem";
-const SEARCH_SIDEBAR_WIDTH = "15rem";
+const SEARCH_SIDEBAR_WIDTH = "18rem";
 
 export const SearchMain = styled(Flex)`
   width: min(calc(${SEARCH_BODY_WIDTH} + ${SEARCH_SIDEBAR_WIDTH}), 100%);

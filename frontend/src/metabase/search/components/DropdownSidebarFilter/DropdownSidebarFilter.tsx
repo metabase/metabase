@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -7,7 +8,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Text, Box, Center, Button } from "metabase/ui";
+import { Text, Box, Center, Button, Stack } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -139,16 +140,18 @@ export const DropdownSidebarFilter = ({
         autoWidth
         sizeToFit
       >
-        <SearchEventSandbox>
-          {popoverWidth && (
-            <Box w={popoverWidth ?? "100%"}>
-              <ContentComponent
-                value={value}
-                onChange={selected => onApplyFilter(selected)}
-              />
-            </Box>
-          )}
-        </SearchEventSandbox>
+        {({ maxHeight }: { maxHeight: string }) => (
+          <SearchEventSandbox>
+            {popoverWidth && (
+              <Stack mah={maxHeight} w={popoverWidth ?? "100%"}>
+                <ContentComponent
+                  value={value}
+                  onChange={selected => onApplyFilter(selected)}
+                />
+              </Stack>
+            )}
+          </SearchEventSandbox>
+        )}
       </Popover>
     </Box>
   );
