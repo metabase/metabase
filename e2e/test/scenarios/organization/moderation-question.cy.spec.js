@@ -108,7 +108,7 @@ describeEE("scenarios > saved question moderation", () => {
       cy.createModerationReview({
         status: "verified",
         moderated_item_type: "card",
-        moderated_item_id: 2,
+        moderated_item_id: ORDERS_BY_YEAR_QUESTION_ID,
       });
 
       cy.signInAsNormalUser();
