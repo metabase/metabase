@@ -9,21 +9,36 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/core/utils/types";
 
-const setup = () => {
+const TestHome = () => <div />;
+
+interface SetupOpts {
+  initialRoute?: string;
+}
+
+const setup = ({
+  initialRoute = "/admin/datamodel/metric/create",
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
   renderWithProviders(
-    <Route path="/admin/datamodel/metric/create" component={MetricApp} />,
+    <>
+      <Route path="/" component={TestHome} />
+      <Route path="/admin/datamodel/metric/create" component={MetricApp} />
+    </>,
     {
-      initialRoute: "/admin/datamodel/metric/create",
+      initialRoute,
       withRouter: true,
     },
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 };
 
 describe("MetricForm", () => {
