@@ -48,17 +48,14 @@ const BOBBY_TEST_COLLECTION = createMockCollection({
   personal_owner_id: 100,
 });
 
-const TEST_COLLECTIONS = [
-  {
-    can_write: false,
-    effective_ancestors: [],
-    effective_location: null,
-    id: "root",
-    name: "Our analytics",
-    parent_id: null,
-  },
-  BOBBY_TEST_COLLECTION,
-];
+const ROOT_TEST_COLLECTION = createMockCollection({
+  ...ROOT_COLLECTION,
+  can_write: false,
+  effective_ancestors: [],
+  id: "root",
+});
+
+const TEST_COLLECTIONS = [ROOT_TEST_COLLECTION, BOBBY_TEST_COLLECTION];
 
 const setup = async (
   question: Question,
@@ -79,7 +76,7 @@ const setup = async (
     setupCollectionsEndpoints(collectionEndpoints);
   } else {
     fetchMock.get("path:/api/collection", TEST_COLLECTIONS);
-    fetchMock.get("path:/api/collection/root", TEST_COLLECTIONS[0]);
+    fetchMock.get("path:/api/collection/root", ROOT_TEST_COLLECTION);
     setupCollectionByIdEndpoint({ collections: [BOBBY_TEST_COLLECTION] });
   }
 
