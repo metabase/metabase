@@ -22,7 +22,7 @@
    [:first-name [:maybe ms/NonBlankString]]
    [:last-name  [:maybe ms/NonBlankString]]
    [:email      ms/Email]
-   [:groups     [:sequential ms/NonBlankString]]])
+   [:groups     [:maybe [:sequential ms/NonBlankString]]]])
 
 (def LDAPSettings
   "Options passed to LDAP integration implementations. These are just the various LDAP Settings from
