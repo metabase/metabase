@@ -15537,6 +15537,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+  - changeSet:
+      id: v48.00-020
+      author: noahmoss
+      comment: Added 0.48.0 - Create recent_views.user_id index
+      changes:
+        - createIndex:
+            indexName: idx_recent_views_user_id
+            tableName: recent_views
+            columns:
+              - column:
+                  name: user_id
+      rollback: # not needed, it will be removed with the table
 
   - changeSet:
       id: v48.00-021
