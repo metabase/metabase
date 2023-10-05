@@ -6,56 +6,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
-   [metabase.models
-    :refer [Action
-            Activity
-            ApplicationPermissionsRevision
-            BookmarkOrdering
-            Card
-            CardBookmark
-            Collection
-            CollectionBookmark
-            CollectionPermissionGraphRevision
-            Dashboard
-            DashboardBookmark
-            DashboardCard
-            DashboardCardSeries
-            Database
-            Dimension
-            Field
-            FieldValues
-            HTTPAction
-            ImplicitAction
-            LoginHistory
-            Metric
-            MetricImportantField
-            ModerationReview
-            NativeQuerySnippet
-            ParameterCard
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            PermissionsRevision
-            PersistedInfo
-            Pulse
-            PulseCard
-            PulseChannel
-            PulseChannelRecipient
-            QueryAction
-            Revision
-            Secret
-            Segment
-            Session
-            Setting
-            Table
-            Timeline
-            TimelineEvent
-            User
-            ViewLog]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -89,54 +44,63 @@
 (def entities
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
-  [Database
-   User
-   Setting
-   Table
-   Field
-   FieldValues
-   Segment
-   Metric
-   MetricImportantField
-   ModerationReview
-   Revision
-   ViewLog
-   Session
-   Collection
-   CollectionPermissionGraphRevision
-   Dashboard
-   Card
-   CardBookmark
-   DashboardBookmark
-   CollectionBookmark
-   BookmarkOrdering
-   DashboardCard
-   DashboardCardSeries
-   Activity
-   Pulse
-   PulseCard
-   PulseChannel
-   PulseChannelRecipient
-   PermissionsGroup
-   PermissionsGroupMembership
-   Permissions
-   PermissionsRevision
-   PersistedInfo
-   ApplicationPermissionsRevision
-   Dimension
-   NativeQuerySnippet
-   LoginHistory
-   Timeline
-   TimelineEvent
-   Secret
-   ParameterCard
-   Action
-   ImplicitAction
-   HTTPAction
-   QueryAction
+  (concat
+   [:model/Database
+    :model/User
+    :model/Setting
+    :model/Table
+    :model/Field
+    :model/FieldValues
+    :model/Segment
+    :model/Metric
+    :model/MetricImportantField
+    :model/ModerationReview
+    :model/Revision
+    :model/ViewLog
+    :model/Session
+    :model/Collection
+    :model/CollectionPermissionGraphRevision
+    :model/Dashboard
+    :model/Card
+    :model/CardBookmark
+    :model/DashboardBookmark
+    :model/CollectionBookmark
+    :model/BookmarkOrdering
+    :model/DashboardCard
+    :model/DashboardCardSeries
+    :model/Activity
+    :model/Pulse
+    :model/PulseCard
+    :model/PulseChannel
+    :model/PulseChannelRecipient
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/Permissions
+    :model/PermissionsRevision
+    :model/PersistedInfo
+    :model/ApplicationPermissionsRevision
+    :model/Dimension
+    :model/NativeQuerySnippet
+    :model/LoginHistory
+    :model/Timeline
+    :model/TimelineEvent
+    :model/Secret
+    :model/ParameterCard
+    :model/Action
+    :model/ImplicitAction
+    :model/HTTPAction
+    :model/QueryAction
+    :model/DashboardTab
+    :model/ModelIndex
+    :model/ModelIndexValue
+    ;; 48+
+    :model/TablePrivileges]
+   (when config/ee-available?
+     [:model/GroupTableAccessPolicy
+      :model/ConnectionImpersonation])
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
-   DataMigrations])
+   [DataMigrations]))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -346,7 +310,12 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  #{Setting Session DataMigrations ImplicitAction HTTPAction QueryAction})
+  #{:model/Setting
+    :model/Session
+    :model/DataMigrations
+    :model/ImplicitAction
+    :model/HTTPAction
+    :model/QueryAction})
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
@@ -371,7 +340,7 @@
 
 
 (defmethod update-sequence-values! :h2
-  [_ data-source]
+  [_db-type data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
