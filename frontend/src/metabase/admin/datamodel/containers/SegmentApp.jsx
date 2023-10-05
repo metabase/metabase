@@ -21,32 +21,35 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-class UpdateSegmentFormInner extends Component {
-  onSubmit = async segment => {
-    await this.props.updateSegment(segment);
-    MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-    this.props.onChangeLocation(`/admin/datamodel/segments`);
-  };
+const UpdateSegmentFormInner = ({
+  segment,
+  updateSegment,
+  onChangeLocation,
+  ...props
+}) => {
+  const handleSubmit = useCallback(
+    async segment => {
+      await updateSegment(segment);
+      MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
+      onChangeLocation(`/admin/datamodel/segments`);
+    },
+    [updateSegment, onChangeLocation],
+  );
 
-  render() {
-    const { segment, ...props } = this.props;
-    return (
-      <SegmentForm
-        {...props}
-        segment={segment.getPlainObject()}
-        onSubmit={this.onSubmit}
-      />
-    );
-  }
-}
+  return (
+    <SegmentForm
+      {...props}
+      segment={segment.getPlainObject()}
+      onSubmit={handleSubmit}
+    />
+  );
+};
 
 const UpdateSegmentForm = Segments.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateSegmentFormInner);
 
-const CreateSegmentForm = props => {
-  const { createSegment, onChangeLocation } = props;
-
+const CreateSegmentForm = ({ createSegment, onChangeLocation, ...props }) => {
   const handleSubmit = useCallback(
     async segment => {
       await createSegment({
