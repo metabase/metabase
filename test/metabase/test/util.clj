@@ -96,11 +96,11 @@
 
 (defn- default-updated-at-timestamped
   [x]
-  (merge {:updated_at (t/zoned-date-time)} x))
+  (assoc x :updated_at (t/zoned-date-time)))
 
 (defn- default-created-at-timestamped
   [x]
-  (merge {:created_at (t/zoned-date-time)} x))
+  (assoc x :created_at (t/zoned-date-time)))
 
 (def ^:private default-timestamped
   (comp default-updated-at-timestamped default-created-at-timestamped))
