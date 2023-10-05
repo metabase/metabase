@@ -1114,6 +1114,9 @@
            (update acc dim-name (fnil conj #{}) semantic-type))
          {})))
 
+(defn affinity-set-interestingness [affinity-set]
+  (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
+
 (defn semantic-affinities
   "Convert nominal affinities into semantic affinities."
   [{:keys [dimensions] :as dashboard-template}]
@@ -1122,10 +1125,15 @@
                         (mapcat (fn [{:keys [base-dims] :as affinity}]
                                   (let [sematic-dims (apply math.combo/cartesian-product (map dim->sems base-dims))]
                                     (map #(assoc affinity :semantic-dims (set %)) sematic-dims)))))]
-    (->> (map :semantic-dims affinities)
-         distinct
-         (map (fn [dims]
-                {:semantic-dims dims})))))
+    (update-vals
+      (group-by :semantic-dims affinities)
+      (fn [vs]
+        (->> vs
+             (mapv (fn [{:keys [semantic-dims] :as v}]
+                     (-> v
+                         (dissoc :base-dims)
+                         (select-keys [:affinity-name :score])
+                         (assoc :semantic-interestingness (affinity-set-interestingness semantic-dims))))))))))
 
 (comment
   (semantic-affinities (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))

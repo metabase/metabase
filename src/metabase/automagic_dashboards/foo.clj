@@ -129,9 +129,11 @@
 (defmulti linked-metrics mi/model)
 
 (defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
-  [{:metric-name       metric-name
-    :metric-title      metric-name
-    :metric-definition definition}])
+  (let [field-ids (set (find-field-ids definition))]
+    [{:metric-name            metric-name
+      :metric-title           metric-name
+      :metric-definition      definition
+      :grounded-metric-fields (t2/select :model/Field :id [:in field-ids])}]))
 
 (defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
   (mapcat
@@ -164,15 +166,11 @@
          (map (fn [nm->field]
                 (let [xform (update-vals nm->field (fn [{field-id :id}]
                                                      [:field field-id nil]))]
-                  {:metric-name          metric-name
-                   :metric-title         metric-name
-                   :metric-definition    {:aggregation
-                                          (transform-metric-aggregate metric-definition xform)}
-                   :semantic-affinities  (mapv (comp
-                                                 (some-fn :semantic_type :effective_type)
-                                                 nm->field) named-dimensions)
-                   :dimension-affinities (vec named-dimensions)
-                   :nominal-type->field  xform}))))))
+                  {:metric-name            metric-name
+                   :metric-title           metric-name
+                   :metric-definition      {:aggregation
+                                            (transform-metric-aggregate metric-definition xform)}
+                   :grounded-metric-fields (vals nm->field)}))))))
 
 (defn grounded-metrics
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
@@ -353,6 +351,43 @@
                              -1 b))
               {})))
 
+(defn make-metric-combinations
+  "From a grounded metric, produce additional metrics that have potential dimensions 
+   mixed in based on the provided ground dimensions and semantic affinity sets."
+  [{grounded-metric-fields :grounded-metric-fields :as metric}
+   ground-dimensions
+   semantic-affinity-sets]
+  (let [grounded-field-ids   (set (map :id grounded-metric-fields))
+        ;; We won't add dimensions to a metric where the dimension is already
+        ;; contributing to the fields already grounded in the metric definition itself.
+        groundable-fields    (->> (vals ground-dimensions)
+                                  (mapcat :matches)
+                                  (remove (comp grounded-field-ids :id))
+                                  (group-by (some-fn
+                                              :semantic_type
+                                              :effective_type)))
+        grounded-field-types (map (some-fn
+                                    :semantic_type
+                                    :effective_type) grounded-metric-fields)]
+    (distinct
+      (for [semantic-dims           semantic-affinity-sets
+            dimset                  (math.combo/permutations semantic-dims)
+            :when (->> (map
+                         (fn [a b] (isa? a b))
+                         grounded-field-types dimset)
+                       (every? true?))
+            :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
+            ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
+                                         (apply math.combo/cartesian-product)
+                                         (map (partial zipmap unsatisfied-semantic-dims)))]
+        (assoc metric :dimensions ground-dimension-fields)))))
+
+(defn make-combinations
+  "Expand simple ground metrics in to ground metrics with dimensions
+   mixed in based on potential semantic affinity sets."
+  [grounded-metrics ground-dimensions semantic-affinity-sets]
+  (mapcat #(make-metric-combinations % ground-dimensions semantic-affinity-sets) grounded-metrics))
+
 (comment
   (require '[metabase.automagic-dashboards.core :as magic])
   (let [template-name     "GenericTable"
@@ -361,19 +396,29 @@
          template-metrics    :metrics} (dashboard-templates/get-dashboard-template ["table" template-name])
         base-context      (#'magic/make-base-context (magic/->root entity))
         ground-dimensions (find-dimensions base-context template-dimensions)
-        metric-templates  (concat
-                            (normalize-metrics template-metrics)
-                            (linked-metrics entity))]
-    (grounded-metrics metric-templates ground-dimensions))
+        metric-templates  (normalize-metrics template-metrics)]
+    (concat
+      (grounded-metrics metric-templates ground-dimensions)
+      (linked-metrics entity)))
 
-  (let [template-name     "GenericTable"
-        entity            (t2/select-one :model/Table :name "ACCOUNTS")
+  (let [template-name          "GenericTable"
+        entity                 (t2/select-one :model/Table :name "ACCOUNTS")
+        template               (dashboard-templates/get-dashboard-template ["table" template-name])
         {template-dimensions :dimensions
-         template-metrics    :metrics} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context      (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions (find-dimensions base-context template-dimensions)
-        metric-templates  (concat
-                            (normalize-metrics template-metrics)
-                            (linked-metrics entity))]
-    (grounded-metrics metric-templates ground-dimensions))
+         template-metrics    :metrics} template
+        semantic-affinity-sets (keys (magic/semantic-affinities template))
+        base-context           (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions      (find-dimensions base-context template-dimensions)
+        metric-templates       (normalize-metrics template-metrics)
+        grounded-metrics       (concat
+                                 (grounded-metrics metric-templates ground-dimensions)
+                                 (linked-metrics entity))]
+    (->> (make-combinations
+           grounded-metrics
+           ground-dimensions
+           semantic-affinity-sets)
+         (mapv (fn [ground-metric-with-dimensions]
+                 (-> ground-metric-with-dimensions
+                     (update :grounded-metric-fields (partial map (juxt :id :name)))
+                     (update :dimensions #(update-vals % (juxt :id :name))))))))
   )
