@@ -561,11 +561,13 @@ export const getIsDirty = createSelector(
 export const getIsSavedQuestionChanged = createSelector(
   [getQuestion, getOriginalQuestion],
   (question, originalQuestion) => {
+    const isSavedQuestion = originalQuestion != null;
+    const hasChanges = question != null;
+    const wereChangesSaved = question?.isSaved();
+    const hasUnsavedChanges = hasChanges && !wereChangesSaved;
+
     return (
-      question != null &&
-      !question.isSaved() &&
-      originalQuestion != null &&
-      !originalQuestion.isDataset()
+      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
     );
   },
 );

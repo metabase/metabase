@@ -15,7 +15,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
@@ -404,7 +403,7 @@
         dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (db/select-reducible Field))))
+              (t2/reducible-select Field))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.

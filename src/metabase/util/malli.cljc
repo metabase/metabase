@@ -100,3 +100,14 @@
      (macros/case
        :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
        :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
+
+#?(:clj
+   (defn validate-throw
+     "Returns the value if it matches the schema, else throw an exception."
+     [schema-or-validator value]
+     (if-not ((if (fn? schema-or-validator)
+                schema-or-validator
+                (mc/validator schema-or-validator))
+              value)
+       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
+       value)))

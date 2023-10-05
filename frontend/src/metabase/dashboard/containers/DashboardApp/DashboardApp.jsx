@@ -16,7 +16,8 @@ import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
-import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import { closeNavbar, setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import {

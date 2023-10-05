@@ -271,15 +271,15 @@
 (deftest ^:parallel named-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "check that named aggregations come back with the correct column metadata (#4002)"
-      (is (= (assoc (qp.test-util/aggregate-col :count)
-                    :name         "auto_generated_name"
-                    :display_name "Count of Things")
-             (-> (mt/run-mbql-query venues
-                   {:aggregation [[:aggregation-options ["COUNT"]
-                                   {:name "auto_generated_name"
-                                    :display-name "Count of Things"}]]})
-                 mt/cols
-                 first))))))
+      (is (=? (assoc (qp.test-util/aggregate-col :count)
+                     :name         "auto_generated_name"
+                     :display_name "Count of Things")
+              (-> (mt/run-mbql-query venues
+                    {:aggregation [[:aggregation-options ["COUNT"]
+                                    {:name "auto_generated_name"
+                                     :display-name "Count of Things"}]]})
+                  mt/cols
+                  first))))))
 
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
