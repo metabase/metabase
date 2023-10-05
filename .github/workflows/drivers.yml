@@ -463,17 +463,17 @@ jobs:
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
+      MB_DB_DBNAME: pg_test
+      MB_DB_USER: pg_test
+      MB_POSTGRESQL_TEST_USER: pg_test
     services:
       postgres:
         image: postgres:12-alpine
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+          POSTGRES_USER: pg_test
+          POSTGRES_DB: pg_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v3
