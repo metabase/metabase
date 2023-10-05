@@ -67,6 +67,14 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
   return ML.with_join_strategy(join, strategy);
 }
 
+export function joinAlias(
+  query: Query,
+  stageIndex: number,
+  join: Join,
+): string {
+  return displayInfo(query, stageIndex, join).name;
+}
+
 export function joinConditions(join: Join): JoinCondition[] {
   return ML.join_conditions(join);
 }
