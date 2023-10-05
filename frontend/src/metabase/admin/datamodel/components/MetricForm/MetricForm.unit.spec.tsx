@@ -53,7 +53,7 @@ describe("MetricForm", () => {
     const descriptionInput = screen.getByPlaceholderText(
       "Something descriptive but not too long",
     );
-    userEvent.type(descriptionInput, "01189998819991197253");
+    userEvent.type(descriptionInput, "something");
 
     const mockEvent = await waitFor(() => {
       return callMockEvent(mockEventListener, "beforeunload");
@@ -86,5 +86,25 @@ describe("MetricForm", () => {
         "Navigating away from here will cause you to lose any changes you have made.",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+    const { history } = await setup({ initialRoute: "/" });
+
+    history.push("/admin/datamodel/metric/create");
+
+    const descriptionInput = screen.getByPlaceholderText(
+      "Something descriptive but not too long",
+    );
+    userEvent.type(descriptionInput, "something");
+
+    history.goBack();
+
+    expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Navigating away from here will cause you to lose any changes you have made.",
+      ),
+    ).toBeInTheDocument();
   });
 });
