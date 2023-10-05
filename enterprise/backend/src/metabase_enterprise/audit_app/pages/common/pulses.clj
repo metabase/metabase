@@ -3,9 +3,7 @@
   and [[metabase-enterprise.audit-app.pages.alerts]]."
   (:require
    [cheshire.core :as json]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase.models.collection :as collection]
-   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -76,10 +74,7 @@
                :user_recipients               [:= :channel.id :user_recipients.channel_id]]
    :where     [:and
                [:not= :pulse.archived true]
-               [:= :channel.enabled true]
-               [:or
-                [:= :collection.id nil]
-                [:not= :collection.id (u/id (audit-db/default-audit-collection))]]]})
+               [:= :channel.enabled true]]})
 
 (defn- describe-frequency [row]
   (-> (select-keys row [:schedule_type :schedule_hour :schedule_day :schedule_frame])

@@ -4,8 +4,6 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-   [metabase-enterprise.audit-db :as audit-db]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
@@ -27,8 +25,7 @@
                   saves        (common/query
                                 {:select   [[(common/grouped-datetime datetime-unit :created_at) :date]
                                             [:%count.* :saves]]
-                                 :from     [[:report_dashboard :d]]
-                                 :where    [:not= :d.collection_id (u/id (audit-db/default-audit-collection))]
+                                 :from     [[:report_dashboard]]
                                  :group-by [(common/grouped-datetime datetime-unit :created_at)]})
                   date->saves  (zipmap (map :date saves) (map :saves saves))
                   all-dates    (sort (keep identity (distinct (concat (keys date->views)
@@ -51,8 +48,7 @@
                :from      [[:view_log :vl]]
                :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
                :where     [:and
-                           [:= :vl.model (h2x/literal "dashboard")]
-                           [:not= :d.collection_id (u/id (audit-db/default-audit-collection))]]
+                           [:= :vl.model (h2x/literal "dashboard")]]
                :group-by  [:d.id]
                :order-by  [[:%count.* :desc]]
                :limit     10})})
@@ -71,8 +67,7 @@
                                            :from      [[:view_log :vl]]
                                            :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
                                            :where     [:and
-                                                       [:= :vl.model (h2x/literal "dashboard")]
-                                                       [:not= :d.collection_id (u/id (audit-db/default-audit-collection))]]
+                                                       [:= :vl.model (h2x/literal "dashboard")]]
                                            :group-by  [:d.id]
                                            :order-by  [[:%count.* :desc]]
                                            :limit     [:inline 10]}]
@@ -116,7 +111,6 @@
                :from      [[:report_dashboardcard :dc]]
                :left-join [[:card_running_time :rt] [:= :dc.card_id :rt.card_id]
                            [:report_dashboard :d]   [:= :dc.dashboard_id :d.id]]
-               :where     [:not= :d.collection_id (u/id (audit-db/default-audit-collection))]
                :group-by  [:d.id]
                :order-by  [[:avg_running_time :desc]]
                :limit     10})})
@@ -133,7 +127,6 @@
                           [:%count.* :count]]
                :from     [[:report_dashboardcard :dc]]
                :join     [[:report_card :c] [:= :c.id :dc.card_id]]
-               :where    [:not= :c.database_id (audit-db/default-audit-db-id)]
                :group-by [:c.id]
                :order-by [[:%count.* :desc]]
                :limit    10})})

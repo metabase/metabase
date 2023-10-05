@@ -2,8 +2,6 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-db :as audit-db]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.urls :as urls]))
 
@@ -61,11 +59,7 @@
                             [:card_count :cc]          [:= :d.id :cc.dashboard_id]
                             [:avg_execution_time :axt] [:= :d.id :axt.dashboard_id]
                             [:views :v]                [:= :d.id :v.dashboard_id]]
-                :where     [[:or
-                             [:= :d.collection_id nil]
-                             [:not= :d.collection_id (u/id (audit-db/default-audit-collection))]]]
                 :order-by  [[[:lower :d.name] :asc]
                             [:dashboard_id :asc]]}
                (common/add-search-clause query-string :d.name)
                (sql.helpers/where where-clause)))})
-                                  ;[:not= :d.collection_id (u/id (audit-db/default-audit-collection))])))})
