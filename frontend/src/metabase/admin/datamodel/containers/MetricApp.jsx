@@ -67,7 +67,7 @@ const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
   return <MetricForm {...props} onSubmit={handleSubmit} />;
 };
 
-const MetricApp = ({ onChangeLocation, route, ...props }) => {
+const MetricApp = ({ route, onChangeLocation, ...props }) => {
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
    * prop has a chance to re-compute on re-render

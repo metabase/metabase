@@ -67,7 +67,7 @@ const CreateSegmentForm = ({ createSegment, onChangeLocation, ...props }) => {
   return <SegmentForm {...props} onSubmit={handleSubmit} />;
 };
 
-const SegmentApp = ({ onChangeLocation, route, ...props }) => {
+const SegmentApp = ({ route, onChangeLocation, ...props }) => {
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
    * prop has a chance to re-compute on re-render
