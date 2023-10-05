@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { Route } from "metabase/hoc/Title";
 import { callMockEvent } from "__support__/events";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets/sample_database";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import { checkNotNull } from "metabase/core/utils/types";
+import { Route } from "metabase/hoc/Title";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 
 const TestHome = () => <div />;
 
