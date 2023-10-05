@@ -9,8 +9,7 @@ import {
 import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import { ApplyButton } from "./FilterApplyButton.styled";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function FilterApplyButton() {
+export function FilterApplyButton() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const isNavigatingBackToDashboard = useSelector(
     getIsNavigatingBackToDashboard,
