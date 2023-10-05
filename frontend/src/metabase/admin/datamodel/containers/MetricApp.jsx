@@ -21,32 +21,35 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-class UpdateMetricFormInner extends Component {
-  onSubmit = async metric => {
-    await this.props.updateMetric(metric);
-    MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-    this.props.onChangeLocation(`/admin/datamodel/metrics`);
-  };
+const UpdateMetricFormInner = ({
+  metric,
+  updateMetric,
+  onChangeLocation,
+  ...props
+}) => {
+  const handleSubmit = useCallback(
+    async metric => {
+      await updateMetric(metric);
+      MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+      onChangeLocation(`/admin/datamodel/metrics`);
+    },
+    [updateMetric, onChangeLocation],
+  );
 
-  render() {
-    const { metric, ...props } = this.props;
-    return (
-      <MetricForm
-        {...props}
-        metric={metric.getPlainObject()}
-        onSubmit={this.onSubmit}
-      />
-    );
-  }
-}
+  return (
+    <MetricForm
+      {...props}
+      metric={metric.getPlainObject()}
+      onSubmit={handleSubmit}
+    />
+  );
+};
 
 const UpdateMetricForm = Metrics.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateMetricFormInner);
 
-const CreateMetricForm = props => {
-  const { createMetric, onChangeLocation } = props;
-
+const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
   const handleSubmit = useCallback(
     async metric => {
       await createMetric({
