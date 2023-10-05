@@ -26,7 +26,6 @@ export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   if (!value || Array.isArray(value)) {
     return null;
   }
-
   const numValue = Number(value);
 
   if (!numValue || isNaN(numValue) || numValue <= 0) {

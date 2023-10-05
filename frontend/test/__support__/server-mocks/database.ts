@@ -39,6 +39,10 @@ export function setupDatabasesEndpoints(
     hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,
   );
   fetchMock.get({ url: "path:/api/database", overwriteRoutes: false }, dbs);
+  fetchMock.post("path:/api/database", async url => {
+    const lastCall = fetchMock.lastCall(url);
+    return await lastCall?.request?.json();
+  });
 
   dbs.forEach(db => setupDatabaseEndpoints(db));
 }
