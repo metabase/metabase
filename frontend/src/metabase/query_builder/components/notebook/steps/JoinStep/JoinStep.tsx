@@ -45,6 +45,7 @@ export function JoinStep({
     table,
     columns,
     conditions,
+    isMarkedForRemoval,
     setStrategy,
     setTable,
     addCondition,
@@ -52,7 +53,7 @@ export function JoinStep({
     removeCondition,
     isColumnSelected,
     setSelectedColumns,
-  } = useJoin(query, stageIndex, join);
+  } = useJoin(query, stageIndex, join, addJoinToRemove, removeJoinToRemove);
 
   const [isAddingNewCondition, setIsAddingNewCondition] = useState(false);
 
@@ -152,6 +153,7 @@ export function JoinStep({
           join={join}
           table={table}
           readOnly={readOnly}
+          isMarkedForRemoval={isMarkedForRemoval}
           canRemove={!isSingleCondition}
           onChange={nextCondition => {
             if (isComplete) {
@@ -263,6 +265,7 @@ interface JoinConditionProps {
   table: Lib.Joinable;
   readOnly?: boolean;
   canRemove: boolean;
+  isMarkedForRemoval: boolean;
   onChange: (condition: Lib.JoinCondition) => void;
   onChangeLHSColumn: (column: Lib.ColumnMetadata) => void;
   onRemove: () => void;
@@ -276,6 +279,7 @@ function JoinCondition({
   table,
   readOnly,
   canRemove,
+  isMarkedForRemoval,
   onChange,
   onChangeLHSColumn,
   onRemove,
@@ -290,7 +294,13 @@ function JoinCondition({
     setOperator,
     setLHSColumn,
     setRHSColumn,
-  } = useJoinCondition(query, stageIndex, table, join, condition);
+  } = useJoinCondition(
+    query,
+    stageIndex,
+    table,
+    isMarkedForRemoval ? undefined : join,
+    condition,
+  );
 
   const rhsColumnPicker = useRef<JoinConditionColumnPickerRef>(null);
 
