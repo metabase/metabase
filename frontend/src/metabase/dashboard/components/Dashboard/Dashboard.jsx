@@ -304,6 +304,7 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
+      isNavigatingBackToDashboard,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -316,7 +317,9 @@ class Dashboard extends Component {
       <SyncedParametersList
         parameters={getValuePopulatedParameters(
           parameters,
-          isAutoApplyFilters ? parameterValues : draftParameterValues,
+          isAutoApplyFilters || isNavigatingBackToDashboard
+            ? parameterValues
+            : draftParameterValues,
         )}
         editingParameter={editingParameter}
         dashboard={dashboard}
