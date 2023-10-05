@@ -84,11 +84,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
       joinsToRemove.forEach(({ alias }) => {
         const join = joinByAlias[alias];
         if (join) {
-          try {
-            query = Lib.removeClause(query, stageIndex, join);
-          } catch (e) {
-            // ignore
-          }
+          query = Lib.removeClause(query, stageIndex, join);
         }
       });
     });
