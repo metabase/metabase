@@ -13,20 +13,20 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload"
 
 const TestHome = () => <div />;
 
+const FORM_URL = "/admin/datamodel/metric/create";
+
 interface SetupOpts {
   initialRoute?: string;
 }
 
-const setup = ({
-  initialRoute = "/admin/datamodel/metric/create",
-}: SetupOpts = {}) => {
+const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
 
   const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
-      <Route path="/admin/datamodel/metric/create" component={MetricApp} />
+      <Route path={FORM_URL} component={MetricApp} />
     </>,
     {
       initialRoute,
@@ -74,7 +74,7 @@ describe("MetricForm", () => {
   it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
     const { history } = await setup({ initialRoute: "/" });
 
-    history.push("/admin/datamodel/metric/create");
+    history.push(FORM_URL);
 
     history.goBack();
 
@@ -91,7 +91,7 @@ describe("MetricForm", () => {
   it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
     const { history } = await setup({ initialRoute: "/" });
 
-    history.push("/admin/datamodel/metric/create");
+    history.push(FORM_URL);
 
     const descriptionInput = screen.getByPlaceholderText(
       "Something descriptive but not too long",
