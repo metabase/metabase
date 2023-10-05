@@ -1099,6 +1099,39 @@
 
   )
 
+(defn dimension-name->satisfiable-semantic-types
+  "Takes dimensions from a dashboard template and returns a map of dimension name
+  to a set of all semantic types in the template that satisfy the dimension."
+  [dimensions]
+  (->> (map first dimensions)
+       (map (fn [[dim-name {:keys [field_type] :as m}]]
+              [dim-name
+               (if (second field_type)
+                 (second field_type)
+                 (first field_type))]))
+       (reduce
+         (fn [acc [dim-name semantic-type]]
+           (update acc dim-name (fnil conj #{}) semantic-type))
+         {})))
+
+(defn semantic-affinities
+  "Convert nominal affinities into semantic affinities."
+  [{:keys [dimensions] :as dashboard-template}]
+  (let [dim->sems  (dimension-name->satisfiable-semantic-types dimensions)
+        affinities (->> (dash-template->affinities dashboard-template)
+                        (mapcat (fn [{:keys [base-dims] :as affinity}]
+                                  (let [sematic-dims (apply math.combo/cartesian-product (map dim->sems base-dims))]
+                                    (map #(assoc affinity :semantic-dims (set %)) sematic-dims)))))]
+    (->> (map :semantic-dims affinities)
+         distinct
+         (map (fn [dims]
+                {:semantic-dims dims})))))
+
+(comment
+  (semantic-affinities (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+  (semantic-affinities (dashboard-templates/get-dashboard-template ["table" "TransactionTable"]))
+
+  )
 
 (declare make-layout dashboard-ify)
 (defn apply-dashboard-template-refactor
@@ -1109,16 +1142,33 @@
   ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
   ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
   ;; bespoke to what it needs to do and not constrained by the dash template
-  (let [metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
+
+  ;; These dimensions are the base lego block dimensions that can be used for all future operations.
+  (let [dimensions (foo/find-dimensions base-context (:dimensions dashboard-template))
+        ;; These are the base metrics (alone) that are primarily just aggregates
+        metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
+                                     dimensions
                                      (:metrics dashboard-template))
-        dimensions (foo/find-dimensions base-context (:dimensions dashboard-template))
+        ;; 1. All potential bound dimensions
+
+
         ;; maybe massage metrics from dashboard template. But dashboard-template is not
         ]
     ;; this empty map is new information that we might want from the yaml
 
     ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
     ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
-    (->> (make-combinations dimensions metrics {} #_info)
+
+    ;; 2. "The spice" we add to metrics to form breakouts
+    ;; metric "Churn" is an agg
+    ;; Add Long & Lat as churn by location
+    ;; Add Timestamp as churn over time
+    ;; Add Category as churn bar chart
+    ;; These are all breakouts
+    (->> (make-combinations dimensions
+                            metrics
+                            affinities
+                            {} #_info)
          (make-layout :web)
          (dashboard-ify dashboard-template))))
 
