@@ -1201,7 +1201,7 @@ saved later when it is ready."
           _set_is_upload    (t2/update! Table table-id {:is_upload true})
           _sync             (scan-and-sync-table! database table)
           card              (create-card!
-                             api/*current-user*
+                             @api/*current-user*
                              {:collection_id          collection-id,
                               :dataset                true
                               :database_id            db-id
