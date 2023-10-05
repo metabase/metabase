@@ -8,6 +8,6 @@ export const NativeQueryLabel = () => {
   const hasNativeWrite = getHasNativeWrite(databases);
 
   const filterLabel = hasNativeWrite ? t`native` : `SQL`;
-  // Search the contents of SQL queries`
+
   return `Search the contents of ${filterLabel} queries`;
 };
