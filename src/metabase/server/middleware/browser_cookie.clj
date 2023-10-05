@@ -6,10 +6,9 @@
   (:require
    [java-time :as t]
    [metabase.server.request.util :as request.u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [ring.util.response :as response]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -30,7 +29,7 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
+(mu/defn ^:private add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie
