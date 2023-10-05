@@ -576,7 +576,7 @@ saved later when it is ready."
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (create-card! api/*current-user* body))
+  (create-card! @api/*current-user* body))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -585,7 +585,7 @@ saved later when it is ready."
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (create-card! api/*current-user* new-card)))
+    (create-card! @api/*current-user* new-card)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
