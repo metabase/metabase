@@ -1,12 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
-import type { Route } from "react-router";
 import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import type { Metric, StructuredQuery } from "metabase-types/api";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
@@ -29,20 +28,18 @@ const QUERY_BUILDER_FEATURES = {
 };
 
 export interface MetricFormProps {
-  disableLeaveConfirmationModal: boolean;
-  route: Route;
   metric?: Metric;
   previewSummary?: string;
   updatePreviewSummary: (previewSummary: string) => void;
+  onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Metric>) => void;
 }
 
 const MetricForm = ({
-  disableLeaveConfirmationModal,
-  route,
   metric,
   previewSummary,
   updatePreviewSummary,
+  onIsDirtyChange,
   onSubmit,
 }: MetricFormProps): JSX.Element => {
   const isNew = metric == null;
@@ -54,6 +51,10 @@ const MetricForm = ({
       validate: getFormErrors,
       onSubmit,
     });
+
+  useEffect(() => {
+    onIsDirtyChange(dirty);
+  }, [dirty, onIsDirtyChange]);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -126,11 +127,6 @@ const MetricForm = ({
           </FormSection>
         </FormFooter>
       )}
-
-      <LeaveConfirmationModal
-        isEnabled={dirty && !disableLeaveConfirmationModal}
-        route={route}
-      />
     </FormRoot>
   );
 };

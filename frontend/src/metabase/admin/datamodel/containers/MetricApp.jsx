@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
-import { Component, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Metrics from "metabase/entities/metrics";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
@@ -28,28 +29,18 @@ const UpdateMetricFormInner = ({
   onChangeLocation,
   ...props
 }) => {
-  /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
-   * prop has a chance to re-compute on re-render
-   */
-  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
-
   const handleSubmit = useCallback(
     async metric => {
       await updateMetric(metric);
       MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-
-      scheduleCallback(() => {
-        onChangeLocation("/admin/datamodel/metrics");
-      });
+      onChangeLocation("/admin/datamodel/metrics");
     },
-    [updateMetric, onChangeLocation, scheduleCallback],
+    [updateMetric, onChangeLocation],
   );
 
   return (
     <MetricForm
       {...props}
-      disableLeaveConfirmationModal={isCallbackScheduled}
       metric={metric.getPlainObject()}
       onSubmit={handleSubmit}
     />
@@ -61,12 +52,6 @@ const UpdateMetricForm = Metrics.load({
 })(UpdateMetricFormInner);
 
 const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
-  /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
-   * prop has a chance to re-compute on re-render
-   */
-  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
-
   const handleSubmit = useCallback(
     async metric => {
       await createMetric({
@@ -74,31 +59,46 @@ const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
         table_id: metric.definition["source-table"],
       });
       MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-
-      scheduleCallback(() => {
-        onChangeLocation("/admin/datamodel/metrics");
-      });
+      onChangeLocation("/admin/datamodel/metrics");
     },
-    [createMetric, onChangeLocation, scheduleCallback],
+    [createMetric, onChangeLocation],
   );
 
-  return (
-    <MetricForm
-      {...props}
-      disableLeaveConfirmationModal={isCallbackScheduled}
-      onSubmit={handleSubmit}
-    />
-  );
+  return <MetricForm {...props} onSubmit={handleSubmit} />;
 };
 
-class MetricApp extends Component {
-  render() {
-    return this.props.params.id ? (
-      <UpdateMetricForm {...this.props} />
-    ) : (
-      <CreateMetricForm {...this.props} />
-    );
-  }
-}
+const MetricApp = ({ onChangeLocation, route, ...props }) => {
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+  const [isDirty, setIsDirty] = useState(false);
+
+  const handleChangeLocation = useCallback(
+    location => {
+      scheduleCallback(() => {
+        onChangeLocation(location);
+      });
+    },
+    [scheduleCallback, onChangeLocation],
+  );
+
+  const SegmentAppForm = props.params.id ? UpdateMetricForm : CreateMetricForm;
+
+  return (
+    <>
+      <SegmentAppForm
+        onIsDirtyChange={setIsDirty}
+        onChangeLocation={handleChangeLocation}
+        {...props}
+      />
+      <LeaveConfirmationModal
+        isEnabled={isDirty && !isCallbackScheduled}
+        route={route}
+      />
+    </>
+  );
+};
 
 export default connect(mapStateToProps, mapDispatchToProps)(MetricApp);
