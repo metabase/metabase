@@ -54,10 +54,7 @@ describe("SegmentApp", () => {
   it("should have beforeunload event when user makes edits to a segment", async () => {
     const { mockEventListener } = setup();
 
-    const descriptionInput = screen.getByPlaceholderText(
-      "Something descriptive but not too long",
-    );
-    userEvent.type(descriptionInput, "something");
+    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
 
     const mockEvent = await waitFor(() => {
       return callMockEvent(mockEventListener, "beforeunload");
@@ -97,10 +94,7 @@ describe("SegmentApp", () => {
 
     history.push(FORM_URL);
 
-    const descriptionInput = screen.getByPlaceholderText(
-      "Something descriptive but not too long",
-    );
-    userEvent.type(descriptionInput, "something");
+    userEvent.type(screen.getByLabelText("Name Your Segment"), "Name");
 
     history.goBack();
 
