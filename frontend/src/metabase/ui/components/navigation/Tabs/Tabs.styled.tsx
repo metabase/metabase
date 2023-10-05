@@ -1,14 +1,19 @@
 import { rem } from "@mantine/core";
-import type { MantineThemeOverride } from "@mantine/core";
+import type { MantineThemeOverride, TabsStylesParams } from "@mantine/core";
+
+const TAB_PADDING = {
+  horizontal: `${rem(10)} ${rem(8)}`,
+  vertical: `${rem(10)} ${rem(15)} ${rem(10)} ${rem(8)}`,
+};
 
 export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
   Tabs: {
-    styles: theme => ({
+    styles: (theme, { orientation }: TabsStylesParams) => ({
       tab: {
         color: theme.colors.text[2],
-        padding: `${rem(10)} ${rem(8)}`,
+        padding: TAB_PADDING[orientation],
         "&:hover": {
-          borderColor: "transparent",
+          borderColor: theme.colors.bg[1],
           backgroundColor: theme.colors.brand[0],
         },
         "&[data-active]": {
@@ -29,6 +34,9 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
         "&:not(:only-child)": {
           marginRight: rem(6),
         },
+      },
+      tabsList: {
+        borderColor: theme.colors.bg[1],
       },
     }),
   },

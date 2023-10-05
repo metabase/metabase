@@ -15,11 +15,11 @@ export const argTypes = {
 };
 
 export const tabs = [
-  { value: "overview", label: "Overview" },
-  { value: "metrics", label: "Metrics" },
-  { value: "segments", label: "Segments" },
-  { value: "actions", label: "Actions", disabled: true },
-  { value: "filters", label: "Filters" },
+  { value: "overview", label: "Overview", icon: "home" },
+  { value: "metrics", label: "Metrics", icon: "metric" },
+  { value: "segments", label: "Segments", icon: "segment" },
+  { value: "actions", label: "Actions", icon: "bolt", disabled: true },
+  { value: "filters", label: "Filters", icon: "filter" },
 ];
 
 <Meta
@@ -63,7 +63,7 @@ export const IconsTemplate = args => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          icon={<Icon name="sun" />}
+          icon={<Icon name={tab.icon} />}
         >
           {tab.label}
         </Tabs.Tab>
@@ -84,7 +84,7 @@ export const Default = DefaultTemplate.bind({});
 export const Icons = IconsTemplate.bind({});
 
 <Canvas>
-  <Story name="Icons, horizontal orientation">{Icons}</Story>
+  <Story name="Icons">{Icons}</Story>
 </Canvas>
 
 ### Vertical orientation
@@ -104,5 +104,5 @@ VerticalIcons.args = {
 };
 
 <Canvas>
-  <Story name="Icons, vertical orientation">{VerticalIcons}</Story>
+  <Story name="Vertical orientation, icons">{VerticalIcons}</Story>
 </Canvas>
