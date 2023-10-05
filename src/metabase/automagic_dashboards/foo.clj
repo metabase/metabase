@@ -370,17 +370,22 @@
                                     :semantic_type
                                     :effective_type) grounded-metric-fields)]
     (distinct
-      (for [semantic-dims           semantic-affinity-sets
-            dimset                  (math.combo/permutations semantic-dims)
-            :when (->> (map
-                         (fn [a b] (isa? a b))
-                         grounded-field-types dimset)
-                       (every? true?))
+      (for [affinity-set           semantic-affinity-sets
+            dimset                  (math.combo/permutations affinity-set)
+            :when (and
+                    (>= (count dimset)
+                        (count grounded-metric-fields))
+                    (->> (map
+                           (fn [a b] (isa? a b))
+                           grounded-field-types dimset)
+                         (every? true?)))
             :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
             ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
                                          (apply math.combo/cartesian-product)
                                          (map (partial zipmap unsatisfied-semantic-dims)))]
-        (assoc metric :dimensions ground-dimension-fields)))))
+        (assoc metric
+          :dimensions ground-dimension-fields
+          :affinity-set affinity-set)))))
 
 (defn make-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
