@@ -116,7 +116,7 @@
               :visualization_settings {}}))
 
    :model/Collection
-   (fn [_] (default-created-at-timestamped
+   (fn [_] (default-created-at-timestamped {:name (tu.random/random-name)}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
