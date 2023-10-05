@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { Component, useCallback } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -44,20 +44,23 @@ const UpdateSegmentForm = Segments.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateSegmentFormInner);
 
-class CreateSegmentForm extends Component {
-  onSubmit = async segment => {
-    await this.props.createSegment({
-      ...segment,
-      table_id: segment.definition["source-table"],
-    });
-    MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-    this.props.onChangeLocation(`/admin/datamodel/segments`);
-  };
+const CreateSegmentForm = props => {
+  const { createSegment, onChangeLocation } = props;
 
-  render() {
-    return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
-  }
-}
+  const handleSubmit = useCallback(
+    async segment => {
+      await createSegment({
+        ...segment,
+        table_id: segment.definition["source-table"],
+      });
+      MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
+      onChangeLocation(`/admin/datamodel/segments`);
+    },
+    [createSegment, onChangeLocation],
+  );
+
+  return <SegmentForm {...props} onSubmit={handleSubmit} />;
+};
 
 class SegmentApp extends Component {
   render() {
