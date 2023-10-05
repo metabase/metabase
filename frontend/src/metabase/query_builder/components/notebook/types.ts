@@ -49,6 +49,11 @@ export interface NotebookStepAction {
   }) => void;
 }
 
+export type JoinToRemove = {
+  stageIndex: number;
+  alias: string;
+};
+
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
   topLevelQuery: Query;
@@ -59,6 +64,8 @@ export interface NotebookStepUiComponentProps {
   reportTimezone: string;
   readOnly?: boolean;
   updateQuery: (query: StructuredQuery | Query) => Promise<void>;
+  addJoinToRemove: (join: JoinToRemove) => void;
+  removeJoinToRemove: (join: JoinToRemove) => void;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;

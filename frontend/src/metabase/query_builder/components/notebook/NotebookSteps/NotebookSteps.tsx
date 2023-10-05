@@ -6,7 +6,11 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 
-import type { NotebookStep as INotebookStep, OpenSteps } from "../types";
+import type {
+  NotebookStep as INotebookStep,
+  OpenSteps,
+  JoinToRemove,
+} from "../types";
 import { getQuestionSteps } from "../lib/steps";
 import NotebookStep from "../NotebookStep";
 import { Container } from "./NotebookSteps.styled";
@@ -16,8 +20,10 @@ interface NotebookStepsProps {
   question: Question;
   sourceQuestion?: Question;
   reportTimezone: string;
-  updateQuestion: (question: Question) => Promise<void>;
   readOnly?: boolean;
+  addJoinToRemove: (join: JoinToRemove) => void;
+  removeJoinToRemove: (join: JoinToRemove) => void;
+  updateQuestion: (question: Question) => Promise<void>;
 }
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
@@ -38,8 +44,10 @@ function NotebookSteps({
   question,
   sourceQuestion,
   reportTimezone,
-  updateQuestion,
   readOnly = false,
+  addJoinToRemove,
+  removeJoinToRemove,
+  updateQuestion,
 }: NotebookStepsProps) {
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
@@ -109,9 +117,11 @@ function NotebookSteps({
             isLastStep={isLast}
             isLastOpened={isLastOpened}
             reportTimezone={reportTimezone}
+            readOnly={readOnly}
             updateQuery={onChange}
             openStep={handleStepOpen}
-            readOnly={readOnly}
+            addJoinToRemove={addJoinToRemove}
+            removeJoinToRemove={removeJoinToRemove}
           />
         );
       })}

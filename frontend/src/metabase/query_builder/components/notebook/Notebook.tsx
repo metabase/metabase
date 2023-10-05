@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
@@ -10,6 +11,7 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import type { JoinToRemove } from "./types";
 import NotebookSteps from "./NotebookSteps";
 import { NotebookRoot } from "./Notebook.styled";
 
@@ -45,6 +47,23 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     setQueryBuilderMode,
   } = props;
 
+  const [, setJoinsToRemove] = useState<JoinToRemove[]>([]);
+
+  const addJoinToRemove = (joinToRemove: JoinToRemove) => {
+    setJoinsToRemove(joins => [...joins, joinToRemove]);
+  };
+
+  const removeJoinToRemove = (joinToRemove: JoinToRemove) => {
+    setJoinsToRemove(joins =>
+      joins.filter(join => {
+        const isTargetJoin =
+          joinToRemove.stageIndex === join.stageIndex &&
+          joinToRemove.alias === join.alias;
+        return !isTargetJoin;
+      }),
+    );
+  };
+
   async function cleanupQuestion() {
     // Converting a query to MLv2 and back performs a clean-up
     let cleanQuestion = question.setDatasetQuery(
@@ -78,7 +97,11 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
 
   return (
     <NotebookRoot className={className}>
-      <NotebookSteps {...props} />
+      <NotebookSteps
+        {...props}
+        addJoinToRemove={addJoinToRemove}
+        removeJoinToRemove={removeJoinToRemove}
+      />
       {hasVisualizeButton && isRunnable && (
         <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}

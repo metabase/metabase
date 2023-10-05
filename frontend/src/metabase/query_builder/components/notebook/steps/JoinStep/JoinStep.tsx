@@ -32,6 +32,8 @@ export function JoinStep({
   readOnly,
   sourceQuestion,
   updateQuery,
+  addJoinToRemove,
+  removeJoinToRemove,
 }: NotebookStepUiComponentProps) {
   const { stageIndex, itemIndex } = step;
 

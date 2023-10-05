@@ -14,6 +14,7 @@ import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type {
+  NotebookStepUiComponentProps,
   NotebookStep as INotebookStep,
   NotebookStepAction,
 } from "../types";
@@ -35,7 +36,11 @@ function hasLargeButton(action: NotebookStepAction) {
   return !STEP_UI[action.type].compact;
 }
 
-interface NotebookStepProps {
+interface NotebookStepProps
+  extends Pick<
+    NotebookStepUiComponentProps,
+    "addJoinToRemove" | "removeJoinToRemove"
+  > {
   step: INotebookStep;
   sourceQuestion?: Question;
   isLastStep: boolean;
@@ -54,6 +59,8 @@ function NotebookStep({
   reportTimezone,
   openStep,
   updateQuery,
+  addJoinToRemove,
+  removeJoinToRemove,
   readOnly = false,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
@@ -144,6 +151,8 @@ function NotebookStep({
                 query={step.query}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}
+                addJoinToRemove={addJoinToRemove}
+                removeJoinToRemove={removeJoinToRemove}
                 isLastOpened={isLastOpened}
                 reportTimezone={reportTimezone}
                 readOnly={readOnly}
