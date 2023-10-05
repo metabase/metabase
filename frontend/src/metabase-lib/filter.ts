@@ -52,6 +52,7 @@ import type {
   TimeFilterParts,
   TimeParts,
 } from "./types";
+import { isTime } from "./column_types";
 
 export function filterableColumns(
   query: Query,
@@ -71,7 +72,7 @@ export function defaultFilterOperatorName(
   stageIndex: number,
   column: ColumnMetadata,
 ): FilterOperatorName {
-  return "=";
+  return isTime(column) ? "<" : "=";
 }
 
 export function filter(

@@ -33,20 +33,13 @@ export const supportedOperators = [
   "not-null",
 ] as const;
 
-function getDefaultValuesForOperator(
-  operatorName: Lib.TimeFilterOperatorName,
-): Lib.TimeParts[] {
-  const valueCount = timeFilterValueCountMap[operatorName];
-  return Array(valueCount).fill(defaultTimeValue);
-}
-
 export function TimeFilterPicker({
   query,
   stageIndex,
   column,
   filter,
-  onBack,
   onChange,
+  onBack,
 }: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
 
@@ -54,8 +47,8 @@ export function TimeFilterPicker({
     ? Lib.timeFilterParts(query, stageIndex, filter)
     : null;
 
-  const [operatorName, setOperatorName] = useState<Lib.TimeFilterOperatorName>(
-    filterParts ? filterParts.operator : "<",
+  const [operatorName, setOperatorName] = useState(
+    getInitialOperatorName(query, stageIndex, column, filterParts),
   );
 
   const [values, setValues] = useState<Lib.TimeParts[]>(
@@ -117,6 +110,29 @@ export function TimeFilterPicker({
       </Footer>
     </>
   );
+}
+
+function getInitialOperatorName(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  filterParts: Lib.TimeFilterParts | null,
+): Lib.TimeFilterOperatorName {
+  if (filterParts) {
+    return filterParts.operator;
+  }
+  return Lib.defaultFilterOperatorName(
+    query,
+    stageIndex,
+    column,
+  ) as Lib.TimeFilterOperatorName;
+}
+
+function getDefaultValuesForOperator(
+  operatorName: Lib.TimeFilterOperatorName,
+): Lib.TimeParts[] {
+  const valueCount = timeFilterValueCountMap[operatorName];
+  return Array(valueCount).fill(defaultTimeValue);
 }
 
 function ValuesInput({
