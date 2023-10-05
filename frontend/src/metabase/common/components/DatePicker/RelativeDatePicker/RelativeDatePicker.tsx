@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group } from "metabase/ui";
+import { Button, Flex, Tabs } from "metabase/ui";
 import type { RelativeDatePickerValue } from "../types";
-import { DEFAULT_VALUE } from "./constants";
+import { DEFAULT_VALUE, TABS } from "./constants";
+import { getTabType, getValueAfterTabChange } from "./utils";
 
 interface RelativeDatePickerProps {
   value?: RelativeDatePickerValue;
@@ -16,29 +16,33 @@ export function RelativeDatePicker({
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
-  const [value] = useState(initialValue);
-
-  const handleSubmit = () => {
-    onChange(value);
-  };
+  const [value, setValue] = useState(initialValue);
 
   return (
     <div>
-      <PickerHeader value={value} onBack={onBack} />
-      <Divider />
-      <PickerFooter initialValue={initialValue} onSubmit={handleSubmit} />
+      <PickerHeader value={value} onChange={setValue} onBack={onBack} />
     </div>
   );
 }
 
 interface PickerHeaderProps {
   value: RelativeDatePickerValue;
+  onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
 
-function PickerHeader({ onBack }: PickerHeaderProps) {
+function PickerHeader({ value, onChange, onBack }: PickerHeaderProps) {
+  const type = getTabType(value);
+
+  const handleChange = (type: string | null) => {
+    const tab = TABS.find(tab => tab.type === type);
+    if (tab) {
+      onChange(getValueAfterTabChange(tab.type, value));
+    }
+  };
+
   return (
-    <Group>
+    <Flex>
       <Button
         c="text.1"
         display="block"
@@ -46,21 +50,15 @@ function PickerHeader({ onBack }: PickerHeaderProps) {
         leftIcon={<Icon name="chevronleft" />}
         onClick={onBack}
       />
-    </Group>
-  );
-}
-
-interface PickerFooterProps {
-  initialValue?: RelativeDatePickerValue;
-  onSubmit: () => void;
-}
-
-function PickerFooter({ initialValue, onSubmit }: PickerFooterProps) {
-  return (
-    <Group p="sm" position="right">
-      <Button variant="filled" onClick={onSubmit}>
-        {initialValue ? t`Update filter` : t`Add filter`}
-      </Button>
-    </Group>
+      <Tabs value={type} onTabChange={handleChange}>
+        <Tabs.List>
+          {TABS.map(tab => (
+            <Tabs.Tab key={tab.type} value={tab.type}>
+              {tab.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
+    </Flex>
   );
 }

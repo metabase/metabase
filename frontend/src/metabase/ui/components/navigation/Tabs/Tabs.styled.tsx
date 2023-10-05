@@ -2,8 +2,8 @@ import { rem } from "@mantine/core";
 import type { MantineThemeOverride, TabsStylesParams } from "@mantine/core";
 
 const TAB_PADDING = {
-  horizontal: `${rem(10)} ${rem(8)}`,
-  vertical: `${rem(10)} ${rem(15)} ${rem(10)} ${rem(8)}`,
+  horizontal: `${rem(11)} ${rem(8)}`,
+  vertical: `${rem(11)} ${rem(15)} ${rem(11)} ${rem(8)}`,
 };
 
 export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
