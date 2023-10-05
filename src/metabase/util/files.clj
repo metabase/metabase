@@ -13,8 +13,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.util.zip ZipInputStream)
-   (java.io File FileNotFoundException)
+   (java.io FileNotFoundException)
    (java.net URL)
    (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
