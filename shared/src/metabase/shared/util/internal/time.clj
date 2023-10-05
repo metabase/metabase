@@ -203,3 +203,23 @@
   "Returns the time elapsed between `before` and `after` in days (an integer)."
   [before after]
   (.toDays (t/duration before after)))
+
+(defn format-unit [input unit]
+  (if (string? input)
+    (let [date? (re-matches #"\d\d\d\d-\d\d-\d\d"  input)
+          t (if date? (t/local-date input) (t/local-date-time input))]
+      (case unit
+        :day-of-week (t/format "EEEE" t)
+        :month-of-year (t/format "MMMM" t)
+        :minute-of-hour (t/format "m" t)
+        :hour-of-day (t/format "h a" t)
+        :day-of-month (t/format "d" t)
+        :day-of-year (t/format "D" t)
+        :week-of-year (t/format "w" t)
+        :quarter-of-year (t/format "'Q'Q" t)
+        (if date?
+          (t/format "MMMM d, YYYY" t)
+          (t/format "MMMM d, YYYY h:mm a" t))))
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (str input))))

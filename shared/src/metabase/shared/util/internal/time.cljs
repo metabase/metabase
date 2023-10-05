@@ -155,3 +155,23 @@
   "Returns the time elapsed between `before` and `after` in days."
   [^moment/Moment before ^moment/Moment after]
   (.diff after before "day"))
+
+(defn format-unit [input unit]
+  (if (string? input)
+    (let [date? (re-matches #"\d\d\d\d-\d\d-\d\d" input)
+          t (moment/utc input moment/ISO_8601)]
+      (case unit
+        :day-of-week (.format t "dddd")
+        :month-of-year (.format t "MMMM")
+        :minute-of-hour (.format t "m")
+        :hour-of-day (.format t "h A")
+        :day-of-month (.format t "D")
+        :day-of-year (.format t "DDD")
+        :week-of-year (.format t "w")
+        :quarter-of-year (.format t "[Q]Q")
+        (if date?
+          (.format t "MMMM D, YYYY")
+          (.format t "MMMM D, YYYY h:mm A"))))
+    (if (= unit :hour-of-day)
+      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+      (str input))))

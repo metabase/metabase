@@ -205,3 +205,22 @@
     (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
                           #"Unknown input to coerce-to-time; expecting a string"
                           (shared.ut/coerce-to-time 12)))))
+
+(deftest format-string-test
+  (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u))
+    "Wednesday" :day-of-week
+    "February" :month-of-year
+    "8" :day-of-month
+    "39" :day-of-year
+    "6" :week-of-year
+    "Q1" :quarter-of-year
+    "February 8, 2023" nil)
+
+  (is (= "October 3, 2023 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
+  (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
+  (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
+  (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))
+  (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
+  (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day)))
+
+  )

@@ -23,7 +23,10 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.metadata :as lib.metadata]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -59,24 +62,43 @@
      (lib.metadata.calculation/display-name query stage-number clause style))))
 
 (defmethod lib.metadata.calculation/display-name-method ::varargs
-  [query stage-number [tag _opts & exprs] style]
-  (let [display-names (map #(lib.metadata.calculation/display-name query stage-number % style)
-                           exprs)]
-    (if (clojure.core/= (count exprs) 2)
-      (let [[x y] display-names]
-        (clojure.core/case tag
-          :=  (i18n/tru "{0} equals {1}"         x y)
-          :!= (i18n/tru "{0} does not equal {1}" x y)))
-      ;; with > 2 args, `:=` works like SQL `IN`.
-      ;;
-      ;; with > 2 args, `:!=` works like SQL `NOT IN`.
-      (let [expr   (first display-names)
-            values (lib.util/join-strings-with-conjunction
-                    (i18n/tru "or")
-                    (rest display-names))]
-        (clojure.core/case tag
-          :=  (i18n/tru "{0} equals any of {1}"         expr values)
-          :!= (i18n/tru "{0} does not equal any of {1}" expr values))))))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name lib.temporal-bucket/describe-temporal-pair
+        numeric? #(clojure.core/= (lib.types.isa/field-type (lib.metadata.calculation/metadata query stage-number %))
+                                  :metabase.lib.types.constants/number)
+        temporal? #(clojure.core/= (lib.types.isa/field-type (lib.metadata.calculation/metadata query stage-number %))
+                                   :metabase.lib.types.constants/temporal)]
+    (mbql.u/match-one expr
+      [:= _ (a :guard numeric?) b]
+      (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
+
+      [:!= _ (a :guard numeric?) b]
+      (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
+
+      [:!= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1}" (->display-name a) (->temporal-name a b))
+
+      [:= _ a b]
+      (i18n/tru "{0} is {1}" (->display-name a) (->display-name b))
+
+      [:!= _ a b]
+      (i18n/tru "{0} is not {1}" (->display-name a) (->display-name b))
+
+      [:= _ (a :guard numeric?) & args]
+      (i18n/tru "{0} is equal to {1} selections" (->display-name a) (count args))
+
+      [:!= _ (a :guard numeric?) & args]
+      (i18n/tru "{0} is not equal to {1} selections" (->display-name a) (count args))
+
+      [:!= _ (a :guard temporal?) & args]
+      (i18n/tru "{0} excludes {1} selections" (->display-name a) (count args))
+
+      [:= _ a & args]
+      (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
+
+      [:!= _ a & args]
+      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args)))))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number [tag _opts x y] style]
@@ -94,7 +116,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number [_tag _opts expr x y] style]
-  (i18n/tru "{0} is between {1} and {2}"
+  (i18n/tru "{0} between {1} {2}"
             (lib.metadata.calculation/display-name query stage-number expr style)
             (lib.metadata.calculation/display-name query stage-number x    style)
             (lib.metadata.calculation/display-name query stage-number y    style)))
@@ -124,11 +146,7 @@
   [query stage-number [_tag _opts expr n unit] style]
   (i18n/tru "{0} is within {1}"
             (lib.metadata.calculation/display-name query stage-number expr style)
-            ;; this should legitimately be lowercasing in the user locale. I know system locale isn't necessarily the
-            ;; same thing, but it might be. This will have to do until we have some sort of user-locale lower-case
-            ;; functionality
-            #_ {:clj-kondo/ignore [:discouraged-var]}
-            (str/lower-case (lib.temporal-bucket/describe-temporal-interval n unit))))
+            (lib.temporal-bucket/describe-temporal-interval n unit)))
 
 (lib.common/defop and [x y & more])
 (lib.common/defop or [x y & more])

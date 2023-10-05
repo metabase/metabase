@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [clojure.string :as str]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -221,3 +222,6 @@
     stage-number :- :int
     x]
    (available-temporal-buckets-method query stage-number x)))
+
+(defn describe-temporal-pair [temporal-column temporal-value]
+  (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))

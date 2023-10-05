@@ -52,3 +52,6 @@
     (string? value) (-> value common/drop-trailing-time-zone internal/parse-time-string)
     :else           (throw (ex-info "Unknown input to coerce-to-time; expecting a string"
                                     {:value value}))))
+
+(defn format-unit [temporal-value unit]
+  (internal/format-unit temporal-value unit))
