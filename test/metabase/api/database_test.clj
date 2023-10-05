@@ -26,8 +26,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -242,19 +241,20 @@
 (deftest create-db-test
   (testing "POST /api/database"
     (testing "Check that we can create a Database"
-      (is (schema= (merge
-                    (m/map-vals s/eq (mt/object-defaults Database))
-                    {:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"
-                     :cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"}
-                    {:created_at java.time.temporal.Temporal
-                     :engine     (s/eq ::test-driver)
-                     :id         su/IntGreaterThanZero
-                     :details    (s/eq {:db "my_db"})
-                     :updated_at java.time.temporal.Temporal
-                     :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))
-                     :creator_id (s/eq (mt/user->id :crowberto))})
-                   (create-db-via-api!))))))
+      (is (malli= [:merge
+                   (into [:map] (m/map-vals (fn [v] [:fn #(= % v)]) (mt/object-defaults Database)))
+                   [:map
+                    [:metadata_sync_schedule #"0 \d{1,2} \* \* \* \? \*"]
+                    [:cache_field_values_schedule #"0 \d{1,2} \d{1,2} \* \* \? \*"]
+                    [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]
+                    [:engine     [:= ::test-driver]]
+                    [:id         ms/PositiveInt]
+                    [:details    [:fn #(= % {:db "my_db"})]]
+                    [:updated_at (ms/InstanceOfClass java.time.temporal.Temporal)]
+                    [:name       ms/NonBlankString]
+                    [:features   [:= (driver.u/features ::test-driver (mt/db))]]
+                    [:creator_id [:= (mt/user->id :crowberto)]]]]
+            (create-db-via-api!))))))
 
 (deftest create-db-test-2
   (testing "POST /api/database"
@@ -755,16 +755,18 @@
 
 (def ^:private SavedQuestionsDB
   "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
-  {:name               (s/eq "Saved Questions")
-   :id                 (s/eq -1337)
-   :features           (s/eq ["basic-aggregations"])
-   :is_saved_questions (s/eq true)
-   :tables             [{:id               #"^card__\d+$"
-                         :db_id            s/Int
-                         :display_name     s/Str
-                         :moderated_status (s/enum nil "verified")
-                         :schema           s/Str ; collection name
-                         :description      (s/maybe s/Str)}]})
+  [:map
+   [:name               [:= "Saved Questions"]]
+   [:id                 [:= -1337]]
+   [:is_saved_questions [:= true]]
+   [:features           [:= ["basic-aggregations"]]]
+   [:tables             [:sequential [:map
+                                      [:id               #"^card__\d+$"]
+                                      [:db_id            :int]
+                                      [:display_name     :string]
+                                      [:moderated_status [:or nil? [:= "verified"]]]
+                                      [:schema           :string] ; collection name
+                                      [:description      [:maybe :string]]]]]])
 
 (defn- check-tables-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -792,8 +794,8 @@
           (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
           ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
           (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
-            (is (schema= SavedQuestionsDB
-                         response))
+            (is (malli= SavedQuestionsDB
+                        response))
             (check-tables-included response (virtual-table-for-card card))))))))
 
 (deftest databases-list-include-saved-questions-tables-test-2
@@ -821,8 +823,8 @@
         ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
         ;; Collection name as their Schema
         (let [response (last (:data (mt/user-http-request :crowberto :get 200 "database?saved=true&include=tables")))]
-          (is (schema= SavedQuestionsDB
-                       response))
+          (is (malli= SavedQuestionsDB
+                      response))
           (check-tables-included
            response
            (virtual-table-for-card coin-card :schema "Coins")
@@ -834,8 +836,8 @@
       (mt/with-temp [Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])
                      Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]
         (let [response (fetch-virtual-database)]
-          (is (schema= SavedQuestionsDB
-                       response))
+          (is (malli= SavedQuestionsDB
+                      response))
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card cambiguous-card)))))))
 
@@ -852,8 +854,8 @@
                      Card     ok-card  (assoc (card-with-native-query "OK Card")
                                               :result_metadata [{:name "finches"}])]
         (let [response (fetch-virtual-database)]
-          (is (schema= SavedQuestionsDB
-                       response))
+          (is (malli= SavedQuestionsDB
+                      response))
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card bad-card)))))))
 
@@ -875,8 +877,8 @@
                                         :breakout     [!month.date]))
                                     {:result_metadata [{:name "num_toucans"}]})]
         (let [response (fetch-virtual-database)]
-          (is (schema= SavedQuestionsDB
-                       response))
+          (is (malli= SavedQuestionsDB
+                      response))
           (check-tables-included response (virtual-table-for-card ok-card))
           (check-tables-not-included response (virtual-table-for-card bad-card)))))))
 
@@ -886,18 +888,8 @@
                                               :result_metadata [{:name "age_in_bird_years"}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
-        (is (schema= {:name               (s/eq "Saved Questions")
-                      :id                 (s/eq -1337)
-                      :is_saved_questions (s/eq true)
-                      :features           (s/eq ["basic-aggregations"])
-                      :tables             [{:id               #"^card__\d+$"
-                                            :db_id            s/Int
-                                            :display_name     s/Str
-                                            :moderated_status (s/enum nil "verified")
-                                            :schema           s/Str ; collection name
-                                            :description      (s/maybe s/Str)
-                                            :fields           [su/Map]}]}
-                     response))
+        (is (malli= SavedQuestionsDB
+                    response))
         (check-tables-included
          response
          (assoc (virtual-table-for-card card)
