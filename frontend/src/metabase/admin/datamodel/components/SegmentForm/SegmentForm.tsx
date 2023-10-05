@@ -1,12 +1,11 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
-import type { Route } from "react-router";
 import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button/Button";
 import FieldSet from "metabase/components/FieldSet";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import type { Segment, StructuredQuery } from "metabase-types/api";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
@@ -28,20 +27,18 @@ const QUERY_BUILDER_FEATURES = {
 };
 
 export interface SegmentFormProps {
-  disableLeaveConfirmationModal: boolean;
-  route: Route;
   segment?: Segment;
   previewSummary?: string;
   updatePreviewSummary: (previewSummary: string) => void;
+  onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }
 
 const SegmentForm = ({
-  disableLeaveConfirmationModal,
-  route,
   segment,
   previewSummary,
   updatePreviewSummary,
+  onIsDirtyChange,
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
@@ -53,6 +50,10 @@ const SegmentForm = ({
       validate: getFormErrors,
       onSubmit,
     });
+
+  useEffect(() => {
+    onIsDirtyChange(dirty);
+  }, [dirty, onIsDirtyChange]);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -125,11 +126,6 @@ const SegmentForm = ({
           </FormSection>
         </FormFooter>
       )}
-
-      <LeaveConfirmationModal
-        isEnabled={dirty && !disableLeaveConfirmationModal}
-        route={route}
-      />
     </FormRoot>
   );
 };
