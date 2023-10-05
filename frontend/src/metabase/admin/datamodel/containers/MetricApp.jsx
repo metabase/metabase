@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Metrics from "metabase/entities/metrics";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
@@ -27,18 +28,28 @@ const UpdateMetricFormInner = ({
   onChangeLocation,
   ...props
 }) => {
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     async metric => {
       await updateMetric(metric);
       MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-      onChangeLocation(`/admin/datamodel/metrics`);
+
+      scheduleCallback(() => {
+        onChangeLocation("/admin/datamodel/metrics");
+      });
     },
-    [updateMetric, onChangeLocation],
+    [updateMetric, onChangeLocation, scheduleCallback],
   );
 
   return (
     <MetricForm
       {...props}
+      disableLeaveConfirmationModal={isCallbackScheduled}
       metric={metric.getPlainObject()}
       onSubmit={handleSubmit}
     />
@@ -50,6 +61,12 @@ const UpdateMetricForm = Metrics.load({
 })(UpdateMetricFormInner);
 
 const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     async metric => {
       await createMetric({
@@ -57,12 +74,21 @@ const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
         table_id: metric.definition["source-table"],
       });
       MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-      onChangeLocation(`/admin/datamodel/metrics`);
+
+      scheduleCallback(() => {
+        onChangeLocation("/admin/datamodel/metrics");
+      });
     },
-    [createMetric, onChangeLocation],
+    [createMetric, onChangeLocation, scheduleCallback],
   );
 
-  return <MetricForm {...props} onSubmit={handleSubmit} />;
+  return (
+    <MetricForm
+      {...props}
+      disableLeaveConfirmationModal={isCallbackScheduled}
+      onSubmit={handleSubmit}
+    />
+  );
 };
 
 class MetricApp extends Component {

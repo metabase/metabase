@@ -29,6 +29,7 @@ const QUERY_BUILDER_FEATURES = {
 };
 
 export interface MetricFormProps {
+  disableLeaveConfirmationModal: boolean;
   route: Route;
   metric?: Metric;
   previewSummary?: string;
@@ -37,6 +38,7 @@ export interface MetricFormProps {
 }
 
 const MetricForm = ({
+  disableLeaveConfirmationModal,
   route,
   metric,
   previewSummary,
@@ -125,7 +127,10 @@ const MetricForm = ({
         </FormFooter>
       )}
 
-      <LeaveConfirmationModal isEnabled={dirty} route={route} />
+      <LeaveConfirmationModal
+        isEnabled={dirty && !disableLeaveConfirmationModal}
+        route={route}
+      />
     </FormRoot>
   );
 };

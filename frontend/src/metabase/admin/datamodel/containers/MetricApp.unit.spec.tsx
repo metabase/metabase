@@ -16,6 +16,7 @@ import MetricApp from "./MetricApp";
 
 const TestHome = () => <div />;
 
+const METRICS_URL = "/admin/datamodel/metrics";
 const FORM_URL = "/admin/datamodel/metric/create";
 
 interface SetupOpts {
@@ -30,6 +31,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
+      <Route path={METRICS_URL} component={TestHome} />
       <Route path={FORM_URL} component={MetricApp} />
     </>,
     {
@@ -133,9 +135,7 @@ describe("MetricApp", () => {
     userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {
-      expect(history.getCurrentLocation().pathname).toBe(
-        "/admin/datamodel/metrics",
-      );
+      expect(history.getCurrentLocation().pathname).toBe(METRICS_URL);
     });
 
     expect(

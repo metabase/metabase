@@ -28,6 +28,7 @@ const QUERY_BUILDER_FEATURES = {
 };
 
 export interface SegmentFormProps {
+  disableLeaveConfirmationModal: boolean;
   route: Route;
   segment?: Segment;
   previewSummary?: string;
@@ -36,6 +37,7 @@ export interface SegmentFormProps {
 }
 
 const SegmentForm = ({
+  disableLeaveConfirmationModal,
   route,
   segment,
   previewSummary,
@@ -124,7 +126,10 @@ const SegmentForm = ({
         </FormFooter>
       )}
 
-      <LeaveConfirmationModal isEnabled={dirty} route={route} />
+      <LeaveConfirmationModal
+        isEnabled={dirty && !disableLeaveConfirmationModal}
+        route={route}
+      />
     </FormRoot>
   );
 };

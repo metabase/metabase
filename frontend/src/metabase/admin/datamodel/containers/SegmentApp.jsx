@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Segments from "metabase/entities/segments";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
@@ -27,18 +28,28 @@ const UpdateSegmentFormInner = ({
   onChangeLocation,
   ...props
 }) => {
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     async segment => {
       await updateSegment(segment);
       MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-      onChangeLocation(`/admin/datamodel/segments`);
+
+      scheduleCallback(() => {
+        onChangeLocation("/admin/datamodel/segments");
+      });
     },
-    [updateSegment, onChangeLocation],
+    [updateSegment, onChangeLocation, scheduleCallback],
   );
 
   return (
     <SegmentForm
       {...props}
+      disableLeaveConfirmationModal={isCallbackScheduled}
       segment={segment.getPlainObject()}
       onSubmit={handleSubmit}
     />
@@ -50,6 +61,12 @@ const UpdateSegmentForm = Segments.load({
 })(UpdateSegmentFormInner);
 
 const CreateSegmentForm = ({ createSegment, onChangeLocation, ...props }) => {
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
     async segment => {
       await createSegment({
@@ -57,12 +74,21 @@ const CreateSegmentForm = ({ createSegment, onChangeLocation, ...props }) => {
         table_id: segment.definition["source-table"],
       });
       MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-      onChangeLocation(`/admin/datamodel/segments`);
+
+      scheduleCallback(() => {
+        onChangeLocation("/admin/datamodel/segments");
+      });
     },
-    [createSegment, onChangeLocation],
+    [createSegment, onChangeLocation, scheduleCallback],
   );
 
-  return <SegmentForm {...props} onSubmit={handleSubmit} />;
+  return (
+    <SegmentForm
+      {...props}
+      disableLeaveConfirmationModal={isCallbackScheduled}
+      onSubmit={handleSubmit}
+    />
+  );
 };
 
 class SegmentApp extends Component {

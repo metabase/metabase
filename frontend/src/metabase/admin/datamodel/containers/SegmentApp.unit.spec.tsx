@@ -16,6 +16,7 @@ import SegmentApp from "./SegmentApp";
 
 const TestHome = () => <div />;
 
+const SEGMENTS_URL = "/admin/datamodel/segments";
 const FORM_URL = "/admin/datamodel/segment/create";
 
 interface SetupOpts {
@@ -30,6 +31,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   const { history } = renderWithProviders(
     <>
       <Route path="/" component={TestHome} />
+      <Route path={SEGMENTS_URL} component={TestHome} />
       <Route path={FORM_URL} component={SegmentApp} />
     </>,
     {
@@ -133,9 +135,7 @@ describe("SegmentApp", () => {
     userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {
-      expect(history.getCurrentLocation().pathname).toBe(
-        "/admin/datamodel/segments",
-      );
+      expect(history.getCurrentLocation().pathname).toBe(SEGMENTS_URL);
     });
 
     expect(
