@@ -6,7 +6,7 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -93,7 +93,7 @@ jobs:
         run: yarn run test-unit --coverage --silent
       - name: Run frontend unit tests
         if: github.ref_name != 'master'
-        run: yarn run test-unit
+        run: yarn run test-unit --silent
       - name: Upload coverage to codecov.io
         if: github.ref_name == 'master'
         uses: codecov/codecov-action@v3
@@ -116,28 +116,3 @@ jobs:
           m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
-
-  fe-chromatic:
-    needs: files-changed
-    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-      - name: Publish to Chromatic
-        uses: chromaui/action@v1
-        env:
-          PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          STORYBOOK_BUILD_TIMEOUT: 900000
-        if: env.PUBLISH_CHROMATIC != null
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

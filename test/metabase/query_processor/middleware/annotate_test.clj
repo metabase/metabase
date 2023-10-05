@@ -81,9 +81,10 @@
     (lib.tu.macros/$ids venues
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
                     "info about the source Field")
-        (is (=? [{:source       :aggregation
-                  :field_ref    [:aggregation 0]
-                  :display_name "Distinct values of Category → Name"}]
+        (is (=? [{:source            :aggregation
+                  :field_ref         [:aggregation 0]
+                  :aggregation_index 0
+                  :display_name      "Distinct values of Category → Name"}]
                 (annotate/column-info
                  {:type  :query
                   :query {:source-table $$venues

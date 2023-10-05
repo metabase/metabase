@@ -47,7 +47,6 @@ const TEST_COLLECTIONS = [
   {
     archived: false,
     can_write: true,
-    color: "#31698A",
     description: null,
     id: 1,
     location: "/",

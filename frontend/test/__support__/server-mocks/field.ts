@@ -12,6 +12,13 @@ export function setupFieldValuesEndpoints(fieldValues: FieldValuesResult) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
 }
 
+export function setupFieldValuesGeneralEndpoint() {
+  fetchMock.get(
+    { url: /\/api\/field\/\d+\/values/, overwriteRoutes: false },
+    [],
+  );
+}
+
 export function setupUnauthorizedFieldValuesEndpoints(
   fieldValues: FieldValuesResult,
 ) {
