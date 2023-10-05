@@ -24,13 +24,13 @@ export interface WrappedResult extends SearchResult {
 export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId;
 export type VerifiedFilterProps = true;
-export type SearchSQLQueryProps = true;
+export type NativeQueryFilterProps = true;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
   [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
-  [SearchFilterKeys.SearchSQLQuery]: SearchSQLQueryProps;
+  [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
@@ -57,7 +57,7 @@ type SidebarFilterType = "dropdown" | "toggle";
 
 interface SearchFilter<T extends FilterTypeKeys = any> {
   type: SidebarFilterType;
-  label: string;
+  label: string | (() => string);
   iconName?: IconName;
 
   // parses the string value of a URL query parameter to the filter value
