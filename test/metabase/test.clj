@@ -292,4 +292,4 @@
   set-test-drivers!
   with-test-drivers])
 
-(alter-meta! #'with-temp update :doc #(str % "\n\nNote: our version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
+(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
