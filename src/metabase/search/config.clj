@@ -129,6 +129,9 @@
    ;; returned for Card and Dashboard
    :collection_position :integer
    :creator_id          :integer
+   :creator_last_name   :text
+   :creator_first_name  :text
+   :creator_email       :text
    :created_at          :timestamp
    :bookmark            :boolean
    ;; returned for everything except Collection
@@ -137,6 +140,10 @@
    :dashboardcard_count :integer
    :last_edited_at      :timestamp
    :last_editor_id      :integer
+   :last_editor_last_name   :text
+   :last_editor_first_name  :text
+   :last_editor_email       :text
+
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer

@@ -182,6 +182,12 @@
            common-name)
       (assoc :common_name common-name))))
 
+(defn common-name
+  [first_name last_name email]
+  (if (or first_name last_name)
+    (str/trim (str first_name " " last_name))
+    email))
+
 (t2/define-after-select :model/User
   [user]
   (add-common-name user))

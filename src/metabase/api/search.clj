@@ -9,6 +9,7 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection]
+   [metabase.models.user :as user]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
@@ -171,12 +172,31 @@
   [query :- :map
    model :- [:enum "card" "dataset" "dashboard" "metric"]]
   (-> query
-       (replace-select :last_editor_id [:r.user_id :last_editor_id])
-       (replace-select :last_edited_at [:r.timestamp :last_edited_at])
-       (sql.helpers/left-join [:revision :r]
-                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                               [:= :r.most_recent true]
-                               [:= :r.model (search.filter/search-model->revision-model model)]])))
+      (replace-select :last_editor_id [:r.user_id :last_editor_id])
+      (replace-select :last_edited_at [:r.timestamp :last_edited_at])
+      (sql.helpers/left-join [:revision :r]
+                             [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
+                              [:= :r.most_recent true]
+                              [:= :r.model (search.filter/search-model->revision-model model)]])
+      (replace-select :last_editor_last_name [:u.last_name :last_editor_last_name])
+      (replace-select :last_editor_first_name [:u.first_name :last_editor_first_name])
+      (replace-select :last_editor_email [:u.email :last_editor_email])
+      (sql.helpers/left-join [:core_user :u]
+                             [:= :r.user_id :u.id])))
+
+(defn with-creator-info
+  [query model join?]
+  (cond-> query
+    true
+    (replace-select :creator_last_name [:u.last_name :creator_last_name])
+    true
+    (replace-select :creator_first_name [:u.first_name :creator_first_name])
+    true
+    (replace-select :creator_email [:u.email :creator_email])
+
+    join?
+    (sql.helpers/left-join [:core_user :u]
+                           [:= (search.config/column-with-model-alias model :id) :u.id])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -197,7 +217,8 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)))
+      (with-last-editing-info model)
+      (with-creator-info model false)))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -206,7 +227,8 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :model.collection_id search-ctx)
+      (with-creator-info model true)))
 
 
 (defmethod search-query-for-model "card"
@@ -220,13 +242,14 @@
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
-  [_model search-ctx]
+  [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
       (sql.helpers/left-join [:collection_bookmark :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :collection.id search-ctx)))
+      (add-collection-join-and-where-clauses :collection.id search-ctx)
+      (with-creator-info model true)))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]
@@ -240,13 +263,15 @@
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
-      (with-last-editing-info model)))
+      (with-last-editing-info model)
+      (with-creator-info model false)))
 
 (defmethod search-query-for-model "metric"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
-      (with-last-editing-info model)))
+      (with-last-editing-info model)
+      (with-creator-info model false)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
@@ -259,7 +284,8 @@
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [:metabase_table :table] [:= :segment.table_id :table.id])
+      (with-creator-info model true)))
 
 (defmethod search-query-for-model "table"
   [model {:keys [current-user-perms table-db-id], :as search-ctx}]
@@ -394,9 +420,19 @@
                             (map #(update % :bookmark api/bit->boolean))
                             (map #(update % :archived api/bit->boolean))
                             (map #(update % :pk_ref json/parse-string))
+                            (map (fn [result]
+                                   (-> result
+                                       (assoc :last_editor_common_name
+                                              (apply user/common-name ((juxt :last_editor_first_name :last_editor_last_name :last_editor_email) result)))
+                                       (dissoc :last_editor_first_name :last_editor_last_name :last_editor_email))))
+                            (map (fn [result]
+                                   (-> result
+                                     (assoc :creator_common_name
+                                            (apply user/common-name ((juxt :creator_first_name :creator_last_name :creator_email) result)))
+                                     (dissoc :creator_first_name :creator_last_name :creator_email))))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
-        total-results      (hydrate-user-metadata (scoring/top-results reducible-results search.config/max-filtered-results xf))]
+        total-results      (scoring/top-results reducible-results search.config/max-filtered-results xf)]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -409,6 +445,10 @@
      :offset           (:offset-int search-ctx)
      :table_db_id      (:table-db-id search-ctx)
      :models           (:models search-ctx)}))
+
+
+#_(do (metabase.test/user-http-request :crowberto :get "search" :q "a")
+      nil)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Endpoint                                                    |
