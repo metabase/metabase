@@ -72,7 +72,6 @@ export const SearchUserPicker = ({
               spacing="xs"
               p="xs"
               mah="30vh"
-              style={{ overflowY: "auto" }}
             >
               {selectedUserIds.map(userId => {
                 const user = users.find(user => user.id === userId);
