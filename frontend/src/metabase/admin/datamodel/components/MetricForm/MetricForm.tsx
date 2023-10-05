@@ -1,12 +1,13 @@
 import { Link } from "react-router";
+import type { Route } from "react-router";
 import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import type { Metric, StructuredQuery } from "metabase-types/api";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -28,6 +29,7 @@ const QUERY_BUILDER_FEATURES = {
 };
 
 export interface MetricFormProps {
+  route: Route;
   metric?: Metric;
   previewSummary?: string;
   updatePreviewSummary: (previewSummary: string) => void;
@@ -35,6 +37,7 @@ export interface MetricFormProps {
 }
 
 const MetricForm = ({
+  route,
   metric,
   previewSummary,
   updatePreviewSummary,
@@ -49,8 +52,6 @@ const MetricForm = ({
       validate: getFormErrors,
       onSubmit,
     });
-
-  useBeforeUnload(dirty);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -117,6 +118,8 @@ const MetricForm = ({
           </FormSection>
         </FormFooter>
       )}
+
+      <LeaveConfirmationModal isEnabled={dirty} route={route} />
     </FormRoot>
   );
 };
