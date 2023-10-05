@@ -588,7 +588,7 @@
 
 (mu/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition
+  [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
@@ -598,24 +598,24 @@
 
 (mu/defn ^:private fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
 (mu/defn ^:private tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
-  [{:keys [field-definitions rows]} :- TableDefinition]
+  [{:keys [field-definitions rows]} :- (ms/InstanceOfClass TableDefinition)]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NegativeInt [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
+(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
-  [{:keys [table-definitions]} :- DatabaseDefinition]
+  [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
 (mu/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
@@ -626,7 +626,7 @@
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
 (mu/defn ^:private flatten-rows
-  [dbdef :- DatabaseDefinition
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
