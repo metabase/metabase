@@ -351,6 +351,14 @@
                              -1 b))
               {})))
 
+(defn add-breakouts
+  "Add breakouts to a query based on the breakout fields"
+  [query breakout-fields]
+  (assoc query
+    :breakout (mapv (fn [{field-id :id base-type :base_type}]
+                      [:field field-id {:base-type base-type}])
+                    breakout-fields)))
+
 (defn make-metric-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions 
    mixed in based on the provided ground dimensions and semantic affinity sets."
@@ -370,7 +378,7 @@
                                     :semantic_type
                                     :effective_type) grounded-metric-fields)]
     (distinct
-      (for [affinity-set           semantic-affinity-sets
+      (for [affinity-set            semantic-affinity-sets
             dimset                  (math.combo/permutations affinity-set)
             :when (and
                     (>= (count dimset)
@@ -383,9 +391,11 @@
             ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
                                          (apply math.combo/cartesian-product)
                                          (map (partial zipmap unsatisfied-semantic-dims)))]
-        (assoc metric
-          :dimensions ground-dimension-fields
-          :affinity-set affinity-set)))))
+        (-> metric
+            (assoc
+              :dimensions ground-dimension-fields
+              :affinity-set affinity-set)
+            (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
 
 (defn make-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
@@ -406,8 +416,9 @@
       (grounded-metrics metric-templates ground-dimensions)
       (linked-metrics entity)))
 
+  (require '[metabase.query-processor :as qp])
   (let [template-name          "GenericTable"
-        entity                 (t2/select-one :model/Table :name "ACCOUNTS")
+        {:keys [id db_id] :as entity} (t2/select-one :model/Table :name "ACCOUNTS")
         template               (dashboard-templates/get-dashboard-template ["table" template-name])
         {template-dimensions :dimensions
          template-metrics    :metrics} template
@@ -425,5 +436,15 @@
          (mapv (fn [ground-metric-with-dimensions]
                  (-> ground-metric-with-dimensions
                      (update :grounded-metric-fields (partial map (juxt :id :name)))
-                     (update :dimensions #(update-vals % (juxt :id :name))))))))
+                     (update :dimensions #(update-vals % (juxt :id :name))))))
+         ;; Stop above here to see the produced grounded metrics
+         ;; Below is just showing we can make queries
+         (mapv (fn [{:keys [metric-definition]}]
+                 {:database db_id
+                  :type     :query
+                  :query    (assoc metric-definition
+                              :source-table id)}))
+         (take 2)
+         (map qp/process-query)
+         ))
   )
