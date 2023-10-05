@@ -174,7 +174,10 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      popover().findByText("Orders").click();
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
       visualize();
       saveQuestion("Personal question");
 
