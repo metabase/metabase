@@ -55,8 +55,8 @@
       (t2/insert! :model/RecentViews {:user_id  user-id
                                       :model    (name model)
                                       :model_id model-id})
-      (let [current-views  (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
-            ids-to-prune (view-ids-to-prune current-views *recent-views-stored-per-user*)]
+      (let [current-views (t2/select :model/RecentViews :user_id user-id {:order-by [[:id :desc]]})
+            ids-to-prune  (view-ids-to-prune current-views *recent-views-stored-per-user*)]
         (when (seq ids-to-prune)
          (t2/delete! :model/RecentViews :id [:in ids-to-prune]))))))
 
