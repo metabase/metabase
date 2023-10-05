@@ -109,7 +109,7 @@ describe("SearchUserPicker", () => {
   it("should filter users when user types in the search box", async () => {
     await setup();
     userEvent.type(screen.getByPlaceholderText("Search for users…"), "Alice");
-    const searchUserList = within(screen.getByTestId("search-user-list"))
+    const searchUserList = within(screen.getByTestId("search-user-list"));
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
     expect(searchUserList.queryByText("Bob")).not.toBeInTheDocument();
   });
@@ -117,7 +117,7 @@ describe("SearchUserPicker", () => {
   it("should call onChange with a list of user ids when the user clicks Apply filters with a selection", async () => {
     const { mockOnChange } = await setup();
 
-    const searchUserList = within(screen.getByTestId("search-user-list"))
+    const searchUserList = within(screen.getByTestId("search-user-list"));
     userEvent.click(searchUserList.getByText("Alice"));
     userEvent.click(searchUserList.getByText("Bob"));
 
@@ -128,9 +128,9 @@ describe("SearchUserPicker", () => {
 
   it("should call onChange with an empty list when the user clicks Apply filters with no selection", async () => {
     const { mockOnChange } = await setup({
-        initialSelectedUsers: TEST_USERS.map(user => user.id),
+      initialSelectedUsers: TEST_USERS.map(user => user.id),
     });
-    const searchUserList = within(screen.getByTestId("search-user-select-box"))
+    const searchUserList = within(screen.getByTestId("search-user-select-box"));
     userEvent.click(searchUserList.getByText("Alice"));
     userEvent.click(searchUserList.getByText("Bob"));
 
