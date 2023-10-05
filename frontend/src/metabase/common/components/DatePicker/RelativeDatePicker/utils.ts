@@ -5,9 +5,7 @@ import type {
 import { DEFAULT_VALUE } from "./constants";
 import type { TabType } from "./types";
 
-export function getTabType(
-  value: RelativeDatePickerValue = DEFAULT_VALUE,
-): TabType {
+export function getTabType(value: RelativeDatePickerValue): TabType {
   if (value.value === "current") {
     return "current";
   } else {
@@ -17,8 +15,8 @@ export function getTabType(
 
 export function getValueAfterTabChange(
   type: TabType,
-  value: RelativeDatePickerValue = DEFAULT_VALUE,
-): RelativeDatePickerValue | undefined {
+  value: RelativeDatePickerValue,
+): RelativeDatePickerValue {
   const valueOrDefault =
     value.value === "current"
       ? DEFAULT_VALUE
@@ -26,7 +24,7 @@ export function getValueAfterTabChange(
 
   switch (type) {
     case "current":
-      return undefined;
+      return { type: "relative", value: "current", unit: "hour" };
     case "past":
       return { ...valueOrDefault, value: -Math.abs(valueOrDefault.value) };
     case "next":

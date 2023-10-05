@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Button, Flex, Group, Stack, Tabs } from "metabase/ui";
+import { Button, Divider, Flex, Group, Stack, Tabs } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
 import type {
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
 } from "../types";
-import { TABS, UNIT_GROUPS } from "./constants";
+import { DEFAULT_VALUE, TABS, UNIT_GROUPS } from "./constants";
 import { getCurrentValue, getTabType, getValueAfterTabChange } from "./utils";
+import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
   value?: RelativeDatePickerValue;
@@ -16,7 +17,7 @@ interface RelativeDatePickerProps {
 }
 
 export function RelativeDatePicker({
-  value: initialValue,
+  value: initialValue = DEFAULT_VALUE,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
@@ -34,14 +35,15 @@ export function RelativeDatePicker({
     <Tabs value={type} onTabChange={handleChange}>
       <Flex>
         <BackButton onClick={onBack} />
-        <Tabs.List>
+        <TabList>
           {TABS.map(tab => (
             <Tabs.Tab key={tab.type} value={tab.type}>
               {tab.label}
             </Tabs.Tab>
           ))}
-        </Tabs.List>
+        </TabList>
       </Flex>
+      <Divider />
       <Tabs.Panel value="current">
         <CurrentPicker value={value} onChange={onChange} />
       </Tabs.Panel>
@@ -50,7 +52,7 @@ export function RelativeDatePicker({
 }
 
 interface CurrentPickerProps {
-  value?: RelativeDatePickerValue;
+  value: RelativeDatePickerValue;
   onChange: (value: RelativeDatePickerValue) => void;
 }
 
@@ -66,7 +68,7 @@ function CurrentPicker({ value, onChange }: CurrentPickerProps) {
           {group.map(unit => (
             <Button
               key={unit}
-              variant={unit === value?.unit ? "filled" : "default"}
+              variant={unit === value.unit ? "filled" : "default"}
               radius="xl"
               onClick={() => handleClick(unit)}
             >
