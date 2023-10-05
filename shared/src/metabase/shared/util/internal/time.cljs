@@ -156,7 +156,10 @@
   [^moment/Moment before ^moment/Moment after]
   (.diff after before "day"))
 
-(defn format-unit [input unit]
+(defn format-unit
+  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+   If unit is nil, formats the full date/time"
+  [input unit]
   (if (string? input)
     (let [date? (re-matches #"\d\d\d\d-\d\d-\d\d" input)
           t (moment/utc input moment/ISO_8601)]

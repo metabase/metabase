@@ -204,7 +204,10 @@
   [before after]
   (.toDays (t/duration before after)))
 
-(defn format-unit [input unit]
+(defn format-unit
+  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+   If unit is nil, formats the full date/time"
+  [input unit]
   (if (string? input)
     (let [date? (re-matches #"\d\d\d\d-\d\d-\d\d"  input)
           t (if date? (t/local-date input) (t/local-date-time input))]

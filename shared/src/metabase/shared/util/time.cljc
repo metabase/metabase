@@ -53,5 +53,8 @@
     :else           (throw (ex-info "Unknown input to coerce-to-time; expecting a string"
                                     {:value value}))))
 
-(defn format-unit [temporal-value unit]
+(defn format-unit
+  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+   If unit is nil, formats the full date/time"
+  [temporal-value unit]
   (internal/format-unit temporal-value unit))

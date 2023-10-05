@@ -1,15 +1,16 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [clojure.string :as str]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -223,5 +224,9 @@
     x]
    (available-temporal-buckets-method query stage-number x)))
 
-(defn describe-temporal-pair [temporal-column temporal-value]
+(mu/defn describe-temporal-pair :- :string
+  "Return a string describing the temporal pair.
+   Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
+  [temporal-column :- lib.metadata/ColumnMetadata
+   temporal-value :- [:or :int :string]]
   (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))

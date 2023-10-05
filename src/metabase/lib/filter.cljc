@@ -3,7 +3,6 @@
    :exclude
    [filter and or not = < <= > >= not-empty case])
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -20,13 +19,12 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]
    [metabase.mbql.util :as mbql.u]
-   [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.shared.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
