@@ -4,6 +4,7 @@ import { callMockEvent } from "__support__/events";
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupMetricsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -27,6 +28,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset();
+  setupMetricsEndpoints([]);
 
   const { history } = renderWithProviders(
     <>
@@ -132,6 +134,11 @@ describe("MetricApp", () => {
       screen.getByLabelText("Describe Your Metric"),
       "Description",
     );
+
+    await waitFor(() => {
+      expect(screen.getByText("Save changes")).toBeEnabled();
+    });
+
     userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {

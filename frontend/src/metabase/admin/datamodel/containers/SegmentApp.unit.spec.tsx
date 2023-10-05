@@ -5,6 +5,7 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupSegmentsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -27,6 +28,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset();
+  setupSegmentsEndpoints([]);
 
   const { history } = renderWithProviders(
     <>
@@ -132,6 +134,11 @@ describe("SegmentApp", () => {
       screen.getByLabelText("Describe Your Segment"),
       "Description",
     );
+
+    await waitFor(() => {
+      expect(screen.getByText("Save changes")).toBeEnabled();
+    });
+
     userEvent.click(screen.getByText("Save changes"));
 
     await waitFor(() => {
