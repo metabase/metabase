@@ -139,22 +139,16 @@ describe("isNavigationAllowed", () => {
     const question = mockNativeQuestion;
 
     it("allows to run the question", () => {
+      const destination = mockRunQuestionLocation;
       expect(
-        isNavigationAllowed({
-          destination: mockRunQuestionLocation,
-          question,
-          isNewQuestion,
-        }),
+        isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(true);
     });
 
     it("disallows all other navigation", () => {
+      const destination = anyLocation;
       expect(
-        isNavigationAllowed({
-          destination: anyLocation,
-          question,
-          isNewQuestion,
-        }),
+        isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(false);
     });
   });
