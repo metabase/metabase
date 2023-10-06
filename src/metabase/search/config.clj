@@ -66,6 +66,13 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
+(defn search-model->revision-model
+  "Return the apporpriate revision model given a search model."
+  [model]
+  (case model
+    "dataset" (recur "card")
+    (str/capitalize model)))
+
 (defn model->alias
   "Given a model string returns the model alias"
   [model]
@@ -323,12 +330,3 @@
 (defmethod column->string :default
   [value _ _]
   value)
-
-;;; ----------------------------------------- Helper Fns -----------------------------------------
-
-(defn search-model->revision-model
-  "Return the apporpriate revision model given a search model."
-  [model]
-  (case model
-    "dataset" (recur "card")
-    (str/capitalize model)))
