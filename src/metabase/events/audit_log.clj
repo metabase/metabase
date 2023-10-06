@@ -117,6 +117,7 @@
 (derive :event/user-update ::user-event)
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
+(derive :event/password-reset-initiated ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
   [topic object]
