@@ -30,7 +30,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
-  canUseRelativeOffsets,
+  canUseRelativeOffsets = false,
   backButton,
   onChange,
 }: DatePickerProps) {

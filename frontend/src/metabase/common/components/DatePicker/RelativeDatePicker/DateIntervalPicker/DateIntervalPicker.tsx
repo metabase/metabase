@@ -22,6 +22,7 @@ import {
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
   isNew: boolean;
+  canUseRelativeOffsets: boolean;
   onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
@@ -29,6 +30,7 @@ interface DateIntervalPickerProps {
 export function DateIntervalPicker({
   value,
   isNew,
+  canUseRelativeOffsets,
   onChange,
   onSubmit,
 }: DateIntervalPickerProps) {
@@ -81,12 +83,14 @@ export function DateIntervalPicker({
             />
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item
-              icon={<Icon name="arrow_left_to_line" />}
-              onClick={handleStartingFromClick}
-            >
-              {t`Starting from…`}
-            </Menu.Item>
+            {canUseRelativeOffsets && (
+              <Menu.Item
+                icon={<Icon name="arrow_left_to_line" />}
+                onClick={handleStartingFromClick}
+              >
+                {t`Starting from…`}
+              </Menu.Item>
+            )}
             <Menu.Item
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
