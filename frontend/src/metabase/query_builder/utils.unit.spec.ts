@@ -169,6 +169,13 @@ describe("isNavigationAllowed", () => {
         ).toBe(true);
       }
     });
+
+    it("disallows all other navigation", () => {
+      const destination = anyLocation;
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(false);
+    });
   });
 
   describe("when editing native-query model", () => {
@@ -186,6 +193,13 @@ describe("isNavigationAllowed", () => {
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
       }
+    });
+
+    it("disallows all other navigation", () => {
+      const destination = anyLocation;
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(false);
     });
   });
 });
