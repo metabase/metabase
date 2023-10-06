@@ -46,7 +46,7 @@ runs:
 
           const defaultConfig = folderContext.map(folder => {
             return {
-              java,
+              "java-version": java,
               context: folder,
               runner: defaultRunner,
               edition: "ee",
@@ -55,7 +55,7 @@ runs:
 
           const extraConfig = specialContext.map(s => {
             return {
-              java,
+              "java-version": java,
               context: s,
               runner: getRunner(s),
               edition: getEdition(s),
