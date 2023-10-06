@@ -1,10 +1,11 @@
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Group, NumberInput, Select, Text } from "metabase/ui";
+import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getInterval, getUnitOptions, setInterval } from "../utils";
 import {
   getOffsetUnitOptions,
+  removeOffset,
   setOffsetInterval,
   setOffsetUnit,
   setUnit,
@@ -54,6 +55,10 @@ export function DateOffsetIntervalPicker({
     }
   };
 
+  const handleOffsetRemove = () => {
+    onChange(removeOffset(value));
+  };
+
   return (
     <div>
       <PickerGrid p="md">
@@ -77,8 +82,13 @@ export function DateOffsetIntervalPicker({
           withinPortal={false}
           onChange={handleOffsetUnitChange}
         />
-        <Button variant="subtle" leftIcon={<Icon name="close" />} />
+        <Button
+          variant="subtle"
+          leftIcon={<Icon name="close" />}
+          onClick={handleOffsetRemove}
+        />
       </PickerGrid>
+      <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}

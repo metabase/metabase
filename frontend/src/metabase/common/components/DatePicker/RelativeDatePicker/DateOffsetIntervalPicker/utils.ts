@@ -2,7 +2,11 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { DatePickerTruncationUnit } from "../../types";
 import { DATE_PICKER_TRUNCATION_UNITS } from "../../constants";
-import type { DateOffsetIntervalValue, IntervalDirection } from "../types";
+import type {
+  DateIntervalValue,
+  DateOffsetIntervalValue,
+  IntervalDirection,
+} from "../types";
 import { getDirection } from "../utils";
 
 export function setUnit(
@@ -24,6 +28,12 @@ export function setOffsetUnit(
   offsetUnit: DatePickerTruncationUnit,
 ): DateOffsetIntervalValue {
   return { ...value, offsetUnit };
+}
+
+export function removeOffset(
+  value: DateOffsetIntervalValue,
+): DateIntervalValue {
+  return { ...value, offsetValue: undefined, offsetUnit: undefined };
 }
 
 export function getOffsetUnitOptions(value: DateOffsetIntervalValue) {
