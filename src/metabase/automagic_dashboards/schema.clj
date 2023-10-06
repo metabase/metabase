@@ -147,6 +147,25 @@
   (mc/schema
     [:sequential affinity]))
 
+(def affinity-old
+  "A collection of things that go together. In this case, we're a bit specialized on
+  card affinity, but the key element in the structure is `:base-dims`, which are a
+   set of dimensions which, when satisfied, enable this affinity object."
+  (mc/schema
+    [:map
+     [:dimensions {:optional true} [:vector string?]]
+     [:metrics {:optional true} [:vector string?]]
+     [:filters {:optional true} [:vector string?]]
+     [:score {:optional true} nat-int?]
+     [:affinity-name string?]
+     [:base-dims dimension-set]]))
+
+(def affinities-old
+  "A sequence of affinity objects."
+  (mc/schema
+    [:sequential affinity-old]))
+
+
 (def affinity-matches
   "A map of named affinities to all dimension sets that are associated with this name."
   (mc/schema

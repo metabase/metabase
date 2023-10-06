@@ -462,12 +462,12 @@
                      (update :dimensions #(update-vals % (juxt :id :name))))))
          ;; Stop above here to see the produced grounded metrics
          ;; Below is just showing we can make queries
-         (mapv (fn [{:keys [metric-definition]}]
-                 {:database db_id
-                  :type     :query
-                  :query    (assoc metric-definition
-                              :source-table id)}))
+         (mapv (fn [{:keys [metric-definition] :as metric}]
+                 (assoc metric
+                   :query {:database db_id
+                           :type     :query
+                           :query    (assoc metric-definition
+                                       :source-table id)})))
          (take 2)
-         (map qp/process-query)
-         ))
+         (map (juxt :metric-name (comp :rows :data qp/process-query :query)))))
   )
