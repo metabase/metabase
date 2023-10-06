@@ -98,7 +98,7 @@ interface CurrentPickerProps {
 
 function CurrentPicker({ value, onChange }: CurrentPickerProps) {
   const handleClick = (unit: DatePickerTruncationUnit) => {
-    onChange({ type: "relative", value: "current", unit });
+    onChange(setUnit(value, unit));
   };
 
   return (
@@ -124,7 +124,7 @@ function CurrentPicker({ value, onChange }: CurrentPickerProps) {
 interface IntervalPickerProps {
   value: RelativeDateIntervalValue;
   isNew: boolean;
-  onChange: (value: RelativeDateIntervalValue) => void;
+  onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
 

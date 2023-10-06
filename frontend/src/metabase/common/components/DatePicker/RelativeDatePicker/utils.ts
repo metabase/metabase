@@ -59,9 +59,9 @@ export function setInterval(
 }
 
 export function setUnit(
-  value: RelativeDateIntervalValue,
+  value: RelativeDatePickerValue,
   unit: DatePickerTruncationUnit,
-): RelativeDateIntervalValue {
+): RelativeDatePickerValue {
   return { ...value, unit };
 }
 
