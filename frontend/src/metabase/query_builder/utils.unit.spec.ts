@@ -78,4 +78,26 @@ describe("isNavigationAllowed", () => {
       }
     }
   });
+
+  it("always allows navigation when there is no destination (i.e. it's an beforeunload event)", () => {
+    const questions = [...mockQuestions, undefined];
+
+    for (const question of questions) {
+      expect(
+        isNavigationAllowed({
+          destination: undefined,
+          question,
+          isNewQuestion: true,
+        }),
+      ).toBe(true);
+
+      expect(
+        isNavigationAllowed({
+          destination: undefined,
+          question,
+          isNewQuestion: false,
+        }),
+      ).toBe(true);
+    }
+  });
 });
