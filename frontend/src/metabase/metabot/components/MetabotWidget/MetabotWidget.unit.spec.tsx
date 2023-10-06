@@ -15,7 +15,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import MetabotWidget from "./MetabotWidget";
 
@@ -88,7 +88,7 @@ const setup = async ({
     { storeInitialState: { currentUser }, withRouter: true },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoadingSpinnerToDisappear();
 
   return { history };
 };

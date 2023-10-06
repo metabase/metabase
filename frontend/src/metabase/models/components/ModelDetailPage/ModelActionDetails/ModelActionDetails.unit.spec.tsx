@@ -15,8 +15,8 @@ import {
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
   screen,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
@@ -58,7 +58,7 @@ async function setup({
     initialRoute,
   });
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoadingSpinnerToDisappear();
 }
 
 describe("ModelActionDetails", () => {
