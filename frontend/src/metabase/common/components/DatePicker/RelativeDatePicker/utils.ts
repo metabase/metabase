@@ -73,10 +73,6 @@ export function setIncludeCurrent(
   return { ...value, options: { "include-current": includeCurrent } };
 }
 
-export function describeUnit(unit: DatePickerTruncationUnit): string {
-  return Lib.describeTemporalUnit(unit);
-}
-
 export function describeInterval(unit: DatePickerTruncationUnit): string {
   return Lib.describeTemporalInterval("current", unit).toLowerCase();
 }

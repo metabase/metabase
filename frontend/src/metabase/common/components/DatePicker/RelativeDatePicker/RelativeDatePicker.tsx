@@ -9,29 +9,25 @@ import {
   Menu,
   NumberInput,
   Select,
-  Stack,
   Tabs,
 } from "metabase/ui";
 import { BackButton } from "../BackButton";
-import type {
-  DatePickerTruncationUnit,
-  RelativeDatePickerValue,
-} from "../types";
-import { DEFAULT_VALUE, TABS, UNIT_GROUPS } from "./constants";
+import type { RelativeDatePickerValue } from "../types";
+import { DEFAULT_VALUE, TABS } from "./constants";
 import {
+  describeInterval,
   getDirection,
+  getIncludeCurrent,
   getInterval,
-  describeUnit,
   getUnitOptions,
   isIntervalValue,
   setDirection,
+  setIncludeCurrent,
   setInterval,
   setUnit,
-  describeInterval,
-  getIncludeCurrent,
-  setIncludeCurrent,
 } from "./utils";
 import type { RelativeDateIntervalValue } from "./types";
+import { CurrentDatePicker } from "./CurrentDatePicker";
 import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
@@ -83,41 +79,11 @@ export function RelativeDatePicker({
               onSubmit={handleSubmit}
             />
           ) : (
-            <CurrentPicker value={value} onChange={onChange} />
+            <CurrentDatePicker value={value} onChange={onChange} />
           )}
         </Tabs.Panel>
       ))}
     </Tabs>
-  );
-}
-
-interface CurrentPickerProps {
-  value: RelativeDatePickerValue;
-  onChange: (value: RelativeDatePickerValue) => void;
-}
-
-function CurrentPicker({ value, onChange }: CurrentPickerProps) {
-  const handleClick = (unit: DatePickerTruncationUnit) => {
-    onChange(setUnit(value, unit));
-  };
-
-  return (
-    <Stack p="md">
-      {UNIT_GROUPS.map((group, groupIndex) => (
-        <Group key={groupIndex}>
-          {group.map(unit => (
-            <Button
-              key={unit}
-              variant={unit === value.unit ? "filled" : "default"}
-              radius="xl"
-              onClick={() => handleClick(unit)}
-            >
-              {describeUnit(unit)}
-            </Button>
-          ))}
-        </Group>
-      ))}
-    </Stack>
   );
 }
 
