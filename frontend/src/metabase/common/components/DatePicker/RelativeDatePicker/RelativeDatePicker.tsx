@@ -16,12 +16,14 @@ import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
   value?: RelativeDatePickerValue;
+  canUseRelativeOffsets?: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
 
 export function RelativeDatePicker({
   value: initialValue,
+  canUseRelativeOffsets,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
@@ -55,7 +57,7 @@ export function RelativeDatePicker({
       <Divider />
       {TABS.map(tab => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
-          {isOffsetIntervalValue(value) ? (
+          {canUseRelativeOffsets && isOffsetIntervalValue(value) ? (
             <DateOffsetIntervalPicker
               value={value}
               isNew={isNew}
