@@ -7,6 +7,7 @@
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.email.messages :as messages]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
@@ -259,6 +260,19 @@
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
+
+(deftest forgot-password-event-test
+  (reset-throttlers!)
+  (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+    (testing "Test that forgot password event is logged."
+      (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                            {:email (:username (mt/user->credentials :rasta))})
+      (is (= {:topic    :password-reset-initiated
+              :user_id  (mt/user->id :rasta)
+              :model    "User"
+              :model_id nil
+              :details  {:token (t2/select-one-fn :reset_token :model/User :id (mt/user->id :rasta))}}
+             (audit-log-test/event :password-reset-initiated))))))
 
 (deftest forgot-password-throttling-test
   (reset-throttlers!)
