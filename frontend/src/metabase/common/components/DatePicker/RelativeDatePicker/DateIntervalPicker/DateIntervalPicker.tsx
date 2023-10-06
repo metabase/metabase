@@ -10,13 +10,11 @@ import {
   Select,
 } from "metabase/ui";
 import type { RelativeDateIntervalValue } from "../types";
+import { getInterval, setInterval, getUnitOptions } from "../utils";
 import {
-  getUnitLabel,
+  getIncludeCurrentLabel,
   getIncludeCurrent,
-  getInterval,
-  getUnitOptions,
   setIncludeCurrent,
-  setInterval,
   setUnit,
 } from "./utils";
 
@@ -82,7 +80,7 @@ export function DateIntervalPicker({
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentChange}
             >
-              {t`Include ${getUnitLabel(value.unit)}`}
+              {t`Include ${getIncludeCurrentLabel(value.unit)}`}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
