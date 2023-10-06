@@ -92,6 +92,7 @@ import {
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
   query: { include: "events" },
@@ -422,42 +423,15 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
   const isLocationAllowed = useCallback(
-    location => {
-      const isNewQuestion = !originalQuestion;
-
-      /**
-       * If there is no "question" there is no reason to prevent navigation.
-       * If there is no "location" then it's beforeunload event, which is
-       * handled by useBeforeUnload hook - no reason to duplicate its work.
-       *
-       * If it's a new question, we're going to deal with it later as part of the epic:
-       * https://github.com/metabase/metabase/issues/33749
-       */
-      if (!question || !location || isNewQuestion) {
-        return true;
-      }
-
-      const { hash, pathname } = location;
-
-      if (question.isDataset()) {
-        const isGoingToQueryTab =
-          pathname.startsWith("/model/") && pathname.endsWith("/query");
-        const isGoingToMetadataTab =
-          pathname.startsWith("/model/") && pathname.endsWith("/metadata");
-
-        return isGoingToQueryTab || isGoingToMetadataTab;
-      }
-
-      if (question.isNative()) {
-        const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
-        return isRunningQuestion;
-      }
-
-      return true;
-    },
-    [question, originalQuestion],
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
   );
 
   return (
