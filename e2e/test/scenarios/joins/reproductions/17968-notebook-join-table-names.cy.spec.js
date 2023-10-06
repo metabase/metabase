@@ -24,7 +24,7 @@ describe("issue 17968", () => {
     popover().findByText("Created At").click();
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    popover().findByText("Product").click();
+    popover().findByText("Products").click();
     popover().findByText("Count").click();
 
     getNotebookStep("join", { stage: 1 })

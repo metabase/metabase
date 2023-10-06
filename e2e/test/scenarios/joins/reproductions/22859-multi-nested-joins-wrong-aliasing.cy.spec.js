@@ -100,6 +100,6 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
 function getJoinedTableColumnHeader() {
   cy.get("@q1Id").then(id => {
-    cy.findByText(`Question ${id} - Product → ID`);
+    cy.findByText(`Question ${id} → ID`);
   });
 }
