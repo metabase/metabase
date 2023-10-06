@@ -17,7 +17,16 @@ import type {
   RelativeDatePickerValue,
 } from "../types";
 import { DEFAULT_VALUE, TABS, UNIT_GROUPS } from "./constants";
-import { getDirection, getUnitOptions, setDirection } from "./utils";
+import {
+  getDirection,
+  getInterval,
+  getUnitOptions,
+  isIntervalValue,
+  setDirection,
+  setInterval,
+  setUnit,
+} from "./utils";
+import type { RelativeDateIntervalValue } from "./types";
 import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
@@ -61,15 +70,15 @@ export function RelativeDatePicker({
       <Divider />
       {TABS.map(tab => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
-          {tab.direction === "current" ? (
-            <CurrentPicker value={value} onChange={onChange} />
-          ) : (
+          {isIntervalValue(value) ? (
             <IntervalPicker
               value={value}
               isNew={isNew}
               onChange={setValue}
               onSubmit={handleSubmit}
             />
+          ) : (
+            <CurrentPicker value={value} onChange={onChange} />
           )}
         </Tabs.Panel>
       ))}
@@ -108,9 +117,9 @@ function CurrentPicker({ value, onChange }: CurrentPickerProps) {
 }
 
 interface IntervalPickerProps {
-  value: RelativeDatePickerValue;
+  value: RelativeDateIntervalValue;
   isNew: boolean;
-  onChange: (value: RelativeDatePickerValue) => void;
+  onChange: (value: RelativeDateIntervalValue) => void;
   onSubmit: () => void;
 }
 
@@ -120,20 +129,19 @@ function IntervalPicker({
   onChange,
   onSubmit,
 }: IntervalPickerProps) {
-  const interval = Number(value.value);
+  const interval = getInterval(value);
   const options = getUnitOptions(interval);
 
-  const handleUnitChange = (newUnit: string | null) => {
-    const option = options.find(option => option.value === newUnit);
-    if (option) {
-      onChange({ ...value, unit: option.value });
+  const handleIntervalChange = (inputValue: number | "") => {
+    if (inputValue !== "") {
+      onChange(setInterval(value, inputValue));
     }
   };
 
-  const handleIntervalChange = (newInterval: number | "") => {
-    if (newInterval !== "") {
-      const sign = Math.sign(interval);
-      onChange({ ...value, value: Math.abs(newInterval) * sign });
+  const handleUnitChange = (inputValue: string | null) => {
+    const option = options.find(option => option.value === inputValue);
+    if (option) {
+      onChange(setUnit(value, option.value));
     }
   };
 
@@ -141,7 +149,7 @@ function IntervalPicker({
     <div>
       <Group p="md">
         <NumberInput
-          value={Math.abs(interval)}
+          value={interval}
           w="4rem"
           onChange={handleIntervalChange}
         />
