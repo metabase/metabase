@@ -5,6 +5,7 @@ import { SelectItem } from "./SelectItem";
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
   Select: {
     defaultProps: {
+      size: "md",
       withinPortal: true,
       dropdownComponent: "div",
       itemComponent: SelectItem,

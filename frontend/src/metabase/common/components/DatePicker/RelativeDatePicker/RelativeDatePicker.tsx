@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { t } from "ttag";
+import { Icon } from "metabase/core/components/Icon";
 import {
   Button,
   Divider,
   Flex,
   Group,
+  Menu,
   NumberInput,
   Select,
   Stack,
   Tabs,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
 import type {
   DatePickerTruncationUnit,
@@ -20,11 +21,15 @@ import { DEFAULT_VALUE, TABS, UNIT_GROUPS } from "./constants";
 import {
   getDirection,
   getInterval,
+  describeUnit,
   getUnitOptions,
   isIntervalValue,
   setDirection,
   setInterval,
   setUnit,
+  describeInterval,
+  getIncludeCurrent,
+  setIncludeCurrent,
 } from "./utils";
 import type { RelativeDateIntervalValue } from "./types";
 import { TabList } from "./RelativeDatePicker.styled";
@@ -57,7 +62,7 @@ export function RelativeDatePicker({
 
   return (
     <Tabs value={direction} onTabChange={handleTabChange}>
-      <Flex>
+      <Group>
         <BackButton onClick={onBack} />
         <TabList>
           {TABS.map(tab => (
@@ -66,7 +71,7 @@ export function RelativeDatePicker({
             </Tabs.Tab>
           ))}
         </TabList>
-      </Flex>
+      </Group>
       <Divider />
       {TABS.map(tab => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
@@ -107,7 +112,7 @@ function CurrentPicker({ value, onChange }: CurrentPickerProps) {
               radius="xl"
               onClick={() => handleClick(unit)}
             >
-              {Lib.describeTemporalUnit(unit)}
+              {describeUnit(unit)}
             </Button>
           ))}
         </Group>
@@ -131,6 +136,7 @@ function IntervalPicker({
 }: IntervalPickerProps) {
   const interval = getInterval(value);
   const options = getUnitOptions(interval);
+  const includeCurrent = getIncludeCurrent(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
     if (inputValue !== "") {
@@ -145,9 +151,13 @@ function IntervalPicker({
     }
   };
 
+  const handleIncludeCurrentChange = () => {
+    onChange(setIncludeCurrent(value, !includeCurrent));
+  };
+
   return (
     <div>
-      <Group p="md">
+      <Flex p="md">
         <NumberInput
           value={interval}
           w="4rem"
@@ -157,9 +167,27 @@ function IntervalPicker({
           data={options}
           value={value.unit}
           withinPortal={false}
+          ml="md"
           onChange={handleUnitChange}
         />
-      </Group>
+        <Menu withinPortal={false}>
+          <Menu.Target>
+            <Button
+              c="text.2"
+              variant="subtle"
+              leftIcon={<Icon name="ellipsis" />}
+            />
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
+              onClick={handleIncludeCurrentChange}
+            >
+              {t`Include ${describeInterval(value.unit)}`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Flex>
       <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" onClick={onSubmit}>

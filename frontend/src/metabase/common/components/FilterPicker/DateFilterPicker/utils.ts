@@ -94,7 +94,7 @@ function getRelativeFilterClause(
     value: value.value,
     offsetBucket: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
-    options: {},
+    options: value.options ?? {},
   });
 }
 

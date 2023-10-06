@@ -42,14 +42,14 @@ export function setDirection(
   }
 }
 
-export function getInterval(value: RelativeDateIntervalValue) {
+export function getInterval(value: RelativeDateIntervalValue): number {
   return Math.abs(value.value);
 }
 
 export function setInterval(
   value: RelativeDateIntervalValue,
   interval: number,
-) {
+): RelativeDateIntervalValue {
   const sign = Math.sign(value.value);
 
   return {
@@ -61,13 +61,32 @@ export function setInterval(
 export function setUnit(
   value: RelativeDateIntervalValue,
   unit: DatePickerTruncationUnit,
-) {
+): RelativeDateIntervalValue {
   return { ...value, unit };
+}
+
+export function getIncludeCurrent(value: RelativeDateIntervalValue): boolean {
+  return value.options?.["include-current"] ?? false;
+}
+
+export function setIncludeCurrent(
+  value: RelativeDateIntervalValue,
+  includeCurrent: boolean,
+): RelativeDateIntervalValue {
+  return { ...value, options: { "include-current": includeCurrent } };
+}
+
+export function describeUnit(unit: DatePickerTruncationUnit): string {
+  return Lib.describeTemporalUnit(unit);
+}
+
+export function describeInterval(unit: DatePickerTruncationUnit): string {
+  return Lib.describeTemporalInterval("current", unit).toLowerCase();
 }
 
 export function getUnitOptions(interval: number) {
   return DATE_PICKER_TRUNCATION_UNITS.map(unit => ({
     value: unit,
-    label: Lib.describeTemporalUnit(unit, interval),
+    label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
   }));
 }
