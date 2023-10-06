@@ -12,6 +12,7 @@ import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
+import { NativeQueryFilter } from "../filters/NativeQueryFilter";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
@@ -23,6 +24,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
+    [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val: SearchQueryParamValue) => {
@@ -70,6 +72,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       {getFilter(SearchFilterKeys.Type)}
       {getFilter(SearchFilterKeys.CreatedBy)}
       {getFilter(SearchFilterKeys.Verified)}
+      {getFilter(SearchFilterKeys.NativeQuery)}
     </Stack>
   );
 };
