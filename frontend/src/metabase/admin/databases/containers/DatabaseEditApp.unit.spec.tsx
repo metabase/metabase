@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -88,9 +88,7 @@ async function setup({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-  });
+  await waitForLoadingSpinnerToDisappear();
 
   return {
     history: checkNotNull(history),
@@ -147,9 +145,7 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+      await waitForLoadingSpinnerToDisappear();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "ab");
@@ -172,9 +168,8 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+      await waitForLoadingSpinnerToDisappear();
+
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "Test database");
 
@@ -193,9 +188,7 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+      await waitForLoadingSpinnerToDisappear();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "Test database");
