@@ -39,13 +39,25 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate matrix for E2E tests
+        id: e2e-matrix
+        uses: ./.github/actions/build-e2e-matrix
+
   download_uberjar:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    needs: files-changed
+    needs: [files-changed, e2e-matrix-builder]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
       needs.files-changed.outputs.e2e_specs == 'true' &&
       needs.files-changed.outputs.e2e_all != 'true'
     strategy:
@@ -107,10 +119,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    needs: [download_uberjar, files-changed]
+    needs: [download_uberjar, files-changed, e2e-matrix-builder]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
       needs.download_uberjar.result == 'skipped' &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
@@ -135,17 +148,6 @@ jobs:
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
-
-  e2e-matrix-builder:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Generate matrix for E2E tests
-        id: e2e-matrix
-        uses: ./.github/actions/build-e2e-matrix
 
   e2e-tests:
     needs: [build, files-changed, test-run-id, download_uberjar, e2e-matrix-builder]
