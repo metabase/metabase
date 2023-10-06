@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Metrics from "metabase/entities/metrics";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 
 import { updatePreviewSummary } from "../datamodel";
@@ -24,26 +23,39 @@ const mapStateToProps = (state, props) => ({
 });
 
 const UpdateMetricFormInner = ({
+  route,
   metric,
   updateMetric,
   onChangeLocation,
   ...props
 }) => {
+  const [isDirty, setIsDirty] = useState(false);
+
   const handleSubmit = useCallback(
     async metric => {
-      await updateMetric(metric);
-      MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-      onChangeLocation("/admin/datamodel/metrics");
+      setIsDirty(false);
+
+      try {
+        await updateMetric(metric);
+        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+        onChangeLocation("/admin/datamodel/metrics");
+      } catch (error) {
+        setIsDirty(isDirty);
+      }
     },
-    [updateMetric, onChangeLocation],
+    [updateMetric, isDirty, onChangeLocation],
   );
 
   return (
-    <MetricForm
-      {...props}
-      metric={metric.getPlainObject()}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <MetricForm
+        {...props}
+        metric={metric.getPlainObject()}
+        onIsDirtyChange={setIsDirty}
+        onSubmit={handleSubmit}
+      />
+      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
+    </>
   );
 };
 
@@ -51,54 +63,50 @@ const UpdateMetricForm = Metrics.load({
   id: (state, props) => parseInt(props.params.id),
 })(UpdateMetricFormInner);
 
-const CreateMetricForm = ({ createMetric, onChangeLocation, ...props }) => {
-  const handleSubmit = useCallback(
-    async metric => {
-      await createMetric({
-        ...metric,
-        table_id: metric.definition["source-table"],
-      });
-      MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
-      onChangeLocation("/admin/datamodel/metrics");
-    },
-    [createMetric, onChangeLocation],
-  );
-
-  return <MetricForm {...props} onSubmit={handleSubmit} />;
-};
-
-const MetricApp = ({ route, onChangeLocation, ...props }) => {
-  /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
-   * prop has a chance to re-compute on re-render
-   */
-  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+const CreateMetricForm = ({
+  route,
+  createMetric,
+  onChangeLocation,
+  ...props
+}) => {
   const [isDirty, setIsDirty] = useState(false);
 
-  const handleChangeLocation = useCallback(
-    location => {
-      scheduleCallback(() => {
-        onChangeLocation(location);
-      });
-    },
-    [scheduleCallback, onChangeLocation],
-  );
+  const handleSubmit = useCallback(
+    async metric => {
+      setIsDirty(false);
 
-  const SegmentAppForm = props.params.id ? UpdateMetricForm : CreateMetricForm;
+      try {
+        await createMetric({
+          ...metric,
+          table_id: metric.definition["source-table"],
+        });
+        MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
+        onChangeLocation("/admin/datamodel/metrics");
+      } catch (error) {
+        setIsDirty(isDirty);
+      }
+    },
+    [createMetric, isDirty, onChangeLocation],
+  );
 
   return (
     <>
-      <SegmentAppForm
-        onIsDirtyChange={setIsDirty}
-        onChangeLocation={handleChangeLocation}
+      <MetricForm
         {...props}
+        onIsDirtyChange={setIsDirty}
+        onSubmit={handleSubmit}
       />
-      <LeaveConfirmationModal
-        isEnabled={isDirty && !isCallbackScheduled}
-        route={route}
-      />
+      <LeaveConfirmationModal isEnabled={isDirty} route={route} />
     </>
   );
+};
+
+const MetricApp = props => {
+  if (props.params.id) {
+    return <UpdateMetricForm {...props} />;
+  }
+
+  return <CreateMetricForm {...props} />;
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(MetricApp);
