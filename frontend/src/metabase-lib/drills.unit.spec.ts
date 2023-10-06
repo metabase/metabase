@@ -1305,10 +1305,10 @@ describe("availableDrillThrus", () => {
     const columns = {
       CustomColumn: createMockColumn({
         base_type: "type/Integer",
-        name: "Custom",
-        display_name: "Custom",
-        expression_name: "Custom",
-        field_ref: ["expression", "Custom"],
+        name: "CustomColumn",
+        display_name: "CustomColumn",
+        expression_name: "CustomColumn",
+        field_ref: ["expression", "CustomColumn"],
         source: "breakout",
         effective_type: "type/Integer",
       }),
@@ -1367,117 +1367,175 @@ describe("availableDrillThrus", () => {
 
 describe("drillThru", () => {
   it.each<ApplyDrillTestCase>([
-    // FIXME: sort drill returns wrong result query (metabase#34342)
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "ID",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.ID,
-    //           {
-    //             "base-type": "type/BigInteger",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "PRODUCT_ID",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["desc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "desc",
-    //         [
-    //           "field",
-    //           ORDERS.PRODUCT_ID,
-    //           {
-    //             "base-type": "type/Integer",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "SUBTOTAL",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.SUBTOTAL,
-    //           {
-    //             "base-type": "type/Float",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "DISCOUNT",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["desc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "desc",
-    //         [
-    //           "field",
-    //           ORDERS.DISCOUNT,
-    //           {
-    //             "base-type": "type/Float",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "CREATED_AT",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.CREATED_AT,
-    //           {
-    //             "base-type": "type/DateTime",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "ID",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.ID,
+              {
+                "base-type": "type/BigInteger",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "PRODUCT_ID",
+      queryType: "unaggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "SUBTOTAL",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.SUBTOTAL,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "DISCOUNT",
+      queryType: "unaggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.DISCOUNT,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "CREATED_AT",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "PRODUCT_ID",
+      queryType: "aggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "CREATED_AT",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+        ],
+        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "sum",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [["asc", ["aggregation", 1]]],
+        "source-table": ORDERS_ID,
+      },
+    },
 
     {
       drillType: "drill-thru/summarize-column",
