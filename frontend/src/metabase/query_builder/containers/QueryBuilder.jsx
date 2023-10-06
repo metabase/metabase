@@ -92,6 +92,7 @@ import {
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
   query: { include: "events" },
@@ -195,6 +196,7 @@ const mapDispatchToProps = {
 function QueryBuilder(props) {
   const {
     question,
+    originalQuestion,
     location,
     params,
     fromUrl,
@@ -421,19 +423,15 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
   const isLocationAllowed = useCallback(
-    location => {
-      if (!question?.isNative() || question?.isDataset()) {
-        return true;
-      }
-
-      const isTryingToRunModifiedSavedQuestion = Boolean(
-        location?.pathname === "/question" && location?.hash,
-      );
-
-      return isTryingToRunModifiedSavedQuestion;
-    },
-    [question],
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
   );
 
   return (
