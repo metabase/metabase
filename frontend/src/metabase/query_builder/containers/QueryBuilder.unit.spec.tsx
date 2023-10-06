@@ -38,6 +38,7 @@ import {
   screen,
   waitFor,
   waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 import { callMockEvent } from "__support__/events";
@@ -248,9 +249,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoadingSpinnerToDisappear();
 
   return {
     history: checkNotNull(history),
@@ -559,11 +558,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoadingSpinnerToDisappear();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -598,11 +593,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoadingSpinnerToDisappear();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -682,11 +673,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoadingSpinnerToDisappear();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -728,11 +715,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoadingSpinnerToDisappear();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
