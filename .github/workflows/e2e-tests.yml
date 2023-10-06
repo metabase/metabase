@@ -39,13 +39,25 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate matrix for E2E tests
+        id: e2e-matrix
+        uses: ./.github/actions/build-e2e-matrix
+
   download_uberjar:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    needs: files-changed
+    needs: [files-changed, e2e-matrix-builder]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
       needs.files-changed.outputs.e2e_specs == 'true' &&
       needs.files-changed.outputs.e2e_all != 'true'
     strategy:
@@ -107,10 +119,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    needs: [download_uberjar, files-changed]
+    needs: [download_uberjar, files-changed, e2e-matrix-builder]
     if: |
       !cancelled() &&
       github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
       needs.download_uberjar.result == 'skipped' &&
       needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
@@ -137,13 +150,13 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id, download_uberjar]
+    needs: [build, files-changed, test-run-id, download_uberjar, e2e-matrix-builder]
     if: |
       !cancelled() &&
       (needs.download_uberjar.result == 'success' || needs.build.result == 'success')
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -158,41 +171,7 @@ jobs:
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
-      matrix:
-        runner: [ubuntu-22.04]
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "actions"
-          - "admin"
-          - "admin-2"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-cards"
-          - "dashboard-filters"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            runner: ubuntu-22.04
-            context: oss-subset
-            java-version: 11
-          - edition: ee
-            java-version: 11
-            context: slow
-            runner: buildjet-2vcpu-ubuntu-2204
+      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -307,7 +286,7 @@ jobs:
           TERM: xterm
 
       - name: Run slow and resource-intensive Cypress tests
-        if: matrix.context == 'slow' && github.event_name != 'schedule'
+        if: matrix.name == 'slow' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
@@ -316,12 +295,12 @@ jobs:
         env:
           TERM: xterm
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee' && github.event_name != 'schedule' && matrix.context != 'slow'
+      - name: Run EE Cypress tests on ${{ matrix.name }}
+        if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
-          --folder ${{ matrix.folder }} \
+          --folder ${{ matrix.name }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
@@ -344,12 +323,12 @@ jobs:
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
-        if: matrix.edition == 'ee' && github.event_name == 'schedule' && matrix.context != 'slow'
+      - name: Run EE Cypress tests on ${{ matrix.name }} using Replay.io browser
+        if: matrix.context == 'folder' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
-          --folder ${{ matrix.folder }} \
+          --folder ${{ matrix.name }} \
           --browser "replay-chromium"
         env:
           TERM: xterm
@@ -368,14 +347,14 @@ jobs:
         uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
           path: |
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [build, files-changed, download_uberjar]
+    needs: [build, files-changed, download_uberjar, e2e-matrix-builder]
     if: |
       !cancelled() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
@@ -383,45 +362,10 @@ jobs:
       needs.download_uberjar.result == 'skipped'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
-      matrix:
-        runner: [ubuntu-22.04]
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "actions"
-          - "admin"
-          - "admin-2"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-cards"
-          - "dashboard-filters"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            runner: ubuntu-22.04
-            java-version: 11
-            context: oss-subset
-          - edition: ee
-            runner: ubuntu-latest
-            java-version: 11
-            context: slow
-
+      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"

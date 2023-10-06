@@ -3,7 +3,6 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
@@ -11,14 +10,14 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
+   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
-   [schema.core :as s]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -81,6 +80,24 @@
             :catalog)
    details))
 
+(setting/defsetting jdbc-data-warehouse-max-connection-pool-size
+  "Maximum size of the c3p0 connection pool."
+  :visibility :internal
+  :type :integer
+  :default 15)
+
+(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
+  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
+  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
+  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
+  timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
+  :visibility :internal
+  :type       :integer
+  :getter     (fn []
+                (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+                    (long (/ context.default/query-timeout-ms 1000))))
+  :setter     :none)
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -90,8 +107,7 @@
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1
    "initialPoolSize"              1
-   "maxPoolSize"                  (or (config/config-int :mb-jdbc-data-warehouse-max-connection-pool-size)
-                                      15)
+   "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -116,6 +132,10 @@
    ;;
    ;; Kill idle connections above the minPoolSize after 5 minutes.
    "maxIdleTimeExcessConnections" (* 5 60)
+   ;; kill connections after this amount of time if they haven't been returned -- this should be the same as the query
+   ;; timeout. This theoretically shouldn't happen since the QP should kill things after a certain timeout but it's
+   ;; better to be safe than sorry -- it seems like in practice some connections disappear into the ether
+   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
    "dataSourceName"               (format "db-%d-%s-%s"
@@ -165,10 +185,10 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(s/defn ^:private jdbc-spec-hash
+(mu/defn ^:private jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
-  [{driver :engine, :keys [details], :as database} :- (s/maybe su/Map)]
+  [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
   (when (some? database)
     (hash (connection-details->spec driver details))))
 
