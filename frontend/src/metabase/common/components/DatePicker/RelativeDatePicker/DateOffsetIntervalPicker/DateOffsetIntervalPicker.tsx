@@ -3,7 +3,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, NumberInput, Select, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getInterval, getUnitOptions, setInterval } from "../utils";
-import { setUnit } from "./utils";
+import { setOffsetInterval, setUnit } from "./utils";
 import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
 
 interface DateOffsetIntervalPickerProps {
@@ -35,6 +35,12 @@ export function DateOffsetIntervalPicker({
     }
   };
 
+  const handleOffsetIntervalChange = (inputValue: number | "") => {
+    if (inputValue !== "") {
+      onChange(setOffsetInterval(value, inputValue));
+    }
+  };
+
   return (
     <div>
       <PickerGrid p="md">
@@ -48,8 +54,11 @@ export function DateOffsetIntervalPicker({
         />
         <div />
         <Text>{t`Starting from`}</Text>
-        <NumberInput />
-        <Select data={[]} withinPortal={false} />
+        <NumberInput
+          value={value.offsetValue}
+          onChange={handleOffsetIntervalChange}
+        />
+        <Select data={[]} value={value.offsetUnit} withinPortal={false} />
         <Button variant="subtle" leftIcon={<Icon name="close" />} />
       </PickerGrid>
       <Group p="sm" position="right">
