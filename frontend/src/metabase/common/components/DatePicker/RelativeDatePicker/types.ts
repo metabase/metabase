@@ -3,7 +3,7 @@ import type {
   RelativeDatePickerValue,
 } from "../types";
 
-export type IntervalDirection = "past" | "current" | "next";
+export type IntervalDirection = "last" | "current" | "next";
 
 export interface Tab {
   label: string;

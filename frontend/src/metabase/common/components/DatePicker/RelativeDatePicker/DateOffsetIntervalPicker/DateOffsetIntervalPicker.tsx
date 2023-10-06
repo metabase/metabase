@@ -3,7 +3,12 @@ import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, NumberInput, Select, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getInterval, getUnitOptions, setInterval } from "../utils";
-import { setOffsetInterval, setUnit } from "./utils";
+import {
+  getOffsetUnitOptions,
+  setOffsetInterval,
+  setOffsetUnit,
+  setUnit,
+} from "./utils";
 import { PickerGrid } from "./DateOffsetIntervalPicker.styled";
 
 interface DateOffsetIntervalPickerProps {
@@ -20,7 +25,8 @@ export function DateOffsetIntervalPicker({
   onSubmit,
 }: DateOffsetIntervalPickerProps) {
   const interval = getInterval(value);
-  const unitOptions = getUnitOptions(interval);
+  const unitOptions = getUnitOptions(value);
+  const offsetUnitOptions = getOffsetUnitOptions(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
     if (inputValue !== "") {
@@ -29,7 +35,7 @@ export function DateOffsetIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = unitOptions.find(option => option.value === inputValue);
+    const option = unitOptions.find(({ value }) => value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }
@@ -38,6 +44,13 @@ export function DateOffsetIntervalPicker({
   const handleOffsetIntervalChange = (inputValue: number | "") => {
     if (inputValue !== "") {
       onChange(setOffsetInterval(value, inputValue));
+    }
+  };
+
+  const handleOffsetUnitChange = (inputValue: string | null) => {
+    const option = offsetUnitOptions.find(({ value }) => value === inputValue);
+    if (option) {
+      onChange(setOffsetUnit(value, option.value));
     }
   };
 
@@ -58,7 +71,12 @@ export function DateOffsetIntervalPicker({
           value={value.offsetValue}
           onChange={handleOffsetIntervalChange}
         />
-        <Select data={[]} value={value.offsetUnit} withinPortal={false} />
+        <Select
+          data={offsetUnitOptions}
+          value={value.offsetUnit}
+          withinPortal={false}
+          onChange={handleOffsetUnitChange}
+        />
         <Button variant="subtle" leftIcon={<Icon name="close" />} />
       </PickerGrid>
       <Group p="sm" position="right">

@@ -3,7 +3,7 @@ import type { DatePickerTruncationUnit } from "../types";
 import type { Tab } from "./types";
 
 export const TABS: Tab[] = [
-  { label: t`Past`, direction: "past" },
+  { label: t`Past`, direction: "last" },
   { label: t`Current`, direction: "current" },
   { label: t`Next`, direction: "next" },
 ];

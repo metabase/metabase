@@ -30,7 +30,7 @@ export function getDirection(
   if (value.value === "current") {
     return "current";
   } else {
-    return value.value < 0 ? "past" : "next";
+    return value.value < 0 ? "last" : "next";
   }
 }
 
@@ -43,7 +43,7 @@ export function setDirection(
   switch (direction) {
     case "current":
       return { type: "relative", value: "current", unit: "hour" };
-    case "past":
+    case "last":
       return { ...valueOrDefault, value: -Math.abs(valueOrDefault.value) };
     case "next":
       return { ...valueOrDefault, value: Math.abs(valueOrDefault.value) };
@@ -66,7 +66,9 @@ export function setInterval(
   };
 }
 
-export function getUnitOptions(interval: number) {
+export function getUnitOptions(value: DateIntervalValue) {
+  const interval = getInterval(value);
+
   return DATE_PICKER_TRUNCATION_UNITS.map(unit => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
