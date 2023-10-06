@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import type { ByRoleMatcher } from "@testing-library/react";
 import _ from "underscore";
 import type { History } from "history";
@@ -190,5 +190,11 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
     return hasText(element) && childrenDoNotHaveText;
   };
 }
+
+export const waitForLoadingSpinnerToDisappear = async () => {
+  await waitFor(() => {
+    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+  });
+};
 
 export * from "@testing-library/react";
