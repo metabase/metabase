@@ -124,7 +124,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "question a",
         rhsTable: "question b",
         lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
+        rhsSampleColumn: `Question ${joinedQuestionId} - PRODUCT_ID → ID`,
       });
     });
 
@@ -143,7 +143,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "question a",
         rhsTable: "question b",
         lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Rating`,
+        rhsSampleColumn: `Question ${joinedQuestionId} - PRODUCT_ID → Rating`,
       });
     });
     queryBuilderMain().findByText("EAN").should("not.exist");
@@ -152,7 +152,7 @@ describe("scenarios > question > joined questions", () => {
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText(`Question ${joinedQuestionId} - PRODUCT_ID`).click();
         cy.findByText("CATEGORY").click();
         cy.findByPlaceholderText("Enter some text").type("Gadget");
         cy.button("Add filter").click();
@@ -204,11 +204,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     startNewQuestion();
-
     selectSavedQuestionsToJoin("Q1", "Q2");
-    popover().findByText("Product ID").click();
-    popover().findByText("ID").click();
-
     visualize();
 
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
@@ -216,7 +212,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "Q1",
         rhsTable: "Q2",
         lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
+        rhsSampleColumn: `Question ${joinedQuestionId} - Product → ID`,
       });
     });
 
@@ -230,7 +226,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "Q1",
         rhsTable: "Q2",
         lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Sum of Total`,
+        rhsSampleColumn: `Question ${joinedQuestionId} - Product → Sum of Total`,
       });
       queryBuilderMain()
         .findByText(`Question ${joinedQuestionId} → ID`)
@@ -243,14 +239,14 @@ describe("scenarios > question > joined questions", () => {
       // that a question could be made by joining two previously saved questions
       addCustomColumn();
       enterCustomColumnDetails({
-        formula: `[Question ${joinedQuestionId} → Sum of Rating] / [Sum of Total]`,
+        formula: `[Question ${joinedQuestionId} - Product → Sum of Rating] / [Sum of Total]`,
         name: "Sum Divide",
       });
       popover().button("Done").click();
 
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText(`Question ${joinedQuestionId} - Product`).click();
         cy.findByText("ID").click();
         cy.findByPlaceholderText("Enter an ID").type("12");
         cy.button("Add filter").click();
