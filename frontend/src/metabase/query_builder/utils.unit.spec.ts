@@ -140,6 +140,7 @@ describe("isNavigationAllowed", () => {
 
     it("allows to run the question", () => {
       const destination = mockRunQuestionLocation;
+
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(true);
@@ -147,6 +148,7 @@ describe("isNavigationAllowed", () => {
 
     it("disallows all other navigation", () => {
       const destination = anyLocation;
+
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(false);
@@ -172,6 +174,7 @@ describe("isNavigationAllowed", () => {
 
     it("disallows all other navigation", () => {
       const destination = anyLocation;
+
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(false);
@@ -197,6 +200,7 @@ describe("isNavigationAllowed", () => {
 
     it("disallows all other navigation", () => {
       const destination = anyLocation;
+
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(false);
