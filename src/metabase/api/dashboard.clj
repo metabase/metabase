@@ -1023,17 +1023,21 @@
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run a pivot table query for a specific DashCard."
-  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters pivot_cols pivot_rows], :as body} :body}]
   {dashboard-id ms/PositiveInt
    dashcard-id  ms/PositiveInt
    card-id      ms/PositiveInt
-   parameters   [:maybe [:sequential ParameterWithID]]}
+   parameters   [:maybe [:sequential ParameterWithID]]
+   pivot_cols   [:vector ms/IntGreaterThanOrEqualToZero]
+   pivot_rows   [:vector ms/IntGreaterThanOrEqualToZero]}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body
              {:dashboard-id dashboard-id
               :card-id      card-id
               :dashcard-id  dashcard-id
-              :qp-runner    qp.pivot/run-pivot-query})))
+              :qp-runner    (fn [query info context]
+                              (qp.pivot/run-pivot-query query info context {:pivot-cols pivot_cols
+                                                                            :pivot-rows pivot_rows}))})))
 
 (api/define-routes)
