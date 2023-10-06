@@ -27,10 +27,7 @@ export function setDirection(
   value: RelativeDatePickerValue,
   direction: IntervalDirection,
 ): RelativeDatePickerValue {
-  const valueOrDefault =
-    value.value === "current"
-      ? DEFAULT_VALUE
-      : { ...value, value: value.value };
+  const valueOrDefault = isIntervalValue(value) ? value : DEFAULT_VALUE;
 
   switch (direction) {
     case "current":
