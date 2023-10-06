@@ -10,9 +10,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
@@ -119,9 +117,11 @@
     :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
-                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
-                                                (format-field-name :name) su/NonBlankString}}
-                                 result)))}
+                    (is (malli= [:map {:closed true}
+                                 [:created-row [:map {:closed true}
+                                                [(format-field-name :id)   ms/PositiveInt]
+                                                [(format-field-name :name) ms/NonBlankString]]]]
+                         result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})

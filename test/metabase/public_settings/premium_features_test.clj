@@ -13,7 +13,6 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -183,22 +182,22 @@
           (is (= "Hi rasta, you're an EE customer but not extra special."
                  (special-greeting-or-custom :rasta))))))))
 
-(defenterprise-schema greeting-with-schema :- s/Str
+(defenterprise-schema greeting-with-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the argument was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Keyword
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- :keyword
   "Returns a greeting for a user. The OSS implementation has an invalid return schema"
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
-(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Str
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- :string
   "Returns a greeting for a user."
   metabase-enterprise.util-test
-  [username :- s/Keyword]
+  [username :- :keyword]
   (format "Hi %s, the return value was valid" (name username)))
 
 (defenterprise greeting-with-only-ee-schema
@@ -213,12 +212,12 @@
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            #"Invalid input: \[\"should be a keyword\"\]"
                             (greeting-with-schema "rasta"))))
 
    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Output of greeting-with-invalid-oss-return-schema does not match schema"
+                            #"Invalid output: \[\"should be a keyword\"\]"
                             (greeting-with-invalid-oss-return-schema :rasta)))))
 
   (when config/ee-available?
@@ -227,7 +226,7 @@
              (greeting-with-schema :rasta)))
 
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Input to greeting-with-schema does not match schema"
+                            #"Invalid input: \[\"should be a keyword\"\]"
                             (greeting-with-schema "rasta"))))
 
     (testing "Only EE schema is validated if EE implementation is called"
@@ -236,7 +235,7 @@
 
       (with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Output of greeting-with-invalid-ee-return-schema does not match schema"
+                              #"Invalid output: \[\"should be a keyword\"\]"
                               (greeting-with-invalid-ee-return-schema :rasta)))))
 
     (testing "EE schema is not validated if OSS fallback is called"

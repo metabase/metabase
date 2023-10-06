@@ -1459,3 +1459,103 @@ export const createOrdersTableDatasetColumns = () => [
   createOrdersCreatedAtDatasetColumn(),
   createOrdersQuantityDatasetColumn(),
 ];
+
+export const createProductsIdDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsIdField(),
+    id: PRODUCTS.ID,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.ID, null],
+    semantic_type: "type/PK",
+    ...opts,
+  });
+
+export const createProductsEanDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsEanField(),
+    id: PRODUCTS.EAN,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.EAN, null],
+    ...opts,
+  });
+
+export const createProductsTitleDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsTitleField(),
+    id: PRODUCTS.TITLE,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.TITLE, null],
+    ...opts,
+  });
+
+export const createProductsCategoryDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsCategoryField(),
+    id: PRODUCTS.CATEGORY,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.CATEGORY, null],
+    ...opts,
+  });
+
+export const createProductsVendorDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsVendorField(),
+    id: PRODUCTS.VENDOR,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.VENDOR, null],
+    ...opts,
+  });
+
+export const createProductsPriceDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsPriceField(),
+    id: PRODUCTS.PRICE,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.PRICE, null],
+    ...opts,
+  });
+
+export const createProductsRatingDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsRatingField(),
+    id: PRODUCTS.RATING,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.RATING, null],
+    ...opts,
+  });
+
+export const createProductsCreatedAtDatasetColumn = (
+  opts?: Partial<DatasetColumn>,
+): DatasetColumn =>
+  createMockColumn({
+    ...createProductsCreatedAtField(),
+    id: PRODUCTS.CREATED_AT,
+    source: "fields",
+    field_ref: ["field", PRODUCTS.CREATED_AT, null],
+    ...opts,
+  });
+
+export const createProductsTableDatasetColumns = () => [
+  createProductsIdDatasetColumn(),
+  createProductsEanDatasetColumn(),
+  createProductsTitleDatasetColumn(),
+  createProductsCategoryDatasetColumn(),
+  createProductsVendorDatasetColumn(),
+  createProductsPriceDatasetColumn(),
+  createProductsRatingDatasetColumn(),
+  createProductsCreatedAtDatasetColumn(),
+];
