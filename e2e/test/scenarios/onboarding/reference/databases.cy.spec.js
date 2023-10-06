@@ -66,7 +66,7 @@ describe("scenarios > reference > databases", () => {
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach(name => {
-        cy.addH2SampleDatabase({ name });
+        cy.addSQLiteDatabase({ name });
       });
     });
 
