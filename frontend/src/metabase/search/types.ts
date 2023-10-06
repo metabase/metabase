@@ -57,7 +57,7 @@ type SidebarFilterType = "dropdown" | "toggle";
 
 interface SearchFilter<T extends FilterTypeKeys = any> {
   type: SidebarFilterType;
-  label: string | (() => string);
+  label: () => string;
   iconName?: IconName;
 
   // parses the string value of a URL query parameter to the filter value

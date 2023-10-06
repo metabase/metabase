@@ -48,7 +48,7 @@ export const ToggleSidebarFilter = ({
   return (
     <Group noWrap py="0.5rem" spacing="xs" data-testid={dataTestId}>
       <Text w="100%" c="text.1" size="md" fw={700}>
-        {typeof label === "function" ? label() : label}
+        {label()}
       </Text>
       <Switch
         wrapperProps={{

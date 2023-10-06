@@ -113,9 +113,7 @@ export const DropdownSidebarFilter = ({
           ) : (
             <Group noWrap>
               {iconName && <Icon name={iconName} />}
-              <Text weight={700}>
-                {typeof label === "function" ? label() : label}
-              </Text>
+              <Text weight={700}>{label()}</Text>
             </Group>
           )}
           <Button
