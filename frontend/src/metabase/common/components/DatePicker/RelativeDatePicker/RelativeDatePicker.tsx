@@ -17,7 +17,7 @@ import type {
   RelativeDatePickerValue,
 } from "../types";
 import { DEFAULT_VALUE, TABS, UNIT_GROUPS } from "./constants";
-import { getTabType, getUnitOptions, getValueAfterTabChange } from "./utils";
+import { getDirection, getUnitOptions, setDirection } from "./utils";
 import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
@@ -32,13 +32,13 @@ export function RelativeDatePicker({
   onBack,
 }: RelativeDatePickerProps) {
   const [value, setValue] = useState(initialValue ?? DEFAULT_VALUE);
-  const type = getTabType(value);
+  const direction = getDirection(value);
   const isNew = initialValue == null;
 
-  const handleTabChange = (type: string | null) => {
-    const tab = TABS.find(tab => tab.type === type);
+  const handleTabChange = (tabValue: string | null) => {
+    const tab = TABS.find(tab => tab.direction === tabValue);
     if (tab) {
-      setValue(getValueAfterTabChange(tab.type, value));
+      setValue(setDirection(value, tab.direction));
     }
   };
 
@@ -47,12 +47,12 @@ export function RelativeDatePicker({
   };
 
   return (
-    <Tabs value={type} onTabChange={handleTabChange}>
+    <Tabs value={direction} onTabChange={handleTabChange}>
       <Flex>
         <BackButton onClick={onBack} />
         <TabList>
           {TABS.map(tab => (
-            <Tabs.Tab key={tab.type} value={tab.type}>
+            <Tabs.Tab key={tab.direction} value={tab.direction}>
               {tab.label}
             </Tabs.Tab>
           ))}
@@ -60,8 +60,8 @@ export function RelativeDatePicker({
       </Flex>
       <Divider />
       {TABS.map(tab => (
-        <Tabs.Panel key={tab.type} value={tab.type}>
-          {tab.type === "current" ? (
+        <Tabs.Panel key={tab.direction} value={tab.direction}>
+          {tab.direction === "current" ? (
             <CurrentPicker value={value} onChange={onChange} />
           ) : (
             <IntervalPicker

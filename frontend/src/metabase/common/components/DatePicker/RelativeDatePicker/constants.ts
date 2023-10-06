@@ -3,9 +3,9 @@ import type { DatePickerTruncationUnit } from "../types";
 import type { Tab } from "./types";
 
 export const TABS: Tab[] = [
-  { type: "past", label: t`Past` },
-  { type: "current", label: t`Current` },
-  { type: "next", label: t`Next` },
+  { label: t`Past`, direction: "past" },
+  { label: t`Current`, direction: "current" },
+  { label: t`Next`, direction: "next" },
 ];
 
 export const UNIT_GROUPS: DatePickerTruncationUnit[][] = [
