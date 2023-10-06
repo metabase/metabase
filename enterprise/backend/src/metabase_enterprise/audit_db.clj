@@ -42,18 +42,18 @@
   [jar-path resource-path out-dir]
   (let [jar-file (JarFile. (str jar-path))
         entries (.entries jar-file)]
-    (while (.hasMoreElements entries)
-      (let [^JarEntry entry (.nextElement entries)
-            entry-name (.getName entry)
-            out-file (fs/path out-dir entry-name)]
-        (when (str/starts-with? entry-name resource-path)
-          (if (.isDirectory entry)
-            (fs/create-dirs out-file)
-            (do
-              (-> out-file fs/parent fs/create-dirs)
-              (with-open [in (.getInputStream jar-file entry)
-                          out (io/output-stream (str out-file))]
-                (io/copy in out)))))))))
+     (doseq [^JarEntry entry (iterator-seq entries)
+             :let [entry-name (.getName entry)]
+             :when (str/starts-with? entry-name resource-path)
+             :let [out-file (fs/path out-dir entry-name)]]
+       (if (.isDirectory entry)
+         (fs/create-dirs out-file)
+         (do
+           (-> out-file fs/parent fs/create-dirs)
+           (with-open [in (.getInputStream jar-file entry)
+                       out (io/output-stream (str out-file))]
+             (io/copy in out)))))))
+
 
 (defenterprise default-audit-db-id
   "Default audit db id."
