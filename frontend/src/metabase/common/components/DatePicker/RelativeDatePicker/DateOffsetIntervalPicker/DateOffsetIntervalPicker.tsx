@@ -63,7 +63,11 @@ export function DateOffsetIntervalPicker({
     <div>
       <PickerGrid p="md">
         <Text>{t`Past`}</Text>
-        <NumberInput value={interval} onChange={handleIntervalChange} />
+        <NumberInput
+          value={interval}
+          w="4rem"
+          onChange={handleIntervalChange}
+        />
         <Select
           data={unitOptions}
           value={value.unit}
@@ -74,6 +78,7 @@ export function DateOffsetIntervalPicker({
         <Text>{t`Starting from`}</Text>
         <NumberInput
           value={value.offsetValue}
+          w="4rem"
           onChange={handleOffsetIntervalChange}
         />
         <Select
