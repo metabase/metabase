@@ -161,6 +161,8 @@ describe("DashboardApp", function () {
         screen.queryAllByTestId("loading-spinner"),
       );
 
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+
       history.goBack();
 
       expect(
