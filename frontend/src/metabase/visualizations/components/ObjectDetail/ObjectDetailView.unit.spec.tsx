@@ -468,7 +468,7 @@ describe("ObjectDetailView", () => {
     expect(
       screen.queryByText("Choose a record to update"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
     await waitForLoadingSpinnerToDisappear();
 

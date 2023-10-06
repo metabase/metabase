@@ -149,7 +149,7 @@ describe("AddToDashSelectDashModal", () => {
     it("should show loading", async () => {
       await setup({ waitForContent: false });
 
-      expect(screen.getByText("Loading...")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     });
 
     it("should show error", async () => {
