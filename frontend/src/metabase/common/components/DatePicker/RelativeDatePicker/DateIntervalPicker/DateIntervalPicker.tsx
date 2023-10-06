@@ -35,7 +35,7 @@ export function DateIntervalPicker({
   onSubmit,
 }: DateIntervalPickerProps) {
   const interval = getInterval(value);
-  const options = getUnitOptions(interval);
+  const unitOptions = getUnitOptions(interval);
   const includeCurrent = getIncludeCurrent(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
@@ -45,7 +45,7 @@ export function DateIntervalPicker({
   };
 
   const handleUnitChange = (inputValue: string | null) => {
-    const option = options.find(option => option.value === inputValue);
+    const option = unitOptions.find(option => option.value === inputValue);
     if (option) {
       onChange(setUnit(value, option.value));
     }
@@ -68,7 +68,7 @@ export function DateIntervalPicker({
           onChange={handleIntervalChange}
         />
         <Select
-          data={options}
+          data={unitOptions}
           value={value.unit}
           withinPortal={false}
           ml="md"
