@@ -55,7 +55,7 @@
   (is (not (contains? (set (map str (fs/list-dir "plugins")))
                       "plugins/instance_analytics")))
 
-  (#'audit-db/ia-content->plugins nil audit-db/analytics-dir-resource)
+  (#'audit-db/ia-content->plugins)
   (is (= #{"plugins/instance_analytics/collections"
            "plugins/instance_analytics/databases"}
          (set (map str (fs/list-dir "plugins/instance_analytics"))))))
