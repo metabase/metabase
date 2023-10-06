@@ -7,6 +7,7 @@ import {
   getVersionType,
   getReleaseBranch,
   isLatestVersion,
+  getBuildRequirements,
   getNextVersions,
 } from "./version-helpers";
 
@@ -279,6 +280,47 @@ describe("version-helpers", () => {
     });
   });
 
+  describe("getBuildRequirements", () => {
+    it("should return the correct build requirements for provided ee version", () => {
+      expect(getBuildRequirements("v1.47.2.1")).toEqual({
+        node: 18,
+        java: 11,
+      });
+    });
+
+    it("should return the correct build requirements for provided oss version", () => {
+      expect(getBuildRequirements("v0.47.2.1")).toEqual({
+        node: 18,
+        java: 11,
+      });
+    });
+
+    it("should return the correct build requirements for a major version release", () => {
+      expect(getBuildRequirements("v0.47.0")).toEqual({
+        node: 18,
+        java: 11,
+      });
+    });
+
+    it("should return the correct build requirements for an RC release", () => {
+      expect(getBuildRequirements("v0.47.0-RC7")).toEqual({
+        node: 18,
+        java: 11,
+      });
+    });
+
+    it("should throw an error for invalid versions", () => {
+      expect(() => getBuildRequirements("foo")).toThrow();
+      expect(() => getBuildRequirements("v2.47.6")).toThrow();
+    });
+
+    it('should use the latest build requirements for a version that has not been released', () => {
+      expect(getBuildRequirements("v0.99.0")).toEqual({
+        node: 18,
+        java: 11,
+      });
+  });
+
   describe('getNextVersions', () => {
     it('should get next versions for a major release', () => {
       const testCases: [string, string[]][] = [
@@ -342,5 +384,5 @@ describe("version-helpers", () => {
       expect(() => getNextVersions('v2.75')).toThrow();
       expect(() => getNextVersions('v0.75-RC2')).toThrow();
     });
-  })
+  });
 });
