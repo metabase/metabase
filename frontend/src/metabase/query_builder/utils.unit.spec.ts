@@ -57,37 +57,124 @@ const mockQuestions = [
 
 const anyLocation = createMockLocation();
 
-const modelLocation = createMockLocation({
+const mockModelLocation = createMockLocation({
   pathname: `/model/${mockModelCard.id}`,
 });
 
-describe("isNavigationAllowed", () => {
-  it("always allows navigation for new questions", () => {
-    const isNewQuestion = true;
-    const questions = [...mockQuestions, undefined];
-    const destinations = [anyLocation, modelLocation, undefined];
+const mockModelQueryTabLocation = createMockLocation({
+  pathname: `/model/${mockModelCard.id}/query`,
+});
 
-    for (const question of questions) {
+const mockModelMetadataTabLocation = createMockLocation({
+  pathname: `/model/${mockModelCard.id}/metadata`,
+});
+
+const mockRunQuestionLocation = createMockLocation({
+  pathname: "/question",
+  hash: `#${window.btoa(JSON.stringify(mockNativeCard))}`,
+});
+
+describe("isNavigationAllowed", () => {
+  describe("when there is no destination (i.e. it's a beforeunload event)", () => {
+    const destination = undefined;
+    const questions = [...mockQuestions, undefined];
+
+    it("always allows navigating away from creating new question", () => {
+      const isNewQuestion = true;
+
+      for (const question of questions) {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      }
+    });
+
+    it("always allows navigating away from editing question", () => {
+      const isNewQuestion = false;
+
+      for (const question of questions) {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      }
+    });
+  });
+
+  describe("when creating new question", () => {
+    const isNewQuestion = true;
+
+    it("always allows navigating away from creating new question", () => {
+      const questions = [...mockQuestions, undefined];
+      const destinations = [anyLocation, mockModelLocation, undefined];
+
+      for (const question of questions) {
+        for (const destination of destinations) {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("when editing native-query model", () => {
+    const isNewQuestion = false;
+    const question = mockNativeModelQuestion;
+
+    it("allows navigating between model query & metadata tabs", () => {
+      const destinations = [
+        mockModelQueryTabLocation,
+        mockModelMetadataTabLocation,
+      ];
+
       for (const destination of destinations) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
       }
-    }
+    });
   });
 
-  it("always allows navigation when there is no destination (i.e. it's an beforeunload event)", () => {
-    const destination = undefined;
-    const questions = [...mockQuestions, undefined];
+  describe("when editing notebook model", () => {
+    const isNewQuestion = false;
+    const question = mockModelQuestion;
 
-    for (const question of questions) {
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion: true }),
-      ).toBe(true);
+    it("allows navigating between model query & metadata tabs", () => {
+      const destinations = [
+        mockModelQueryTabLocation,
+        mockModelMetadataTabLocation,
+      ];
 
+      for (const destination of destinations) {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      }
+    });
+  });
+
+  describe("when editing native question", () => {
+    const isNewQuestion = false;
+    const question = mockNativeQuestion;
+
+    it("allows to run the question", () => {
       expect(
-        isNavigationAllowed({ destination, question, isNewQuestion: false }),
+        isNavigationAllowed({
+          destination: mockRunQuestionLocation,
+          question,
+          isNewQuestion,
+        }),
       ).toBe(true);
-    }
+    });
+
+    it("disallows all other navigation", () => {
+      expect(
+        isNavigationAllowed({
+          destination: anyLocation,
+          question,
+          isNewQuestion,
+        }),
+      ).toBe(false);
+    });
   });
 });
