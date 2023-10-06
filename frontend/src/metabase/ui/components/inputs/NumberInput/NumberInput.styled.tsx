@@ -1,9 +1,9 @@
-import { getSize, rem } from "@mantine/core";
 import type {
   ContextStylesParams,
   MantineThemeOverride,
   NumberInputStylesParams,
 } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 
 const CONTROL_SIZES = {
   xs: rem(16),
@@ -22,11 +22,6 @@ export const getNumberInputOverrides =
         params: NumberInputStylesParams,
         { size = "md" }: ContextStylesParams,
       ) => ({
-        wrapper: {
-          "&:not(:only-child)": {
-            marginTop: theme.spacing.xs,
-          },
-        },
         control: {
           color: theme.colors.text[2],
           width: getSize({ size, sizes: CONTROL_SIZES }),
