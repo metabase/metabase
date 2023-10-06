@@ -1,5 +1,6 @@
 import type { MantineThemeOverride, SwitchStylesParams } from "@mantine/core";
-import { rem, getSize } from "@mantine/core";
+import { rem, getSize, getStylesRef } from "@mantine/core";
+
 import { color } from "metabase/lib/colors";
 
 const LABEL_FONT_SIZES = {
@@ -98,7 +99,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           height: getSize({ size, sizes: TRACK_HEIGHTS }),
           width: getSize({ size, sizes: TRACK_WIDTHS }),
           cursor: "pointer",
-          "input:disabled + &": {
+          [`${getStylesRef("input")}:disabled + &`]: {
             backgroundColor: theme.colors.bg[1],
           },
           marginTop: getSize({ size, sizes: TRACK_PADDING_TOP }),
@@ -109,7 +110,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           borderRadius: rem(22),
           height: getSize({ size, sizes: THUMB_SIZES }),
           width: getSize({ size, sizes: THUMB_SIZES }),
-          "input:disabled + * > &": {
+          [`${getStylesRef("input")}:disabled + * > &`]: {
             backgroundColor: theme.colors.bg[0],
           },
         },
