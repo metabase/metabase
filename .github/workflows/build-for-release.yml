@@ -123,8 +123,8 @@ jobs:
           const requirements = getBuildRequirements(version);
 
           return {
-            java_version: requirements.node,
-            node_version: requirements.java,
+            java_version: requirements.java,
+            node_version: requirements.node,
           };
 
   build-uberjar-for-release:
