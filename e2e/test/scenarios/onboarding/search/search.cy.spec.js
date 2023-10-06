@@ -167,7 +167,6 @@ describe("scenarios > search", () => {
       });
     });
   });
-
   describe("applying search filters", () => {
     describe("no filters", () => {
       it("hydrating search from URL", () => {
@@ -506,6 +505,48 @@ describe("scenarios > search", () => {
           });
       });
     });
+
+    it("should persist filters when the user changes the text query", () => {
+      cy.visit("/search?q=orders");
+
+      // add created_by filter
+      cy.findByTestId("created_by-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Bobby Tables").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      // add last_edited_by filter
+      cy.findByTestId("last_edited_by-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Bobby Tables").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      // add type filter
+      cy.findByTestId("type-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      expectSearchResultItemNameContent({
+        itemNames: [
+          "Orders",
+          "Orders, Count",
+          "Orders, Count, Grouped by Created At (year)",
+        ],
+      });
+
+      getSearchBar().clear().type("count{enter}");
+
+      expectSearchResultItemNameContent({
+        itemNames: [
+          "Orders, Count",
+          "Orders, Count, Grouped by Created At (year)",
+        ],
+      });
+    });
   });
 });
 
@@ -541,4 +582,15 @@ function getProductsSearchResults() {
 
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
+}
+
+function expectSearchResultItemNameContent({ itemNames }) {
+  cy.findAllByTestId("search-result-item-name").then($searchResultLabel => {
+    const searchResultLabelList = $searchResultLabel
+      .toArray()
+      .map(el => el.textContent);
+
+    expect(searchResultLabelList).to.have.length(itemNames.length);
+    expect(searchResultLabelList).to.include.members(itemNames);
+  });
 }
