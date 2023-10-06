@@ -51,7 +51,7 @@ export function setInterval(
 
   return {
     ...value,
-    value: Math.max(Math.abs(Math.floor(interval)), 1) * sign,
+    value: interval !== 0 ? Math.abs(interval) * sign : sign,
   };
 }
 
