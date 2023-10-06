@@ -295,12 +295,12 @@ jobs:
         env:
           TERM: xterm
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }}
+      - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
-          --folder ${{ matrix.folder }} \
+          --folder ${{ matrix.name }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
@@ -323,12 +323,12 @@ jobs:
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
+      - name: Run EE Cypress tests on ${{ matrix.name }} using Replay.io browser
         if: matrix.context == 'folder' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
-          --folder ${{ matrix.folder }} \
+          --folder ${{ matrix.name }} \
           --browser "replay-chromium"
         env:
           TERM: xterm
@@ -347,7 +347,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
           path: |
             ./cypress
             ./logs/test.log
