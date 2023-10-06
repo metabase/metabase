@@ -4,13 +4,18 @@
   data from an application database to any empty application database for all combinations of supported application
   database types."
   (:require
+   [clojure.java.classpath :as classpath]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.tools.namespace.find :as ns.find]
    [honey.sql :as sql]
+   [metabase.cmd.copy :as copy]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.db.data-migrations :refer [DataMigrations]]
    [metabase.db.setup :as mdb.setup]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -315,7 +320,22 @@
     :model/DataMigrations
     :model/ImplicitAction
     :model/HTTPAction
-    :model/QueryAction})
+    :model/QueryAction
+    :model/ModelIndexValue
+    :model/TablePrivileges})
+
+(defmulti ^:private postgres-id-sequence-name
+  {:arglists '([model])}
+  keyword)
+
+(defmethod postgres-id-sequence-name :default
+  [model]
+  (str (name (t2/table-name model)) "_id_seq"))
+
+;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
+(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+  [_model]
+  "group_table_access_policy_id_seq")
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
@@ -326,17 +346,22 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
-  [_ data-source]
+  [_db-type data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
-      (doseq [e     entities
-              :when (not (contains? entities-without-autoinc-ids e))
-              :let  [table-name (name (t2/table-name e))
-                     seq-name   (str table-name "_id_seq")
+      (doseq [model entities
+              :when (not (contains? entities-without-autoinc-ids model))
+              :let  [table-name (name (t2/table-name model))
+                     seq-name   (postgres-id-sequence-name model)
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
                                         seq-name (name table-name))]]
-        (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
+        (try
+          (jdbc/db-query-with-resultset target-db-conn [sql] :val)
+          (catch Throwable e
+            (throw (ex-info (format "Error updating sequence values for %s: %s" model (ex-message e))
+                            {:model model}
+                            e))))))))
 
 
 (defmethod update-sequence-values! :h2
@@ -358,6 +383,11 @@
    source-data-source :- javax.sql.DataSource
    target-db-type     :- (s/enum :h2 :postgres :mysql)
    target-data-source :- javax.sql.DataSource]
+  ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
+  (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+          :when   (and (str/starts-with? ns-symb "metabase")
+                       (not (str/includes? ns-symb "test")))]
+    (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
     (mdb.setup/setup-db! source-db-type source-data-source true))
