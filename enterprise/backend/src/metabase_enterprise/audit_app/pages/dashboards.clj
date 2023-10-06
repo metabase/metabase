@@ -47,8 +47,7 @@
                            [:%count.* :views]]
                :from      [[:view_log :vl]]
                :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
-               :where     [:and
-                           [:= :vl.model (h2x/literal "dashboard")]]
+               :where     [:= :vl.model (h2x/literal "dashboard")]
                :group-by  [:d.id]
                :order-by  [[:%count.* :desc]]
                :limit     10})})
@@ -66,8 +65,7 @@
                                                        [:%count.* :views]]
                                            :from      [[:view_log :vl]]
                                            :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
-                                           :where     [:and
-                                                       [:= :vl.model (h2x/literal "dashboard")]]
+                                           :where     [:= :vl.model (h2x/literal "dashboard")]
                                            :group-by  [:d.id]
                                            :order-by  [[:%count.* :desc]]
                                            :limit     [:inline 10]}]
