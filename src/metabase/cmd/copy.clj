@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [clojure.tools.namespace.find :as ns.find]
    [honey.sql :as sql]
-   [metabase.cmd.copy :as copy]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
