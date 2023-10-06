@@ -11,7 +11,7 @@ describe("Logs", () => {
       render(<Logs />);
       const utilSpy = jest.spyOn(UtilApi, "logs");
 
-      screen.getByTestId("loading-spinner");
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
       jest.advanceTimersByTime(1001);
       expect(utilSpy).toHaveBeenCalled();
     });
