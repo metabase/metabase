@@ -6,6 +6,10 @@ import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import { NotebookCell } from "../../NotebookCell";
 
+export const TableCell = styled.div`
+  padding: ${NotebookCell.CONTAINER_PADDING};
+`;
+
 export const Row = styled.div`
   display: flex;
   align-items: center;

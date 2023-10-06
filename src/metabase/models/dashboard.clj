@@ -31,10 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -127,9 +124,24 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
+(defn- migrate-parameters-list
+  "Update the `:parameters` list of a dashboard from legacy formats."
+  [dashboard]
+  (cond-> dashboard
+    (:parameters dashboard)
+    (update :parameters (fn [params]
+                          (for [p params]
+                            (cond-> p
+                              ;; It was previously possible for parameters to have empty strings for :name and
+                              ;; :slug, but these are now required to be non-blank strings.
+                              (or (= (:name p) "")
+                                  (= (:slug p) ""))
+                              (assoc :name "unnamed" :slug "unnamed")))))))
+
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
+      migrate-parameters-list
       public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
@@ -429,7 +441,6 @@
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
         collection (populate/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
-                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
@@ -459,15 +470,13 @@
     dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankString
-   :id       su/NonBlankString
-   :mappings (s/maybe #{dashboard-card/ParamMapping})
-   s/Keyword s/Any})
+  [:map
+   [:id ms/NonBlankString]
+   [:name ms/NonBlankString]
+   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankString]
-                                                   {param-id ParamWithMapping})
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
-                 s/Keyword                    s/Any}]
+(mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
+  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [dashboard           (t2/hydrate dashboard [:ordered_cards :card])
         param-key->mappings (apply
                              merge-with set/union

@@ -1050,7 +1050,7 @@
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (testing "forward migration migrate correclty"
+      (testing "forward migration migrate correctly"
         (migrate! :up)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                 :model/DashboardCard :id [:in dashcard-ids]
@@ -1137,3 +1137,22 @@
                  ORDER BY
                      table_name,
                      column_name;"))))))
+
+(deftest remove-collection-color-test
+  (testing "Migration v48.00-019"
+    (impl/test-migrations ["v48.00-019"] [migrate!]
+      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            collection-id (first (t2/insert-returning-pks! (t2/table-name Collection) {:name "Amazing collection"
+                                                                                       :slug "amazing_collection"
+                                                                                       :color "#509EE3"}))]
+
+        (testing "Collection should exist and have the color set by the user prior to migration"
+          (is (= "#509EE3" (:color (t2/select-one :model/Collection :id collection-id)))))
+
+        (migrate!)
+        (testing "should drop the existing color column"
+          (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))
+
+        (db.setup/migrate! db-type data-source :down 47)
+        (testing "Rollback to the previous version should restore the column column, and set the default color value"
+          (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))

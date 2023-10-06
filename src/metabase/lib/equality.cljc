@@ -268,8 +268,8 @@
   Throws if there are multiple, ambiguous matches.
 
   Returns the matching ref, or nil if no plausible matches are found."
-  [column       :- lib.metadata/ColumnMetadata
-   refs         :- [:sequential ::lib.schema.ref/ref]]
+  [column :- lib.metadata/ColumnMetadata
+   refs   :- [:sequential ::lib.schema.ref/ref]]
   (let [ref-tails (group-by ref-id-or-name refs)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
                       (not-empty (get ref-tails (:id column)))

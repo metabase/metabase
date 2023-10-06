@@ -496,6 +496,8 @@ Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
 
+Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expression would return `100.8`.
+
 ### second
 
 Takes a datetime and returns the number of seconds in the minute (0-59) as an integer.

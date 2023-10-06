@@ -12,11 +12,29 @@ import { useDispatch } from "metabase/lib/redux";
 
 interface Props {
   isEnabled: boolean;
+  isLocationAllowed?: (location?: Location) => boolean;
   route: Route;
   router: InjectedRouter;
 }
 
-const LeaveConfirmationModalBase = ({ isEnabled, route, router }: Props) => {
+const IS_LOCATION_ALLOWED = (location?: Location) => {
+  /**
+   * If there is no "location" then it's beforeunload event, which is
+   * handled by useBeforeUnload hook - no reason to duplicate its work.
+   */
+  if (!location) {
+    return true;
+  }
+
+  return false;
+};
+
+const LeaveConfirmationModalBase = ({
+  isEnabled,
+  isLocationAllowed = IS_LOCATION_ALLOWED,
+  route,
+  router,
+}: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
@@ -26,7 +44,7 @@ const LeaveConfirmationModalBase = ({ isEnabled, route, router }: Props) => {
 
   useEffect(() => {
     const removeLeaveHook = router.setRouteLeaveHook(route, location => {
-      if (isEnabled && !isConfirmed) {
+      if (isEnabled && !isConfirmed && !isLocationAllowed(location)) {
         setIsConfirmationVisible(true);
         setNextLocation(location);
         return false;
@@ -34,7 +52,7 @@ const LeaveConfirmationModalBase = ({ isEnabled, route, router }: Props) => {
     });
 
     return removeLeaveHook;
-  }, [router, route, isEnabled, isConfirmed]);
+  }, [isLocationAllowed, router, route, isEnabled, isConfirmed]);
 
   useEffect(() => {
     if (isConfirmed && nextLocation) {
