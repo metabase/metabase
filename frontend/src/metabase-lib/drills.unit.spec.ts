@@ -697,28 +697,26 @@ describe("availableDrillThrus", () => {
         directions: ["asc", "desc"],
       },
     },
-    // FIXME "sort" should be available for aggregated query metric column (metabase#34185)
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/sort",
-    //     directions: ["asc", "desc"],
-    //   },
-    // },
-    // FIXME "sort" should be available for aggregated query metric column (metabase#34185)
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/sort",
-    //     directions: ["asc", "desc"],
-    //   },
-    // },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["asc", "desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["asc", "desc"],
+      },
+    },
     // endregion
 
     // region --- drill-thru/column-filter
@@ -931,24 +929,6 @@ describe("availableDrillThrus", () => {
       clickType: "header",
       queryType: "aggregated",
       columnName: "CREATED_AT",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "count",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "sum",
       expectedParameters: {
         type: "drill-thru/distribution",
       },
