@@ -2344,7 +2344,8 @@
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
         (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
-          (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
+          (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))
+                                                              api.pivots/pivot-query-options)
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
