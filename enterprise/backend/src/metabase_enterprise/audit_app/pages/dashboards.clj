@@ -25,7 +25,7 @@
                   saves        (common/query
                                 {:select   [[(common/grouped-datetime datetime-unit :created_at) :date]
                                             [:%count.* :saves]]
-                                 :from     [[:report_dashboard]]
+                                 :from     [:report_dashboard]
                                  :group-by [(common/grouped-datetime datetime-unit :created_at)]})
                   date->saves  (zipmap (map :date saves) (map :saves saves))
                   all-dates    (sort (keep identity (distinct (concat (keys date->views)

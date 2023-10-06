@@ -34,11 +34,12 @@
   "Default custom reports entity id."
   "okNLSZKdSxaoG58JSQY54")
 
-(def collection-entity-id->collection
+(defn collection-entity-id->collection
   "Returns the collection from entity id for collections. Memoizes from entity id."
-  (mdb.connection/memoize-for-application-db
-   (fn [entity-id]
-     (t2/select-one :model/Collection :entity_id entity-id))))
+  [entity-id]
+  ((mdb.connection/memoize-for-application-db
+    (fn [entity-id]
+      (t2/select-one :model/Collection :entity_id entity-id))) entity-id))
 
 (defenterprise default-custom-reports-collection
   "Default custom reports collection."
