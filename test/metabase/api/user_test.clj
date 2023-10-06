@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
    [metabase.config :as config]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -1228,16 +1229,6 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
 
-(defn- event
-  ([topic]
-   (event topic nil))
-
-  ([topic model-id]
-   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  :topic    topic
-                  :model_id model-id
-                  {:order-by [[:id :desc]]})))
-
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
     (mt/with-model-cleanup [:model/Activity :model/AuditLog]
@@ -1256,8 +1247,8 @@
                      :model    "User"
                      :model_id id
                      :details  {}}]
-                   [(event :user-deactivated id)
-                    (event :user-reactivated id)])))))))
+                   [(audit-log-test/event :user-deactivated id)
+                    (audit-log-test/event :user-reactivated id)])))))))
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
@@ -1275,4 +1266,4 @@
                                :changes {:first_name "Johnny"
                                          :last_name "Appleseed"
                                          :id id}}}
-                   (event :user-update id))))))))
+                   (audit-log-test/event :user-update id))))))))

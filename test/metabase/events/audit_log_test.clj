@@ -19,7 +19,7 @@
 
 (comment events.audit-log/keep-me)
 
-(defn- event
+(defn event
   ([topic]
    (event topic nil))
 
@@ -495,3 +495,16 @@
             :topic    :user-reactivated
             :model    "User"}
      (event :user-reactivated (mt/user->id :lucky)))))))
+
+(deftest password-reset-initiated-event-test
+  (testing :event/password-reset-initiated
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [event {:user-id (mt/user->id :rasta)
+                   :details {:token "hash"}}]
+        (is (= event (events/publish-event! :event/password-reset-initiated event))))
+      (is (= {:model_id (mt/user->id :lucky)
+              :user_id  (mt/user->id :rasta)
+              :details  {:token "hash"}
+              :topic    :password-reset-initiated
+              :model    "User"}
+             (event :password-reset-initiated))))))
