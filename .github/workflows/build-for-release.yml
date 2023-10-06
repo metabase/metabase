@@ -99,8 +99,36 @@ jobs:
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
 
+  get-build-requirements:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Version
+      uses: actions/github-script@v6
+      id: dependencies
+      with:
+        script: | # js
+          const { getBuildRequirements } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          const requirements = getBuildRequirements(version);
+
+          return {
+            java_version: requirements.node,
+            node_version: requirements.java,
+          };
+
   build-uberjar-for-release:
-    needs: [check-version, check-commit]
+    needs: [check-version, check-commit, get-build-requirements]
     runs-on: ubuntu-22.04
     timeout-minutes: 50
     strategy:
@@ -109,6 +137,15 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
+    - name: Setup Java ${{ needs.get-build-requirements.outputs.java_version }}
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ needs.get-build-requirements.outputs.java_version }}
+    - name: Setup Node.js ${{ needs.get-build-requirements.outputs.node_version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ needs.get-build-requirements.outputs.node_version }}.x
     - name: Check out the code
       uses: actions/checkout@v3
       with:
