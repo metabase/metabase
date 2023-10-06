@@ -200,7 +200,8 @@ export type FilterOperatorName =
   | NumberFilterOperatorName
   | BooleanFilterOperatorName
   | SpecificDateFilterOperatorName
-  | ExcludeDateFilterOperatorName;
+  | ExcludeDateFilterOperatorName
+  | CoordinateFilterOperatorName;
 
 export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
 
@@ -237,7 +238,8 @@ export type FilterParts =
   | SpecificDateFilterParts
   | RelativeDateFilterParts
   | ExcludeDateFilterParts
-  | TimeFilterParts;
+  | TimeFilterParts
+  | CoordinateFilterParts;
 
 export type DateParts = {
   year: number;
