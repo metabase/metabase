@@ -231,7 +231,68 @@ clojure -X:dev:test :only metabase.api.session-test/my-test
 clojure -X:dev:test :only '"test/metabase/util"'
 ```
 
-As in any clojure.test project, you can also run unit tests from the REPL.
+As in any clojure.test project, you can also run unit tests from the REPL. Some examples of useful ways to run tests are:
+
+```clojure
+;; run a single test with clojure.test
+some-ns=> (clojure.test/run-test metabase.util-test/add-period-test)
+
+Testing metabase.util-test
+
+Ran 1 tests containing 4 assertions.
+0 failures, 0 errors.
+{:test 1, :pass 4, :fail 0, :error 0, :type :summary}
+
+;; run all tests in the namespace
+some-ns=> (clojure.test/run-tests 'metabase.util-test)
+
+Testing metabase.util-test
+{:result true, :num-tests 100, :seed 1696600311261, :time-elapsed-ms 45, :test-var "pick-first-test"}
+
+Ran 33 tests containing 195 assertions.
+0 failures, 0 errors.
+{:test 33, :pass 195, :fail 0, :error 0, :type :summary}
+
+;; run tests for a set of namespaces related to a feature you are working on (eg pulses)
+some-ns=> (let [namespaces '[metabase.pulse.markdown-test metabase.pulse.parameters-test]]
+            (apply require namespaces) ;; make sure the test namespaces are loaded
+            (apply clojure.test/run-tests namespaces))
+
+Testing metabase.pulse.markdown-test
+
+Testing metabase.pulse.parameters-test
+
+Ran 5 tests containing 147 assertions.
+0 failures, 0 errors.
+{:test 5, :pass 147, :fail 0, :error 0, :type :summary}
+
+;; but we also have a lovely test runner with lots of cool options
+some-ns=> (metabase.test-runner/find-and-run-tests-repl {:namespace-pattern ".*pulse.*"})
+Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
+Excluding directory "dev/src"
+Excluding directory "local/src"
+Looking for test namespaces in directory test
+Looking for test namespaces in directory shared/test
+Finding tests took 1.6 s.
+Excluding directory "test_resources"
+Excluding directory "enterprise/backend/src"
+Looking for test namespaces in directory enterprise/backend/test
+Excluding directory "src"
+Excluding directory "shared/src"
+Excluding directory "resources"
+Running 159 tests
+...
+
+;; you can even specify a directory if you're working on a subfeature like that
+some-ns=> (metabase.test-runner/find-and-run-tests-repl {:only "test/metabase/pulse/"})
+Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
+Running tests in "test/metabase/pulse/"
+Looking for test namespaces in directory test/metabase/pulse
+Finding tests took 37.0 ms.
+Running 65 tests
+...
+
+```
 
 #### Testing drivers
 
@@ -249,6 +310,52 @@ If running tests from the REPL, you can call something like:
 ```
 (mt/set-test-drivers! #{:postgres :mysql :h2})
 ```
+
+Most drivers need to be able to load some data (a few use static datasets) and all drivers need to be able to connect to an instance of that database. You can find out what is needed in each's drivers test data namespace which follows that pattern `metabase.test.data.<driver>`.
+
+There should be an implementation of a multimethod tx/dbdef->connection-details which must produce a way to connect to a database. You can see what is required.
+
+Here's the one for postgres in `metabase.test.data.postgres`:
+
+```clojure
+(defmethod tx/dbdef->connection-details :postgres
+  [_ context {:keys [database-name]}]
+  (merge
+   {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
+    :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)
+    :timezone :America/Los_Angeles}
+   (when-let [user (tx/db-test-env-var :postgresql :user)]
+     {:user user})
+   (when-let [password (tx/db-test-env-var :postgresql :password)]
+     {:password password})
+   (when (= context :db)
+     {:db database-name})))
+```
+
+You can see that this looks in the environment for:
+- host (defaults to "localhost")
+- port (defaults to 5432)
+- user
+- password
+
+The function names indicate if they throw or not (although in this instance the ones that would throw are also supplied default values).
+
+The `(tx/db-test-env-var :postgresql :password)` will look in the env/env map for `:mb-postgres-test-password` which will be set by the environmental variable `MB_POSTGRESQL_TEST_PASSWORD`.
+
+```clojure
+some-ns=> (take 10 (keys environ.core/env))
+(:mb-redshift-test-password
+ :java-class-path
+ :path
+ :mb-athena-test-s3-staging-dir
+ :iterm-profile
+ :mb-snowflake-test-warehouse
+ :mb-bigquery-cloud-sdk-test-service-account-json
+ :tmpdir
+ :mb-oracle-test-service-name
+ :sun-management-compiler)
+```
+
 
 ### Running the linters
 
