@@ -5,6 +5,7 @@ import {
   openNavigationSidebar,
   visitQuestionAdhoc,
   popover,
+  modal,
   sidebar,
   moveColumnDown,
 } from "e2e/support/helpers";
@@ -427,6 +428,9 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
+      modal().within(() => {
+        cy.button("Leave anyway").click();
+      });
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
