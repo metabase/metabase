@@ -37,6 +37,8 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     snapshot("mysql-writable");
     deleteDatabase("mysqlID");
 
+    restoreAndAuthenticate();
+
     if (Cypress.env("QA_DB_MONGO") === true) {
       addMongoDatabase();
       snapshot("mongo-4");
