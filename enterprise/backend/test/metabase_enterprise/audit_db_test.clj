@@ -32,9 +32,7 @@
 (deftest audit-db-content-is-not-installed-when-not-found
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-zip-resource nil
-                    audit-db/analytics-dir-resource nil]
-        (is (= nil audit-db/analytics-zip-resource))
+      (with-redefs [audit-db/analytics-dir-resource nil]
         (is (= nil audit-db/analytics-dir-resource))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
@@ -48,23 +46,9 @@
       (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
       (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
-      (is (some? (or
-                   ;; the zip file
-                   audit-db/analytics-zip-resource
-                   ;; the directory
-                   (io/resource "instance_analytics"))))
+      (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
-
-(deftest audit-db-instance-analytics-content-is-unzipped-properly
-  (fs/delete-tree "plugins/instance_analytics")
-  (is (not (contains? (set (map str (fs/list-dir "plugins")))
-                      "plugins/instance_analytics")))
-
-  (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
-  (is (= #{"plugins/instance_analytics/collections"
-           "plugins/instance_analytics/databases"}
-         (set (map str (fs/list-dir "plugins/instance_analytics"))))))
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
   (fs/delete-tree "plugins/instance_analytics")

@@ -16,9 +16,44 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import [java.util.jar JarEntry JarFile]))
 
 (set! *warn-on-reflection* true)
+
+(defn- running-from-jar?
+  "Returns true iff we are running from a jar."
+  []
+  (-> (Thread/currentThread)
+      (.getContextClassLoader)
+      (.getResource "")
+      (str/starts-with? "jar:")))
+
+(defn- get-jar-path []
+  (-> (class {})
+      .getProtectionDomain
+      .getCodeSource
+      .getLocation
+      .toURI
+      .getPath))
+
+(defn copy-from-jar!
+  "Recursively copies a subdirectory from the jar at jar-path into out-dir."
+  [jar-path resource-path out-dir]
+  (let [jar-file (JarFile. (str jar-path))
+        entries (.entries jar-file)]
+    (while (.hasMoreElements entries)
+      (let [^JarEntry entry (.nextElement entries)
+            entry-name (.getName entry)
+            out-file (fs/path out-dir entry-name)]
+        (when (str/starts-with? entry-name resource-path)
+          (if (.isDirectory entry)
+            (fs/create-dirs out-file)
+            (do
+              (-> out-file fs/parent fs/create-dirs)
+              (with-open [in (.getInputStream jar-file entry)
+                          out (io/output-stream (str out-file))]
+                (io/copy in out)))))))))
 
 (defenterprise default-audit-db-id
   "Default audit db id."
@@ -135,10 +170,6 @@
       :else
       ::no-op)))
 
-(def analytics-zip-resource
-  "A zip file containing analytics content created by Metabase to load into the app instance on startup."
-  (io/resource "instance_analytics.zip"))
-
 (def analytics-dir-resource
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
@@ -150,21 +181,16 @@
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
-  [zip-resource dir-resource]
-  (cond
-    zip-resource
-    (do (log/info (str "Unzipping instance_analytics to " (u.files/relative-path instance-analytics-plugin-dir)))
-        (u.files/unzip-file analytics-zip-resource
-                               (fn [entry-name]
-                                 (str/replace-first
-                                  entry-name
-                                  #"instance_analytics/|resources/instance_analytics/"
-                                  "plugins/instance_analytics/")))
-        (log/info "Unzipping complete."))
-    dir-resource
-    (do
-      (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " instance-analytics-plugin-dir))
-      (fs/copy-tree (u.files/relative-path (fs/path analytics-dir-resource))
+  []
+  (if (running-from-jar?)
+    (let [path-to-jar (get-jar-path)]
+      (log/info "The app is ajar")
+      (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
+      (log/info "Copying complete."))
+    (let [out-path (fs/path analytics-dir-resource)]
+      (log/info "The app is not running from a jar")
+      (log/info (str "Copying " out-path " -> " instance-analytics-plugin-dir))
+      (fs/copy-tree (u.files/relative-path out-path)
                     (u.files/relative-path instance-analytics-plugin-dir)
                     {:replace-existing true})
       (log/info "Copying complete."))))
@@ -180,14 +206,14 @@
       (log/info "Beginning Audit DB Sync...")
       (sync-metadata/sync-db-metadata! audit-db)
       (log/info "Audit DB Sync Complete.")
-      (when (or analytics-zip-resource analytics-dir-resource)
+      (when analytics-dir-resource
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
            (fn []
              (ee.internal-user/ensure-internal-user-exists!)
              (adjust-audit-db-to-source! audit-db)
              (log/info "Loading Analytics Content...")
-             (ia-content->plugins analytics-zip-resource analytics-dir-resource)
+             (ia-content->plugins)
              (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
              (let [report (log/with-no-logs
