@@ -61,6 +61,8 @@ const typeFilters = [
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const TEST_QUESTIONS = generateQuestions("Robert's Question", 5);
 
+const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
+
 describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
@@ -421,21 +423,32 @@ describe("scenarios > search", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         cy.createNativeQuestion({
-          name: "Native Query",
+          name: TEST_NATIVE_QUESTION_NAME,
           native: {
             query: "SELECT 'reviews';",
+          },
+        });
+
+        cy.createNativeQuestion({
+          name: "Native Query",
+          native: {
+            query: `SELECT '${TEST_NATIVE_QUESTION_NAME}';`,
           },
         });
       });
 
       it("should hydrate search with search text and native query filter", () => {
-        cy.visit("/search?q=reviews&search_native_query=true");
+        cy.visit(
+          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
+        );
         cy.wait("@search");
 
-        getSearchBar().should("have.value", "reviews");
+        getSearchBar().should("have.value", TEST_NATIVE_QUESTION_NAME);
 
         cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "reviews"').should("exist");
+          cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
+            "exist",
+          );
         });
 
         cy.findAllByTestId("search-result-item-name").then(
@@ -446,13 +459,15 @@ describe("scenarios > search", () => {
             expect(uniqueSearchResultItemNames.size).to.eq(2);
             expect(uniqueSearchResultItemNames).to.contain("Native Query");
 
-            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
           },
         );
       });
 
       it("should include results that contain native query data when the toggle is on", () => {
-        cy.visit("/search?q=reviews");
+        cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
         cy.wait("@search");
 
         cy.findAllByTestId("search-result-item-name").then(
@@ -461,7 +476,9 @@ describe("scenarios > search", () => {
               $searchResultItemNames.toArray().map(el => el.textContent),
             );
             expect(uniqueSearchResultItemNames.size).to.eq(1);
-            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
           },
         );
 
@@ -477,17 +494,19 @@ describe("scenarios > search", () => {
               $searchResultItemNames.toArray().map(el => el.textContent),
             );
             expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain(
-              "Native Query - Reviews",
-            );
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
 
-            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
           },
         );
       });
 
       it("should not include results that contain native query data if the toggle is off", () => {
-        cy.visit("/search?q=reviews&search_native_query=true");
+        cy.visit(
+          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
+        );
         cy.wait("@search");
 
         cy.findAllByTestId("search-result-item-name").then(
@@ -496,11 +515,11 @@ describe("scenarios > search", () => {
               $searchResultItemNames.toArray().map(el => el.textContent),
             );
             expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain(
-              "Native Query - Reviews",
-            );
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
 
-            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
           },
         );
 
@@ -513,8 +532,10 @@ describe("scenarios > search", () => {
             const uniqueSearchResultItemNames = new Set(
               $searchResultItemNames.toArray().map(el => el.textContent),
             );
-            expect(uniqueSearchResultItemNames.size).to.be(1);
-            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+            expect(uniqueSearchResultItemNames.size).to.eq(1);
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
           },
         );
       });
