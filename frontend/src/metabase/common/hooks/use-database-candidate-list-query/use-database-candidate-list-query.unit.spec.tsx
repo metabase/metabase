@@ -4,7 +4,7 @@ import { setupDatabaseCandidatesEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { useDatabaseCandidateListQuery } from "./use-database-candidate-list-query";
 
@@ -46,7 +46,7 @@ describe("useDatabaseCandidateListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText(TEST_DB_CANDIDATE.schema)).toBeInTheDocument();
   });
 });

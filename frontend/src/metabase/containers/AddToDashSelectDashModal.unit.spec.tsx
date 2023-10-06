@@ -10,7 +10,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import {
   createMockCard,
@@ -121,7 +121,7 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
   }
 };
 

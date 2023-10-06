@@ -6,7 +6,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -50,14 +50,16 @@ describe("useCollectionQuery", () => {
       error: ERROR,
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    await waitForLoadingSpinnerToDisappear();
+
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
   });
 });

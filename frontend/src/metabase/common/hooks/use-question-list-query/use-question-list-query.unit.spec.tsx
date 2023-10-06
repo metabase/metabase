@@ -4,7 +4,7 @@ import { setupCardsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 import { useQuestionListQuery } from "./use-question-list-query";
@@ -44,13 +44,13 @@ describe("useQuestionListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

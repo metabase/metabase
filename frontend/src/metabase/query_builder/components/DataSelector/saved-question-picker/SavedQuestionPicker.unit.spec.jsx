@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
 import {
@@ -73,7 +73,7 @@ async function setup() {
   renderWithProviders(
     <SavedQuestionPicker onSelect={jest.fn()} onBack={jest.fn()} />,
   );
-  await waitForElementToBeRemoved(() => screen.queryAllByText("Loading..."));
+  await waitForLoadingSpinnerToDisappear();
 }
 
 describe("SavedQuestionPicker", () => {

@@ -4,7 +4,7 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { useTableMetadataQuery } from "./use-table-metadata-query";
 
@@ -36,7 +36,7 @@ describe("useTableQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 });

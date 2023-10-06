@@ -1,8 +1,12 @@
-import { waitFor, waitForElementToBeRemoved } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupActionsEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoadingSpinnerToDisappear,
+} from "__support__/ui";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
@@ -62,7 +66,7 @@ describe("Actions > ActionExecuteModal", () => {
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     await waitFor(async () => {
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");

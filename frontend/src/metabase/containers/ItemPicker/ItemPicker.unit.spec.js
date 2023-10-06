@@ -8,7 +8,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 import {
@@ -131,7 +131,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoadingSpinnerToDisappear();
 
   return { onChange };
 }

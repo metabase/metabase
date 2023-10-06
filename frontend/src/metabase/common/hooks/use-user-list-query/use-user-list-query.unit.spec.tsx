@@ -2,7 +2,7 @@ import { setupUsersEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 import { createMockUserInfo } from "metabase-types/api/mocks";
@@ -45,13 +45,13 @@ describe("useUserListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText("Testy Tableton")).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

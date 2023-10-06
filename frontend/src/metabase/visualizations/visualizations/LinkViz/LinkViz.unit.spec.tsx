@@ -5,7 +5,7 @@ import {
   screen,
   fireEvent,
   getIcon,
-  waitFor,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import {
   setupSearchEndpoints,
@@ -260,9 +260,7 @@ describe("LinkViz", () => {
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
 
-      await waitFor(() => {
-        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      });
+      await waitForLoadingSpinnerToDisappear();
 
       userEvent.click(await screen.findByText("Question Uno"));
 

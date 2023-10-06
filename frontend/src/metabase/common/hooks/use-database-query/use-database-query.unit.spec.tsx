@@ -8,7 +8,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { useDatabaseQuery } from "./use-database-query";
 
@@ -48,13 +48,13 @@ describe("useDatabaseQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
   });
 
   it("should show error from the response", async () => {
     setup({ hasDataAccess: false });
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
   });
 });

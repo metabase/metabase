@@ -5,7 +5,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -55,7 +55,7 @@ describe("useCollectionListQuery", () => {
 
     setup({ error: ERROR });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
   });
@@ -63,14 +63,16 @@ describe("useCollectionListQuery", () => {
   it("should show data from the response", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    await waitForLoadingSpinnerToDisappear();
+
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

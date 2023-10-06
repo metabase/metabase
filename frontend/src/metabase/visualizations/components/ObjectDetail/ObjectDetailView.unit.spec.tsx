@@ -1,8 +1,3 @@
-import {
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import userEvent from "@testing-library/user-event";
@@ -13,7 +8,12 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { renderWithProviders } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoadingSpinnerToDisappear,
+  within,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import type { WritebackAction } from "metabase-types/api";
 import {
@@ -470,7 +470,7 @@ describe("ObjectDetailView", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();

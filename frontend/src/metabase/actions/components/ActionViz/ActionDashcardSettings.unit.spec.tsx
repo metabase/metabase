@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
 
@@ -470,7 +470,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
       dashcard: actionDashcardWithAction,
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoadingSpinnerToDisappear();
 
     const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
     const implicitAction = screen.getByTestId(
