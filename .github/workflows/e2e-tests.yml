@@ -303,6 +303,7 @@ jobs:
         if: matrix.name == 'mongo'
         run: docker run -d -p 27004:27017 --name e2e-mongo metabase/qa-databases:mongo-sample-4.4
       - name: Wait until the port 27004 is ready
+        if: matrix.name == 'mongo'
         run: while ! nc -z localhost 27004; do sleep 1; done
         timeout-minutes: 3
       - name: Run E2E tests that depend on Mongo
