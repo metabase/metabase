@@ -1,4 +1,7 @@
-import type { RelativeDatePickerValue } from "../types";
+import type {
+  DatePickerTruncationUnit,
+  RelativeDatePickerValue,
+} from "../types";
 
 export type IntervalDirection = "past" | "current" | "next";
 
@@ -7,6 +10,11 @@ export interface Tab {
   direction: IntervalDirection;
 }
 
-export interface RelativeDateIntervalValue extends RelativeDatePickerValue {
+export interface DateIntervalValue extends RelativeDatePickerValue {
   value: number;
+}
+
+export interface DateOffsetIntervalValue extends DateIntervalValue {
+  offsetValue: number;
+  offsetUnit: DatePickerTruncationUnit;
 }

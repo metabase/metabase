@@ -9,19 +9,20 @@ import {
   NumberInput,
   Select,
 } from "metabase/ui";
-import type { RelativeDateIntervalValue } from "../types";
+import type { DateIntervalValue } from "../types";
 import { getInterval, setInterval, getUnitOptions } from "../utils";
 import {
   getIncludeCurrentLabel,
   getIncludeCurrent,
   setIncludeCurrent,
   setUnit,
+  setDefaultOffset,
 } from "./utils";
 
 interface DateIntervalPickerProps {
-  value: RelativeDateIntervalValue;
+  value: DateIntervalValue;
   isNew: boolean;
-  onChange: (value: RelativeDateIntervalValue) => void;
+  onChange: (value: DateIntervalValue) => void;
   onSubmit: () => void;
 }
 
@@ -48,7 +49,11 @@ export function DateIntervalPicker({
     }
   };
 
-  const handleIncludeCurrentChange = () => {
+  const handleStartingFromClick = () => {
+    onChange(setDefaultOffset(value));
+  };
+
+  const handleIncludeCurrentClick = () => {
     onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
@@ -77,8 +82,14 @@ export function DateIntervalPicker({
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Item
+              icon={<Icon name="arrow_left_to_line" />}
+              onClick={handleStartingFromClick}
+            >
+              {t`Starting from…`}
+            </Menu.Item>
+            <Menu.Item
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
-              onClick={handleIncludeCurrentChange}
+              onClick={handleIncludeCurrentClick}
             >
               {t`Include ${getIncludeCurrentLabel(value.unit)}`}
             </Menu.Item>

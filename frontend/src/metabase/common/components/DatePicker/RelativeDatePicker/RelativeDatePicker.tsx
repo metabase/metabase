@@ -3,9 +3,15 @@ import { Divider, Group, Tabs } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import type { RelativeDatePickerValue } from "../types";
 import { DEFAULT_VALUE, TABS } from "./constants";
-import { getDirection, isIntervalValue, setDirection } from "./utils";
+import {
+  getDirection,
+  isIntervalValue,
+  isOffsetIntervalValue,
+  setDirection,
+} from "./utils";
 import { CurrentDatePicker } from "./CurrentDatePicker";
 import { DateIntervalPicker } from "./DateIntervalPicker";
+import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 import { TabList } from "./RelativeDatePicker.styled";
 
 interface RelativeDatePickerProps {
@@ -49,7 +55,14 @@ export function RelativeDatePicker({
       <Divider />
       {TABS.map(tab => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
-          {isIntervalValue(value) ? (
+          {isOffsetIntervalValue(value) ? (
+            <DateOffsetIntervalPicker
+              value={value}
+              isNew={isNew}
+              onChange={setValue}
+              onSubmit={handleSubmit}
+            />
+          ) : isIntervalValue(value) ? (
             <DateIntervalPicker
               value={value}
               isNew={isNew}
