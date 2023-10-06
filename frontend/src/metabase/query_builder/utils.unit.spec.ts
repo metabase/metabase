@@ -63,40 +63,30 @@ const modelLocation = createMockLocation({
 
 describe("isNavigationAllowed", () => {
   it("always allows navigation for new questions", () => {
+    const isNewQuestion = true;
     const questions = [...mockQuestions, undefined];
     const destinations = [anyLocation, modelLocation, undefined];
 
     for (const question of questions) {
       for (const destination of destinations) {
         expect(
-          isNavigationAllowed({
-            destination,
-            question,
-            isNewQuestion: true,
-          }),
+          isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
       }
     }
   });
 
   it("always allows navigation when there is no destination (i.e. it's an beforeunload event)", () => {
+    const destination = undefined;
     const questions = [...mockQuestions, undefined];
 
     for (const question of questions) {
       expect(
-        isNavigationAllowed({
-          destination: undefined,
-          question,
-          isNewQuestion: true,
-        }),
+        isNavigationAllowed({ destination, question, isNewQuestion: true }),
       ).toBe(true);
 
       expect(
-        isNavigationAllowed({
-          destination: undefined,
-          question,
-          isNewQuestion: false,
-        }),
+        isNavigationAllowed({ destination, question, isNewQuestion: false }),
       ).toBe(true);
     }
   });
