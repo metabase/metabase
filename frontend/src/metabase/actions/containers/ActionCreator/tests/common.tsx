@@ -3,8 +3,7 @@ import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import {
   setupCardsEndpoints,
@@ -84,7 +83,5 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoadingSpinnerToDisappear();
 }

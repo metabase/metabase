@@ -1,5 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { screen, waitForElementToBeRemoved, within } from "__support__/ui";
+import {
+  screen,
+  waitForLoadingSpinnerToDisappear,
+  within,
+} from "__support__/ui";
 
 export function getItemPickerHeader() {
   return screen.getByTestId("item-picker-header");
@@ -22,5 +26,5 @@ export function openCollection(itemName) {
 
 export async function openCollectionWait(itemName) {
   openCollection(itemName);
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoadingSpinnerToDisappear();
 }

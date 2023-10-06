@@ -14,8 +14,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import {
   setupCardEndpoints,
@@ -65,5 +64,5 @@ export const setup = async ({
     storeInitialState: state,
   });
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoadingSpinnerToDisappear();
 };

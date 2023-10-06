@@ -7,8 +7,7 @@ import {
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 
 import Input from "metabase/core/components/Input";
@@ -262,7 +261,7 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoadingSpinnerToDisappear();
 
   return { onChange };
 }

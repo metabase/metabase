@@ -37,7 +37,6 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
   waitForLoadingSpinnerToDisappear,
   within,
 } from "__support__/ui";
@@ -996,9 +995,11 @@ describe("QueryBuilder", () => {
           ),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByText("Changes were not saved"),
@@ -1049,9 +1050,11 @@ describe("QueryBuilder", () => {
           within(saveQuestionModal).getByRole("button", { name: "Save" }),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByText("Changes were not saved"),

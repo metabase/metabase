@@ -3,8 +3,7 @@
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
-  screen,
+  waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -71,5 +70,5 @@ export async function setup({
       storeInitialState: state,
     },
   );
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/loading/i));
+  await waitForLoadingSpinnerToDisappear();
 }
