@@ -7,8 +7,9 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 import { color } from "metabase/lib/colors";
-import ViewPill from "./ViewPill";
+import * as Lib from "metabase-lib";
 
+import ViewPill from "./ViewPill";
 import {
   HeaderButton,
   FilterHeaderContainer,
@@ -26,7 +27,9 @@ export default function QuestionFilters({
   onQueryChange,
 }) {
   const query = question.query();
+  const v2Query = question._getMLv2Query?.();
   const filters = query.topLevelFilters();
+
   if (filters.length === 0) {
     return null;
   }
@@ -51,30 +54,37 @@ export default function QuestionFilters({
           </FilterPill>
         </Tooltip>
         {expanded &&
-          filters.map((filter, index) => (
-            <PopoverWithTrigger
-              key={index}
-              triggerElement={
-                <FilterPill
-                  onRemove={() => onQueryChange(filter.remove().rootQuery())}
-                >
-                  {filter.displayName()}
-                </FilterPill>
-              }
-              triggerClasses="flex flex-no-shrink align-center mr1 mb1"
-              sizeToFit
-            >
-              <FilterPopover
-                isTopLevel
-                query={query}
-                filter={filter}
-                onChangeFilter={newFilter =>
-                  onQueryChange(newFilter.replace().rootQuery())
+          filters.map((filter, index) => {
+            const v2Filter = Lib.filters(v2Query, -1)[index];
+            const displayName = v2Filter
+              ? Lib.displayInfo(v2Query, -1, v2Filter).displayName
+              : "UNKNOWN";
+
+            return (
+              <PopoverWithTrigger
+                key={index}
+                triggerElement={
+                  <FilterPill
+                    onRemove={() => onQueryChange(filter.remove().rootQuery())}
+                  >
+                    {displayName}
+                  </FilterPill>
                 }
-                className="scroll-y"
-              />
-            </PopoverWithTrigger>
-          ))}
+                triggerClasses="flex flex-no-shrink align-center mr1 mb1"
+                sizeToFit
+              >
+                <FilterPopover
+                  isTopLevel
+                  query={query}
+                  filter={filter}
+                  onChangeFilter={newFilter =>
+                    onQueryChange(newFilter.replace().rootQuery())
+                  }
+                  className="scroll-y"
+                />
+              </PopoverWithTrigger>
+            );
+          })}
       </div>
     </div>
   );
