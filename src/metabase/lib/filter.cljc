@@ -3,6 +3,7 @@
    :exclude
    [filter and or not = < <= > >= not-empty case])
   (:require
+   [inflections.core :as inflections]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -19,11 +20,11 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
@@ -63,13 +64,14 @@
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name lib.temporal-bucket/describe-temporal-pair
-        numeric? #(clojure.core/= (lib.types.isa/field-type (lib.metadata.calculation/metadata query stage-number %))
-                                  :metabase.lib.types.constants/number)
-        temporal? #(clojure.core/= (lib.types.isa/field-type (lib.metadata.calculation/metadata query stage-number %))
-                                   :metabase.lib.types.constants/temporal)]
+        numeric? #(lib.util/original-isa? % :type/Number)
+        temporal? #(lib.util/original-isa? % :type/Temporal)]
     (mbql.u/match-one expr
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
+
+      [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
 
       [:!= _ (a :guard numeric?) b]
       (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
@@ -99,25 +101,78 @@
       (i18n/tru "{0} is not {1} selections" (->display-name a) (count args)))))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
-  [query stage-number [tag _opts x y] style]
-  (let [x (lib.metadata.calculation/display-name query stage-number x style)
-        y (lib.metadata.calculation/display-name query stage-number y style)]
-    (clojure.core/case tag
-      :<                (i18n/tru "{0} is less than {1}"                x y)
-      :<=               (i18n/tru "{0} is less than or equal to {1}"    x y)
-      :>                (i18n/tru "{0} is greater than {1}"             x y)
-      :>=               (i18n/tru "{0} is greater than or equal to {1}" x y)
-      :starts-with      (i18n/tru "{0} starts with {1}"                 x y)
-      :ends-with        (i18n/tru "{0} ends with {1}"                   x y)
-      :contains         (i18n/tru "{0} contains {1}"                    x y)
-      :does-not-contain (i18n/tru "{0} does not contain {1}"            x y))))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name #(shared.ut/format-unit % nil)
+        temporal? #(lib.util/original-isa? % :type/Temporal)]
+    (mbql.u/match-one expr
+      [:< _ (x :guard temporal?) (y :guard string?)]
+      (i18n/tru "{0} is before {1}"                   (->display-name x) (->temporal-name y))
+
+      [:< _ x y]
+      (i18n/tru "{0} is less than {1}"                (->display-name x) (->display-name y))
+
+      [:<= _ x y]
+      (i18n/tru "{0} is less than or equal to {1}"    (->display-name x) (->display-name y))
+
+      [:> _ (x :guard temporal?) (y :guard string?)]
+      (i18n/tru "{0} is after {1}"                    (->display-name x) (->temporal-name y))
+
+      [:> _ x y]
+      (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
+
+      [:>= _ x y]
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
+
+      [:starts-with _ x y]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
+
+      [:ends-with _ x y]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
+
+      [:contains _ x y]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
+
+      [:does-not-contain _ x y]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y)))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
-  [query stage-number [_tag _opts expr x y] style]
-  (i18n/tru "{0} between {1} {2}"
-            (lib.metadata.calculation/display-name query stage-number expr style)
-            (lib.metadata.calculation/display-name query stage-number x    style)
-            (lib.metadata.calculation/display-name query stage-number y    style)))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name shared.ut/format-unit
+        temporal? #(lib.util/original-isa? % :type/Temporal)]
+    (mbql.u/match-one expr
+      [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
+      (i18n/tru "{0} is {1} – {2}"
+                (->display-name x)
+                (->temporal-name y nil)
+                (->temporal-name z nil))
+
+      [:between _
+       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:relative-datetime _ n2 unit2]
+       [:relative-datetime _ 0 _]]
+      (i18n/tru "{0} {1}, starting {2} {3} ago"
+                (->display-name x)
+                (lib.temporal-bucket/describe-temporal-interval n2 unit2)
+                (str n)
+                (inflections/plural (name unit)))
+
+      [:between _
+       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:relative-datetime _ 0 _]
+       [:relative-datetime _ n2 unit2]]
+      (i18n/tru "{0} {1}, starting {2} {3} from now"
+                (->display-name x)
+                (lib.temporal-bucket/describe-temporal-interval n2 unit2)
+                (str (abs n))
+                (inflections/plural (name unit)))
+
+      [:between _ x y z]
+      (i18n/tru "{0} between {1} {2}"
+                (->display-name x)
+                (->display-name y)
+                (->display-name z)))))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
@@ -142,9 +197,17 @@
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
-  (i18n/tru "{0} is within {1}"
+  (i18n/tru "{0} {1}"
             (lib.metadata.calculation/display-name query stage-number expr style)
             (lib.temporal-bucket/describe-temporal-interval n unit)))
+
+(defmethod lib.metadata.calculation/display-name-method :relative-datetime
+  [_query _stage-number [_tag _opts n unit] _style]
+  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
+
+(defmethod lib.metadata.calculation/display-name-method :interval
+  [_query _stage-number [_tag _opts n unit] _style]
+  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
 
 (lib.common/defop and [x y & more])
 (lib.common/defop or [x y & more])

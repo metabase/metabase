@@ -312,7 +312,9 @@
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
   (if unit
-    (assoc metadata ::temporal-unit unit)
+    (assoc metadata
+           ::temporal-unit unit
+           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
     (dissoc metadata ::temporal-unit)))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
@@ -417,6 +419,8 @@
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
+                                 (when-let [original-effective-type (::original-effective-type metadata)]
+                                   {::original-effective-type original-effective-type})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (:fk-field-id metadata)]

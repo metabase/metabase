@@ -209,8 +209,12 @@
    If unit is nil, formats the full date/time"
   [input unit]
   (if (string? input)
-    (let [date? (re-matches #"\d\d\d\d-\d\d-\d\d"  input)
-          t (if date? (t/local-date input) (t/local-date-time input))]
+    (let [time? (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input)
+          date? (re-matches #"\d\d\d\d-\d\d-\d\d"  input)
+          t (cond
+              time? (t/local-time input)
+              date? (t/local-date input)
+              :else (t/local-date-time input))]
       (case unit
         :day-of-week (t/format "EEEE" t)
         :month-of-year (t/format "MMMM" t)
@@ -220,9 +224,10 @@
         :day-of-year (t/format "D" t)
         :week-of-year (t/format "w" t)
         :quarter-of-year (t/format "'Q'Q" t)
-        (if date?
-          (t/format "MMMM d, YYYY" t)
-          (t/format "MMMM d, YYYY h:mm a" t))))
+        (cond
+          time? (t/format t)
+          date? (t/format "MMMM d, YYYY" t)
+          :else (t/format "MMMM d, YYYY, h:mm a" t))))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
