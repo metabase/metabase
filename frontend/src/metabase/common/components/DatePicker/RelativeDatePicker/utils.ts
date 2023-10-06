@@ -1,9 +1,4 @@
-import * as Lib from "metabase-lib";
-import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
-import type {
-  DatePickerTruncationUnit,
-  RelativeDatePickerValue,
-} from "../types";
+import type { RelativeDatePickerValue } from "../types";
 import { DEFAULT_VALUE } from "./constants";
 import type { IntervalDirection, RelativeDateIntervalValue } from "./types";
 
@@ -37,49 +32,4 @@ export function setDirection(
     case "next":
       return { ...valueOrDefault, value: Math.abs(valueOrDefault.value) };
   }
-}
-
-export function getInterval(value: RelativeDateIntervalValue): number {
-  return Math.abs(value.value);
-}
-
-export function setInterval(
-  value: RelativeDateIntervalValue,
-  interval: number,
-): RelativeDateIntervalValue {
-  const sign = Math.sign(value.value);
-
-  return {
-    ...value,
-    value: Math.max(Math.abs(Math.floor(interval)), 1) * sign,
-  };
-}
-
-export function setUnit(
-  value: RelativeDatePickerValue,
-  unit: DatePickerTruncationUnit,
-): RelativeDatePickerValue {
-  return { ...value, unit };
-}
-
-export function getIncludeCurrent(value: RelativeDateIntervalValue): boolean {
-  return value.options?.["include-current"] ?? false;
-}
-
-export function setIncludeCurrent(
-  value: RelativeDateIntervalValue,
-  includeCurrent: boolean,
-): RelativeDateIntervalValue {
-  return { ...value, options: { "include-current": includeCurrent } };
-}
-
-export function describeInterval(unit: DatePickerTruncationUnit): string {
-  return Lib.describeTemporalInterval("current", unit).toLowerCase();
-}
-
-export function getUnitOptions(interval: number) {
-  return DATE_PICKER_TRUNCATION_UNITS.map(unit => ({
-    value: unit,
-    label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
-  }));
 }
