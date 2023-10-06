@@ -15,12 +15,15 @@
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
-   (liquibase Contexts LabelExpression Liquibase)
+   (java.util List Map)
+   (liquibase Contexts LabelExpression Liquibase Scope Scope$Attr Scope$ScopedRunner RuntimeEnvironment)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeSet)
+   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
+   (liquibase.lockservice LockService LockServiceFactory)
    (liquibase.resource ClassLoaderResourceAccessor)))
 
 (set! *warn-on-reflection* true)
@@ -42,7 +45,7 @@
 ;; Liquibase logs a message for every ChangeSet directly to standard out -- see
 ;; https://github.com/liquibase/liquibase/issues/2396 -- but we can disable this by setting the ConsoleUIService's
 ;; output stream to the null output stream
-(doto ^liquibase.ui.ConsoleUIService (.getUI (liquibase.Scope/getCurrentScope))
+(doto ^liquibase.ui.ConsoleUIService (.getUI (Scope/getCurrentScope))
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
@@ -163,37 +166,81 @@
       (log/info
         (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
+(defn run-in-scope-locked
+  "Run function `f` in a scope on the Liquibase instance `liquibase`.
+  Liquibase scopes are used to hold configuration and parameters (akin to binding dynamic variables in
+  Clojure). This function initializes the database and the resource accessor which are often required."
+  [^Liquibase liquibase f]
+  (let [database (.getDatabase liquibase)
+        ^LockService lock-service (.getLockService (LockServiceFactory/getInstance) database)
+        scope-objects {(.name Scope$Attr/database) database
+                       (.name Scope$Attr/resourceAccessor) (.getResourceAccessor liquibase)}]
+    (Scope/child ^Map scope-objects
+                 (reify Scope$ScopedRunner
+                   (run [_]
+                     (.waitForLock lock-service)
+                     (try
+                       (f)
+                       (finally
+                         (.releaseLock lock-service))))))))
+
+(defn update-with-change-log
+  "Run update with the change log instances in `liquibase`."
+  ([liquibase]
+   (update-with-change-log liquibase {}))
+  ([^Liquibase liquibase
+    {:keys [^List change-set-filters exec-listener]
+     :or {change-set-filters []}}]
+   (let [change-log     (.getDatabaseChangeLog liquibase)
+         database       (.getDatabase liquibase)
+         log-iterator   (ChangeLogIterator. change-log (into-array liquibase.changelog.filter.ChangeSetFilter change-set-filters))
+         update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
+         runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
+     (run-in-scope-locked
+      liquibase
+      #(.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
+
 (s/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
   1.  This will force release the locks before start running
-  2.  This will attempt to run each migrations one a time
-  3.  Migrations that fail will be ignored
+  2.  Migrations that fail will be ignored
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
-  #3295.
-
-  Each migration is ran inside a nested transaction; that way if the nested transaction fails we can roll it back
-  without rolling back the entirety of changes that were made. (If a single statement in a transaction fails you can't
-  do anything futher until you clear the error state by doing something like calling `.rollback`.)"
+  #3295."
   [liquibase :- Liquibase]
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
   (when (has-unrun-migrations? liquibase)
-   (doseq [^ChangeSet change (.listUnrunChangeSets liquibase nil (LabelExpression.))]
-     (try
-       (log/info (format "Start executing migration with id %s" (.getId change)))
-       ;; Migrate changes from the current state upto the change with id `(.getId change)`
-       ;; Practically, we're running one change at time
-       ;; each .update will be excuted under a transaction, so if it's fails
-       ;; it'll be automatically rollbacked
-       (.update liquibase (.getId change) nil (LabelExpression.))
-       (log/info (u/format-color 'green "[SUCCESS]"))
-       (catch Throwable e
-         ;; if this migration fails, ignore it for the next run
-         (.setIgnore change true)
-         (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))))))
+    (let [change-log     (.getDatabaseChangeLog liquibase)
+          fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
+                               (.getChangeSets change-log))
+          exec-listener  (proxy [AbstractChangeExecListener] []
+                           (willRun [^ChangeSet change-set _database-change-log _database _run-status]
+                             (when (instance? ChangeSet change-set)
+                               (log/info (format "Start executing migration with id %s" (.getId change-set)))))
+
+                           (runFailed [^ChangeSet change-set _database-change-log _database ^Exception e]
+                             (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e))))
+
+                           (ran [change-set _database-change-log _database ^ChangeSet$ExecType exec-type]
+                             (when (instance? ChangeSet change-set)
+                               (condp = exec-type
+                                 ChangeSet$ExecType/EXECUTED
+                                 (log/info (u/format-color 'green "[SUCCESS]"))
+
+                                 ChangeSet$ExecType/FAILED
+                                 (log/error (u/format-color 'red "[ERROR]"))
+
+                                 (log/info (format "[%s]" (.name exec-type)))))))]
+      (try
+        (doseq [^ChangeSet change-set (.getChangeSets change-log)]
+          (.setFailOnError change-set false))
+        (update-with-change-log liquibase {:exec-listener exec-listener})
+        (finally
+          (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
+            (.setFailOnError change-set fail-on-error?)))))))
 
 (defn- changelog-table-name
   "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"

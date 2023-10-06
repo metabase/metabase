@@ -15,6 +15,18 @@
      (devtools/install!)
      (js/console.log "CLJS Devtools loaded")
 
-     (defn- ^:dev/after-load on-reload
-       "This currently does nothing, but shadow-cljs warns if there's no `:def/after-load` hook defined."
-       [])))
+     (defonce unload-handler-set? (atom false))
+
+     (defn- ^:dev/after-load on-reload []
+       (when (compare-and-set! unload-handler-set? false true)
+         (js/console.log "CLJS code hot loaded; setting up webpack invalidation on unload")
+         (.addEventListener js/window "beforeunload"
+                            (fn [_event]
+                              (js/console.log "invalidating webpack build")
+                              (js/fetch "http://localhost:8080/webpack-dev-server/invalidate")
+                              ;; HACK: Spin-lock to buy time for webpack to actually start rebuilding. Without this
+                              ;; there's a race between the invalidation and the refreshed page loading the bundles.
+                              (let [target (+ (js/performance.now) 500)]
+                                (loop []
+                                  (when (< (js/performance.now) target)
+                                    (recur))))))))))

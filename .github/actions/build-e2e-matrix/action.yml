@@ -1,0 +1,74 @@
+name: Build E2E Matrix
+description: Build and output a custom matrix for E2E tests.
+
+outputs:
+  matrix:
+    description: Parameterized matrix in JSON format
+    value: ${{ steps.matrix.outputs.result }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/github-script@v6
+      id: matrix
+      with:
+        script: |
+          const java = 11;
+
+          const defaultRunner = "ubuntu-22.04";
+          const beefierRunner = "buildjet-2vcpu-ubuntu-2204";
+
+          const folderContext = [
+            "actions",
+            "admin",
+            "admin-2",
+            "binning",
+            "collections",
+            "custom-column",
+            "dashboard",
+            "dashboard-cards",
+            "dashboard-filters",
+            "embedding",
+            "filters",
+            "joins",
+            "models",
+            "native",
+            "native-filters",
+            "onboarding",
+            "organization",
+            "permissions",
+            "question",
+            "sharing",
+            "visualizations",
+          ];
+
+          const specialContext = ["oss-subset", "slow"];
+
+          const defaultConfig = folderContext.map(folder => {
+            return {
+              "java-version": java,
+              folder,
+              runner: defaultRunner,
+              edition: "ee",
+            };
+          });
+
+          const extraConfig = specialContext.map(s => {
+            return {
+              "java-version": java,
+              context: s,
+              runner: getRunner(s),
+              edition: getEdition(s),
+            };
+          });
+
+          function getRunner(context) {
+            return context === "slow" ? beefierRunner : defaultRunner;
+          }
+
+          function getEdition(context) {
+            return context === "oss-subset" ? "oss" : "ee";
+          }
+
+          const matrix = { include: [...defaultConfig, ...extraConfig] };
+          return matrix;

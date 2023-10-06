@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
 import { useFormik } from "formik";
 import type { FieldInputProps } from "formik";
@@ -6,7 +7,6 @@ import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button/Button";
 import FieldSet from "metabase/components/FieldSet";
 import type { Segment, StructuredQuery } from "metabase-types/api";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -30,6 +30,7 @@ export interface SegmentFormProps {
   segment?: Segment;
   previewSummary?: string;
   updatePreviewSummary: (previewSummary: string) => void;
+  onIsDirtyChange: (isDirty: boolean) => void;
   onSubmit: (values: Partial<Segment>) => void;
 }
 
@@ -37,6 +38,7 @@ const SegmentForm = ({
   segment,
   previewSummary,
   updatePreviewSummary,
+  onIsDirtyChange,
   onSubmit,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
@@ -49,7 +51,9 @@ const SegmentForm = ({
       onSubmit,
     });
 
-  useBeforeUnload(dirty);
+  useEffect(() => {
+    onIsDirtyChange(dirty);
+  }, [dirty, onIsDirtyChange]);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
@@ -72,33 +76,39 @@ const SegmentForm = ({
         </FormLabel>
         <FormBodyContent>
           <FormLabel
+            htmlFor="name"
             title={t`Name Your Segment`}
             description={t`Give your segment a name to help others find it.`}
           >
             <FormInput
               {...getFieldProps("name")}
               {...getFieldMeta("name")}
+              id="name"
               placeholder={t`Something descriptive but not too long`}
             />
           </FormLabel>
           <FormLabel
+            htmlFor="description"
             title={t`Describe Your Segment`}
             description={t`Give your segment a description to help others understand what it's about.`}
           >
             <FormTextArea
               {...getFieldProps("description")}
               {...getFieldMeta("description")}
+              id="description"
               placeholder={t`This is a good place to be more specific about less obvious segment rules`}
             />
           </FormLabel>
           {!isNew && (
             <FieldSet legend={t`Reason For Changes`} noPadding={false}>
               <FormLabel
+                htmlFor="revision_message"
                 description={t`Leave a note to explain what changes you made and why they were required.`}
               >
                 <FormTextArea
                   {...getFieldProps("revision_message")}
                   {...getFieldMeta("revision_message")}
+                  id="revision_message"
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
               </FormLabel>
