@@ -123,6 +123,7 @@
     [metabase.util.log :as log]
     [metabase.util.malli :as mu]
     #_{:clj-kondo/ignore [:deprecated-namespace]}
+    [metabase.util.malli.schema :as ms]
     [metabase.util.schema :as su]
     [potemkin :as p]
     [ring.util.codec :as codec]
@@ -134,32 +135,32 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field :- (s/maybe #_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field))
+(mu/defn ->field :- [:maybe (ms/InstanceOf Field)]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString (s/pred mbql.preds/Field? ":field or :expression"))]
+   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (filters/field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
     (or
-     ;; Handle integer Field IDs.
-     (when (integer? id-or-name)
-       (t2/select-one Field :id id-or-name))
-     ;; handle field string names. Only if we have result metadata. (Not sure why)
-     (when (string? id-or-name)
-       (when-not result-metadata
-         (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
-       (when-let [field (m/find-first #(= (:name %) id-or-name)
-                                      result-metadata)]
-         (as-> field field
-           (update field :base_type keyword)
-           (update field :semantic_type keyword)
-           (mi/instance Field field)
-           (classify/run-classifiers field {}))))
-     ;; otherwise this isn't returning something, and that's probably an error. Log it.
-     (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
-                    \newline
-                    (u/pprint-to-str root))))))
+      ;; Handle integer Field IDs.
+      (when (integer? id-or-name)
+        (t2/select-one Field :id id-or-name))
+      ;; handle field string names. Only if we have result metadata. (Not sure why)
+      (when (string? id-or-name)
+        (when-not result-metadata
+          (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
+        (when-let [field (m/find-first #(= (:name %) id-or-name)
+                                       result-metadata)]
+          (as-> field field
+                (update field :base_type keyword)
+                (update field :semantic_type keyword)
+                (mi/instance Field field)
+                (classify/run-classifiers field {}))))
+      ;; otherwise this isn't returning something, and that's probably an error. Log it.
+      (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
+                     \newline
+                     (u/pprint-to-str root))))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the source of a given root object."
@@ -779,7 +780,7 @@
               (fn [lower-dims] (reduce into dimset lower-dims))
               (apply math.combo/cartesian-product underlying-dim-groups))))))))
 
-(mu/defn dash-template->affinities-old                      ;:- ads/affinities
+(mu/defn dash-template->affinities-old :- ads/affinities-old
   "Takes a dashboard template, pulls the affinities from its cards, adds the name of the card
   as the affinity name, and adds in the set of all required base dimensions to satisfy the card.
 
@@ -807,8 +808,7 @@
       ...
    ].
 "
-  [{card-templates :cards :as dashboard-template}           ;:- ads/dashboard-template
-   ]
+  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template]
   ;; todo: cards can specify native queries with dimension template tags. See
   ;; resources/automagic_dashboards/table/example.yaml
   ;; note that they can specify dimension dependencies and ALSO table dependencies:
