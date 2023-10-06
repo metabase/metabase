@@ -6,9 +6,10 @@ import type {
 import type { Dispatch } from "metabase-types/store";
 import type * as Lib from "metabase-lib";
 
-type AggregationOperator = "sum" | "avg" | "distinct";
-
-const ACTIONS: Record<AggregationOperator, Omit<ClickActionBase, "name">> = {
+const ACTIONS: Record<
+  Lib.SummarizeColumnDrillAggregationOperator,
+  Omit<ClickActionBase, "name">
+> = {
   sum: {
     title: t`Sum`,
     section: "sum",

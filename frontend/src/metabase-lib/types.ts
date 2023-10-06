@@ -285,9 +285,14 @@ export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
   directions: Array<"asc" | "desc">;
 };
 
+export type SummarizeColumnDrillAggregationOperator =
+  | "sum"
+  | "avg"
+  | "distinct";
+
 export type SummarizeColumnDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column"> & {
-    aggregations: Array<"sum" | "avg" | "distinct">;
+    aggregations: Array<SummarizeColumnDrillAggregationOperator>;
   };
 export type SummarizeColumnByTimeDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
