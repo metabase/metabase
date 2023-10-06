@@ -35,6 +35,10 @@ const tableQuestionWithJoinOnQuestion = card => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TAX, null],
+    ],
     joins: [
       {
         fields: "all",
@@ -102,6 +106,10 @@ const tableQuestionWithExpression = {
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["expression", "Math"],
+    ],
     expressions: {
       Math: ["+", 1, 1],
     },
@@ -404,13 +412,11 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().within(() => hideColumn("Math"));
       visibleColumns().findByText("Math").should("not.exist");
       disabledColumns().findByText("Math").should("exist");
-      scrollVisualization();
       visualization().findByText("Math").should("not.exist");
 
       cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
-      scrollVisualization();
       visualization().findByText("Math").should("not.exist");
 
       cy.log("show a column");
@@ -418,7 +424,6 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.wait("@dataset");
       visibleColumns().findByText("Math").should("exist");
       additionalColumns().findByText("Math").should("not.exist");
-      scrollVisualization();
       visualization().findByText("Math").should("exist");
     });
 
@@ -710,13 +715,11 @@ describe("scenarios > visualizations > table column settings", () => {
       visibleColumns().within(() => hideColumn("Math"));
       visibleColumns().findByText("Math").should("not.exist");
       disabledColumns().findByText("Math").should("exist");
-      scrollVisualization();
       visualization().findByText("Math").should("not.exist");
 
       cy.log("re-run the query");
       runQuery();
       cy.wait("@dataset");
-      scrollVisualization();
       visualization().findByText("Math").should("not.exist");
 
       cy.log("show a column");
@@ -724,7 +727,6 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.wait("@dataset");
       visibleColumns().findByText("Math").should("exist");
       additionalColumns().findByText("Math").should("not.exist");
-      scrollVisualization();
       visualization().findByText("Math").should("exist");
     });
 
@@ -821,13 +823,11 @@ describe("scenarios > visualizations > table column settings", () => {
         visibleColumns().within(() => hideColumn(columnLongName));
         visibleColumns().findByText(columnLongName).should("not.exist");
         disabledColumns().findByText(columnLongName).should("exist");
-        scrollVisualization();
         visualization().findByText(columnLongName).should("not.exist");
 
         cy.log("re-run the query");
         runQuery();
         cy.wait("@dataset");
-        scrollVisualization();
         visualization().findByText(columnLongName).should("not.exist");
 
         cy.log("show a column");
@@ -835,7 +835,6 @@ describe("scenarios > visualizations > table column settings", () => {
         cy.wait("@dataset");
         visibleColumns().findByText(columnLongName).should("exist");
         additionalColumns().findByText(columnName).should("not.exist");
-        scrollVisualization();
         visualization().findByText(columnLongName).should("exist");
       });
     });
