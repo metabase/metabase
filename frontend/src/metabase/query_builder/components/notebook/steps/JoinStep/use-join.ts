@@ -1,10 +1,12 @@
-import { useEffect, useCallback, useState, useMemo } from "react";
+import { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import { usePrevious } from "react-use";
 import * as Lib from "metabase-lib";
 
 export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   const previousQuery = usePrevious(query);
   const previousJoin = usePrevious(join);
+
+  const isMakingJoinPartiallyComplete = useRef(false);
 
   const [strategy, _setStrategy] = useState<Lib.JoinStrategy>(
     join ? Lib.joinStrategy(join) : getDefaultJoinStrategy(query, stageIndex),
@@ -35,6 +37,14 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   }, [query, stageIndex, join, table]);
 
   useEffect(() => {
+    // HACK: prevents this useEffect from overwriting a table from setTable call
+    if (isMakingJoinPartiallyComplete.current) {
+      if (previousJoin && !join) {
+        isMakingJoinPartiallyComplete.current = false;
+      }
+      return;
+    }
+
     if (join && previousJoin !== join) {
       _setStrategy(Lib.joinStrategy(join));
       _setTable(Lib.joinedThing(query, join));
@@ -115,16 +125,11 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
         return { nextQuery, hasConditions: true };
       }
 
+      isMakingJoinPartiallyComplete.current = true;
+
       _setTable(nextTable);
       _setSelectedColumns("all");
       _setConditions([]);
-
-      // With a new table and no suggested condition,
-      // the existing join in no longer valid, so we remove it
-      if (join) {
-        const nextQuery = Lib.removeClause(query, stageIndex, join);
-        return { nextQuery, hasConditions: false };
-      }
 
       return { nextQuery: null, hasConditions: false };
     },
@@ -132,19 +137,25 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
   );
 
   const addCondition = useCallback(
-    (condition: Lib.JoinCondition) => {
+    (condition: Lib.JoinCondition, previousJoin?: Lib.Join) => {
       const nextConditions = [...conditions, condition];
       _setConditions(nextConditions);
 
       if (join) {
         const nextJoin = Lib.withJoinConditions(join, nextConditions);
         return Lib.replaceClause(query, stageIndex, join, nextJoin);
-      } else if (table) {
+      }
+
+      if (table) {
         let nextJoin = Lib.joinClause(table, nextConditions);
         nextJoin = Lib.withJoinFields(nextJoin, selectedColumns);
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
-        return Lib.join(query, stageIndex, nextJoin);
+        return previousJoin
+          ? Lib.replaceClause(query, stageIndex, previousJoin, nextJoin)
+          : Lib.join(query, stageIndex, nextJoin);
       }
+
+      return undefined;
     },
     [query, stageIndex, join, table, strategy, selectedColumns, conditions],
   );

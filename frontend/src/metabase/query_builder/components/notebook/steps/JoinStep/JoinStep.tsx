@@ -27,16 +27,20 @@ import {
 
 export function JoinStep({
   topLevelQuery: query,
-  step,
+  step: { stageIndex, itemIndex },
   color,
   readOnly,
   sourceQuestion,
   updateQuery,
 }: NotebookStepUiComponentProps) {
-  const { stageIndex, itemIndex } = step;
+  const [isPartiallyComplete, setIsPartiallyComplete] = useState(false);
 
+  // This is a workaround to make MLv2 joins work fine in mostly MLv1-based notebook
+  // Learn more: (TODO insert GitHub PR link)
   const joins = Lib.joins(query, stageIndex);
-  const join = typeof itemIndex === "number" ? joins[itemIndex] : undefined;
+  const actualJoin =
+    typeof itemIndex === "number" ? joins[itemIndex] : undefined;
+  const join = isPartiallyComplete ? undefined : actualJoin;
 
   const {
     strategy,
@@ -60,10 +64,14 @@ export function JoinStep({
     Lib.ColumnMetadata | undefined
   >();
 
+  // It's important to use the actualJoin here.
+  // joinLHSDisplayName is unaware of isPartiallyComplete hack
+  // and it'd behave as if we're adding a new join
+  // instead of editing an existing one if we give it a table
   const lhsDisplayName = Lib.joinLHSDisplayName(
     query,
     stageIndex,
-    join || table,
+    actualJoin || table,
     selectedLHSColumn,
   );
 
@@ -81,6 +89,9 @@ export function JoinStep({
   const handleTableChange = (nextTable: Lib.Joinable) => {
     setIsAddingNewCondition(false);
     const { nextQuery, hasConditions } = setTable(nextTable);
+    if (join && !nextQuery) {
+      setIsPartiallyComplete(true);
+    }
     if (nextQuery) {
       updateQuery(nextQuery);
     }
@@ -97,10 +108,14 @@ export function JoinStep({
   };
 
   const handleAddCondition = (condition: Lib.JoinCondition) => {
-    const nextQuery = addCondition(condition);
+    const nextQuery = addCondition(
+      condition,
+      isPartiallyComplete ? actualJoin : undefined,
+    );
     if (nextQuery) {
       updateQuery(nextQuery);
       setIsAddingNewCondition(false);
+      setIsPartiallyComplete(false);
     }
   };
 
