@@ -45,7 +45,7 @@ export function setDirection(
     return DEFAULT_VALUE;
   }
 
-  const sign = -Math.sign(value.value);
+  const sign = direction === "last" ? -1 : 1;
   return {
     ...value,
     value: Math.abs(value.value) * sign,
