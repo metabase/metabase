@@ -7,7 +7,12 @@ import {
   setupMetricsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoadingSpinnerToDisappear,
+} from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
 import { Route } from "metabase/hoc/Title";
@@ -115,15 +120,11 @@ describe("MetricApp", () => {
 
     userEvent.click(screen.getByText("Select a table"));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-    });
+    await waitForLoadingSpinnerToDisappear();
 
     userEvent.click(screen.getByText("Orders"));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-    });
+    await waitForLoadingSpinnerToDisappear();
 
     userEvent.click(screen.getByText("Add filters to narrow your answer"));
     userEvent.click(screen.getByText("ID"));
