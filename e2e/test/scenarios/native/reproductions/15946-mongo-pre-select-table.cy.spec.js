@@ -2,7 +2,7 @@ import { popover, restore, startNewQuestion } from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("issue 15946", { tags: "@external" }, () => {
+describe("issue 15946", { tags: "@mongo" }, () => {
   before(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
