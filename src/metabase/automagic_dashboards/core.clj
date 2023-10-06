@@ -376,89 +376,6 @@
                                     "table"
                                     "question")]}))
 
-(defmulti
-  ^{:doc "Get a reference for a given model to be injected into a template
-          (either MBQL, native query, or string)."
-    :arglists '([template-type model])
-    :private true}
-  ->reference (fn [template-type model]
-                [template-type (mi/model model)]))
-
-(defn- optimal-datetime-resolution
-  [field]
-  (let [[earliest latest] (some->> field
-                                   :fingerprint
-                                   :type
-                                   :type/DateTime
-                                   ((juxt :earliest :latest))
-                                   (map u.date/parse))]
-    (if (and earliest latest)
-      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-        (t/hours 3)  :minute
-        (t/days 7)   :hour
-        (t/months 6) :day
-        (t/years 10) :month
-        :year)
-      :day)))
-
-(defmethod ->reference [:mbql Field]
-  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (mbql.normalize/normalize
-                   (cond
-                     link               [:field id {:source-field link}]
-                     fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                     id                 [:field id nil]
-                     :else              [:field name {:base-type base_type}]))]
-    (cond
-      (isa? base_type :type/Temporal)
-      (mbql.u/with-temporal-unit reference (keyword (or aggregation
-                                                        (optimal-datetime-resolution field))))
-
-      (and aggregation
-           (isa? base_type :type/Number))
-      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
-
-      :else
-      reference)))
-
-(defmethod ->reference [:string Field]
-  [_ {:keys [display_name full-name link]}]
-  (cond
-    full-name full-name
-    link      (format "%s → %s"
-                      (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
-                      display_name)
-    :else     display_name))
-
-(defmethod ->reference [:string Table]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
-
-(defmethod ->reference [:string Metric]
-  [_ {:keys [name full-name]}]
-  (or full-name name))
-
-(defmethod ->reference [:mbql Metric]
-  [_ {:keys [id definition]}]
-  (if id
-    [:metric id]
-    (-> definition :aggregation first)))
-
-(defmethod ->reference [:native Field]
-  [_ field]
-  (field/qualified-name field))
-
-(defmethod ->reference [:native Table]
-  [_ {:keys [name]}]
-  name)
-
-(defmethod ->reference :default
-  [_ form]
-  (or (cond-> form
-        (map? form) ((some-fn :full-name :name) form))
-      form))
-
 (defn- fill-templates
   [template-type {:keys [root tables]} bindings s]
   (let [bindings (some-fn (merge {"this" (-> root
@@ -473,7 +390,7 @@
                          attribute (some-> attribute qp.util/normalize-token)]
                      (str (or (and (ifn? entity) (entity attribute))
                               (root attribute)
-                              (->reference template-type entity))))))))
+                              (foo/->reference template-type entity))))))))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -491,7 +408,7 @@
    (fn [subform]
      (if (dashboard-templates/dimension-form? subform)
        (let [[_ identifier opts] subform]
-         (->reference :mbql (-> identifier bindings (merge opts))))
+         (foo/->reference :mbql (-> identifier bindings (merge opts))))
        subform))
    {:type     :query
     :database (-> root :database)
@@ -1203,6 +1120,27 @@
                             {} #_info)
          (make-layout :web)
          (dashboard-ify dashboard-template))))
+
+(defn generate-dashboard
+  "TODO - DOCS"
+  [entity {template-dimensions :dimensions
+           template-metrics    :metrics
+           template-cards      :cards
+           :as                 template}]
+  (let [{:keys [source] :as base-context} (make-base-context (->root entity))
+        ground-dimensions   (foo/find-dimensions base-context template-dimensions)
+        affinities          (dash-template->affinities template ground-dimensions)
+        affinity-set->cards (foo/make-affinity-set->cards ground-dimensions template-cards affinities)
+        metric-templates    (foo/normalize-metrics template-metrics)
+        grounded-metrics    (concat
+                              (foo/grounded-metrics metric-templates ground-dimensions)
+                              (foo/linked-metrics entity))]
+    (->> grounded-metrics
+         (foo/make-combinations ground-dimensions (map :affinity-set affinities))
+         (foo/ground-metrics->cards source affinity-set->cards)
+         (map foo/card->dashcard)
+         foo/do-layout
+         (foo/create-dashboard {:dashboard-name "FOO"}))))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard

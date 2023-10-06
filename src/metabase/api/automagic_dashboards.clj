@@ -1,33 +1,34 @@
 (ns metabase.api.automagic-dashboards
   (:require
-   [buddy.core.codecs :as codecs]
-   [cheshire.core :as json]
-   [compojure.core :refer [GET]]
-   [metabase.api.common :as api]
-   [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
-   [metabase.automagic-dashboards.core :as magic
-    :refer [automagic-analysis candidate-tables]]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-   [metabase.automagic-dashboards.foo :as metric-x-rays]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.query :as query]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.models.segment :refer [Segment]]
-   [metabase.models.table :refer [Table]]
-   [metabase.transforms.dashboard :as transform.dashboard]
-   [metabase.transforms.materialize :as tf.materialize]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+    [buddy.core.codecs :as codecs]
+    [cheshire.core :as json]
+    [compojure.core :refer [GET]]
+    [metabase.api.common :as api]
+    [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
+    [metabase.automagic-dashboards.core :as magic
+     :refer [automagic-analysis candidate-tables]]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.foo :as foo]
+    [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+    [metabase.automagic-dashboards.foo :as metric-x-rays]
+    [metabase.models.card :refer [Card]]
+    [metabase.models.collection :refer [Collection]]
+    [metabase.models.database :refer [Database]]
+    [metabase.models.field :refer [Field]]
+    [metabase.models.metric :refer [Metric]]
+    [metabase.models.model-index :refer [ModelIndex ModelIndexValue]]
+    [metabase.models.permissions :as perms]
+    [metabase.models.query :as query]
+    [metabase.models.query.permissions :as query-perms]
+    [metabase.models.segment :refer [Segment]]
+    [metabase.models.table :refer [Table]]
+    [metabase.transforms.dashboard :as transform.dashboard]
+    [metabase.transforms.materialize :as tf.materialize]
+    [metabase.util.i18n :refer [deferred-tru]]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.schema :as ms]
+    [ring.util.codec :as codec]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -274,6 +275,16 @@
     (->> metric
          metric-x-rays/instantiate-affinities
          (dash-gen/create-dashboard {:dashboard-name metric-name}))))
+
+(api/defendpoint GET "/table/table/table/:table-id"
+  "..."
+  [table-id]
+  {table-id :int}
+  (api/let-404 [{table-name :name :as table} (t2/select-one :model/Table table-id)]
+    (api/read-check table)
+    (magic/generate-dashboard
+      table
+      (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"

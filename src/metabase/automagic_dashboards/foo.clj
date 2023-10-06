@@ -1,12 +1,22 @@
 (ns metabase.automagic-dashboards.foo
   (:require
+    [clojure.math :as math]
     [clojure.math.combinatorics :as math.combo]
+    [clojure.set :as set]
+    [clojure.string :as str]
     [clojure.walk :as walk]
+    [java-time :as t]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
     [metabase.automagic-dashboards.util :as magic.util]
+    [metabase.mbql.normalize :as mbql.normalize]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.field :refer [Field]]
+    [metabase.models.metric :refer [Metric]]
+    [metabase.models.table :refer [Table]]
     [metabase.models.interface :as mi]
     [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
     [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,11 +129,6 @@
 
   (->> (t2/select-one :model/Metric :name "Weird Thing")
        instantiate-affinities)
-
-
-  (->> (instantiate-affinities (t2/select-one :model/Metric :name "Churn"))
-       (map :card)
-       dash-gen/do-layout)
   )
 
 (defmulti linked-metrics mi/model)
@@ -351,20 +356,101 @@
                              -1 b))
               {})))
 
+(defmulti
+  ^{:doc      "Get a reference for a given model to be injected into a template
+          (either MBQL, native query, or string)."
+    :arglists '([template-type model])}
+  ->reference (fn [template-type model]
+                [template-type (mi/model model)]))
+
+(defn- optimal-datetime-resolution
+  [field]
+  (let [[earliest latest] (some->> field
+                                   :fingerprint
+                                   :type
+                                   :type/DateTime
+                                   ((juxt :earliest :latest))
+                                   (map u.date/parse))]
+    (if (and earliest latest)
+      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+        (t/hours 3) :minute
+        (t/days 7) :hour
+        (t/months 6) :day
+        (t/years 10) :month
+        :year)
+      :day)))
+
+(defmethod ->reference [:mbql Field]
+  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
+  (let [reference (mbql.normalize/normalize
+                    (cond
+                      link [:field id {:source-field link}]
+                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                      ;; This is a hack for some bad queries with boolean base types
+                      id [:field id {:base-type base_type}]
+                      :else [:field name {:base-type base_type}]))]
+    (cond
+      (isa? base_type :type/Temporal)
+      (mbql.u/with-temporal-unit reference (keyword (or aggregation
+                                                        (optimal-datetime-resolution field))))
+
+      (and aggregation
+           (isa? base_type :type/Number))
+      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
+
+      :else
+      reference)))
+
+(defmethod ->reference [:string Field]
+  [_ {:keys [display_name full-name link]}]
+  (cond
+    full-name full-name
+    link (format "%s → %s"
+                 (-> (t2/select-one Field :id link) :display_name (str/replace #"(?i)\sid$" ""))
+                 display_name)
+    :else display_name))
+
+(defmethod ->reference [:string Table]
+  [_ {:keys [display_name full-name]}]
+  (or full-name display_name))
+
+(defmethod ->reference [:string Metric]
+  [_ {:keys [name full-name]}]
+  (or full-name name))
+
+(defmethod ->reference [:mbql Metric]
+  [_ {:keys [id definition]}]
+  (if id
+    [:metric id]
+    (-> definition :aggregation first)))
+
+(defmethod ->reference [:native Field]
+  [_ field]
+  (field/qualified-name field))
+
+(defmethod ->reference [:native Table]
+  [_ {:keys [name]}]
+  name)
+
+(defmethod ->reference :default
+  [_ form]
+  (or (cond-> form
+        (map? form) ((some-fn :full-name :name) form))
+      form))
+
 (defn add-breakouts
   "Add breakouts to a query based on the breakout fields"
   [query breakout-fields]
   (assoc query
-    :breakout (mapv (fn [{field-id :id base-type :base_type}]
-                      [:field field-id {:base-type base-type}])
-                    breakout-fields)))
+    :breakout (mapv (partial ->reference :mbql) breakout-fields)))
 
 (defn make-metric-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions 
    mixed in based on the provided ground dimensions and semantic affinity sets."
-  [{grounded-metric-fields :grounded-metric-fields :as metric}
-   ground-dimensions
-   semantic-affinity-sets]
+  [ground-dimensions
+   semantic-affinity-sets
+   {grounded-metric-fields :grounded-metric-fields :as metric}]
   (let [grounded-field-ids   (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
@@ -393,15 +479,177 @@
                                          (map (partial zipmap unsatisfied-semantic-dims)))]
         (-> metric
             (assoc
-              :dimensions ground-dimension-fields
+              :grounded-dimensions ground-dimension-fields
               :affinity-set affinity-set)
             (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
 
 (defn make-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
-  [grounded-metrics ground-dimensions semantic-affinity-sets]
-  (mapcat #(make-metric-combinations % ground-dimensions semantic-affinity-sets) grounded-metrics))
+  [ground-dimensions semantic-affinity-sets grounded-metrics]
+  (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets) grounded-metrics))
+
+(defn add-dataset-query
+  [{:keys [metric-definition] :as ground-metric-with-dimensions}
+   {:keys [db_id id]}]
+  (assoc ground-metric-with-dimensions
+    :dataset_query {:database db_id
+                    :type     :query
+                    :query    (assoc metric-definition
+                                :source-table id)}))
+
+(defn items->str
+  [[f s :as items]]
+  (condp = (count items)
+    0 ""
+    1 (str f)
+    2 (format "%s and %s" f s)
+    (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
+
+(defn ground-metric->card [context
+                           {:keys [grounded-dimensions metric-name] :as grounded-metric}
+                           {:keys [dimensions visualization] :as card}]
+  (let [dims (merge-with into grounded-dimensions dimensions)]
+    (-> (into card grounded-metric)
+        (update :metric-definition add-breakouts (vals dims))
+        (add-dataset-query context)
+        (assoc
+          :name (format "%s by %s" metric-name (items->str (map :name (vals grounded-dimensions))))
+          :id (gensym)
+          :display (first visualization))
+        (dissoc :grounded-dimensions
+                :metric-definition
+                :grounded-metric-fields
+                :affinity-set
+                :card-name
+                :metric-name
+                :metrics
+                :visualization
+                :group
+                :score
+                :title))))
+
+(defn ground-metric->cards
+  [context affinity-set->cards {:keys [affinity-set grounded-dimensions] :as grounded-metric}]
+  (->> affinity-set
+       affinity-set->cards
+       (map (partial ground-metric->card context grounded-metric))))
+
+(defn ground-metrics->cards [context affinity-set->cards ground-metrics]
+  (mapcat (partial ground-metric->cards context affinity-set->cards) ground-metrics))
+
+(defn make-affinity-set->cards [ground-dimensions template-cards affinities]
+  (let [card-name->cards (->> template-cards
+                              (map
+                                (comp
+                                  (fn [[card-name card-template]]
+                                    (assoc card-template :card-name card-name))
+                                  first))
+                              (group-by :card-name))]
+    (update-vals
+      (group-by :affinity-set affinities)
+      (fn [affinities]
+        (->>
+          (for [affinity-name (map :affinity-name affinities)
+                {:keys [dimensions] :as card} (card-name->cards affinity-name)
+                :let [semantic-dims (reduce
+                                      (fn [acc [dim attrs]]
+                                        (if-some [k (-> dim ground-dimensions :field_type peek)]
+                                          (assoc acc k attrs)
+                                          (reduced nil)))
+                                      {}
+                                      (map first dimensions))]
+                :when semantic-dims]
+            (assoc card :dimensions semantic-dims))
+          distinct
+          vec)))))
+
+(defn card->dashcard [{:keys [width height] :as card}]
+  {:id                     (gensym)
+   :size_x                 width
+   :size_y                 height
+   :dashboard_tab_id       nil
+   :card                   (dissoc card :width :height)
+   :visualization_settings {}})
+
+(defn do-layout [dashcards]
+  (loop [[{:keys [size_x size_y] :as dashcard} & dashcards] dashcards
+         [xmin ymin xmax ymax] [0 0 0 0]
+         final-cards []]
+    (if dashcard
+      (let [dashcard (assoc dashcard :row ymin :col xmax)
+            bounds   (if (> xmax 20)
+                       [xmin ymax 0 (+ ymax size_y)]
+                       [xmin ymin (+ xmax size_x) (max ymax (+ ymin size_y))])]
+        (recur dashcards
+               bounds
+               (conj final-cards dashcard)))
+      final-cards)))
+
+(defn create-dashboard [{:keys [dashboard-name]} cards]
+  {:description        (format "An exploration of your metric %s" dashboard-name)
+   :name               (format "A look at %s" dashboard-name)
+   ;:creator_id         1
+   :transient_name     (format "Here's the %s dashboard" dashboard-name)
+   :param_fields       {}
+   :auto_apply_filters true
+   :ordered_cards      cards})
+
+;; TODO entity needs sourcing -- what if it isn't a table that has id and db_id?
+(comment
+  ;;This only works if you've required magic
+  (defn generate-dashboard
+    ""
+    [entity {template-dimensions :dimensions
+             template-metrics    :metrics
+             template-cards      :cards
+             :as                 template}]
+    (let [{:keys [source] :as base-context} (#'magic/make-base-context (magic/->root entity))
+          ground-dimensions   (find-dimensions base-context template-dimensions)
+          affinities          (#'magic/dash-template->affinities template ground-dimensions)
+          affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
+          metric-templates    (normalize-metrics template-metrics)
+          grounded-metrics    (concat
+                                (grounded-metrics metric-templates ground-dimensions)
+                                (linked-metrics entity))]
+      (->> grounded-metrics
+           (make-combinations ground-dimensions (map :affinity-set affinities))
+           (ground-metrics->cards source affinity-set->cards)
+           (map card->dashcard)
+           do-layout
+           (create-dashboard {:dashboard-name "FOO"})))))
+
+(comment
+  (->> (generate-dashboard
+         (t2/select-one :model/Table :name "ACCOUNTS")
+         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+       :ordered_cards
+       (map (juxt :col :row :size_x :size_y)))
+
+  (let [entity (t2/select-one :model/Table :name "ACCOUNTS")
+        {template-dimensions :dimensions
+         template-metrics    :metrics
+         template-cards      :cards
+         :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
+    (let [{:keys [source] :as base-context} (#'magic/make-base-context (magic/->root entity))
+          ground-dimensions   (find-dimensions base-context template-dimensions)
+          affinities          (#'magic/dash-template->affinities template ground-dimensions)
+          affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
+          metric-templates    (normalize-metrics template-metrics)
+          grounded-metrics    (concat
+                                (grounded-metrics metric-templates ground-dimensions)
+                                (linked-metrics entity))
+          dashcards           (->> grounded-metrics
+                                   (make-combinations ground-dimensions (map :affinity-set affinities))
+                                   (ground-metrics->cards source affinity-set->cards)
+                                   (map card->dashcard))]
+      (take 3 dashcards)))
+
+  ;; This doesn't have the right sourcing (see generate-dashboard signature)
+  (generate-dashboard
+    (t2/select-one :model/Metric :name "Churn")
+    (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+  )
 
 (comment
   (require '[metabase.automagic-dashboards.core :as magic])
@@ -416,58 +664,56 @@
       (grounded-metrics metric-templates ground-dimensions)
       (linked-metrics entity)))
 
-  (let [template-name          "GenericTable"
-        entity (t2/select-one :model/Table :name "ACCOUNTS")
-        template               (dashboard-templates/get-dashboard-template ["table" template-name])
+  (let [template-name     "GenericTable"
+        entity            (t2/select-one :model/Table :name "ACCOUNTS")
+        template          (dashboard-templates/get-dashboard-template ["table" template-name])
         {template-dimensions :dimensions
          template-metrics    :metrics} template
-        base-context           (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions      (find-dimensions base-context template-dimensions)
-        affinities             (->> (#'magic/dash-template->affinities template ground-dimensions)
-                                    (map :affinity-set))
-        metric-templates       (normalize-metrics template-metrics)
-        grounded-metrics       (concat
-                                 (grounded-metrics metric-templates ground-dimensions)
-                                 (linked-metrics entity))]
-    (->> (make-combinations
-           grounded-metrics
-           ground-dimensions
-           affinities)
+        base-context      (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions (find-dimensions base-context template-dimensions)
+        affinities        (#'magic/dash-template->affinities template ground-dimensions)
+        affinity-sets     (map :affinity-set affinities)
+        metric-templates  (normalize-metrics template-metrics)
+        grounded-metrics  (concat
+                            (grounded-metrics metric-templates ground-dimensions)
+                            (linked-metrics entity))]
+    (->> grounded-metrics
+         (make-combinations ground-dimensions affinity-sets)
          (mapv (fn [ground-metric-with-dimensions]
                  (-> ground-metric-with-dimensions
                      (update :grounded-metric-fields (partial map (juxt :id :name)))
-                     (update :dimensions #(update-vals % (juxt :id :name))))))))
+                     (update :grounded-dimensions #(update-vals % (juxt :id :name))))))))
 
   (require '[metabase.query-processor :as qp])
-  (let [template-name          "GenericTable"
+  (let [template-name     "GenericTable"
         {:keys [id db_id] :as entity} (t2/select-one :model/Table :name "ACCOUNTS")
-        template               (dashboard-templates/get-dashboard-template ["table" template-name])
+        template          (dashboard-templates/get-dashboard-template ["table" template-name])
         {template-dimensions :dimensions
          template-metrics    :metrics} template
-        base-context           (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions      (find-dimensions base-context template-dimensions)
-        affinities             (->> (#'magic/dash-template->affinities template ground-dimensions)
-                                    (map :affinity-set))
-        metric-templates       (normalize-metrics template-metrics)
-        grounded-metrics       (concat
-                                 (grounded-metrics metric-templates ground-dimensions)
-                                 (linked-metrics entity))]
-    (->> (make-combinations
-           grounded-metrics
-           ground-dimensions
-           affinities)
+        base-context      (#'magic/make-base-context (magic/->root entity))
+        ground-dimensions (find-dimensions base-context template-dimensions)
+        affinities        (->> (#'magic/dash-template->affinities template ground-dimensions)
+                               (map :affinity-set))
+        metric-templates  (normalize-metrics template-metrics)
+        grounded-metrics  (concat
+                            (grounded-metrics metric-templates ground-dimensions)
+                            (linked-metrics entity))]
+    (->> grounded-metrics
+         (make-combinations ground-dimensions affinities)
          (mapv (fn [ground-metric-with-dimensions]
                  (-> ground-metric-with-dimensions
                      (update :grounded-metric-fields (partial map (juxt :id :name)))
-                     (update :dimensions #(update-vals % (juxt :id :name))))))
+                     (update :grounded-dimensions #(update-vals % (juxt :id :name))))))
          ;; Stop above here to see the produced grounded metrics
          ;; Below is just showing we can make queries
          (mapv (fn [{:keys [metric-definition] :as metric}]
                  (assoc metric
-                   :query {:database db_id
-                           :type     :query
-                           :query    (assoc metric-definition
-                                       :source-table id)})))
-         (take 2)
-         (map (juxt :metric-name (comp :rows :data qp/process-query :query)))))
+                   :dataset_query {:database db_id
+                                   :type     :query
+                                   :query    (assoc metric-definition
+                                               :source-table id)})))
+         (mapv :dataset_query)
+         ;(take 2)
+         ;(map (juxt :metric-name (comp :rows :data qp/process-query :query)))
+         ))
   )

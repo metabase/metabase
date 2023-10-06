@@ -71,15 +71,15 @@
 (deftest ^:parallel ->reference-test
   (is (= [:field 1 nil]
          (->> (assoc (mi/instance Field) :id 1)
-              (#'magic/->reference :mbql))))
+              (#'foo/->reference :mbql))))
 
   (is (= [:field 2 {:source-field 1}]
          (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
-              (#'magic/->reference :mbql))))
+              (#'foo/->reference :mbql))))
 
   (is (= 42
          (->> 42
-              (#'magic/->reference :mbql)))))
+              (#'foo/->reference :mbql)))))
 
 
 ;;; ------------------- Dashboard template matching  -------------------
