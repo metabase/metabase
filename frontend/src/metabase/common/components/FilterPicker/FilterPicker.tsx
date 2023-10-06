@@ -5,6 +5,7 @@ import { QueryColumnPicker } from "../QueryColumnPicker";
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
+import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
 import { StringFilterPicker } from "./StringFilterPicker";
 
 export interface FilterPickerProps {
@@ -93,6 +94,9 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   }
   if (Lib.isDate(column)) {
     return DateFilterPicker;
+  }
+  if (Lib.isCoordinate(column)) {
+    return CoordinateFilterPicker;
   }
   if (Lib.isNumber(column)) {
     return NumberFilterPicker;
