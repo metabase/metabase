@@ -19,6 +19,7 @@ export const args = {
   hideControls: true,
   precision: undefined,
   decimalSeparator: undefined,
+  removeTrailingZeros: false,
 };
 
 export const sampleArgs = {
@@ -78,6 +79,9 @@ export const argTypes = {
   },
   decimalSeparator: {
     control: { type: "text" },
+  },
+  removeTrailingZeros: {
+    control: { type: "boolean" },
   },
 };
 
