@@ -36,7 +36,7 @@ export function JoinStep({
   const [isPartiallyComplete, setIsPartiallyComplete] = useState(false);
 
   // This is a workaround to make MLv2 joins work fine in mostly MLv1-based notebook
-  // Learn more: (TODO insert GitHub PR link)
+  // Learn more: https://github.com/metabase/metabase/pull/34437
   const joins = Lib.joins(query, stageIndex);
   const actualJoin =
     typeof itemIndex === "number" ? joins[itemIndex] : undefined;
