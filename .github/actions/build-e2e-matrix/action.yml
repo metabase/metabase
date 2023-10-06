@@ -47,7 +47,7 @@ runs:
           const defaultConfig = folderContext.map(folder => {
             return {
               "java-version": java,
-              context: folder,
+              folder,
               runner: defaultRunner,
               edition: "ee",
             };

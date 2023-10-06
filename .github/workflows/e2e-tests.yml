@@ -156,7 +156,7 @@ jobs:
       (needs.download_uberjar.result == 'success' || needs.build.result == 'success')
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-    name: e2e-tests-${{ matrix.context }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
@@ -362,7 +362,7 @@ jobs:
       needs.download_uberjar.result == 'skipped'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
-    name: e2e-tests-${{ matrix.context }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.context }}${{ matrix.context }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
