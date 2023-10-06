@@ -1,7 +1,8 @@
 import fetchMock from "fetch-mock";
-import { screen, waitFor } from "@testing-library/react";
 import {
   renderWithProviders,
+  screen,
+  waitFor,
   waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import { RELOAD_INTERVAL } from "../../constants";

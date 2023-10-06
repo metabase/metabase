@@ -1,9 +1,9 @@
-import { screen } from "@testing-library/react";
 import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
 import { mockSettings } from "__support__/settings";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   renderWithProviders,
+  screen,
   waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 

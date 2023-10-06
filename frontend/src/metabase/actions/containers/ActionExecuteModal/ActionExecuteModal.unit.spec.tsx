@@ -1,10 +1,10 @@
-import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupActionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoadingSpinnerToDisappear,
 } from "__support__/ui";
 import {
