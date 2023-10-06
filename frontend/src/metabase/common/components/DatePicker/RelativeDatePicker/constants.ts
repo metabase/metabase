@@ -17,4 +17,6 @@ export const DEFAULT_VALUE = {
   type: "relative",
   unit: "day",
   value: -30,
+  offsetValue: undefined,
+  offsetUnit: undefined,
 } as const;

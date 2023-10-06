@@ -38,16 +38,22 @@ export function setDirection(
   value: RelativeDatePickerValue,
   direction: IntervalDirection,
 ): RelativeDatePickerValue {
-  const valueOrDefault = isIntervalValue(value) ? value : DEFAULT_VALUE;
-
-  switch (direction) {
-    case "current":
-      return { type: "relative", value: "current", unit: "hour" };
-    case "last":
-      return { ...valueOrDefault, value: -Math.abs(valueOrDefault.value) };
-    case "next":
-      return { ...valueOrDefault, value: Math.abs(valueOrDefault.value) };
+  if (direction === "current") {
+    return { type: "relative", value: "current", unit: "hour" };
   }
+  if (!isIntervalValue(value)) {
+    return DEFAULT_VALUE;
+  }
+
+  const sign = -Math.sign(value.value);
+  return {
+    ...value,
+    value: Math.abs(value.value) * sign,
+    offsetValue:
+      value.offsetValue != null
+        ? Math.abs(value.offsetValue) * sign
+        : undefined,
+  };
 }
 
 export function getInterval(value: DateIntervalValue): number {

@@ -4,6 +4,7 @@ import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import { getInterval, getUnitOptions, setInterval } from "../utils";
 import {
+  getOffsetInterval,
   getOffsetUnitOptions,
   removeOffset,
   setOffsetInterval,
@@ -27,6 +28,7 @@ export function DateOffsetIntervalPicker({
 }: DateOffsetIntervalPickerProps) {
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value);
+  const offsetInterval = getOffsetInterval(value);
   const offsetUnitOptions = getOffsetUnitOptions(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
@@ -77,7 +79,7 @@ export function DateOffsetIntervalPicker({
         <div />
         <Text>{t`Starting from`}</Text>
         <NumberInput
-          value={value.offsetValue}
+          value={offsetInterval}
           w="4rem"
           onChange={handleOffsetIntervalChange}
         />

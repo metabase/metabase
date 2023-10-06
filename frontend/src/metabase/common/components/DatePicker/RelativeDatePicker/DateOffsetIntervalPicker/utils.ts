@@ -16,11 +16,16 @@ export function setUnit(
   return { ...value, unit, offsetUnit: unit };
 }
 
+export function getOffsetInterval(value: DateOffsetIntervalValue): number {
+  return Math.abs(value.offsetValue);
+}
+
 export function setOffsetInterval(
   value: DateOffsetIntervalValue,
   offsetValue: number,
 ): DateOffsetIntervalValue {
-  return { ...value, offsetValue: Math.max(Math.abs(offsetValue), 1) };
+  const sign = Math.sign(value.value);
+  return { ...value, offsetValue: Math.max(Math.abs(offsetValue), 1) * sign };
 }
 
 export function setOffsetUnit(
