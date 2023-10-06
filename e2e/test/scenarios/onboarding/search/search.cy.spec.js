@@ -162,7 +162,6 @@ describe("scenarios > search", () => {
       });
     });
   });
-
   describe("applying search filters", () => {
     describe("no filters", () => {
       it("hydrating search from URL", () => {
@@ -415,6 +414,109 @@ describe("scenarios > search", () => {
             expect(verifiedElementCount).to.eq(1);
             expect(unverifiedElementCount).to.be.gt(0);
           });
+      });
+    });
+
+    describe("native query filter", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        cy.createNativeQuestion({
+          name: "Native Query",
+          native: {
+            query: "SELECT 'reviews';",
+          },
+        });
+      });
+
+      it("should hydrate search with search text and native query filter", () => {
+        cy.visit("/search?q=reviews&search_native_query=true");
+        cy.wait("@search");
+
+        getSearchBar().should("have.value", "reviews");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "reviews"').should("exist");
+        });
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
+
+            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+          },
+        );
+      });
+
+      it("should include results that contain native query data when the toggle is on", () => {
+        cy.visit("/search?q=reviews");
+        cy.wait("@search");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(1);
+            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+          },
+        );
+
+        cy.findByTestId("search_native_query-search-filter").within(() => {
+          cy.findByTestId("toggle-filter-switch").click();
+        });
+
+        cy.url().should("include", "search_native_query=true");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain(
+              "Native Query - Reviews",
+            );
+
+            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+          },
+        );
+      });
+
+      it("should not include results that contain native query data if the toggle is off", () => {
+        cy.visit("/search?q=reviews&search_native_query=true");
+        cy.wait("@search");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain(
+              "Native Query - Reviews",
+            );
+
+            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+          },
+        );
+
+        cy.findByTestId("search_native_query-search-filter").within(() => {
+          cy.findByTestId("toggle-filter-switch").click();
+        });
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.be(1);
+            expect(uniqueSearchResultItemNames).to.contain("Reviews");
+          },
+        );
       });
     });
   });
