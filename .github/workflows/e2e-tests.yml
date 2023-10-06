@@ -201,13 +201,6 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.4
-        ports:
-          - 27004:27017
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       mysql-sample:
         image: metabase/qa-databases:mysql-sample-8
         ports:
@@ -304,6 +297,23 @@ jobs:
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
+
+      # Mongo
+      - name: Start Mongo server
+        if: matrix.name == 'mongo'
+        run: docker run -d -p 27004:27017 --name e2e-mongo metabase/qa-databases:mongo-sample-4.4
+      - name: Wait until the port 27004 is ready
+        run: while ! nc -z localhost 27004; do sleep 1; done
+        timeout-minutes: 3
+      - name: Run E2E tests that depend on Mongo
+        if: matrix.name == 'mongo'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        env:
+          CYPRESS_QA_DB_MONGO: true
 
       # REPLAY.IO specific jobs
       - name: Install Replay.io browser
