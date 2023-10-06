@@ -112,16 +112,16 @@
 (deftest generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
-      (let [request {:database   (mt/db)
-                     :query      {:source-table (mt/$ids $$orders)
-                                  :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
-                                  :breakout     [(mt/$ids $orders.user_id->people.state)
-                                                 (mt/$ids $orders.user_id->people.source)
-                                                 (mt/$ids $orders.product_id->products.category)]}
-                     :type       :query
-                     :parameters []
-                     :pivot-rows [1 0]
-                     :pivot-cols [2]}]
+      (let [request       {:database   (mt/db)
+                           :query      {:source-table (mt/$ids $$orders)
+                                        :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
+                                        :breakout     [(mt/$ids $orders.user_id->people.state)
+                                                       (mt/$ids $orders.user_id->people.source)
+                                                       (mt/$ids $orders.product_id->products.category)]}
+                           :type       :query
+                           :parameters []}
+            pivot-options {:pivot-rows [1 0]
+                           :pivot-cols [2]}]
         (testing "can generate queries for each new breakout"
           (let [expected (mt/$ids
                            [{:query {:breakout    [$orders.user_id->people.state
@@ -148,12 +148,10 @@
                 expected (for [expected-val expected]
                            (-> expected-val
                                (assoc :type       :query
-                                      :parameters []
-                                      :pivot-rows [1 0]
-                                      :pivot-cols [2])
+                                      :parameters [])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request pivot-options))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
 
@@ -282,8 +280,8 @@
     (mt/dataset sample-dataset
       (mt/with-temp-copy-of-db
         (let [query (mt/mbql-query orders
-                      {:aggregation [[:count]]
-                       :breakout    [$product_id->products.category $user_id->people.source]})]
+                                   {:aggregation [[:count]]
+                                    :breakout    [$product_id->products.category $user_id->people.source]})]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
           (testing "User without perms shouldn't be able to run the query normally"
             (is (thrown-with-msg?
@@ -300,7 +298,9 @@
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
               (testing "... with the pivot-table endpoints"
-                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))]
+                (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))
+                                                   {:pivot_rows []
+                                                    :pivot_cols []})]
                   (is (schema= {:status   (s/eq "completed")
                                 s/Keyword s/Any}
                                result))

@@ -212,10 +212,10 @@
       (qp/process-query (dissoc first-query :info) context))))
 
 (defn run-pivot-query
-  "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
-  its application via `partial`.
+  "Run the pivot query. You are expected to wrap this call in `qp.streaming/streaming-response` yourself.
 
-  You are expected to wrap this call in `qp.streaming/streaming-response` yourself."
+  The indices of the breakouts to use for the pivot rows and columns can be specified in the `:pivot-rows` and
+  `:pivot-cols` keys of `query`, or in the optional `pivot-options` argument."
   ([query]
    (run-pivot-query query nil nil))
   ([query info]
