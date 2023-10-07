@@ -110,15 +110,16 @@
   (testing "Test that we can add a revision"
     (t2.with-temp/with-temp [Card {card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day", :message "yay!")
-      (is (=? [(mi/instance
-                Revision
-                {:model        "FakedCard"
-                 :user_id      (mt/user->id :rasta)
-                 :object       (mi/instance ::FakedCard {:name "Tips Created by Day", :serialized true})
-                 :is_reversion false
-                 :is_creation  false
-                 :message      "yay!"})]
-              (revision/revisions ::FakedCard card-id))))))
+      (is (= [(mi/instance
+               Revision
+               {:model        "FakedCard"
+                :user_id      (mt/user->id :rasta)
+                :object       (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
+                :is_reversion false
+                :is_creation  false
+                :message      "yay!"})]
+             (for [revision (revision/revisions ::FakedCard card-id)]
+               (dissoc revision :timestamp :id :model_id)))))))
 
 (deftest sorting-test
   (testing "Test that revisions are sorted in reverse chronological order"
@@ -126,23 +127,24 @@
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
       (testing `revision/revisions
-        (is (=? [(mi/instance
-                  Revision
-                  {:model        "FakedCard"
-                   :user_id      (mt/user->id :rasta)
-                   :object       (mi/instance ::FakedCard {:name "Spots Created by Day", :serialized true})
-                   :is_reversion false
-                   :is_creation  false
-                   :message      nil})
-                 (mi/instance
-                  Revision
-                  {:model        "FakedCard"
-                   :user_id      (mt/user->id :rasta)
-                   :object       (mi/instance ::FakedCard {:name "Tips Created by Day", :serialized true})
-                   :is_reversion false
-                   :is_creation  false
-                   :message      nil})]
-                (revision/revisions ::FakedCard card-id)))))))
+        (is (= [(mi/instance
+                 Revision
+                 {:model        "FakedCard"
+                  :user_id      (mt/user->id :rasta)
+                  :object       (mi/instance 'FakedCard {:name "Spots Created by Day", :serialized true})
+                  :is_reversion false
+                  :is_creation  false
+                  :message      nil})
+                (mi/instance
+                 Revision
+                 {:model        "FakedCard"
+                  :user_id      (mt/user->id :rasta)
+                  :object       (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
+                  :is_reversion false
+                  :is_creation  false
+                  :message      nil})]
+               (->> (revision/revisions ::FakedCard card-id)
+                    (map #(dissoc % :timestamp :id :model_id)))))))))
 
 (deftest delete-old-revisions-test
   (testing "Check that old revisions get deleted"
