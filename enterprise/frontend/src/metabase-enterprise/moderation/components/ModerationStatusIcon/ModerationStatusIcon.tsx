@@ -5,7 +5,7 @@ import type { IconProps } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 
 type ModerationStatusIconProps = {
-  status?: string;
+  status?: string | null;
 } & Partial<IconProps>;
 
 export const ModerationStatusIcon = ({
