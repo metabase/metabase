@@ -16,8 +16,8 @@ import {
   ResultSpinner,
   Title,
   TitleWrapper,
-} from "metabase/search/components/SearchResult.styled";
-import { ItemIcon } from "metabase/search/components/SearchResult";
+} from "metabase/search/components/SearchResult/SearchResult.styled";
+import { ItemIcon } from "metabase/search/components/SearchResult/components";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
