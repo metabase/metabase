@@ -105,16 +105,16 @@
     (.update liquibase "" writer)
     (.toString writer)))
 
-(defn has-unrun-migrations?
-  "Does `liquibase` have migration change sets that haven't been run yet?
+(defn unrun-migrations
+  "Returns a list of unrun migrations.
 
   It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
   (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date)"
-  ^Boolean [^Liquibase liquibase]
-  (boolean (seq (.listUnrunChangeSets liquibase nil (LabelExpression.)))))
+  [^Liquibase liquibase]
+  (.listUnrunChangeSets liquibase nil (LabelExpression.)))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"
@@ -154,17 +154,23 @@
   "Run any unrun `liquibase` migrations, if needed."
   [^Liquibase liquibase]
   (log/info (trs "Checking if Database has unrun migrations..."))
-  (when (has-unrun-migrations? liquibase)
-    (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
-    (wait-for-migration-lock-to-be-cleared liquibase)
+  (if (seq (unrun-migrations liquibase))
+    (do
+     (log/info (trs "Database has unrun migrations. Waiting for migration lock to be cleared..."))
+     (wait-for-migration-lock-to-be-cleared liquibase)
     ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
     ;; sure something still needs to be done...
-    (if (has-unrun-migrations? liquibase)
-      (do
-        (log/info (trs "Migration lock is cleared. Running migrations..."))
-        (let [^Contexts contexts nil] (.update liquibase contexts)))
-      (log/info
-        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+     (let [unrun-migrations-count (count (unrun-migrations liquibase))]
+       (if (pos? unrun-migrations-count)
+         (do
+          (log/info (trs "Migration lock is cleared. Running {0} migrations ..." unrun-migrations-count))
+          (let [^Contexts contexts nil
+                start-time         (System/currentTimeMillis)]
+            (.update liquibase contexts)
+            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))))
+         (log/info
+          (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+    (log/info (trs "No unrun migrations found."))))
 
 (defn run-in-scope-locked
   "Run function `f` in a scope on the Liquibase instance `liquibase`.
@@ -212,7 +218,7 @@
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
-  (when (has-unrun-migrations? liquibase)
+  (when (seq (unrun-migrations liquibase))
     (let [change-log     (.getDatabaseChangeLog liquibase)
           fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
                                (.getChangeSets change-log))
@@ -263,9 +269,11 @@
         fresh-install?       (let [meta (.getMetaData conn)] ; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
-        statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
+        statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
     (when-not fresh-install?
-      (jdbc/execute! {:connection conn} [statement "migrations/000_migrations.yaml"]))))
+      (jdbc/execute!
+       {:connection conn}
+       [statement "v45.00-001" "migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]))))
 
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
