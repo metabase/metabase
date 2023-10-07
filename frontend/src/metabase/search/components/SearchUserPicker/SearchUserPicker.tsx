@@ -45,7 +45,11 @@ export const SearchUserPicker = ({
   };
 
   const onUserSelect = (user: UserListResult) => {
-    isSelected(user) ? removeUser(user) : addUser(user);
+    if (isSelected(user)) {
+      removeUser(user);
+    } else {
+      addUser(user);
+    }
   };
 
   const generateUserListElements = (userList: UserListResult[]) => {
