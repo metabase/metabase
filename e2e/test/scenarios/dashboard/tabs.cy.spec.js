@@ -81,6 +81,10 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
+  it("should allow moving dashcards between tabs", () => {
+    // TODO
+  });
+
   it("should leave dashboard if navigating back after initial load", () => {
     visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
     visitCollection("root");
