@@ -495,6 +495,8 @@ export default reduceReducers(
     autoApplyFilters,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
+    lastSelectedTabId: (state = INITIAL_DASHBOARD_STATE.lastSelectedTabId) =>
+      state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
   }),
   tabsReducer,

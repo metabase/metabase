@@ -16,3 +16,7 @@ export function getTabs(state: State) {
 export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
+
+export function getLastSelectedTabId(state: State) {
+  return state.dashboard.lastSelectedTabId;
+}

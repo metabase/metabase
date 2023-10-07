@@ -1,6 +1,32 @@
 import _ from "underscore";
 
-import type { Dashboard, DashboardOrderedCard } from "metabase-types/api";
+import type { DashboardState } from "metabase-types/store";
+import type {
+  Dashboard,
+  DashboardId,
+  DashboardOrderedCard,
+  DashboardTabId,
+} from "metabase-types/api";
+
+export function getExistingDashCards(
+  dashboardState: DashboardState,
+  dashId: DashboardId,
+  tabId: DashboardTabId,
+) {
+  const { dashboards, dashcards } = dashboardState;
+  const dashboard = dashboards[dashId];
+  return dashboard.ordered_cards
+    .map(id => dashcards[id])
+    .filter(dc => {
+      if (dc.isRemoved) {
+        return false;
+      }
+      if (tabId != null) {
+        return dc.dashboard_tab_id === tabId;
+      }
+      return true;
+    });
+}
 
 export function hasDashboardChanged(
   dashboard: Dashboard,
