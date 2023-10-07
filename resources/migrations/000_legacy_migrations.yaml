@@ -12059,7 +12059,6 @@ databaseChangeLog:
             tableName: native_query_snippet
             columnName: template_tags
 
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
