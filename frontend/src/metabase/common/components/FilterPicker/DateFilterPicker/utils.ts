@@ -8,6 +8,7 @@ import type {
   DatePickerValue,
   ExcludeDatePickerValue,
   RelativeDatePickerValue,
+  SpecificDatePickerValue,
 } from "metabase/common/components/DatePicker";
 import * as Lib from "metabase-lib";
 
@@ -17,9 +18,31 @@ export function getPickerValue(
   filterClause: Lib.FilterClause,
 ): DatePickerValue | undefined {
   return (
+    getSpecificDateValue(query, stageIndex, filterClause) ??
     getRelativeDateValue(query, stageIndex, filterClause) ??
     getExcludeDateValue(query, stageIndex, filterClause)
   );
+}
+
+function getSpecificDateValue(
+  query: Lib.Query,
+  stageIndex: number,
+  filterClause: Lib.FilterClause,
+): SpecificDatePickerValue | undefined {
+  const filterParts = Lib.specificDateFilterParts(
+    query,
+    stageIndex,
+    filterClause,
+  );
+  if (filterParts == null) {
+    return undefined;
+  }
+
+  return {
+    type: "specific",
+    operator: filterParts.operator,
+    values: filterParts.values,
+  };
 }
 
 function getRelativeDateValue(
@@ -75,11 +98,26 @@ export function getFilterClause(
   value: DatePickerValue,
 ): Lib.ExpressionClause {
   switch (value.type) {
+    case "specific":
+      return getSpecificFilterClause(query, stageIndex, column, value);
     case "relative":
       return getRelativeFilterClause(query, stageIndex, column, value);
     case "exclude":
       return getExcludeFilterClause(query, stageIndex, column, value);
   }
+}
+
+function getSpecificFilterClause(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  value: SpecificDatePickerValue,
+): Lib.ExpressionClause {
+  return Lib.specificDateFilterClause(query, stageIndex, {
+    operator: value.operator,
+    column,
+    values: value.values,
+  });
 }
 
 function getRelativeFilterClause(

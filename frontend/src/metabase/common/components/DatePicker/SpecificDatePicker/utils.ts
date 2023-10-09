@@ -7,7 +7,9 @@ import type {
 import { TABS } from "./constants";
 import type { Tab } from "./types";
 
-export function getTabs(availableOperators: DatePickerOperator): Tab[] {
+export function getTabs(
+  availableOperators: ReadonlyArray<DatePickerOperator>,
+): Tab[] {
   return TABS.filter(tab => availableOperators.includes(tab.operator));
 }
 
