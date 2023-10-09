@@ -95,6 +95,7 @@
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (let [init-file (case db-type
+                    :h2       "initialization/metabase_h2.sql"
                     :mysql    "initialization/metabase_mysql.sql"
                     :postgres "initialization/metabase_postgres.sql")
         stmts     (->> (str/split (slurp (io/resource init-file)) #"(;(\r)?\n)|(--\n)")
