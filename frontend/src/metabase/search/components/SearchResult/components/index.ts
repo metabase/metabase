@@ -4,4 +4,4 @@ export { DefaultIcon } from "./DefaultIcon";
 export { ItemIcon } from "./ItemIcon";
 export { Score } from "./Score";
 export { TableIcon } from "./TableIcon";
-export * from "./constants";
+export * from "./icon-size";
