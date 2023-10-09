@@ -568,6 +568,71 @@ describe("QueryBuilder", () => {
           ).not.toBeInTheDocument();
         });
 
+        it("shows custom warning modal when leaving edited query via Cancel button", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+
+          await waitFor(() => {
+            expect(rowLimitInput).toHaveValue(10);
+          });
+
+          userEvent.tab();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+        });
+
+        it("does not show custom warning modal when leaving unedited query via Cancel button", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: "/home",
+          });
+
+          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const rowLimitInput = await within(
+            screen.getByTestId("step-limit-0-0"),
+          ).findByPlaceholderText("Enter a limit");
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "0");
+          userEvent.tab();
+
+          userEvent.click(rowLimitInput);
+          userEvent.type(rowLimitInput, "{backspace}");
+          userEvent.tab();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+        });
+
         it("does not show custom warning modal when saving edited query", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
@@ -686,6 +751,93 @@ describe("QueryBuilder", () => {
           expect(
             screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
+        });
+
+        it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const columnDisplayName = await screen.findByTitle("Display name");
+
+          userEvent.click(columnDisplayName);
+          userEvent.type(columnDisplayName, "X");
+
+          await waitFor(() => {
+            expect(columnDisplayName).toHaveValue(
+              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+            );
+          });
+
+          userEvent.tab();
+
+          userEvent.click(columnDisplayName);
+          userEvent.type(columnDisplayName, "{backspace}");
+
+          await waitFor(() => {
+            expect(columnDisplayName).toHaveValue(
+              TEST_MODEL_DATASET_COLUMN.display_name,
+            );
+          });
+
+          userEvent.tab();
+
+          await waitFor(() => {
+            expect(
+              screen.getByRole("button", { name: "Save changes" }),
+            ).toBeDisabled();
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+        });
+
+        it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
+          const columnDisplayName = await screen.findByTitle("Display name");
+
+          userEvent.click(columnDisplayName);
+          userEvent.type(columnDisplayName, "X");
+
+          await waitFor(() => {
+            expect(columnDisplayName).toHaveValue(
+              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+            );
+          });
+
+          userEvent.tab();
+
+          await waitFor(() => {
+            expect(
+              screen.getByRole("button", { name: "Save changes" }),
+            ).toBeEnabled();
+          });
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when saving edited metadata", async () => {

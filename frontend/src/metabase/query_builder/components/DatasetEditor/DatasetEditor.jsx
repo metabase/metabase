@@ -10,6 +10,8 @@ import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Confirm from "metabase/components/Confirm";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -200,6 +202,8 @@ function DatasetEditor(props) {
     modelIndexes = [],
   } = props;
 
+  const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
     [dataset, resultsMetadata],
@@ -299,14 +303,22 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelCreate = useCallback(() => {
-    onCancelCreateNewModel();
-  }, [onCancelCreateNewModel]);
-
-  const handleCancelEdit = useCallback(() => {
+  const handleCancelEdit = () => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
-  }, [setQueryBuilderMode, onCancelDatasetChanges]);
+  };
+
+  const handleCancelEditWarningClose = () => {
+    setShowCancelEditWarning(false);
+  };
+
+  const handleRequestCancelEdit = () => {
+    if (isDirty) {
+      setShowCancelEditWarning(true);
+    } else {
+      handleCancelEdit();
+    }
+  };
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(dataset);
@@ -393,10 +405,8 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return (
-      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
-    );
-  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
+    return !hasFieldWithoutDisplayName && isDirty;
+  }, [dataset, fields, isDirty]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -433,14 +443,15 @@ function DatasetEditor(props) {
         buttons={[
           dataset.isSaved() ? (
             <Button
+              /* TODO */
               key="cancel"
               small
-              onClick={handleCancelEdit}
+              onClick={handleRequestCancelEdit}
             >{t`Cancel`}</Button>
           ) : (
             <Confirm
               key="cancel"
-              action={handleCancelCreate}
+              action={onCancelCreateNewModel}
               title={t`Discard changes?`}
               message={t`Your model won't be created.`}
               confirmButtonText={t`Discard`}
@@ -505,6 +516,13 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
+
+      <Modal isOpen={showCancelEditWarning}>
+        <LeaveConfirmationModalContent
+          onAction={handleCancelEdit}
+          onClose={handleCancelEditWarningClose}
+        />
+      </Modal>
     </>
   );
 }
