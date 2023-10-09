@@ -200,6 +200,7 @@ function DatasetEditor(props) {
     modelIndexes = [],
   } = props;
 
+  const isDirty = isModelQueryDirty || isMetadataDirty;
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
     [dataset, resultsMetadata],
@@ -389,10 +390,8 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return (
-      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
-    );
-  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
+    return !hasFieldWithoutDisplayName && isDirty;
+  }, [dataset, fields, isDirty]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
