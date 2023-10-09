@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { Box, Button, DatePickerInput, Divider, Group } from "metabase/ui";
+import { Box, Button, DatePicker, Divider, Group } from "metabase/ui";
 import type { SpecificDatePickerValue } from "../../types";
 
 interface SingleDatePickerProps {
@@ -25,11 +25,10 @@ export function SingleDatePicker({
       onChange({ ...value, values: [date] });
     }
   };
-
   return (
     <div>
       <Box p="md">
-        <DatePickerInput value={date} onChange={handleChange} />
+        <DatePicker value={date} onChange={handleChange} />
       </Box>
       <Divider />
       <Group p="sm" position="right">

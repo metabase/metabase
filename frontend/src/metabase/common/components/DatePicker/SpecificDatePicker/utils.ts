@@ -18,8 +18,8 @@ export function getDefaultValue(): SpecificDatePickerValue {
 
   return {
     type: "specific",
-    operator: "between",
-    values: [today, today],
+    operator: "=",
+    values: [today],
   };
 }
 
@@ -30,9 +30,6 @@ export function setOperator(
   switch (operator) {
     case "=":
     case "<":
-      return value.operator === "between"
-        ? { ...value, operator, values: [value.values[1]] }
-        : { ...value, operator, values: [value.values[0]] };
     case ">":
       return { ...value, operator, values: [value.values[0]] };
     case "between":
