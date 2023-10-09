@@ -9,6 +9,11 @@ import type {
 } from "../types";
 import { getDirection } from "../utils";
 
+export function getDirectionText(value: DateOffsetIntervalValue): string {
+  const direction = getDirection(value);
+  return direction === "last" ? t`Past` : t`Next`;
+}
+
 export function setUnit(
   value: DateOffsetIntervalValue,
   unit: DatePickerTruncationUnit,
