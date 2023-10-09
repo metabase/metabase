@@ -49,10 +49,6 @@ export interface NotebookStepAction {
   }) => void;
 }
 
-export type UpdateQueryOpts = {
-  closeStep?: boolean;
-};
-
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
   topLevelQuery: Query;
@@ -62,10 +58,7 @@ export interface NotebookStepUiComponentProps {
   isLastOpened: boolean;
   reportTimezone: string;
   readOnly?: boolean;
-  updateQuery: (
-    query: StructuredQuery | Query,
-    opts?: UpdateQueryOpts,
-  ) => Promise<void>;
+  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;
