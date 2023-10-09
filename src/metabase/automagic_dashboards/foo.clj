@@ -1,8 +1,6 @@
 (ns metabase.automagic-dashboards.foo
   (:require
-    [clojure.math :as math]
     [clojure.math.combinatorics :as math.combo]
-    [clojure.set :as set]
     [clojure.string :as str]
     [clojure.walk :as walk]
     [java-time :as t]
@@ -11,6 +9,7 @@
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.mbql.util :as mbql.u]
+    [metabase.models.field :as field]
     [metabase.models.field :refer [Field]]
     [metabase.models.metric :refer [Metric]]
     [metabase.models.table :refer [Table]]
