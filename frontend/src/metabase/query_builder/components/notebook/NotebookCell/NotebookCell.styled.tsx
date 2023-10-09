@@ -50,6 +50,7 @@ export const NotebookCellItemContainer = styled.div<{
 export const NotebookCellItemContentContainer = styled.div<{
   color: string;
   inactive?: boolean;
+  readOnly?: boolean;
   border?: BorderSide;
   roundedCorners: BorderSide[];
 }>`
@@ -59,7 +60,8 @@ export const NotebookCellItemContentContainer = styled.div<{
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
 
   &:hover {
-    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+    background-color: ${props =>
+      !props.inactive && !props.readOnly && alpha(props.color, 0.8)};
   }
 
   ${props =>
@@ -84,3 +86,7 @@ export const NotebookCellItemContentContainer = styled.div<{
 
   transition: background 300ms linear;
 `;
+
+export const NotebookCellRightSideContainer = styled(
+  NotebookCellItemContentContainer,
+)``;

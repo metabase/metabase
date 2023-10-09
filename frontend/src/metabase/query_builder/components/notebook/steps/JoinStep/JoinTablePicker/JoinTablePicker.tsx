@@ -16,9 +16,12 @@ import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
 
-import { NotebookCellItem } from "../../../NotebookCell";
 import { FIELDS_PICKER_STYLES } from "../../../FieldsPickerIcon";
-import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
+import {
+  PickerButton,
+  PickerNotebookCellItem,
+  ColumnPickerButton,
+} from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -54,6 +57,8 @@ export function JoinTablePicker({
   const databaseId = pickerInfo?.databaseId || Lib.databaseID(query);
   const tableId = pickerInfo?.tableId || pickerInfo?.cardId;
 
+  const canChangeTable = !readOnly && !table;
+
   const databases = useMemo(() => {
     const database = metadata.database(databaseId);
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
@@ -77,9 +82,10 @@ export function JoinTablePicker({
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
 
   return (
-    <NotebookCellItem
+    <PickerNotebookCellItem
       inactive={!table}
       readOnly={readOnly}
+      canChangeTable={canChangeTable}
       color={color}
       aria-label={t`Right table`}
       right={
@@ -106,12 +112,12 @@ export function JoinTablePicker({
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton disabled={!!table || readOnly}>
+          <PickerButton disabled={!canChangeTable}>
             {tableInfo?.displayName || t`Pick data…`}
           </PickerButton>
         }
       />
-    </NotebookCellItem>
+    </PickerNotebookCellItem>
   );
 }
 

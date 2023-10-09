@@ -5,6 +5,7 @@ import {
   NotebookCell as _NotebookCell,
   NotebookCellItemContainer,
   NotebookCellItemContentContainer,
+  NotebookCellRightSideContainer,
   CONTAINER_PADDING,
 } from "./NotebookCell.styled";
 
@@ -26,57 +27,62 @@ interface NotebookCellItemProps {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-export const NotebookCellItem = forwardRef<
-  HTMLDivElement,
-  NotebookCellItemProps
->(function NotebookCellItem(
-  {
-    inactive,
-    color,
-    containerStyle,
-    right,
-    rightContainerStyle,
-    children,
-    readOnly,
-    ...restProps
-  },
-  ref,
-) {
-  const hasRightSide = isValidElement(right) && !readOnly;
-  const mainContentRoundedCorners: BorderSide[] = ["left"];
-  if (!hasRightSide) {
-    mainContentRoundedCorners.push("right");
-  }
-  return (
-    <NotebookCellItemContainer
-      inactive={inactive}
-      readOnly={readOnly}
-      color={color}
-      {...restProps}
-      data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
-      ref={ref}
-    >
-      <NotebookCellItemContentContainer
+const _NotebookCellItem = forwardRef<HTMLDivElement, NotebookCellItemProps>(
+  function NotebookCellItem(
+    {
+      inactive,
+      color,
+      containerStyle,
+      right,
+      rightContainerStyle,
+      children,
+      readOnly,
+      ...restProps
+    },
+    ref,
+  ) {
+    const hasRightSide = isValidElement(right) && !readOnly;
+    const mainContentRoundedCorners: BorderSide[] = ["left"];
+    if (!hasRightSide) {
+      mainContentRoundedCorners.push("right");
+    }
+    return (
+      <NotebookCellItemContainer
         inactive={inactive}
+        readOnly={readOnly}
         color={color}
-        roundedCorners={mainContentRoundedCorners}
-        style={containerStyle}
+        {...restProps}
+        data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
+        ref={ref}
       >
-        {children}
-      </NotebookCellItemContentContainer>
-      {hasRightSide && (
         <NotebookCellItemContentContainer
           inactive={inactive}
+          readOnly={readOnly}
           color={color}
-          border="left"
-          roundedCorners={["right"]}
-          style={rightContainerStyle}
+          roundedCorners={mainContentRoundedCorners}
+          style={containerStyle}
         >
-          {right}
+          {children}
         </NotebookCellItemContentContainer>
-      )}
-    </NotebookCellItemContainer>
-  );
+        {hasRightSide && (
+          <NotebookCellRightSideContainer
+            inactive={inactive}
+            color={color}
+            border="left"
+            roundedCorners={["right"]}
+            style={rightContainerStyle}
+          >
+            {right}
+          </NotebookCellRightSideContainer>
+        )}
+      </NotebookCellItemContainer>
+    );
+  },
+);
+
+export const NotebookCellItem = Object.assign(_NotebookCellItem, {
+  displayName: "NotebookCellItem",
+  Content: NotebookCellItemContentContainer,
 });
 
 interface NotebookCellAddProps extends NotebookCellItemProps {
