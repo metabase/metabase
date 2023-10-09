@@ -397,6 +397,7 @@
                                     "table"
                                     "question")]}))
 
+;; NOTE - This has been lifted to foo. Nuke it here as well.
 (defn- fill-templates
   [template-type {:keys [root tables]} bindings s]
   (let [bindings (some-fn (merge {"this" (-> root
@@ -986,6 +987,7 @@
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
+    template-groups     :groups
     :as                 template}]
   (let [ground-dimensions   (foo/find-dimensions base-context template-dimensions)
         affinities          (dash-template->affinities template ground-dimensions)
@@ -993,13 +995,17 @@
         metric-templates    (foo/normalize-metrics template-metrics)
         grounded-metrics    (concat
                               (foo/grounded-metrics metric-templates ground-dimensions)
-                              linked-metrics)]
-    (->> grounded-metrics
-         (foo/make-combinations ground-dimensions (map :affinity-set affinities))
-         (foo/ground-metrics->cards source affinity-set->cards)
-         (map foo/card->dashcard)
-         foo/make-layout
-         (foo/dashboard-ify template))))
+                              linked-metrics)
+        cards               (->> grounded-metrics
+                                 (foo/make-combinations ground-dimensions (map :affinity-set affinities))
+                                 (foo/ground-metrics->cards base-context affinity-set->cards)
+                                 (map-indexed (fn [i card]
+                                                (assoc card :position i))))]
+    (populate/create-dashboard {:title          "Fill in template here"
+                                :transient_name "Fill in template here"
+                                :description    "Fill in template here"
+                                :cards          cards
+                                :groups         template-groups} :all)))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
