@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ExcludeDatePicker } from "./ExcludeDatePicker";
 import { DateShortcutPicker } from "./DateShortcutPicker";
+import { ExcludeDatePicker } from "./ExcludeDatePicker";
+import { RelativeDatePicker } from "./RelativeDatePicker";
+import { SpecificDatePicker } from "./SpecificDatePicker";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
@@ -19,6 +21,7 @@ export interface DatePickerProps {
   availableOperators?: ReadonlyArray<DatePickerOperator>;
   availableShortcuts?: ReadonlyArray<DatePickerShortcut>;
   availableUnits?: ReadonlyArray<DatePickerExtractionUnit>;
+  canUseRelativeOffsets?: boolean;
   backButton?: ReactNode;
   onChange: (value: DatePickerValue) => void;
 }
@@ -28,6 +31,7 @@ export function DatePicker({
   availableOperators = DATE_PICKER_OPERATORS,
   availableShortcuts = DATE_PICKER_SHORTCUTS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
+  canUseRelativeOffsets = false,
   backButton,
   onChange,
 }: DatePickerProps) {
@@ -38,8 +42,24 @@ export function DatePicker({
   };
 
   switch (type) {
+    case "specific":
+      return (
+        <SpecificDatePicker
+          value={value?.type === type ? value : undefined}
+          availableOperators={availableOperators}
+          onChange={onChange}
+          onBack={handleBack}
+        />
+      );
     case "relative":
-      return null;
+      return (
+        <RelativeDatePicker
+          value={value?.type === type ? value : undefined}
+          canUseRelativeOffsets={canUseRelativeOffsets}
+          onChange={onChange}
+          onBack={handleBack}
+        />
+      );
     case "exclude":
       return (
         <ExcludeDatePicker

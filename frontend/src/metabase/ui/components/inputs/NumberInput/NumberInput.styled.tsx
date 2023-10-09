@@ -23,7 +23,9 @@ export const getNumberInputOverrides =
         { size = "md" }: ContextStylesParams,
       ) => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
         },
         control: {
           color: theme.colors.text[2],

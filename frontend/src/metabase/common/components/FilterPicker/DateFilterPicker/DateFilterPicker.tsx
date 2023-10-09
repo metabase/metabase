@@ -49,6 +49,7 @@ export function DateFilterPicker({
           {columnInfo.longDisplayName}
         </BackButton>
       }
+      canUseRelativeOffsets
       onChange={handleChange}
     />
   );

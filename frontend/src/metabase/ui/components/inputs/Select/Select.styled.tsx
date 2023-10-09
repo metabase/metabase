@@ -1,19 +1,17 @@
-import { px, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
+import { px, rem } from "@mantine/core";
 import { SelectItem } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
   Select: {
     defaultProps: {
+      size: "md",
       withinPortal: true,
       dropdownComponent: "div",
       itemComponent: SelectItem,
       maxDropdownHeight: 512,
     },
     styles: theme => ({
-      wrapper: {
-        marginTop: theme.spacing.xs,
-      },
       rightSection: {
         svg: {
           color: theme.colors.text[2],

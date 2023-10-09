@@ -10,7 +10,9 @@ export const getFileInputOverrides =
       },
       styles: theme => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
         },
       }),
     },

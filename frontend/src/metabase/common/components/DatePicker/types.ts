@@ -24,12 +24,18 @@ export type DatePickerExtractionUnit =
 export type DatePickerTruncationUnit =
   typeof DATE_PICKER_TRUNCATION_UNITS[number];
 
+export interface SpecificDatePickerValue {
+  type: "specific";
+  operator: SpecificDatePickerOperator;
+  values: Date[];
+}
+
 export interface RelativeDatePickerValue {
   type: "relative";
   unit: DatePickerTruncationUnit;
   value: number | "current";
-  offsetUnit: DatePickerTruncationUnit | null;
-  offsetValue: number | null;
+  offsetUnit?: DatePickerTruncationUnit;
+  offsetValue?: number;
   options?: RelativeDatePickerOptions;
 }
 
@@ -44,6 +50,9 @@ export interface ExcludeDatePickerValue {
   values: number[];
 }
 
-export type DatePickerValue = RelativeDatePickerValue | ExcludeDatePickerValue;
+export type DatePickerValue =
+  | SpecificDatePickerValue
+  | RelativeDatePickerValue
+  | ExcludeDatePickerValue;
 
 export type DatePickerValueType = DatePickerValue["type"];
