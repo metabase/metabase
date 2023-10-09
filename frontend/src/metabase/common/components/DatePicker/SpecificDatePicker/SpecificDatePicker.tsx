@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Divider, Flex, Tabs } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
@@ -20,8 +20,11 @@ export function SpecificDatePicker({
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
-  const [value, setValue] = useState(initialValue ?? getDefaultValue());
-  const tabs = getTabs(availableOperators);
+  const tabs = useMemo(() => {
+    return getTabs(availableOperators);
+  }, [availableOperators]);
+
+  const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
   const isNew = initialValue == null;
 
   const handleTabChange = (tabValue: string | null) => {
