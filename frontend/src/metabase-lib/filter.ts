@@ -475,6 +475,7 @@ export function filterParts(
   return (
     stringFilterParts(query, stageIndex, filterClause) ??
     numberFilterParts(query, stageIndex, filterClause) ??
+    coordinateFilterParts(query, stageIndex, filterClause) ??
     booleanFilterParts(query, stageIndex, filterClause) ??
     specificDateFilterParts(query, stageIndex, filterClause) ??
     relativeDateFilterParts(query, stageIndex, filterClause) ??
