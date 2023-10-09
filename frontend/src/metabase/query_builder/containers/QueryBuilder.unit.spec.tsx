@@ -433,17 +433,7 @@ describe("QueryBuilder", () => {
           card: TEST_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
-
-        // default native query is `SELECT 1`
-        expect(inputArea).toHaveValue("SELECT 10");
+        await changeNativeQuery();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -455,14 +445,7 @@ describe("QueryBuilder", () => {
           card: TEST_UNSAVED_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
+        await changeNativeQuery();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -797,19 +780,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await changeNativeQuery();
 
         history.goBack();
 
@@ -845,19 +816,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await changeNativeQuery();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -878,19 +837,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await changeNativeQuery();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -918,19 +865,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await changeNativeQuery();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1027,6 +962,25 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const changeNativeQuery = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+  });
+
+  const inputArea = within(
+    screen.getByTestId("mock-native-query-editor"),
+  ).getByRole("textbox");
+
+  userEvent.click(inputArea);
+  userEvent.type(inputArea, "0");
+
+  await waitFor(() => {
+    expect(inputArea).toHaveValue("SELECT 10");
+  });
+
+  userEvent.tab();
+};
 
 const changeNotebookQuery = async () => {
   const rowLimitInput = await within(
