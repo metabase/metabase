@@ -116,6 +116,11 @@ const ParameterSidebar = ({
     onClose();
   }, [parameterId, onRemoveParameter, onClose]);
 
+  const otherParameterSlugs = useMemo(
+    () => otherParameters.map(p => p.slug),
+    [otherParameters],
+  );
+
   return (
     <Sidebar onClose={onClose}>
       <SidebarHeader>
@@ -130,6 +135,7 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            otherParameterSlugs={otherParameterSlugs}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}

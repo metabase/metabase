@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
+import { slugify } from "metabase/lib/formatting";
 import type {
   Parameter,
   ValuesQueryType,
@@ -27,6 +28,7 @@ const MULTI_SELECT_OPTIONS = [
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
+  otherParameterSlugs: string[] | [];
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
@@ -38,6 +40,7 @@ export interface ParameterSettingsProps {
 
 const ParameterSettings = ({
   parameter,
+  otherParameterSlugs,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -59,7 +62,12 @@ const ParameterSettings = ({
     [],
   );
 
-  const labelError = internalValue ? null : t`Required`;
+  let labelError;
+  if (internalValue "") {
+    labelError t`Required`;
+  } else if (otherParameterSlugs.includes(slugify(internalValue))) {
+    labelError t`This label is already in use`;
+  }
 
   const handleLabelBlur = useCallback(
     (event: { target: HTMLInputElement }) => {
