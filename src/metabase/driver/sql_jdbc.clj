@@ -158,12 +158,6 @@
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
 
-(defmethod driver/pk-options :sql-jdbc
-  [_driver auto-increment?]
-  (if auto-increment?
-    [:generated-always :as :identity :primary-key]
-    [:primary-key]))
-
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options

@@ -876,16 +876,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti pk-options
-  "The HoneySQL column spec for a primary key column. Does not include the actual column name, just its options. Should
-  be something like:
-
-  [:generated-always :as :identity :primary-key]  ;; if auto-increment? is true
-  [:primary-key]                                  ;; if it's not"
-  {:added "0.48.0", :arglists '([driver auto-increment?])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."
   {:added "0.47.0", :arglists '([driver database])}
@@ -895,7 +885,12 @@
 (defmethod syncable-schemas ::driver [_ _] #{})
 
 (defmulti upload-type->database-type
-  "Returns the database type for a given `metabase.upload` type as a HoneySQL keyword."
+  "Returns the database type for a given `metabase.upload` type as a HoneySQL spec. This will be a vector, which allows
+  for additional options. Sample values:
+
+  - [:bigint]
+  - [[:varchar 255]]
+  - [:generated-always :as :identity :primary-key]"
   {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -20,18 +20,15 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type        :metabase.upload/boolean)
-(def ^:private int-type         :metabase.upload/int)
-(def ^:private float-type       :metabase.upload/float)
-(def ^:private vchar-type       :metabase.upload/varchar_255)
-(def ^:private date-type        :metabase.upload/date)
-(def ^:private datetime-type    :metabase.upload/datetime)
-(def ^:private text-type        :metabase.upload/text)
-(def ^:private pk-type          :metabase.upload/pk)
-(def ^:private pk-schema [:map
-                          [:type [:= pk-type]]
-                          [:opts  [:vector keyword?]]
-                          [:exclude-in-insert? {:optional true} boolean?]])
+(def ^:private bool-type      :metabase.upload/boolean)
+(def ^:private int-type       :metabase.upload/int)
+(def ^:private float-type     :metabase.upload/float)
+(def ^:private vchar-type     :metabase.upload/varchar_255)
+(def ^:private date-type      :metabase.upload/date)
+(def ^:private datetime-type  :metabase.upload/datetime)
+(def ^:private text-type      :metabase.upload/text)
+(def ^:private int-pk-type    :metabase.upload/int-pk)
+(def ^:private ai-int-pk-type :metabase.upload/auto-incrementing-int-pk)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -174,87 +171,72 @@
        (.write w contents))
      csv-file)))
 
+(defn- with-ai-id
+  [col->type]
+  {:generated-columns {:id ai-int-pk-type}
+   :extant-columns    col->type})
+
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Well-formed CSV file"
-      (is (malli= [:map
-                   [:id               pk-schema]
-                   [:name             [:= vchar-type]]
-                   [:age              [:= int-type]]
-                   [:favorite_pokemon [:= vchar-type]]]
-                  (upload/detect-schema
-                   driver/*driver*
-                   (csv-file-with ["Name, Age, Favorite Pokémon"
-                                   "Tim, 12, Haunter"
-                                   "Ryan, 97, Paras"])))))
-    (testing "CSV missing data"
-      (is (malli= [:map
-                   [:id         pk-schema]
-                   [:name       [:= vchar-type]]
-                   [:height     [:= int-type]]
-                   [:birth_year [:= float-type]]]
+      (is (= (with-ai-id {:name             vchar-type
+                          :age              int-type
+                          :favorite_pokemon vchar-type})
              (upload/detect-schema
-              driver/*driver*
+              (csv-file-with ["Name, Age, Favorite Pokémon"
+                              "Tim, 12, Haunter"
+                              "Ryan, 97, Paras"])))))
+    (testing "CSV missing data"
+      (is (= (with-ai-id {:name       vchar-type
+                          :height     int-type
+                          :birth_year float-type})
+             (upload/detect-schema
               (csv-file-with ["Name, Height, Birth Year"
                               "Luke Skywalker, 172, -19"
                               "Darth Vader, 202, -41.9"
-                              "Watto, 137"                              ; missing column
-                              "Sebulba, 112,"])))))                     ; comma, but blank column
+                              "Watto, 137"          ; missing column
+                              "Sebulba, 112,"]))))) ; comma, but blank column
     (testing "Type coalescing"
-      (is (malli= [:map
-                   [:id         pk-schema]
-                   [:name       [:= vchar-type]]
-                   [:height     [:= float-type]]
-                   [:birth_year [:= vchar-type]]]
+      (is (= (with-ai-id {:name       vchar-type
+                          :height     float-type
+                          :birth_year vchar-type})
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with ["Name, Height, Birth Year"
                               "Rey Skywalker, 170, 15"
                               "Darth Vader, 202.0, 41.9BBY"])))))
     (testing "Boolean coalescing"
-      (is (malli= [:map
-                   [:id            pk-schema]
-                   [:name          [:= vchar-type]]
-                   [:is_jedi_      [:= bool-type]]
-                   [:is_jedi__int_ [:= int-type]]
-                   [:is_jedi__vc_  [:= vchar-type]]]
+      (is (= (with-ai-id {:name          vchar-type
+                          :is_jedi_      bool-type
+                          :is_jedi__int_ int-type
+                          :is_jedi__vc_  vchar-type})
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
                               "Rey Skywalker, yes, true, t"
                               "Darth Vader, YES, TRUE, Y"
                               "Grogu, 1, 9001, probably?"
                               "Han Solo, no, FaLsE, 0"])))))
     (testing "Order is ensured"
-      (let [header "id,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
+      (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
         (is (= (map keyword (str/split header #","))
                (keys
-                (upload/detect-schema
-                 driver/*driver*
-                 (csv-file-with [header
-                                 "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
+                (:extant-columns
+                 (upload/detect-schema
+                  (csv-file-with [header
+                                  "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
     (testing "Empty contents (with header) are okay"
-      (is (malli= [:map
-                   [:id       pk-schema]
-                   [:name     [:= text-type]]
-                   [:is_jedi_ [:= text-type]]]
+      (is (= (with-ai-id {:name     text-type
+                          :is_jedi_ text-type})
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with ["Name, Is Jedi?"])))))
     (testing "Completely empty contents are okay"
-      (is (malli= [:map
-                   [:id pk-schema]]
+      (is (= (with-ai-id {})
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with [""])))))
     (testing "CSV missing data in the top row"
-      (is (malli= [:map
-                   [:id         pk-schema]
-                   [:name       [:= vchar-type]]
-                   [:height     [:= int-type]]
-                   [:birth_year [:= float-type]]]
+      (is (= (with-ai-id {:name       vchar-type
+                          :height     int-type
+                          :birth_year float-type})
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with ["Name, Height, Birth Year"
                               ;; missing column
                               "Watto, 137"
@@ -263,13 +245,12 @@
                               ;; comma, but blank column
                               "Sebulba, 112,"])))))
     (testing "Existing ID column"
-      (is (malli= [:map
-                   [:id     pk-schema]
-                   [:ship   [:= vchar-type]]
-                   [:name   [:= vchar-type]]
-                   [:weapon [:= vchar-type]]]
+      (is (= {:extant-columns    {:id     int-pk-type
+                                  :ship   vchar-type
+                                  :name   vchar-type
+                                  :weapon vchar-type}
+              :generated-columns {}}
              (upload/detect-schema
-              driver/*driver*
               (csv-file-with ["id,ship,name,weapon"
                               "1,Serenity,Malcolm Reynolds,Pistol"
                               "2,Millennium Falcon, Han Solo,Blaster"])))))))
@@ -277,17 +258,14 @@
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
-      (is (malli= [:map
-                   [:id           pk-schema]
-                   [:date         [:= date-type]]
-                   [:not_date     [:= vchar-type]]
-                   [:datetime     [:= datetime-type]]
-                   [:not_datetime [:= vchar-type]]]
-                  (upload/detect-schema
-                   driver/*driver*
-                   (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
-                                   "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
-                                   "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
+      (is (= (with-ai-id {:date         date-type
+                          :not_date     vchar-type
+                          :datetime     datetime-type
+                          :not_datetime vchar-type})
+             (upload/detect-schema
+              (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
+                              "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
+                              "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
@@ -340,7 +318,7 @@
                     table))
             (is (=? {:name          #"(?i)id"
                      :semantic_type :type/PK
-                     :base_type     :type/Integer}
+                     :base_type     :type/BigInteger}
                     (t2/select-one Field :database_position 0 :table_id (:id table))))
             (is (=? {:name      #"(?i)nulls"
                      :base_type :type/Text}

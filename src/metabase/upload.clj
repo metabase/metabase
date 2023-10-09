@@ -35,20 +35,26 @@
 ;;         float   datetime
 ;;           |       |
 ;;           |       |
-;;          int    date
+;;          int     date
 ;;         /   \
 ;;        /     \
-;;      pk     boolean
+;;  int-pk     boolean
+;;     |
+;;     |
+;;   auto-
+;; incrementing-
+;;  int-pk
 
 (def ^:private type->parent
   ;; listed in depth-first order
-  {::varchar_255 ::text
-   ::float       ::varchar_255
-   ::int         ::float
-   ::pk          ::int
-   ::boolean     ::int
-   ::datetime    ::varchar_255
-   ::date        ::datetime})
+  {::varchar_255              ::text
+   ::float                    ::varchar_255
+   ::int                      ::float
+   ::int-pk                   ::int
+   ::auto-incrementing-int-pk :int-pk
+   ::boolean                  ::int
+   ::datetime                 ::varchar_255
+   ::date                     ::datetime})
 
 (def ^:private types
   (set/union (set (keys type->parent))
@@ -178,40 +184,21 @@
   (and (#{"id" "pk"} (u/lower-case-en (name col-name)))
        (isa? type ::int)))
 
-(defn- add-pk-column
-  "Adds driver-specific auto-increment and non-nil/PK constraints to the first ID/PK column it finds; otherwise prepends
-  a new ID column to the columns list."
-  [driver name-type-pairs]
-  (let [found-it   (atom false)
-        pked-pairs (doall (map (fn [[name _type :as p]]
-                                 (if (and (not @found-it)
-                                          (is-pk? p))
-                                   (do (reset! found-it true)
-                                       [(keyword name) {:type ::pk :opts (driver/pk-options driver false)}])
-                                   p))
-                               name-type-pairs))]
-    (if @found-it ;; we already have a PK, just return them
-      pked-pairs
-      ;;otherwise, prepend a new ID column
-      (cons [:id {:type ::pk :opts (driver/pk-options driver true) :exclude-in-insert? true}]
-            name-type-pairs))))
+(defn- ->ordered-maps-with-pk-column
+  "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
 
-(defn- upload-type->column-spec
-  "Converts our internal types (e.g., ::int) to the type expected by the database as a HoneySQL
-  keyword (e.g., :biginteger). However, the returned type is *always* a vector since there may be additional HoneySQL
-  options included. Sample return values:
-
-    - [:text]
-    - [[:varchar 255]]
-    - [:int :autoincrement [:not nil]]"
-  [driver type-or-type-map]
-  (if (map? type-or-type-map)
-    (let [{the-type :type opts :opts} type-or-type-map]
-      (vec (cons (driver/upload-type->database-type driver the-type) opts)))
-    [(driver/upload-type->database-type driver type-or-type-map)]))
+  Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
+  [name-type-pairs]
+  (if-let [pk-name (first (keep (fn [[name _type :as p]]
+                                  (when (is-pk? p) name))
+                                name-type-pairs))]
+    {:extant-columns (assoc (ordered-map/ordered-map name-type-pairs) pk-name ::int-pk)
+     :generated-columns (ordered-map/ordered-map)}
+    {:extant-columns (ordered-map/ordered-map name-type-pairs)
+     :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
 
 (defn- rows->schema
-  [driver header rows]
+  [header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name)
                                (mbql.u/uniquify-names)
@@ -223,8 +210,7 @@
          (reduce coalesce-types (repeat column-count nil))
          (map #(or % ::text))
          (map vector normalized-header)
-         (add-pk-column driver)
-         (ordered-map/ordered-map))))
+         (->ordered-maps-with-pk-column))))
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
@@ -284,15 +270,16 @@
               e)))))
 
 (defn- upload-type->parser [upload-type]
-  (case (or (:type upload-type) upload-type)
-    ::varchar_255 identity
-    ::text        identity
-    ::int         (partial parse-number (get-number-separators))
-    ::float       (partial parse-number (get-number-separators))
-    ::pk          (partial parse-number (get-number-separators))
-    ::boolean     #(parse-bool (str/trim %))
-    ::date        #(parse-date (str/trim %))
-    ::datetime    #(parse-datetime (str/trim %))))
+  (case upload-type
+    ::varchar_255              identity
+    ::text                     identity
+    ::int                      (partial parse-number (get-number-separators))
+    ::float                    (partial parse-number (get-number-separators))
+    ::int-pk                   (partial parse-number (get-number-separators))
+    ::auto-incrementing-int-pk (partial parse-number (get-number-separators))
+    ::boolean                  #(parse-bool (str/trim %))
+    ::date                     #(parse-date (str/trim %))
+    ::datetime                 #(parse-datetime (str/trim %))))
 
 (defn- parsed-rows
   "Returns a lazy seq of parsed rows from the `reader`.
@@ -332,44 +319,40 @@
                                 max-sample-rows)))
                   rows)))
 
-(defn detect-schema
-  "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
-  first row. Supported types are:
+(defn- upload-type->col-specs
+  [driver col->upload-type]
+  (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
-    - ::int
-    - ::float
-    - ::boolean
-    - ::varchar_255
-    - ::text
-    - ::date
-    - ::datetime
-    - ::pk
+(defn detect-schema
+  "Returns a map with two keys: `:extant-columns` (columns found in the CSV file) and `:generated-columns` (columns we
+  are adding ourselves). The value of each is an ordered map of `normalized-column-name -> type` for the given CSV
+  file. The CSV file *must* have headers as the first row. Supported types include `::int`, `::datetime`, etc.
 
   A column that is completely blank is assumed to be of type ::text."
-  [driver csv-file]
+  [csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
-      (rows->schema driver header (sample-rows rows)))))
+      (rows->schema header (sample-rows rows)))))
 
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [col->upload-type               (detect-schema driver csv-file)
-        col->column-spec               (update-vals col->upload-type (partial upload-type->column-spec driver))
-        columns-to-insert->upload-type (->> col->upload-type
-                                            (filter (fn [[_col-name upload-type]]
-                                                      (not (:exclude-in-insert? upload-type))))
-                                            (ordered-map/ordered-map))
-        column-names                   (keys columns-to-insert->upload-type)]
-    (driver/create-table! driver db-id table-name col->column-spec)
+  (let [{col-to-insert->upload-type :extant-columns
+         gen-col->upload-type       :generated-columns} (detect-schema csv-file)
+        col-to-create->col-spec                         (upload-type->col-specs driver
+                                                                                (merge gen-col->upload-type col-to-insert->upload-type))
+        csv-col-names                                   (keys col-to-insert->upload-type)]
+    (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows columns-to-insert->upload-type reader)]
-          (driver/insert-into! driver db-id table-name column-names rows)
-          {:num-rows    (count rows)
-           :num-columns (count column-names)
-           :size-mb     (/ (.length csv-file) 1048576.0)}))
+        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+          (driver/insert-into! driver db-id table-name csv-col-names rows)
+          {:num-rows          (count rows)
+           :num-columns       (count csv-col-names)
+           :generated-columns (count gen-col->upload-type)
+           :size-mb           (/ (.length csv-file)
+                                 1048576.0)}))
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))

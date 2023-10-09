@@ -608,14 +608,15 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 [:varchar 255]
-    ::upload/text        :text
-    ::upload/int         :bigint
-    ::upload/pk          :int
-    ::upload/float       :double
-    ::upload/boolean     :boolean
-    ::upload/date        :date
-    ::upload/datetime    :timestamp))
+    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/float                    [:double]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]))
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
@@ -683,12 +684,6 @@
           (qp.writeback/execute-write-sql! db-id sql))
         (finally
           (.delete temp-file))))))
-
-(defmethod driver/pk-options :mysql
-  [_driver auto-increment?]
-  (if auto-increment?
-    [:not-null :auto-increment :primary-key]
-    [:primary-key]))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
