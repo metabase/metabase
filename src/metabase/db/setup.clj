@@ -212,16 +212,14 @@
                  setting/*disable-cache*         true]
          (verify-db-connection   db-type data-source)
          (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-           ;; #TODO : this is not realiable, need to switch to a query to check if core_user table exists
-           ;; cause a db can be initialized but still doesn't have databasechangelog if sth wrong happens after this
-           (when (liquibase/fresh-install? conn)
+           (when-not (or (liquibase/table-exists? conn "core_user")
+                         (liquibase/table-exists? conn "CORE_USER"))
              (log/info "Running database initialization")
              (initialize-db! db-type data-source)
              (log/info "Done database initialization")))
          (run-schema-migrations! db-type data-source auto-migrate?)
          (run-data-migrations!))))
   :done)
-
 ;;;; Toucan Setup.
 
 ;;; Done at namespace load time these days.

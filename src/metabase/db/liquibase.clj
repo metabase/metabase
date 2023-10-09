@@ -60,6 +60,12 @@
     "databasechangelog"
     "DATABASECHANGELOG"))
 
+(defn table-exists?
+  [conn table-name]
+  (let [meta (.getMetaData conn)] ; don't migrate on fresh install
+       (not (empty? (jdbc/metadata-query
+                      (.getTables meta nil nil table-name (u/varargs String ["TABLE"])))))))
+
 (defn fresh-install?
   [^java.sql.Connection conn]
   (let [meta (.getMetaData conn)] ; don't migrate on fresh install
