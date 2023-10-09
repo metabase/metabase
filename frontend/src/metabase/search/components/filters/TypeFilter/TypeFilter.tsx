@@ -12,7 +12,7 @@ import { TypeFilterDisplay } from "./TypeFilterDisplay";
 
 export const TypeFilter: SearchFilterComponent<"type"> = {
   iconName: "dashboard",
-  label: t`Content type`,
+  label: () => t`Content type`,
   type: "dropdown",
   DisplayComponent: TypeFilterDisplay,
   ContentComponent: TypeFilterContent,

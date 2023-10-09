@@ -104,7 +104,7 @@ export const DropdownSidebarFilter = ({
     >
       <DropdownFieldSet
         noPadding
-        legend={fieldHasValue ? label : null}
+        legend={fieldHasValue ? label() : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
         <DropdownDisplayContent position="apart" noWrap w="100%">
@@ -113,7 +113,7 @@ export const DropdownSidebarFilter = ({
           ) : (
             <Group noWrap>
               {iconName && <Icon name={iconName} />}
-              <Text weight={700}>{label}</Text>
+              <Text weight={700}>{label()}</Text>
             </Group>
           )}
           <Button
