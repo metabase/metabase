@@ -4,6 +4,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase-enterprise.audit-db :as audit-db]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -155,5 +156,7 @@
                            [:metabase_database :db] [:= :qe.database_id :db.id]
                            [:metabase_table :t] [:= :card.table_id :t.id]
                            [:core_user :u] [:= :qe.executor_id :u.id]]
-               :where     (common/query-execution-is-download :qe)
+               :where     [:and
+                           (common/query-execution-is-download :qe)
+                           [:not= :card.database_id (audit-db/default-audit-db-id)]]
                :order-by  [[:qe.started_at :desc]]})})
