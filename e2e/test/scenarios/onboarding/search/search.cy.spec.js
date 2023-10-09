@@ -590,7 +590,6 @@ function expectSearchResultItemNameContent({ itemNames }) {
       .toArray()
       .map(el => el.textContent);
 
-    expect(searchResultLabelList).to.have.length(itemNames.length);
-    expect(searchResultLabelList).to.include.members(itemNames);
+    expect(searchResultLabelList).to.deep.eq(itemNames);
   });
 }
