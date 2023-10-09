@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersDiscountDatasetColumn,
@@ -18,18 +23,24 @@ import { ClickActionsPopover } from "metabase/visualizations/components/ClickAct
 import type { RegularClickAction } from "metabase/visualizations/types";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { checkNotNull } from "metabase/core/utils/types";
-import type { DatasetQuery, Filter, Series } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  Filter,
+  Series,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 import registerVisualizations from "metabase/visualizations/register";
 import { POPOVER_TEST_ID } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction/ColumnFormattingAction";
 import { createMockSingleSeries } from "metabase-types/api/mocks";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
-import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Dimension from "metabase-lib/Dimension";
 
 registerVisualizations();
 
+const ORDERS_DATASET_QUERY = DEFAULT_QUERY as StructuredDatasetQuery;
 const ORDERS_COLUMNS = createOrdersTableDatasetColumns();
 const ORDERS_ROW_VALUES = {
   ID: "3",
@@ -104,20 +115,55 @@ describe("ClickActionsPopover", function () {
     });
 
     describe("SortDrill", () => {
-      it("should apply SortDrill to default ORDERS question on header click", async () => {
-        const { props } = await setup();
+      it("should display proper sorting controls", async () => {
+        await setup();
 
         const sortDesc = getIcon("arrow_down");
         expect(sortDesc).toBeInTheDocument();
 
+        userEvent.hover(sortDesc);
+        expect(screen.getByText("Sort descending")).toBeInTheDocument();
+
+        const sortAsc = getIcon("arrow_up");
+        expect(sortAsc).toBeInTheDocument();
+
+        userEvent.hover(sortAsc);
+        expect(screen.getByText("Sort ascending")).toBeInTheDocument();
+      });
+
+      it("should display specific sorting control when only one sorting direction is available", async () => {
+        await setup({
+          question: Question.create({
+            metadata: SAMPLE_METADATA,
+            dataset_query: {
+              ...ORDERS_DATASET_QUERY,
+              query: {
+                ...ORDERS_DATASET_QUERY.query,
+                "order-by": [["asc", ["field", ORDERS.ID, null]]],
+              },
+            },
+          }),
+        });
+
+        expect(queryIcon("arrow_up")).not.toBeInTheDocument();
+
+        const sortDesc = getIcon("arrow_down");
+        expect(sortDesc).toBeInTheDocument();
+      });
+
+      it("should apply SortDrill to default ORDERS question on ID column header click", async () => {
+        const { props } = await setup();
+
+        const sortDesc = getIcon("arrow_down");
         userEvent.click(sortDesc);
 
         expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
         expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
           nextCard: expect.objectContaining({
             dataset_query: {
-              database: SAMPLE_DB_ID,
+              ...ORDERS_DATASET_QUERY,
               query: {
+                ...ORDERS_DATASET_QUERY.query,
                 "order-by": [
                   [
                     "desc",
@@ -130,9 +176,7 @@ describe("ClickActionsPopover", function () {
                     ],
                   ],
                 ],
-                "source-table": ORDERS_ID,
               },
-              type: "query",
             },
             display: "table",
           }),
@@ -219,7 +263,7 @@ describe("ClickActionsPopover", function () {
         },
       ])(
         "should apply drill on $columnName cell click",
-        async ({ column, columnName, cellValue, drillTitle, expectedCard }) => {
+        async ({ column, cellValue, drillTitle, expectedCard }) => {
           const { props } = await setup({
             clicked: {
               column,
@@ -315,9 +359,8 @@ describe("ClickActionsPopover", function () {
 
 async function setup({
   question = Question.create({
-    databaseId: SAMPLE_DB_ID,
-    tableId: ORDERS_ID,
     metadata: SAMPLE_METADATA,
+    dataset_query: ORDERS_DATASET_QUERY,
   }),
   clicked = {
     column: createOrdersIdDatasetColumn(),

@@ -32,7 +32,7 @@ import type {
 import type { StructuredQuery as StructuredQueryApi } from "metabase-types/api/query";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
-import { columnFinder, SAMPLE_METADATA } from "./test-helpers";
+import { columnFinder, DEFAULT_QUERY, SAMPLE_METADATA } from "./test-helpers";
 import { availableDrillThrus, drillThru } from "./drills";
 
 type TestCaseQueryType = "unaggregated" | "aggregated";
@@ -78,13 +78,7 @@ type ApplyDrillTestCase = BaseTestCase & {
   expectedQuery: StructuredQueryApi;
 };
 
-const ORDERS_DATASET_QUERY: StructuredDatasetQuery = {
-  database: SAMPLE_DB_ID,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
-};
+const ORDERS_DATASET_QUERY = DEFAULT_QUERY as StructuredDatasetQuery;
 const ORDERS_QUESTION = Question.create({
   metadata: SAMPLE_METADATA,
   dataset_query: ORDERS_DATASET_QUERY,
@@ -680,6 +674,26 @@ describe("availableDrillThrus", () => {
     {
       drillType: "drill-thru/sort",
       clickType: "header",
+      queryType: "unaggregated",
+      columnName: "CREATED_AT",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
       queryType: "aggregated",
       columnName: "CREATED_AT",
       expectedParameters: {
@@ -711,10 +725,52 @@ describe("availableDrillThrus", () => {
       drillType: "drill-thru/sort",
       clickType: "header",
       queryType: "aggregated",
+      columnName: "count",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+            "source-table": ORDERS_ID,
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["asc", "desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
       columnName: "max",
       expectedParameters: {
         type: "drill-thru/sort",
         directions: ["asc", "desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+            "source-table": ORDERS_ID,
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["desc"],
       },
     },
     // endregion
