@@ -28,7 +28,7 @@ const MULTI_SELECT_OPTIONS = [
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
-  otherParameterSlugs: string[] | [];
+  otherParameterSlugs: string[];
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
