@@ -191,6 +191,18 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
   };
 }
 
+/**
+ * This utility was created as a replacement for waitForElementToBeRemoved.
+ * The difference is that waitForElementToBeRemoved expects the element
+ * to exist before being removed.
+ *
+ * The advantage of waitForLoadingSpinnerToDisappear is that it integrates
+ * better with our async entity framework because it addresses the
+ * non-deterministic aspect of when loading states are displayed.
+ *
+ * @see https://github.com/metabase/metabase/pull/34272#discussion_r1342527087
+ * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
+ */
 export const waitForLoadingSpinnerToDisappear = async () => {
   await waitFor(() => {
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
