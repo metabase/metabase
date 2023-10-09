@@ -1430,6 +1430,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       drillArgs: ["asc"],
       expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
         "order-by": [
           [
             "asc",
@@ -1442,7 +1443,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1452,6 +1452,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       drillArgs: ["desc"],
       expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
         "order-by": [
           [
             "desc",
@@ -1464,7 +1465,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1474,6 +1474,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       drillArgs: ["asc"],
       expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
         "order-by": [
           [
             "asc",
@@ -1486,7 +1487,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1496,6 +1496,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       drillArgs: ["desc"],
       expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
         "order-by": [
           [
             "desc",
@@ -1508,7 +1509,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1518,6 +1518,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       drillArgs: ["asc"],
       expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
         "order-by": [
           [
             "asc",
@@ -1530,7 +1531,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1553,7 +1553,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1577,7 +1576,6 @@ describe("drillThru", () => {
             ],
           ],
         ],
-        "source-table": ORDERS_ID,
       },
     },
     {
@@ -1589,7 +1587,75 @@ describe("drillThru", () => {
       expectedQuery: {
         ...AGGREGATED_ORDERS_DATASET_QUERY.query,
         "order-by": [["asc", ["aggregation", 1]]],
-        "source-table": ORDERS_ID,
+      },
+    },
+    {
+      // should support changing sorting to another direction for a column that already has sorting applied (metabase#34497)
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "max",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["desc", ["aggregation", 2]]],
+          },
+        },
+      }),
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [["asc", ["aggregation", 2]]],
+      },
+    },
+    {
+      // should support adding extra sorting for a query that already has a sorted column
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "sum",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [
+              [
+                "asc",
+                [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "base-type": "type/DateTime",
+                    "temporal-unit": "month",
+                  },
+                ],
+              ],
+            ],
+          },
+        },
+      }),
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+          ["asc", ["aggregation", 1]],
+        ],
       },
     },
 
