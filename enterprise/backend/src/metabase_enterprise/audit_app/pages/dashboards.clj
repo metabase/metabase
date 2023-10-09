@@ -4,6 +4,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
+   [metabase.config :as config]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
@@ -16,16 +17,20 @@
    ;; this is so nice and easy to implement in a single query with FULL OUTER JOINS but unfortunately only pg supports
    ;; them(!)
    :results (let [views        (common/query
-                                {:select   [[(common/grouped-datetime datetime-unit :timestamp) :date]
-                                            [:%count.* :views]]
-                                 :from     [:view_log]
-                                 :where    [:= :model (h2x/literal "dashboard")]
-                                 :group-by [(common/grouped-datetime datetime-unit :timestamp)]})
+                                {:select    [[(common/grouped-datetime datetime-unit :timestamp) :date]
+                                             [:%count.* :views]]
+                                 :from      [[:view_log :vl]]
+                                 :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
+                                 :where     [:and
+                                             [:= :model (h2x/literal "dashboard")]
+                                             [:not= :d.creator_id config/internal-mb-user-id]]
+                                 :group-by  [(common/grouped-datetime datetime-unit :timestamp)]})
                   date->views  (zipmap (map :date views) (map :views views))
                   saves        (common/query
                                 {:select   [[(common/grouped-datetime datetime-unit :created_at) :date]
                                             [:%count.* :saves]]
-                                 :from     [:report_dashboard]
+                                 :from     [[:report_dashboard :d]]
+                                 :where    [:not= :d.creator_id config/internal-mb-user-id]
                                  :group-by [(common/grouped-datetime datetime-unit :created_at)]})
                   date->saves  (zipmap (map :date saves) (map :saves saves))
                   all-dates    (sort (keep identity (distinct (concat (keys date->views)
@@ -47,7 +52,9 @@
                            [:%count.* :views]]
                :from      [[:view_log :vl]]
                :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
-               :where     [:= :vl.model (h2x/literal "dashboard")]
+               :where     [:and
+                           [:= :vl.model (h2x/literal "dashboard")]
+                           [:not= :d.creator_id config/internal-mb-user-id]]
                :group-by  [:d.id]
                :order-by  [[:%count.* :desc]]
                :limit     10})})
@@ -62,7 +69,8 @@
    :results  (common/reducible-query
               {:with      [[:most_popular {:select    [[:d.id :dashboard_id]
                                                        [:d.name :dashboard_name]
-                                                       [:%count.* :views]]
+                                                       [:%count.* :views]
+                                                       [:d.creator_id :creator_id]]
                                            :from      [[:view_log :vl]]
                                            :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
                                            :where     [:= :vl.model (h2x/literal "dashboard")]
@@ -88,6 +96,7 @@
                            :rt.avg_running_time]
                :from      [[:most_popular :mp]]
                :left-join [[:dash_avg_running_time :rt] [:= :mp.dashboard_id :rt.dashboard_id]]
+               :where     [:not= :mp.creator_id config/internal-mb-user-id]
                :order-by  [[:mp.views :desc]]
                :limit     10})})
 
@@ -109,6 +118,7 @@
                :from      [[:report_dashboardcard :dc]]
                :left-join [[:card_running_time :rt] [:= :dc.card_id :rt.card_id]
                            [:report_dashboard :d]   [:= :dc.dashboard_id :d.id]]
+               :where     [:not= :d.creator_id config/internal-mb-user-id]
                :group-by  [:d.id]
                :order-by  [[:avg_running_time :desc]]
                :limit     10})})
@@ -125,6 +135,7 @@
                           [:%count.* :count]]
                :from     [[:report_dashboardcard :dc]]
                :join     [[:report_card :c] [:= :c.id :dc.card_id]]
+               :where    [:not= :c.creator_id config/internal-mb-user-id]
                :group-by [:c.id]
                :order-by [[:%count.* :desc]]
                :limit    10})})

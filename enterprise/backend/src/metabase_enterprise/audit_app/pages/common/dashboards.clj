@@ -2,6 +2,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.config :as config]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.urls :as urls]))
 
@@ -59,6 +60,7 @@
                             [:card_count :cc]          [:= :d.id :cc.dashboard_id]
                             [:avg_execution_time :axt] [:= :d.id :axt.dashboard_id]
                             [:views :v]                [:= :d.id :v.dashboard_id]]
+                :where     [:not= :d.creator_id config/internal-mb-user-id]
                 :order-by  [[[:lower :d.name] :asc]
                             [:dashboard_id :asc]]}
                (common/add-search-clause query-string :d.name)

@@ -56,7 +56,7 @@ describe("issue 15578", () => {
 
     queryBuilderMain().within(() => {
       cy.findByText("Category").should("be.visible");
-      cy.findByText("Question 5 → ID").should("be.visible");
+      cy.findByText(/Question \d+ → ID/).should("be.visible");
     });
   });
 });
