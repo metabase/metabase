@@ -44,4 +44,30 @@ describe("ParameterLinkedFilters", () => {
 
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
   });
+
+  it("should not show linked filter options if the parameter has a custom list source", () => {
+    setup({
+      parameter: createMockUiParameter({
+        id: "p1",
+        name: "P1",
+        values_source_type: "static-list",
+        values_source_config: {
+          values: ["foo", "bar"],
+        },
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          id: "p2",
+          name: "P2",
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        "If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
 });

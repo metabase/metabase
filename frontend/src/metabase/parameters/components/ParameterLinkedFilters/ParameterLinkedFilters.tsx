@@ -68,26 +68,36 @@ const ParameterLinkedFilters = ({
     [],
   );
 
+  let disableReason = null;
+  if (usableParameters.length === 0) {
+    disableReason = (
+      <div>
+        <SectionMessage>
+          {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
+        </SectionMessage>
+        <SectionMessage>
+          {jt`So first, ${(
+            <SectionMessageLink key="link" onClick={onShowAddParameterPopover}>
+              {t`add another dashboard filter`}
+            </SectionMessageLink>
+          )}.`}
+        </SectionMessage>
+      </div>
+    );
+  } else if (parameter.values_source_type != null) {
+    disableReason = (
+      <div>
+        <SectionMessage>
+          {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
+        </SectionMessage>
+      </div>
+    );
+  }
+
   return (
     <SectionRoot>
       <SectionHeader>{t`Limit this filter's choices`}</SectionHeader>
-      {usableParameters.length === 0 ? (
-        <div>
-          <SectionMessage>
-            {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
-          </SectionMessage>
-          <SectionMessage>
-            {jt`So first, ${(
-              <SectionMessageLink
-                key="link"
-                onClick={onShowAddParameterPopover}
-              >
-                {t`add another dashboard filter`}
-              </SectionMessageLink>
-            )}.`}
-          </SectionMessage>
-        </div>
-      ) : (
+      {disableReason || (
         <div>
           <SectionMessage>
             {jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
