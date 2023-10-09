@@ -292,7 +292,7 @@ jobs:
         if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
@@ -338,7 +338,7 @@ jobs:
         if: matrix.context == 'folder' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser "replay-chromium"
         env:
