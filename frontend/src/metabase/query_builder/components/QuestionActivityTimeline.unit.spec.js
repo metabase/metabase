@@ -1,7 +1,7 @@
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockUser, createMockUserInfo } from "metabase-types/api/mocks";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
@@ -43,7 +43,7 @@ async function setup({ question }) {
       currentUser={createMockUser()}
     />,
   );
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 }
 
 describe("QuestionActivityTimeline", () => {

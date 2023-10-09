@@ -12,7 +12,7 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
-  getisNavigatingBackToDashboard,
+  getIsNavigatingBackToDashboard,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
 
@@ -26,7 +26,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 

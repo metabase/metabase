@@ -16,7 +16,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getMetadataRoutes } from "../../routes";
 
@@ -66,7 +66,7 @@ const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
     { withRouter: true, initialRoute: "admin/datamodel" },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("MetadataTableSettings", () => {
