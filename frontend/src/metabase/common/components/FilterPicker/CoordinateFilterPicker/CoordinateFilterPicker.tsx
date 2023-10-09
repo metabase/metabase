@@ -3,7 +3,6 @@ import { useState, useMemo } from "react";
 import { Box, Button, Flex, Text, NumberInput, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import Select from "metabase/core/components/Select";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Field from "metabase-lib/metadata/Field";
 import type { FilterPickerWidgetProps } from "../types";
@@ -14,15 +13,11 @@ import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
-import {
-  findSecondColumn,
-  isCoordinateFilterValid,
-  getColumnOptions,
-  findLatitudeColumns,
-  findLongitudeColumns,
-} from "./utils";
+import { CoordinateColumnSelect } from "./CoordinateColumnSelect";
 
-import { coordinateFilterValueCountMap, insideLabels } from "./constants";
+import { findSecondColumn, isCoordinateFilterValid } from "./utils";
+
+import { coordinateFilterValueCountMap } from "./constants";
 import type { CoordinateFilterValueCount } from "./types";
 
 export function CoordinateFilterPicker({
@@ -207,101 +202,43 @@ function CoordinateValueInput({
       return (
         <Stack align="center" justify="center" spacing="sm" p="md">
           <NumberInput
+            label={t`Upper latitude`}
             value={values[0]}
             onChange={(newValue: number) =>
               onChange([newValue, values[1], values[2], values[3]])
             }
-            placeholder={insideLabels[0]}
+            placeholder="90"
             autoFocus
           />
           <Flex align="center" justify="center" gap="sm">
             <NumberInput
+              label={t`Left longitude`}
               value={values[1]}
               onChange={(newValue: number) =>
                 onChange([values[0], newValue, values[2], values[3]])
               }
-              placeholder={insideLabels[1]}
+              placeholder="-180"
             />
             <NumberInput
+              label={t`Right longitude`}
               value={values[3]}
               onChange={(newValue: number) =>
                 onChange([values[0], values[1], values[2], newValue])
               }
-              placeholder={insideLabels[2]}
+              placeholder="180"
             />
           </Flex>
           <NumberInput
+            label={t`Lower latitude`}
             value={values[2]}
             onChange={(newValue: number) =>
               onChange([values[0], values[1], newValue, values[3]])
             }
-            placeholder={insideLabels[3]}
+            placeholder="-90"
           />
         </Stack>
       );
     default:
       return null;
   }
-}
-
-function CoordinateColumnSelect({
-  query,
-  stageIndex,
-  column,
-  value,
-  onChange,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  value: Lib.ColumnMetadata | null;
-  onChange: (column: Lib.ColumnMetadata) => void;
-}) {
-  const latitudeColumns = findLatitudeColumns(query, stageIndex);
-  const longitudeColumns = findLongitudeColumns(query, stageIndex);
-
-  const columnDirection = Lib.isLatitude(column) ? "latitude" : "longitude";
-
-  if (columnDirection === "latitude" && longitudeColumns.length === 1) {
-    return null;
-  }
-
-  if (columnDirection === "longitude" && latitudeColumns.length === 1) {
-    return null;
-  }
-
-  const selectLabel =
-    columnDirection === "latitude"
-      ? t`Select longitude column`
-      : t`Select latitude column`;
-
-  const options = (
-    columnDirection === "latitude"
-      ? () => getColumnOptions({ query, stageIndex, columns: longitudeColumns })
-      : () => getColumnOptions({ query, stageIndex, columns: latitudeColumns })
-  )();
-
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOption = options.find(
-      option => option.value === e.target.value,
-    );
-
-    if (selectedOption) {
-      onChange(selectedOption.column);
-    }
-  };
-
-  return (
-    <Stack p="md" spacing="sm">
-      <label>
-        <strong>{selectLabel}</strong>
-      </label>
-      <Select
-        label={selectLabel}
-        options={options}
-        value={value ? Lib.displayInfo(query, stageIndex, value).name : ""}
-        onChange={handleChange}
-      />
-    </Stack>
-  );
 }

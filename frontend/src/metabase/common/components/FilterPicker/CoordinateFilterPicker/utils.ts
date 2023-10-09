@@ -83,9 +83,22 @@ export const getColumnOptions = ({
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
-      name: columnInfo.displayName,
-      value: columnInfo.name, // duplicate names?
+      label: columnInfo.displayName,
+      value: getColumnIdentifier(query, stageIndex, column),
       column,
     };
   });
+};
+
+export const getColumnIdentifier = (
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata | null,
+) => {
+  if (!column) {
+    return "";
+  }
+  const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
+  return `${columnInfo?.table?.name ?? "computed"}_${columnInfo.name}`;
 };
