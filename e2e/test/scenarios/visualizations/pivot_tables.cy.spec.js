@@ -8,6 +8,7 @@ import {
   visitIframe,
   dragField,
   leftSidebar,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -1050,6 +1051,27 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
       });
     });
+  });
+
+  it("should not have to wait for data to show fields in summarisation", () => {
+    createAndVisitTestQuestion();
+
+    cy.reload();
+
+    cy.intercept("POST", "api/card/pivot/*/query", req => {
+      req.on("response", res => {
+        res.setDelay(300000);
+      });
+    }).as("querySlowed");
+
+    // confirm that it's loading
+    main().findByText("Doing science...").should("be.visible");
+
+    cy.icon("notebook").click();
+
+    main().findByText("User → Source").click();
+
+    popover().findByText("Address").click();
   });
 });
 
