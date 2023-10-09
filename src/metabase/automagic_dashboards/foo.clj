@@ -10,9 +10,9 @@
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.mbql.util :as mbql.u]
     [metabase.models.field :as field :refer [Field]]
+    [metabase.models.interface :as mi]
     [metabase.models.metric :refer [Metric]]
     [metabase.models.table :refer [Table]]
-    [metabase.models.interface :as mi]
     [metabase.util :as u]
     [metabase.util.date-2 :as u.date]
     [toucan2.core :as t2]))
@@ -444,7 +444,7 @@
     :breakout (mapv (partial ->reference :mbql) breakout-fields)))
 
 (defn make-metric-combinations
-  "From a grounded metric, produce additional metrics that have potential dimensions 
+  "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
   [ground-dimensions
    semantic-affinity-sets

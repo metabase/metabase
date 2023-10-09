@@ -2240,31 +2240,60 @@
                  "AverageDiscountByMonth" [#{"Income" "Discount" "Timestamp"}])
                (magic/match-affinities affinities bound)))))))
 
-(deftest dash-template->affinities-test
+(deftest ^:parallel dash-template->affinities-test
+  (testing "matches"
+    (let [template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
+      (testing "Even with no dimensions can match against dimensionless metrics"
+        (is (=? [{:affinity-name "Rowcount"
+                  :affinity-set #{}}]
+                (magic/dash-template->affinities template {}))))
+      (testing "With dimensions can match stuff"
+        (is (=? [{:affinity-name "Rowcount", :affinity-set #{}}
+                 {:affinity-name "NumberDistribution", :affinity-set #{:type/Number}}]
+                (magic/dash-template->affinities template
+                                                 {"GenericNumber"
+                                                  {:field_type [:type/Number]}}))))
+      (testing "With dimensions can match stuff"
+        (let [affinity-sets (magic/dash-template->affinities template
+                                                             {"GenericNumber"
+                                                              {:field_type [:type/Number]}
+                                                              "JoinTimestamp"
+                                                              {:field_type [:type/JoinTimestamp]}})]
+          (is (=? #{"HourOfDayJoinDate" "NumberOverJoinDate" "NumberDistribution" "DayOfWeekJoinDate"
+                    "MonthOfYearJoinDate" "CountByJoinDate" "DayOfMonthJoinDate"
+                    "Rowcount" "QuerterOfYearJoinDate"}
+                  (set (map :affinity-name affinity-sets))))
+          (is (=? #{#{:type/Number :type/JoinTimestamp}
+                    #{:type/Number}
+                    #{:type/JoinTimestamp}
+                    #{}}
+                  (set (map :affinity-set affinity-sets)))))))))
+
+(deftest dash-template->affinities-old-test
   (testing "A trivial case: The TotalOrders metric is dimensionless"
     (is (= [{:metrics       ["TotalOrders"]
              :dimensions    []
              :affinity-name "Rowcount"
              :base-dims     #{}}]
            (magic/dash-template->affinities-old
-             {:cards   [{"Rowcount" {:metrics ["TotalOrders"]}}]
-              :metrics [{"TotalOrders" {:metric ["count"]}}]
-              :filters []}))))
+            {:cards   [{"Rowcount" {:metrics ["TotalOrders"]}}]
+             :metrics [{"TotalOrders" {:metric ["count"]}}]
+             :filters []}))))
   (testing "A direct dimension is used"
     (is (= [{:dimensions    ["Timestamp"]
              :affinity-name "DIRECT"
              :base-dims     #{"Timestamp"}}]
            (magic/dash-template->affinities-old
-             {:cards   [{"DIRECT" {:dimensions [{"Timestamp" {}}]}}]}))))
+            {:cards   [{"DIRECT" {:dimensions [{"Timestamp" {}}]}}]}))))
   (testing "One indirect dimension is called out and matched"
     (is (= [{:metrics       ["AvgIncome"]
              :dimensions    []
              :affinity-name "Average Income"
              :base-dims     #{"Income"}}]
            (magic/dash-template->affinities-old
-             {:cards   [{"Average Income" {:metrics ["AvgIncome"]}}]
-              :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
-              :filters []})))))
+            {:cards   [{"Average Income" {:metrics ["AvgIncome"]}}]
+             :metrics [{"AvgIncome" {:metric ["avg" ["dimension" "Income"]]}}]
+             :filters []})))))
 
 (deftest all-satisfied-bindings-test
   (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
