@@ -83,14 +83,7 @@ describe("SegmentApp", () => {
 
     history.goBack();
 
-    expect(
-      screen.queryByText("Changes were not saved"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 
   it("shows custom warning modal when leaving with unsaved changes via SPA navigation", () => {
@@ -102,12 +95,7 @@ describe("SegmentApp", () => {
 
     history.goBack();
 
-    expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
@@ -145,13 +133,6 @@ describe("SegmentApp", () => {
       expect(history.getCurrentLocation().pathname).toBe(SEGMENTS_URL);
     });
 
-    expect(
-      screen.queryByText("Changes were not saved"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 });
