@@ -549,10 +549,7 @@ class DashboardHeader extends Component {
           onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         />
 
-        <Modal
-          data-testid="cancel-leave-confirmation-modal"
-          isOpen={showCancelWarning}
-        >
+        <Modal isOpen={showCancelWarning}>
           <LeaveConfirmation
             onAction={this.onCancel}
             onClose={this.handleCancelWarningClose}

@@ -214,9 +214,7 @@ describe("DashboardApp", function () {
 
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-      expect(
-        screen.getByTestId("cancel-leave-confirmation-modal"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
   });
 
