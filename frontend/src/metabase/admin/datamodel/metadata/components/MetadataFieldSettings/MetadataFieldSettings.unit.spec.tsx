@@ -36,7 +36,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { TYPE } from "metabase-lib/types/constants";
@@ -139,7 +139,7 @@ const setup = async ({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 const fieldLink = (field: Field) => {
@@ -154,15 +154,15 @@ describe("MetadataFieldSettings", () => {
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(SAMPLE_DB.name));
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(fieldLink(ORDERS_ID_FIELD));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
 
@@ -174,22 +174,22 @@ describe("MetadataFieldSettings", () => {
       });
 
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
 
       userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name));
       userEvent.click(fieldLink(PEOPLE_ID_FIELD));
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("General")).toBeInTheDocument();
     });
   });

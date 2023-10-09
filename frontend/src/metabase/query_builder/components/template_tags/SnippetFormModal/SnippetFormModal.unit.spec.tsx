@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -63,7 +63,7 @@ async function setup({
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { onClose };
 }

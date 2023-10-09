@@ -12,7 +12,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import PremiumEmbeddingLicensePage from "./PremiumEmbeddingLicensePage";
 
@@ -36,7 +36,7 @@ const setup = async ({
 
   renderWithProviders(<PremiumEmbeddingLicensePage />);
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 describe("PremiumEmbeddingLicensePage", () => {

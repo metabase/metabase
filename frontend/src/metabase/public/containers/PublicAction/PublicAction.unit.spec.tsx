@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type {
@@ -90,7 +90,7 @@ async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 describe("PublicAction", () => {

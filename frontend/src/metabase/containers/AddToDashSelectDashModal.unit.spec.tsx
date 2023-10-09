@@ -10,7 +10,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   createMockCard,
@@ -121,7 +121,7 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
   }
 };
 

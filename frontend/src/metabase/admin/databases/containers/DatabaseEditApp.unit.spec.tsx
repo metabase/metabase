@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -88,7 +88,7 @@ async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -145,7 +145,7 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "ab");
@@ -168,7 +168,7 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "Test database");
@@ -188,7 +188,7 @@ describe("DatabaseEditApp", () => {
 
       history.push("/");
 
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       const displayNameInput = await screen.findByLabelText("Display name");
       userEvent.type(displayNameInput, "Test database");

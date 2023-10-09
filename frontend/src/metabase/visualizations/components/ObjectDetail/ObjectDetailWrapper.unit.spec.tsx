@@ -11,10 +11,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { createMockCard } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
-import {
-  renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 
 const DATABASE_ID = 1;
@@ -72,7 +69,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
     { storeInitialState: state },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 describe("Object Detail Wrapper", () => {

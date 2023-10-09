@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import SearchApp from "metabase/search/containers/SearchApp";
@@ -87,7 +87,7 @@ const setup = async ({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -133,7 +133,7 @@ describe("SearchApp", () => {
 
       // test next page button
       userEvent.click(getNextPageButton());
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeEnabled();
       expect(getNextPageButton()).toBeDisabled();
@@ -142,7 +142,7 @@ describe("SearchApp", () => {
 
       // test previous page button
       userEvent.click(getPreviousPageButton());
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
@@ -159,7 +159,7 @@ describe("SearchApp", () => {
         });
 
         userEvent.click(screen.getByTestId("sidebar-filter-dropdown-button"));
-        await waitForLoadingSpinnerToDisappear();
+        await waitForLoaderToBeRemoved();
 
         const popover = within(screen.getByTestId("popover"));
         userEvent.click(

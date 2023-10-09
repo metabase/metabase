@@ -3,7 +3,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "./TableBrowser";
@@ -38,6 +38,6 @@ describe("TableBrowser", () => {
     // wait for the response
     const calls2 = fetchMock.calls(/\/api\/database\/1\/schema\/public/);
     expect(calls2.length).toBe(2);
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
   });
 });

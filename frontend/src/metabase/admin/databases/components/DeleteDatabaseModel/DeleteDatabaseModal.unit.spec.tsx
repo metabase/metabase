@@ -1,10 +1,6 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import {
-  render,
-  screen,
-  waitForLoadingSpinnerToDisappear,
-} from "__support__/ui";
+import { render, screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type { DeleteDatabaseModalProps } from "./DeleteDatabaseModal";
 import DeleteDatabaseModal from "./DeleteDatabaseModal";
@@ -34,7 +30,7 @@ const setup = async ({
     />,
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     onDelete,

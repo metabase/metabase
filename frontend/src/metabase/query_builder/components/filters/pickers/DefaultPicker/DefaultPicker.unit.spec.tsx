@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
@@ -76,7 +76,7 @@ async function setup(options: Partial<DefaultPickerProps> = {}) {
   );
 
   await screen.findByTestId("default-picker-container");
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { setValueSpy, setValuesSpy, onCommitSpy };
 }

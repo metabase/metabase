@@ -6,7 +6,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "./use-dashboard-query";
@@ -38,14 +38,14 @@ describe("useDatabaseQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_DASHBOARD.name)).toBeInTheDocument();
   });
 
   it("should return an error when it can't find a dashboard", async () => {
     setupDashboardNotFoundEndpoint(TEST_DASHBOARD);
     renderWithProviders(<TestComponent />);
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText("An error occurred")).toBeInTheDocument();
   });
 });

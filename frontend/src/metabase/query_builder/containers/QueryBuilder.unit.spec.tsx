@@ -37,7 +37,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { callMockEvent } from "__support__/events";
@@ -248,7 +248,7 @@ const setup = async ({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -557,7 +557,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitForLoadingSpinnerToDisappear();
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -592,7 +592,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitForLoadingSpinnerToDisappear();
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -672,7 +672,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitForLoadingSpinnerToDisappear();
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -714,7 +714,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitForLoadingSpinnerToDisappear();
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 

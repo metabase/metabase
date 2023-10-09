@@ -9,7 +9,7 @@ import { setupAdminCheckListEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import SetupCheckList from "./SetupCheckList";
 
@@ -48,7 +48,7 @@ const setup = async ({ items = CHECK_LIST_ITEMS }: SetupOpts = {}) => {
     { withRouter: true },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { history };
 };

@@ -1,9 +1,6 @@
 import { screen } from "@testing-library/react";
 import { createMockPopularItem } from "metabase-types/api/mocks";
-import {
-  renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { setupPopularItemsEndpoints } from "__support__/server-mocks";
 import type { PopularItem } from "metabase-types/api";
 import { HomePopularSection } from "./HomePopularSection";
@@ -15,7 +12,7 @@ interface SetupOpts {
 const setup = async ({ popularItems }: SetupOpts) => {
   setupPopularItemsEndpoints(popularItems);
   renderWithProviders(<HomePopularSection />);
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 describe("HomePopularSection", () => {

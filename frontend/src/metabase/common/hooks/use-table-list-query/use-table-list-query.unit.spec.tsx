@@ -4,7 +4,7 @@ import { setupTablesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { useTableListQuery } from "./use-table-list-query";
@@ -44,13 +44,13 @@ describe("useTableListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

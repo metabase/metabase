@@ -4,7 +4,7 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
@@ -20,7 +20,7 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
     },
   });
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 describe("DataPermissionsHelp", function () {

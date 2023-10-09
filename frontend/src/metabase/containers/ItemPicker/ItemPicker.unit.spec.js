@@ -8,7 +8,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -131,7 +131,7 @@ async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }

@@ -16,7 +16,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
@@ -58,7 +58,7 @@ async function setup({
     initialRoute,
   });
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 describe("ModelActionDetails", () => {

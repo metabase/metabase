@@ -1,10 +1,7 @@
 /* istanbul ignore file */
 
 import { mockSettings } from "__support__/settings";
-import {
-  renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
@@ -70,5 +67,5 @@ export async function setup({
       storeInitialState: state,
     },
   );
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }

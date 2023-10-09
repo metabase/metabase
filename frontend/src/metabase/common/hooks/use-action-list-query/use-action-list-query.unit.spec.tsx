@@ -2,7 +2,7 @@ import { setupActionsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -40,7 +40,7 @@ describe("useActionListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(IMPLICIT_ACTION.name)).toBeInTheDocument();
   });
 });

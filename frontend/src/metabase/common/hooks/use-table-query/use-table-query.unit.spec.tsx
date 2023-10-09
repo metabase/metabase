@@ -4,7 +4,7 @@ import { setupTablesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useTableQuery } from "./use-table-query";
 
@@ -35,7 +35,7 @@ describe("useTableQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 });

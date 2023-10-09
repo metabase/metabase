@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCardsEndpoints,
@@ -76,7 +76,7 @@ async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { history: checkNotNull(history) };
 }

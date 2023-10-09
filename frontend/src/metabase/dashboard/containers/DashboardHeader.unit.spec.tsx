@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -142,7 +142,7 @@ const setup = async ({
     },
   });
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 describe("DashboardHeader", () => {

@@ -11,7 +11,7 @@ import { testDataset } from "__support__/testDataset";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
@@ -470,7 +470,7 @@ describe("ObjectDetailView", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();

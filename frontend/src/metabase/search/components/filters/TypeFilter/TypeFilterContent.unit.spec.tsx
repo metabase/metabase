@@ -4,7 +4,7 @@ import {
   renderWithProviders,
   within,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   createMockDatabase,
@@ -92,7 +92,7 @@ const setup = async ({
     />,
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     onChangeFilters,

@@ -5,7 +5,7 @@ import fetchMock from "fetch-mock";
 import {
   screen,
   renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -105,7 +105,7 @@ async function setup({ dashboard }: Options = {}) {
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     dashboardId,
@@ -155,7 +155,7 @@ describe("DashboardApp", function () {
       history.push("/");
       history.push(`/dashboard/${dashboardId}`);
 
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       userEvent.click(screen.getByLabelText("Edit dashboard"));
 
@@ -177,7 +177,7 @@ describe("DashboardApp", function () {
       history.push("/");
       history.push(`/dashboard/${dashboardId}`);
 
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       userEvent.click(screen.getByLabelText("Edit dashboard"));
       userEvent.click(screen.getByTestId("dashboard-name-heading"));

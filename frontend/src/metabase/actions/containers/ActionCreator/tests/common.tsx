@@ -1,10 +1,7 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
 
-import {
-  renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -83,5 +80,5 @@ export async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }

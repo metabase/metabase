@@ -4,7 +4,7 @@ import {
   renderWithProviders,
   screen,
   within,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupRecentViewsEndpoints,
@@ -94,7 +94,7 @@ describe("SearchBar", () => {
       setup({ searchResultItems: [] });
       const searchBar = getSearchBar();
       userEvent.type(searchBar, "XXXXX");
-      await waitForLoadingSpinnerToDisappear();
+      await waitForLoaderToBeRemoved();
 
       expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
     });

@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import type {
@@ -61,7 +61,7 @@ const setup = async ({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return {
     onEntitySelect,

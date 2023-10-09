@@ -4,7 +4,7 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useDatabaseIdFieldListQuery } from "./use-database-id-field-list-query";
 
@@ -45,7 +45,7 @@ describe("useDatabaseIdFieldListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText("Orders → ID")).toBeInTheDocument();
   });
 });

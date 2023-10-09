@@ -4,7 +4,7 @@ import { setupSegmentsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useSegmentQuery } from "./use-segment-query";
 
@@ -35,7 +35,7 @@ describe("useSegmentQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_SEGMENT.name)).toBeInTheDocument();
   });
 });

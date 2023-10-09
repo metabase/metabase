@@ -10,7 +10,7 @@ import { setupSearchEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import { useSearchListQuery } from "./use-search-list-query";
@@ -80,13 +80,13 @@ describe("useSearchListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_ITEM.name)).toBeInTheDocument();
   });
 
   it("should show metadata from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     const metadata = within(screen.getByTestId("metadata"));
 

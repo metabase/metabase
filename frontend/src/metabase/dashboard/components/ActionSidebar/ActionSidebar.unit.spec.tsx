@@ -4,7 +4,7 @@ import {
   screen,
   waitFor,
   renderWithProviders,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import {
@@ -69,10 +69,10 @@ const setup = (
 
 const navigateToActionCreatorModal = async () => {
   userEvent.click(screen.getByText("Pick an action"));
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
   userEvent.click(screen.getByText(collectionItem.name));
   userEvent.click(screen.getByText("Create new action"));
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 describe("Dashboard > ActionSidebar", () => {

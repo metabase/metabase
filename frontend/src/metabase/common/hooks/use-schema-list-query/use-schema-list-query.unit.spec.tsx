@@ -8,7 +8,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { useSchemaListQuery } from "./use-schema-list-query";
@@ -68,19 +68,19 @@ describe("useSchemaListQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_TABLE.schema)).toBeInTheDocument();
   });
 
   it("should show error from the response", async () => {
     setup({ hasDataAccess: false });
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

@@ -5,7 +5,7 @@ import * as dom from "metabase/lib/dom";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCollectionsEndpoints,
@@ -54,7 +54,7 @@ async function setup({
     withDND: true,
   });
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 describe("nav > containers > Navbar > Core App", () => {

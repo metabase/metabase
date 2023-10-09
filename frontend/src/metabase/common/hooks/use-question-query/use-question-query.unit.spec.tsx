@@ -4,7 +4,7 @@ import { setupCardsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useQuestionQuery } from "./use-question-query";
 
@@ -35,7 +35,7 @@ describe("useQuestionQuery", () => {
 
   it("should show data from the response", async () => {
     setup();
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
   });
 });

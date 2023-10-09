@@ -11,7 +11,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { HomeXraySection } from "./HomeXraySection";
 
@@ -24,7 +24,7 @@ const setup = async ({ database, candidates }: SetupOpts) => {
   setupDatabasesEndpoints([database]);
   setupDatabaseCandidatesEndpoint(database.id, candidates);
   renderWithProviders(<HomeXraySection />);
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 };
 
 describe("HomeXraySection", () => {

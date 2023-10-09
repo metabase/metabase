@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCardsEndpoints,
@@ -143,7 +143,7 @@ async function setup({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 }
 
 async function setupCollectionPage({

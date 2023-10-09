@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   createMockActionParameter,
@@ -66,7 +66,7 @@ describe("Actions > ActionExecuteModal", () => {
 
     expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     await waitFor(async () => {
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");

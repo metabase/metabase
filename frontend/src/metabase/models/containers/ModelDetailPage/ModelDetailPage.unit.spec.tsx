@@ -10,7 +10,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -260,7 +260,7 @@ async function setup({
     { withRouter: true, initialRoute },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
 }

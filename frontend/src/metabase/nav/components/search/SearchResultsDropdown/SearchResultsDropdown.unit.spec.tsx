@@ -3,7 +3,7 @@ import { Route } from "react-router";
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
@@ -46,7 +46,7 @@ const setup = async ({
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { onSearchItemSelect, goToSearchApp, history: checkNotNull(history) };
 };

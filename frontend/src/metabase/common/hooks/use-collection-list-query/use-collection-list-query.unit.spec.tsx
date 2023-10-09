@@ -5,7 +5,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -55,7 +55,7 @@ describe("useCollectionListQuery", () => {
 
     setup({ error: ERROR });
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
   });
@@ -63,7 +63,7 @@ describe("useCollectionListQuery", () => {
   it("should show data from the response", async () => {
     setup();
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
   });
@@ -71,7 +71,7 @@ describe("useCollectionListQuery", () => {
   it("should not have any metadata in the response", async () => {
     setup();
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),

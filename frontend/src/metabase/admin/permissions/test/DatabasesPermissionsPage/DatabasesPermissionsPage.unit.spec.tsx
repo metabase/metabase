@@ -4,7 +4,7 @@ import {
   renderWithProviders,
   screen,
   fireEvent,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -57,7 +57,7 @@ const setup = async () => {
     },
   );
 
-  await waitForLoadingSpinnerToDisappear();
+  await waitForLoaderToBeRemoved();
 
   return { mockEventListener };
 };

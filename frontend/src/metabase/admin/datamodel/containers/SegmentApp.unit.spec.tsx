@@ -11,7 +11,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForLoadingSpinnerToDisappear,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { checkNotNull } from "metabase/core/utils/types";
@@ -120,11 +120,11 @@ describe("SegmentApp", () => {
 
     userEvent.click(screen.getByText("Select a table"));
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     userEvent.click(screen.getByText("Orders"));
 
-    await waitForLoadingSpinnerToDisappear();
+    await waitForLoaderToBeRemoved();
 
     userEvent.click(screen.getByText("Add filters to narrow your answer"));
     userEvent.click(screen.getByText("ID"));
