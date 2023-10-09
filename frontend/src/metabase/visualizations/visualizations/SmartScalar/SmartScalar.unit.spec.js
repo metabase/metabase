@@ -87,7 +87,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("120")).toBeInTheDocument();
 
@@ -110,7 +110,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("80")).toBeInTheDocument();
 
@@ -133,7 +133,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("No change from last month")).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("8,000%")).toBeInTheDocument();
   });
@@ -181,7 +181,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }), width);
+    setup(series({ rows, insights, field: "Count" }), width);
 
     expect(screen.getByText("81,005")).toBeInTheDocument();
   });
@@ -202,7 +202,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }), width);
+    setup(series({ rows, insights, field: "Count" }), width);
 
     expect(screen.getByText("810.8k")).toBeInTheDocument();
   });
