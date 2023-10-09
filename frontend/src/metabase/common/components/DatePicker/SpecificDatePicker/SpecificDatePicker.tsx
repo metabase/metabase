@@ -10,7 +10,7 @@ import {
 } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
-import { getDefaultValue, getTabs, setOperator } from "./utils";
+import { getDefaultValue, getTabs, isDateRange, setOperator } from "./utils";
 import { TabList } from "./SpecificDatePicker.styled";
 
 export interface SpecificDatePickerProps {
@@ -55,12 +55,21 @@ export function SpecificDatePicker({
       </Group>
       {tabs.map(tab => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
-          <SingleDatePicker
-            value={value}
-            isNew={isNew}
-            onChange={setValue}
-            onSubmit={handleSubmit}
-          />
+          {isDateRange(value) ? (
+            <DateRangePicker
+              value={value}
+              isNew={isNew}
+              onChange={setValue}
+              onSubmit={handleSubmit}
+            />
+          ) : (
+            <SingleDatePicker
+              value={value}
+              isNew={isNew}
+              onChange={setValue}
+              onSubmit={handleSubmit}
+            />
+          )}
         </Tabs.Panel>
       ))}
     </Tabs>
@@ -81,6 +90,7 @@ function SingleDatePicker({
   onSubmit,
 }: SingleDatePickerProps) {
   const [date, setDate] = useState<Date | null>(value.values[0]);
+  const isValid = date != null;
 
   const handleChange = (date: Date | null) => {
     setDate(date);
@@ -96,7 +106,44 @@ function SingleDatePicker({
       </Box>
       <Divider />
       <Group p="sm" position="right">
-        <Button variant="filled" disabled={date == null} onClick={onSubmit}>
+        <Button variant="filled" disabled={!isValid} onClick={onSubmit}>
+          {isNew ? t`Add filter` : t`Update filter`}
+        </Button>
+      </Group>
+    </div>
+  );
+}
+
+function DateRangePicker({
+  value,
+  isNew,
+  onChange,
+  onSubmit,
+}: SingleDatePickerProps) {
+  const [startDate, setStartDate] = useState<Date | null>(value.values[0]);
+  const [endDate, setEndDate] = useState<Date | null>(value.values[1]);
+  const isValid = startDate != null && endDate != null;
+
+  const handleChange = ([startDate, endDate]: [Date | null, Date | null]) => {
+    setStartDate(startDate);
+    setEndDate(endDate);
+    if (startDate && endDate) {
+      onChange({ ...value, values: [startDate, endDate] });
+    }
+  };
+
+  return (
+    <div>
+      <Box p="md">
+        <DatePickerInput
+          type="range"
+          value={[startDate, endDate]}
+          onChange={handleChange}
+        />
+      </Box>
+      <Divider />
+      <Group p="sm" position="right">
+        <Button variant="filled" disabled={!isValid} onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
