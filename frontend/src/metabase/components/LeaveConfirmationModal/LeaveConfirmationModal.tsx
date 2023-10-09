@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
+import { LeaveConfirmation } from "metabase/components/LeaveConfirmation";
 import Modal from "metabase/components/Modal";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
@@ -74,14 +73,7 @@ const LeaveConfirmationModalBase = ({
       isOpen={isConfirmationVisible}
       zIndex={5}
     >
-      <ConfirmContent
-        title={t`Changes were not saved`}
-        message={t`Navigating away from here will cause you to lose any changes you have made.`}
-        confirmButtonText={t`Leave anyway`}
-        cancelButtonText={t`Cancel`}
-        onClose={handleClose}
-        onAction={handleConfirm}
-      />
+      <LeaveConfirmation onAction={handleConfirm} onClose={handleClose} />
     </Modal>
   );
 };

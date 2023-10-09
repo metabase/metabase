@@ -10,7 +10,7 @@ import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
-import ConfirmContent from "metabase/components/ConfirmContent";
+import { LeaveConfirmation } from "metabase/components/LeaveConfirmation";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
@@ -553,13 +553,9 @@ class DashboardHeader extends Component {
           data-testid="cancel-leave-confirmation-modal"
           isOpen={showCancelWarning}
         >
-          <ConfirmContent
-            title={t`Changes were not saved`}
-            message={t`Navigating away from here will cause you to lose any changes you have made.`}
-            confirmButtonText={t`Leave anyway`}
-            cancelButtonText={t`Cancel`}
-            onClose={this.handleCancelWarningClose}
+          <LeaveConfirmation
             onAction={this.onCancel}
+            onClose={this.handleCancelWarningClose}
           />
         </Modal>
       </>
