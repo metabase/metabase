@@ -11,12 +11,21 @@ registerVisualizations();
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
-const series = ({ rows, insights }) => {
+const series = ({ rows, insights, col }) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
     NumberColumn({ name: "Count" }),
+    NumberColumn({ name: "Sum" }),
   ];
-  return [{ card: { display: "smartscalar" }, data: { cols, rows, insights } }];
+  return [
+    {
+      card: {
+        display: "smartscalar",
+        visualization_settings: { "scalar.field": col },
+      },
+      data: { cols, rows, insights },
+    },
+  ];
 };
 
 describe("SmartScalar", () => {
@@ -32,7 +41,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, col: "Count" }));
 
     expect(screen.getByText("120")).toBeInTheDocument();
 
@@ -55,7 +64,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, col: "Count" }));
 
     expect(screen.getByText("80")).toBeInTheDocument();
 
@@ -78,7 +87,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, col: "Count" }));
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("No change from last month")).toBeInTheDocument();
@@ -99,7 +108,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }));
+    setup(series({ rows, insights, col: "Count" }));
 
     expect(screen.getByText("8,000%")).toBeInTheDocument();
   });
@@ -126,7 +135,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }), width);
+    setup(series({ rows, insights, col: "Count" }), width);
 
     expect(screen.getByText("81,005")).toBeInTheDocument();
   });
@@ -147,7 +156,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights }), width);
+    setup(series({ rows, insights, col: "Count" }), width);
 
     expect(screen.getByText("810.8k")).toBeInTheDocument();
   });
