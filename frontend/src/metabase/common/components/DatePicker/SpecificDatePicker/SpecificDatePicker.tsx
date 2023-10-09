@@ -3,7 +3,8 @@ import { Divider, Flex, Tabs } from "metabase/ui";
 import { BackButton } from "../BackButton";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
 import { SingleDatePicker } from "./SingleDatePicker";
-import { getDefaultValue, getTabs, setOperator } from "./utils";
+import { DateRangePicker } from "./DateRangePicker";
+import { getDefaultValue, getTabs, isDateRange, setOperator } from "./utils";
 import { TabList } from "./SpecificDatePicker.styled";
 
 export interface SpecificDatePickerProps {
@@ -49,12 +50,21 @@ export function SpecificDatePicker({
       <Divider />
       {tabs.map(tab => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
-          <SingleDatePicker
-            value={value}
-            isNew={isNew}
-            onChange={setValue}
-            onSubmit={handleSubmit}
-          />
+          {isDateRange(value) ? (
+            <DateRangePicker
+              value={value}
+              isNew={isNew}
+              onChange={setValue}
+              onSubmit={handleSubmit}
+            />
+          ) : (
+            <SingleDatePicker
+              value={value}
+              isNew={isNew}
+              onChange={setValue}
+              onSubmit={handleSubmit}
+            />
+          )}
         </Tabs.Panel>
       ))}
     </Tabs>
