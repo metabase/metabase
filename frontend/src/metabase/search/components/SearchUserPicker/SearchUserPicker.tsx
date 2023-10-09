@@ -27,12 +27,15 @@ export const SearchUserPicker = ({
   const [userFilter, setUserFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState(value);
 
-  const filteredUsers = users.filter(user => {
-    return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
-  });
-
   const isSelected = (user: UserListResult) =>
     selectedUserIds.includes(user.id);
+
+  const filteredUsers = users.filter(user => {
+    return (
+      user.common_name.toLowerCase().includes(userFilter.toLowerCase()) &&
+      !isSelected(user)
+    );
+  });
 
   const removeUser = (user?: UserListResult) => {
     if (user) {
