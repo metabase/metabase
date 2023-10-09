@@ -166,7 +166,7 @@ describe("DashboardApp", function () {
       history.goBack();
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -187,9 +187,7 @@ describe("DashboardApp", function () {
 
       history.goBack();
 
-      expect(
-        screen.getByTestId("leave-confirmation-modal"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
@@ -200,7 +198,7 @@ describe("DashboardApp", function () {
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 

@@ -130,7 +130,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       history.goBack();
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -150,9 +150,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       history.goBack();
 
-      expect(
-        screen.getByTestId("leave-confirmation-modal"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when saving changes", async () => {
@@ -203,7 +201,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });
@@ -230,7 +228,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       history.goBack();
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -251,9 +249,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       history.goBack();
 
-      expect(
-        screen.getByTestId("leave-confirmation-modal"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when saving changes", async () => {
@@ -288,7 +284,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });

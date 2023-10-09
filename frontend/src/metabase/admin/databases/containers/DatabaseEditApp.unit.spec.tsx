@@ -158,7 +158,7 @@ describe("DatabaseEditApp", () => {
       history.goBack();
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -175,9 +175,7 @@ describe("DatabaseEditApp", () => {
 
       history.goBack();
 
-      expect(
-        screen.getByTestId("leave-confirmation-modal"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal after creating new database connection", async () => {
@@ -210,7 +208,7 @@ describe("DatabaseEditApp", () => {
       expect(history.getCurrentLocation().search).toEqual("?created=true");
 
       expect(
-        screen.queryByTestId("leave-confirmation-modal"),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });

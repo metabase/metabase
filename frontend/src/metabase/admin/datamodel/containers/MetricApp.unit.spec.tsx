@@ -83,9 +83,7 @@ describe("MetricApp", () => {
 
     history.goBack();
 
-    expect(
-      screen.queryByTestId("leave-confirmation-modal"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 
   it("shows custom warning modal when leaving with unsaved changes via SPA navigation", () => {
@@ -97,7 +95,7 @@ describe("MetricApp", () => {
 
     history.goBack();
 
-    expect(screen.getByTestId("leave-confirmation-modal")).toBeInTheDocument();
+    expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
@@ -135,8 +133,6 @@ describe("MetricApp", () => {
       expect(history.getCurrentLocation().pathname).toBe(METRICS_URL);
     });
 
-    expect(
-      screen.queryByTestId("leave-confirmation-modal"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("leave-confirmation")).not.toBeInTheDocument();
   });
 });

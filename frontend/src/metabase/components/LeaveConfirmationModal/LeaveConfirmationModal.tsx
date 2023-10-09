@@ -69,11 +69,7 @@ const LeaveConfirmationModalBase = ({
   };
 
   return (
-    <Modal
-      data-testid="leave-confirmation-modal"
-      isOpen={isConfirmationVisible}
-      zIndex={5}
-    >
+    <Modal isOpen={isConfirmationVisible} zIndex={5}>
       <LeaveConfirmationModalContent
         onAction={handleConfirm}
         onClose={handleClose}

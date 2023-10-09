@@ -580,9 +580,7 @@ describe("QueryBuilder", () => {
 
           history.goBack();
 
-          expect(
-            screen.getByTestId("leave-confirmation-modal"),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
@@ -614,7 +612,7 @@ describe("QueryBuilder", () => {
           history.goBack();
 
           expect(
-            screen.queryByTestId("leave-confirmation-modal"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
 
@@ -652,7 +650,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByTestId("leave-confirmation-modal"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -694,9 +692,7 @@ describe("QueryBuilder", () => {
 
           history.goBack();
 
-          expect(
-            screen.getByTestId("leave-confirmation-modal"),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited metadata via SPA navigation", async () => {
@@ -747,7 +743,7 @@ describe("QueryBuilder", () => {
           history.goBack();
 
           expect(
-            screen.queryByTestId("leave-confirmation-modal"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
 
@@ -793,7 +789,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByTestId("leave-confirmation-modal"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -821,7 +817,7 @@ describe("QueryBuilder", () => {
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
         const columnDisplayName = await screen.findByTitle("Display name");
@@ -840,7 +836,7 @@ describe("QueryBuilder", () => {
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });
@@ -870,9 +866,7 @@ describe("QueryBuilder", () => {
 
         history.goBack();
 
-        expect(
-          screen.getByTestId("leave-confirmation-modal"),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
 
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
@@ -892,7 +886,7 @@ describe("QueryBuilder", () => {
         history.goBack();
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -925,7 +919,7 @@ describe("QueryBuilder", () => {
         );
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -965,7 +959,7 @@ describe("QueryBuilder", () => {
         );
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -1013,7 +1007,7 @@ describe("QueryBuilder", () => {
         );
 
         expect(
-          screen.queryByTestId("leave-confirmation-modal"),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });
