@@ -549,7 +549,10 @@ class DashboardHeader extends Component {
           onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
         />
 
-        <Modal isOpen={showCancelWarning}>
+        <Modal
+          data-testid="cancel-leave-confirmation-modal"
+          isOpen={showCancelWarning}
+        >
           <ConfirmContent
             title={t`Changes were not saved`}
             message={t`Navigating away from here will cause you to lose any changes you have made.`}
