@@ -37,7 +37,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { callMockEvent } from "__support__/events";
@@ -248,9 +248,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -559,11 +557,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -591,11 +585,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -730,11 +720,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -769,11 +755,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -1106,9 +1088,11 @@ describe("QueryBuilder", () => {
           ),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1154,9 +1138,11 @@ describe("QueryBuilder", () => {
           within(saveQuestionModal).getByRole("button", { name: "Save" }),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByTestId("leave-confirmation"),
