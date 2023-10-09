@@ -23,7 +23,7 @@ describe("issue 34382", () => {
     createDashboardWithCards();
     cy.get("@dashboardId").then(visitDashboard);
 
-    setFilterValue("Gizmo");
+    addFilterValue("Gizmo");
     applyFilter();
 
     cy.log("Navigate to Products question");
@@ -103,7 +103,7 @@ const createDashboardWithCards = () => {
   );
 };
 
-function setFilterValue(value) {
+function addFilterValue(value) {
   filterWidget().click();
   popover().within(() => {
     cy.findByText(value).click();
