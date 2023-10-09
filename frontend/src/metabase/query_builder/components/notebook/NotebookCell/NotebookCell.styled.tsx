@@ -20,6 +20,7 @@ export const NotebookCellItemContainer = styled.div<{
   color: string;
   inactive?: boolean;
   readOnly?: boolean;
+  disabled?: boolean;
 }>`
   display: flex;
   align-items: center;
@@ -32,7 +33,7 @@ export const NotebookCellItemContainer = styled.div<{
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
 
   cursor: ${props =>
-    !props.inactive && !props.readOnly && !!props.onClick
+    !props.inactive && !props.readOnly && !props.disabled && !!props.onClick
       ? "pointer"
       : "default"};
 
@@ -50,6 +51,8 @@ export const NotebookCellItemContainer = styled.div<{
 export const NotebookCellItemContentContainer = styled.div<{
   color: string;
   inactive?: boolean;
+  readOnly?: boolean;
+  disabled?: boolean;
   border?: BorderSide;
   roundedCorners: BorderSide[];
 }>`
@@ -58,8 +61,14 @@ export const NotebookCellItemContentContainer = styled.div<{
   padding: ${CONTAINER_PADDING};
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
 
+  pointer-events: ${props => (props.disabled ? "none" : "auto")};
+
   &:hover {
-    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+    background-color: ${props =>
+      !props.inactive &&
+      !props.readOnly &&
+      !props.disabled &&
+      alpha(props.color, 0.8)};
   }
 
   ${props =>

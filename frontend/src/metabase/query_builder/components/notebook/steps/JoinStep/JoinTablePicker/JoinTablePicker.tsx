@@ -54,6 +54,8 @@ export function JoinTablePicker({
   const databaseId = pickerInfo?.databaseId || Lib.databaseID(query);
   const tableId = pickerInfo?.tableId || pickerInfo?.cardId;
 
+  const canChangeTable = !readOnly && !table;
+
   const databases = useMemo(() => {
     const database = metadata.database(databaseId);
     return [database, metadata.savedQuestionsDatabase()].filter(Boolean);
@@ -80,6 +82,7 @@ export function JoinTablePicker({
     <NotebookCellItem
       inactive={!table}
       readOnly={readOnly}
+      disabled={!canChangeTable}
       color={color}
       aria-label={t`Right table`}
       right={
@@ -106,7 +109,7 @@ export function JoinTablePicker({
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton disabled={readOnly}>
+          <PickerButton disabled={!canChangeTable}>
             {tableInfo?.displayName || t`Pick data…`}
           </PickerButton>
         }

@@ -182,7 +182,7 @@ export function JoinStep({
     <Flex miw="100%" gap="1rem">
       <TablesNotebookCell color={color}>
         <Flex direction="row" gap={6}>
-          <NotebookCellItem color={color} aria-label={t`Left table`}>
+          <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsDisplayName}
           </NotebookCellItem>
           <JoinStrategyPicker
