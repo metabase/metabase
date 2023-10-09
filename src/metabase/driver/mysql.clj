@@ -675,7 +675,7 @@
         (let [tsvs (map (partial row->tsv (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
                                 :columns (map keyword column-names)}
-                               :quoted true
+                               :quoted  true
                                :dialect (sql.qp/quote-style driver))]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
@@ -683,6 +683,12 @@
           (qp.writeback/execute-write-sql! db-id sql))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/pk-options :mysql
+  [_driver auto-increment?]
+  (if auto-increment?
+    [:not-null :auto-increment :primary-key]
+    [:primary-key]))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed

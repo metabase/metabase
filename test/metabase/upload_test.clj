@@ -30,8 +30,7 @@
 (def ^:private pk-type          :metabase.upload/pk)
 (def ^:private pk-schema [:map
                           [:type [:= pk-type]]
-                          [:opts [:or [:= [:primary-key]]
-                                      [:= [:auto-increment [:not nil]]]]]
+                          [:opts  [:vector keyword?]]
                           [:exclude-in-insert? {:optional true} boolean?]])
 
 (defn- do-with-mysql-local-infile-activated
@@ -517,7 +516,7 @@
                      (column-names-for-table table)))
               (is (=? {:name                       #"(?i)id"
                        :semantic_type              :type/PK
-                       :database_is_auto_increment true}
+                       :database_is_auto_increment false}
                       (t2/select-one Field :database_position 0 :table_id (:id table)))))))))))
 
 (deftest load-from-csv-reserved-db-words-test

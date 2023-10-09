@@ -187,13 +187,13 @@
                                  (if (and (not @found-it)
                                           (is-pk? p))
                                    (do (reset! found-it true)
-                                       [(keyword name) {:type ::pk :opts (driver/pk-options driver)}])
+                                       [(keyword name) {:type ::pk :opts (driver/pk-options driver false)}])
                                    p))
                                name-type-pairs))]
     (if @found-it ;; we already have a PK, just return them
       pked-pairs
       ;;otherwise, prepend a new ID column
-      (cons [:id {:type ::pk :opts (driver/pk-options driver) :exclude-in-insert? true}]
+      (cons [:id {:type ::pk :opts (driver/pk-options driver true) :exclude-in-insert? true}]
             name-type-pairs))))
 
 (defn- upload-type->column-spec

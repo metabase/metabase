@@ -755,7 +755,7 @@
     ::upload/varchar_255 [:varchar 255]
     ::upload/text        :text
     ::upload/int         :bigint
-    ::upload/pk          :serial ;; bit of a hack, but we need to get it in the right order with :primary-key
+    ::upload/pk          :integer
     ::upload/float       :float
     ::upload/boolean     :boolean
     ::upload/date        :date
@@ -819,10 +819,6 @@
                          (str/join "\n")
                          (StringReader.))]
            (.copyIn copy-manager ^String sql tsvs)))))))
-
-(defmethod driver/pk-options :postgres
-  [_driver]
-  [:primary-key])
 
 (defmethod driver/current-user-table-privileges :postgres
   [_driver database]

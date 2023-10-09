@@ -877,11 +877,12 @@
   :hierarchy #'hierarchy)
 
 (defmulti pk-options
-  "The HoneySQL column spec for a primary key column. Does not include the actual column name, just its options. Examples:
+  "The HoneySQL column spec for a primary key column. Does not include the actual column name, just its options. Should
+  be something like:
 
-     - [:auto-increment [:not nil]]  ;; (most SQLs)
-     - [:serial]                     ;; (Postgres)"
-  {:added "0.48.0", :arglists '([driver])}
+  [:generated-always :as :identity :primary-key]  ;; if auto-increment? is true
+  [:primary-key]                                  ;; if it's not"
+  {:added "0.48.0", :arglists '([driver auto-increment?])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
