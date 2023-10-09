@@ -549,11 +549,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           await changeNotebookQuery();
 
@@ -570,11 +566,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           await changeNotebookQuery();
           await revertNotebookQueryChange();
@@ -652,11 +644,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -672,11 +660,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           await changeMetadata();
 
