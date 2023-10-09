@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import type {
@@ -52,29 +52,24 @@ const ParameterSettings = ({
     setInternalValue(parameter.name);
   }, [parameter.name]);
 
-  const handleChange = useCallback(
+  const handleLabelChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setInternalValue(event.target.value);
     },
     [],
   );
 
-  const labelInputError = useMemo(() => {
-    if (internalValue === "") {
-      return t`Required`;
-    }
-    return null;
-  }, [internalValue]);
+  const labelError = internalValue ? null : t`Required`;
 
-  const handleNameChange = useCallback(
+  const handleLabelBlur = useCallback(
     (event: { target: HTMLInputElement }) => {
-      if (labelInputError) {
+      if (labelError) {
         setInternalValue(parameter.name);
       } else {
         onChangeName(event.target.value);
       }
     },
-    [onChangeName, parameter.name, labelInputError],
+    [onChangeName, parameter.name, labelError],
   );
 
   const handleSourceSettingsChange = useCallback(
@@ -90,10 +85,10 @@ const ParameterSettings = ({
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
-          onChange={handleChange}
+          onChange={handleLabelChange}
           value={internalValue}
-          onBlur={handleNameChange}
-          error={labelInputError}
+          onBlur={handleLabelBlur}
+          error={labelError}
           aria-label={t`Label`}
         />
       </SettingSection>
