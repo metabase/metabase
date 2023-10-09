@@ -649,7 +649,6 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitForLoaderToBeRemoved();
           await changeMetadata();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
