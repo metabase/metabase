@@ -6,6 +6,7 @@ import {
   DatePickerInput,
   Divider,
   Group,
+  Flex,
   Tabs,
 } from "metabase/ui";
 import { BackButton } from "../BackButton";
@@ -43,7 +44,7 @@ export function SpecificDatePicker({
 
   return (
     <Tabs value={value.operator} onTabChange={handleTabChange}>
-      <Group>
+      <Flex>
         <BackButton onClick={onBack} />
         <TabList>
           {tabs.map(tab => (
@@ -52,7 +53,7 @@ export function SpecificDatePicker({
             </Tabs.Tab>
           ))}
         </TabList>
-      </Group>
+      </Flex>
       <Divider />
       {tabs.map(tab => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
