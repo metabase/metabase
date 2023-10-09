@@ -353,18 +353,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await changeNotebookQuery();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
@@ -565,18 +554,7 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await changeNotebookQuery();
 
           history.goBack();
 
@@ -597,17 +575,8 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-          userEvent.tab();
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "{backspace}");
-          userEvent.tab();
+          await changeNotebookQuery();
+          await revertNotebookQueryChange();
 
           history.goBack();
 
@@ -622,18 +591,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await changeNotebookQuery();
 
           await waitFor(() => {
             expect(
@@ -801,18 +759,7 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
 
-        const rowLimitInput = await within(
-          screen.getByTestId("step-limit-0-0"),
-        ).findByPlaceholderText("Enter a limit");
-
-        userEvent.click(rowLimitInput);
-        userEvent.type(rowLimitInput, "0");
-
-        await waitFor(() => {
-          expect(rowLimitInput).toHaveValue(10);
-        });
-
-        userEvent.tab();
+        await changeNotebookQuery();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
@@ -1080,3 +1027,36 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const changeNotebookQuery = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "0");
+
+  await waitFor(() => {
+    expect(rowLimitInput).toHaveValue(10);
+  });
+
+  userEvent.tab();
+};
+
+/**
+ * Reverts changeNotebookQuery call
+ */
+const revertNotebookQueryChange = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "{backspace}");
+
+  await waitFor(() => {
+    expect(rowLimitInput).toHaveValue(1);
+  });
+
+  userEvent.tab();
+};
