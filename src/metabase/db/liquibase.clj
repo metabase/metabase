@@ -60,7 +60,7 @@
     "databasechangelog"
     "DATABASECHANGELOG"))
 
-(defn- fresh-install?
+(defn fresh-install?
   [^java.sql.Connection conn]
   (let [meta (.getMetaData conn)] ; don't migrate on fresh install
        (empty? (jdbc/metadata-query
@@ -74,6 +74,8 @@
                                first
                                :id)]
      (cond
+      (nil? latest-migration)
+      changelog-file
       ;; pre 42
       (not (str/starts-with? latest-migration "v"))
       changelog-legacy-file

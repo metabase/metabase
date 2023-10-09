@@ -7,6 +7,8 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations]
@@ -19,8 +21,10 @@
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
+   [next.jdbc :as next.jdbc]
    [toucan2.jdbc :as t2.jdbc]
    [toucan2.map-backend.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline])
@@ -52,7 +56,57 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
-(s/defn migrate!
+(defn- lines->stmts
+  [lines]
+  (loop [line         (first lines)
+         lines        (rest lines)
+         stmts        []
+         current-stmt ""]
+    (if (nil? line)
+      stmts
+      (let [ends-with-semi-colon (str/ends-with? line ";")
+            semicolon-counts     (count (re-seq #";" line))]
+        (cond
+         (and ends-with-semi-colon (= 1 semicolon-counts))
+         (recur (first lines) (rest lines)
+                (conj stmts (str current-stmt line))
+                "")
+
+         ;; a line with multiple statements and has no open-ended statement
+         (and ends-with-semi-colon (> semicolon-counts 1))
+         (recur (first lines) (rest lines)
+                (concat stmts (map #(str % ";") (str/split (str current-stmt line) #";")))
+                "")
+
+         ;; a line not ending as a statement but contains multiple statements
+         (and (not ends-with-semi-colon) (pos-int? semicolon-counts))
+         (let [splits (str/split (str current-stmt line) #";")]
+           (recur (first lines) (rest lines)
+                  (concat stmts (map #(str % ";") (drop-last splits)))
+                  (last splits)))
+
+         (and (not ends-with-semi-colon) (zero? semicolon-counts))
+         (recur (first lines) (rest lines)
+                stmts
+                (str current-stmt line)))))))
+
+(mu/defn initialize-db!
+  "a"
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (let [init-file (case db-type
+                    :mysql    "initialization/metabase_mysql.sql"
+                    :postgres "initialization/metabase_postgres.sql")
+        stmts     (->> (str/split (slurp (io/resource init-file)) #"(;(\r)?\n)|(--\n)")
+                       (map str/trim)
+                       (remove (fn [s] (or
+                                        (str/blank? s)
+                                        (str/starts-with? s "--")))))]
+    (next.jdbc/with-transaction [tx data-source]
+      (doseq [stmt stmts]
+        (next.jdbc/execute! tx [stmt])))))
+
+(mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
   *  `:up`            - Migrate up
@@ -65,11 +119,12 @@
 
   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
   [[metabase.db.data-migrations/run-all!]]. ([[setup-db!]], below, calls both this function and [[run-all!]])."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource
-   direction   :- s/Keyword
-   & args      :- [s/Any]]
-  (with-open [conn (.getConnection data-source)]
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   direction   :- :keyword
+   & args]
+  ;; TODO: replace with [[jdbc/with-db-transaction]]
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
     (log/info (trs "Setting up Liquibase..."))
@@ -101,18 +156,18 @@
          (liquibase/release-lock-if-needed! liquibase)
          (throw e))))))
 
-(s/defn ^:private verify-db-connection
+(mu/defn ^:private verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource]
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
   (classloader/require 'metabase.driver.util)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert (sql-jdbc.conn/can-connect-with-spec? {:datasource data-source}) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
-  (with-open [conn (.getConnection data-source)]
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
       (log/info (trs "Successfully verified {0} {1} application database connection."
                      (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
@@ -125,16 +180,16 @@
   entries for the \"magic\" groups and permissions entries. "
   false)
 
-(s/defn ^:private run-schema-migrations!
+(mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
   (log/info (trs "Running Database Migrations..."))
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
-(s/defn ^:private run-data-migrations!
+(mu/defn ^:private run-data-migrations!
   "Do any custom code-based migrations now that the db structure is up to date."
   []
   ;; TODO -- check whether we can remove the circular ref busting here.
@@ -145,17 +200,24 @@
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
 ;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
-(s/defn setup-db!
+(mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
   (u/profile (trs "Database setup")
     (u/with-us-locale
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection   db-type data-source)
+         (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+           ;; #TODO : this is not realiable, need to switch to a query to check if core_user table exists
+           ;; cause a db can be initialized but still doesn't have databasechangelog if sth wrong happens after this
+           (when (liquibase/fresh-install? conn)
+             (log/info "Running database initialization")
+             (initialize-db! db-type data-source)
+             (log/info "Done database initialization")))
          (run-schema-migrations! db-type data-source auto-migrate?)
          (run-data-migrations!))))
   :done)
