@@ -299,10 +299,6 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelCreate = useCallback(() => {
-    onCancelCreateNewModel();
-  }, [onCancelCreateNewModel]);
-
   const handleCancelEdit = useCallback(() => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
@@ -440,7 +436,7 @@ function DatasetEditor(props) {
           ) : (
             <Confirm
               key="cancel"
-              action={handleCancelCreate}
+              action={onCancelCreateNewModel}
               title={t`Discard changes?`}
               message={t`Your model won't be created.`}
               confirmButtonText={t`Discard`}
