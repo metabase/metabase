@@ -86,6 +86,11 @@ export const SHORTCUT_OPTION_GROUPS: ShortcutOption[][] = [
 
 export const TYPE_OPTIONS: TypeOption[] = [
   {
+    label: t`Specific dates…`,
+    type: "specific",
+    operators: ["=", "<", ">", "between"],
+  },
+  {
     label: t`Relative dates…`,
     type: "relative",
     operators: [],
