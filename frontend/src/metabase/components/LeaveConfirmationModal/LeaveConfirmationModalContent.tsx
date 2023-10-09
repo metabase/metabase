@@ -8,11 +8,15 @@ interface Props {
   onClose?: () => void;
 }
 
-export const LeaveConfirmation = ({ onAction, onCancel, onClose }: Props) => (
+export const LeaveConfirmationModalContent = ({
+  onAction,
+  onCancel,
+  onClose,
+}: Props) => (
   <ConfirmContent
-    data-testid="leave-confirmation"
     cancelButtonText={t`Cancel`}
     confirmButtonText={t`Leave anyway`}
+    data-testid="leave-confirmation"
     message={t`Navigating away from here will cause you to lose any changes you have made.`}
     title={t`Changes were not saved`}
     onAction={onAction}

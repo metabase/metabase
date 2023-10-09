@@ -4,10 +4,11 @@ import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
-import { LeaveConfirmation } from "metabase/components/LeaveConfirmation";
 import Modal from "metabase/components/Modal";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
+
+import { LeaveConfirmationModalContent } from "./LeaveConfirmationModalContent";
 
 interface Props {
   isEnabled: boolean;
@@ -73,7 +74,10 @@ const LeaveConfirmationModalBase = ({
       isOpen={isConfirmationVisible}
       zIndex={5}
     >
-      <LeaveConfirmation onAction={handleConfirm} onClose={handleClose} />
+      <LeaveConfirmationModalContent
+        onAction={handleConfirm}
+        onClose={handleClose}
+      />
     </Modal>
   );
 };

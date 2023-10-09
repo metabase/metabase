@@ -10,7 +10,7 @@ import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
-import { LeaveConfirmation } from "metabase/components/LeaveConfirmation";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
@@ -550,7 +550,7 @@ class DashboardHeader extends Component {
         />
 
         <Modal isOpen={showCancelWarning}>
-          <LeaveConfirmation
+          <LeaveConfirmationModalContent
             onAction={this.onCancel}
             onClose={this.handleCancelWarningClose}
           />
