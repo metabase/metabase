@@ -10,6 +10,8 @@ import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Confirm from "metabase/components/Confirm";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -201,6 +203,7 @@ function DatasetEditor(props) {
   } = props;
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
     [dataset, resultsMetadata],
@@ -303,6 +306,18 @@ function DatasetEditor(props) {
   const handleCancelEdit = () => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
+  };
+
+  const handleCancelEditWarningClose = () => {
+    setShowCancelEditWarning(false);
+  };
+
+  const handleRequestCancelEdit = () => {
+    if (isDirty) {
+      setShowCancelEditWarning(true);
+    } else {
+      handleCancelEdit();
+    }
   };
 
   const handleSave = useCallback(async () => {
@@ -428,9 +443,10 @@ function DatasetEditor(props) {
         buttons={[
           dataset.isSaved() ? (
             <Button
+              /* TODO */
               key="cancel"
               small
-              onClick={handleCancelEdit}
+              onClick={handleRequestCancelEdit}
             >{t`Cancel`}</Button>
           ) : (
             <Confirm
@@ -500,6 +516,13 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
+
+      <Modal isOpen={showCancelEditWarning}>
+        <LeaveConfirmationModalContent
+          onAction={handleCancelEdit}
+          onClose={handleCancelEditWarningClose}
+        />
+      </Modal>
     </>
   );
 }
