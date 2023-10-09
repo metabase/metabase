@@ -513,7 +513,6 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-
           await changeNotebookQuery();
 
           history.goBack();
@@ -530,7 +529,6 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-
           await changeNotebookQuery();
           await revertNotebookQueryChange();
 
@@ -542,14 +540,10 @@ describe("QueryBuilder", () => {
         });
 
         it("shows custom warning modal when leaving edited query via Cancel button", async () => {
-          const { history } = await setup({
+          await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
-          await waitForLoaderToBeRemoved();
 
           await changeNotebookQuery();
 
@@ -559,14 +553,10 @@ describe("QueryBuilder", () => {
         });
 
         it("does not show custom warning modal when leaving unedited query via Cancel button", async () => {
-          const { history } = await setup({
+          await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
-          await waitForLoaderToBeRemoved();
 
           await changeNotebookQuery();
           await revertNotebookQueryChange();
@@ -611,7 +601,6 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
           await waitForLoaderToBeRemoved();
-
           await changeMetadata();
 
           history.goBack();
@@ -661,7 +650,6 @@ describe("QueryBuilder", () => {
           });
 
           await waitForLoaderToBeRemoved();
-
           await changeMetadata();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -762,12 +750,10 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when running edited question", async () => {
-        const { history } = await setup({
+        await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
-
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await changeNativeQuery();
 
