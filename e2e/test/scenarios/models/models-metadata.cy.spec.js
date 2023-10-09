@@ -82,7 +82,6 @@ describe("scenarios > models metadata", () => {
       setColumnType("No special type", "Cost");
 
       cy.button("Cancel").click();
-
       modal().within(() => {
         cy.button("Leave anyway").click();
       });
