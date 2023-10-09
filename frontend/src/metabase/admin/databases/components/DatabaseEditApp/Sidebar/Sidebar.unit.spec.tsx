@@ -10,12 +10,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { setupDatabaseUsageInfo } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import Sidebar from "./Sidebar";
 
 const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
@@ -295,7 +290,9 @@ describe("DatabaseEditApp/Sidebar", () => {
       // Fill in database name to confirm deletion
       userEvent.type(await within(modal).findByRole("textbox"), database.name);
       userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
-      await waitForElementToBeRemoved(() => getModal());
+      await waitFor(() => {
+        expect(getModal()).not.toBeInTheDocument();
+      });
 
       expect(getModal()).not.toBeInTheDocument();
       expect(deleteDatabase).toHaveBeenCalled();

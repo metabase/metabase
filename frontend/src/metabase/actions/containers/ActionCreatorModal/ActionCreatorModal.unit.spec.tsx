@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -71,9 +76,7 @@ async function setup({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return { history: checkNotNull(history) };
 }
