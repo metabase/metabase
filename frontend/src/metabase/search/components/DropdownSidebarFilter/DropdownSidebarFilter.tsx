@@ -104,7 +104,7 @@ export const DropdownSidebarFilter = ({
     >
       <DropdownFieldSet
         noPadding
-        legend={fieldHasValue ? label : null}
+        legend={fieldHasValue ? label() : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
         <DropdownDisplayContent position="apart" noWrap w="100%">
