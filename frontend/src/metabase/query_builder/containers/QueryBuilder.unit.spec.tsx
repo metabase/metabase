@@ -609,12 +609,6 @@ describe("QueryBuilder", () => {
 
           await changeNotebookQuery();
 
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
-
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
           await waitFor(() => {
@@ -1115,6 +1109,10 @@ const changeNotebookQuery = async () => {
   });
 
   userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
 };
 
 /**
@@ -1133,4 +1131,8 @@ const revertNotebookQueryChange = async () => {
   });
 
   userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
 };
