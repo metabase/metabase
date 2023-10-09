@@ -27,8 +27,6 @@ import type {
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
-  DateParts,
-  DateTimeParts,
   ExcludeDateBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
@@ -50,7 +48,6 @@ import type {
   StringFilterParts,
   TimeFilterOperatorName,
   TimeFilterParts,
-  TimeParts,
 } from "./types";
 
 export function filterableColumns(
@@ -264,8 +261,8 @@ export function specificDateFilterClause(
 ): ExpressionClause {
   const hasTime = values.some(hasTimeParts);
   const stringValues = hasTime
-    ? values.map(value => dateTimePartsToString(value))
-    : values.map(value => datePartsToString(value));
+    ? values.map(value => dateToDateTimeString(value))
+    : values.map(value => dateToDateString(value));
 
   const minuteBucket = hasTime
     ? findTemporalBucket(query, stageIndex, column, "minute")
@@ -296,7 +293,7 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const values = stringValues.map(value => stringToDateTimeParts(value));
+  const values = stringValues.map(value => dateTimeStringToDate(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -431,7 +428,7 @@ export function timeFilterClause({
   values,
 }: TimeFilterParts): ExpressionClause {
   const columnWithoutBucket = withTemporalBucket(column, null);
-  const stringValues = values.map(value => timePartsToString(value));
+  const stringValues = values.map(value => dateToTimeString(value));
   return expressionClause(operator, [columnWithoutBucket, ...stringValues]);
 }
 
@@ -450,7 +447,7 @@ export function timeFilterParts(
     return null;
   }
 
-  const values = stringValues.map(value => stringToTimeParts(value));
+  const values = stringValues.map(value => timeStringToDate(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -609,67 +606,38 @@ const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
-function hasTimeParts({ hour, minute }: DateTimeParts): boolean {
-  return hour !== 0 || minute !== 0;
+function hasTimeParts(date: Date): boolean {
+  return date.getHours() !== 0 || date.getMinutes() !== 0;
 }
 
-function datePartsToString(parts: DateParts): string {
-  const date = moment({
-    year: parts.year,
-    month: parts.month,
-    date: parts.date,
-  });
-
-  return date.format(DATE_FORMAT);
+function dateToDateString(date: Date): string {
+  return moment(date).format(DATE_FORMAT);
 }
 
-function dateTimePartsToString(parts: DateTimeParts): string {
-  const date = moment({
-    year: parts.year,
-    month: parts.month,
-    date: parts.date,
-    hour: parts.hour ?? 0,
-    minute: parts.minute ?? 0,
-    second: 0,
-  });
-
-  return date.format(DATE_TIME_FORMAT);
+function dateToDateTimeString(date: Date): string {
+  return moment(date).format(DATE_TIME_FORMAT);
 }
 
-function stringToDateTimeParts(value: string): DateTimeParts | null {
+function dateTimeStringToDate(value: string): Date | null {
   const dateTime = moment(value, [DATE_TIME_FORMAT, DATE_FORMAT], true);
   if (!dateTime.isValid()) {
     return null;
   }
 
-  return {
-    year: dateTime.year(),
-    month: dateTime.month(),
-    date: dateTime.date(),
-    hour: dateTime.hour(),
-    minute: dateTime.minute(),
-  };
+  return dateTime.toDate();
 }
 
-function timePartsToString(value: TimeParts): string {
-  const time = moment({
-    hour: value.hour,
-    minute: value.minute,
-  });
-
-  return time.format(TIME_FORMAT);
+function dateToTimeString(value: Date): string {
+  return moment(value).format(TIME_FORMAT);
 }
 
-function stringToTimeParts(value: string): TimeParts | null {
+function timeStringToDate(value: string): Date | null {
   const time = moment(value, TIME_FORMAT, true);
   if (!time.isValid()) {
     return null;
   }
 
-  return {
-    hour: time.hour(),
-    minute: time.minute(),
-  };
+  return time.toDate();
 }
 
 function relativeDateFilterPartsWithoutOffset(

@@ -239,19 +239,6 @@ export type FilterParts =
   | ExcludeDateFilterParts
   | TimeFilterParts;
 
-export type DateParts = {
-  year: number;
-  month: number; // 0-11 (January-December)
-  date: number;
-};
-
-export type TimeParts = {
-  hour: number;
-  minute: number;
-};
-
-export type DateTimeParts = DateParts & Partial<TimeParts>;
-
 export type StringFilterParts = {
   operator: StringFilterOperatorName;
   column: ColumnMetadata;
@@ -285,7 +272,7 @@ export type BooleanFilterParts = {
 export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
-  values: DateParts[];
+  values: Date[];
 };
 
 export type RelativeDateFilterParts = {
@@ -318,7 +305,7 @@ export type ExcludeDateFilterParts = {
 export type TimeFilterParts = {
   operator: TimeFilterOperatorName;
   column: ColumnMetadata;
-  values: TimeParts[];
+  values: Date[];
 };
 
 declare const Join: unique symbol;
