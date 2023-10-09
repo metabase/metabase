@@ -118,7 +118,18 @@ describe("ClickActionsPopover", function () {
             dataset_query: {
               database: SAMPLE_DB_ID,
               query: {
-                "order-by": [["desc", ["field", ORDERS.ID, null]]],
+                "order-by": [
+                  [
+                    "desc",
+                    [
+                      "field",
+                      ORDERS.ID,
+                      {
+                        "base-type": "type/BigInteger",
+                      },
+                    ],
+                  ],
+                ],
                 "source-table": ORDERS_ID,
               },
               type: "query",
