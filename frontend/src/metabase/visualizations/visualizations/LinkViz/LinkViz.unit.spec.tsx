@@ -259,7 +259,6 @@ describe("LinkViz", () => {
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
-
       await waitForLoadingSpinnerToDisappear();
 
       userEvent.click(await screen.findByText("Question Uno"));
