@@ -11,7 +11,7 @@ registerVisualizations();
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
-const series = ({ rows, insights, col }) => {
+const series = ({ rows, insights, field }) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
     NumberColumn({ name: "Count" }),
@@ -21,7 +21,7 @@ const series = ({ rows, insights, col }) => {
     {
       card: {
         display: "smartscalar",
-        visualization_settings: { "scalar.field": col },
+        visualization_settings: { "scalar.field": field },
       },
       data: { cols, rows, insights },
     },
@@ -29,7 +29,7 @@ const series = ({ rows, insights, col }) => {
 };
 
 describe("SmartScalar", () => {
-  describe("field choice", () => {
+  describe("field selection", () => {
     const rows = [
       ["2019-10-01T00:00:00", 100, 200],
       [("2019-11-01T00:00:00", 120, 220)],
@@ -51,7 +51,7 @@ describe("SmartScalar", () => {
       },
     ];
     it("should use Count when selected", () => {
-      setup(series({ rows, insights, col: "Count" }));
+      setup(series({ rows, insights, field: "Count" }));
       expect(screen.getByText("120")).toBeInTheDocument();
       const previousValue = screen.getByText("20%");
       expect(previousValue).toBeInTheDocument();
@@ -59,7 +59,7 @@ describe("SmartScalar", () => {
       expect(screen.getByText("was 100 last month")).toBeInTheDocument();
     });
     it("should use Sum when selected", () => {
-      setup(series({ rows, insights, col: "Sum" }));
+      setup(series({ rows, insights, field: "Sum" }));
       expect(screen.getByText("220")).toBeInTheDocument();
       const previousValue = screen.getByText("10%");
       expect(previousValue).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("120")).toBeInTheDocument();
 
@@ -102,7 +102,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("80")).toBeInTheDocument();
 
@@ -125,7 +125,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("No change from last month")).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }));
+    setup(series({ rows, insights, field: "Count" }));
 
     expect(screen.getByText("8,000%")).toBeInTheDocument();
   });
@@ -173,7 +173,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }), width);
+    setup(series({ rows, insights, field: "Count" }), width);
 
     expect(screen.getByText("81,005")).toBeInTheDocument();
   });
@@ -194,7 +194,7 @@ describe("SmartScalar", () => {
       },
     ];
 
-    setup(series({ rows, insights, col: "Count" }), width);
+    setup(series({ rows, insights, field: "Count" }), width);
 
     expect(screen.getByText("810.8k")).toBeInTheDocument();
   });
