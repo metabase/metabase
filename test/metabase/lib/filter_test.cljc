@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -326,6 +327,38 @@
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
         (is (= op
                (lib/filter-operator query filter-clause)))))))
+
+(deftest ^:parallel filter-operators-test
+  (testing "Boolean category"
+    (is (= [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
+            {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
+            {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}]
+           (lib.filter.operator/filter-operators
+             {:description nil,
+              :lib/type :metadata/column,
+              :base-type :type/Boolean,
+              :semantic-type :type/Category,
+              :table-id 7,
+              :name "TRIAL_CONVERTED",
+              :coercion-strategy nil,
+              :lib/source :source/table-defaults,
+              :lib/source-column-alias "TRIAL_CONVERTED",
+              :settings nil,
+              :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+              :nfc-path nil,
+              :database-type "BOOLEAN",
+              :effective-type :type/Boolean,
+              :fk-target-field-id nil,
+              :operators [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
+                          {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
+                          {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}],
+              :id 14,
+              :parent-id nil,
+              :visibility-type :normal,
+              :lib/desired-column-alias "TRIAL_CONVERTED",
+              :display-name "Trial Converted",
+              :position 10,
+              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}})))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
