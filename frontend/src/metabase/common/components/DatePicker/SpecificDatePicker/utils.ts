@@ -39,7 +39,3 @@ export function setOperator(
       return { ...value, operator, values: [value.values[0], value.values[0]] };
   }
 }
-
-export function isDateRange(value: SpecificDatePickerValue) {
-  return value.operator === "between";
-}
