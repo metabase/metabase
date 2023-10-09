@@ -576,6 +576,12 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
+
           await changeNotebookQuery();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -590,6 +596,12 @@ describe("QueryBuilder", () => {
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("loading-spinner"),
+            ).not.toBeInTheDocument();
+          });
 
           await changeNotebookQuery();
           await revertNotebookQueryChange();
