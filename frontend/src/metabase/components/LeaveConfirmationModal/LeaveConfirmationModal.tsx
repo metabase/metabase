@@ -69,7 +69,11 @@ const LeaveConfirmationModalBase = ({
   };
 
   return (
-    <Modal isOpen={isConfirmationVisible} zIndex={5}>
+    <Modal
+      data-testid="leave-confirmation-modal"
+      isOpen={isConfirmationVisible}
+      zIndex={5}
+    >
       <ConfirmContent
         title={t`Changes were not saved`}
         message={t`Navigating away from here will cause you to lose any changes you have made.`}
