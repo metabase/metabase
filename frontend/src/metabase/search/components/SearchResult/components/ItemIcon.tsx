@@ -1,12 +1,9 @@
 import type { SearchModelType } from "metabase-types/api";
 import { IconWrapper } from "metabase/search/components/SearchResult/SearchResult.styled";
-import {
-  CollectionIcon,
-  DefaultIcon,
-  TableIcon,
-} from "metabase/search/components/SearchResult/components";
-
 import type { WrappedResult } from "metabase/search/types";
+import { CollectionIcon } from "./CollectionIcon";
+import { DefaultIcon } from "./DefaultIcon";
+import { TableIcon } from "./TableIcon";
 
 const ModelIconComponentMap = {
   table: TableIcon,
