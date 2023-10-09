@@ -48,13 +48,17 @@ export function seriesSetting({
       },
       getHidden: (single, settings, { series }) => {
         return (
-          !["line", "area", "bar", "combo"].includes(single.card.display) ||
-          settings["stackable.stack_type"] != null
+          !["line", "area", "bar", "combo", "combo2"].includes(
+            single.card.display,
+          ) || settings["stackable.stack_type"] != null
         );
       },
 
       getDefault: (single, settings, { series }) => {
-        if (single.card.display === "combo") {
+        if (
+          single.card.display === "combo" ||
+          single.card.display === "combo2"
+        ) {
           const index = series.indexOf(single);
           if (index === 0) {
             return "line";

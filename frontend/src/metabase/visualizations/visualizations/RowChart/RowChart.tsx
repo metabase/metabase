@@ -110,8 +110,7 @@ const RowChartVisualization = ({
   }, [isPlaceholder, multipleSeries, rawMultipleSeries]);
 
   const data = useMemo(
-    () =>
-      extractRemappedColumns(chartSeries.data) as RemappingHydratedChartData,
+    () => extractRemappedColumns(chartSeries.data),
     [chartSeries.data],
   );
 

@@ -7,6 +7,7 @@ import type {
 } from "metabase-types/api";
 import type { Visualization } from "./types/visualization";
 import type { RemappingHydratedDatasetColumn } from "./types";
+import { RemappingHydratedChartData } from "./types";
 
 const visualizations = new Map<string, Visualization>();
 const aliases = new Map<string, Visualization>();
@@ -120,7 +121,9 @@ export function canSavePng(display: string) {
 }
 
 // removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
-export const extractRemappedColumns = (data: DatasetData) => {
+export const extractRemappedColumns = (
+  data: DatasetData,
+): RemappingHydratedChartData => {
   const cols: RemappingHydratedDatasetColumn[] = data.cols.map(col => ({
     ...col,
     remapped_from_index:
@@ -130,7 +133,7 @@ export const extractRemappedColumns = (data: DatasetData) => {
     remapping: col.remapped_to != null ? new Map() : undefined,
   }));
 
-  const rows = data.rows.map((row, rowIndex) =>
+  const rows = data.rows.map(row =>
     row.filter((value, colIndex) => {
       const col = cols[colIndex];
       if (col.remapped_from != null) {
