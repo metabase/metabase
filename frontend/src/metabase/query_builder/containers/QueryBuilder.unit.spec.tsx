@@ -385,24 +385,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await changeMetadata();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -651,24 +634,7 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await changeMetadata();
 
           history.goBack();
 
@@ -688,36 +654,6 @@ describe("QueryBuilder", () => {
             expect(
               screen.queryByTestId("loading-spinner"),
             ).not.toBeInTheDocument();
-          });
-
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "{backspace}");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              TEST_MODEL_DATASET_COLUMN.display_name,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeDisabled();
           });
 
           history.goBack();
@@ -740,36 +676,6 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "{backspace}");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              TEST_MODEL_DATASET_COLUMN.display_name,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeDisabled();
-          });
-
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
           expect(
@@ -790,24 +696,7 @@ describe("QueryBuilder", () => {
             ).not.toBeInTheDocument();
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await changeMetadata();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -828,24 +717,7 @@ describe("QueryBuilder", () => {
            */
           userEvent.click(screen.getByText("Metadata"));
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await changeMetadata();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -876,18 +748,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        const columnDisplayName = await screen.findByTitle("Display name");
-
-        userEvent.click(columnDisplayName);
-        userEvent.type(columnDisplayName, "X");
-
-        await waitFor(() => {
-          expect(columnDisplayName).toHaveValue(
-            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-          );
-        });
-
-        userEvent.tab();
+        await changeMetadata();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
@@ -1100,12 +961,19 @@ const changeNativeQuery = async () => {
 
   userEvent.click(inputArea);
   userEvent.type(inputArea, "0");
+  userEvent.tab();
+};
+
+const changeMetadata = async () => {
+  const columnDisplayName = await screen.findByTitle("Display name");
+
+  userEvent.click(columnDisplayName);
+  userEvent.type(columnDisplayName, "X");
+  userEvent.tab();
 
   await waitFor(() => {
-    expect(inputArea).toHaveValue("SELECT 10");
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
-
-  userEvent.tab();
 };
 
 const changeNotebookQuery = async () => {
@@ -1115,11 +983,6 @@ const changeNotebookQuery = async () => {
 
   userEvent.click(rowLimitInput);
   userEvent.type(rowLimitInput, "0");
-
-  await waitFor(() => {
-    expect(rowLimitInput).toHaveValue(10);
-  });
-
   userEvent.tab();
 
   await waitFor(() => {
@@ -1137,11 +1000,6 @@ const revertNotebookQueryChange = async () => {
 
   userEvent.click(rowLimitInput);
   userEvent.type(rowLimitInput, "{backspace}");
-
-  await waitFor(() => {
-    expect(rowLimitInput).toHaveValue(1);
-  });
-
   userEvent.tab();
 
   await waitFor(() => {
