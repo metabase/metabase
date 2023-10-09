@@ -59,7 +59,7 @@ const ParameterSettings = ({
     [],
   );
 
-  const labelError = internalValue ? null : t`required`;
+  const labelError = internalValue ? null : t`Required`;
 
   const handleLabelBlur = useCallback(
     (event: { target: HTMLInputElement }) => {
@@ -83,13 +83,13 @@ const ParameterSettings = ({
   return (
     <SettingsRoot>
       <SettingSection>
+        <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
-          label={t`Label`}
+          onChange={handleLabelChange}
           value={internalValue}
+          onBlur={handleLabelBlur}
           error={labelError}
           aria-label={t`Label`}
-          onChange={handleLabelChange}
-          onBlur={handleLabelBlur}
         />
       </SettingSection>
       {canUseCustomSource(parameter) && (

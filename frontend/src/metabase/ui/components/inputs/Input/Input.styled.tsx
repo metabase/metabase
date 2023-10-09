@@ -109,7 +109,7 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
   InputWrapper: {
     defaultProps: {
       size: "md",
-      inputWrapperOrder: ["label", "error", "description", "input"],
+      inputWrapperOrder: ["label", "description", "error", "input"],
     },
     styles: theme => ({
       label: {
@@ -124,10 +124,8 @@ export const getInputOverrides = (): MantineThemeOverride["components"] => ({
         lineHeight: theme.lineHeight,
       },
       error: {
-        display: "inline-block",
-        marginLeft: theme.spacing.xs,
         color: theme.colors.error[0],
-        fontSize: theme.fontSizes.sm,
+        fontSize: theme.fontSizes.xs,
         lineHeight: theme.lineHeight,
       },
       required: {
