@@ -158,4 +158,34 @@ describe("SearchBar", () => {
       expect(getSearchBar()).toHaveValue("");
     });
   });
+
+  describe("persisting search filters", () => {
+    it("should keep URL search filters when changing the text query", () => {
+      const { history } = setup({
+        initialRoute: "/search?q=foo&type=card",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar&type=card");
+    });
+
+    it("should not keep URL search filters when not in the search app", () => {
+      const { history } = setup({
+        initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar");
+    });
+  });
 });
