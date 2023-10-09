@@ -614,11 +614,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -646,11 +642,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -801,11 +793,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -851,11 +839,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
