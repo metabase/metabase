@@ -16,12 +16,9 @@ import type { TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import type Table from "metabase-lib/metadata/Table";
 
+import { NotebookCellItem } from "../../../NotebookCell";
 import { FIELDS_PICKER_STYLES } from "../../../FieldsPickerIcon";
-import {
-  PickerButton,
-  PickerNotebookCellItem,
-  ColumnPickerButton,
-} from "./JoinTablePicker.styled";
+import { PickerButton, ColumnPickerButton } from "./JoinTablePicker.styled";
 
 interface JoinTablePickerProps {
   query: Lib.Query;
@@ -82,10 +79,10 @@ export function JoinTablePicker({
   const tableFilter = (table: Table) => !tableId || table.db_id === databaseId;
 
   return (
-    <PickerNotebookCellItem
+    <NotebookCellItem
       inactive={!table}
       readOnly={readOnly}
-      canChangeTable={canChangeTable}
+      disabled={!canChangeTable}
       color={color}
       aria-label={t`Right table`}
       right={
@@ -117,7 +114,7 @@ export function JoinTablePicker({
           </PickerButton>
         }
       />
-    </PickerNotebookCellItem>
+    </NotebookCellItem>
   );
 }
 
