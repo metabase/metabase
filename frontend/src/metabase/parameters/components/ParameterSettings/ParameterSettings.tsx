@@ -1,7 +1,6 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
-import { slugify } from "metabase/lib/formatting";
 import type {
   Parameter,
   ValuesQueryType,
@@ -28,7 +27,7 @@ const MULTI_SELECT_OPTIONS = [
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
-  otherParameterSlugs: string[];
+  isParameterUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
@@ -40,7 +39,7 @@ export interface ParameterSettingsProps {
 
 const ParameterSettings = ({
   parameter,
-  otherParameterSlugs,
+  isParameterUsed,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -50,35 +49,24 @@ const ParameterSettings = ({
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const [internalValue, setInternalValue] = useState(parameter.name);
+  const [labelError, setLabelError] = useState("");
 
-  useLayoutEffect(() => {
-    setInternalValue(parameter.name);
-  }, [parameter.name]);
+  const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInternalValue(event.target.value);
+    if (internalValue === "") {
+      setLabelError(t`Required`);
+    } else if (isParameterUsed(internalValue)) {
+      setLabelError(t`This label is already in use`);
+    }
+  };
 
-  const handleLabelChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInternalValue(event.target.value);
-    },
-    [],
-  );
-
-  let labelError;
-  if (internalValue "") {
-    labelError t`Required`;
-  } else if (otherParameterSlugs.includes(slugify(internalValue))) {
-    labelError t`This label is already in use`;
-  }
-
-  const handleLabelBlur = useCallback(
-    (event: { target: HTMLInputElement }) => {
-      if (labelError) {
-        setInternalValue(parameter.name);
-      } else {
-        onChangeName(event.target.value);
-      }
-    },
-    [onChangeName, parameter.name, labelError],
-  );
+  const handleLabelBlur = (event: { target: HTMLInputElement }) => {
+    if (labelError) {
+      setInternalValue(parameter.name);
+    } else {
+      onChangeName(event.target.value);
+    }
+  };
 
   const handleSourceSettingsChange = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {

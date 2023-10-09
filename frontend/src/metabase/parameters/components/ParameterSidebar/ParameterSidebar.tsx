@@ -9,6 +9,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { slugify } from "metabase/lib/formatting";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -116,8 +117,9 @@ const ParameterSidebar = ({
     onClose();
   }, [parameterId, onRemoveParameter, onClose]);
 
-  const otherParameterSlugs = useMemo(
-    () => otherParameters.map(p => p.slug),
+  const isParameterUsed = useCallback(
+    (value: string) =>
+      !!otherParameters.find(parameter => parameter.slug === slugify(value)),
     [otherParameters],
   );
 
@@ -135,7 +137,7 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            otherParameterSlugs={otherParameterSlugs}
+            isParameterUsed={isParameterUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
