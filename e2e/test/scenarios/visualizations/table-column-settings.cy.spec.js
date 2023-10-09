@@ -37,6 +37,10 @@ const tableQuestionWithJoinOnQuestion = card => ({
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["field", ORDERS.TAX, null],
+    ],
     joins: [
       {
         fields: "all",
@@ -104,6 +108,10 @@ const tableQuestionWithExpression = {
   display: "table",
   query: {
     "source-table": ORDERS_ID,
+    fields: [
+      ["field", ORDERS.ID, null],
+      ["expression", "Math"],
+    ],
     expressions: {
       Math: ["+", 1, 1],
     },
