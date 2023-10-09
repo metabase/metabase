@@ -1072,6 +1072,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     main().findByText("User → Source").click();
 
     popover().findByText("Address").click();
+
+    main().findByText("User → Address").should("be.visible");
   });
 });
 
