@@ -299,10 +299,10 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelEdit = useCallback(() => {
+  const handleCancelEdit = () => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
-  }, [setQueryBuilderMode, onCancelDatasetChanges]);
+  };
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(dataset);
