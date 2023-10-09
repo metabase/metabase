@@ -112,20 +112,20 @@ export const SearchUserPicker = ({
             mt="-0.25rem"
           />
         </SearchUserSelectBox>
-        {filteredUsers.length > 0 ? (
-          <SearchUserPickerContent
-            data-testid="search-user-list"
-            h="100%"
-            spacing="xs"
-            p="xs"
-          >
-            {generateUserListElements(filteredUsers)}
-          </SearchUserPickerContent>
-        ) : (
-          <Center py="md">
-            <Text size="md" weight={700}>{t`No users found.`}</Text>
-          </Center>
-        )}
+        <SearchUserPickerContent
+          data-testid="search-user-list"
+          h="100%"
+          spacing="xs"
+          p="xs"
+        >
+          {filteredUsers.length > 0 ? (
+            generateUserListElements(filteredUsers)
+          ) : (
+            <Center py="md">
+              <Text size="md" weight={700}>{t`No users found.`}</Text>
+            </Center>
+          )}
+        </SearchUserPickerContent>
       </SearchUserPickerContainer>
     </SearchFilterPopoverWrapper>
   );

@@ -67,6 +67,9 @@ describe("SearchUserPicker", () => {
     expect(
       screen.getAllByTestId("selected-user-button").map(el => el.textContent),
     ).toEqual(["Alice", "Bob"]);
+
+    // all users are in the select box, so the search list should be empty
+    expect(screen.getByText("No users found.")).toBeInTheDocument();
   });
 
   it("should not show any users when there are no selected users on initial load", async () => {
@@ -76,34 +79,50 @@ describe("SearchUserPicker", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should select users when user clicks on user list", async () => {
+  it("should add user to select box and remove them from search list when user is selected from search list", async () => {
     await setup();
-    userEvent.click(screen.getByText("Alice"));
+    const searchUserList = within(screen.getByTestId("search-user-list"));
+
+    userEvent.click(searchUserList.getByText("Alice"));
     expect(screen.getByTestId("selected-user-button")).toHaveTextContent(
       "Alice",
     );
 
-    userEvent.click(screen.getByText("Bob"));
+    expect(searchUserList.queryByText("Alice")).not.toBeInTheDocument();
+
+    userEvent.click(searchUserList.getByText("Bob"));
     expect(
       screen.getAllByTestId("selected-user-button").map(el => el.textContent),
     ).toEqual(["Alice", "Bob"]);
+
+    expect(searchUserList.getByText("No users found")).toBeInTheDocument();
   });
 
-  it("should remove users from the select box when user clicks on selected user", async () => {
+  it("should remove user from select box and add them to search list when user is remove from select box", async () => {
     await setup({
       initialSelectedUsers: TEST_USERS.map(user => user.id),
     });
-    userEvent.click(
-      within(screen.getByTestId("search-user-select-box")).getByText("Alice"),
-    );
-    expect(screen.getByTestId("selected-user-button")).toHaveTextContent("Bob");
 
-    userEvent.click(
-      within(screen.getByTestId("search-user-select-box")).getByText("Bob"),
-    );
+    const searchUserList = within(screen.getByTestId("search-user-list"));
+    const selectBox = within(screen.getByTestId("search-user-select-box"));
+
+    // expect the two users are in the select box and not in the search list
+    expect(searchUserList.getByText("No users found")).toBeInTheDocument();
+    expect(selectBox.getByText("Alice")).toBeInTheDocument();
+    expect(selectBox.getByText("Bob")).toBeInTheDocument();
+
+    userEvent.click(selectBox.getByText("Alice"));
+    expect(screen.getByTestId("selected-user-button")).toHaveTextContent("Bob");
+    expect(searchUserList.getByText("Alice")).toBeInTheDocument();
+
+    userEvent.click(selectBox.getByText("Bob"));
+
+    // expect the two users are only in the search list now
     expect(
       screen.queryByTestId("selected-user-button"),
     ).not.toBeInTheDocument();
+    expect(searchUserList.getByText("Alice")).toBeInTheDocument();
+    expect(searchUserList.getByText("Bob")).toBeInTheDocument();
   });
 
   it("should filter users when user types in the search box", async () => {
@@ -111,6 +130,7 @@ describe("SearchUserPicker", () => {
     userEvent.type(screen.getByPlaceholderText("Search for users…"), "Alice");
     const searchUserList = within(screen.getByTestId("search-user-list"));
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
+
     expect(searchUserList.queryByText("Bob")).not.toBeInTheDocument();
   });
 
