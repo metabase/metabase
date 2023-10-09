@@ -1,8 +1,11 @@
-import { screen } from "@testing-library/react";
 import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
 import { mockSettings } from "__support__/settings";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
   const settings = mockSettings({
@@ -17,7 +20,7 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
     },
   });
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 }
 
 describe("DataPermissionsHelp", function () {
