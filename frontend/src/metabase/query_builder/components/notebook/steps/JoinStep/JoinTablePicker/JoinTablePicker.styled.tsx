@@ -6,7 +6,7 @@ import { NotebookCell } from "../../../NotebookCell";
 export const PickerButton = styled.button`
   color: inherit;
   font-weight: inherit;
-  cursor: pointer;
+  cursor: ${props => (props.disabled ? "auto" : "pointer")};
 `;
 
 export const ColumnPickerButton = styled(IconButtonWrapper)`

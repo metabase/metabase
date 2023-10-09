@@ -106,7 +106,7 @@ export function JoinTablePicker({
         selectedTableId={tableId}
         setSourceTableFn={handleTableChange}
         triggerElement={
-          <PickerButton disabled={readOnly}>
+          <PickerButton disabled={!!table || readOnly}>
             {tableInfo?.displayName || t`Pick data…`}
           </PickerButton>
         }
