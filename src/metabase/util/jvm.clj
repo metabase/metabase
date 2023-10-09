@@ -272,8 +272,8 @@
                         initialization."}
  metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-                   :when   (and (.startsWith (name ns-symb) "metabase.")
-                                (not (.contains (name ns-symb) "test")))]
+                   :when   (and (str/starts-with? ns-symb "metabase.")
+                                (not (str/includes? ns-symb "test")))]
                ns-symb))))
 
 (defn deref-with-timeout
