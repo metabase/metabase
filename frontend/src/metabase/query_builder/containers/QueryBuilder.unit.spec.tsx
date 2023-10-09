@@ -576,24 +576,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await changeNotebookQuery();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -608,23 +591,8 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-          userEvent.tab();
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "{backspace}");
-          userEvent.tab();
+          await changeNotebookQuery();
+          await revertNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
