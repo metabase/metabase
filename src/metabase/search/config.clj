@@ -1,5 +1,7 @@
 (ns metabase.search.config
   (:require
+   [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
    [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
@@ -64,6 +66,13 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
+(defn search-model->revision-model
+  "Return the apporpriate revision model given a search model."
+  [model]
+  (case model
+    "dataset" (recur "card")
+    (str/capitalize model)))
+
 (defn model->alias
   "Given a model string returns the model alias"
   [model]
@@ -99,6 +108,59 @@
     ;; true to search for verified items only,
     ;; nil will return all items
     [:verified           {:optional true} [:maybe true?]]]))
+
+(def all-search-columns
+  "All columns that will appear in the search results, and the types of those columns. The generated search query is a
+  `UNION ALL` of the queries for each different entity; it looks something like:
+
+    SELECT 'card' AS model, id, cast(NULL AS integer) AS table_id, ...
+    FROM report_card
+    UNION ALL
+    SELECT 'metric' as model, id, table_id, ...
+    FROM metric
+
+  Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
+  are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
+  `UNION` two columns of two different types.)"
+  (ordered-map/ordered-map
+   ;; returned for all models. Important to be first for changing model for dataset
+   :model               :text
+   :id                  :integer
+   :name                :text
+   :display_name        :text
+   :description         :text
+   :archived            :boolean
+   ;; returned for Card, Dashboard, and Collection
+   :collection_id       :integer
+   :collection_name     :text
+   :collection_authority_level :text
+   ;; returned for Card and Dashboard
+   :collection_position :integer
+   :creator_id          :integer
+   :created_at          :timestamp
+   :bookmark            :boolean
+   ;; returned for everything except Collection
+   :updated_at          :timestamp
+   ;; returned for Card only, used for scoring
+   :dashboardcard_count :integer
+   :last_edited_at      :timestamp
+   :last_editor_id      :integer
+   :moderated_status    :text
+   ;; returned for Metric and Segment
+   :table_id            :integer
+   :table_schema        :text
+   :table_name          :text
+   :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
+   ;; returned for Database and Table
+   :initial_sync_status :text
+   ;; returned for Action
+   :model_id            :integer
+   :model_name          :text
+   ;; returned for indexed-entity
+   :pk_ref              :text
+   :model_index_id      :integer))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -153,7 +215,7 @@
 
 (def ^:private default-columns
   "Columns returned for all models."
-  [:id :name :description :archived :updated_at])
+  [:id :name :description :archived :created_at :updated_at])
 
 (def ^:private bookmark-col
   "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
@@ -169,6 +231,7 @@
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
+   :created_at
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]
@@ -182,6 +245,7 @@
 (defmethod columns-for-model "action"
   [_]
   (conj default-columns :model_id
+        :creator_id
         [:model.collection_id        :collection_id]
         [:model.id                   :model_id]
         [:model.name                 :model_name]
@@ -189,7 +253,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position
+  (conj default-columns :collection_id :collection_position :creator_id
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]
@@ -219,13 +283,13 @@
 
 (defmethod columns-for-model "dashboard"
   [_]
-  (conj default-columns :collection_id :collection_position bookmark-col
+  (conj default-columns :collection_id :collection_position :creator_id bookmark-col
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]))
 
 (defmethod columns-for-model "database"
   [_]
-  [:id :name :description :updated_at :initial_sync_status])
+  [:id :name :description :created_at :updated_at :initial_sync_status])
 
 (defmethod columns-for-model "collection"
   [_]
@@ -237,16 +301,17 @@
 
 (defmethod columns-for-model "segment"
   [_]
-  (into default-columns table-columns))
+  (concat default-columns table-columns [:creator_id]))
 
 (defmethod columns-for-model "metric"
   [_]
-  (into default-columns table-columns))
+  (concat default-columns table-columns [:creator_id]))
 
 (defmethod columns-for-model "table"
   [_]
   [:id
    :name
+   :created_at
    :display_name
    :description
    :updated_at
