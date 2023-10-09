@@ -8,6 +8,7 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
@@ -56,41 +57,7 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
-(defn- lines->stmts
-  [lines]
-  (loop [line         (first lines)
-         lines        (rest lines)
-         stmts        []
-         current-stmt ""]
-    (if (nil? line)
-      stmts
-      (let [ends-with-semi-colon (str/ends-with? line ";")
-            semicolon-counts     (count (re-seq #";" line))]
-        (cond
-         (and ends-with-semi-colon (= 1 semicolon-counts))
-         (recur (first lines) (rest lines)
-                (conj stmts (str current-stmt line))
-                "")
-
-         ;; a line with multiple statements and has no open-ended statement
-         (and ends-with-semi-colon (> semicolon-counts 1))
-         (recur (first lines) (rest lines)
-                (concat stmts (map #(str % ";") (str/split (str current-stmt line) #";")))
-                "")
-
-         ;; a line not ending as a statement but contains multiple statements
-         (and (not ends-with-semi-colon) (pos-int? semicolon-counts))
-         (let [splits (str/split (str current-stmt line) #";")]
-           (recur (first lines) (rest lines)
-                  (concat stmts (map #(str % ";") (drop-last splits)))
-                  (last splits)))
-
-         (and (not ends-with-semi-colon) (zero? semicolon-counts))
-         (recur (first lines) (rest lines)
-                stmts
-                (str current-stmt line)))))))
-
-(mu/defn initialize-db!
+(mu/defn ^:private initialize-db!
   "a"
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
@@ -103,9 +70,19 @@
                        (remove (fn [s] (or
                                         (str/blank? s)
                                         (str/starts-with? s "--")))))]
-    (next.jdbc/with-transaction [tx data-source]
-      (doseq [stmt stmts]
-        (next.jdbc/execute! tx [stmt])))))
+    (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+      (.setAutoCommit conn false)
+      (try
+       (doseq [stmt stmts]
+         (jdbc/execute! {:connection conn} [stmt])
+         #_(next.jdbc/execute! conn [stmt]))
+       (.commit conn)
+       (catch Exception e
+         (.rollback conn)
+         (log/error e "Error while initializing db")
+         (throw e))
+       (finally
+        (.setAutoCommit conn true))))))
 
 (mu/defn migrate!
   "Migrate the application database specified by `data-source`.
@@ -212,15 +189,15 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection   db-type data-source)
-         (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-           (when-not (or (liquibase/table-exists? conn "core_user")
-                         (liquibase/table-exists? conn "CORE_USER"))
-             (log/info "Running database initialization")
-             (initialize-db! db-type data-source)
-             (log/info "Done database initialization")))
+         (when-not (or (liquibase/table-exists? data-source "core_user")
+                       (liquibase/table-exists? data-source "CORE_USER"))
+           (log/info "Running database initialization")
+           (initialize-db! db-type data-source)
+           (log/info "Done database initialization"))
          (run-schema-migrations! db-type data-source auto-migrate?)
          (run-data-migrations!))))
   :done)
+
 ;;;; Toucan Setup.
 
 ;;; Done at namespace load time these days.

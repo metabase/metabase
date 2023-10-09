@@ -3316,8 +3316,8 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v48.00-020
-      author: qnkhuat
+      id: v48.00-020 # v43.00-002
+      author: camsaul
       comment: >-
         Added 0.43.0. Create magic 'All Users' Permissions Group if it does not already exist.
       preConditions:
@@ -3336,10 +3336,10 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v48.00-021
-      author: qnkhuat
+      id: v48.00-021 # v43.00-003
+      author: camsaul
       comment: >-
-        Added 0.43.0. Create magic 'All Users' Permissions Group if it does not already exist.
+        Added 0.43.0. Create magic 'Administrators' Permissions Group if it does not already exist.
       preConditions:
         - onFail: MARK_RAN
         - sqlCheck:
@@ -3356,7 +3356,143 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
-      id: v48.00-022
+      id: v48.00-023 # v43.00-006
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Create root '/' permissions entry for the 'Administrators' magic Permissions Group if needed.
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                admin_group.id AS group_id,
+                '/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'Administrators'
+              ) admin_group
+              LEFT JOIN permissions p
+                     ON admin_group.id = p.group_id
+                    AND p.object = '/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v48.00-024 # v43.00-014
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Add 'Migrated Dashboards' Collection if needed and there are any Dashboards not in a Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM collection
+                  WHERE name = 'Migrated Dashboards';
+            - not:
+                - sqlCheck:
+                    expectedResult: 0
+                    sql: >-
+                      SELECT count(*)
+                      FROM report_dashboard
+                      WHERE collection_id IS NULL;
+      changes:
+        - sql:
+            # #509ee3 is the MB brand color
+            sql: >-
+              INSERT INTO collection (name, slug)
+              VALUES
+              ('Migrated Dashboards', 'migrated_dashboards')
+              ('Migrated Pulses', 'migrated_pulses')
+              ('Migrated Questions', 'migrated_questions');
+
+  - changeSet:
+      id: v48.00-025 # v43.00-020
+      author: camsaul
+      comment: >-
+        Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Collection.
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - sqlCheck:
+                expectedResult: 0
+                sql: >-
+                  SELECT count(*)
+                  FROM data_migrations
+                  WHERE id = 'add-migrated-collections';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/collection/root/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                     ON all_users_group.id = p.group_id
+                    AND p.object = '/collection/root/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v48.00-026 # v43.00-042
+      author: noahmoss
+      comment: >-
+        Added 0.43.0. Grant download permissions for existing Databases to 'All Users' permissions group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (object, group_id)
+              SELECT db.object, all_users.id AS group_id
+              FROM (
+                SELECT concat('/download/db/', id, '/') AS object
+                FROM metabase_database
+              ) db
+              LEFT JOIN (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users
+                ON true
+              LEFT JOIN permissions p
+                     ON p.group_id = all_users.id
+                    AND db.object = p.object
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v48.00-027 # v43.00-047
+      author: qnkhuat
+      comment: Added 0.43.0. Grant the 'All Users' Group permissions to create/edit subscriptions and alerts
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/general/subscription/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                ON all_users_group.id = p.group_id
+                AND p.object = '/general/subscription/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v48.00-028 # v44.00-033
       author: qnkhuat
       comment: >-
         Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Snippets Collection.

@@ -161,10 +161,10 @@
   (classloader/the-classloader)
   (set-jdbc-backend-properties!)
   (let [scheduler (qs/initialize)]
-    (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
-    (qs/shutdown scheduler)))
+   (qs/start scheduler)
+   (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
+   (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
+   (qs/shutdown scheduler)))
 
 (define-migration FillJSONUnfoldingDefault
   (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
