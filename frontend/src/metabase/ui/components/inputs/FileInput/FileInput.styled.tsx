@@ -8,5 +8,12 @@ export const getFileInputOverrides =
         size: "md",
         valueComponent: FileInputValue,
       },
+      styles: theme => ({
+        wrapper: {
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
+        },
+      }),
     },
   });
