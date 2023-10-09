@@ -1150,7 +1150,7 @@
           :let         [fingerprint {:type {:type/DateTime m}}]]
     (testing (format "fingerprint = %s" (pr-str fingerprint))
       (is (= expected
-             (#'magic/optimal-datetime-resolution {:fingerprint fingerprint}))))))
+             (#'foo/optimal-datetime-resolution {:fingerprint fingerprint}))))))
 
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
