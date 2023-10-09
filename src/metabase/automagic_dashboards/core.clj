@@ -247,6 +247,25 @@
   [table]
   (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
+(defmulti
+  ^{:doc      "Get user-defined metrics linked to a given entity."
+    :arglists '([entity])}
+  linked-metrics mi/model)
+
+(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
+  (let [field-ids (set (foo/find-field-ids definition))]
+    [{:metric-name            metric-name
+      :metric-title           metric-name
+      :metric-definition      definition
+      :grounded-metric-fields (t2/select :model/Field :id [:in field-ids])}]))
+
+(defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
+  (mapcat
+    linked-metrics
+    (t2/select :model/Metric :table_id table-id)))
+
+(defmethod linked-metrics :default [_] [])
+
 (defmulti ->root
   "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
   respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
@@ -262,7 +281,8 @@
    :source                     table
    :database                   (:db_id table)
    :url                        (format "%stable/%s" public-endpoint (u/the-id table))
-   :dashboard-templates-prefix ["table"]})
+   :dashboard-templates-prefix ["table"]
+   :linked-metrics             (linked-metrics table)})
 
 (defmethod ->root Segment
   [segment]
@@ -290,7 +310,8 @@
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
      ;; does not have an ID.
      :url                        (format "%smetric/%s" public-endpoint (:id metric))
-     :dashboard-templates-prefix ["metric"]}))
+     :dashboard-templates-prefix ["metric"]
+     :linked-metrics             (linked-metrics metric)}))
 
 (defmethod ->root Field
   [field]
@@ -959,188 +980,26 @@
                               distinct-affinity-sets)]
     (zipmap distinct-affinity-sets satisfied-combos)))
 
-(comment
-  (let [{template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        model        (t2/select-one :model/Card 2)
-        base-context (make-base-context (->root model))
-        affinities           (dash-template->affinities-old dashboard-template)
-        available-dimensions (->> (bind-dimensions base-context template-dimensions)
-                                  (add-field-self-reference base-context))
-        satisfied-affinities (match-affinities affinities (set (keys available-dimensions)))
-        distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)]
-    (update-vals
-      (all-satisfied-bindings distinct-affinity-sets available-dimensions)
-      (fn [v]
-        (mapv (fn [combo] (update-vals combo #(select-keys % [:name]))) v))))
-
-  (let [{template-dimensions :dimensions
-         :as                 dashboard-template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        model        (t2/select-one :model/Card 2)
-        base-context (make-base-context (->root model))]
-    (bind-dimensions base-context template-dimensions))
-  )
-
-(defn make-combinations
-  [dimensions metrics info]
-  (letfn [(normalize-scores [xs]
-            (let [max-score  (apply max (map :score xs))
-                  normalizer (fn [x] (long (* (/ x max-score) 100)))]
-              (map #(update % :score normalizer) xs)))
-          (compute-score [metric-score dimension-semantic-type]
-            ;; todo: info will bring some dimension rankings. or/and use affinities here to get some sort of
-            ;; semantic/effective type from the metric
-            (let [semantic-score {:type/Category          100
-                                  :type/Company           50
-                                  :type/Score             90
-                                  :type/CreationTimestamp 100
-                                  nil                     40}]
-              (+ metric-score (semantic-score dimension-semantic-type))))]
-    (->> (for [d dimensions
-               m metrics]
-           {:metrics    [m]
-            :dimensions [d]
-            :score      (compute-score (:score m) (:semantic_type d))})
-         normalize-scores)))
-
-(comment
-  (make-combinations
-   [{:semantic_type :type/Category,
-     :name "CATEGORY",
-     :field_ref [:field 58 nil],
-     :effective_type :type/Text,
-     :base_type :type/Text}
-    {:semantic_type :type/Company,
-     :name "VENDOR",
-     :field_ref [:field 60 nil],
-     :effective_type :type/Text,
-     :base_type :type/Text}
-    {:semantic_type nil,
-     :name "PRICE",
-     :field_ref [:field 59 nil],
-     :effective_type :type/Float,
-     :base_type :type/Float}
-    {:semantic_type :type/Score,
-     :name "RATING",
-     :field_ref [:field 61 nil],
-     :effective_type :type/Float,
-     :base_type :type/Float}
-    {:semantic_type :type/CreationTimestamp,
-     :name "CREATED_AT",
-     :field_ref [:field 64 {:temporal-unit :default}],
-     :effective_type :type/DateTime,
-     :base_type :type/DateTime}]
-
-
-   [{:metric [[:aggregation-options
-               [:/ [:sum [:field 59 nil]] [:count]]
-               {:name "My average",
-                :display-name "My average"}]]
-     :name "Custom average"
-     :score 100}
-    {:metric ["sum" [:field 59 #_price nil]]
-     :name "Sum"
-     :score 100}]
-
-
-   {})
-
-  (def template (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-  (dash-template->affinities-old template)
-  ;; making affinities be grounded and take grounded stuff
-
-  (make-base-context (->root (t2/select-one :model/Table :id 1)))
-
-  (t2/select :model/Metric :table_id 1)
-  (let [context (make-base-context (->root (t2/select-one :model/Table :id 1)))
-        template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
-    (-> (foo/find-dimensions context (:dimensions template))
-        (update-vals (fn [dimension-match]
-                       ;; trim down the size of the fields for the repl
-                       (update dimension-match :matches
-                               (fn [fields]
-                                 (map #(select-keys % [:id :name :effective_type :semantic_type])
-                                      fields)))))))
-
-  )
-
-(defn dimension-name->satisfiable-semantic-types
-  "Takes dimensions from a dashboard template and returns a map of dimension name
-  to a set of all semantic types in the template that satisfy the dimension."
-  [dimensions]
-  (->> (map first dimensions)
-       (map (fn [[dim-name {:keys [field_type] :as m}]]
-              [dim-name
-               (if (second field_type)
-                 (second field_type)
-                 (first field_type))]))
-       (reduce
-         (fn [acc [dim-name semantic-type]]
-           (update acc dim-name (fnil conj #{}) semantic-type))
-         {})))
-
-(defn affinity-set-interestingness [affinity-set]
-  (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
-
-(declare make-layout dashboard-ify)
-(defn apply-dashboard-template-refactor
-  [{root :root :as base-context} dashboard-template]
-  ;; guiding principals:
-  ;; make this work
-
-  ;; nothing takes a `dashboard-template` except `dashboard-ify`. Nothing else should care about dashboard titles,
-  ;; etc. If they need information _derived_ from that template that's fine. Ideally massage it to a format that is
-  ;; bespoke to what it needs to do and not constrained by the dash template
-
-  ;; These dimensions are the base lego block dimensions that can be used for all future operations.
-  (let [dimensions (foo/find-dimensions base-context (:dimensions dashboard-template))
-        ;; These are the base metrics (alone) that are primarily just aggregates
-        metrics    (foo/find-metrics root #_(or whole-base-context or whatever)
-                                     dimensions
-                                     (:metrics dashboard-template))
-        ;; 1. All potential bound dimensions
-
-
-        ;; maybe massage metrics from dashboard template. But dashboard-template is not
-        ]
-    ;; this empty map is new information that we might want from the yaml
-
-    ;; the output of make combination: needs to have queries, but enough information to get a title, etc in the
-    ;; make-layout later. And we don't want to have to consult somehthing later and it be sensitive to naming.
-
-    ;; 2. "The spice" we add to metrics to form breakouts
-    ;; metric "Churn" is an agg
-    ;; Add Long & Lat as churn by location
-    ;; Add Timestamp as churn over time
-    ;; Add Category as churn bar chart
-    ;; These are all breakouts
-    (->> (make-combinations dimensions
-                            metrics
-                            #_affinities
-                            {} #_info)
-         (make-layout :web)
-         (dashboard-ify dashboard-template))))
-
 (defn generate-dashboard
-  "TODO - DOCS"
-  [entity {template-dimensions :dimensions
-           template-metrics    :metrics
-           template-cards      :cards
-           :as                 template}]
-  (let [{:keys [source] :as base-context} (make-base-context (->root entity))
-        ground-dimensions   (foo/find-dimensions base-context template-dimensions)
+  "Produce a dashboard from the base context for an item and a dashboad template."
+  [{{:keys [source linked-metrics]} :root :as base-context}
+   {template-dimensions :dimensions
+    template-metrics    :metrics
+    template-cards      :cards
+    :as                 template}]
+  (let [ground-dimensions   (foo/find-dimensions base-context template-dimensions)
         affinities          (dash-template->affinities template ground-dimensions)
         affinity-set->cards (foo/make-affinity-set->cards ground-dimensions template-cards affinities)
         metric-templates    (foo/normalize-metrics template-metrics)
         grounded-metrics    (concat
                               (foo/grounded-metrics metric-templates ground-dimensions)
-                              (foo/linked-metrics entity))]
+                              linked-metrics)]
     (->> grounded-metrics
          (foo/make-combinations ground-dimensions (map :affinity-set affinities))
          (foo/ground-metrics->cards source affinity-set->cards)
          (map foo/card->dashcard)
-         foo/do-layout
-         (foo/create-dashboard {:dashboard-name "FOO"}))))
+         foo/make-layout
+         (foo/dashboard-ify template))))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard

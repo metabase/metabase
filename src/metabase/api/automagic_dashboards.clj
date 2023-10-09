@@ -282,9 +282,10 @@
   {table-id :int}
   (api/let-404 [{table-name :name :as table} (t2/select-one :model/Table table-id)]
     (api/read-check table)
-    (magic/generate-dashboard
-      table
-      (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))))
+    (let [context (#'magic/make-base-context (magic/->root table))]
+      (magic/generate-dashboard
+        context
+        (dashboard-templates/get-dashboard-template ["table" "GenericTable"])))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template"

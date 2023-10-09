@@ -129,22 +129,6 @@
        instantiate-affinities)
   )
 
-(defmulti linked-metrics mi/model)
-
-(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
-  (let [field-ids (set (find-field-ids definition))]
-    [{:metric-name            metric-name
-      :metric-title           metric-name
-      :metric-definition      definition
-      :grounded-metric-fields (t2/select :model/Field :id [:in field-ids])}]))
-
-(defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
-  (mapcat
-    linked-metrics
-    (t2/select :model/Metric :table_id table-id)))
-
-(defmethod linked-metrics :default [_] [])
-
 (defn transform-metric-aggregate
   "Map a metric aggregate definition from nominal types to semantic types."
   [m decoder]
@@ -488,6 +472,8 @@
   (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets) grounded-metrics))
 
 (defn add-dataset-query
+  "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
+  and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
    {:keys [db_id id]}]
   (assoc ground-metric-with-dimensions
@@ -497,6 +483,8 @@
                                 :source-table id)}))
 
 (defn items->str
+  "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
+  oxford comma on the final pairing."
   [[f s :as items]]
   (condp = (count items)
     0 ""
@@ -504,13 +492,18 @@
     2 (format "%s and %s" f s)
     (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
 
-(defn ground-metric->card [context
-                           {:keys [grounded-dimensions metric-name] :as grounded-metric}
-                           {:keys [dimensions visualization] :as card}]
+(defn ground-metric->card
+  "Convert a grounded metric to a card. This includes adding any special breakout aggregations specified in the card
+  definitions then removing most of the metric fields that aren't relevant to cards."
+  [source
+   {:keys [grounded-dimensions metric-name] :as grounded-metric}
+   {:keys [dimensions visualization] :as card}]
+  ;; This updates the query to contain the specializations contained in the card template (basically the aggregate definitions)
   (let [dims (merge-with into grounded-dimensions dimensions)]
     (-> (into card grounded-metric)
         (update :metric-definition add-breakouts (vals dims))
-        (add-dataset-query context)
+        (add-dataset-query source)
+        ;; This cleans up the metric datastructure and primarily leaves just the card elements.
         (assoc
           :name (format "%s by %s" metric-name (items->str (map :name (vals grounded-dimensions))))
           :id (gensym)
@@ -528,15 +521,24 @@
                 :title))))
 
 (defn ground-metric->cards
-  [context affinity-set->cards {:keys [affinity-set grounded-dimensions] :as grounded-metric}]
+  "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
+  the affinity-set->cards map."
+  [source affinity-set->cards {:keys [affinity-set] :as grounded-metric}]
   (->> affinity-set
        affinity-set->cards
-       (map (partial ground-metric->card context grounded-metric))))
+       (map (partial ground-metric->card source grounded-metric))))
 
-(defn ground-metrics->cards [context affinity-set->cards ground-metrics]
-  (mapcat (partial ground-metric->cards context affinity-set->cards) ground-metrics))
+(defn ground-metrics->cards
+  "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
+  templates. This pairing is expanded to create a card seq."
+  [source affinity-set->cards ground-metrics]
+  (mapcat (partial ground-metric->cards source affinity-set->cards) ground-metrics))
 
-(defn make-affinity-set->cards [ground-dimensions template-cards affinities]
+(defn make-affinity-set->cards
+  "Construct a map of affinity sets to card templates. The affinitie sets are a set of semantic types and the card
+  templates are as they are in the yaml templates, but with the `:dimensions` updated from string dimension keys to
+  semantic type keys."
+  [ground-dimensions template-cards affinities]
   (let [card-name->cards (->> template-cards
                               (map
                                 (comp
@@ -562,7 +564,9 @@
           distinct
           vec)))))
 
-(defn card->dashcard [{:keys [width height] :as card}]
+(defn card->dashcard
+  "Convert a card to a dashboard card."
+  [{:keys [width height] :as card}]
   {:id                     (gensym)
    :size_x                 width
    :size_y                 height
@@ -570,7 +574,9 @@
    :card                   (dissoc card :width :height)
    :visualization_settings {}})
 
-(defn do-layout [dashcards]
+(defn make-layout
+  "Assign `:row` and `:col` values to the provied seq of dashcards."
+  [dashcards]
   (loop [[{:keys [size_x size_y] :as dashcard} & dashcards] dashcards
          [xmin ymin xmax ymax] [0 0 0 0]
          final-cards []]
@@ -584,59 +590,42 @@
                (conj final-cards dashcard)))
       final-cards)))
 
-(defn create-dashboard [{:keys [dashboard-name]} cards]
-  {:description        (format "An exploration of your metric %s" dashboard-name)
-   :name               (format "A look at %s" dashboard-name)
+(defn dashboard-ify
+  "Create a dashboard from the given params and cards."
+  [{:keys [dashboard-template-name]} cards]
+  {:description        (format "An exploration of your metric %s" dashboard-template-name)
+   :name               (format "A look at %s" dashboard-template-name)
    ;:creator_id         1
-   :transient_name     (format "Here's the %s dashboard" dashboard-name)
+   :transient_name     (format "Here's the %s dashboard" dashboard-template-name)
    :param_fields       {}
    :auto_apply_filters true
    :ordered_cards      cards})
 
-;; TODO entity needs sourcing -- what if it isn't a table that has id and db_id?
 (comment
-  ;;This only works if you've required magic
-  (defn generate-dashboard
-    ""
-    [entity {template-dimensions :dimensions
-             template-metrics    :metrics
-             template-cards      :cards
-             :as                 template}]
-    (let [{:keys [source] :as base-context} (#'magic/make-base-context (magic/->root entity))
-          ground-dimensions   (find-dimensions base-context template-dimensions)
-          affinities          (#'magic/dash-template->affinities template ground-dimensions)
-          affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
-          metric-templates    (normalize-metrics template-metrics)
-          grounded-metrics    (concat
-                                (grounded-metrics metric-templates ground-dimensions)
-                                (linked-metrics entity))]
-      (->> grounded-metrics
-           (make-combinations ground-dimensions (map :affinity-set affinities))
-           (ground-metrics->cards source affinity-set->cards)
-           (map card->dashcard)
-           do-layout
-           (create-dashboard {:dashboard-name "FOO"})))))
+  (let [entity       (t2/select-one :model/Table :name "ACCOUNTS")
+        base-context (-> entity
+                         magic/->root
+                         (#'magic/make-base-context))
+        {template-dimensions :dimensions} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
+    (find-dimensions base-context template-dimensions))
 
-(comment
-  (->> (generate-dashboard
-         (t2/select-one :model/Table :name "ACCOUNTS")
-         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-       :ordered_cards
-       (map (juxt :col :row :size_x :size_y)))
+  (require '[metabase.automagic-dashboards.core :as magic])
 
-  (let [entity (t2/select-one :model/Table :name "ACCOUNTS")
+  (let [{{:keys [source linked-metrics]} :root
+         :as                             base-context} (-> (t2/select-one :model/Table :name "ACCOUNTS")
+                                                           magic/->root
+                                                           (#'magic/make-base-context))
         {template-dimensions :dimensions
          template-metrics    :metrics
          template-cards      :cards
          :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
-    (let [{:keys [source] :as base-context} (#'magic/make-base-context (magic/->root entity))
-          ground-dimensions   (find-dimensions base-context template-dimensions)
+    (let [ground-dimensions   (find-dimensions base-context template-dimensions)
           affinities          (#'magic/dash-template->affinities template ground-dimensions)
           affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
           metric-templates    (normalize-metrics template-metrics)
           grounded-metrics    (concat
                                 (grounded-metrics metric-templates ground-dimensions)
-                                (linked-metrics entity))
+                                linked-metrics)
           dashcards           (->> grounded-metrics
                                    (make-combinations ground-dimensions (map :affinity-set affinities))
                                    (ground-metrics->cards source affinity-set->cards)
