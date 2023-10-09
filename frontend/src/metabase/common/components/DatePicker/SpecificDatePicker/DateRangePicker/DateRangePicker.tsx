@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 import { Box, Button, DatePicker, Divider, Group } from "metabase/ui";
+import type { DatesRangeValue } from "metabase/ui";
 import type { SpecificDatePickerValue } from "../../types";
 
 interface DateRangePickerProps {
@@ -16,13 +17,15 @@ export function DateRangePicker({
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
-  const [startDate, setStartDate] = useState<Date | null>(value.values[0]);
-  const [endDate, setEndDate] = useState<Date | null>(value.values[1]);
+  const [dateRange, setDateRange] = useState<DatesRangeValue>([
+    value.values[0],
+    value.values[1],
+  ]);
+  const [startDate, endDate] = dateRange;
   const isValid = startDate != null && endDate != null;
 
-  const handleChange = ([startDate, endDate]: [Date | null, Date | null]) => {
-    setStartDate(startDate);
-    setEndDate(endDate);
+  const handleChange = ([startDate, endDate]: DatesRangeValue) => {
+    setDateRange([startDate, endDate]);
     if (startDate != null && endDate != null) {
       onChange({ ...value, values: [startDate, endDate] });
     }
@@ -33,7 +36,8 @@ export function DateRangePicker({
       <Box p="md">
         <DatePicker
           type="range"
-          value={[startDate, endDate]}
+          value={dateRange}
+          allowSingleDateInRange
           onChange={handleChange}
         />
       </Box>

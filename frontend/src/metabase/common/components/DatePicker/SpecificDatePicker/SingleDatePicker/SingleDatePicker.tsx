@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 import { Box, Button, DatePicker, Divider, Group } from "metabase/ui";
+import type { DateValue } from "metabase/ui";
 import type { SpecificDatePickerValue } from "../../types";
 
 interface SingleDatePickerProps {
@@ -16,10 +17,10 @@ export function SingleDatePicker({
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
-  const [date, setDate] = useState<Date | null>(value.values[0]);
+  const [date, setDate] = useState<DateValue>(value.values[0]);
   const isValid = date != null;
 
-  const handleChange = (date: Date | null) => {
+  const handleChange = (date: DateValue) => {
     setDate(date);
     if (date) {
       onChange({ ...value, values: [date] });
