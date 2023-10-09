@@ -13,7 +13,7 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
-  getisNavigatingBackToDashboard,
+  getIsNavigatingBackToDashboard,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 
