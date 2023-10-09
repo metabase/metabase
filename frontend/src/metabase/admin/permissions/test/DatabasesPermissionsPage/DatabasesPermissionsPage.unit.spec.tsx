@@ -2,9 +2,9 @@ import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
   screen,
   fireEvent,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -57,9 +57,7 @@ const setup = async () => {
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 
   return { mockEventListener };
 };

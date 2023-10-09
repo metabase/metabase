@@ -14,7 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -104,13 +104,13 @@ describe("useEntityListQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should initially load data only once the reload flag in a nested component tree", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe("useEntityListQuery", () => {
   it("should not reload data when re-rendered", async () => {
     const { rerender } = setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     rerender(<TestComponent />);
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
@@ -133,10 +133,10 @@ describe("useEntityListQuery", () => {
   it("should reload data only for calls with the reload flag when re-mounted", async () => {
     const { rerender } = setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     rerender(<div />);
     rerender(<TestComponent />);
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("useEntityListQuery", () => {
   it("should reload data when the reload flag is off and it is explicitly invalidated", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     userEvent.click(screen.getByText("Invalidate databases"));
 
     await waitFor(() => {
@@ -159,7 +159,7 @@ describe("useEntityListQuery", () => {
   it("should reload data when the reload flag is on and it is explicitly invalidated", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     userEvent.click(screen.getByText("Invalidate tables"));
 
     await waitFor(() => {

@@ -1,6 +1,11 @@
 import type * as React from "react";
 import userEvent from "@testing-library/user-event";
-import { screen, waitFor, renderWithProviders } from "__support__/ui";
+import {
+  screen,
+  waitFor,
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 
 import {
   createMockDashboard,
@@ -64,15 +69,10 @@ const setup = (
 
 const navigateToActionCreatorModal = async () => {
   userEvent.click(screen.getByText("Pick an action"));
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
   userEvent.click(screen.getByText(collectionItem.name));
   userEvent.click(screen.getByText("Create new action"));
-
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 };
 
 describe("Dashboard > ActionSidebar", () => {

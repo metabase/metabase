@@ -139,7 +139,7 @@ describe("InlineCategoryPicker", () => {
         dimension={emptyCategoryField.dimension()}
       />,
     );
-    screen.getByTestId("loading-spinner");
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
   });
 

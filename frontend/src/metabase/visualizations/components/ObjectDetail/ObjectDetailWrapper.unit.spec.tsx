@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import type { ObjectDetailProps } from "metabase/visualizations/components/ObjectDetail/types";
@@ -11,7 +11,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { createMockCard } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 
 const DATABASE_ID = 1;
@@ -69,9 +69,7 @@ async function setup(options?: Partial<ObjectDetailProps>) {
     { storeInitialState: state },
   );
 
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+  await waitForLoaderToBeRemoved();
 }
 
 describe("Object Detail Wrapper", () => {

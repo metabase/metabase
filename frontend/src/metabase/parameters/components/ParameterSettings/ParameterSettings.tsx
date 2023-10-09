@@ -1,6 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
-import InputBlurChange from "metabase/components/InputBlurChange";
 import Radio from "metabase/core/components/Radio";
 import type {
   Parameter,
@@ -8,6 +7,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { TextInput } from "metabase/ui";
 import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
@@ -46,11 +46,30 @@ const ParameterSettings = ({
   onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const handleNameChange = useCallback(
-    (event: { target: HTMLInputElement }) => {
-      onChangeName(event.target.value);
+  const [internalValue, setInternalValue] = useState(parameter.name);
+
+  useLayoutEffect(() => {
+    setInternalValue(parameter.name);
+  }, [parameter.name]);
+
+  const handleLabelChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInternalValue(event.target.value);
     },
-    [onChangeName],
+    [],
+  );
+
+  const labelError = internalValue ? null : t`Required`;
+
+  const handleLabelBlur = useCallback(
+    (event: { target: HTMLInputElement }) => {
+      if (labelError) {
+        setInternalValue(parameter.name);
+      } else {
+        onChangeName(event.target.value);
+      }
+    },
+    [onChangeName, parameter.name, labelError],
   );
 
   const handleSourceSettingsChange = useCallback(
@@ -65,9 +84,12 @@ const ParameterSettings = ({
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <InputBlurChange
-          value={parameter.name}
-          onBlurChange={handleNameChange}
+        <TextInput
+          onChange={handleLabelChange}
+          value={internalValue}
+          onBlur={handleLabelBlur}
+          error={labelError}
+          aria-label={t`Label`}
         />
       </SettingSection>
       {canUseCustomSource(parameter) && (

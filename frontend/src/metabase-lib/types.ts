@@ -262,7 +262,8 @@ export type DrillThruType =
   | "drill-thru/summarize-column"
   | "drill-thru/summarize-column-by-time"
   | "drill-thru/column-filter"
-  | "drill-thru/underlying-records";
+  | "drill-thru/underlying-records"
+  | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
@@ -280,7 +281,8 @@ export type PKDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pk">;
 export type ZoomDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/zoom">;
 export type FKDetailsDrillThruInfo =
   ObjectDetailsDrillThruInfo<"drill-thru/fk-details">;
-export type PivotDrillThruInfo = ObjectDetailsDrillThruInfo<"drill-thru/pivot">;
+
+export type PivotDrillThruInfo = BaseDrillThruInfo<"drill-thru/pivot">;
 
 export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
 export type DistributionDrillThruInfo =
@@ -290,9 +292,14 @@ export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
   directions: Array<"asc" | "desc">;
 };
 
+export type SummarizeColumnDrillAggregationOperator =
+  | "sum"
+  | "avg"
+  | "distinct";
+
 export type SummarizeColumnDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column"> & {
-    aggregations: Array<"sum" | "avg" | "distinct">;
+    aggregations: Array<SummarizeColumnDrillAggregationOperator>;
   };
 export type SummarizeColumnByTimeDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
@@ -308,6 +315,11 @@ export type UnderlyingRecordsDrillThruInfo =
     tableName: string;
   };
 
+export type ZoomTimeseriesDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/zoom-in.timeseries"> & {
+    displayName?: string;
+  };
+
 export type DrillThruDisplayInfo =
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
@@ -320,7 +332,8 @@ export type DrillThruDisplayInfo =
   | SummarizeColumnDrillThruInfo
   | SummarizeColumnByTimeDrillThruInfo
   | ColumnFilterDrillThruInfo
-  | UnderlyingRecordsDrillThruInfo;
+  | UnderlyingRecordsDrillThruInfo
+  | ZoomTimeseriesDrillThruInfo;
 
 export interface Dimension {
   column: DatasetColumn;

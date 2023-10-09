@@ -1,6 +1,11 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { waitFor, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  within,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -89,9 +94,7 @@ describe("SearchBar", () => {
       setup({ searchResultItems: [] });
       const searchBar = getSearchBar();
       userEvent.type(searchBar, "XXXXX");
-      await waitFor(() =>
-        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-      );
+      await waitForLoaderToBeRemoved();
 
       expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
     });
