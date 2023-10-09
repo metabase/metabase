@@ -84,12 +84,7 @@ describe("MetricApp", () => {
     history.goBack();
 
     expect(
-      screen.queryByText("Changes were not saved"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
+      screen.queryByTestId("leave-confirmation-modal"),
     ).not.toBeInTheDocument();
   });
 
@@ -102,12 +97,7 @@ describe("MetricApp", () => {
 
     history.goBack();
 
-    expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("leave-confirmation-modal")).toBeInTheDocument();
   });
 
   it("does not show custom warning modal when saving changes", async () => {
@@ -146,12 +136,7 @@ describe("MetricApp", () => {
     });
 
     expect(
-      screen.queryByText("Changes were not saved"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Navigating away from here will cause you to lose any changes you have made.",
-      ),
+      screen.queryByTestId("leave-confirmation-modal"),
     ).not.toBeInTheDocument();
   });
 });
