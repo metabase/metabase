@@ -11,7 +11,7 @@
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.mbql.util :as mbql.u]
-    [metabase.models.field :refer [Field]]
+    [metabase.models.field :as field :refer [Field]]
     [metabase.models.metric :refer [Metric]]
     [metabase.models.table :refer [Table]]
     [metabase.models.interface :as mi]

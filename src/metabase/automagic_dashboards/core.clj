@@ -934,7 +934,7 @@
 (defn- add-metric-self-reference [{{:keys [entity]} :root} metrics]
   (cond-> metrics
     (= Metric (mi/model entity))
-    (assoc "this" {:metric (->reference :mbql entity)
+    (assoc "this" {:metric (foo/->reference :mbql entity)
                    :name   (:name entity)
                    :score  dashboard-templates/max-score})))
 
