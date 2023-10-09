@@ -154,12 +154,7 @@ describe("DatabaseEditApp", () => {
       history.goBack();
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -175,12 +170,7 @@ describe("DatabaseEditApp", () => {
 
       history.goBack();
 
-      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal after creating new database connection", async () => {
@@ -211,12 +201,7 @@ describe("DatabaseEditApp", () => {
       expect(history.getCurrentLocation().search).toEqual("?created=true");
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });
