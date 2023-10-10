@@ -13,7 +13,6 @@ function fillValue(input: HTMLElement, value: string) {
   if (value.length) {
     userEvent.type(input, value);
   }
-  input.blur();
 }
 
 describe("ParameterSidebar", () => {
@@ -41,10 +40,18 @@ describe("ParameterSidebar", () => {
     const labelInput = screen.getByLabelText("Label");
     expect(labelInput).toHaveValue("foo");
     fillValue(labelInput, "");
+    // expect there to be an error message with the text "Required"
+    expect(screen.getByText(/required/i)).toBeInTheDocument();
+    labelInput.blur();
+    // when the input blurs, the value should have reverted to the original
     expect(onChangeName).not.toHaveBeenCalled();
     expect(labelInput).toHaveValue("foo");
+    // the error message should disappear
+    expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
 
+    // sanity check with a non-blank value
     fillValue(labelInput, "bar");
+    labelInput.blur();
     expect(onChangeName).toHaveBeenCalledWith("bar");
     expect(labelInput).toHaveValue("bar");
   });
