@@ -285,6 +285,16 @@
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
 
+(deftest query-model-set-test
+  (let [search-term "query-model-set"]
+    (with-search-items-in-root-collection search-term
+      (testing "should return a list of models that search result will return"
+        (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
+      (testing "should not return models when there is no search result"
+        (is (= #{}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q "noresults"))))))))
+
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
@@ -755,3 +765,55 @@
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
+
+(deftest available-models-should-be-independent-of-models-param-test
+  (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
+    (let [search-term "Available models"]
+      (with-search-items-in-root-collection search-term
+        (testing "GET /api/search"
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card")
+                     :available_models
+                     set)))
+
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard")
+                     :available_models
+                     set))))
+
+        (testing "GET /api/search/models"
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card"))))
+
+          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
+                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+
+(deftest models-table-db-id-test
+  (testing "search/models request includes `table-db-id` param"
+    (with-search-items-in-root-collection "Available models"
+      (testing "`table-db-id` is invalid"
+        (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 "search/models" :table-db-id -1))))
+      (testing "`table-db-id` is for a non-existent database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
+      (testing "`table-db-id` is for an existing database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
+
+(deftest models-archived-string-test
+  (testing "search/models request includes `archived-string` param"
+    (with-search-items-in-root-collection "Available models"
+      (mt/with-temp [Card        {model-id :id} action-model-params
+                     Action      _              (archived {:name     "test action"
+                                                           :type     :query
+                                                           :model_id model-id})]
+      (testing "`archived-string` is invalid"
+        (is (=? {:message "Invalid input: [\"value must be a valid boolean string ('true' or 'false').\"]"}
+                (mt/user-http-request :crowberto :get 500 "search/models" :archived-string 1))))
+      (testing "`archived-string` is 'false'"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "false")))))
+      (testing "`archived-string` is 'true'"
+        (is (= #{"action"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "true")))))))))
