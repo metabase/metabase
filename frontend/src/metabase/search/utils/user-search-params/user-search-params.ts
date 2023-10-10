@@ -14,6 +14,5 @@ export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   return numValue;
 };
 
-export const convertUserIdToString = (
-  value: UserId | null,
-): SearchQueryParamValue => (Number.isInteger(value) ? String(value) : null);
+export const stringifyUserId = (value: UserId | null): SearchQueryParamValue =>
+  Number.isInteger(value) ? String(value) : null;

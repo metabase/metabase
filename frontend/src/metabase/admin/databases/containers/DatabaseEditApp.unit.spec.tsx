@@ -1,26 +1,32 @@
 import { IndexRoute, Route } from "react-router";
-
 import userEvent from "@testing-library/user-event";
+
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
   waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
+import type { Engine } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockEngineSource,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/core/utils/types";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
-const ENGINES_MOCK = {
+const ENGINES_MOCK: Record<string, Engine> = {
   H2: {
     "details-fields": [
       { "display-name": "Connection String", name: "db", required: true },
@@ -28,6 +34,7 @@ const ENGINES_MOCK = {
     ],
     "driver-name": "H2",
     "superseded-by": null,
+    source: createMockEngineSource(),
   },
   sqlite: {
     "details-fields": [
@@ -36,11 +43,26 @@ const ENGINES_MOCK = {
     ],
     "driver-name": "SQLite",
     "superseded-by": null,
+    source: createMockEngineSource(),
   },
 };
 
-async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
+const MockComponent = () => <div />;
+
+interface SetupOpts {
+  cachingEnabled?: boolean;
+  databaseIdParam?: string;
+  initialRoute?: string;
+}
+
+async function setup({
+  cachingEnabled = false,
+  databaseIdParam = "",
+  initialRoute = `/${databaseIdParam}`,
+}: SetupOpts = {}) {
   const mockEventListener = jest.spyOn(window, "addEventListener");
+
+  setupDatabasesEndpoints([]);
 
   const settings = mockSettings({
     engines: ENGINES_MOCK,
@@ -50,23 +72,28 @@ async function setup({ cachingEnabled = false, databaseIdParam = "" } = {}) {
     "enable-query-caching": cachingEnabled,
   });
 
-  renderWithProviders(
+  const { history } = renderWithProviders(
     <Route path="/">
+      <Route path="/home" component={MockComponent} />
+      <Route path="/admin/databases" component={MockComponent} />
       <IndexRoute component={DatabaseEditApp} />
       <Route path=":databaseId" component={DatabaseEditApp} />
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/${databaseIdParam}`,
+      initialRoute,
       storeInitialState: {
         settings,
       },
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 
-  return { mockEventListener };
+  return {
+    history: checkNotNull(history),
+    mockEventListener,
+  };
 }
 
 describe("DatabaseEditApp", () => {
@@ -95,9 +122,9 @@ describe("DatabaseEditApp", () => {
     it("should trigger beforeunload event when database connection is edited", async () => {
       const { mockEventListener } = await setup();
 
-      const databaseForm = await screen.findByLabelText("Display name");
+      const displayNameInput = await screen.findByLabelText("Display name");
 
-      userEvent.type(databaseForm, "Test database");
+      userEvent.type(displayNameInput, "Test database");
       const mockEvent = await waitFor(() => {
         return callMockEvent(mockEventListener, "beforeunload");
       });
@@ -111,6 +138,71 @@ describe("DatabaseEditApp", () => {
 
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
+    });
+
+    it("does not show custom warning modal when leaving with no changes via SPA navigation", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      await waitForLoaderToBeRemoved();
+
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "ab");
+      userEvent.type(displayNameInput, "{backspace}{backspace}");
+
+      history.goBack();
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      await waitForLoaderToBeRemoved();
+
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "Test database");
+
+      history.goBack();
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal after creating new database connection", async () => {
+      const { history } = await setup({ initialRoute: "/home" });
+
+      history.push("/");
+
+      await waitForLoaderToBeRemoved();
+
+      const displayNameInput = await screen.findByLabelText("Display name");
+      userEvent.type(displayNameInput, "Test database");
+      const connectionStringInput = await screen.findByLabelText(
+        "Connection String",
+      );
+      userEvent.type(
+        connectionStringInput,
+        "file:/sample-database.db;USER=GUEST;PASSWORD=guest",
+      );
+
+      userEvent.click(await screen.findByText("Save"));
+
+      await waitFor(() => {
+        expect(history.getCurrentLocation().pathname).toEqual(
+          "/admin/databases",
+        );
+      });
+
+      expect(history.getCurrentLocation().search).toEqual("?created=true");
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
     });
   });
 

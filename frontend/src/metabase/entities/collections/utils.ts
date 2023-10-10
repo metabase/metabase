@@ -20,7 +20,7 @@ export function normalizedCollection(collection: Collection) {
 }
 
 export function getCollectionIcon(
-  collection: Collection,
+  collection: Partial<Collection>,
   { tooltip = "default" } = {},
 ): {
   name: IconName;

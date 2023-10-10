@@ -102,10 +102,50 @@ describe("dashboard reducers", () => {
         ),
       ).toEqual({ ...initState, isEditing: null });
     });
+
+    it("should return unchanged state if `clearCache: false` passed", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            draftParameterValues: {
+              "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+            },
+          },
+          {
+            type: INITIALIZE,
+            payload: {
+              clearCache: false,
+            },
+          },
+        ),
+      ).toEqual({
+        ...initState,
+        draftParameterValues: {
+          "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+        },
+      });
+    });
+
+    it("should reset state if `clearCache`: false` is not passed", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            draftParameterValues: {
+              "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+            },
+          },
+          {
+            type: INITIALIZE,
+          },
+        ),
+      ).toEqual(initState);
+    });
   });
 
   describe("SET_EDITING_DASHBOARD", () => {
-    it("should clear sideabr state when entering edit mode", () => {
+    it("should clear sidebar state when entering edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -118,7 +158,7 @@ describe("dashboard reducers", () => {
       ).toEqual({ ...state, isEditing: true, sidebar: { props: {} } });
     });
 
-    it("should clear sideabr state when leaving edit mode", () => {
+    it("should clear sidebar state when leaving edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },

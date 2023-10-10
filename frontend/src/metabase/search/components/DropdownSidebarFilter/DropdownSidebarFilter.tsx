@@ -7,7 +7,7 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Group, Text, Box, Button } from "metabase/ui";
+import { Text, Box, Center, Button } from "metabase/ui";
 import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -16,8 +16,9 @@ import { getIsNavbarOpen } from "metabase/selectors/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { isNotNull } from "metabase/core/utils/types";
 import {
-  DropdownDisplayContent,
+  GroupOverflowHidden,
   DropdownFieldSet,
+  DropdownLabelIcon,
   SearchEventSandbox,
 } from "./DropdownSidebarFilter.styled";
 
@@ -107,24 +108,39 @@ export const DropdownSidebarFilter = ({
         legend={fieldHasValue ? label() : null}
         fieldHasValueOrFocus={fieldHasValue}
       >
-        <DropdownDisplayContent position="apart" noWrap w="100%">
+        <GroupOverflowHidden position="apart" noWrap w="100%">
           {fieldHasValue ? (
             <DisplayComponent value={value} />
           ) : (
+<<<<<<< HEAD
             <Group noWrap>
               {iconName && <Icon name={iconName} />}
               <Text weight={700}>{label()}</Text>
             </Group>
+=======
+            <GroupOverflowHidden noWrap>
+              {iconName && <DropdownLabelIcon size={16} name={iconName} />}
+              <Text weight={700} truncate>
+                {label}
+              </Text>
+            </GroupOverflowHidden>
+>>>>>>> global-search-more-filter-options
           )}
           <Button
             data-testid="sidebar-filter-dropdown-button"
             compact
+            mr="0.25rem"
+            size="xs"
             c="inherit"
             variant="subtle"
             onClick={onClearFilter}
-            leftIcon={<Icon name={getDropdownIcon()} />}
+            leftIcon={
+              <Center m="-0.25rem">
+                <Icon size={16} name={getDropdownIcon()} />
+              </Center>
+            }
           />
-        </DropdownDisplayContent>
+        </GroupOverflowHidden>
       </DropdownFieldSet>
 
       <Popover

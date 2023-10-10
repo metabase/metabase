@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
 
 (deftest ^:parallel basic-filter-parts-test
@@ -55,18 +56,15 @@
                :operator :=
                :args
                [{:lib/type :metadata/column
-                 :lib/source :source/joins
                  :lib/source-uuid string?
                  :effective-type :type/Integer
                  :metabase.lib.field/binning {:strategy :default}
                  :operators (comp vector? not-empty)
                  :active true
                  :id (:id checkins-user-id-col)
-                 :source-alias "Checkins"
-                 :lib/desired-column-alias "Checkins__USER_ID"
                  :display-name "User ID: Auto binned"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc user-id-col :display-name "ID: Auto binned")]}
+                (assoc (meta/field-metadata :users :id) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
     (testing "bucketing"
@@ -74,17 +72,14 @@
                :operator :=
                :args
                [{:lib/type :metadata/column
-                 :lib/source :source/joins
                  :lib/source-uuid string?
                  :effective-type :type/Date
                  :operators (comp vector? not-empty)
                  :id (:id checkins-date-col)
-                 :source-alias "Checkins"
-                 :lib/desired-column-alias "Checkins__DATE"
                  :metabase.lib.field/temporal-unit :day
                  :display-name "Date: Day"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc user-last-login-col :display-name "Last Login: Day")]}
+                (assoc (meta/field-metadata :users :last-login) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))
 
@@ -110,3 +105,13 @@
           (lib/expression-clause := [(meta/field-metadata :products :id) 1] {})))
   (is (=? [:= {:lib/uuid string?} [:+ {} [:field {:lib/uuid string?} (meta/id :products :id)] 2] 1]
           (lib/expression-clause := [(lib/expression-clause :+ [(meta/field-metadata :products :id) 2] {}) 1] {}))))
+
+(deftest ^:parallel invisible-expression-parts-test
+  (is (=? {:lib/type :mbql/expression-parts
+           :operator :=
+           :args [{:lib/type :metadata/column
+                   :name "ID"
+                   :display-name "ID"}
+                  1]}
+          (lib/expression-parts lib.tu/venues-query -1 (lib/= (lib/ref (meta/field-metadata :products :id))
+                                                              1)))))

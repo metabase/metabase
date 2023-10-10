@@ -14,7 +14,7 @@ import { isWithinIframe, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
+import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 
 import type {
   Dashboard,

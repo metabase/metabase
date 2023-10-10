@@ -41,7 +41,6 @@ describe("scenarios > collection defaults", () => {
       _.times(COLLECTIONS_COUNT, index => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
-          color: "#509EE3",
           parent_id: null,
         });
       });
@@ -137,7 +136,6 @@ describe("scenarios > collection defaults", () => {
           cy.request("POST", "/api/collection", {
             name: collection,
             parent_id: THIRD_COLLECTION_ID + index,
-            color: "#509ee3",
           });
         },
       );
@@ -310,13 +308,11 @@ describe("scenarios > collection defaults", () => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
           name: "Parent",
-          color: "#509EE3",
           parent_id: null,
         }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
           // Create Child collection within Parent collection
           cy.request("POST", "/api/collection", {
             name: "Child",
-            color: "#509EE3",
             parent_id: PARENT_COLLECTION_ID,
           }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
             // Fetch collection permission graph

@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCardsEndpoints,
@@ -76,6 +76,8 @@ async function setup({
     },
   );
 
+  await waitForLoaderToBeRemoved();
+
   return { history: checkNotNull(history) };
 }
 
@@ -97,10 +99,6 @@ describe("actions > containers > ActionCreatorModal", () => {
     const initialRoute = `/model/${MODEL.id}/detail/actions/${ACTION_NOT_FOUND_ID}`;
     const { history } = await setup({ initialRoute, action: null });
 
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
-
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
     expect(history.getCurrentLocation().pathname).toBe(
@@ -112,10 +110,6 @@ describe("actions > containers > ActionCreatorModal", () => {
     const action = { ...ACTION, archived: true };
     const initialRoute = `/model/${MODEL.id}/detail/actions/${action.id}`;
     const { history } = await setup({ initialRoute, action });
-
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
 
     expect(await screen.findByTestId("mock-model-detail")).toBeInTheDocument();
     expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
@@ -139,12 +133,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       history.goBack();
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -164,12 +153,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       history.goBack();
 
-      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when saving changes", async () => {
@@ -220,12 +204,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });
@@ -252,12 +231,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       history.goBack();
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -278,12 +252,7 @@ describe("actions > containers > ActionCreatorModal", () => {
 
       history.goBack();
 
-      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
 
     it("does not show custom warning modal when saving changes", async () => {
@@ -318,12 +287,7 @@ describe("actions > containers > ActionCreatorModal", () => {
       });
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
   });

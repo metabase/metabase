@@ -157,6 +157,11 @@
   [relative-suffix]
   (= "~" relative-suffix))
 
+(defn- with-temporal-unit-if-field
+  [clause unit]
+  (cond-> clause
+    (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
+
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
     :range  (fn [_ dt]
@@ -165,7 +170,7 @@
                  :end   dt-res
                  :unit  :day}))
     :filter (fn [_ field-clause]
-              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime :current]])}
+              [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime :current]])}
 
    {:parser #(= % "yesterday")
     :range  (fn [_ dt]
@@ -174,7 +179,7 @@
                  :end   (t/minus dt-res (t/days 1))
                  :unit  :day}))
     :filter (fn [_ field-clause]
-              [:= (mbql.u/with-temporal-unit field-clause :day) [:relative-datetime -1 :day]])}
+              [:= (with-temporal-unit-if-field field-clause :day) [:relative-datetime -1 :day]])}
 
    ;; Adding a tilde (~) at the end of a past<n><unit>s filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
@@ -238,7 +243,7 @@
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field-clause]
-  [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
+  [:between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
 
 (def ^:private short-day->day
   {"Mon" :monday
@@ -311,25 +316,25 @@
               {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
               (let [iso8601date (->iso-8601-date date)]
-                [:= (mbql.u/with-temporal-unit field-clause :day) iso8601date]))}
+                [:= (with-temporal-unit-if-field field-clause :day) iso8601date]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
               {:start date-1 :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
-              [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
+              [:between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
               {:end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              [:< (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+              [:< (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+              [:> (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date)])}
    ;; exclusions
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
@@ -337,7 +342,7 @@
                     exclusions (map (partial excluded-datetime unit (t/local-date))
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
-                  (into [:!= (mbql.u/with-temporal-unit field-clause (excluded-temporal-unit unit))] exclusions))))}])
+                  (into [:!= (with-temporal-unit-if-field field-clause (excluded-temporal-unit unit))] exclusions))))}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))

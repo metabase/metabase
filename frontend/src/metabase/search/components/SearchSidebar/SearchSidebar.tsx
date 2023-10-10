@@ -12,7 +12,11 @@ import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
+<<<<<<< HEAD
 import { NativeQueryFilter } from "../filters/NativeQueryFilter";
+=======
+import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
+>>>>>>> global-search-more-filter-options
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
@@ -23,6 +27,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
+    [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
   };
@@ -71,6 +76,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     <Stack>
       {getFilter(SearchFilterKeys.Type)}
       {getFilter(SearchFilterKeys.CreatedBy)}
+      {getFilter(SearchFilterKeys.LastEditedBy)}
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
     </Stack>

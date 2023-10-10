@@ -27,6 +27,9 @@ export const SearchUserPicker = ({
     return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
   });
 
+  const isSelected = (user: UserListResult) =>
+    selectedUserId ? isEqual(selectedUserId, user.id) : false;
+
   const onUserSelect = (user: UserListResult) => {
     if (selectedUserId && isEqual(selectedUserId, user.id)) {
       setSelectedUserId(null);
@@ -39,7 +42,7 @@ export const SearchUserPicker = ({
     return userList.map(user => (
       <UserListElement
         key={user.id}
-        isSelected={selectedUserId ? isEqual(selectedUserId, user.id) : false}
+        isSelected={isSelected(user)}
         onClick={onUserSelect}
         value={user}
       />
