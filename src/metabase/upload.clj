@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]

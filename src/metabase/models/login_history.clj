@@ -1,6 +1,6 @@
 (ns metabase.models.login-history
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.email.messages :as messages]
    [metabase.models.setting :refer [defsetting]]
    [metabase.server.request.util :as request.u]
