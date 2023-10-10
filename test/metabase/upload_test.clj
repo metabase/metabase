@@ -20,15 +20,15 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type      :metabase.upload/boolean)
-(def ^:private int-type       :metabase.upload/int)
-(def ^:private float-type     :metabase.upload/float)
-(def ^:private vchar-type     :metabase.upload/varchar_255)
-(def ^:private date-type      :metabase.upload/date)
-(def ^:private datetime-type  :metabase.upload/datetime)
-(def ^:private text-type      :metabase.upload/text)
-(def ^:private int-pk-type    :metabase.upload/int-pk)
-(def ^:private ai-int-pk-type :metabase.upload/auto-incrementing-int-pk)
+(def ^:private bool-type      ::upload/boolean)
+(def ^:private int-type       ::upload/int)
+(def ^:private float-type     ::upload/float)
+(def ^:private vchar-type     ::upload/varchar_255)
+(def ^:private date-type      ::upload/date)
+(def ^:private datetime-type  ::upload/datetime)
+(def ^:private text-type      ::upload/text)
+(def ^:private int-pk-type    ::upload/int-pk)
+(def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -484,7 +484,9 @@
            "upload_test"
            (csv-file-with ["id,ship,name,weapon"
                            "1,Serenity,Malcolm Reynolds,Pistol"
-                           "2,Millennium Falcon, Han Solo,Blaster"])))
+                           "2,Millennium Falcon,Han Solo,Blaster"
+                           ;; A huge ID to make extra sure we're using bigints
+                           "9000000000,Razor Crest,Din Djarin,Spear"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
@@ -494,6 +496,7 @@
                      (column-names-for-table table)))
               (is (=? {:name                       #"(?i)id"
                        :semantic_type              :type/PK
+                       :base_type                  :type/BigInteger
                        :database_is_auto_increment false}
                       (t2/select-one Field :database_position 0 :table_id (:id table)))))))))))
 

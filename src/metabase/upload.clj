@@ -51,7 +51,7 @@
    ::float                    ::varchar_255
    ::int                      ::float
    ::int-pk                   ::int
-   ::auto-incrementing-int-pk :int-pk
+   ::auto-incrementing-int-pk ::int-pk
    ::boolean                  ::int
    ::datetime                 ::varchar_255
    ::date                     ::datetime})
@@ -192,9 +192,9 @@
   (if-let [pk-name (first (keep (fn [[name _type :as p]]
                                   (when (is-pk? p) name))
                                 name-type-pairs))]
-    {:extant-columns (assoc (ordered-map/ordered-map name-type-pairs) pk-name ::int-pk)
+    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name ::int-pk)
      :generated-columns (ordered-map/ordered-map)}
-    {:extant-columns (ordered-map/ordered-map name-type-pairs)
+    {:extant-columns    (ordered-map/ordered-map name-type-pairs)
      :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
 
 (defn- rows->schema
