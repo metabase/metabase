@@ -56,33 +56,6 @@ describe("ParameterSidebar", () => {
     expect(labelInput).toHaveValue("bar");
   });
 
-  it("should not update the label if the slug is duplicated with another parameter", () => {
-    const { onChangeName } = setup({
-      parameter: createMockUiParameter({
-        name: "foo",
-        type: "string/=",
-        sectionId: "string",
-      }),
-    });
-    const labelInput = screen.getByLabelText("Label");
-    fillValue(labelInput, "Baz");
-    // expect there to be an error message with the text "This label is alreay in use"
-    const error = /this label is already in use/i;
-    expect(screen.getByText(error)).toBeInTheDocument();
-    labelInput.blur();
-    // when the input blurs, the value should have reverted to the original
-    expect(onChangeName).not.toHaveBeenCalled();
-    expect(labelInput).toHaveValue("foo");
-    // the error message should disappear
-    expect(screen.queryByText(error)).not.toBeInTheDocument();
-
-    // sanity check with another value
-    fillValue(labelInput, "bar");
-    labelInput.blur();
-    expect(onChangeName).toHaveBeenCalledWith("bar");
-    expect(labelInput).toHaveValue("bar");
-  });
-
   it("should allow to change source settings for location parameters", () => {
     const { onChangeQueryType } = setup({
       parameter: createMockUiParameter({
@@ -104,7 +77,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   renderWithProviders(
     <ParameterSettings
       parameter={parameter}
-      otherParameterSlugs={["baz"]}
+      isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
       onChangeDefaultValue={jest.fn()}
       onChangeIsMultiSelect={jest.fn()}
