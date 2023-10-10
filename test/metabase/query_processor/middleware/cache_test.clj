@@ -5,7 +5,7 @@
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.permissions :as perms]
