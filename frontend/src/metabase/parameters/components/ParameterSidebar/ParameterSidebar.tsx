@@ -119,7 +119,7 @@ const ParameterSidebar = ({
 
   const isParameterSlugUsed = useCallback(
     (value: string) =>
-      !!otherParameters.find(parameter => parameter.slug === slugify(value)),
+      otherParameters.some(parameter => parameter.slug === slugify(value)),
     [otherParameters],
   );
 
