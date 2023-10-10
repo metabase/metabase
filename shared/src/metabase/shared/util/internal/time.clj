@@ -2,7 +2,8 @@
   (:require
    [java-time :as t]
    [metabase.public-settings :as public-settings]
-   [metabase.shared.util.internal.time-common :as common])
+   [metabase.shared.util.internal.time-common :as common]
+   [clojure.core.match :as m])
   (:import
    java.util.Locale))
 
@@ -204,13 +205,22 @@
   [before after]
   (.toDays (t/duration before after)))
 
+(defn- matches-time? [input]
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+
+(defn- matches-date? [input]
+  (re-matches #"\d\d\d\d-\d\d-\d\d" input))
+
+(defn- matches-date-time? [input]
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time"
   [input unit]
   (if (string? input)
-    (let [time? (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input)
-          date? (re-matches #"\d\d\d\d-\d\d-\d\d"  input)
+    (let [time? (matches-time? input)
+          date? (matches-date? input)
           t (cond
               time? (t/local-time input)
               date? (t/local-date input)
@@ -231,3 +241,62 @@
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
+
+(defn format-diff
+  "Formats a time difference between two temporal values in the given unit.
+   Drops redundant information."
+  [temporal-value-1 temporal-value-2 unit]
+  (let [default-format #(str (format-unit temporal-value-1 unit)
+                             " – "
+                             (format-unit temporal-value-2 unit))]
+    (cond
+      (or unit (some (complement string?) [temporal-value-1 temporal-value-2]))
+      (default-format)
+
+      (= temporal-value-1 temporal-value-2)
+      (format-unit temporal-value-1 unit)
+
+      (and (matches-time? temporal-value-1)
+           (matches-time? temporal-value-2))
+      (default-format)
+
+      (and (matches-date-time? temporal-value-1)
+           (matches-date-time? temporal-value-2))
+      (let [lhs (t/local-date-time temporal-value-1)
+            rhs (t/local-date-time temporal-value-2)
+            year-matches? (= (t/year lhs) (t/year rhs))
+            month-matches? (= (t/month lhs) (t/month rhs))
+            day-matches? (= (t/day-of-month lhs) (t/day-of-month rhs))
+            hour-matches? (= (t/format "H" lhs) (t/format "H" rhs))
+            [lhs-fmt rhs-fmt] (cond
+                                (and year-matches? month-matches? day-matches? hour-matches?)
+                                ["MMMM d, YYYY, h:mm" "mm a"]
+
+                                (and year-matches? month-matches? day-matches?)
+                                ["MMMM d, YYYY, h:mm a " " h:mm a"]
+
+                                year-matches?
+                                ["MMMM d, h:mm A " " MMMM d, YYYY, h:mm A"])]
+
+        (if lhs-fmt
+          (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
+          (default-format)))
+
+      (and (matches-date? temporal-value-1)
+           (matches-date? temporal-value-2))
+      (let [lhs (t/local-date temporal-value-1)
+            rhs (t/local-date temporal-value-2)
+            year-matches? (= (t/year lhs) (t/year rhs))
+            month-matches? (= (t/month lhs) (t/month rhs))
+            [lhs-fmt rhs-fmt] (cond
+                                (and year-matches? month-matches?)
+                                ["MMMM d" "d, YYYY"]
+
+                                year-matches?
+                                ["MMMM d " " MMMM d, YYYY"])]
+        (if lhs-fmt
+          (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
+          (default-format)))
+
+      :else
+      (default-format))))

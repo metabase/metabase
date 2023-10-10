@@ -20,6 +20,7 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -64,7 +65,11 @@
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name lib.temporal-bucket/describe-temporal-pair
-        numeric? #(lib.util/original-isa? % :type/Number)
+        numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
+                                    (lib.util/clause? %)
+                                    (-> (lib.metadata.calculation/metadata query stage-number %)
+                                        lib.types.isa/id?
+                                        clojure.core/not))
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (mbql.u/match-one expr
       [:= _ (a :guard numeric?) b]
@@ -139,14 +144,13 @@
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
-        ->temporal-name shared.ut/format-unit
+        ->temporal-diff shared.ut/format-diff
         temporal? #(lib.util/original-isa? % :type/Temporal)]
     (mbql.u/match-one expr
       [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
-      (i18n/tru "{0} is {1} – {2}"
+      (i18n/tru "{0} is {1}"
                 (->display-name x)
-                (->temporal-name y nil)
-                (->temporal-name z nil))
+                (->temporal-diff y z nil))
 
       [:between _
        [:+ _ (x :guard temporal?) [:interval _ n unit]]

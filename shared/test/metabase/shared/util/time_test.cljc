@@ -221,6 +221,14 @@
   (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
   (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
-  (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day)))
+  (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
 
-  )
+(deftest format-diff-test
+  (are [exp a b] (= exp (shared.ut/format-diff a b nil))
+    "October 3–5, 2023" "2023-10-03" "2023-10-05"
+    "September 3 – October 5, 2023" "2023-09-03" "2023-10-05"
+    "October 3, 2023, 10:20 AM – 4:30 PM" "2023-10-03T10:20" "2023-10-03T16:30"
+    "October 3, 2023, 10:20–30 AM" "2023-10-03T10:20" "2023-10-03T10:30"
+    "October 3, 2022, 10:20 AM – October 3, 2023, 10:30 AM" "2022-10-03T10:20" "2023-10-03T10:30"
+    ;; I guess?
+    "October 5, 2023" "2023-10-05" "2023-10-05"))

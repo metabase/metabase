@@ -58,3 +58,9 @@
    If unit is nil, formats the full date/time"
   [temporal-value unit]
   (internal/format-unit temporal-value unit))
+
+(defn format-diff
+  "Formats a time difference between two temporal values in the given unit.
+   Drops redundant information."
+  [temporal-value-1 temporal-value-2 unit]
+  (internal/format-diff temporal-value-1 temporal-value-2 unit))
