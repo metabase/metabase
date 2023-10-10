@@ -773,7 +773,7 @@
         card-templates))))
 
 (mu/defn dash-template->affinities :- ads/affinities
-  "Takes a dashbord-template and the ground dimensions and produces a sequence of affinities. An affinity is a map
+  "Takes a dashboard-template and the ground dimensions and produces a sequence of affinities. An affinity is a map
  with a set of semantic/effective types that have an affinity with each other, a name, and an optional score. We mine
  the cards of a dashboard template to find which types have an affinity for each other, but these are easily derivable
  from other sources as well. It requires ground dimensions so we can be concrete on the semantic/effective types which
@@ -983,11 +983,10 @@
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{:keys [source linked-metrics]} :root :as base-context}
+  [{{:keys [linked-metrics] :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
-    template-groups     :groups
     :as                 template}]
   (let [ground-dimensions   (interesting/find-dimensions base-context template-dimensions)
         affinities          (dash-template->affinities template ground-dimensions)
@@ -1000,12 +999,20 @@
                                  (interesting/make-combinations ground-dimensions (map :affinity-set affinities))
                                  (interesting/ground-metrics->cards base-context affinity-set->cards)
                                  (map-indexed (fn [i card]
-                                                (assoc card :position i))))]
-    (populate/create-dashboard {:title          "Fill in template here"
-                                :transient_name "Fill in template here"
-                                :description    "Fill in template here"
-                                :cards          cards
-                                :groups         template-groups} :all)))
+                                                (assoc card :position i))))
+        empty-dashboard (make-dashboard root template)]
+    (populate/create-dashboard
+      (assoc empty-dashboard :cards cards)
+      :all)))
+
+(comment
+  (let [entity (t2/select-one :model/Table :name "ACCOUNTS")
+        context (make-base-context (->root entity))]
+    (generate-dashboard
+      context
+      (dashboard-templates/get-dashboard-template ["table" "GenericTable"])))
+  )
+
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
