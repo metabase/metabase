@@ -69,15 +69,15 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column (cond->> (search.config/searchable-columns-for-model model)
-                    (not search-native-query?)
-                    (remove #{:dataset_query})
+     (for [column           (cond->> (search.config/searchable-columns-for-model model)
+                              (not search-native-query?)
+                              (remove #{:dataset_query})
 
-                    true
-                    (map #(search.config/column-with-model-alias model %)))
-           token (->> (search.util/normalize query)
-                      search.util/tokenize
-                      (map search.util/wildcard-match))]
+                              true
+                              (map #(search.config/column-with-model-alias model %)))
+           wildcarded-token (->> (search.util/normalize query)
+                                 search.util/tokenize
+                                 (map search.util/wildcard-match))]
        (cond
         (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
         [:= 0 1]
@@ -85,14 +85,14 @@
         (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
         [:and
          [:= (search.config/column-with-model-alias model :query_type) "native"]
-         [:like [:lower column] token]]
+         [:like [:lower column] wildcarded-token]]
 
         (and (#{"action"} model)
              (= column (search.config/column-with-model-alias model :dataset_query)))
-        [:like [:lower :query_action.dataset_query] token]
+        [:like [:lower :query_action.dataset_query] wildcarded-token]
 
         :else
-        [:like [:lower column] token])))))
+        [:like [:lower column] wildcarded-token])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
