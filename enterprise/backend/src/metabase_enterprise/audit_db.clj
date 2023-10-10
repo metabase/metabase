@@ -22,20 +22,29 @@
 (set! *warn-on-reflection* true)
 
 (defn- running-from-jar?
-  "Returns true iff we are running from a jar."
+  "Returns true iff we are running from a jar.
+
+  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
+
+  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
   []
   (-> (Thread/currentThread)
       (.getContextClassLoader)
       (.getResource "")
       (str/starts-with? "jar:")))
 
-(defn- get-jar-path []
+(defn- get-jar-path
+  "Returns the path to the currently running jar file.
+
+  More info: https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file"
+  []
+  (assert (running-from-jar?) "Can only get-jar-path when running from a jar.")
   (-> (class {})
-      .getProtectionDomain
-      .getCodeSource
-      .getLocation
-      .toURI
-      .getPath))
+      (.getProtectionDomain)
+      (.getCodeSource)
+      (.getLocation)
+      (.toURI) ;; avoid problems with special characters in path.
+      (.getPath)))
 
 (defn copy-from-jar!
   "Recursively copies a subdirectory from the jar at jar-path into out-dir."
@@ -184,7 +193,7 @@
   []
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
-      (log/info "The app is ajar")
+      (log/info "The app is running from a jar")
       (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
       (log/info "Copying complete."))
     (let [out-path (fs/path analytics-dir-resource)]
