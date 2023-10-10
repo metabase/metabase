@@ -351,7 +351,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
@@ -383,7 +383,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await changeMetadata();
+          await triggerMetadataChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -414,7 +414,7 @@ describe("QueryBuilder", () => {
           card: TEST_NATIVE_CARD,
         });
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -426,7 +426,7 @@ describe("QueryBuilder", () => {
           card: TEST_UNSAVED_NATIVE_CARD,
         });
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -513,7 +513,7 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
 
           history.goBack();
 
@@ -529,7 +529,7 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
           await revertNotebookQueryChange();
 
           history.goBack();
@@ -545,7 +545,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -558,7 +558,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
           await revertNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -574,7 +574,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          await changeNotebookQuery();
+          await triggerNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -601,7 +601,7 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
           await waitForLoaderToBeRemoved();
-          await changeMetadata();
+          await triggerMetadataChange();
 
           history.goBack();
 
@@ -649,7 +649,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await changeMetadata();
+          await triggerMetadataChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -670,7 +670,7 @@ describe("QueryBuilder", () => {
            */
           userEvent.click(screen.getByText("Metadata"));
 
-          await changeMetadata();
+          await triggerMetadataChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -693,7 +693,7 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
 
-        await changeNotebookQuery();
+        await triggerNotebookQueryChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
@@ -701,7 +701,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        await changeMetadata();
+        await triggerMetadataChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
@@ -720,7 +720,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         history.goBack();
 
@@ -754,7 +754,7 @@ describe("QueryBuilder", () => {
           initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -775,7 +775,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -805,7 +805,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await changeNativeQuery();
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -905,7 +905,7 @@ describe("QueryBuilder", () => {
   });
 });
 
-const changeNativeQuery = async () => {
+const triggerNativeQueryChange = async () => {
   await waitFor(() => {
     expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
   });
@@ -919,7 +919,7 @@ const changeNativeQuery = async () => {
   userEvent.tab();
 };
 
-const changeMetadata = async () => {
+const triggerMetadataChange = async () => {
   const columnDisplayName = await screen.findByTitle("Display name");
 
   userEvent.click(columnDisplayName);
@@ -931,7 +931,7 @@ const changeMetadata = async () => {
   });
 };
 
-const changeNotebookQuery = async () => {
+const triggerNotebookQueryChange = async () => {
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),
   ).findByPlaceholderText("Enter a limit");
@@ -946,7 +946,7 @@ const changeNotebookQuery = async () => {
 };
 
 /**
- * Reverts changeNotebookQuery call
+ * Reverts triggerNotebookQueryChange call
  */
 const revertNotebookQueryChange = async () => {
   const rowLimitInput = await within(
