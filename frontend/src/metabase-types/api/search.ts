@@ -61,7 +61,7 @@ export interface SearchResult {
   table_schema: string | null;
   collection_authority_level: "official" | null;
   updated_at: string;
-  moderated_status: boolean | null;
+  moderated_status: string | null;
   model_id: CardId | null;
   model_name: string | null;
   model_index_id: number | null;

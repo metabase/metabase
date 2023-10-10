@@ -268,7 +268,7 @@ export const fetchCardData = createThunkAction(
         },
       });
 
-      // If the dataset_query was filtered then we don't have permisison to view this card, so
+      // If the dataset_query was filtered then we don't have permission to view this card, so
       // shortcircuit and return a fake 403
       if (!card.dataset_query) {
         return {

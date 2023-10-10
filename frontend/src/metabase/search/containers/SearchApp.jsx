@@ -7,7 +7,6 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 import Search from "metabase/entities/search";
 
-import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import { Box, Text, Group, Paper } from "metabase/ui";
 
@@ -19,7 +18,6 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
@@ -29,6 +27,7 @@ import {
   SearchMain,
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
+import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -130,15 +129,3 @@ SearchApp.propTypes = {
 };
 
 export default SearchApp;
-
-const SearchResultSection = ({ items }) => (
-  <Card className="pt2">
-    {items.map(item => {
-      return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
-    })}
-  </Card>
-);
-
-SearchResultSection.propTypes = {
-  items: PropTypes.array,
-};

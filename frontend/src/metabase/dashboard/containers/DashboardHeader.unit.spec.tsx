@@ -1,6 +1,11 @@
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import {
   createMockDashboard,
   createMockDashboardOrderedCard,
@@ -137,9 +142,7 @@ const setup = async ({
     },
   });
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 };
 
 describe("DashboardHeader", () => {

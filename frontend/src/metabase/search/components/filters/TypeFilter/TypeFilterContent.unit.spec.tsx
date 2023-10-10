@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  within,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   createMockDatabase,
   createMockSearchResult,
@@ -86,9 +91,8 @@ const setup = async ({
       initialValue={initialValue}
     />,
   );
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+
+  await waitForLoaderToBeRemoved();
 
   return {
     onChangeFilters,
