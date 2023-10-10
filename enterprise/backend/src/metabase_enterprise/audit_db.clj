@@ -152,15 +152,6 @@
    and put it into plugins/instance_analytics"
   [zip-resource dir-resource]
   (cond
-    zip-resource
-    (do (log/info (str "Unzipping instance_analytics to " (u.files/relative-path instance-analytics-plugin-dir)))
-        (u.files/unzip-file analytics-zip-resource
-                               (fn [entry-name]
-                                 (str/replace-first
-                                  entry-name
-                                  #"instance_analytics/|resources/instance_analytics/"
-                                  "plugins/instance_analytics/")))
-        (log/info "Unzipping complete."))
     dir-resource
     (do
       (log/info (str "Copying " (fs/path analytics-dir-resource) " -> " instance-analytics-plugin-dir))
