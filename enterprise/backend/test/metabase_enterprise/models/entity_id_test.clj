@@ -43,7 +43,6 @@
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
-    :metabase.models.collection.root/RootCollection
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
@@ -65,7 +64,6 @@
     :model/QueryCache
     :model/QueryExecution
     :model/Revision
-    :model/FakedCard
     :model/Secret
     :model/Session
     :model/TaskHistory
@@ -77,6 +75,8 @@
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+                     (remove (fn [model]
+                               (not= (namespace model) "model")))
                      (remove entities-not-exported)
                      (remove entities-external-name))]
     (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
@@ -86,6 +86,8 @@
 
 (deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+                     (remove (fn [model]
+                               (not= (namespace model) "model")))
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try
