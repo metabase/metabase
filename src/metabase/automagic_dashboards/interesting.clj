@@ -1,5 +1,4 @@
 (ns metabase.automagic-dashboards.interesting
-  (:refer-clojure :exclude [find])
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
@@ -411,7 +410,7 @@
         (map? form) ((some-fn :full-name :name) form))
       form))
 
-(mu/defn find
+(mu/defn identify
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied."
   [{{:keys [linked-metrics]} :root :as context}

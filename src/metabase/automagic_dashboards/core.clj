@@ -990,7 +990,7 @@
     template-cards      :cards
     :as                 template}]
   (let [{grounded-dimensions :dimensions
-         grounded-metrics    :metrics}   (interesting/find
+         grounded-metrics    :metrics}   (interesting/identify
                                           base-context
                                           {:dimension-specs template-dimensions
                                            :metric-specs    template-metrics})
