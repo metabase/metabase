@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import type {
@@ -59,15 +59,22 @@ const ParameterSettings = ({
     [],
   );
 
+  const labelInputError = useMemo(() => {
+    if (internalValue === "") {
+      return t`Required`;
+    }
+    return null;
+  }, [internalValue]);
+
   const handleNameChange = useCallback(
     (event: { target: HTMLInputElement }) => {
-      if (event.target.value !== "") {
-        onChangeName(event.target.value);
-      } else {
+      if (labelInputError) {
         setInternalValue(parameter.name);
+      } else {
+        onChangeName(event.target.value);
       }
     },
-    [onChangeName, parameter.name],
+    [onChangeName, parameter.name, labelInputError],
   );
 
   const handleSourceSettingsChange = useCallback(
@@ -86,7 +93,7 @@ const ParameterSettings = ({
           onChange={handleChange}
           value={internalValue}
           onBlur={handleNameChange}
-          error={internalValue === "" && t`Required`}
+          error={labelInputError}
           aria-label={t`Label`}
         />
       </SettingSection>
