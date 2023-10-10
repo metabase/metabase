@@ -31,11 +31,8 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
   [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
-<<<<<<< HEAD
-  [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
-=======
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
->>>>>>> global-search-more-filter-options
+  [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;

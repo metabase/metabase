@@ -112,19 +112,12 @@ export const DropdownSidebarFilter = ({
           {fieldHasValue ? (
             <DisplayComponent value={value} />
           ) : (
-<<<<<<< HEAD
-            <Group noWrap>
-              {iconName && <Icon name={iconName} />}
-              <Text weight={700}>{label()}</Text>
-            </Group>
-=======
             <GroupOverflowHidden noWrap>
               {iconName && <DropdownLabelIcon size={16} name={iconName} />}
               <Text weight={700} truncate>
-                {label}
+                {label()}
               </Text>
             </GroupOverflowHidden>
->>>>>>> global-search-more-filter-options
           )}
           <Button
             data-testid="sidebar-filter-dropdown-button"

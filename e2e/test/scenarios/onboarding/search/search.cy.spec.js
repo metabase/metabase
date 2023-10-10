@@ -508,7 +508,6 @@ describe("scenarios > search", () => {
       });
     });
 
-<<<<<<< HEAD
     describe("native query filter", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
@@ -628,7 +627,9 @@ describe("scenarios > search", () => {
             );
           },
         );
-=======
+      });
+    });
+
     it("should persist filters when the user changes the text query", () => {
       cy.visit("/search?q=orders");
 
@@ -668,7 +669,6 @@ describe("scenarios > search", () => {
           "Orders, Count",
           "Orders, Count, Grouped by Created At (year)",
         ],
->>>>>>> global-search-more-filter-options
       });
     });
   });

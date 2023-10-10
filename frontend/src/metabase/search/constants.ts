@@ -4,11 +4,8 @@ export const SearchFilterKeys = {
   Type: "type",
   Verified: "verified",
   CreatedBy: "created_by",
-<<<<<<< HEAD
-  NativeQuery: "search_native_query",
-=======
   LastEditedBy: "last_edited_by",
->>>>>>> global-search-more-filter-options
+  NativeQuery: "search_native_query",
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModelType[] = [

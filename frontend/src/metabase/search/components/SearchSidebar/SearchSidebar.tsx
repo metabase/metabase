@@ -12,11 +12,8 @@ import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
-<<<<<<< HEAD
-import { NativeQueryFilter } from "../filters/NativeQueryFilter";
-=======
+import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
 import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
->>>>>>> global-search-more-filter-options
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
