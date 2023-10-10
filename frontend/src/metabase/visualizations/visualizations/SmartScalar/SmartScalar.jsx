@@ -64,11 +64,6 @@ export class SmartScalar extends Component {
     ...fieldSetting("scalar.field", {
       title: t`Field to show`,
       fieldFilter: isNumeric,
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) => cols.find(col => !isDate(col))?.name,
       getHidden: ([
         {
           data: { cols },
