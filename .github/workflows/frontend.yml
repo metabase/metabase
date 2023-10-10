@@ -29,33 +29,25 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
-  fe-linter-prettier:
-    needs: files-changed
-    if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Run Prettier formatting linter
-      run: yarn run lint-prettier
-
-  fe-linter-eslint:
+  fe-lint:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_all == 'true' || needs.files-changed.outputs.e2e_specs == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - name: Run ESLint linter
-      run: yarn run lint-eslint
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+      - name: Run Prettier formatting linter
+        run: yarn run lint-prettier-pure
+      - name: Run ESLint linter
+        run: yarn run lint-eslint-pure
 
   fe-type-check:
     needs: files-changed
@@ -63,17 +55,17 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: 'cljs'
-    - run: yarn build:cljs
-      name: Compile CLJS
-    - run: yarn type-check
-      name: Check types
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn build-pure:cljs
+        name: Compile CLJS
+      - run: yarn type-check-pure
+        name: Check types
 
   fe-tests-unit:
     needs: files-changed
