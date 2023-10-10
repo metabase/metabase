@@ -102,6 +102,7 @@
            :combo
            :row
            :pie2
+           :combo2
            :funnel
            :progress
            :gauge

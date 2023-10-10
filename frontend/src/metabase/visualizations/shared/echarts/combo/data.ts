@@ -3,6 +3,7 @@ import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns"
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedChartData,
+  RenderingEnvironment,
 } from "metabase/visualizations/types";
 import { isNotNull } from "metabase/core/utils/types";
 import type {
@@ -174,9 +175,8 @@ const buildCardModel = (
   rawSeries: SingleSeries,
   settings: ComputedVisualizationSettings,
   isMainDataset: boolean,
-  index: number,
+  datasetIndex: number,
 ): CardModel => {
-  const datasetIndex = index; //String(rawSeries.card.id ?? DEFAULT_DATASET_ID);
   const cardColumns = getCardColumns(rawSeries.data, settings);
   const cardSeries = getSeriesDescriptors(
     rawSeries,
@@ -237,14 +237,21 @@ const buildOptionSeries = (
   settings: ComputedVisualizationSettings,
   defaultDisplay: string,
   xKey: string,
+  { getColor }: RenderingEnvironment,
 ) => {
   const seriesSettings: any =
     settings.series_settings?.[series.vizSettingsKey] ?? {};
   const display = seriesSettings.display ?? defaultDisplay;
 
+  const stack =
+    settings["stackable.stack_type"] != null &&
+    ["bar", "area"].includes(display)
+      ? display
+      : undefined;
+
   return {
     datasetIndex: series.datasetIndex,
-    // stack: display === "bar" ? "foo" : undefined,
+    stack,
     type: display === "bar" ? "bar" : "line",
     areaStyle: display === "area" ? { opacity: 0.3 } : undefined,
     encode: {
@@ -255,7 +262,11 @@ const buildOptionSeries = (
       show: settings["graph.show_values"],
       position: "top",
       fontFamily: "Lato",
-      fontWeight: 600,
+      fontWeight: 900,
+      fontSize: 12,
+      color: getColor("text-dark"),
+      textBorderColor: getColor("white"),
+      textBorderWidth: 3,
     },
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -266,20 +277,11 @@ const buildOptionSeries = (
   };
 };
 
-export const buildOptionDimensions = (cardModels: CardModel[]) => {
-  const dimensions = [cardModels[0].cardSeries.xSeries.seriesKey];
-
-  cardModels.forEach(({ cardSeries }) =>
-    dimensions.push(...cardSeries.yMultiSeries.map(series => series.seriesKey)),
-  );
-
-  return dimensions;
-};
-
 export const buildOptionMultipleSeries = (
   cardModels: CardModel[],
   settings: ComputedVisualizationSettings,
   defaultDisplay: string,
+  environment: RenderingEnvironment,
 ) => {
   return cardModels.flatMap(cardModel =>
     cardModel.cardSeries.yMultiSeries.map(series =>
@@ -288,6 +290,7 @@ export const buildOptionMultipleSeries = (
         settings,
         defaultDisplay,
         cardModels[0].cardSeries.xSeries.seriesKey,
+        environment,
       ),
     ),
   );
@@ -296,6 +299,7 @@ export const buildOptionMultipleSeries = (
 export const transformMultipleCards = (
   multipleSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  environment: RenderingEnvironment,
 ) => {
   const defaultDisplay = multipleSeries[0].card.display;
   const cardModels = multipleSeries.map((series, index) => {
@@ -307,6 +311,7 @@ export const transformMultipleCards = (
     cardModels,
     settings,
     defaultDisplay,
+    environment,
   );
 
   return {

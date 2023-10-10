@@ -2,12 +2,12 @@ import type { EChartsOption } from "echarts";
 import type {
   ComputedVisualizationSettings,
   EChartsEventHandler,
+  RenderingEnvironment,
 } from "metabase/visualizations/types";
 
 import type { RawSeries } from "metabase-types/api";
 
 import { transformMultipleCards } from "metabase/visualizations/shared/echarts/combo/data";
-import { color } from "metabase/lib/colors";
 
 const getXAxisType = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.scale"]) {
@@ -24,13 +24,16 @@ const getXAxisType = (settings: ComputedVisualizationSettings) => {
 export const buildComboChart = (
   multipleSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  environment: RenderingEnvironment,
 ): {
   option: EChartsOption;
   eventHandlers: EChartsEventHandler[];
 } => {
+  const { getColor } = environment;
   const { cardModels, eChartsSeries } = transformMultipleCards(
     multipleSeries,
     settings,
+    environment,
   );
 
   const dataset = cardModels.map(model => {
@@ -46,7 +49,7 @@ export const buildComboChart = (
     yAxis: {
       axisLabel: {
         hideOverlap: true,
-        color: color("text-dark"),
+        color: getColor("text-dark"),
         fontSize: 12,
         fontWeight: 600,
         fontFamily: "Lato",
@@ -56,21 +59,19 @@ export const buildComboChart = (
       type: getXAxisType(settings),
       axisLabel: {
         hideOverlap: true,
-        color: color("text-dark"),
+        color: getColor("text-dark"),
         fontSize: 12,
         fontWeight: 600,
         fontFamily: "Lato",
       },
       axisLine: {
         lineStyle: {
-          color: color("text-dark"),
+          color: getColor("text-dark"),
         },
       },
     },
     series: eChartsSeries,
   };
-
-  console.log(">>>op", option);
 
   return {
     option,

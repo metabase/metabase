@@ -170,6 +170,15 @@
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
+(defn combo-chart-echarts
+  "Clojure entrypoint to render an EChart combo chart."
+  [card data]
+  (let [svg-string (.asString (js/execute-fn-name (context) "combo_chart_echarts"
+                                                  (json/generate-string card)
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
+    (svg-string->bytes svg-string)))
+
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]

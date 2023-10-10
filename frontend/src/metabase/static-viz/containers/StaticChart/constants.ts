@@ -26,6 +26,7 @@ import {
   FUNNEL_CHART_DEFAULT_OPTIONS,
   FUNNEL_CHART_TYPE,
 } from "../../components/FunnelChart/constants";
+import { COMBO_CHART_TYPE } from "metabase/static-viz/components/ComboChart/constants";
 
 export const STATIC_CHART_TYPES = [
   CATEGORICAL_DONUT_CHART_TYPE,
@@ -37,6 +38,7 @@ export const STATIC_CHART_TYPES = [
   FUNNEL_CHART_TYPE,
   ROW_CHART_TYPE,
   PIE_CHART_TYPE,
+  COMBO_CHART_TYPE,
 ] as const;
 
 export const STATIC_CHART_DEFAULT_OPTIONS = [

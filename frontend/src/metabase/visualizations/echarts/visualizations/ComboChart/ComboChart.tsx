@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { measureTextWidth } from "metabase/lib/measure-text";
@@ -24,6 +25,27 @@ Object.assign(ComboChart, {
   supportsSeries: true,
   settings: {
     ...LINE_SETTINGS,
+    "stackable.stack_type": {
+      section: t`Display`,
+      title: t`Stacking`,
+      widget: "radio",
+      props: {
+        options: [
+          { name: t`Don't stack`, value: null },
+          { name: t`Stack`, value: "stacked" },
+          { name: t`Stack - 100%`, value: "normalized" },
+        ],
+      },
+      getDefault: ([{ card, data }], settings) => {
+        // legacy setting and default for D-M-M+ charts
+        if (settings["stackable.stacked"]) {
+          return settings["stackable.stacked"];
+        }
+
+        return null;
+      },
+      readDependencies: ["graph.metrics", "graph.dimensions", "series"],
+    },
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_TREND_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,

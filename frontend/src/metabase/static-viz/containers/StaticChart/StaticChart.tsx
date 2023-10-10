@@ -17,7 +17,9 @@ import { PieChart } from "metabase/static-viz/components/PieChart";
 import { PIE_CHART_TYPE } from "metabase/static-viz/components/PieChart/constants";
 
 import { formatStaticValue } from "metabase/static-viz/lib/format";
+import { COMBO_CHART_TYPE } from "metabase/static-viz/components/ComboChart/constants";
 import type { StaticChartProps } from "./types";
+import { ComboChart } from "metabase/static-viz/components/ComboChart";
 
 const StaticChart = ({ type, options }: StaticChartProps) => {
   const getColor = createColorGetter(options.colors);
@@ -41,6 +43,13 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
     case PIE_CHART_TYPE:
       return (
         <PieChart
+          rawSeries={[{ card: chartProps.card, data: chartProps.data }]}
+          environment={{ getColor, formatValue: formatStaticValue }}
+        />
+      );
+    case COMBO_CHART_TYPE:
+      return (
+        <ComboChart
           rawSeries={[{ card: chartProps.card, data: chartProps.data }]}
           environment={{ getColor, formatValue: formatStaticValue }}
         />

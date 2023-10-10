@@ -335,7 +335,7 @@ export const LINE_SETTINGS = {
   },
 };
 
-const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
+const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo2"]);
 
 export const STACKABLE_SETTINGS = {
   "stackable.stack_type": {
