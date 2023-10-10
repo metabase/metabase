@@ -32,7 +32,7 @@ const transformSvgForOutline = (svgString: string) => {
 };
 
 const WIDTH = 540;
-const HEIGHT = 300;
+const HEIGHT = 360;
 
 export const ComboChart = ({
   rawSeries,

@@ -71,7 +71,7 @@ const getSeriesKey = (
   return key;
 };
 
-const getSeriesVizSettingsKey = (
+export const getSeriesVizSettingsKey = (
   columnName: string,
   cardName: string,
   isMainDataset: boolean,
@@ -171,12 +171,13 @@ export interface CardModel {
   dataset: Record<string, RowValue>[];
 }
 
-const buildCardModel = (
+export const buildCardModel = (
   rawSeries: SingleSeries,
   settings: ComputedVisualizationSettings,
-  isMainDataset: boolean,
   datasetIndex: number,
 ): CardModel => {
+  const isMainDataset = datasetIndex === 0;
+
   const cardColumns = getCardColumns(rawSeries.data, settings);
   const cardSeries = getSeriesDescriptors(
     rawSeries,
@@ -251,6 +252,7 @@ const buildOptionSeries = (
 
   return {
     datasetIndex: series.datasetIndex,
+    symbolSize: 6,
     stack,
     type: display === "bar" ? "bar" : "line",
     areaStyle: display === "area" ? { opacity: 0.3 } : undefined,
@@ -303,8 +305,7 @@ export const transformMultipleCards = (
 ) => {
   const defaultDisplay = multipleSeries[0].card.display;
   const cardModels = multipleSeries.map((series, index) => {
-    const isMainDataset = index === 0;
-    return buildCardModel(series, settings, isMainDataset, index);
+    return buildCardModel(series, settings, index);
   });
 
   const eChartsSeries = buildOptionMultipleSeries(

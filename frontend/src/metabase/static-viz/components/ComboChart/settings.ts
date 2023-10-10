@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
@@ -7,11 +8,34 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { getIn } from "icepick";
+import { buildCardModel } from "metabase/visualizations/shared/echarts/combo/data";
+
+const getColors = (
+  seriesVizSettingsKeys: string[],
+  settings: VisualizationSettings,
+) => {
+  const assignments = _.chain(seriesVizSettingsKeys)
+    .map(key => [key, getIn(settings, ["series_settings", key, "color"])])
+    .filter(([key, color]) => color != null)
+    .object()
+    .value();
+
+  const legacyColors = settings["graph.colors"];
+  if (legacyColors) {
+    for (const [index, key] of seriesVizSettingsKeys.entries()) {
+      if (!(key in assignments)) {
+        assignments[key] = legacyColors[index];
+      }
+    }
+  }
+
+  return getColorsForValues(seriesVizSettingsKeys, assignments);
+};
 
 const getColumnSettings = (
   column: DatasetColumn,
@@ -31,33 +55,28 @@ const getColumnSettings = (
 
 // should be in sync with the dynamic chart settings definitions logic
 export const computeStaticComboChartSettings = (
-  series: RawSeries,
+  multipleSeries: RawSeries,
 ): ComputedVisualizationSettings => {
-  const [{ card, data }] = series;
-  const { rows, cols } = data;
+  const [{ card }] = multipleSeries;
+
   const settings: ComputedVisualizationSettings = {
     ...card.visualization_settings,
     column: (column: RemappingHydratedDatasetColumn) =>
       getColumnSettings(column, settings),
   };
 
-  // const defaults = getDefaultDimensionAndMetric(series);
-  // settings["pie.dimension"] ??= defaults.dimension;
-  // settings["pie.metric"] ??= defaults.metric;
-  //
-  // const dimensionIndex = cols.findIndex(
-  //   col => col.name === settings["pie.dimension"],
-  // );
-  //
-  // const dimensionValues = rows.map(row => String(row[dimensionIndex]));
-  //
-  // settings["pie.colors"] ??= getColorsForValues(
-  //   dimensionValues,
-  //   settings["pie.colors"] ?? {},
-  // );
-  // settings["pie.show_total"] ??= true;
-  // settings["pie.percent_visibility"] ??= "legend";
-  // settings["pie.slice_threshold"] ??= 1;
+  const cardModels = multipleSeries.map((series, index) => {
+    return buildCardModel(series, settings, index);
+  });
+
+  const seriesDescriptors = cardModels.flatMap(
+    model => model.cardSeries.yMultiSeries,
+  );
+
+  settings["series_settings.colors"] = getColors(
+    seriesDescriptors.map(s => s.vizSettingsKey),
+    settings,
+  );
 
   return settings;
 };
