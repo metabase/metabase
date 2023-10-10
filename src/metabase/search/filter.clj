@@ -233,11 +233,18 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (->> (dissoc (methods build-optional-filter-query) :default)
-       keys
-       (reduce (fn [acc [filter model]]
-                 (update acc filter set/union #{model}))
-               {})))
+  (merge
+   ;; models support search native query is if dataset_query is one of the searchable columns
+   {:search-native-query (->> (dissoc (methods search.config/searchable-columns-for-model) :default)
+                              (filter (fn [[k v]]
+                                        (contains? (set (v k)) :dataset_query)))
+                              (map first)
+                              set)}
+   (->> (dissoc (methods build-optional-filter-query) :default)
+        keys
+        (reduce (fn [acc [filter model]]
+                  (update acc filter set/union #{model}))
+                {}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -261,7 +268,7 @@
       (some? created-by)          (set/intersection (:created-by feature->supported-models))
       (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
       (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
-      (true? search-native-query) (set/intersection #{"action" "card" "dataset"})
+      (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
       (true? verified)            (set/intersection (:verified feature->supported-models)))))
 
 (mu/defn build-filters :- map?

@@ -455,23 +455,25 @@
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived table-db-id created_at created_by last_edited_at last_edited_by verified]
-  {archived       [:maybe ms/BooleanValue]
-   table-db-id    [:maybe ms/PositiveInt]
-   created_at     [:maybe ms/NonBlankString]
-   created_by     [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   last_edited_at [:maybe ms/PositiveInt]
-   last_edited_by [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   verified       [:maybe true?]}
-  (query-model-set (search-context {:search-string  q
-                                    :archived       archived
-                                    :table-db-id    table-db-id
-                                    :created-at     created_at
-                                    :created-by     (set (u/one-or-many created_by))
-                                    :last-edited-at last_edited_at
-                                    :last-edited-by (set (u/one-or-many last_edited_by))
-                                    :verified       verified
-                                    :models         search.config/all-models})))
+  [q archived table-db-id created_at created_by last_edited_at last_edited_by search_native_query verified]
+  {archived            [:maybe ms/BooleanValue]
+   table-db-id         [:maybe ms/PositiveInt]
+   created_at          [:maybe ms/NonBlankString]
+   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_at      [:maybe ms/PositiveInt]
+   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   search_native_query [:maybe true?]
+   verified            [:maybe true?]}
+  (query-model-set (search-context {:search-string       q
+                                    :archived            archived
+                                    :table-db-id         table-db-id
+                                    :created-at          created_at
+                                    :created-by          (set (u/one-or-many created_by))
+                                    :last-edited-at      last_edited_at
+                                    :last-edited-by      (set (u/one-or-many last_edited_by))
+                                    :search-native-query search_native_query
+                                    :verified            verified
+                                    :models              search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -491,7 +493,7 @@
    created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    last_edited_at      [:maybe ms/NonBlankString]
    last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   search_native_query [:maybe :boolean]
+   search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)

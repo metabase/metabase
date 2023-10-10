@@ -106,10 +106,10 @@
     [:table-db-id         {:optional true} ms/PositiveInt]
     [:limit-int           {:optional true} ms/Int]
     [:offset-int          {:optional true} ms/Int]
-    [:search-native-query {:optional true} [:maybe true?]]
+    [:search-native-query {:optional true} true?]
     ;; true to search for verified items only,
     ;; nil will return all items
-    [:verified            {:optional true} [:maybe true?]]]))
+    [:verified            {:optional true} true?]]))
 
 
 (def all-search-columns

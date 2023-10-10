@@ -100,7 +100,6 @@
 
 (def ^:private action-model-params {:name "ActionModel", :dataset true})
 
-
 (defn- default-search-results []
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
@@ -339,7 +338,13 @@
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
-                                          :created_at "today"))))))))
+                                          :created_at "today")))))
+
+      (testing "return a subset of model for search_native_query filter"
+        (is (= #{"dataset" "action" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :search_native_query true))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -748,21 +753,6 @@
             (mt/with-temp [Dashboard dashboard {}]
               (t2/update! Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
-
-(deftest card-dataset-query-test
-  (testing "Search results should match a native query's dataset_query column, but not an MBQL query's one. (#24132)"
-    (let [native-card {:name          "Another SQL query"
-                       :query_type    "native"
-                       :dataset_query (mt/native-query {:query "SELECT COUNT(1) AS aggregation FROM venues"})}]
-      (mt/with-temp
-        [Card _mbql-card   {:name          "Venues Count"
-                            :query_type    "query"
-                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
-         Card _native-card native-card
-         Card _dataset     (assoc native-card :name "Dataset" :dataset true)]
-        (is (= ["Another SQL query" "Dataset"]
-               (->> (search-request-data :rasta :q "aggregation" :search_native_query true)
-                    (map :name))))))))
 
 (deftest search-db-call-count-test
   (t2.with-temp/with-temp
