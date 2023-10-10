@@ -404,7 +404,7 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("native queries", () => {
+    describe("editing native questions", () => {
       afterEach(() => {
         jest.restoreAllMocks();
       });
@@ -448,7 +448,7 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("structured queries", () => {
+    describe("editing notebook questions", () => {
       afterEach(() => {
         jest.restoreAllMocks();
       });
@@ -711,7 +711,7 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("native queries", () => {
+    describe("editing native questions", () => {
       it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
