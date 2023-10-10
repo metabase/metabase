@@ -1,6 +1,6 @@
 import slugg from "slugg";
 
-import type { Collection as BaseCollection } from "metabase-types/api";
+import type {Collection as BaseCollection, SearchResult} from "metabase-types/api";
 
 import { appendSlug, extractEntityId } from "./utils";
 
@@ -31,7 +31,7 @@ function slugifyPersonalCollection(collection: Collection) {
   return slug;
 }
 
-export function collection(collection?: Collection) {
+export function collection(collection?: Collection | SearchResult['collection']) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
 

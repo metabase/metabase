@@ -7,7 +7,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { WrappedResult } from "metabase/search/types";
 import Link from "metabase/core/components/Link";
-import { InfoText } from "../InfoText";
+import { InfoText } from "./InfoText";
 import { ItemIcon, Context, Score } from "./components";
 import {
   ResultButton,
