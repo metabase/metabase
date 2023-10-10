@@ -47,7 +47,10 @@
       (.getPath)))
 
 (defn copy-from-jar!
-  "Recursively copies a subdirectory from the jar at jar-path into out-dir."
+  "Recursively copies a subdirectory (at resource-path) from the jar at jar-path into out-dir.
+
+  Scans every file in resources, to see which ones are inside of resource-path, since there's no
+  way to \"ls\" or list a directory inside of a jar's resources."
   [jar-path resource-path out-dir]
   (let [jar-file (JarFile. (str jar-path))
         entries (.entries jar-file)]
@@ -62,7 +65,6 @@
            (with-open [in (.getInputStream jar-file entry)
                        out (io/output-stream (str out-file))]
              (io/copy in out)))))))
-
 
 (defenterprise default-audit-db-id
   "Default audit db id."
@@ -193,11 +195,11 @@
   []
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
-      (log/info "The app is running from a jar")
+      (log/info "The app is running from a jar, starting copy...")
       (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
       (log/info "Copying complete."))
     (let [out-path (fs/path analytics-dir-resource)]
-      (log/info "The app is not running from a jar")
+      (log/info "The app is not running from a jar, starting copy...")
       (log/info (str "Copying " out-path " -> " instance-analytics-plugin-dir))
       (fs/copy-tree (u.files/relative-path out-path)
                     (u.files/relative-path instance-analytics-plugin-dir)
