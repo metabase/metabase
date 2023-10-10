@@ -7,7 +7,6 @@
    [java-time :as t]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-   [metabase.automagic-dashboards.populate :as populate]
    [metabase.automagic-dashboards.schema :as ads]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.mbql.normalize :as mbql.normalize]

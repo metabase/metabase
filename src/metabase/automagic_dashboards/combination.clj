@@ -106,11 +106,12 @@
               :affinity-set affinity-set)
             (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
 
-(defn make-combinations
+(defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
   [ground-dimensions semantic-affinity-sets grounded-metrics]
-  (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets) grounded-metrics))
+  (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets)
+          grounded-metrics))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -232,8 +233,9 @@
                        (ground-metric->card base-context grounded-metric card)
                        :position i)))))
 
-(defn ground-metrics->cards
+(defn combinations->cards
   "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
   templates. This pairing is expanded to create a card seq."
   [base-context affinity-set->cards ground-metrics]
-  (mapcat (partial ground-metric->cards base-context affinity-set->cards) ground-metrics))
+  (mapcat (partial ground-metric->cards base-context affinity-set->cards)
+          ground-metrics))

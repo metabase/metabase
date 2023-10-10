@@ -984,7 +984,7 @@
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{:keys [linked-metrics] :as root} :root :as base-context}
+  [{root :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
@@ -997,8 +997,10 @@
         affinities          (dash-template->affinities template grounded-dimensions)
         affinity-set->cards (combination/make-affinity-set->cards grounded-dimensions template-cards affinities)
         cards               (->> grounded-metrics
-                                 (combination/make-combinations grounded-dimensions (map :affinity-set affinities))
-                                 (combination/ground-metrics->cards base-context affinity-set->cards)
+                                 (combination/interesting-combinations grounded-dimensions
+                                                                       (map :affinity-set affinities))
+                                 (combination/combinations->cards base-context
+                                                                  affinity-set->cards)
                                  (map-indexed (fn [i card]
                                                 (assoc card :position i))))
         empty-dashboard (make-dashboard root template)]
