@@ -68,31 +68,11 @@ const ParameterLinkedFilters = ({
     [],
   );
 
-  let disableReason = null;
-  if (usableParameters.length === 0) {
-    disableReason = (
-      <div>
-        <SectionMessage>
-          {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
-        </SectionMessage>
-        <SectionMessage>
-          {jt`So first, ${(
-            <SectionMessageLink key="link" onClick={onShowAddParameterPopover}>
-              {t`add another dashboard filter`}
-            </SectionMessageLink>
-          )}.`}
-        </SectionMessage>
-      </div>
-    );
-  } else if (parameter.values_source_type != null) {
-    disableReason = (
-      <div>
-        <SectionMessage>
-          {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
-        </SectionMessage>
-      </div>
-    );
-  }
+  const disableReason = getDisableReason({
+    usableParameters,
+    parameter,
+    onShowAddParameterPopover,
+  });
 
   return (
     <SectionRoot>
@@ -120,6 +100,42 @@ const ParameterLinkedFilters = ({
     </SectionRoot>
   );
 };
+
+function getDisableReason({
+  usableParameters,
+  parameter,
+  onShowAddParameterPopover,
+}: {
+  usableParameters: Parameter[];
+  parameter: Parameter;
+  onShowAddParameterPopover: () => void;
+}): JSX.Element | null {
+  if (usableParameters.length === 0) {
+    return (
+      <div>
+        <SectionMessage>
+          {t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}
+        </SectionMessage>
+        <SectionMessage>
+          {jt`So first, ${(
+            <SectionMessageLink key="link" onClick={onShowAddParameterPopover}>
+              {t`add another dashboard filter`}
+            </SectionMessageLink>
+          )}.`}
+        </SectionMessage>
+      </div>
+    );
+  } else if (parameter.values_source_type != null) {
+    return (
+      <div>
+        <SectionMessage>
+          {t`If the filter has values that are from another question or model, or a custom list, then this filter can't be limited by another dashboard filter.`}
+        </SectionMessage>
+      </div>
+    );
+  }
+  return null;
+}
 
 interface LinkedParameterProps {
   parameter: Parameter;
