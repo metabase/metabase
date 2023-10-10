@@ -43,6 +43,7 @@ import {
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import QueryBuilder from "./QueryBuilder";
 
 registerVisualizations();
@@ -232,6 +233,9 @@ const setup = async ({
     <Route>
       <Route path="/home" component={TestHome} />
       <Route path="/model">
+        <Route path="new" component={NewModelOptions} />
+        <Route path="query" component={TestQueryBuilder} />
+        <Route path="metadata" component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
       </Route>
