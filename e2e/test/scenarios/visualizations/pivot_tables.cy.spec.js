@@ -1053,16 +1053,16 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
   });
 
-  it("should not have to wait for data to show fields in summarisation", () => {
+  it("should not have to wait for data to show fields in summarisation (#26467)", () => {
     createAndVisitTestQuestion();
-
-    cy.reload();
 
     cy.intercept("POST", "api/card/pivot/*/query", req => {
       req.on("response", res => {
-        res.setDelay(300000);
+        res.setDelay(20_000);
       });
     }).as("querySlowed");
+
+    cy.reload();
 
     // confirm that it's loading
     main().findByText("Doing science...").should("be.visible");
