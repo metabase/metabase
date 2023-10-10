@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
 import { moveDashCardToTab } from "metabase/dashboard/actions";
 import {
@@ -13,14 +14,19 @@ export function useDashCardTabMenu(dashCardId: DashCardId) {
   const selectedTabId = useSelector(getSelectedTabId);
   const lastSelectedTabId = useSelector(getLastSelectedTabId);
 
+  const orderedTabs = useMemo(() => {
+    const lastSelectedTab = tabs.find(t => t.id === lastSelectedTabId);
+
+    const withLastSelectedOnTop = lastSelectedTab
+      ? [lastSelectedTab, ...tabs.filter(t => t.id !== lastSelectedTabId)]
+      : tabs;
+
+    return withLastSelectedOnTop.filter(t => t.id !== selectedTabId);
+  }, [lastSelectedTabId, selectedTabId, tabs]);
+
   return {
     showMenu: tabs.length > 1,
-    /* TODO recency logic
-    Tab with `lastSelectedTabId` (if non-null) should be first
-    Then all other tabs in order
-    Except the currently selected tab
-    */
-    tabs: tabs.map(t => ({ name: t.name, id: t.id })),
+    tabs: orderedTabs,
     moveToTab: (destTabId: DashboardTabId) =>
       dispatch(moveDashCardToTab({ dashCardId, destTabId })),
   };
