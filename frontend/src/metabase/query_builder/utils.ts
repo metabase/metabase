@@ -78,6 +78,7 @@ export const isNavigationAllowed = ({
     return true;
   }
 
+  const isExistingQuestion = !isNewQuestion;
   const { hash, pathname } = destination;
 
   if (question.isDataset()) {
@@ -92,11 +93,7 @@ export const isNavigationAllowed = ({
     return isQueryTab || isMetadataTab;
   }
 
-  /**
-   * If it's a new question, we're going to deal with it later as part of the epic:
-   * https://github.com/metabase/metabase/issues/33749
-   */
-  if (!isNewQuestion && question.isNative()) {
+  if (isExistingQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
   }
