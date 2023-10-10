@@ -351,18 +351,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await triggerNotebookQueryChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
@@ -394,24 +383,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -442,17 +414,7 @@ describe("QueryBuilder", () => {
           card: TEST_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
-
-        // default native query is `SELECT 1`
-        expect(inputArea).toHaveValue("SELECT 10");
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -464,14 +426,7 @@ describe("QueryBuilder", () => {
           card: TEST_UNSAVED_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -558,19 +513,7 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await triggerNotebookQueryChange();
 
           history.goBack();
 
@@ -586,18 +529,8 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
           await waitForLoaderToBeRemoved();
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-          userEvent.tab();
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "{backspace}");
-          userEvent.tab();
+          await triggerNotebookQueryChange();
+          await revertNotebookQueryChange();
 
           history.goBack();
 
@@ -607,27 +540,12 @@ describe("QueryBuilder", () => {
         });
 
         it("shows custom warning modal when leaving edited query via Cancel button", async () => {
-          const { history } = await setup({
+          await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
-          await waitForLoaderToBeRemoved();
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await triggerNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -635,26 +553,13 @@ describe("QueryBuilder", () => {
         });
 
         it("does not show custom warning modal when leaving unedited query via Cancel button", async () => {
-          const { history } = await setup({
+          await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
-          await waitForLoaderToBeRemoved();
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-          userEvent.tab();
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "{backspace}");
-          userEvent.tab();
+          await triggerNotebookQueryChange();
+          await revertNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -669,24 +574,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -713,25 +601,7 @@ describe("QueryBuilder", () => {
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
           await waitForLoaderToBeRemoved();
-
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           history.goBack();
 
@@ -749,36 +619,6 @@ describe("QueryBuilder", () => {
 
           await waitForLoaderToBeRemoved();
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "{backspace}");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              TEST_MODEL_DATASET_COLUMN.display_name,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeDisabled();
-          });
-
           history.goBack();
 
           expect(
@@ -795,36 +635,6 @@ describe("QueryBuilder", () => {
 
           await waitForLoaderToBeRemoved();
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "{backspace}");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              TEST_MODEL_DATASET_COLUMN.display_name,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeDisabled();
-          });
-
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
           expect(
@@ -839,26 +649,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          await waitForLoaderToBeRemoved();
-
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -879,24 +670,7 @@ describe("QueryBuilder", () => {
            */
           userEvent.click(screen.getByText("Metadata"));
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -919,18 +693,7 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
 
-        const rowLimitInput = await within(
-          screen.getByTestId("step-limit-0-0"),
-        ).findByPlaceholderText("Enter a limit");
-
-        userEvent.click(rowLimitInput);
-        userEvent.type(rowLimitInput, "0");
-
-        await waitFor(() => {
-          expect(rowLimitInput).toHaveValue(10);
-        });
-
-        userEvent.tab();
+        await triggerNotebookQueryChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
@@ -938,18 +701,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        const columnDisplayName = await screen.findByTitle("Display name");
-
-        userEvent.click(columnDisplayName);
-        userEvent.type(columnDisplayName, "X");
-
-        await waitFor(() => {
-          expect(columnDisplayName).toHaveValue(
-            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-          );
-        });
-
-        userEvent.tab();
+        await triggerMetadataChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
@@ -968,19 +720,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         history.goBack();
 
@@ -1009,26 +749,12 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when running edited question", async () => {
-        const { history } = await setup({
+        await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
-
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -1049,19 +775,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1091,19 +805,7 @@ describe("QueryBuilder", () => {
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1202,3 +904,60 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const triggerNativeQueryChange = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+  });
+
+  const inputArea = within(
+    screen.getByTestId("mock-native-query-editor"),
+  ).getByRole("textbox");
+
+  userEvent.click(inputArea);
+  userEvent.type(inputArea, "0");
+  userEvent.tab();
+};
+
+const triggerMetadataChange = async () => {
+  const columnDisplayName = await screen.findByTitle("Display name");
+
+  userEvent.click(columnDisplayName);
+  userEvent.type(columnDisplayName, "X");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+};
+
+const triggerNotebookQueryChange = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "0");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+};
+
+/**
+ * Reverts triggerNotebookQueryChange call
+ */
+const revertNotebookQueryChange = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "{backspace}");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+};
