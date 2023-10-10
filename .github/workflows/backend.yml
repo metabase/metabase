@@ -212,7 +212,7 @@ jobs:
       fail-fast: false
       matrix:
         edition: [oss, ee]
-        java-version: [11, 21]
+        java-version: [11, 17, 21]
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -260,7 +260,7 @@ jobs:
       fail-fast: false
       matrix:
         edition: [oss, ee]
-        java-version: [11, 21]
+        java-version: [11, 17, 21]
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
@@ -278,7 +278,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [11, 21]
+        java-version: [11, 17, 21]
     steps:
       - uses: actions/checkout@v3
       - name: Prepare backend
@@ -299,7 +299,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [11, 21]
+        java-version: [11, 17, 21]
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
