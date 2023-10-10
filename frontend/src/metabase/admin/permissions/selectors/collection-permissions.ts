@@ -16,6 +16,17 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 
+import type {
+  State,
+  ExpandedCollection,
+  CollectionTreeItem,
+} from "metabase-types/store";
+import type {
+  Collection,
+  Group as GroupType,
+  CollectionPermissions,
+  CollectionId,
+} from "metabase-types/api";
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
@@ -27,20 +38,30 @@ export const collectionsQuery = {
 };
 
 export const getIsDirty = createSelector(
-  state => state.admin.permissions.collectionPermissions,
-  state => state.admin.permissions.originalCollectionPermissions,
-  (permissions, originalPermissions) =>
-    JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
+  (state: State) => state.admin.permissions.collectionPermissions,
+  (state: State) => state.admin.permissions.originalCollectionPermissions,
+  (
+    permissions: CollectionPermissions,
+    originalPermissions: CollectionPermissions,
+  ) => JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
 );
 
-export const getCurrentCollectionId = (_state, props) => {
+export type CollectionIdProps = {
+  params: { collectionId: CollectionId };
+  namespace?: string;
+};
+
+export const getCurrentCollectionId = (
+  _state: State,
+  props: CollectionIdProps,
+) => {
   if (props.params.collectionId == null) {
-    return null;
+    return undefined;
   }
 
   return props.params.collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
-    : parseInt(props.params.collectionId);
+    : parseInt(String(props.params.collectionId));
 };
 
 const getRootCollectionTreeItem = () => {
@@ -52,7 +73,7 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollections = state =>
+const getCollections = (state: State) =>
   (
     Collections.selectors.getList(state, {
       entityQuery: collectionsQuery,
@@ -63,24 +84,35 @@ const getCollectionsTree = createSelector([getCollections], collections => {
   return [getRootCollectionTreeItem(), ...buildCollectionTree(collections)];
 });
 
-export function buildCollectionTree(collections) {
+export function buildCollectionTree(
+  collections: Collection[] | null,
+): CollectionTreeItem[] {
   if (collections == null) {
     return [];
   }
-  return collections.map(collection => {
+  return collections.map((collection: Collection) => {
     return {
       id: collection.id,
       name: collection.name,
       icon: getCollectionIcon(collection),
-      children: buildCollectionTree(collection.children),
+      children: collection?.children
+        ? buildCollectionTree(collection.children)
+        : [],
     };
   });
 }
 
+export type CollectionSidebarType = {
+  selectedId?: CollectionId;
+  title: string;
+  entityGroups: [CollectionTreeItem[]];
+  filterPlaceholder: string;
+};
+
 export const getCollectionsSidebar = createSelector(
   getCollectionsTree,
   getCurrentCollectionId,
-  (collectionsTree, collectionId) => {
+  (collectionsTree, collectionId): CollectionSidebarType => {
     return {
       selectedId: collectionId,
       title: t`Collections`,
@@ -90,10 +122,13 @@ export const getCollectionsSidebar = createSelector(
   },
 );
 
-const getCollectionsPermissions = state =>
+const getCollectionsPermissions = (state: State) =>
   state.admin.permissions.collectionPermissions;
 
-const findCollection = (collections, collectionId) => {
+const findCollection = (
+  collections: Collection[],
+  collectionId: CollectionId,
+): Collection | null => {
   if (collections.length === 0) {
     return null;
   }
@@ -107,7 +142,7 @@ const findCollection = (collections, collectionId) => {
   }
 
   return findCollection(
-    collections.map(collection => collection.children).flat(),
+    collections.map(collection => collection.children ?? []).flat(),
     collectionId,
   );
 };
@@ -130,35 +165,64 @@ const getCollection = createSelector(
   },
 );
 
-const getFolder = (state, props) => {
+const getFolder = (state: State, props: CollectionIdProps) => {
   const folderId = getCurrentCollectionId(state, props);
   const folders = SnippetCollections.selectors.getList(state);
 
-  return folders.find(folder => folder.id === folderId);
+  return folders.find((folder: Collection) => folder.id === folderId);
 };
 
-export const getCollectionEntity = (state, props) => {
+export const getCollectionEntity = (state: State, props: CollectionIdProps) => {
   return props.namespace === "snippets"
     ? getFolder(state, props)
     : getCollection(state, props);
 };
 
-const getCollectionPermission = (permissions, groupId, collectionId) =>
-  getIn(permissions, [groupId, collectionId]);
+const getCollectionPermission = (
+  permissions: CollectionPermissions,
+  groupId: number,
+  collectionId: CollectionId,
+) => getIn(permissions, [groupId, collectionId]);
 
-const getNamespace = (_state, props) => props.namespace;
+const getNamespace = (_state: State, props: CollectionIdProps) =>
+  props.namespace;
 
-const getToggleLabel = namespace =>
+const getToggleLabel = (namespace?: string) =>
   namespace === "snippets"
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;
+
+export type CollectionPermissionEditorType = null | {
+  title: string;
+  filterPlaceholder: string;
+  columns: [{ name: string }, { name: string }];
+  entities: {
+    id: number;
+    name: string;
+    permissions: {
+      toggleLabel: string;
+      hasChildren: boolean;
+      isDisabled: boolean;
+      disabledTooltip: string | null;
+      value: string;
+      warning: string | null;
+      confirmations: (newValue: string) => string[];
+      options: string[];
+    }[];
+  }[];
+};
 
 export const getCollectionsPermissionEditor = createSelector(
   getCollectionsPermissions,
   getCollectionEntity,
   Group.selectors.getList,
   getNamespace,
-  (permissions, collection, groups, namespace) => {
+  (
+    permissions,
+    collection,
+    groups,
+    namespace,
+  ): CollectionPermissionEditorType => {
     if (!permissions || collection == null) {
       return null;
     }
@@ -167,7 +231,7 @@ export const getCollectionsPermissionEditor = createSelector(
     const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
-    const entities = groups.map(group => {
+    const entities = groups.map((group: GroupType) => {
       const isAdmin = isAdminGroup(group);
 
       const defaultGroupPermission = getCollectionPermission(
@@ -176,7 +240,7 @@ export const getCollectionsPermissionEditor = createSelector(
         collection.id,
       );
 
-      const confirmations = newValue => [
+      const confirmations = (newValue: string) => [
         getPermissionWarningModal(
           newValue,
           defaultGroupPermission,
@@ -223,22 +287,33 @@ export const getCollectionsPermissionEditor = createSelector(
   },
 );
 
-const permissionsCollectionFilter = collection => !collection.is_personal;
+const permissionsCollectionFilter = (collection: ExpandedCollection) =>
+  !collection.is_personal;
 
-function getDecendentCollections(collection) {
+function getDescendentCollections(
+  collection: ExpandedCollection,
+): ExpandedCollection[] {
   const subCollections =
     collection.children?.filter(permissionsCollectionFilter) || [];
-  return subCollections.concat(...subCollections.map(getDecendentCollections));
+  return subCollections.concat(...subCollections.map(getDescendentCollections));
 }
 
-function getPermissionsSet(collections, permissions, groupId) {
+function getPermissionsSet(
+  collections: Collection[],
+  permissions: CollectionPermissions,
+  groupId: number,
+) {
   const perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, collection.id),
   );
   return new Set(perms);
 }
 
-function getCollectionWarning(groupId, collection, permissions) {
+function getCollectionWarning(
+  groupId: number,
+  collection: ExpandedCollection,
+  permissions: CollectionPermissions,
+) {
   if (!collection) {
     return;
   }
@@ -247,7 +322,7 @@ function getCollectionWarning(groupId, collection, permissions) {
     groupId,
     collection.id,
   );
-  const descendentCollections = getDecendentCollections(collection);
+  const descendentCollections = getDescendentCollections(collection);
   const descendentPerms = getPermissionsSet(
     descendentCollections,
     permissions,

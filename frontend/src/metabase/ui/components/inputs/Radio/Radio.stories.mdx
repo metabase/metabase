@@ -28,7 +28,7 @@ export const argTypes = {
 
 # Radio
 
-Our themed wrapper around [Mantine Radio](https://mantine.dev/core/radio/).
+Our themed wrapper around [Mantine Radio](https://v6.mantine.dev/core/radio/).
 
 ## When to use Radio
 
@@ -37,7 +37,7 @@ Radio buttons allow users to select a single option from a list of mutually excl
 ## Docs
 
 - [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Radio Docs](https://mantine.dev/core/radio/)
+- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
 
 ## Usage guidelines
 
@@ -103,9 +103,7 @@ LabelLeft.args = {
 };
 
 <Canvas>
-  <Story name="Label, left position" args={LabelLeft.args}>
-    {LabelLeft}
-  </Story>
+  <Story name="Label, left position">{LabelLeft}</Story>
 </Canvas>
 
 ### Description
@@ -116,9 +114,7 @@ Description.args = {
 };
 
 <Canvas>
-  <Story name="Description" args={Description.args}>
-    {Description}
-  </Story>
+  <Story name="Description">{Description}</Story>
 </Canvas>
 
 export const DescriptionLeft = StateTemplate.bind({});
@@ -130,9 +126,7 @@ DescriptionLeft.args = {
 #### Left label position
 
 <Canvas>
-  <Story name="Description, left position" args={DescriptionLeft.args}>
-    {DescriptionLeft}
-  </Story>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
 </Canvas>
 
 ## Related components

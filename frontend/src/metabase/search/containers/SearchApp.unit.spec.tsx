@@ -1,5 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Route } from "metabase/hoc/Title";
 import {
@@ -86,9 +91,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -134,9 +137,7 @@ describe("SearchApp", () => {
 
       // test next page button
       userEvent.click(getNextPageButton());
-      await waitFor(() => {
-        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-      });
+      await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeEnabled();
       expect(getNextPageButton()).toBeDisabled();
@@ -145,9 +146,7 @@ describe("SearchApp", () => {
 
       // test previous page button
       userEvent.click(getPreviousPageButton());
-      await waitFor(() => {
-        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-      });
+      await waitForLoaderToBeRemoved();
       expect(getPaginationTotal()).toHaveTextContent(String(TEST_ITEMS.length));
       expect(getPreviousPageButton()).toBeDisabled();
       expect(getNextPageButton()).toBeEnabled();
@@ -169,11 +168,7 @@ describe("SearchApp", () => {
           ),
         );
 
-        await waitFor(() => {
-          expect(
-            screen.queryByTestId("loading-spinner"),
-          ).not.toBeInTheDocument();
-        });
+        await waitForLoaderToBeRemoved();
 
         const popover = within(screen.getByTestId("popover"));
         userEvent.click(

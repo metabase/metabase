@@ -1306,3 +1306,33 @@
                     :data
                     (map (juxt :model :id :creator_common_name :last_editor_common_name))
                     set)))))))
+
+(deftest models-table-db-id-test
+  (testing "search/models request includes `table-db-id` param"
+    (with-search-items-in-root-collection "Available models"
+      (testing "`table-db-id` is invalid"
+        (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 "search/models" :table-db-id -1))))
+      (testing "`table-db-id` is for a non-existent database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
+      (testing "`table-db-id` is for an existing database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
+
+(deftest models-archived-string-test
+  (testing "search/models request includes `archived-string` param"
+    (with-search-items-in-root-collection "Available models"
+      (mt/with-temp [Card        {model-id :id} action-model-params
+                     Action      _              (archived {:name     "test action"
+                                                           :type     :query
+                                                           :model_id model-id})]
+       (testing "`archived-string` is invalid"
+         (is (=? {:message "Invalid input: [\"value must be a valid boolean string ('true' or 'false').\"]"}
+                 (mt/user-http-request :crowberto :get 500 "search/models" :archived-string 1))))
+       (testing "`archived-string` is 'false'"
+         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "false")))))
+       (testing "`archived-string` is 'true'"
+         (is (= #{"action"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "true")))))))))

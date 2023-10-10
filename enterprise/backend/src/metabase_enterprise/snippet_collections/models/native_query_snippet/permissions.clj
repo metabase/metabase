@@ -7,14 +7,13 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(s/defn ^:private has-parent-collection-perms?
-  [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
-   read-or-write :- (s/enum :read :write)]
+(mu/defn ^:private has-parent-collection-perms?
+  [snippet       :- [:map [:collection_id [:maybe ms/PositiveInt]]]
+   read-or-write :- [:enum :read :write]]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 
 (defenterprise can-read?
