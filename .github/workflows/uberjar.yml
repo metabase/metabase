@@ -120,8 +120,6 @@ jobs:
     - name: Launch ${{ matrix.edition }} container
       run: docker run --rm -dp 3000:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
       timeout-minutes: 5
-    - name: Setup upterm session
-      uses: lhotari/action-upterm@v1
     - name: Is Docker running?
       run: docker ps
     - name: Wait for Metabase to start and reach 100% health
