@@ -479,7 +479,7 @@
               :details  {}
               :topic    :user-invited
               :model    "User"}
-             (event :user-invited (mt/user->id :lucky)))))))
+             (event :user-invited))))))
 
 (deftest user-update-event-test
   (testing :event/user-update

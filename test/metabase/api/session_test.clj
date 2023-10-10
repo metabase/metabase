@@ -263,16 +263,19 @@
 
 (deftest forgot-password-event-test
   (reset-throttlers!)
-  (mt/with-model-cleanup [:model/Activity :model/AuditLog]
-    (testing "Test that forgot password event is logged."
-      (mt/user-http-request :rasta :post 204 "session/forgot_password"
-                            {:email (:username (mt/user->credentials :rasta))})
-      (is (= {:topic    :password-reset-initiated
-              :user_id  (mt/user->id :rasta)
-              :model    "User"
-              :model_id nil
-              :details  {:token (t2/select-one-fn :reset_token :model/User :id (mt/user->id :rasta))}}
-             (audit-log-test/event :password-reset-initiated))))))
+  (with-redefs [api.session/forgot-password-impl
+                (let [orig @#'api.session/forgot-password-impl]
+                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (testing "Test that forgot password event is logged."
+        (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                              {:email (:username (mt/user->credentials :rasta))})
+        (is (= {:topic    :password-reset-initiated
+                :user_id  (mt/user->id :rasta)
+                :model    "User"
+                :model_id nil
+                :details  {:token (t2/select-one-fn :reset_token :model/User :id (mt/user->id :rasta))}}
+               (audit-log-test/event :password-reset-initiated)))))))
 
 (deftest forgot-password-throttling-test
   (reset-throttlers!)

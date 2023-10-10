@@ -231,11 +231,11 @@
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email nil password-reset-url is-active?)
-          (events/publish-event! :event/password-reset-initiated
-                                 {:user-id api/*current-user-id*
-                                  ;; Fetch hashed value of reset token as identifer
-                                  :details {:token (t2/select-one-fn :reset_token :model/User :id user-id)}}))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?)))
+      (events/publish-event! :event/password-reset-initiated
+                             {:user-id api/*current-user-id*
+                              ;; Fetch hashed value of reset token as identifer
+                              :details {:token (t2/select-one-fn :reset_token User :id user-id)}}))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
