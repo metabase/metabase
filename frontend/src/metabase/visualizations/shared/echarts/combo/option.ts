@@ -69,6 +69,7 @@ export const buildComboChart = (
     },
     xAxis: {
       type: getXAxisType(settings),
+      offset: timelineEvents && timelineEvents.length > 0 ? 15 : 0,
       axisLabel: {
         hideOverlap: true,
         color: getColor("text-dark"),

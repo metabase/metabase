@@ -282,6 +282,8 @@ const buildOptionSeries = (
       data: timelineEvents?.map(t => [
         {
           coord: [moment(t.timestamp).toISOString(), 0],
+          symbolSize: 15,
+          symbolOffset: [0, -10],
         },
         {
           coord: [moment(t.timestamp).toISOString(), 12000],
