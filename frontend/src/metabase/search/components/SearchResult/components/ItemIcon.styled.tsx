@@ -22,14 +22,12 @@ export const IconWrapper = styled.div<{
   active: boolean;
   type: SearchModelType;
 }>`
-  border: ${({ theme }) => `1px solid ${theme.colors.border[0]}`};
-  border-radius: ${({ theme }) => theme.radius.sm};
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   color: ${({ active, type }) => getColorForIconWrapper({ active, type })};
-  //margin-right: 10px;
+  margin-right: 10px;
   flex-shrink: 0;
 `;
