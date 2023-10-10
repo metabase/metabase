@@ -37,7 +37,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { callMockEvent } from "__support__/events";
@@ -248,9 +248,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -559,11 +557,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -580,14 +574,7 @@ describe("QueryBuilder", () => {
 
           history.goBack();
 
-          expect(
-            screen.getByText("Changes were not saved"),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
@@ -598,11 +585,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const rowLimitInput = await within(
             screen.getByTestId("step-limit-0-0"),
@@ -619,12 +602,7 @@ describe("QueryBuilder", () => {
           history.goBack();
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
 
@@ -662,12 +640,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -682,11 +655,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -709,14 +678,7 @@ describe("QueryBuilder", () => {
 
           history.goBack();
 
-          expect(
-            screen.getByText("Changes were not saved"),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited metadata via SPA navigation", async () => {
@@ -728,11 +690,7 @@ describe("QueryBuilder", () => {
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
+          await waitForLoaderToBeRemoved();
 
           const columnDisplayName = await screen.findByTitle("Display name");
 
@@ -767,12 +725,7 @@ describe("QueryBuilder", () => {
           history.goBack();
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
 
@@ -818,12 +771,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -851,12 +799,7 @@ describe("QueryBuilder", () => {
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
         const columnDisplayName = await screen.findByTitle("Display name");
@@ -875,12 +818,7 @@ describe("QueryBuilder", () => {
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });
@@ -910,12 +848,7 @@ describe("QueryBuilder", () => {
 
         history.goBack();
 
-        expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-        expect(
-          screen.getByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
 
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
@@ -935,12 +868,7 @@ describe("QueryBuilder", () => {
         history.goBack();
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -973,12 +901,7 @@ describe("QueryBuilder", () => {
         );
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -1013,17 +936,14 @@ describe("QueryBuilder", () => {
           ),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
@@ -1066,17 +986,14 @@ describe("QueryBuilder", () => {
           within(saveQuestionModal).getByRole("button", { name: "Save" }),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });

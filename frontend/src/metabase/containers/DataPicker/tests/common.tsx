@@ -5,11 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -262,7 +258,7 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }
