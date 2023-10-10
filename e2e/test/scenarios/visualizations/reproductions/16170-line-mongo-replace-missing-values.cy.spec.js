@@ -7,7 +7,7 @@ import {
 
 const externalDatabaseId = 2;
 
-describe("issue 16170", { tags: "@external" }, () => {
+describe("issue 16170", { tags: "@mongo" }, () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

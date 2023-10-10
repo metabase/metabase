@@ -19,15 +19,16 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
     restoreAndAuthenticate();
 
-    addMySQLDatabase();
-    snapshot("mysql-8");
-    deleteDatabase("mysqlID");
+    setupWritableDB("postgres");
+    addPostgresDatabase("Writable Postgres12", true);
+    snapshot("postgres-writable");
+    deleteDatabase("postgresID");
 
     restoreAndAuthenticate();
 
-    addMongoDatabase();
-    snapshot("mongo-4");
-    deleteDatabase("mongoID");
+    addMySQLDatabase();
+    snapshot("mysql-8");
+    deleteDatabase("mysqlID");
 
     restoreAndAuthenticate();
 
@@ -38,10 +39,13 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
 
     restoreAndAuthenticate();
 
-    setupWritableDB("postgres");
-    addPostgresDatabase("Writable Postgres12", true);
-    snapshot("postgres-writable");
-    deleteDatabase("postgresID");
+    if (Cypress.env("QA_DB_MONGO") === true) {
+      addMongoDatabase();
+      snapshot("mongo-4");
+      deleteDatabase("mongoID");
+
+      restoreAndAuthenticate();
+    }
 
     restore("blank");
   });
