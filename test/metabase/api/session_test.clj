@@ -270,12 +270,14 @@
       (testing "Test that forgot password event is logged."
         (mt/user-http-request :rasta :post 204 "session/forgot_password"
                               {:email (:username (mt/user->credentials :rasta))})
-        (is (= {:topic    :password-reset-initiated
-                :user_id  (mt/user->id :rasta)
-                :model    "User"
-                :model_id nil
-                :details  {:token (t2/select-one-fn :reset_token :model/User :id (mt/user->id :rasta))}}
-               (audit-log-test/event :password-reset-initiated)))))))
+        (let [rasta-id (mt/user->id :rasta)]
+          (is (= {:topic    :password-reset-initiated
+                  :user_id  rasta-id
+                  :model_id rasta-id
+                  :model    "User"
+                  :details  {:id    rasta-id
+                             :token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                 (audit-log-test/event :password-reset-initiated rasta-id))))))))
 
 (deftest forgot-password-throttling-test
   (reset-throttlers!)
