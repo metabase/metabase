@@ -510,3 +510,16 @@
               :topic    :password-reset-initiated
               :model    "User"}
              (event :password-reset-initiated (mt/user->id :rasta)))))))
+
+(deftest password-reset-successful-event-test
+  (testing :event/password-reset-successful
+    (mt/with-model-cleanup [:model/AuditLog]
+      (let [event {:user-id (mt/user->id :rasta)
+                   :details {:token "hash"}}]
+        (is (= event (events/publish-event! :event/password-reset-successful event))))
+      (is (= {:model_id nil
+              :user_id  (mt/user->id :rasta)
+              :details  {:token "hash"}
+              :topic    :password-reset-successful
+              :model    "User"}
+             (event :password-reset-successful))))))
