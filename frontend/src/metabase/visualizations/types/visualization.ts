@@ -3,6 +3,7 @@ import type {
   DatasetData,
   RawSeries,
   Series,
+  TimelineEvent,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -78,6 +79,8 @@ export interface VisualizationProps {
   onEditSeries?: any;
   onRemoveSeries?: any;
   onUpdateWarnings?: any;
+
+  timelineEvents?: TimelineEvent[];
 }
 
 export type VisualizationSettingDefinition<TValue, TProps = void> = {

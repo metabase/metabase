@@ -5,7 +5,7 @@ import type {
   RenderingEnvironment,
 } from "metabase/visualizations/types";
 
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, TimelineEvent } from "metabase-types/api";
 
 import { transformMultipleCards } from "metabase/visualizations/shared/echarts/combo/data";
 
@@ -25,6 +25,7 @@ export const buildComboChart = (
   multipleSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
+  timelineEvents?: TimelineEvent[],
 ): {
   option: EChartsOption;
   eventHandlers: EChartsEventHandler[];
@@ -34,6 +35,7 @@ export const buildComboChart = (
     multipleSeries,
     settings,
     environment,
+    timelineEvents,
   );
 
   const dataset = cardModels.map(model => {
@@ -54,6 +56,13 @@ export const buildComboChart = (
         fontWeight: 600,
         fontFamily: "Lato",
       },
+      splitLine: {
+        lineStyle: {
+          color: "#ccc",
+          type: [5, 5],
+          opacity: 0.5,
+        },
+      },
     },
     xAxis: {
       type: getXAxisType(settings),
@@ -68,6 +77,9 @@ export const buildComboChart = (
         lineStyle: {
           color: getColor("text-dark"),
         },
+      },
+      axisTick: {
+        show: false,
       },
     },
     series: eChartsSeries,

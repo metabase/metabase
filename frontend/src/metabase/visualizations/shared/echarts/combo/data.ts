@@ -1,3 +1,4 @@
+import moment from "moment";
 import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
 import type {
@@ -11,6 +12,7 @@ import type {
   RowValue,
   SingleSeries,
   DatasetData,
+  TimelineEvent,
 } from "metabase-types/api";
 import type {
   SeriesDescriptor,
@@ -238,6 +240,7 @@ const buildOptionSeries = (
   defaultDisplay: string,
   xKey: string,
   { getColor }: RenderingEnvironment,
+  timelineEvents?: TimelineEvent[],
 ) => {
   const seriesSettings: any =
     settings.series_settings?.[series.vizSettingsKey] ?? {};
@@ -274,6 +277,23 @@ const buildOptionSeries = (
     itemStyle: {
       color: settings?.["series_settings.colors"]?.[series.vizSettingsKey],
     },
+    markLine: {
+      // TODO: only do this for a single series
+      data: timelineEvents?.map(t => [
+        {
+          coord: [moment(t.timestamp).toISOString(), 0],
+        },
+        {
+          coord: [moment(t.timestamp).toISOString(), 12000],
+          symbol: "none",
+        },
+      ]),
+      lineStyle: {
+        type: "solid",
+        color: "rgba(105, 110, 123, 0.2)",
+        width: 2,
+      },
+    },
   };
 };
 
@@ -282,6 +302,7 @@ export const buildOptionMultipleSeries = (
   settings: ComputedVisualizationSettings,
   defaultDisplay: string,
   environment: RenderingEnvironment,
+  timelineEvents?: TimelineEvent[],
 ) => {
   return cardModels.flatMap(cardModel =>
     cardModel.cardSeries.yMultiSeries.map(series =>
@@ -291,6 +312,7 @@ export const buildOptionMultipleSeries = (
         defaultDisplay,
         cardModels[0].cardSeries.xSeries.seriesKey,
         environment,
+        timelineEvents,
       ),
     ),
   );
@@ -300,6 +322,7 @@ export const transformMultipleCards = (
   multipleSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
+  timelineEvents?: TimelineEvent[],
 ) => {
   const defaultDisplay = multipleSeries[0].card.display;
   const cardModels = multipleSeries.map((series, index) => {
@@ -312,6 +335,7 @@ export const transformMultipleCards = (
     settings,
     defaultDisplay,
     environment,
+    timelineEvents,
   );
 
   return {
