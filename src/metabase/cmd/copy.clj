@@ -25,6 +25,9 @@
 
 (set! *warn-on-reflection* true)
 
+(when config/ee-available?
+ (classloader/require 'metabase-enterprise.advanced-permissions.models.connection-impersonation))
+
 (defn- log-ok []
   (log/info (u/colorize 'green "[OK]")))
 
