@@ -94,6 +94,7 @@
     [kixi.stats.core :as stats]
     [kixi.stats.math :as math]
     [medley.core :as m]
+    [metabase.automagic-dashboards.combination :as combination]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.filters :as filters]
     [metabase.automagic-dashboards.interesting :as interesting]
@@ -989,16 +990,16 @@
     template-cards      :cards
     template-groups     :groups
     :as                 template}]
-  (let [ground-dimensions   (interesting/find-dimensions base-context template-dimensions)
-        affinities          (dash-template->affinities template ground-dimensions)
-        affinity-set->cards (interesting/make-affinity-set->cards ground-dimensions template-cards affinities)
-        metric-templates    (interesting/normalize-metrics template-metrics)
-        grounded-metrics    (concat
-                             (interesting/grounded-metrics metric-templates ground-dimensions)
-                              linked-metrics)
+  (let [{grounded-dimensions :dimensions
+         grounded-metrics    :metrics}   (interesting/find
+                                          base-context
+                                          {:dimension-specs template-dimensions
+                                           :metric-specs    template-metrics})
+        affinities          (dash-template->affinities template grounded-dimensions)
+        affinity-set->cards (combination/make-affinity-set->cards grounded-dimensions template-cards affinities)
         cards               (->> grounded-metrics
-                                 (interesting/make-combinations ground-dimensions (map :affinity-set affinities))
-                                 (interesting/ground-metrics->cards base-context affinity-set->cards)
+                                 (combination/make-combinations grounded-dimensions (map :affinity-set affinities))
+                                 (combination/ground-metrics->cards base-context affinity-set->cards)
                                  (map-indexed (fn [i card]
                                                 (assoc card :position i))))]
     (populate/create-dashboard {:title          "Fill in template here"

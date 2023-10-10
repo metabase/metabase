@@ -1,25 +1,25 @@
 (ns metabase.automagic-dashboards.interesting
+  (:refer-clojure :exclude [find])
   (:require
-    [clojure.math.combinatorics :as math.combo]
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [java-time :as t]
-    [medley.core :as m]
-    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-    [metabase.automagic-dashboards.populate :as populate]
-    [metabase.automagic-dashboards.util :as magic.util]
-    [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.mbql.util :as mbql.u]
-    [metabase.models.field :as field :refer [Field]]
-    [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [Metric]]
-    [metabase.models.table :refer [Table]]
-    [metabase.query-processor.util :as qp.util]
-    [metabase.util :as u]
-    [metabase.util.date-2 :as u.date]
-    [metabase.util.i18n :as i18n]
-    [toucan2.core :as t2]))
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [java-time :as t]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.automagic-dashboards.schema :as ads]
+   [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global affinity definitions
@@ -89,19 +89,6 @@
         :metric metric
         :dimensions dimensions))))
 
-;; This is SUPER important
-;; It can be sourced internally or from other data
-(defn find-metrics [thing]
-  ;;Can come from linked entities or templates
-  ;; Maybe will be returned as queries, as is done with linked metrics above
-  )
-
-;; Here we add in breakouts. Or should this be identify dimensions.
-(defn associate-affinities [thing]
-  )
-
-;; Make the cards or whatever
-(defn do-stuff [thing])
 
 (comment
 
@@ -323,7 +310,7 @@
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
-(defn find-dimensions
+(mu/defn find-dimensions
   "Bind fields to dimensions from the dashboard template and resolve overloaded cases in which multiple fields match the
   dimension specification.
 
@@ -332,7 +319,7 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs]
+  [context dimension-specs :- [:sequential ads/dimension-template]]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -425,220 +412,21 @@
         (map? form) ((some-fn :full-name :name) form))
       form))
 
-(defn add-breakouts
-  "Add breakouts to a query based on the breakout fields"
-  [query breakout-fields]
-  (assoc query
-    :breakout (mapv (partial ->reference :mbql) breakout-fields)))
+(mu/defn find
+  "Idnetify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
+  interesting metrics which are satisfied."
+  [{{:keys [linked-metrics]} :root :as context}
+   {:keys [dimension-specs
+           metric-specs]} :- [:map
+                              [:dimension-specs [:sequential ads/dimension-template]]
+                              [:metric-specs    [:sequential ads/metric-template]]]]
+  (let [dims    (find-dimensions context dimension-specs)
+        metrics (-> (normalize-metrics metric-specs)
+                    (grounded-metrics dims))]
+    {:dimensions dims
+     :metrics (concat metrics linked-metrics)}))
 
-(defn make-metric-combinations
-  "From a grounded metric, produce additional metrics that have potential dimensions
-   mixed in based on the provided ground dimensions and semantic affinity sets."
-  [ground-dimensions
-   semantic-affinity-sets
-   {grounded-metric-fields :grounded-metric-fields :as metric}]
-  (let [grounded-field-ids   (set (map :id grounded-metric-fields))
-        ;; We won't add dimensions to a metric where the dimension is already
-        ;; contributing to the fields already grounded in the metric definition itself.
-        groundable-fields    (->> (vals ground-dimensions)
-                                  (mapcat :matches)
-                                  (remove (comp grounded-field-ids :id))
-                                  (group-by (some-fn
-                                              :semantic_type
-                                              :effective_type)))
-        grounded-field-types (map (some-fn
-                                    :semantic_type
-                                    :effective_type) grounded-metric-fields)]
-    (distinct
-      (for [affinity-set            semantic-affinity-sets
-            dimset                  (math.combo/permutations affinity-set)
-            :when (and
-                    (>= (count dimset)
-                        (count grounded-metric-fields))
-                    (->> (map
-                           (fn [a b] (isa? a b))
-                           grounded-field-types dimset)
-                         (every? true?)))
-            :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
-            ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
-                                         (apply math.combo/cartesian-product)
-                                         (map (partial zipmap unsatisfied-semantic-dims)))]
-        (-> metric
-            (assoc
-              :grounded-dimensions ground-dimension-fields
-              :affinity-set affinity-set)
-            (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
 
-(defn make-combinations
-  "Expand simple ground metrics in to ground metrics with dimensions
-   mixed in based on potential semantic affinity sets."
-  [ground-dimensions semantic-affinity-sets grounded-metrics]
-  (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets) grounded-metrics))
-
-(defn add-dataset-query
-  "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
-  and the database and table ids (from the source object)."
-  [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {:keys [db_id id]}]
-  (assoc ground-metric-with-dimensions
-    :dataset_query {:database db_id
-                    :type     :query
-                    :query    (assoc metric-definition
-                                :source-table id)}))
-
-(defn items->str
-  "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
-  oxford comma on the final pairing."
-  [[f s :as items]]
-  (condp = (count items)
-    0 ""
-    1 (str f)
-    2 (format "%s and %s" f s)
-    (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
-
-(defn- fill-templates
-  [template-type {:keys [root tables]} bindings s]
-  (let [bindings (some-fn (merge {"this" (-> root
-                                             :entity
-                                             (assoc :full-name (:full-name root)))}
-                                 bindings)
-                          (comp first #(magic.util/filter-tables % tables) dashboard-templates/->entity)
-                          identity)]
-    (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
-                 (fn [[_ identifier attribute]]
-                   (let [entity    (bindings identifier)
-                         attribute (some-> attribute qp.util/normalize-token)]
-                     (str (or (and (ifn? entity) (entity attribute))
-                              (root attribute)
-                              (->reference template-type entity))))))))
-
-(defn- instantiate-visualization
-  [[k v] dimensions metrics]
-  (let [dimension->name (comp vector :name dimensions)
-        metric->name    (comp vector first :metric metrics)]
-    [k (-> v
-           (m/update-existing :map.latitude_column dimension->name)
-           (m/update-existing :map.longitude_column dimension->name)
-           (m/update-existing :graph.metrics metric->name)
-           (m/update-existing :graph.dimensions dimension->name))]))
-
-(defn capitalize-first
-  "Capitalize only the first letter in a given string."
-  [s]
-  (let [s (str s)]
-    (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
-
-(defn- instantiate-metadata
-  [x context available-metrics bindings]
-  (-> (walk/postwalk
-        (fn [form]
-          (if (i18n/localized-string? form)
-            (let [s     (str form)
-                  new-s (fill-templates :string context bindings s)]
-              (if (not= new-s s)
-                (capitalize-first new-s)
-                s))
-            form))
-        x)
-      (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
-
-;{:metabase.automagic-dashboards.core/am {"Count" {:metric ["count"], :score 100}},
-; :metabase.automagic-dashboards.core/b
-; {"GenericCategoryMedium"
-;  (toucan2.instance/instance
-;    :model/Field
-;    {:description nil,
-;     :database_type "BOOLEAN",
-;     :semantic_type :type/Category,
-;     :table_id 7,
-;     :coercion_strategy nil,
-
-(defn ground-metric->card
-  "Convert a grounded metric to a card. This includes adding any special breakout aggregations specified in the card
-  definitions then removing most of the metric fields that aren't relevant to cards."
-  [{{:keys [source linked-metrics]} :root
-    :as                             base-context}
-   {:keys [grounded-dimensions metric-name] :as grounded-metric}
-   {:keys [semantic-dimensions dimensions query title] :as card}]
-  ;; This updates the query to contain the specializations contained in the card template (basically the aggregate definitions)
-  (let [dims (merge-with into grounded-dimensions semantic-dimensions)]
-    (-> grounded-metric
-        (update :metric-definition add-breakouts (vals dims))
-        (add-dataset-query source)
-        ;; This cleans up the metric datastructure and primarily leaves just the card elements.
-        (into card)
-        (assoc
-          :name (if (pos? (count grounded-dimensions))
-                  (format "%s by %s" metric-name (items->str (map :name (vals grounded-dimensions))))
-                  metric-name)
-          :id (gensym))
-        ;; The empty maps for available-metrics and bindings can be filled in if
-        ;; needed by adding the nominal dimensions to the :grounded-metric-fields
-        ;; and :grounded-dimensions in the grounded metric. This would allow a
-        ;; group by on either semantic type (which is where we are leaning) or
-        ;; nominal type (the old way). I wonder if there's value at some point in
-        ;; adding a smarter datastructure to this (e.g. a tiny datascript db for
-        ;; each metric) to make it easier to navigate an individual metric. So far,
-        ;; this seems harmless to just leave as empty maps, though.
-        (instantiate-metadata base-context {} {})
-        (dissoc :grounded-dimensions
-                :metric-definition
-                :grounded-metric-fields
-                :affinity-set
-                ;:card-name
-                ;:metric-name
-                :metrics
-                ;:visualization
-                ;:score
-                ;:title
-                ))))
-
-(defn ground-metric->cards
-  "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
-  the affinity-set->cards map."
-  [base-context affinity-set->cards {:keys [affinity-set] :as grounded-metric}]
-  (->> affinity-set
-       affinity-set->cards
-       (map-indexed (fn [i card]
-                      (assoc
-                        (ground-metric->card base-context grounded-metric card)
-                        :position i)))))
-
-(defn ground-metrics->cards
-  "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
-  templates. This pairing is expanded to create a card seq."
-  [base-context affinity-set->cards ground-metrics]
-  (mapcat (partial ground-metric->cards base-context affinity-set->cards) ground-metrics))
-
-(defn make-affinity-set->cards
-  "Construct a map of affinity sets to card templates. The affinitie sets are a set of semantic types and the card
-  templates are as they are in the yaml templates, but with the `:dimensions` updated from string dimension keys to
-  semantic type keys."
-  [ground-dimensions template-cards affinities]
-  (let [card-name->cards (->> template-cards
-                              (map
-                                (comp
-                                  (fn [[card-name card-template]]
-                                    (assoc card-template :card-name card-name))
-                                  first))
-                              (group-by :card-name))]
-    (update-vals
-      (group-by :affinity-set affinities)
-      (fn [affinities]
-        (->>
-          (for [affinity-name (map :affinity-name affinities)
-                {:keys [dimensions] :as card} (card-name->cards affinity-name)
-                :let [semantic-dims (reduce
-                                      (fn [acc [dim attrs]]
-                                        (if-some [k (-> dim ground-dimensions :field_type peek)]
-                                          (assoc acc k attrs)
-                                          (reduced nil)))
-                                      {}
-                                      (map first dimensions))]
-                :when semantic-dims]
-            (assoc card :semantic-dimensions semantic-dims))
-          distinct
-          vec)))))
 
 (defn card->dashcard
   "Convert a card to a dashboard card."
@@ -722,31 +510,31 @@
           affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
           metric-templates    (normalize-metrics template-metrics)
           grounded-metrics    (concat
-                                (grounded-metrics metric-templates ground-dimensions)
-                                linked-metrics)
+                               (grounded-metrics metric-templates ground-dimensions)
+                               linked-metrics)
           dashcards           (->> grounded-metrics
                                    (make-combinations ground-dimensions (map :affinity-set affinities))
                                    (ground-metrics->cards base-context affinity-set->cards)
-                                   ;(map card->dashcard)
+                                        ;(map card->dashcard)
                                    )]
-      ;(#'populate/shown-cards 3 dashcards)
-      ;dashcards
-      ;(map :position (take 5 dashcards))
-      ;(#'populate/shown-cards 5 dashcards)
+                                        ;(#'populate/shown-cards 3 dashcards)
+                                        ;dashcards
+                                        ;(map :position (take 5 dashcards))
+                                        ;(#'populate/shown-cards 5 dashcards)
       (:ordered_cards
-        (populate/create-dashboard {:title          "AAAA"
-                                    :transient_name "TN"
-                                    :description    "DESC"
-                                    :cards          (take 3 dashcards)
-                                    :groups         (group-by :group dashcards)} :all))
-      ;(take 3 dashcards)
-      ;dashcards
+       (populate/create-dashboard {:title          "AAAA"
+                                   :transient_name "TN"
+                                   :description    "DESC"
+                                   :cards          (take 3 dashcards)
+                                   :groups         (group-by :group dashcards)} :all))
+                                        ;(take 3 dashcards)
+                                        ;dashcards
       ))
 
   ;; This doesn't have the right sourcing (see generate-dashboard signature)
   (generate-dashboard
-    (t2/select-one :model/Metric :name "Churn")
-    (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+   (t2/select-one :model/Metric :name "Churn")
+   (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
 
   (:groups (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
   )
@@ -817,10 +605,3 @@
          ;(map (juxt :metric-name (comp :rows :data qp/process-query :query)))
          ))
   )
-
-(defn interesting
-  [base-context dimension-definitions metric-definitions {:keys [linked-metrics]}]
-  (let [dimensions (find-dimensions base-context dimension-definitions)
-        metrics    (grounded-metrics (normalize-metrics metric-definitions) dimensions)]
-    {:metrics (concat metrics linked-metrics)
-     :dimensions dimensions}))
