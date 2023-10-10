@@ -22,7 +22,7 @@ export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
 
   const resultTextProps = {
     ...textProps,
-    fz: isCompact ? "sm" : "md",
+    size: isCompact ? "sm" : "md",
   };
 
   const dateLabel = formatDate(updated_at || created_at);
@@ -38,12 +38,7 @@ export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
       {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <>
           {index > 0 && (
-            <Box
-              className={`${index > 0 && "testing "} 123`}
-              mt="xs"
-              mx="xs"
-              component="span"
-            >
+            <Box mt="xs" mx="xs" component="span">
               <Icon name="chevronright" size={10} />
             </Box>
           )}
