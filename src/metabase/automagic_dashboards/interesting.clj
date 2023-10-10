@@ -1,4 +1,4 @@
-(ns metabase.automagic-dashboards.foo
+(ns metabase.automagic-dashboards.interesting
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.string :as str]
@@ -817,3 +817,10 @@
          ;(map (juxt :metric-name (comp :rows :data qp/process-query :query)))
          ))
   )
+
+(defn interesting
+  [base-context dimension-definitions metric-definitions {:keys [linked-metrics]}]
+  (let [dimensions (find-dimensions base-context dimension-definitions)
+        metrics    (grounded-metrics (normalize-metrics metric-definitions) dimensions)]
+    {:metrics (concat metrics linked-metrics)
+     :dimensions dimensions}))

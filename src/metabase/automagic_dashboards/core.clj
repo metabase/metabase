@@ -96,7 +96,7 @@
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.filters :as filters]
-    [metabase.automagic-dashboards.foo :as foo]
+    [metabase.automagic-dashboards.interesting :as interesting]
     [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
@@ -253,7 +253,7 @@
   linked-metrics mi/model)
 
 (defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
-  (let [field-ids (set (foo/find-field-ids definition))]
+  (let [field-ids (set (interesting/find-field-ids definition))]
     [{:metric-name            metric-name
       :metric-title           metric-name
       :metric-definition      definition
@@ -412,7 +412,7 @@
                          attribute (some-> attribute qp.util/normalize-token)]
                      (str (or (and (ifn? entity) (entity attribute))
                               (root attribute)
-                              (foo/->reference template-type entity))))))))
+                              (interesting/->reference template-type entity))))))))
 
 (defn- build-order-by
   [{:keys [dimensions metrics order_by]}]
@@ -430,7 +430,7 @@
    (fn [subform]
      (if (dashboard-templates/dimension-form? subform)
        (let [[_ identifier opts] subform]
-         (foo/->reference :mbql (-> identifier bindings (merge opts))))
+         (interesting/->reference :mbql (-> identifier bindings (merge opts))))
        subform))
    {:type     :query
     :database (-> root :database)
@@ -834,7 +834,7 @@
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
         context    (make-base-context (->root (t2/select-one :model/Table :id 2)))
-        dimensions (foo/find-dimensions context (:dimensions template))]
+        dimensions (interesting/find-dimensions context (:dimensions template))]
     (dash-template->affinities template dimensions))
   )
 
@@ -956,7 +956,7 @@
 (defn- add-metric-self-reference [{{:keys [entity]} :root} metrics]
   (cond-> metrics
     (= Metric (mi/model entity))
-    (assoc "this" {:metric (foo/->reference :mbql entity)
+    (assoc "this" {:metric (interesting/->reference :mbql entity)
                    :name   (:name entity)
                    :score  dashboard-templates/max-score})))
 
@@ -989,16 +989,16 @@
     template-cards      :cards
     template-groups     :groups
     :as                 template}]
-  (let [ground-dimensions   (foo/find-dimensions base-context template-dimensions)
+  (let [ground-dimensions   (interesting/find-dimensions base-context template-dimensions)
         affinities          (dash-template->affinities template ground-dimensions)
-        affinity-set->cards (foo/make-affinity-set->cards ground-dimensions template-cards affinities)
-        metric-templates    (foo/normalize-metrics template-metrics)
+        affinity-set->cards (interesting/make-affinity-set->cards ground-dimensions template-cards affinities)
+        metric-templates    (interesting/normalize-metrics template-metrics)
         grounded-metrics    (concat
-                              (foo/grounded-metrics metric-templates ground-dimensions)
+                             (interesting/grounded-metrics metric-templates ground-dimensions)
                               linked-metrics)
         cards               (->> grounded-metrics
-                                 (foo/make-combinations ground-dimensions (map :affinity-set affinities))
-                                 (foo/ground-metrics->cards base-context affinity-set->cards)
+                                 (interesting/make-combinations ground-dimensions (map :affinity-set affinities))
+                                 (interesting/ground-metrics->cards base-context affinity-set->cards)
                                  (map-indexed (fn [i card]
                                                 (assoc card :position i))))]
     (populate/create-dashboard {:title          "Fill in template here"
@@ -1006,7 +1006,6 @@
                                 :description    "Fill in template here"
                                 :cards          cards
                                 :groups         template-groups} :all)))
-
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
@@ -1020,7 +1019,7 @@
     :keys               [dashboard-template-name dashboard_filters]
     :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions   (->> (foo/find-dimensions base-context template-dimensions)
+  (let [available-dimensions   (->> (interesting/find-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
         ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
         available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)

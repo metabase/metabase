@@ -8,9 +8,8 @@
     [metabase.automagic-dashboards.core :as magic
      :refer [automagic-analysis candidate-tables]]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.foo :as foo]
     [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-    [metabase.automagic-dashboards.foo :as metric-x-rays]
+    [metabase.automagic-dashboards.interesting :as interesting]
     [metabase.models.card :refer [Card]]
     [metabase.models.collection :refer [Collection]]
     [metabase.models.database :refer [Database]]
@@ -273,7 +272,7 @@
   (api/let-404 [{metric-name :name :as metric} (t2/select-one :model/Metric metric-id)]
     (api/read-check metric)
     (->> metric
-         metric-x-rays/instantiate-affinities
+         interesting/instantiate-affinities
          (dash-gen/create-dashboard {:dashboard-name metric-name}))))
 
 (api/defendpoint GET "/table/table/table/:table-id"
