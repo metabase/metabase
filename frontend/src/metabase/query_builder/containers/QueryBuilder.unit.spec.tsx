@@ -7,6 +7,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDataset,
+  createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockStructuredDatasetQuery,
@@ -225,6 +226,11 @@ const setup = async ({
     setupCardQueryEndpoints(card, dataset);
     setupAlertsEndpoints(card, []);
     setupModelIndexEndpoints(card.id, []);
+  }
+
+  // this workaround can be removed when metabase#34523 is fixed
+  if (card === null) {
+    fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
   }
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
