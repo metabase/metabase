@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import moment from "moment";
 import type {
   ComputedVisualizationSettings,
   EChartsEventHandler,
@@ -26,6 +27,8 @@ export const buildComboChart = (
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
   timelineEvents?: TimelineEvent[],
+  onSelectTimelineEvents?: (events: TimelineEvent[]) => void,
+  onOpenTimelines?: () => void,
 ): {
   option: EChartsOption;
   eventHandlers: EChartsEventHandler[];
@@ -87,6 +90,23 @@ export const buildComboChart = (
 
   return {
     option,
-    eventHandlers: [],
+    eventHandlers: [
+      {
+        eventName: "click",
+        handler: e => {
+          if (!(e.componentType === "markLine")) {
+            return;
+          }
+          const event = timelineEvents?.find(
+            t => e.data.coord[0] === moment(t.timestamp).toISOString(),
+          );
+
+          if (event) {
+            onSelectTimelineEvents?.([event]);
+            onOpenTimelines?.();
+          }
+        },
+      },
+    ],
   };
 };

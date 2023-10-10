@@ -79,6 +79,8 @@ export interface VisualizationProps {
   onEditSeries?: any;
   onRemoveSeries?: any;
   onUpdateWarnings?: any;
+  onSelectTimelineEvents?: (events: TimelineEvent[]) => void;
+  onOpenTimelines?: () => void;
 
   timelineEvents?: TimelineEvent[];
 }
