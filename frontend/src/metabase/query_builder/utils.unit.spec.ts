@@ -57,6 +57,14 @@ const mockQuestions = [
 
 const anyLocation = createMockLocation();
 
+const mockNewModelQueryTabLocation = createMockLocation({
+  pathname: `/model/query`,
+});
+
+const mockNewModelMetadataTabLocation = createMockLocation({
+  pathname: `/model/metadata`,
+});
+
 const mockModelQueryTabLocation = createMockLocation({
   pathname: `/model/${mockModelCard.id}/query`,
 });
@@ -152,6 +160,34 @@ describe("isNavigationAllowed", () => {
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(false);
+    });
+  });
+
+  describe("when creating new model", () => {
+    const isNewQuestion = true;
+    const question = mockModelQuestion;
+
+    it("does not allow navigating away from creating new model", () => {
+      const destinations = [...mockLocations, undefined];
+
+      for (const destination of destinations) {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      }
+    });
+
+    it("allows navigating between model query & metadata tabs", () => {
+      const destinations = [
+        mockNewModelQueryTabLocation,
+        mockNewModelMetadataTabLocation,
+      ];
+
+      for (const destination of destinations) {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      }
     });
   });
 
