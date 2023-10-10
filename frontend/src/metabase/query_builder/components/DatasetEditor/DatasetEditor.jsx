@@ -404,8 +404,8 @@ function DatasetEditor(props) {
     if (dataset.query().isEmpty()) {
       return false;
     }
-    const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName && isDirty;
+    const everyFieldHasDisplayName = fields.every(field => field.display_name);
+    return everyFieldHasDisplayName && isDirty;
   }, [dataset, fields, isDirty]);
 
   const sidebar = getSidebar(
@@ -443,7 +443,6 @@ function DatasetEditor(props) {
         buttons={[
           dataset.isSaved() ? (
             <Button
-              /* TODO */
               key="cancel"
               small
               onClick={handleRequestCancelEdit}
