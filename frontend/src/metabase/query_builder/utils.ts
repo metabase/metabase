@@ -77,10 +77,11 @@ export const isNavigationAllowed = ({
    * If it's a new question, we're going to deal with it later as part of the epic:
    * https://github.com/metabase/metabase/issues/33749
    */
-  if (!question || !destination || isNewQuestion) {
+  if (!question || !destination) {
     return true;
   }
 
+  const isExistingQuestion = !isNewQuestion;
   const { hash, pathname } = destination;
 
   if (question.isDataset()) {
@@ -92,7 +93,7 @@ export const isNavigationAllowed = ({
     return isGoingToQueryTab || isGoingToMetadataTab;
   }
 
-  if (question.isNative()) {
+  if (isExistingQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
 
     return isRunningQuestion;
