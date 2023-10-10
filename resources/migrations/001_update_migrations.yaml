@@ -3377,6 +3377,7 @@ databaseChangeLog:
                     AND p.object = '/'
               WHERE p.object IS NULL;
 
+  # not needed
   - changeSet:
       id: v48.00-024 # v43.00-014
       author: camsaul
@@ -3445,6 +3446,8 @@ databaseChangeLog:
                     AND p.object = '/collection/root/'
               WHERE p.object IS NULL;
 
+
+  # not needed
   - changeSet:
       id: v48.00-026 # v43.00-042
       author: noahmoss
@@ -3470,6 +3473,8 @@ databaseChangeLog:
                     AND db.object = p.object
               WHERE p.object IS NULL;
 
+  # needed but we need to change it to /application/subscription
+  # because we do a rename in # v43.00-058
   - changeSet:
       id: v48.00-027 # v43.00-047
       author: qnkhuat
