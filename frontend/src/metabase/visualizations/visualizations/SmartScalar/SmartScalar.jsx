@@ -68,7 +68,7 @@ export class SmartScalar extends Component {
         {
           data: { cols },
         },
-      ]) => cols.length < 2,
+      ]) => cols.filter(isNumeric).length < 2,
     }),
     ...columnSettings({
       getColumns: (
