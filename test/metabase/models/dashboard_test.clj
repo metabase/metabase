@@ -18,7 +18,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -542,7 +541,7 @@
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
        (revert-to-previous-revision Dashboard dashboard-id 2)
-       (is (=? [{:id #hawk/schema (s/pred pos-int?) :name "Tab 1" :position 0}
+       (is (=? [{:id #hawk/malli [:fn pos-int?] :name "Tab 1" :position 0}
                 {:id tab-2-id :name "Tab 2" :position 1}]
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
