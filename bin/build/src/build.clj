@@ -21,21 +21,6 @@
     "ee"  :ee
     nil   :oss))
 
-(defn- package-ia-content! [edition]
-  {:pre [(#{:oss :ee} edition)]}
-  (when (= :ee edition)
-    (let [ia-zip-file "resources/instance_analytics.zip"]
-      (u/step "Packaging Instance Analytics Content"
-        (u/step "Checking for existing IA Content zip file"
-          (if (u/file-exists? ia-zip-file)
-            (u/step "found IA Content zip file: Deleting now..."
-              (io/delete-file (io/file ia-zip-file)))
-            (u/step "IA Content zip file not found => skipping delete")))
-        (u/step (str "Zipping Instance Analytics to " ia-zip-file)
-          (u/zip-directory->file "resources/instance_analytics"
-                                 "resources/instance_analytics.zip"))))
-    (u/announce "Instance Analytics (IA) Content packaged successfully.")))
-
 (defn- build-frontend! [edition]
   {:pre [(#{:oss :ee} edition)]}
   (let [mb-edition (case edition
@@ -108,8 +93,6 @@
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
                    (version-properties/generate-version-properties-file! edition version))
-   :package-ia   (fn [{:keys [edition]}]
-                   (package-ia-content! edition))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
