@@ -68,7 +68,7 @@ export class SmartScalar extends Component {
         {
           data: { cols },
         },
-      ]) => cols[0].name,
+      ]) => cols.find(col => !isDate(col))?.name,
       getHidden: ([
         {
           data: { cols },
