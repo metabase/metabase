@@ -1,42 +1,74 @@
 import { Icon } from "metabase/core/components/Icon";
+import type { InfoTextData } from "metabase/search/components/SearchResult/use-info-text";
+import { useInfoText } from "metabase/search/components/SearchResult/use-info-text";
 import {
-  InfoTextData,
-  useInfoText,
-} from "metabase/search/components/SearchResult/use-info-text";
+  formatDate,
+  getUserLabel,
+} from "metabase/search/components/SearchResult/utils";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import type { AnchorProps, TextProps } from "metabase/ui";
-import { Box } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 
-export function InfoText({
-  result,
-  ...textProps
-}: {
+type InfoTextProps = {
   result: WrappedResult;
-  textProps?: TextProps | AnchorProps;
-}) {
+  isCompact: boolean;
+} & (TextProps | AnchorProps);
+
+export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
   const infoText: InfoTextData[] = useInfoText(result);
 
+  const { updated_at, created_at } = result;
+
+  const resultTextProps = {
+    ...textProps,
+    fz: isCompact ? "sm" : "md",
+  };
+
+  const dateLabel = formatDate(updated_at || created_at);
+  const userLabel = getUserLabel(result);
+  const separator = (
+    <Text {...resultTextProps} span mx="xs">
+      •
+    </Text>
+  );
+
   return (
-    <>
+    <Box>
       {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <>
           {index > 0 && (
-            <Box mt="xs" mx="xs" component="span">
+            <Box
+              className={`${index > 0 && "testing "} 123`}
+              mt="xs"
+              mx="xs"
+              component="span"
+            >
               <Icon name="chevronright" size={10} />
             </Box>
           )}
           <SearchResultLink
             key={label}
-            to={link}
+            href={link}
             leftIcon={icon}
-            {...textProps}
+            {...resultTextProps}
           >
             {label}
           </SearchResultLink>
         </>
       ))}
-    </>
+      {!isCompact && dateLabel && (
+        <>
+          {separator}
+          <SearchResultLink {...resultTextProps}>{dateLabel}</SearchResultLink>
+        </>
+      )}
+      {userLabel && (
+        <>
+          {separator}
+          <SearchResultLink {...resultTextProps}>{userLabel}</SearchResultLink>
+        </>
+      )}
+    </Box>
   );
 }
-

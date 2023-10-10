@@ -2,19 +2,22 @@ import type { MantineThemeOverride } from "@mantine/core";
 
 export const getDividerOverrides = (): MantineThemeOverride["components"] => ({
   Divider: {
+    defaultProps: {
+      color: "border.0",
+    },
     styles: theme => ({
       horizontal: {
-        borderTopColor: theme.colors.border[0],
+        // borderTopColor: theme.colors.border[0],
       },
       vertical: {
-        borderLeftColor: theme.colors.border[0],
+        // borderLeftColor: theme.colors.border[0],
       },
       label: {
         "&::before": {
-          borderTopColor: theme.colors.border[0],
+          // borderTopColor: theme.colors.border[0],
         },
         "&::after": {
-          borderTopColor: theme.colors.border[0],
+          // borderTopColor: theme.colors.border[0],
         },
       },
       labelDefaultStyles: {

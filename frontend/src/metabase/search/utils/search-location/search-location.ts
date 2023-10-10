@@ -6,8 +6,9 @@ import type {
 } from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
-export function isSearchPageLocation(location?: SearchAwareLocation): boolean {
-  return location ? /^\/?search$/.test(location.pathname) : false;
+export function isSearchPageLocation(location: SearchAwareLocation): boolean {
+  const components = location.pathname.split("/");
+  return components[components.length - 1] === "search";
 }
 
 export function getSearchTextFromLocation(

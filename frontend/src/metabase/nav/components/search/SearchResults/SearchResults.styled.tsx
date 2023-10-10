@@ -7,5 +7,5 @@ export const EmptyStateContainer = styled.div`
 
 export const SearchResultsList = styled.ul`
   overflow-y: auto;
-  padding: 0.5rem 0;
+  padding: ${({ theme }) => theme.spacing.xs};
 `;

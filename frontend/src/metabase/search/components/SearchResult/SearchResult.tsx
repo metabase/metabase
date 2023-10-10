@@ -1,126 +1,90 @@
-import { Button } from "metabase/ui";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import { Icon } from "metabase/core/components/Icon";
-import Text from "metabase/components/type/Text";
-
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { Group, Text, Stack, Loader, Box, Divider } from "metabase/ui";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
-import Link from "metabase/core/components/Link";
 import { InfoText } from "./InfoText";
-import { ItemIcon, Context, Score } from "./components";
-import {
-  ResultButton,
-  ResultLink,
-  Title,
-  TitleWrapper,
-  Description,
-  ResultSpinner,
-  ResultLinkContent,
-  ResultInner,
-} from "./SearchResult.styled";
+import { ItemIcon } from "./components";
+
+import { ResultTitle, SearchResultContainer } from "./SearchResult.styled";
 
 export function SearchResult({
   result,
   compact = false,
-  hasDescription = true,
-  onClick = undefined,
+  showDescription = true,
+  onClick = null,
   isSelected = false,
 }: {
   result: WrappedResult;
   compact?: boolean;
-  hasDescription?: boolean;
-  onClick?: (result: WrappedResult) => void;
+  showDescription?: boolean;
+  onClick?: ((result: WrappedResult) => void) | null;
   isSelected?: boolean;
 }) {
-  const active = isItemActive(result);
-  const loading = isItemLoading(result);
+  const { name, model, description, moderated_status }: WrappedResult = result;
 
-  // we want to remove link behavior if we have an onClick handler
-  const ResultContainer = onClick ? ResultButton : ResultLink;
-
-  const showXRayButton =
-    result.model === "indexed-entity" &&
-    result.id !== undefined &&
-    result.model_index_id !== null;
+  const isActive = isItemActive(result);
+  const isLoading = isItemLoading(result);
 
   return (
-    <ResultContainer
-      data-is-selected={isSelected}
-      isSelected={isSelected}
-      active={active}
-      compact={compact}
-      to={!onClick ? result.getUrl() : ""}
-      onClick={onClick && active ? () => onClick(result) : undefined}
-      data-testid="search-result-item"
-    >
-      <ResultInner>
-        <ResultLinkContent>
-          <ItemIcon item={result} type={result.model} active={active} />
-          <div>
-            <TitleWrapper>
-              <Title active={active} data-testid="search-result-item-name">
-                {result.name}
-              </Title>
-              <PLUGIN_MODERATION.ModerationStatusIcon
-                status={result.moderated_status}
-                size={12}
-              />
-            </TitleWrapper>
-            <Text data-testid="result-link-info-text">
-              <InfoText result={result} />
-            </Text>
-            {hasDescription && result.description && (
-              <Description>{result.description}</Description>
-            )}
-            <Score scores={result.scores} />
-          </div>
-          {loading && (
-            // SearchApp also uses `loading-spinner`, using a different test ID
-            // to not confuse unit tests waiting for loading-spinner to disappear
-            <ResultSpinner
-              data-testid="search-result-loading-spinner"
-              size={24}
-              borderWidth={3}
+    <SearchResultContainer isActive={isActive} isSelected={isSelected} p="sm">
+      <ItemIcon active={isActive} item={result} type={model} />
+      <Stack justify="center" spacing={0} style={{ overflow: "hidden" }}>
+        <Group spacing="xs" align="center">
+          <ResultTitle fw={700} fz="md" truncate>
+            {name}
+          </ResultTitle>
+          <PLUGIN_MODERATION.ModerationStatusIcon
+            status={moderated_status}
+            size={14}
+          />
+        </Group>
+        <InfoText isCompact={compact} result={result} />
+      </Stack>
+      {isLoading && (
+        <Box
+          style={{
+            gridRow: "1 / span 2",
+            gridColumn: 3,
+          }}
+          px="xs"
+        >
+          <Loader />
+        </Box>
+      )}
+      {!compact && description && showDescription && (
+        <Box
+          style={{
+            gridColumnStart: 2,
+          }}
+        >
+          <Group noWrap spacing="sm">
+            <Divider
+              size="md"
+              color="focus.0"
+              orientation="vertical"
+              style={{ borderRadius: "0.25rem" }}
             />
-          )}
-        </ResultLinkContent>
-        {showXRayButton && (
-          <Button
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-              e.stopPropagation()
-            }
-            variant="outline"
-            p="sm"
-          >
-            <Link
-              to={`/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`}
-            >
-              <Icon name="bolt" />
-            </Link>
-          </Button>
-        )}
-      </ResultInner>
-      {compact || <Context context={result.context} />}
-    </ResultContainer>
+            <Text lineClamp={3}>{description}</Text>
+          </Group>
+        </Box>
+      )}
+    </SearchResultContainer>
   );
 }
 
 const isItemActive = (result: WrappedResult) => {
-  switch (result.model) {
-    case "table":
-      return isSyncCompleted(result);
-    default:
-      return true;
+  if (result.model !== "table") {
+    return true;
   }
+
+  return isSyncCompleted(result);
 };
 
 const isItemLoading = (result: WrappedResult) => {
-  switch (result.model) {
-    case "database":
-    case "table":
-      return !isSyncCompleted(result);
-    default:
-      return false;
+  if (result.model !== "database" && result.model !== "table") {
+    return false;
   }
+
+  return !isSyncCompleted(result);
 };

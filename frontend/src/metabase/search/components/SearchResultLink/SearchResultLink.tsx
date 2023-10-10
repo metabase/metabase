@@ -5,29 +5,31 @@ import { Anchor, Box, Text } from "metabase/ui";
 export const SearchResultLink = ({
   children,
   leftIcon = null,
-  to,
+  href,
   ...textProps
 }: {
   children: JSX.Element | string | null;
   leftIcon?: JSX.Element | null;
-  to?: string | null;
+  href?: string | null;
   textProps?: TextProps | AnchorProps;
 }) => {
-  const componentProps = to ? { as: Anchor, to } : { as: Text };
-
+  const componentProps = href ? { as: Anchor, href } : { as: Text };
   return (
-    <ResultLink
-      span
-      td={to ? "underline" : "none"}
-      c="text.1"
-      lh="unset"
-      {...componentProps}
-      {...textProps}
-    >
-      <Box component="span" pos="relative" top="0.15rem">
-        {leftIcon}
-      </Box>
-      {children}
-    </ResultLink>
+    <>
+      {leftIcon && (
+        <Box component="span" mr="0.15rem" pos="relative" top="0.15rem">
+          {leftIcon}
+        </Box>
+      )}
+      <ResultLink
+        span
+        td={href ? "underline" : "none"}
+        c="text.1"
+        {...componentProps}
+        {...textProps}
+      >
+        {children}
+      </ResultLink>
+    </>
   );
 };

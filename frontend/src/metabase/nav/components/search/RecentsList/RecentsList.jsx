@@ -23,6 +23,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import { Box } from "metabase/ui";
 import {
   Root,
   EmptyStateContainer,
@@ -114,7 +115,7 @@ function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
                           type={item.model}
                           active={active}
                         />
-                        <div>
+                        <Box pl="sm">
                           <TitleWrapper>
                             <Title
                               active={active}
@@ -130,7 +131,7 @@ function RecentsList({ list, loading, onChangeLocation, onClick, className }) {
                           <Text data-testid="recently-viewed-item-type">
                             {type}
                           </Text>
-                        </div>
+                        </Box>
                         {loading && <ResultSpinner size={24} borderWidth={3} />}
                       </RecentListItemContent>
                     </ResultContainer>

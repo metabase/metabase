@@ -99,7 +99,10 @@ function SearchApp({ location }) {
                 </Paper>
               ) : (
                 <Box>
-                  <SearchResultSection items={list} />
+                  <SearchResultSection
+                    totalResults={metadata.total}
+                    items={list}
+                  />
                   <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls
                       showTotal

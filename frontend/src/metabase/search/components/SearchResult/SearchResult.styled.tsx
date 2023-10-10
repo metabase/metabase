@@ -1,10 +1,13 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import type { HTMLAttributes } from "react";
 import { color, lighten } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Link from "metabase/core/components/Link";
-import Text from "metabase/components/type/Text";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import type { BoxProps, TextProps } from "metabase/ui";
+import { Box, Text } from "metabase/ui";
 
 interface ResultStylesProps {
   compact: boolean;
@@ -90,18 +93,6 @@ const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
   }
 `;
 
-export const ResultInner = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-export const ResultLinkContent = styled.div`
-  display: flex;
-  align-items: start;
-  overflow-wrap: anywhere;
-`;
-
 export const Description = styled(Text)`
   padding-left: ${space(1)};
   margin-top: ${space(1)} !important;
@@ -115,4 +106,33 @@ export const ResultSpinner = styled(LoadingSpinner)`
   justify-content: flex-end;
   margin-left: ${space(1)};
   color: ${color("brand")};
+`;
+
+export const ResultTitle = styled(Text)<TextProps>``;
+
+export const SearchResultContainer = styled(Box)<
+  BoxProps &
+    HTMLAttributes<HTMLDivElement> & { isActive: boolean; isSelected: boolean }
+>`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  border-radius: ${({ theme }) => theme.radius.md};
+
+  ${({ theme, isActive, isSelected }) =>
+    isActive &&
+    css`
+      color: ${isSelected && theme.colors.brand[1]};
+
+      &:hover {
+        background-color: ${theme.colors.brand[0]};
+        cursor: pointer;
+
+        ${ResultTitle} {
+          color: ${theme.colors.brand[1]};
+        }
+      }
+    `}
 `;

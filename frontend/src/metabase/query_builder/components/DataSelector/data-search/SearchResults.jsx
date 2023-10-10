@@ -55,7 +55,7 @@ export function SearchResults({
                     result={item}
                     onClick={onSelect}
                     compact
-                    hasDescription={false}
+                    showDescription={false}
                   />
                 </li>
               ))}

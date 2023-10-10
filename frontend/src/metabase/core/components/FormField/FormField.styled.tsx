@@ -11,7 +11,7 @@ export interface FormCaptionProps {
 
 export const FieldCaption = styled.div<FormCaptionProps>`
   align-self: ${props =>
-    props.orientation !== "vertical" && !props.hasDescription ? "center" : ""};
+    props.orientation !== "vertical" && !props.showDescription ? "center" : ""};
   margin-left: ${props =>
     props.orientation === "horizontal" &&
     props.alignment === "start" &&
@@ -49,7 +49,7 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
   display: flex;
   align-items: center;
   margin-bottom: ${props =>
-    props.orientation === "vertical" || props.hasDescription ? "0.5em" : ""};
+    props.orientation === "vertical" || props.showDescription ? "0.5em" : ""};
 `;
 
 export const FieldLabelError = styled.span`

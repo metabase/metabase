@@ -1,5 +1,6 @@
-import TableType from "metabase-lib/metadata/Table";
-import { Collection, SearchResult } from "metabase-types/api";
+import { t } from "ttag";
+import type { WrappedResult } from "metabase/search/types";
+import type { Collection } from "metabase-types/api";
 import {
   useDatabaseQuery,
   useSchemaListQuery,
@@ -11,16 +12,19 @@ import {
   collection as collectionUrl,
   tableRowsQuery,
 } from "metabase/lib/urls";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { AuthorityLevelIcon } from "metabase/search/components/CollectionBadge.styled";
-import { WrappedResult } from "metabase/search/types";
-import { t } from "ttag";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_COLLECTIONS,
+} from "metabase/plugins";
+import type TableType from "metabase-lib/metadata/Table";
 
 export type InfoTextData = {
   link?: string | null;
-  icon?: JSX.Element;
+  icon?: JSX.Element | null;
   label: string | null;
 };
+
+const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export const useInfoText = (result: WrappedResult): InfoTextData[] => {
   let infoTextHook;
@@ -126,11 +130,14 @@ const useTableLink = (result: WrappedResult): InfoTextData[] => {
     },
   ];
 };
+
 const useCollectionResultLink = (result: WrappedResult): InfoTextData[] => {
   const collection = result.getCollection();
   return [
     {
-      icon: <AuthorityLevelIcon collection={collection} />,
+      icon: collection.authority_level ? (
+        <CollectionAuthorityLevelIcon size={15} collection={collection} />
+      ) : null,
       link: collectionUrl(collection),
       label: collection.name ?? null,
     },

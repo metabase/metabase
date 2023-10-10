@@ -29,5 +29,5 @@ export const Header = styled.h4`
 
 export const RecentListItemContent = styled.div`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
 `;
