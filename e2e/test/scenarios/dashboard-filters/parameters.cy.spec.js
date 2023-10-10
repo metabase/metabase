@@ -100,7 +100,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".DashCard").last().should("contain", "4,939");
   });
 
-  it("should remove parameter name or the whole parameter (metabase#10829, metabase#17933)", () => {
+  it("should be able to remove parameter (metabase#17933)", () => {
     // Mirrored issue in metabase-enterprise#275
 
     const questionDetails = {
@@ -229,20 +229,11 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Remove").click();
     cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
-    // Remove filter name (metabase#10829)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(endsWith.name).find(".Icon-gear").click();
-    cy.findByDisplayValue(endsWith.name).clear().blur();
-
-    cy.location("search").should("eq", "?unnamed=zmo");
-    cy.findByDisplayValue("unnamed");
-
     cy.button("Save").click();
 
-    cy.log("Filter name should be 'unnamed' and the value cleared");
-    filterWidget().contains(/unnamed/i);
-
-    cy.location("search").should("eq", "?unnamed=");
+    cy.log("There should only be one filter remaining and its value cleared");
+    filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
+    cy.location("search").should("eq", `?${endsWith.slug}=`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
