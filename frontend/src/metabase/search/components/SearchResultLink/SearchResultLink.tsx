@@ -15,7 +15,12 @@ export const SearchResultLink = ({
 }) => {
   const componentProps = href ? { as: Anchor, href } : { as: Text };
   return (
-    <>
+    <Box
+      display="contents"
+      onClick={e => {
+        e.stopPropagation();
+      }}
+    >
       {leftIcon && (
         <Box component="span" mr="0.15rem" pos="relative" top="0.15rem">
           {leftIcon}
@@ -30,6 +35,6 @@ export const SearchResultLink = ({
       >
         {children}
       </ResultLink>
-    </>
+    </Box>
   );
 };

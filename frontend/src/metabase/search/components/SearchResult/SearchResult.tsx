@@ -38,7 +38,9 @@ export function SearchResult({
     [dispatch],
   );
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    e.preventDefault();
+
     if (!isActive) {
       return;
     }
