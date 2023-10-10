@@ -37,7 +37,7 @@
 (def ^:private default-search-row
   {:archived                   false
    :bookmark                   nil
-   :collection                 {:id false :name nil :authority_level nil}
+   :collection                 {:id false :name nil :authority_level nil :type nil}
    :collection_authority_level nil
    :collection_position        nil
    :context                    nil
