@@ -95,9 +95,7 @@
     :model/QueryAction
     :model/DashboardTab
     :model/ModelIndex
-    :model/ModelIndexValue
-    ;; 48+
-    :model/TablePrivileges]
+    :model/ModelIndexValue]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])
