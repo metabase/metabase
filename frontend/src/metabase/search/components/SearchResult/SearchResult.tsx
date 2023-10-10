@@ -1,109 +1,24 @@
 import { Button } from "metabase/ui";
-import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/core/components/Icon";
 import Text from "metabase/components/type/Text";
 
-import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
-
-import type { SearchScore, SearchModelType } from "metabase-types/api";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { WrappedResult } from "metabase/search/types";
-import Link from "metabase/core/components/Link/Link";
+import Link from "metabase/core/components/Link";
 import { InfoText } from "../InfoText";
+import { ItemIcon, Context, Score } from "./components";
 import {
-  IconWrapper,
   ResultButton,
   ResultLink,
   Title,
   TitleWrapper,
   Description,
-  ContextText,
-  ContextContainer,
   ResultSpinner,
   ResultLinkContent,
   ResultInner,
 } from "./SearchResult.styled";
-
-const DEFAULT_ICON_SIZE = 20;
-
-function TableIcon() {
-  return <Icon name="database" />;
-}
-
-function CollectionIcon({ item }: { item: WrappedResult }) {
-  const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
-  if (isRegular) {
-    iconProps.size = DEFAULT_ICON_SIZE;
-  } else {
-    iconProps.width = 20;
-    iconProps.height = 24;
-  }
-  return <Icon {...iconProps} tooltip={null} />;
-}
-
-const ModelIconComponentMap = {
-  table: TableIcon,
-  collection: CollectionIcon,
-};
-
-function DefaultIcon({ item }: { item: WrappedResult }) {
-  return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
-}
-
-export function ItemIcon({
-  item,
-  type,
-  active,
-}: {
-  item: WrappedResult;
-  type: SearchModelType;
-  active: boolean;
-}) {
-  const IconComponent =
-    type in Object.keys(ModelIconComponentMap)
-      ? ModelIconComponentMap[type as keyof typeof ModelIconComponentMap]
-      : DefaultIcon;
-
-  return (
-    <IconWrapper item={item} type={type} active={active}>
-      <IconComponent item={item} />
-    </IconWrapper>
-  );
-}
-
-function Score({ scores }: { scores: SearchScore[] }) {
-  return (
-    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
-  );
-}
-
-// I think it's very likely that this is a dead codepath: RL 2023-06-21
-function Context({ context }: { context: any[] }) {
-  if (!context) {
-    return null;
-  }
-
-  return (
-    <ContextContainer>
-      <ContextText>
-        {context.map(({ is_match, text }, i: number) => {
-          if (!is_match) {
-            return <span key={i}> {text}</span>;
-          }
-
-          return (
-            <strong key={i} style={{ color: color("brand") }}>
-              {" "}
-              {text}
-            </strong>
-          );
-        })}
-      </ContextText>
-    </ContextContainer>
-  );
-}
 
 export function SearchResult({
   result,

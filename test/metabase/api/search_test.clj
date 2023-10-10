@@ -22,7 +22,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -558,16 +557,16 @@
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
             (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Rome"
-                                 :model_id      (:id model)
+              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Rome"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}
-                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Tromsø"
-                                 :model_id      (:id model)
+                                 :model_index_id #hawk/malli :int}
+                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Tromsø"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}}
+                                 :model_index_id #hawk/malli :int}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
 
@@ -1375,9 +1374,21 @@
                      Action      _              (archived {:name     "test action"
                                                            :type     :query
                                                            :model_id model-id})]
+<<<<<<< HEAD
        (testing "`archived-string` is 'false'"
          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
        (testing "`archived-string` is 'true'"
          (is (= #{"action"}
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+=======
+       (testing "`archived-string` is invalid"
+         (is (=? {:message "Invalid input: [\"value must be a valid boolean string ('true' or 'false').\"]"}
+                 (mt/user-http-request :crowberto :get 500 "search/models" :archived-string 1))))
+       (testing "`archived-string` is 'false'"
+         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "false")))))
+       (testing "`archived-string` is 'true'"
+         (is (= #{"action"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "true")))))))))
+>>>>>>> master
