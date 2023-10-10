@@ -443,7 +443,6 @@ function DatasetEditor(props) {
         buttons={[
           dataset.isSaved() ? (
             <Button
-              /* TODO */
               key="cancel"
               small
               onClick={handleRequestCancelEdit}
