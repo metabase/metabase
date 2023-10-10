@@ -1,32 +1,37 @@
 import type { SearchModelType } from "metabase-types/api";
-import { IconWrapper } from "metabase/search/components/SearchResult/SearchResult.styled";
+import { Icon } from "metabase/core/components/Icon";
 import type { WrappedResult } from "metabase/search/types";
 import { CollectionIcon } from "./CollectionIcon";
 import { DefaultIcon } from "./DefaultIcon";
-import { TableIcon } from "./TableIcon";
+import { IconWrapper } from "./ItemIcon.styled";
 
-const ModelIconComponentMap = {
-  table: TableIcon,
-  collection: CollectionIcon,
-};
-
-export function ItemIcon({
-  item,
-  type,
-  active,
-}: {
+interface IconComponentProps {
   item: WrappedResult;
   type: SearchModelType;
-  active: boolean;
-}) {
-  const IconComponent =
-    type in Object.keys(ModelIconComponentMap)
-      ? ModelIconComponentMap[type as keyof typeof ModelIconComponentMap]
-      : DefaultIcon;
+}
 
+const IconComponent = ({ item, type }: IconComponentProps) => {
+  if (type === "table") {
+    return <Icon name="database" />;
+  }
+
+  if (type === "collection") {
+    return <CollectionIcon item={item} />;
+  }
+
+  return <DefaultIcon item={item} />;
+};
+
+interface ItemIconProps {
+  active: boolean;
+  item: WrappedResult;
+  type: SearchModelType;
+}
+
+export const ItemIcon = ({ active, item, type }: ItemIconProps) => {
   return (
-    <IconWrapper item={item} type={type} active={active}>
-      <IconComponent item={item} />
+    <IconWrapper type={type} active={active}>
+      <IconComponent item={item} type={type} />
     </IconWrapper>
   );
-}
+};

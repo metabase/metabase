@@ -1,6 +1,6 @@
 import type { WrappedResult } from "metabase/search/types";
 import Card from "metabase/components/Card";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
+import { SearchResult } from "metabase/search/components/SearchResult";
 
 export const SearchResultSection = ({ items }: { items: WrappedResult[] }) => (
   <Card className="pt2">

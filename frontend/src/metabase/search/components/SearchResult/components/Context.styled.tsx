@@ -6,6 +6,7 @@ export const ContextText = styled("p")`
   color: ${color("text-medium")};
   margin-top: 0;
 `;
+
 export const ContextContainer = styled.div`
   margin-left: 42px;
   margin-top: 12px;

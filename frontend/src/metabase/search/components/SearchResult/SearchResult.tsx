@@ -1,9 +1,3 @@
-import {
-  ItemIcon,
-  Context,
-  Score,
-} from "metabase/search/components/SearchResult/components";
-
 import { Button } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/core/components/Icon";
@@ -12,8 +6,9 @@ import Text from "metabase/components/type/Text";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import type { WrappedResult } from "metabase/search/types";
-import Link from "metabase/core/components/Link/Link";
+import Link from "metabase/core/components/Link";
 import { InfoText } from "../InfoText";
+import { ItemIcon, Context, Score } from "./components";
 import {
   ResultButton,
   ResultLink,
