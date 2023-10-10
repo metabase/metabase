@@ -253,7 +253,43 @@
              (upload/detect-schema
               (csv-file-with ["id,ship,name,weapon"
                               "1,Serenity,Malcolm Reynolds,Pistol"
-                              "2,Millennium Falcon, Han Solo,Blaster"])))))))
+                              "2,Millennium Falcon, Han Solo,Blaster"]))))
+      (is (= {:extant-columns    {:id     int-pk-type
+                                  :ship   vchar-type
+                                  :name   vchar-type
+                                  :weapon vchar-type}
+              :generated-columns {}}
+             (upload/detect-schema
+              (csv-file-with ["ID,ship,name,weapon"
+                              "1,Serenity,Malcolm Reynolds,Pistol"
+                              "2,Millennium Falcon, Han Solo,Blaster"]))))
+      (is (= {:extant-columns    {:pk     int-pk-type
+                                  :ship   vchar-type
+                                  :name   vchar-type
+                                  :weapon vchar-type}
+              :generated-columns {}}
+             (upload/detect-schema
+              (csv-file-with ["pk,ship,name,weapon"
+                              "1,Serenity,Malcolm Reynolds,Pistol"
+                              "2,Millennium Falcon, Han Solo,Blaster"]))))
+      (is (= {:extant-columns    {:pk     int-pk-type
+                                  :ship   vchar-type
+                                  :name   vchar-type
+                                  :weapon vchar-type}
+              :generated-columns {}}
+             (upload/detect-schema
+              (csv-file-with ["PK,ship,name,weapon"
+                              "1,Serenity,Malcolm Reynolds,Pistol"
+                              "2,Millennium Falcon, Han Solo,Blaster"]))))
+      (testing "The type must match"
+        (is (= (with-ai-id {:id     vchar-type
+                            :ship   vchar-type
+                            :name   vchar-type
+                            :weapon vchar-type})
+               (upload/detect-schema
+                (csv-file-with ["id,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "potato,Millennium Falcon, Han Solo,Blaster"]))))))))
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -497,6 +533,31 @@
               (is (=? {:name                       #"(?i)id"
                        :semantic_type              :type/PK
                        :base_type                  :type/BigInteger
+                       :database_is_auto_increment false}
+                      (t2/select-one Field :database_position 0 :table_id (:id table)))))))))))
+
+(deftest load-from-csv-existing-id-column-duplicate-test
+  (testing "Upload a CSV file with an existing ID column: don't create an additional ID column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv!
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,name,weapon"
+                           "1,Serenity,Malcolm Reynolds,Pistol"
+                           "potato,Millennium Falcon,Han Solo,Blaster"])))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id" "ship" "name" "weapon"]
+                     (column-names-for-table table)))
+              (is (=? {:name                       #"(?i)id"
+                       :semantic_type              :type/PK
+                       :base_type                  :type/Text
                        :database_is_auto_increment false}
                       (t2/select-one Field :database_position 0 :table_id (:id table)))))))))))
 
