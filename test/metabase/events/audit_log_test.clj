@@ -500,11 +500,13 @@
   (testing :event/password-reset-initiated
     (mt/with-model-cleanup [:model/AuditLog]
       (let [event {:user-id (mt/user->id :rasta)
-                   :details {:token "hash"}}]
+                   :details {:id    (mt/user->id :rasta)
+                             :token "hash"}}]
         (is (= event (events/publish-event! :event/password-reset-initiated event))))
-      (is (= {:model_id (mt/user->id :lucky)
+      (is (= {:model_id (mt/user->id :rasta)
               :user_id  (mt/user->id :rasta)
-              :details  {:token "hash"}
+              :details  {:id    (mt/user->id :rasta)
+                         :token "hash"}
               :topic    :password-reset-initiated
               :model    "User"}
-             (event :password-reset-initiated))))))
+             (event :password-reset-initiated (mt/user->id :rasta)))))))
