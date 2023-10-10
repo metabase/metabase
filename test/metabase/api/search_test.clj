@@ -107,7 +107,8 @@
     test-collection
     (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
     (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                 :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))
