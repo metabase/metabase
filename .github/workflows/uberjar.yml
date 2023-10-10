@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "auditv2-main"
+      - "auditv2-main-containerization-inspection"
     paths-ignore:
       # config files
       - ".**"
