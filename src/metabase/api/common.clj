@@ -272,7 +272,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
