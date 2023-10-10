@@ -10,6 +10,8 @@ import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -39,11 +41,8 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import Link from "metabase/core/components/Link/Link";
-import Collections from "metabase/entities/collections/collections";
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { SIDEBAR_NAME } from "../../constants";
-import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
+import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
@@ -73,7 +72,7 @@ const mapDispatchToProps = {
   addActionToDashboard,
 };
 
-class DashboardHeaderContainer extends Component {
+class DashboardHeader extends Component {
   constructor(props) {
     super(props);
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
@@ -84,7 +83,7 @@ class DashboardHeaderContainer extends Component {
   }
 
   state = {
-    modal: null,
+    showCancelWarning: false,
   };
 
   static propTypes = {
@@ -92,6 +91,7 @@ class DashboardHeaderContainer extends Component {
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     isAdmin: PropTypes.bool,
+    isDirty: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -128,7 +128,6 @@ class DashboardHeaderContainer extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
-    collection: PropTypes.object,
 
     dashboardId: PropTypes.number,
     selectedTabId: PropTypes.number,
@@ -154,6 +153,10 @@ class DashboardHeaderContainer extends Component {
   handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
   }
+
+  handleCancelWarningClose = () => {
+    this.setState({ showCancelWarning: false });
+  };
 
   handleToggleBookmark() {
     const { createBookmark, deleteBookmark, isBookmarked } = this.props;
@@ -210,10 +213,20 @@ class DashboardHeaderContainer extends Component {
     this.onDoneEditing();
   }
 
-  async onCancel() {
+  onRequestCancel = () => {
+    const { isDirty, isEditing } = this.props;
+
+    if (isDirty && isEditing) {
+      this.setState({ showCancelWarning: true });
+    } else {
+      this.onCancel();
+    }
+  };
+
+  onCancel = () => {
     this.onRevert();
     this.onDoneEditing();
-  }
+  };
 
   getEditWarning(dashboard) {
     if (dashboard.embedding_params) {
@@ -238,7 +251,7 @@ class DashboardHeaderContainer extends Component {
         data-metabase-event="Dashboard;Cancel Edits"
         key="cancel"
         className="Button Button--small mr1"
-        onClick={() => this.onCancel()}
+        onClick={this.onRequestCancel}
       >
         {t`Cancel`}
       </Button>,
@@ -271,11 +284,9 @@ class DashboardHeaderContainer extends Component {
       isShowingDashboardInfoSidebar,
       closeSidebar,
       databases,
-      collection,
     } = this.props;
 
     const canEdit = dashboard.can_write;
-    const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
     const hasModelActionsEnabled = Object.values(databases).some(
       hasDatabaseActionsEnabled,
@@ -393,17 +404,6 @@ class DashboardHeaderContainer extends Component {
       });
     }
 
-    if (isAnalyticsDashboard) {
-      buttons.push(
-        <Button
-          icon="clone"
-          data-metabase-event="Dashboard;Copy"
-          to={`${location.pathname}/copy`}
-          as={Link}
-        >{t`Make a copy`}</Button>,
-      );
-    }
-
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
@@ -419,7 +419,7 @@ class DashboardHeaderContainer extends Component {
       );
     }
 
-    if (!isFullscreen && !isEditing && !isAnalyticsDashboard) {
+    if (!isFullscreen && !isEditing) {
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
@@ -465,7 +465,7 @@ class DashboardHeaderContainer extends Component {
 
     buttons.push(...getDashboardActions(this, this.props));
 
-    if (!isEditing) {
+    if (extraButtons.length > 0 && !isEditing) {
       buttons.push(
         ...[
           <DashboardHeaderActionDivider key="dashboard-button-divider" />,
@@ -487,11 +487,6 @@ class DashboardHeaderContainer extends Component {
               }
             />
           </Tooltip>,
-        ].filter(Boolean),
-      );
-
-      if (extraButtons.length > 0) {
-        buttons.push(
           <EntityMenu
             key="dashboard-action-menu-button"
             triggerAriaLabel="dashboard-menu-button"
@@ -499,20 +494,7 @@ class DashboardHeaderContainer extends Component {
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
           />,
-        );
-      }
-    }
-
-    if (isAnalyticsDashboard) {
-      buttons.push(
-        <DashboardHeaderButton
-          key="expand"
-          aria-label={t`Enter Fullscreen`}
-          data-metabase-event={`Dashboard;Fullscreen Mode;${!isFullscreen}`}
-          icon="expand"
-          className="text-brand-hover cursor-pointer"
-          onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-        />,
+        ].filter(Boolean),
       );
     }
 
@@ -530,7 +512,6 @@ class DashboardHeaderContainer extends Component {
   render() {
     const {
       dashboard,
-      collection,
       isEditing,
       isFullscreen,
       isAdditionalInfoVisible,
@@ -538,40 +519,48 @@ class DashboardHeaderContainer extends Component {
       setSidebar,
       isHomepageDashboard,
     } = this.props;
+    const { showCancelWarning } = this.state;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderComponent
-        headerClassName="wrapper"
-        objectType="dashboard"
-        analyticsContext="Dashboard"
-        location={this.props.location}
-        dashboard={dashboard}
-        collection={collection}
-        isEditing={isEditing}
-        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
-        isEditingInfo={isEditing}
-        isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
-        editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`.concat(
-          isHomepageDashboard
-            ? t` Remember that this dashboard is set as homepage.`
-            : "",
-        )}
-        editingButtons={this.getEditingButtons()}
-        setDashboardAttribute={setDashboardAttribute}
-        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-      />
+      <>
+        <DashboardHeaderComponent
+          headerClassName="wrapper"
+          objectType="dashboard"
+          analyticsContext="Dashboard"
+          location={this.props.location}
+          dashboard={dashboard}
+          isEditing={isEditing}
+          isBadgeVisible={
+            !isEditing && !isFullscreen && isAdditionalInfoVisible
+          }
+          isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+          isEditingInfo={isEditing}
+          isNavBarOpen={this.props.isNavBarOpen}
+          headerButtons={this.getHeaderButtons()}
+          editWarning={this.getEditWarning(dashboard)}
+          editingTitle={t`You're editing this dashboard.`.concat(
+            isHomepageDashboard
+              ? t` Remember that this dashboard is set as homepage.`
+              : "",
+          )}
+          editingButtons={this.getEditingButtons()}
+          setDashboardAttribute={setDashboardAttribute}
+          onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
+        />
+
+        <Modal isOpen={showCancelWarning}>
+          <LeaveConfirmationModalContent
+            onAction={this.onCancel}
+            onClose={this.handleCancelWarningClose}
+          />
+        </Modal>
+      </>
     );
   }
 }
 
-export const DashboardHeader = _.compose(
+export default _.compose(
   Bookmark.loadList(),
-  Collections.load({
-    id: (state, props) => props.dashboard.collection_id || "root",
-  }),
   connect(mapStateToProps, mapDispatchToProps),
-)(DashboardHeaderContainer);
+)(DashboardHeader);

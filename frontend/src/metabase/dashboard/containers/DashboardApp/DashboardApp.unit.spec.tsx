@@ -5,7 +5,7 @@ import fetchMock from "fetch-mock";
 import {
   screen,
   renderWithProviders,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/core/utils/types";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -105,9 +105,7 @@ async function setup({ dashboard }: Options = {}) {
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 
   return {
     dashboardId,
@@ -157,19 +155,14 @@ describe("DashboardApp", function () {
       history.push("/");
       history.push(`/dashboard/${dashboardId}`);
 
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+      await waitForLoaderToBeRemoved();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
 
       history.goBack();
 
       expect(
-        screen.queryByText("Changes were not saved"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
+        screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
     });
 
@@ -179,9 +172,7 @@ describe("DashboardApp", function () {
       history.push("/");
       history.push(`/dashboard/${dashboardId}`);
 
-      await waitForElementToBeRemoved(() =>
-        screen.queryAllByTestId("loading-spinner"),
-      );
+      await waitForLoaderToBeRemoved();
 
       userEvent.click(screen.getByLabelText("Edit dashboard"));
       userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -190,12 +181,32 @@ describe("DashboardApp", function () {
 
       history.goBack();
 
-      expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+    });
+
+    it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
+      await setup();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
       expect(
-        screen.getByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
-        ),
-      ).toBeInTheDocument();
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
+      await setup();
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+
+      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
   });
 

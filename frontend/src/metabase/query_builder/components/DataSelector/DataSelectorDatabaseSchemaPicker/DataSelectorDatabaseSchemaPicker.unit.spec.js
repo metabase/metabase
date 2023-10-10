@@ -33,7 +33,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
   it("displays loading message when it has no databases", () => {
     render(<DataSelectorDatabaseSchemaPicker databases={[]} />);
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   describe("displays picker when it has databases", () => {

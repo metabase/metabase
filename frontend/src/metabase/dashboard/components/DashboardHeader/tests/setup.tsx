@@ -1,29 +1,30 @@
 import fetchMock from "fetch-mock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import {
   createMockDashboard,
   createMockDashboardOrderedCard,
-  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-
-import {
-  setupBookmarksEndpoints,
-  setupCollectionsEndpoints,
-  setupCollectionByIdEndpoint,
-} from "__support__/server-mocks";
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import { getDefaultTab } from "metabase/dashboard/actions";
-import { mockSettings } from "__support__/settings";
-import { DashboardHeader } from "../DashboardHeader";
+import DashboardHeader from "./DashboardHeader";
+
+console.warn = jest.fn();
+console.error = jest.fn();
 
 const DASHCARD = createMockDashboardOrderedCard();
 
-export const TEST_DASHBOARD = createMockDashboard({
+const TEST_DASHBOARD = createMockDashboard({
   ordered_cards: [DASHCARD],
 });
 
-export const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
+const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
   ordered_tabs: [
     getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
     getDefaultTab({
@@ -34,26 +35,13 @@ export const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
   ],
 });
 
-export const setup = async ({
+const setup = async ({
   dashboard = TEST_DASHBOARD,
   isAdmin = false,
   email = false,
   slack = false,
-  collections = [],
-  hasEnterprisePlugins = false,
-  tokenFeatures = {},
 }) => {
-  setupCollectionsEndpoints({ collections });
-  setupCollectionByIdEndpoint({ collections });
   setupBookmarksEndpoints([]);
-
-  const settings = mockSettings({
-    "token-features": createMockTokenFeatures(tokenFeatures),
-  });
-
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
 
   const channelData: {
     channels: {
@@ -135,7 +123,6 @@ export const setup = async ({
 
   renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />, {
     storeInitialState: {
-      settings,
       dashboard: createMockDashboardState({
         dashboardId: dashboard.id,
         dashboards: {
@@ -155,7 +142,53 @@ export const setup = async ({
     },
   });
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 };
+
+describe("DashboardHeader", () => {
+  it("should display `Export as PDF` when there is a single dashboard tab", async () => {
+    await setup({
+      dashboard: TEST_DASHBOARD,
+    });
+
+    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+
+    const exportPdfButton = within(
+      screen.getByTestId("dashboard-export-pdf-button"),
+    );
+    expect(exportPdfButton.getByText("Export as PDF")).toBeInTheDocument();
+  });
+
+  it("should display `Export tab as PDF` when there are multiple dashboard tabs", async () => {
+    await setup({
+      dashboard: TEST_DASHBOARD_WITH_TABS,
+    });
+
+    userEvent.click(screen.getByLabelText("dashboard-menu-button"));
+
+    const exportPdfButton = within(
+      screen.getByTestId("dashboard-export-pdf-button"),
+    );
+    expect(exportPdfButton.getByText("Export tab as PDF")).toBeInTheDocument();
+  });
+
+  it("should not show subscriptions button for non-admin users - when email and slack are not configured", async () => {
+    await setup({
+      isAdmin: false,
+      email: false,
+      slack: false,
+    });
+
+    expect(screen.queryByLabelText("subscriptions")).not.toBeInTheDocument();
+  });
+
+  it("should show subscriptions button for admins - even when email and slack are not configured", async () => {
+    await setup({
+      isAdmin: true,
+      email: false,
+      slack: false,
+    });
+
+    expect(screen.getByLabelText("subscriptions")).toBeInTheDocument();
+  });
+});
