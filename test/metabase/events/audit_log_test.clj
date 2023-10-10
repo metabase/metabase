@@ -265,8 +265,6 @@
               :user_id     nil
               :model       nil
               :model_id    nil
-              :database_id nil
-              :table_id    nil
               :details     {}}
              (event "install"))))))
 
@@ -445,7 +443,7 @@
               :details  {}
               :topic    :user-invited
               :model    "User"}
-             (event :user-invited (mt/user->id :lucky)))))))
+             (event :user-invited))))))
 
 (deftest user-update-event-test
   (testing :event/user-update
