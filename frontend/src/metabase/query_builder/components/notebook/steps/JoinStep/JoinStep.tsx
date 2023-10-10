@@ -354,6 +354,7 @@ function JoinCondition({
             stageIndex={stageIndex}
             column={rhsColumn}
             columnGroups={rhsColumnGroup}
+            table={table}
             isNewCondition={isNewCondition}
             label={t`Right column`}
             withDefaultBucketing={!lhsColumn}

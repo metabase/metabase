@@ -1,4 +1,4 @@
-import { forwardRef, useCallback } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
 import type { RefObject } from "react";
 import { t } from "ttag";
 
@@ -21,6 +21,7 @@ interface JoinConditionColumnPickerProps
   extends Omit<QueryColumnPickerProps, "checkIsColumnSelected"> {
   isNewCondition: boolean;
   column?: Lib.ColumnMetadata;
+  table?: Lib.Joinable;
   label?: string;
   isInitiallyVisible?: boolean;
   readOnly?: boolean;
@@ -33,6 +34,7 @@ export function JoinConditionColumnPicker({
   query,
   stageIndex,
   column,
+  table,
   label,
   isNewCondition,
   isInitiallyVisible = false,
@@ -41,6 +43,13 @@ export function JoinConditionColumnPicker({
   ...props
 }: JoinConditionColumnPickerProps) {
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
+
+  const tableName = useMemo(() => {
+    if (table) {
+      return Lib.displayInfo(query, stageIndex, table).displayName;
+    }
+    return columnInfo?.table?.displayName;
+  }, [query, stageIndex, table, columnInfo]);
 
   const checkColumnSelected = useCallback(
     (item: ColumnListItem) => {
@@ -59,7 +68,7 @@ export function JoinConditionColumnPicker({
       renderTrigger={({ visible, onClick }) => (
         <ColumnNotebookCellItem
           isOpen={visible}
-          tableName={columnInfo?.table?.displayName}
+          tableName={tableName}
           columnName={columnInfo?.displayName}
           label={label}
           readOnly={readOnly}
