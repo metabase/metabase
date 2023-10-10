@@ -1,0 +1,22 @@
+on: pull_request_target
+
+jobs:
+  authorize:
+    environment: |
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      'external' || 'internal'
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo 1
+
+  test:
+    needs: authorize
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - run: printenv EXAMPLE
+        env:
+          EXAMPLE: ${{ secrets.EXAMPLE }}
