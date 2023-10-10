@@ -413,7 +413,7 @@
       form))
 
 (mu/defn find
-  "Idnetify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
+  "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied."
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
@@ -426,8 +426,6 @@
     {:dimensions dims
      :metrics (concat metrics linked-metrics)}))
 
-
-
 (defn card->dashcard
   "Convert a card to a dashboard card."
   [{:keys [width height] :as card}]
@@ -437,28 +435,6 @@
    :dashboard_tab_id       nil
    :card                   (dissoc card :width :height)
    :visualization_settings {}})
-
-;{
-; "size_x": 18,
-; "dashboard_tab_id": null,
-; "creator_id": 1,
-; "card": null,
-; "col": 0,
-; "id": "G__178075",
-; "visualization_settings": {
-;                            "text": "# Overview",
-;                            "virtual_card": {
-;                                             "name": null,
-;                                             "display": "text",
-;                                             "dataset_query": {},
-;                                             "visualization_settings": {}
-;                                             },
-;                            "dashcard.background": false,
-;                            "text.align_vertical": "bottom"
-;                            },
-; "size_y": 2,
-; "row": 0
-; }
 
 (defn make-layout
   "Assign `:row` and `:col` values to the provied seq of dashcards."
@@ -475,133 +451,3 @@
                bounds
                (conj final-cards dashcard)))
       final-cards)))
-
-(defn dashboard-ify
-  "Create a dashboard from the given params and cards."
-  [{:keys [dashboard-template-name]} cards]
-  {:description        (format "An exploration of your metric %s" dashboard-template-name)
-   :name               (format "A look at %s" dashboard-template-name)
-   ;:creator_id         1
-   :transient_name     (format "Here's the %s dashboard" dashboard-template-name)
-   :param_fields       {}
-   :auto_apply_filters true
-   :ordered_cards      cards})
-
-(comment
-  (let [entity       (t2/select-one :model/Table :name "ACCOUNTS")
-        base-context (-> entity
-                         magic/->root
-                         (#'magic/make-base-context))
-        {template-dimensions :dimensions} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
-    (find-dimensions base-context template-dimensions))
-
-  (require '[metabase.automagic-dashboards.core :as magic])
-
-  (let [{{:keys [source linked-metrics]} :root
-         :as                             base-context} (-> (t2/select-one :model/Table :name "ACCOUNTS")
-                                                           magic/->root
-                                                           (#'magic/make-base-context))
-        {template-dimensions :dimensions
-         template-metrics    :metrics
-         template-cards      :cards
-         :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
-    (let [ground-dimensions   (find-dimensions base-context template-dimensions)
-          affinities          (#'magic/dash-template->affinities template ground-dimensions)
-          affinity-set->cards (make-affinity-set->cards ground-dimensions template-cards affinities)
-          metric-templates    (normalize-metrics template-metrics)
-          grounded-metrics    (concat
-                               (grounded-metrics metric-templates ground-dimensions)
-                               linked-metrics)
-          dashcards           (->> grounded-metrics
-                                   (make-combinations ground-dimensions (map :affinity-set affinities))
-                                   (ground-metrics->cards base-context affinity-set->cards)
-                                        ;(map card->dashcard)
-                                   )]
-                                        ;(#'populate/shown-cards 3 dashcards)
-                                        ;dashcards
-                                        ;(map :position (take 5 dashcards))
-                                        ;(#'populate/shown-cards 5 dashcards)
-      (:ordered_cards
-       (populate/create-dashboard {:title          "AAAA"
-                                   :transient_name "TN"
-                                   :description    "DESC"
-                                   :cards          (take 3 dashcards)
-                                   :groups         (group-by :group dashcards)} :all))
-                                        ;(take 3 dashcards)
-                                        ;dashcards
-      ))
-
-  ;; This doesn't have the right sourcing (see generate-dashboard signature)
-  (generate-dashboard
-   (t2/select-one :model/Metric :name "Churn")
-   (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-
-  (:groups (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-  )
-
-(comment
-  (require '[metabase.automagic-dashboards.core :as magic])
-  (let [template-name     "GenericTable"
-        entity            (t2/select-one :model/Metric :name "Churn")
-        {template-dimensions :dimensions
-         template-metrics    :metrics} (dashboard-templates/get-dashboard-template ["table" template-name])
-        base-context      (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions (find-dimensions base-context template-dimensions)
-        metric-templates  (normalize-metrics template-metrics)]
-    (concat
-      (grounded-metrics metric-templates ground-dimensions)
-      (linked-metrics entity)))
-
-  (let [template-name     "GenericTable"
-        entity            (t2/select-one :model/Table :name "ACCOUNTS")
-        template          (dashboard-templates/get-dashboard-template ["table" template-name])
-        {template-dimensions :dimensions
-         template-metrics    :metrics} template
-        base-context      (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions (find-dimensions base-context template-dimensions)
-        affinities        (#'magic/dash-template->affinities template ground-dimensions)
-        affinity-sets     (map :affinity-set affinities)
-        metric-templates  (normalize-metrics template-metrics)
-        grounded-metrics  (concat
-                            (grounded-metrics metric-templates ground-dimensions)
-                            (linked-metrics entity))]
-    (->> grounded-metrics
-         (make-combinations ground-dimensions affinity-sets)
-         (mapv (fn [ground-metric-with-dimensions]
-                 (-> ground-metric-with-dimensions
-                     (update :grounded-metric-fields (partial map (juxt :id :name)))
-                     (update :grounded-dimensions #(update-vals % (juxt :id :name))))))))
-
-  (require '[metabase.query-processor :as qp])
-  (let [template-name     "GenericTable"
-        {:keys [id db_id] :as entity} (t2/select-one :model/Table :name "ACCOUNTS")
-        template          (dashboard-templates/get-dashboard-template ["table" template-name])
-        {template-dimensions :dimensions
-         template-metrics    :metrics} template
-        base-context      (#'magic/make-base-context (magic/->root entity))
-        ground-dimensions (find-dimensions base-context template-dimensions)
-        affinities        (->> (#'magic/dash-template->affinities template ground-dimensions)
-                               (map :affinity-set))
-        metric-templates  (normalize-metrics template-metrics)
-        grounded-metrics  (concat
-                            (grounded-metrics metric-templates ground-dimensions)
-                            (linked-metrics entity))]
-    (->> grounded-metrics
-         (make-combinations ground-dimensions affinities)
-         (mapv (fn [ground-metric-with-dimensions]
-                 (-> ground-metric-with-dimensions
-                     (update :grounded-metric-fields (partial map (juxt :id :name)))
-                     (update :grounded-dimensions #(update-vals % (juxt :id :name))))))
-         ;; Stop above here to see the produced grounded metrics
-         ;; Below is just showing we can make queries
-         (mapv (fn [{:keys [metric-definition] :as metric}]
-                 (assoc metric
-                   :dataset_query {:database db_id
-                                   :type     :query
-                                   :query    (assoc metric-definition
-                                               :source-table id)})))
-         (mapv :dataset_query)
-         ;(take 2)
-         ;(map (juxt :metric-name (comp :rows :data qp/process-query :query)))
-         ))
-  )
