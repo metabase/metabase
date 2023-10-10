@@ -3,7 +3,6 @@
    [babashka.fs :as fs]
    [clojure.core :as c]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.connection :as mdb.connection]
@@ -150,7 +149,7 @@
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
-  [zip-resource dir-resource]
+  [_zip-resource dir-resource]
   (cond
     dir-resource
     (do

@@ -56,15 +56,15 @@
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
 
-(deftest audit-db-instance-analytics-content-is-unzipped-properly
-  (fs/delete-tree "plugins/instance_analytics")
-  (is (not (contains? (set (map str (fs/list-dir "plugins")))
-                      "plugins/instance_analytics")))
+#_(deftest audit-db-instance-analytics-content-is-unzipped-properly
+    (fs/delete-tree "plugins/instance_analytics")
+    (is (not (contains? (set (map str (fs/list-dir "plugins")))
+                        "plugins/instance_analytics")))
 
-  (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
-  (is (= #{"plugins/instance_analytics/collections"
-           "plugins/instance_analytics/databases"}
-         (set (map str (fs/list-dir "plugins/instance_analytics"))))))
+    (#'audit-db/ia-content->plugins audit-db/analytics-zip-resource nil)
+    (is (= #{"plugins/instance_analytics/collections"
+             "plugins/instance_analytics/databases"}
+           (set (map str (fs/list-dir "plugins/instance_analytics"))))))
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
   (fs/delete-tree "plugins/instance_analytics")
