@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - "auditv2-main"
+      - "auditv2-uberjar-move-ia-content"
     paths-ignore:
       # config files
       - ".**"
