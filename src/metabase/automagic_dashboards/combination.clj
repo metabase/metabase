@@ -47,6 +47,8 @@
   (assoc query
          :breakout (mapv (partial interesting/->reference :mbql) breakout-fields)))
 
+(def ^:private field-type (some-fn :semantic_type :effective_type))
+
 (defn make-metric-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
@@ -56,55 +58,48 @@
   (let [grounded-field-ids   (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
-        {:keys [grounded-metric-fields
-                avaialable-dimension-field]} (->> ground-dimensions
-                                                  (mapcat (fn [[dim-name {:keys [matches] :as dim+matches}]]
-                                                            (let [dim (-> dim+matches
-                                                                          (dissoc :matches)
-                                                                          (assoc :dimension-name dim-name))]
-                                                              (map
-                                                                (fn [matching-field]
-                                                                  (assoc matching-field :dimension dim))
-                                                                matches))))
-                                                  (group-by (fn [{field-id :id}]
-                                                              (if (grounded-field-ids field-id)
-                                                                :grounded-metric-fields
-                                                                :avaialable-dimension-field))))
-        groundable-fields    (->> avaialable-dimension-field
+        {grounded   true
+         avaialable false}   (->> ground-dimensions
+                                  (mapcat (fn [[dim-name {:keys [matches] :as dim+matches}]]
+                                            (let [dim (-> dim+matches
+                                                          (dissoc :matches)
+                                                          (assoc :dimension-name dim-name))]
+                                              (map
+                                               (fn [matching-field]
+                                                 (assoc matching-field :dimension dim))
+                                               matches))))
+                                  (group-by (comp boolean grounded-field-ids :id)))
+        groundable-fields    (->> avaialable
                                   (remove (comp grounded-field-ids :id))
-                                  (group-by (some-fn
-                                              :semantic_type
-                                              :effective_type)))
-        grounded-field-types (map (some-fn
-                                    :semantic_type
-                                    :effective_type) grounded-metric-fields)]
+                                  (group-by field-type))
+        grounded-field-types (map field-type grounded)]
     (distinct
-      (for [affinity-set            semantic-affinity-sets
-            dimset                  (math.combo/permutations affinity-set)
-            :when (and
-                    (>= (count dimset)
-                        (count grounded-metric-fields))
-                    (->> (map
-                           (fn [a b] (isa? a b))
-                           grounded-field-types dimset)
-                         (every? true?)))
-            :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
-            ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
-                                         (apply math.combo/cartesian-product)
-                                         (map (partial zipmap unsatisfied-semantic-dims)))]
-        (-> metric
-            (assoc
-              :grounded-metric-fields grounded-metric-fields
-              :grounded-dimensions ground-dimension-fields
-              :nominal-dimensions->fields (into
-                                            (zipmap
-                                              (map (comp :dimension-name :dimension) grounded-metric-fields)
-                                              grounded-metric-fields)
-                                            (zipmap
-                                              (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
-                                              (vals ground-dimension-fields)))
-              :affinity-set affinity-set)
-            (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
+     (for [affinity-set            semantic-affinity-sets
+           dimset                  (math.combo/permutations affinity-set)
+           :when                   (and
+                                    (>= (count dimset)
+                                        (count grounded))
+                                    (->> (map
+                                          (fn [a b] (isa? a b))
+                                          grounded-field-types dimset)
+                                         (every? true?)))
+           :let                    [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
+           ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
+                                        (apply math.combo/cartesian-product)
+                                        (map (partial zipmap unsatisfied-semantic-dims)))]
+       (-> metric
+           (assoc
+            :grounded-metric-fields grounded
+            :grounded-dimensions ground-dimension-fields
+            :nominal-dimensions->fields (into
+                                         (zipmap
+                                          (map (comp :dimension-name :dimension) grounded)
+                                          grounded)
+                                         (zipmap
+                                          (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
+                                          (vals ground-dimension-fields)))
+            :affinity-set affinity-set)
+           (update :metric-definition add-breakouts (vals ground-dimension-fields)))))))
 
 (defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
