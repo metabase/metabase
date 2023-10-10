@@ -27,7 +27,7 @@ const MULTI_SELECT_OPTIONS = [
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
-  isParameterUsed: (value: string) => boolean;
+  isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
@@ -39,7 +39,7 @@ export interface ParameterSettingsProps {
 
 const ParameterSettings = ({
   parameter,
-  isParameterUsed,
+  isParameterSlugUsed,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -48,21 +48,20 @@ const ParameterSettings = ({
   onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const [internalValue, setInternalValue] = useState(parameter.name);
-  const [labelError, setLabelError] = useState("");
+  const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+  const labelError = getLabelError({
+    labelValue: tempLabelValue,
+    isParameterSlugUsed,
+  });
 
   const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setInternalValue(event.target.value);
-    if (internalValue === "") {
-      setLabelError(t`Required`);
-    } else if (isParameterUsed(internalValue)) {
-      setLabelError(t`This label is already in use`);
-    }
+    setTempLabelValue(event.target.value);
   };
 
   const handleLabelBlur = (event: { target: HTMLInputElement }) => {
     if (labelError) {
-      setInternalValue(parameter.name);
+      // revert to the value before editing
+      setTempLabelValue(parameter.name);
     } else {
       onChangeName(event.target.value);
     }
@@ -82,7 +81,7 @@ const ParameterSettings = ({
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
-          value={internalValue}
+          value={tempLabelValue}
           onBlur={handleLabelBlur}
           error={labelError}
           aria-label={t`Label`}
@@ -125,6 +124,22 @@ const ParameterSettings = ({
     </SettingsRoot>
   );
 };
+
+function getLabelError({
+  labelValue,
+  isParameterSlugUsed,
+}: {
+  labelValue: string;
+  isParameterSlugUsed: (value: string) => boolean;
+}) {
+  if (!labelValue) {
+    return t`Required`;
+  }
+  if (isParameterSlugUsed(labelValue)) {
+    return t`This label is already in use`;
+  }
+  return null;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSettings;

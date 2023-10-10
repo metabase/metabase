@@ -117,7 +117,7 @@ const ParameterSidebar = ({
     onClose();
   }, [parameterId, onRemoveParameter, onClose]);
 
-  const isParameterUsed = useCallback(
+  const isParameterSlugUsed = useCallback(
     (value: string) =>
       !!otherParameters.find(parameter => parameter.slug === slugify(value)),
     [otherParameters],
@@ -137,7 +137,7 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
-            isParameterUsed={isParameterUsed}
+            isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
