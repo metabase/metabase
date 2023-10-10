@@ -1,5 +1,6 @@
 (ns metabase.search.config
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
@@ -94,20 +95,22 @@
   "Map with the various allowed search parameters, used to construct the SQL query."
   (mc/schema
    [:map {:closed true}
-    [:search-string                       [:maybe ms/NonBlankString]]
-    [:archived?                           :boolean]
-    [:current-user-perms                  [:set perms/PathSchema]]
-    [:models                              [:set SearchableModel]]
-    [:created-at         {:optional true} ms/NonBlankString]
-    [:created-by         {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:last-edited-at     {:optional true} ms/NonBlankString]
-    [:last-edited-by     {:optional true} [:set {:min 1} ms/PositiveInt]]
-    [:table-db-id        {:optional true} ms/PositiveInt]
-    [:limit-int          {:optional true} ms/Int]
-    [:offset-int         {:optional true} ms/Int]
+    [:search-string                        [:maybe ms/NonBlankString]]
+    [:archived?                            :boolean]
+    [:current-user-perms                   [:set perms/PathSchema]]
+    [:models                               [:set SearchableModel]]
+    [:created-at          {:optional true} ms/NonBlankString]
+    [:created-by          {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:last-edited-at      {:optional true} ms/NonBlankString]
+    [:last-edited-by      {:optional true} [:set {:min 1} ms/PositiveInt]]
+    [:table-db-id         {:optional true} ms/PositiveInt]
+    [:limit-int           {:optional true} ms/Int]
+    [:offset-int          {:optional true} ms/Int]
+    [:search-native-query {:optional true} true?]
     ;; true to search for verified items only,
     ;; nil will return all items
-    [:verified           {:optional true} [:maybe true?]]]))
+    [:verified            {:optional true} true?]]))
+
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a
@@ -160,7 +163,9 @@
    :model_name          :text
    ;; returned for indexed-entity
    :pk_ref              :text
-   :model_index_id      :integer))
+   :model_index_id      :integer
+   ;; returned for Card and Action
+   :dataset_query       :text))
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -178,11 +183,13 @@
 (defmethod searchable-columns-for-model "action"
   [_]
   [:name
+   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "card"
   [_]
   [:name
+   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "dataset"
@@ -249,11 +256,12 @@
         [:model.collection_id        :collection_id]
         [:model.id                   :model_id]
         [:model.name                 :model_name]
-        [:query_action.database_id   :database_id]))
+        [:query_action.database_id   :database_id]
+        [:query_action.dataset_query :dataset_query]))
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :creator_id
+  (conj default-columns :collection_id :collection_position :dataset_query :creator_id
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]
@@ -278,8 +286,7 @@
    [:model.collection_id        :collection_id]
    [:model.id                   :model_id]
    [:model.name                 :model_name]
-   [:model.database_id          :database_id]
-   [:model.dataset_query        :dataset_query]])
+   [:model.database_id          :database_id]])
 
 (defmethod columns-for-model "dashboard"
   [_]
@@ -330,3 +337,10 @@
 (defmethod column->string :default
   [value _ _]
   value)
+
+(defmethod column->string [:card :dataset_query]
+  [value _ _]
+  (let [query (json/parse-string value true)]
+    (if (= "native" (:type query))
+      (-> query :native :query)
+      "")))

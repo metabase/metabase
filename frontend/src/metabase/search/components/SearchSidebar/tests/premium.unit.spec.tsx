@@ -11,7 +11,7 @@ const setupPremium = async (opts?: SearchSidebarSetupOptions) => {
   });
 };
 
-describe("SearchFilterModal", () => {
+describe("SearchFilterSidebar", () => {
   it("renders `Verified` filter", async () => {
     await setupPremium();
 

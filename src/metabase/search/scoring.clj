@@ -1,7 +1,9 @@
 (ns metabase.search.scoring
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time :as t]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.util :as search.util]
@@ -207,6 +209,7 @@
                           :name            collection_name
                           :authority_level collection_authority_level}
          :scores          all-scores)
+        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name

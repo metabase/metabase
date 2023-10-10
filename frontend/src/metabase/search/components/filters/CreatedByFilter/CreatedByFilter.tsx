@@ -10,10 +10,10 @@ import {
 
 export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   iconName: "person",
-  label: t`Creator`,
+  label: () => t`Creator`,
   type: "dropdown",
   DisplayComponent: ({ value: userId }) => (
-    <UserNameDisplay label={CreatedByFilter.label} userId={userId} />
+    <UserNameDisplay label={CreatedByFilter.label()} userId={userId} />
   ),
   ContentComponent: SearchUserPicker,
   fromUrl: parseUserId,

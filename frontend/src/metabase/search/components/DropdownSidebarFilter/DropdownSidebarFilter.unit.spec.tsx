@@ -7,7 +7,7 @@ import type { DropdownSidebarFilterProps } from "./DropdownSidebarFilter";
 import { DropdownSidebarFilter } from "./DropdownSidebarFilter";
 
 const mockFilter: SearchFilterComponent = {
-  label: "Mock Filter",
+  label: () => "Mock Filter",
   iconName: "filter",
   type: "dropdown",
   DisplayComponent: ({ value }) => (
@@ -81,7 +81,7 @@ describe("DropdownSidebarFilter", () => {
     setup({ value: ["value1"] });
 
     expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
-      mockFilter.label,
+      mockFilter.label(),
     );
 
     expect(screen.getByTestId("mock-display-component")).toBeInTheDocument();
@@ -121,17 +121,17 @@ describe("DropdownSidebarFilter", () => {
   it("should revert filter selections when popover is closed", async () => {
     const { onChange } = setup({ value: ["old value"] });
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    userEvent.click(screen.getByText("old value"));
     userEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByText("new value")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    userEvent.click(screen.getByText("old value"));
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
       "old value",
     );
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    userEvent.click(screen.getByText("old value"));
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
       "old value",
     );

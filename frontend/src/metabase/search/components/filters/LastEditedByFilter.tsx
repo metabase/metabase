@@ -7,10 +7,10 @@ import { stringifyUserId, parseUserId } from "metabase/search/utils";
 
 export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   iconName: "person",
-  label: t`Last edited by`,
+  label: () => t`Last edited by`,
   type: "dropdown",
   DisplayComponent: ({ value: userId }) => (
-    <UserNameDisplay userId={userId} label={LastEditedByFilter.label} />
+    <UserNameDisplay userId={userId} label={LastEditedByFilter.label()} />
   ),
   ContentComponent: SearchUserPicker,
   fromUrl: parseUserId,
