@@ -506,6 +506,38 @@ describe("QueryBuilder", () => {
   });
 
   describe("unsaved changes warning", () => {
+    describe("creating models", () => {
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        history.push("/model/new");
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(screen.getByText("Use the notebook editor"));
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(screen.getByText("Pick your starting data"));
+        const popover = screen.getByTestId("popover");
+        userEvent.click(within(popover).getByText("Sample Database"));
+        await waitForLoaderToBeRemoved();
+        userEvent.click(within(popover).getByText("Orders"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("Orders"),
+        );
+
+        expect(
+          screen.getByRole("button", { name: "Get Answer" }),
+        ).toBeEnabled();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+    });
+
     describe("editing models", () => {
       describe("editing queries", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
