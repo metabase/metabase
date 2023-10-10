@@ -59,7 +59,7 @@
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
         {grounded   true
-         avaialable false}   (->> ground-dimensions
+         available false}   (->> ground-dimensions
                                   (mapcat (fn [[dim-name {:keys [matches] :as dim+matches}]]
                                             (let [dim (-> dim+matches
                                                           (dissoc :matches)
@@ -69,7 +69,7 @@
                                                  (assoc matching-field :dimension dim))
                                                matches))))
                                   (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields    (->> avaialable
+        groundable-fields    (->> available
                                   (remove (comp grounded-field-ids :id))
                                   (group-by field-type))
         grounded-field-types (map field-type grounded)]
@@ -182,39 +182,41 @@
   [{{:keys [source]} :root
     :as              base-context}
    {:keys [grounded-dimensions metric-name nominal-dimensions->fields] :as grounded-metric}
-   {:keys [semantic-dimensions dimensions query title] :as card}]
+   {:keys [semantic-dimensions] :as card}]
   ;; This updates the query to contain the specializations contained in the card template (basically the aggregate definitions)
-  (let [dims (merge-with into grounded-dimensions semantic-dimensions)]
-    (-> grounded-metric
-        (update :metric-definition add-breakouts (vals dims))
-        (add-dataset-query source)
-        ;; This cleans up the metric datastructure and primarily leaves just the card elements.
-        (into card)
-        (assoc
-          :name (if (pos? (count grounded-dimensions))
-                  (format "%s by %s" metric-name (items->str (map :name (vals grounded-dimensions))))
-                  metric-name)
-          :id (gensym))
-        ;; The empty maps for available-metrics and bindings can be filled in if
-        ;; needed by adding the nominal dimensions to the :grounded-metric-fields
-        ;; and :grounded-dimensions in the grounded metric. This would allow a
-        ;; group by on either semantic type (which is where we are leaning) or
-        ;; nominal type (the old way). I wonder if there's value at some point in
-        ;; adding a smarter datastructure to this (e.g. a tiny datascript db for
-        ;; each metric) to make it easier to navigate an individual metric. So far,
-        ;; this seems harmless to just leave as empty maps, though.
-        (instantiate-metadata base-context {} nominal-dimensions->fields)
-        (dissoc :grounded-dimensions
-                :metric-definition
-                :grounded-metric-fields
-                :affinity-set
-                ;:card-name
-                ;:metric-name
-                :metrics
-                ;:visualization
-                ;:score
-                ;:title
-                ))))
+  (when (= (count grounded-dimensions)
+           (count semantic-dimensions))
+    (let [dims (merge-with into grounded-dimensions semantic-dimensions)]
+      (-> grounded-metric
+          (update :metric-definition add-breakouts (vals dims))
+          (add-dataset-query source)
+          ;; This cleans up the metric datastructure and primarily leaves just the card elements.
+          (into card)
+          (assoc
+            :name (if (pos? (count grounded-dimensions))
+                    (format "%s by %s" metric-name (items->str (map :name (vals grounded-dimensions))))
+                    metric-name)
+            :id (gensym))
+          ;; The empty maps for available-metrics and bindings can be filled in if
+          ;; needed by adding the nominal dimensions to the :grounded-metric-fields
+          ;; and :grounded-dimensions in the grounded metric. This would allow a
+          ;; group by on either semantic type (which is where we are leaning) or
+          ;; nominal type (the old way). I wonder if there's value at some point in
+          ;; adding a smarter datastructure to this (e.g. a tiny datascript db for
+          ;; each metric) to make it easier to navigate an individual metric. So far,
+          ;; this seems harmless to just leave as empty maps, though.
+          (instantiate-metadata base-context {} nominal-dimensions->fields)
+          (dissoc :grounded-dimensions
+                  :metric-definition
+                  :grounded-metric-fields
+                  :affinity-set
+                  ;:card-name
+                  ;:metric-name
+                  :metrics
+                  ;:visualization
+                  ;:score
+                  ;:title
+                  )))))
 
 
 (defn ground-metric->cards
@@ -223,10 +225,10 @@
   [base-context affinity-set->cards {:keys [affinity-set] :as grounded-metric}]
   (->> affinity-set
        affinity-set->cards
+       (map (partial ground-metric->card base-context grounded-metric))
+       (filter identity)
        (map-indexed (fn [i card]
-                      (assoc
-                       (ground-metric->card base-context grounded-metric card)
-                       :position i)))))
+                      (assoc card :position i)))))
 
 (defn combinations->cards
   "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
