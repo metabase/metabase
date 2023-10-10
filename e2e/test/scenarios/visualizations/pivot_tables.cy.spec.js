@@ -52,7 +52,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should correctly display saved question", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.get(".Visualization").within(() => {
       assertOnPivotFields();
     });
@@ -64,7 +64,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should not show sub-total data after a switch to other viz type", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Switch to "ordinary" table
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -88,7 +88,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow drill through on cells", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("783").click();
@@ -106,7 +106,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should allow drill through on left/top header values", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu and filter to that value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
@@ -130,7 +130,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should rearrange pivoted columns", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Open Pivot table side-bar
     cy.findByTestId("viz-settings-button").click();
@@ -696,7 +696,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should open the download popover (metabase#14750)", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.icon("download").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Download full results"));
@@ -1054,15 +1054,17 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
-    createAndVisitTestQuestion();
-
     cy.intercept("POST", "api/card/pivot/*/query", req => {
       req.on("response", res => {
         res.setDelay(20_000);
       });
     });
 
-    cy.reload();
+    createTestQuestion({ visitQuestion: false }).then(({ body }) => {
+      // manually visiting the question to avoid the auto wait logic,
+      // we need to go to the editor while the query is still loading
+      cy.visit(`/question/${body.id}`);
+    });
 
     // confirm that it's loading
     main().findByText("Doing science...").should("be.visible");
@@ -1090,11 +1092,11 @@ const testQuery = {
   database: SAMPLE_DB_ID,
 };
 
-function createAndVisitTestQuestion({ display = "pivot" } = {}) {
+function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  cy.createQuestion(questionDetails, { visitQuestion: true });
+  return cy.createQuestion(questionDetails, { visitQuestion });
 }
 
 function assertOnPivotSettings() {
