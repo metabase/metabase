@@ -4,10 +4,7 @@
   data from an application database to any empty application database for all combinations of supported application
   database types."
   (:require
-   [clojure.java.classpath :as classpath]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
-   [clojure.tools.namespace.find :as ns.find]
    [honey.sql :as sql]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -372,7 +369,6 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
-
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."
   [source-db-type     :- (s/enum :h2 :postgres :mysql)
@@ -380,9 +376,7 @@
    target-db-type     :- (s/enum :h2 :postgres :mysql)
    target-data-source :- javax.sql.DataSource]
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
-  (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
-          :when   (and (str/starts-with? ns-symb "metabase")
-                       (not (str/includes? ns-symb "test")))]
+  (doseq [ns-symb u/metabase-namespace-symbols]
     (classloader/require ns-symb))
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
