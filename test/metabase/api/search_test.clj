@@ -1374,21 +1374,9 @@
                      Action      _              (archived {:name     "test action"
                                                            :type     :query
                                                            :model_id model-id})]
-<<<<<<< HEAD
        (testing "`archived-string` is 'false'"
          (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
        (testing "`archived-string` is 'true'"
          (is (= #{"action"}
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
-=======
-       (testing "`archived-string` is invalid"
-         (is (=? {:message "Invalid input: [\"value must be a valid boolean string ('true' or 'false').\"]"}
-                 (mt/user-http-request :crowberto :get 500 "search/models" :archived-string 1))))
-       (testing "`archived-string` is 'false'"
-         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
-                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "false")))))
-       (testing "`archived-string` is 'true'"
-         (is (= #{"action"}
-                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "true")))))))))
->>>>>>> master
