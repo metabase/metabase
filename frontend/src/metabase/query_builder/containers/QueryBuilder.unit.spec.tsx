@@ -198,12 +198,12 @@ const TestQueryBuilder = (
 
 const TestHome = () => <div />;
 
-function isSavedCard(card: Card | UnsavedCard): card is Card {
-  return "id" in card;
+function isSavedCard(card: Card | UnsavedCard | null): card is Card {
+  return card !== null && "id" in card;
 }
 
 interface SetupOpts {
-  card?: Card | UnsavedCard;
+  card?: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
 }
