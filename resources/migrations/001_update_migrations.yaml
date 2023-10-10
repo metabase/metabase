@@ -3485,7 +3485,7 @@ databaseChangeLog:
               INSERT INTO permissions (group_id, object)
               SELECT
                 all_users_group.id AS group_id,
-                '/general/subscription/' AS object
+                '/application/subscription/' AS object
               FROM (
                 SELECT id
                 FROM permissions_group
@@ -3493,7 +3493,7 @@ databaseChangeLog:
               ) all_users_group
               LEFT JOIN permissions p
                 ON all_users_group.id = p.group_id
-                AND p.object = '/general/subscription/'
+                AND p.object = '/application/subscription/'
               WHERE p.object IS NULL;
 
   - changeSet:
