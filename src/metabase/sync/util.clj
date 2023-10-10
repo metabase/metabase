@@ -4,7 +4,7 @@
   (:require
    [clojure.math.numeric-tower :as math]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]

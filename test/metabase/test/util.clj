@@ -10,7 +10,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [environ.core :as env]
-   [java-time :as t]
+   [java-time.api :as t]
    [mb.hawk.parallel]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]

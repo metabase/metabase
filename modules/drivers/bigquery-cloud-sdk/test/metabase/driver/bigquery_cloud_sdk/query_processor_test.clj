@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]

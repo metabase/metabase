@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]

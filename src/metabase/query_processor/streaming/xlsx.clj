@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.mbql.schema :as mbql.s]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]

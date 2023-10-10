@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.format-rows-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.format-rows :as format-rows]

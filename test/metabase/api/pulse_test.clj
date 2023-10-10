@@ -2,7 +2,7 @@
   "Tests for /api/pulse endpoints."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.pulse :as api.pulse]
    [metabase.http-client :as client]

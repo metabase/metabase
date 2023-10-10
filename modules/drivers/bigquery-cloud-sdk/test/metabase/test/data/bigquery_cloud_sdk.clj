@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]

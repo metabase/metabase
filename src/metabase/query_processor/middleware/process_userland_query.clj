@@ -3,7 +3,7 @@
   to queries ran internally e.g. as part of the sync process).
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.query :as query]
    [metabase.models.query-execution

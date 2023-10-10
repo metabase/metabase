@@ -2,7 +2,7 @@
   "Tests for /api/ee/logs endpoints"
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.advanced-config.api.logs :as ee.api.logs]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.public-settings.premium-features-test :as premium-features.test]

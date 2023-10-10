@@ -1,6 +1,6 @@
 (ns metabase.driver.googleanalytics.query-processor-test
   (:require [clojure.test :refer :all]
-            [java-time :as t]
+            [java-time.api :as t]
             [metabase.driver.googleanalytics-test :as ga.test]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
             [metabase.test :as mt]

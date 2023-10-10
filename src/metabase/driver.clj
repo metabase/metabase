@@ -9,7 +9,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]

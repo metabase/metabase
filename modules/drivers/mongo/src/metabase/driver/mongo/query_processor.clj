@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]

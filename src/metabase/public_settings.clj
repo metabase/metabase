@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.database :refer [Database]]

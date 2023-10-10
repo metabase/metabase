@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]

@@ -1,7 +1,7 @@
 (ns metabase.driver.druid.execute
   (:require [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
-            [java-time :as t]
+            [java-time.api :as t]
             [medley.core :as m]
             [metabase.driver.druid.query-processor :as druid.qp]
             [metabase.query-processor.error-type :as qp.error-type]

@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.rules :as rules]

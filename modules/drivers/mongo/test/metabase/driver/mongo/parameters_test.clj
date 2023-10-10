@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.models :refer [NativeQuerySnippet]]

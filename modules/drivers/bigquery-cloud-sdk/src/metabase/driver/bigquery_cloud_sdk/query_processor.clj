@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
