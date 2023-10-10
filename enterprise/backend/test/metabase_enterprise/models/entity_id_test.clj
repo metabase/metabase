@@ -86,6 +86,8 @@
 
 (deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+                     (remove (fn [model]
+                               (not= (namespace model) "model")))
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try
