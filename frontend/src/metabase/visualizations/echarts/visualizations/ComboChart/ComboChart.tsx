@@ -86,6 +86,7 @@ export function ComboChart(props: VisualizationProps) {
 
   return (
     <EChartsRenderer
+      enableBrush
       config={{ option, eventHandlers, zrEventHandlers: [] }}
       width={props.width}
       height={props.height}

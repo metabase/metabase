@@ -26,6 +26,9 @@ export const buildComboChart = (
   multipleSeries: RawSeries,
   settings: ComputedVisualizationSettings,
   environment: RenderingEnvironment,
+  onHoverChange?: any,
+  hovered: any,
+  onVisualizationClick?: any,
 ): {
   option: EChartsOption;
   eventHandlers: EChartsEventHandler[];
@@ -75,6 +78,15 @@ export const buildComboChart = (
     },
   });
   const option = {
+    toolbox: {
+      show: false,
+    },
+    brush: {
+      toolbox: ["lineX"],
+      xAxisIndex: 0,
+      throttleType: "debounce",
+      throttleDelay: 200,
+    },
     dataset,
     yAxis: {
       ...axisLabelDefaultOption(settings["graph.y_axis.title_text"], 40),
@@ -130,8 +142,55 @@ export const buildComboChart = (
     series: eChartsSeries,
   };
 
+  const eventHandlers: EChartsEventHandler[] = [
+    {
+      eventName: "mouseout",
+      handler: () => {
+        onHoverChange?.(null);
+      },
+    },
+    {
+      eventName: "mousemove",
+      handler: event => {
+        const data = event.dimensionNames.map(name => {
+          const value = event.data[name];
+
+          return {
+            key: name,
+            value,
+            col: cardModels[0].cardSeries.yMultiSeries[0]?.column,
+          };
+        });
+        onHoverChange?.({
+          settings,
+          index: 0,
+          event: event.event.event,
+          data,
+        });
+      },
+    },
+    {
+      eventName: "click",
+      handler: event => {
+        onVisualizationClick?.({
+          event: event.event.event,
+          value: 5,
+          column: cardModels[0].cardSeries.yMultiSeries[0]?.column,
+          data: [],
+          dimensions: [
+            {
+              value: "foo",
+              column: cardModels[0].cardSeries.xSeries.column,
+            },
+          ],
+          settings,
+        });
+      },
+    },
+  ];
+
   return {
     option,
-    eventHandlers: [],
+    eventHandlers,
   };
 };

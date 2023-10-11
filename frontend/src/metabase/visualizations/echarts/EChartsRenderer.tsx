@@ -9,10 +9,12 @@ interface EChartsRendererProps {
   config: EChartsConfig;
   width: number | "auto";
   height: number | "auto";
+  enableBrush?: boolean;
 }
 
 export function EChartsRenderer({
   config: { option, eventHandlers, zrEventHandlers },
+  enableBrush,
   width,
   height,
 }: EChartsRendererProps) {
@@ -29,6 +31,16 @@ export function EChartsRenderer({
 
   useEffect(() => {
     chartRef.current?.setOption(option, true);
+    if (enableBrush) {
+      chartRef.current?.dispatchAction({
+        type: "takeGlobalCursor",
+        key: "brush",
+        brushOption: {
+          brushType: "lineX",
+          brushMode: "single",
+        },
+      });
+    }
   }, [option]);
 
   useEffect(() => {
