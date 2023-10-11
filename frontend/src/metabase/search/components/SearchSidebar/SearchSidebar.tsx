@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
@@ -15,6 +14,8 @@ import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFil
 import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFilter";
 import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
 import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
+import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
+import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
@@ -25,6 +26,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
+    [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.LastEditedAt]: LastEditedAtFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
@@ -76,6 +78,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       {getFilter(SearchFilterKeys.Type)}
       {getFilter(SearchFilterKeys.CreatedBy)}
       {getFilter(SearchFilterKeys.LastEditedBy)}
+      {getFilter(SearchFilterKeys.CreatedAt)}
       {getFilter(SearchFilterKeys.LastEditedAt)}
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
