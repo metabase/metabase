@@ -823,14 +823,22 @@
               (-> dimension dimensions (get :field_type [::not-found]) last))]
       (into []
             (comp (keep
-                   (fn [card-template]
-                     (let [[card-name template] (first card-template) ;; {"card name" <template>}
-                           cleaned-card         (clean-card template) ;; simplify a bit
-                           underlying           (into #{} (keep dimension->types)
-                                                      (card-deps cleaned-card))]
-                       (when-not (underlying ::not-found)
-                         {:affinity-name card-name
-                          :affinity-set  underlying}))))
+                    (fn [card-template]
+                      (let [[card-name {card-dimensions :dimensions :as template}] (first card-template) ;; {"card name" <template>}
+                            cleaned-card (clean-card template) ;; simplify a bit
+                            nominal-dimensions  (card-deps cleaned-card)
+                            semantic-dimensions (map dimension->types nominal-dimensions)
+                            nom->sem            (zipmap nominal-dimensions semantic-dimensions)
+                            underlying          (set semantic-dimensions)]
+                        (when-not (underlying ::not-found)
+                          {:affinity-name card-name
+                           :affinity-set  underlying
+                           :card-template (assoc template
+                                            :card-name card-name
+                                            :affinity-set underlying
+                                            :semantic-dimensions (->> card-dimensions
+                                                                      (mapv #(update-keys % nom->sem))
+                                                                      (apply merge)))}))))
                   (m/distinct-by :affinity-set))
             card-templates))))
 
@@ -989,18 +997,19 @@
   [{root :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
-    template-cards      :cards
     :as                 template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics}   (interesting/identify
-                                          base-context
-                                          {:dimension-specs template-dimensions
-                                           :metric-specs    template-metrics})
+                                           base-context
+                                           {:dimension-specs template-dimensions
+                                            :metric-specs    template-metrics})
         affinities          (dash-template->affinities template grounded-dimensions)
-        affinity-set->cards (combination/make-affinity-set->cards grounded-dimensions template-cards affinities)
+        affinity-set->cards (->> (map :card-template affinities)
+                                 (sort-by :score >)
+                                 (group-by :affinity-set))
         cards               (->> grounded-metrics
                                  (combination/interesting-combinations grounded-dimensions
-                                                                       (map :affinity-set affinities))
+                                                                       (set (map :affinity-set affinities)))
                                  (combination/combinations->cards base-context
                                                                   affinity-set->cards)
                                  (map-indexed (fn [i card]

@@ -10,7 +10,8 @@
    [metabase.automagic-dashboards.visualization-macros :as visualization]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defn make-affinity-set->cards
   "Construct a map of affinity sets to card templates. The affinitie sets are a set of semantic types and the card
@@ -50,13 +51,13 @@
 
 (def ^:private field-type (some-fn :semantic_type :effective_type))
 
-(defn make-metric-combinations
+(mu/defn add-breakout-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
-  [ground-dimensions
-   semantic-affinity-sets
+  [ground-dimensions :- ads/dimension-bindings
+   semantic-affinity-sets :- [:set ads/semantic-affinity-set]
    {grounded-metric-fields :grounded-metric-fields :as metric}]
-  (let [grounded-field-ids   (set (map :id grounded-metric-fields))
+  (let [grounded-field-ids (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
         ;; Note that one potential issue here is rate metrics. Churn rate will need to
@@ -69,36 +70,37 @@
                                                        (dissoc :matches)
                                                        (assoc :dimension-name dim-name))]
                                            (map
-                                            (fn [matching-field]
-                                              (assoc matching-field :dimension dim))
-                                            matches))))
+                                             (fn [matching-field]
+                                               (assoc matching-field :dimension dim))
+                                             matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields    (->> available
-                                  (remove (comp grounded-field-ids :id))
-                                  (group-by field-type))]
-    (for [affinity-set            (distinct semantic-affinity-sets) ;;These are *only* dimensions in cards -- we don't care about metrics]
+        groundable-fields  (->> available
+                                (remove (comp grounded-field-ids :id))
+                                (group-by field-type))]
+    (for [affinity-set            semantic-affinity-sets    ;;These are *only* dimensions in cards -- we don't care about metrics]
           ground-dimension-fields (->> (map groundable-fields affinity-set)
                                        (apply math.combo/cartesian-product)
                                        (map (partial zipmap affinity-set)))]
       (-> metric
           (assoc
-           :grounded-metric-fields grounded
-           :grounded-dimensions ground-dimension-fields
-           :nominal-dimensions->fields (into
-                                        (zipmap
-                                         (map (comp :dimension-name :dimension) grounded)
-                                         grounded)
-                                        (zipmap
-                                         (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
-                                         (vals ground-dimension-fields)))
-           :affinity-set affinity-set)
+            :grounded-metric-fields grounded
+            :grounded-dimensions ground-dimension-fields
+            :nominal-dimensions->fields (into
+                                          (zipmap
+                                            (map (comp :dimension-name :dimension) grounded)
+                                            grounded)
+                                          (zipmap
+                                            (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
+                                            (vals ground-dimension-fields)))
+            :semantic-dimensions ground-dimension-fields
+            :affinity-set affinity-set)
           (update :metric-definition add-breakouts (vals ground-dimension-fields))))))
 
 (defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
   [ground-dimensions semantic-affinity-sets grounded-metrics]
-  (mapcat (partial make-metric-combinations ground-dimensions semantic-affinity-sets)
+  (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
 
 (defn- instantiate-visualization
