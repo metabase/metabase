@@ -16,7 +16,7 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
   cursor: pointer;
 
   display: flex;
-  align-items: ${props => (props.showDescription ? "flex-start" : "center")};
+  align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
   gap: ${space(1)};
 
   border: 1px solid ${color("border")};

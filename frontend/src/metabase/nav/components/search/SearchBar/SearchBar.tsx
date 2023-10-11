@@ -145,7 +145,8 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [previousLocation, location, setInactive]);
 
   const goToSearchApp = useCallback(() => {
-    const shouldPersistFilters = isSearchPageLocation(previousLocation);
+    const shouldPersistFilters =
+      !previousLocation || isSearchPageLocation(previousLocation);
     const filters = shouldPersistFilters ? searchFilters : {};
 
     const query = {

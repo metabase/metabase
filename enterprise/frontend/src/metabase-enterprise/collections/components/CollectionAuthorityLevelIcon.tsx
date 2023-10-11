@@ -3,13 +3,13 @@ import { Icon } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
-import type {Collection, SearchResult} from "metabase-types/api";
+import type { SearchResult } from "metabase-types/api";
 
 import { AUTHORITY_LEVELS } from "../constants";
 import { isRegularCollection } from "../utils";
 
 interface Props extends Omit<IconProps, "name" | "tooltip"> {
-  collection: SearchResult['collection'];
+  collection: SearchResult["collection"];
 
   // check OFFICIAL_COLLECTION authority level definition
   // https://github.com/metabase/metabase/blob/d0ab6c0e2361dccfbfe961d61e1066ec2faf6c40/enterprise/frontend/src/metabase-enterprise/collections/constants.js#L14

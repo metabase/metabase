@@ -17,7 +17,7 @@ export interface WrappedResult extends SearchResult {
     width?: number;
     height?: number;
   };
-  getCollection: () => Partial<SearchResult["collection"]>;
+  getCollection: () => SearchResult["collection"];
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];

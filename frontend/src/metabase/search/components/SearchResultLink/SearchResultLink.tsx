@@ -17,7 +17,7 @@ export const SearchResultLink = ({
   return (
     <Box
       display="contents"
-      onClick={e => {
+      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
       }}
     >

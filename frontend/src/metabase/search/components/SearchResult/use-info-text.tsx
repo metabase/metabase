@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 import type { WrappedResult } from "metabase/search/types";
 import type { Collection } from "metabase-types/api";
@@ -91,33 +92,58 @@ const useCollectionInfoText = (result: WrappedResult): InfoTextData[] => {
   ];
 };
 const useTablePath = (result: WrappedResult): InfoTextData[] => {
-  const { data: database } = useDatabaseQuery({
+  const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
     id: result.database_id,
   });
 
-  const { data: schema = [] } = useSchemaListQuery({
-    query: {
-      dbId: result.database_id,
-    },
-  });
+  const databaseLink: InfoTextData | null = useMemo(() => {
+    if (isDatabaseLoading || !database || database.name === null) {
+      return null;
+    }
 
-  return [
-    {
-      link: database && browseDatabase(database),
-      label: database?.name ?? null,
-    },
-    {
-      link:
-        schema?.length > 1
-          ? browseSchema({
-              db: { id: result.database_id },
-              schema_name: result.table_schema,
-            } as TableType)
-          : null,
+    return {
+      link: browseDatabase(database),
+      label: database.name,
+    };
+  }, [database, isDatabaseLoading]);
+
+  const { data: schema = [], isLoading: isSchemaListLoading } =
+    useSchemaListQuery({
+      query: {
+        dbId: result.database_id,
+      },
+    });
+
+  const tableLink: InfoTextData | null = useMemo(() => {
+    if (
+      isSchemaListLoading ||
+      schema?.length <= 1 ||
+      result.table_schema === null
+    ) {
+      return null;
+    }
+
+    const link = browseSchema({
+      db: { id: result.database_id },
+      schema_name: result.table_schema,
+    } as TableType);
+
+    return {
+      link,
       label: result.table_schema,
-    },
-  ];
+    };
+  }, [
+    isSchemaListLoading,
+    result.database_id,
+    result.table_schema,
+    schema?.length,
+  ]);
+
+  return [databaseLink, databaseLink ? tableLink : null].filter(
+    Boolean,
+  ) as InfoTextData[];
 };
+
 const useTableLink = (result: WrappedResult): InfoTextData[] => {
   const { data: table } = useTableQuery({
     id: result.table_id,
@@ -133,13 +159,19 @@ const useTableLink = (result: WrappedResult): InfoTextData[] => {
 
 const useCollectionResultLink = (result: WrappedResult): InfoTextData[] => {
   const collection = result.getCollection();
-  return [
-    {
-      icon: collection.authority_level ? (
-        <CollectionAuthorityLevelIcon size={15} collection={collection} />
-      ) : null,
-      link: collectionUrl(collection),
-      label: collection.name ?? null,
-    },
-  ];
+  const colUrl = collectionUrl(collection);
+  const collectionName = collection.name;
+  return collectionName
+    ? [
+        {
+          icon:
+            !PLUGIN_COLLECTIONS.isRegularCollection &&
+            collection.authority_level ? (
+              <CollectionAuthorityLevelIcon size={15} collection={collection} />
+            ) : null,
+          link: colUrl,
+          label: collectionName,
+        },
+      ]
+    : [];
 };

@@ -22,7 +22,7 @@ LastEditInfoLabel.propTypes = {
       email: PropTypes.string.isRequired,
       first_name: PropTypes.string,
       last_name: PropTypes.string,
-      timestamp: PropTypes.string.isRequired,
+      timestamp: PropTypes.string,
     }).isRequired,
   }),
   user: PropTypes.shape({
@@ -41,7 +41,9 @@ function formatEditorName(lastEditInfo) {
 function LastEditInfoLabel({ item, user, onClick, className }) {
   const lastEditInfo = item["last-edit-info"];
   const { id: editorId, timestamp } = lastEditInfo;
-  const time = moment(timestamp).fromNow();
+
+  const momentTimestamp = moment(timestamp);
+  const time = momentTimestamp.isValid() ? ` ${momentTimestamp.fromNow()}` : "";
 
   const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
 
@@ -52,7 +54,7 @@ function LastEditInfoLabel({ item, user, onClick, className }) {
         className={className}
         onClick={onClick}
         data-testid="revision-history-button"
-      >{t`Edited ${time} by ${editor}`}</TextButton>
+      >{t`Edited${time} by ${editor}`}</TextButton>
     </Tooltip>
   );
 }

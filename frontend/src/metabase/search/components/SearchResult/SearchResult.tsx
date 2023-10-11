@@ -1,6 +1,8 @@
 import type { LocationDescriptorObject } from "history";
+import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
+
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Group, Text, Stack, Loader, Box, Divider } from "metabase/ui";
@@ -38,7 +40,7 @@ export function SearchResult({
     [dispatch],
   );
 
-  const handleClick = (e) => {
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
 
     if (!isActive) {
@@ -64,7 +66,7 @@ export function SearchResult({
       <ItemIcon active={isActive} item={result} type={model} />
       <Stack justify="center" spacing={0} style={{ overflow: "hidden" }}>
         <Group spacing="xs" align="center">
-          <ResultTitle fw={700} size="md" truncate>
+          <ResultTitle lh="unset" fw={700} size="md" truncate>
             {name}
           </ResultTitle>
           <PLUGIN_MODERATION.ModerationStatusIcon
@@ -98,7 +100,9 @@ export function SearchResult({
               orientation="vertical"
               style={{ borderRadius: "0.25rem" }}
             />
-            <Text lineClamp={3}>{description}</Text>
+            <Text size="sm" lineClamp={3}>
+              {description}
+            </Text>
           </Group>
         </Box>
       )}
