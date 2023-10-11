@@ -253,7 +253,7 @@ describe("scenarios > search", () => {
           cy.findByTestId("type-search-filter").click();
           popover().within(() => {
             cy.findByText(label).click();
-            cy.findByText("Apply filters").click();
+            cy.findByText("Apply").click();
           });
 
           cy.findAllByTestId("result-link-info-text").each(result => {
@@ -332,7 +332,7 @@ describe("scenarios > search", () => {
 
         popover().within(() => {
           cy.findByText("Robert Tableton").click();
-          cy.findByText("Apply filters").click();
+          cy.findByText("Apply").click();
         });
         cy.url().should("contain", "created_by");
 
@@ -415,7 +415,7 @@ describe("scenarios > search", () => {
 
         popover().within(() => {
           cy.findByText("Robert Tableton").click();
-          cy.findByText("Apply filters").click();
+          cy.findByText("Apply").click();
         });
         cy.url().should("contain", "last_edited_by");
 
@@ -721,21 +721,21 @@ describe("scenarios > search", () => {
       cy.findByTestId("created_by-search-filter").click();
       popover().within(() => {
         cy.findByText("Bobby Tables").click();
-        cy.findByText("Apply filters").click();
+        cy.findByText("Apply").click();
       });
 
       // add last_edited_by filter
       cy.findByTestId("last_edited_by-search-filter").click();
       popover().within(() => {
         cy.findByText("Bobby Tables").click();
-        cy.findByText("Apply filters").click();
+        cy.findByText("Apply").click();
       });
 
       // add type filter
       cy.findByTestId("type-search-filter").click();
       popover().within(() => {
         cy.findByText("Question").click();
-        cy.findByText("Apply filters").click();
+        cy.findByText("Apply").click();
       });
 
       expectSearchResultItemNameContent({
