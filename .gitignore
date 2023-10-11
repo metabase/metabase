@@ -91,3 +91,6 @@ dev/src/dev/nocommit/
 .clj-kondo/metosin/malli-types-clj
 
 .github/static-viz-sources.yaml
+
+# storybook
+/storybook/node_modules

@@ -1,19 +1,24 @@
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const appConfig = require("../webpack.config");
+const path = require("path");
+const appConfig = require("../../webpack.config");
 
 module.exports = {
   core: {
     builder: "webpack5",
   },
   stories: [
-    "../frontend/**/*.stories.mdx",
-    "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+    "../../frontend/**/*.stories.mdx",
+    "../../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
   addons: [
     "@storybook/addon-essentials",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
   ],
+  babel: () => ({
+    rootMode: 'upward',
+    cacheDirectory: path.join(__dirname, "../../.babel_cache")
+  }),
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
     plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],
@@ -30,6 +35,10 @@ module.exports = {
     },
     resolve: {
       ...storybookConfig.resolve,
+      modules: [
+        ...storybookConfig.resolve.modules,
+        path.join(__dirname, "../node_modules")
+      ],
       alias: appConfig.resolve.alias,
       extensions: appConfig.resolve.extensions,
     },

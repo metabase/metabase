@@ -9,7 +9,8 @@
         "./enterprise/frontend/src/*",
         "./enterprise/frontend/test/*"
       ],
-      "cljs/*": ["./target/cljs_dev/*"]
+      "cljs/*": ["./target/cljs_dev/*"],
+      "@storybook/*": ["./storybook/node_modules/@storybook/*"]
     }
   },
   "include": [

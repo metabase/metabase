@@ -32,7 +32,8 @@
     {
       "files": ["**/*.stories.tsx"],
       "rules": {
-        "import/no-default-export": 0
+        "import/no-default-export": 0,
+        "import/no-unresolved": [2, {"ignore": ["@storybook"]}]
       }
     },
     {

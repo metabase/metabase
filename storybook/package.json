@@ -1,0 +1,37 @@
+{
+  "name": "@metabase/storybook",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "start-storybook -p 6006",
+    "build": "NODE_OPTIONS=--max-old-space-size=8196 build-storybook -o ../storybook-static"
+  },
+  "author": "Metabase",
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^6.5.16",
+    "@storybook/addon-actions": "6.5.15",
+    "@storybook/addon-essentials": "6.5.15",
+    "@storybook/addon-links": "6.5.15",
+    "@storybook/blocks": "^7.0.18",
+    "@storybook/builder-webpack5": "6.5.15",
+    "@storybook/client-api": "6.5.15",
+    "@storybook/manager-webpack5": "6.5.15",
+    "@storybook/react": "6.5.15",
+    "//": "TODO: remove or upgrade together with the version from root package.json",
+    "css-loader": "1.0.1",
+    "//": "https://github.com/postcss/postcss-import/issues/435#issuecomment-735443369",
+    "postcss": "^8.1.9",
+    "postcss-import": "12.0.1"
+  },
+  "resolutions": {
+    "//": "https://github.com/storybookjs/storybook/issues/22431#issuecomment-1630086092",
+    "jackspeak": "2.1.1"
+  }
+}
