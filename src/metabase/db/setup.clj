@@ -25,7 +25,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [next.jdbc :as next.jdbc]
    [toucan2.jdbc :as t2.jdbc]
    [toucan2.map-backend.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline])
@@ -59,8 +58,8 @@
 
 (mu/defn ^:private initialize-db!
   "a"
-  [db-type     :- :keyword
-   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  [db-type             :- :keyword
+   conn-or-data-source :- [:or (ms/InstanceOfClass javax.sql.DataSource) (ms/InstanceOfClass java.sql.Connection)]]
   (let [init-file (case db-type
                     :h2       "initialization/metabase_h2.sql"
                     :mysql    "initialization/metabase_mysql.sql"
@@ -69,20 +68,24 @@
                        (map str/trim)
                        (remove (fn [s] (or
                                         (str/blank? s)
-                                        (str/starts-with? s "--")))))]
-    (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-      (.setAutoCommit conn false)
-      (try
-       (doseq [stmt stmts]
-         (jdbc/execute! {:connection conn} [stmt])
-         #_(next.jdbc/execute! conn [stmt]))
-       (.commit conn)
-       (catch Exception e
-         (.rollback conn)
-         (log/error e "Error while initializing db")
-         (throw e))
-       (finally
-        (.setAutoCommit conn true))))))
+                                        (str/starts-with? s "--")))))
+        f (fn [^java.sql.Connection conn]
+            (.setAutoCommit conn false)
+            (try
+             (doseq [stmt stmts]
+               (jdbc/execute! {:connection conn} [stmt])
+               #_(next.jdbc/execute! conn [stmt]))
+             (.commit conn)
+             (catch Exception e
+               (.rollback conn)
+               (log/error e "Error while initializing db")
+               (throw e))
+             (finally
+              (.setAutoCommit conn true))))]
+    (if (instance? java.sql.Connection conn-or-data-source)
+      (f conn-or-data-source)
+      (with-open [conn (.getConnection ^javax.sql.DataSource conn-or-data-source)]
+        (f conn)))))
 
 (mu/defn migrate!
   "Migrate the application database specified by `data-source`.
@@ -188,9 +191,9 @@
     (u/with-us-locale
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
-         (verify-db-connection   db-type data-source)
-         (when-not (or (liquibase/table-exists? data-source "core_user")
-                       (liquibase/table-exists? data-source "CORE_USER"))
+         (verify-db-connection db-type data-source)
+         (when-not #p (or (liquibase/table-exists? data-source "core_user")
+                          (liquibase/table-exists? data-source "CORE_USER"))
            (log/info "Running database initialization")
            (initialize-db! db-type data-source)
            (log/info "Done database initialization"))

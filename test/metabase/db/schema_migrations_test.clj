@@ -976,27 +976,27 @@
 (deftest migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
     (impl/test-migrations ["v47.00-009" "v47.00-012"] [migrate!]
-                          (t2/query-one {:insert-into :core_user
-                                         :values      [{:first_name    "Cam"
-                                                        :last_name     "Era"
-                                                        :email         "cam@era.com"
-                                                        :date_joined   :%now
-                                                        :password      "password"
-                                                        :password_salt "and pepper"
-                                                        :google_auth   false}
-                                                       {:first_name    "Google Cam"
-                                                        :last_name     "Era"
-                                                        :email         "ldap_cam@era.com"
-                                                        :date_joined   :%now
-                                                        :password      "password"
-                                                        :password_salt "and pepper"
-                                                        :google_auth   true}]})
-                          (migrate!)
-                          (is (= [{:first_name "Cam", :sso_source nil}
-                                  {:first_name "Google Cam", :sso_source "google"}]
-                                 (mdb.query/query {:select   [:first_name :sso_source]
-                                                   :from     [:core_user]
-                                                   :order-by [[:id :asc]]}))))))
+      (t2/query-one {:insert-into :core_user
+                     :values      [{:first_name    "Cam"
+                                    :last_name     "Era"
+                                    :email         "cam@era.com"
+                                    :date_joined   :%now
+                                    :password      "password"
+                                    :password_salt "and pepper"
+                                    :google_auth   false}
+                                   {:first_name    "Google Cam"
+                                    :last_name     "Era"
+                                    :email         "ldap_cam@era.com"
+                                    :date_joined   :%now
+                                    :password      "password"
+                                    :password_salt "and pepper"
+                                    :google_auth   true}]})
+      (migrate!)
+      (is (= [{:first_name "Cam", :sso_source nil}
+              {:first_name "Google Cam", :sso_source "google"}]
+             (mdb.query/query {:select   [:first_name :sso_source]
+                               :from     [:core_user]
+                               :order-by [[:id :asc]]}))))))
 
 (deftest migrate-ldap-auth-test
   (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"

@@ -14,6 +14,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
+   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -196,6 +197,7 @@
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
+    (#'mdb.setup/initialize-db! driver conn)
     (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
     (f
      (fn migrate! []
