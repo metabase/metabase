@@ -182,27 +182,23 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
     const question = notebookModelQuestion;
 
-    it("does not allow navigating away from creating new model", () => {
-      const destinations = [...locations];
-
-      for (const destination of destinations) {
+    describe("does not allow navigating away from creating new model", () => {
+      it.each(locations)("to `$pathname`", destination => {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(false);
-      }
+      });
     });
 
-    it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [
-        newModelQueryTabLocation,
-        newModelMetadataTabLocation,
-      ];
-
-      for (const destination of destinations) {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      }
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each([newModelQueryTabLocation, newModelMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
   });
 
