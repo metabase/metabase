@@ -151,96 +151,108 @@ describe("admin > database > add", () => {
       );
     });
 
-    it("should add Mongo database and redirect to listing", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("MongoDB").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Show advanced options").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Additional connection string options");
+    it(
+      "should add Mongo database and redirect to listing",
+      { tags: "@mongo" },
+      () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("MongoDB").click({ force: true });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Show advanced options").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Additional connection string options");
 
-      typeAndBlurUsingLabel("Display name", "QA Mongo4");
-      typeAndBlurUsingLabel("Host", "localhost");
-      typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
-      typeAndBlurUsingLabel("Database name", "sample");
-      typeAndBlurUsingLabel("Username", "metabase");
-      typeAndBlurUsingLabel("Password", "metasample123");
-      typeAndBlurUsingLabel("Authentication database (optional)", "admin");
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").should("not.be.disabled").click();
-
-      cy.wait("@createDatabase");
-
-      cy.url().should("match", /\/admin\/databases\?created=true$/);
-
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("We're taking a look at your database!");
-        cy.findByLabelText("close icon").click();
-      });
-
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA Mongo4");
-      });
-
-      cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
-        cy.findByText("Done!");
-      });
-    });
-
-    it("should add Mongo database via the connection string", () => {
-      const badDBString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}`;
-      const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
-      const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
-
-      popover().findByText("MongoDB").click({ force: true });
-
-      cy.findByTestId("database-form").within(() => {
-        cy.findByText("Paste a connection string").click();
         typeAndBlurUsingLabel("Display name", "QA Mongo4");
-        cy.findByLabelText("Port").should("not.exist");
-        cy.findByLabelText("Paste your connection string").type(badDBString, {
-          delay: 0,
+        typeAndBlurUsingLabel("Host", "localhost");
+        typeAndBlurUsingLabel("Port", QA_MONGO_PORT);
+        typeAndBlurUsingLabel("Database name", "sample");
+        typeAndBlurUsingLabel("Username", "metabase");
+        typeAndBlurUsingLabel("Password", "metasample123");
+        typeAndBlurUsingLabel("Authentication database (optional)", "admin");
+
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Save").should("not.be.disabled").click();
+
+        cy.wait("@createDatabase");
+
+        cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("We're taking a look at your database!");
+          cy.findByLabelText("close icon").click();
         });
 
-        cy.button("Save").should("not.be.disabled").click();
-        cy.findByText(/No database name specified/);
-        cy.button("Failed");
+        cy.findByRole("table").within(() => {
+          cy.findByText("QA Mongo4");
+        });
 
-        cy.findByLabelText("Paste your connection string")
-          .clear()
-          .type(badPasswordString);
+        cy.findByRole("status").within(() => {
+          cy.findByText("Syncing…");
+          cy.findByText("Done!");
+        });
+      },
+    );
 
-        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
-        cy.findByText(/Exception authenticating MongoCredential/);
-        cy.button("Failed");
+    it(
+      "should add Mongo database via the connection string",
+      { tags: "@mongo" },
+      () => {
+        const badDBString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}`;
+        const badPasswordString = `mongodb://metabase:wrongPassword@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
+        const validConnectionString = `mongodb://metabase:metasample123@localhost:${QA_MONGO_PORT}/sample?authSource=admin`;
 
-        cy.findByLabelText("Paste your connection string")
-          .clear()
-          .type(validConnectionString);
+        popover().findByText("MongoDB").click({ force: true });
 
-        cy.button("Save", { timeout: 7000 }).should("not.be.disabled").click();
-      });
+        cy.findByTestId("database-form").within(() => {
+          cy.findByText("Paste a connection string").click();
+          typeAndBlurUsingLabel("Display name", "QA Mongo4");
+          cy.findByLabelText("Port").should("not.exist");
+          cy.findByLabelText("Paste your connection string").type(badDBString, {
+            delay: 0,
+          });
 
-      cy.wait("@createDatabase");
+          cy.button("Save").should("not.be.disabled").click();
+          cy.findByText(/No database name specified/);
+          cy.button("Failed");
 
-      cy.url().should("match", /\/admin\/databases\?created=true$/);
+          cy.findByLabelText("Paste your connection string")
+            .clear()
+            .type(badPasswordString);
 
-      cy.findByRole("dialog").within(() => {
-        cy.findByText("We're taking a look at your database!");
-        cy.findByLabelText("close icon").click();
-      });
+          cy.button("Save", { timeout: 7000 })
+            .should("not.be.disabled")
+            .click();
+          cy.findByText(/Exception authenticating MongoCredential/);
+          cy.button("Failed");
 
-      cy.findByRole("table").within(() => {
-        cy.findByText("QA Mongo4");
-      });
+          cy.findByLabelText("Paste your connection string")
+            .clear()
+            .type(validConnectionString);
 
-      cy.findByRole("status").within(() => {
-        cy.findByText("Syncing…");
-        cy.findByText("Done!");
-      });
-    });
+          cy.button("Save", { timeout: 7000 })
+            .should("not.be.disabled")
+            .click();
+        });
+
+        cy.wait("@createDatabase");
+
+        cy.url().should("match", /\/admin\/databases\?created=true$/);
+
+        cy.findByRole("dialog").within(() => {
+          cy.findByText("We're taking a look at your database!");
+          cy.findByLabelText("close icon").click();
+        });
+
+        cy.findByRole("table").within(() => {
+          cy.findByText("QA Mongo4");
+        });
+
+        cy.findByRole("status").within(() => {
+          cy.findByText("Syncing…");
+          cy.findByText("Done!");
+        });
+      },
+    );
 
     it("should add MySQL database and redirect to listing", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

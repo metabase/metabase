@@ -272,7 +272,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
@@ -331,9 +331,9 @@
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
-  (for [[symb varr] (ns-publics nmspace)
+  (for [[_symb varr] (ns-publics nmspace)
         :when       (:is-endpoint? (meta varr))]
-    symb))
+    varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str

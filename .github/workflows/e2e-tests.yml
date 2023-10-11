@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   # We'll record runs using Replay.io and their browser on a schedule as an experiment
   schedule:
-    - cron: '0 22 * * 0'
+    - cron: '0 22 * * *'
   push:
     branches:
       - "master"
@@ -201,13 +201,6 @@ jobs:
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.4
-        ports:
-          - 27004:27017
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       mysql-sample:
         image: metabase/qa-databases:mysql-sample-8
         ports:
@@ -299,11 +292,29 @@ jobs:
         if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow --@quarantine",grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.setup-chrome.outputs.chrome-path }}
         env:
           TERM: xterm
+
+      # Mongo
+      - name: Start Mongo server
+        if: matrix.name == 'mongo'
+        run: docker run -d -p 27004:27017 --name e2e-mongo metabase/qa-databases:mongo-sample-4.4
+      - name: Wait until the port 27004 is ready
+        if: matrix.name == 'mongo'
+        run: while ! nc -z localhost 27004; do sleep 1; done
+        timeout-minutes: 3
+      - name: Run E2E tests that depend on Mongo
+        if: matrix.name == 'mongo'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        env:
+          CYPRESS_QA_DB_MONGO: true
 
       # REPLAY.IO specific jobs
       - name: Install Replay.io browser
@@ -327,7 +338,7 @@ jobs:
         if: matrix.context == 'folder' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow --@quarantine,grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser "replay-chromium"
         env:
@@ -338,10 +349,10 @@ jobs:
 
       - name: Upload Replay.io recordings
         if: github.event_name == 'schedule' && !cancelled()
-        uses: replayio/action-upload@v0.4.7
+        uses: replayio/action-upload@v0.5.1
         with:
-          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
-          public: true
+          api-key: ${{ secrets.REPLAY_IO_TOKEN }}
+          public: false
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
