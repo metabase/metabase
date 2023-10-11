@@ -63,16 +63,14 @@ export function StringFilterPicker({
   };
 
   const handleFilterChange = () => {
-    if (operatorName && values.length) {
-      onChange(
-        Lib.stringFilterClause({
-          operator: operatorName,
-          column,
-          values,
-          options,
-        }),
-      );
-    }
+    onChange(
+      Lib.stringFilterClause({
+        operator: operatorName,
+        column,
+        values,
+        options,
+      }),
+    );
   };
 
   const placeholder = t`Enter a value`; // TODO: this logic was handled by MLv1 / TokenField

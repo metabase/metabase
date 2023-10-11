@@ -61,15 +61,13 @@ export function NumberFilterPicker({
   };
 
   const handleFilterChange = () => {
-    if (operatorName && values.length) {
-      onChange(
-        Lib.numberFilterClause({
-          operator: operatorName,
-          column,
-          values,
-        }),
-      );
-    }
+    onChange(
+      Lib.numberFilterClause({
+        operator: operatorName,
+        column,
+        values,
+      }),
+    );
   };
 
   return (
