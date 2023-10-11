@@ -7,7 +7,7 @@ import { Box } from "metabase/ui";
 
 export const LastEditedAtFilter: SearchFilterDropdown<"last_edited_at"> = {
   iconName: "calendar",
-  label: () => t`Last edited by`,
+  label: () => t`Last edited at`,
   type: "dropdown",
   DisplayComponent: ({ value: dateString }) => (
     <SearchFilterDateDisplay

@@ -77,8 +77,8 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     <Stack>
       {getFilter(SearchFilterKeys.Type)}
       {getFilter(SearchFilterKeys.CreatedBy)}
-      {getFilter(SearchFilterKeys.LastEditedBy)}
       {getFilter(SearchFilterKeys.CreatedAt)}
+      {getFilter(SearchFilterKeys.LastEditedBy)}
       {getFilter(SearchFilterKeys.LastEditedAt)}
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
