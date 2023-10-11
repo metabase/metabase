@@ -78,29 +78,28 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
+        sparse-checkout: release
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
-    - name: Get Release Version
+    - name: Get Release Branch
       uses: actions/github-script@v6
       id: release_branch
       with:
         result_encoding: string
         script: | # js
           const { getReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
           const version = '${{ inputs.version }}';
-
           const releaseBranch = getReleaseBranch(version);
           return releaseBranch;
-
     - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
       run: |
+        git checkout ${{ steps.release_branch.outputs.result }}
         git branch --contains ${{ inputs.commit }} | grep -q ${{ steps.release_branch.outputs.result }} \
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
 
   build-uberjar-for-release:
-    needs: check-version
+    needs: [check-version, check-commit]
     runs-on: ubuntu-22.04
     timeout-minutes: 50
     strategy:
