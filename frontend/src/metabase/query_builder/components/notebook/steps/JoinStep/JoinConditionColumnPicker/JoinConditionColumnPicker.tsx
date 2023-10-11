@@ -45,10 +45,13 @@ export function JoinConditionColumnPicker({
   const columnInfo = column ? Lib.displayInfo(query, stageIndex, column) : null;
 
   const tableName = useMemo(() => {
+    if (!columnInfo) {
+      return;
+    }
     if (table) {
       return Lib.displayInfo(query, stageIndex, table).displayName;
     }
-    return columnInfo?.table?.displayName;
+    return columnInfo.table?.displayName;
   }, [query, stageIndex, table, columnInfo]);
 
   const checkColumnSelected = useCallback(
