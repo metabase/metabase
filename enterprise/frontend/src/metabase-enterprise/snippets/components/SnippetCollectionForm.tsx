@@ -38,7 +38,7 @@ const SNIPPET_COLLECTION_SCHEMA = Yup.object({
 
 type SnippetCollectionFormValues = Pick<
   Collection,
-  "name" | "description" | "color" | "parent_id"
+  "name" | "description" | "parent_id"
 >;
 
 type UpdateSnippetCollectionFormValues = Partial<SnippetCollectionFormValues> &

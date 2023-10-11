@@ -1,5 +1,6 @@
 (ns metabase.search.config
   (:require
+   [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
    [metabase.models.permissions :as perms]
@@ -64,6 +65,13 @@
   ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "database"])
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
+
+(defn search-model->revision-model
+  "Return the apporpriate revision model given a search model."
+  [model]
+  (case model
+    "dataset" (recur "card")
+    (str/capitalize model)))
 
 (defn model->alias
   "Given a model string returns the model alias"

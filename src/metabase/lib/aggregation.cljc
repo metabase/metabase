@@ -30,7 +30,7 @@
     [:aggregation options ag-uuid]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
-  "Resolve an aggregation with a specific `index`."
+  "Resolve an aggregation with a specific `ag-uuid`."
   [query        :- ::lib.schema/query
    stage-number :- :int
    ag-uuid      :- :string]
@@ -389,3 +389,15 @@
                      {:aggregation-index ag-index
                       :query             query
                       :stage-number      stage-number})))))
+
+(mu/defn aggregation-at-index :- [:maybe ::lib.schema.aggregation/aggregation]
+  "Get the aggregation at `index` in a stage of the query if it exists, otherwise `nil`. This is mostly for working
+  with legacy references like
+
+    [:aggregation 0]"
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+  (let [ags (aggregations query stage-number)]
+    (when (> (clojure.core/count ags) index)
+      (nth ags index))))

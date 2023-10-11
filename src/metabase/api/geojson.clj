@@ -3,16 +3,14 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [compojure.core :refer [GET]]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [ring.util.codec :as codec]
-   [ring.util.response :as response]
-   [schema.core :as s])
+   [ring.util.response :as response])
   (:import
    (java.io BufferedReader)
    (java.net InetAddress URL)
@@ -28,11 +26,14 @@
   :default    true)
 
 (def ^:private CustomGeoJSON
-  {s/Keyword {:name                     su/NonBlankString
-              :url                      su/NonBlankString
-              :region_key               (s/maybe s/Str)
-              :region_name              (s/maybe s/Str)
-              (s/optional-key :builtin) s/Bool}})
+  [:map-of :keyword [:map {:closed true}
+                     [:name                         ms/NonBlankString]
+                     [:url                          ms/NonBlankString]
+                     [:region_key                   [:maybe :string]]
+                     [:region_name                  [:maybe :string]]
+                     [:builtin     {:optional true} :boolean]]])
+
+(def ^:private CustomGeoJSONValidator (mc/validator CustomGeoJSON))
 
 (def ^:private builtin-geojson
   {:us_states       {:name        "United States"
@@ -46,7 +47,7 @@
                      :region_name "NAME"
                      :builtin     true}})
 
-(defn-  invalid-location-msg []
+(defn- invalid-location-msg []
   (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
@@ -89,10 +90,8 @@
 (defn- validate-geojson
   "Throws a 400 if the supplied `geojson` is poorly structured or has an illegal URL/path"
   [geojson]
-  (try
-    (s/validate CustomGeoJSON geojson)
-    (catch Throwable e
-      (throw (ex-info (tru "Invalid custom GeoJSON") {:status-code 400} e))))
+  (when-not (CustomGeoJSONValidator geojson)
+    (throw (ex-info (tru "Invalid custom GeoJSON") {:status-code 400})))
   (or (valid-geojson-urls? geojson)
       (throw (ex-info (invalid-location-msg) {:status-code 400}))))
 

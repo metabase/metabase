@@ -3,24 +3,25 @@
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
+   [malli.core :as mc]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [saml20-clj.core :as saml]
    [schema.core :as s]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private GroupMappings
-  (s/maybe {su/KeywordOrString [su/IntGreaterThanZero]}))
+  [:maybe [:map-of ms/KeywordOrString [:sequential ms/PositiveInt]]])
 
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
-  (s/validator GroupMappings))
+  (mc/validator GroupMappings))
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
@@ -107,7 +108,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :cache?  false
   :default {}
   :feature :sso-saml
-  :setter  (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
+  :setter  (comp (partial setting/set-value-of-type! :json :saml-group-mappings)
+                 (partial mu/validate-throw validate-group-mappings)))
 
 (defsetting saml-configured
   (deferred-tru "Are the mandatory SAML settings configured?")
@@ -174,7 +176,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :cache?  false
   :default {}
   :feature :sso-jwt
-  :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
+  :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings)
+                 (partial mu/validate-throw validate-group-mappings)))
 
 (defsetting jwt-configured
   (deferred-tru "Are the mandatory JWT settings configured?")

@@ -768,7 +768,7 @@
             (is (=? result
                     (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
 
-(deftest ^:parallel remove-dependent-join
+(deftest ^:parallel remove-dependent-join-test
   (let [first-join-clause (-> (lib/join-clause
                                (meta/table-metadata :checkins)
                                [(lib/= (meta/field-metadata :venues :id)
@@ -787,6 +787,32 @@
                                 (lib/with-join-fields :all)
                                 (lib/with-join-alias "Users"))))]
     (is (nil? (lib/joins (lib/remove-clause query 0 first-join-clause))))))
+
+(deftest ^:parallel remove-dependent-join-from-subsequent-stage-test
+  (testing "Join from previous stage used in join can be removed (#34404)"
+    (let [join-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                         (lib/join (-> (lib/join-clause
+                                        (meta/table-metadata :checkins)
+                                        [(lib/= (meta/field-metadata :venues :id)
+                                                (-> (meta/field-metadata :checkins :venue-id)
+                                                    (lib/with-join-alias "Checkins")))])
+                                       (lib/with-join-fields :all)
+                                       (lib/with-join-alias "Checkins"))))
+          breakout-col (m/find-first (comp #{(meta/id :checkins :venue-id)} :id)
+                                     (lib/breakoutable-columns join-query))
+          breakout-query (-> join-query
+                             (lib/breakout breakout-col)
+                             (lib/aggregate (lib/count))
+                             (lib/append-stage))
+          query (-> breakout-query
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :checkins)
+                                   [(lib/= (first (lib/returned-columns breakout-query))
+                                           (-> (meta/field-metadata :checkins :venue-id)
+                                               (lib/with-join-alias "Checkins2")))])
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-alias "Checkins2"))))]
+      (is (nil? (lib/joins (lib/remove-clause query 0 (first (lib/joins query 0)))))))))
 
 (deftest ^:parallel replace-join-test
   (let [query             lib.tu/query-with-join
