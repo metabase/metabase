@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
+import { Box } from "metabase/ui";
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
 import type { SearchFilterDropdown } from "metabase/search/types";
@@ -14,7 +15,11 @@ export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
       value={dateString}
     />
   ),
-  ContentComponent: SearchFilterDatePicker,
+  ContentComponent: ({ value, onChange, width }) => (
+    <Box miw={width}>
+      <SearchFilterDatePicker value={value} onChange={onChange} />
+    </Box>
+  ),
   fromUrl: value => value,
   toUrl: value => value,
 };
