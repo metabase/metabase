@@ -116,7 +116,6 @@
             field-form    (if (mbql.u/is-clause? :template-tag dimension)
                             (template-tag->field-form dimension card)
                             dimension)]
-        ;; field-form can be an expression as well, but
         (when (and (some? field-form) (not (mbql.u/is-clause? :expression field-form)))
           (unwrap-field-or-expression-clause field-form))))))
 
