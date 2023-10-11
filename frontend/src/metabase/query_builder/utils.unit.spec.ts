@@ -54,14 +54,16 @@ const questions = [
   nativeModelQuestion,
 ];
 
-const anyLocation = createMockLocation();
+const anyLocation = createMockLocation({
+  pathname: "/",
+});
 
 const newModelQueryTabLocation = createMockLocation({
-  pathname: `/model/query`,
+  pathname: "/model/query",
 });
 
 const newModelMetadataTabLocation = createMockLocation({
-  pathname: `/model/metadata`,
+  pathname: "/model/metadata",
 });
 
 const modelQueryTabLocation = createMockLocation({
@@ -89,7 +91,7 @@ describe("isNavigationAllowed", () => {
     const destination = undefined;
 
     it.each(questions)(
-      "allows navigating away from creating new $_card.name",
+      "allows navigating away from creating new `$_card.name`",
       question => {
         const isNewQuestion = true;
 
@@ -100,7 +102,7 @@ describe("isNavigationAllowed", () => {
     );
 
     it.each(questions)(
-      "allows navigating away from editing $_card.name",
+      "allows navigating away from editing `$_card.name`",
       question => {
         const isNewQuestion = false;
 
@@ -112,36 +114,32 @@ describe("isNavigationAllowed", () => {
   });
 
   describe("when there is no question", () => {
-    const destinations = [...locations, undefined];
     const question = undefined;
 
-    it.each(destinations)(
-      "allows navigating away from $pathname",
-      destination => {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion: true }),
-        ).toBe(true);
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion: false }),
-        ).toBe(true);
-      },
-    );
+    it.each(locations)("allows navigating away to `$pathname`", destination => {
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion: true }),
+      ).toBe(true);
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion: false }),
+      ).toBe(true);
+    });
   });
 
   describe("when creating new question", () => {
     const isNewQuestion = true;
 
-    it("always allows navigating away from creating new question", () => {
-      const questions = [notebookQuestion, nativeQuestion, undefined];
-      const destinations = [...locations, undefined];
-
-      for (const question of questions) {
-        for (const destination of destinations) {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(true);
-        }
-      }
+    describe("allows navigating away", () => {
+      describe.each(locations)("to `$pathname`", destination => {
+        it.each([notebookQuestion, nativeQuestion])(
+          "from creating new `$_card.name`",
+          question => {
+            expect(
+              isNavigationAllowed({ destination, question, isNewQuestion }),
+            ).toBe(true);
+          },
+        );
+      });
     });
   });
 
