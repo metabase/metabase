@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
 import type { SearchFilterDropdown } from "metabase/search/types";
-import { stringifyUserId, parseUserId } from "metabase/search/utils";
 
 export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
   iconName: "calendar",
@@ -16,6 +15,6 @@ export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
     />
   ),
   ContentComponent: SearchFilterDatePicker,
-  fromUrl: parseUserId,
-  toUrl: stringifyUserId,
+  fromUrl: value => value,
+  toUrl: value => value,
 };
