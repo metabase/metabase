@@ -821,16 +821,18 @@
             (dimension->types [dimension]
               ;; look up in dimensions to get what it matched on eg [:entity/GenericTable :type/Latitude]
               (-> dimension dimensions (get :field_type [::not-found]) last))]
-      (keep
-       (fn [card-template]
-         (let [[card-name template] (first card-template) ;; {"card name" <template>}
-               cleaned-card         (clean-card template) ;; simplify a bit
-               underlying           (into #{} (keep dimension->types)
-                                          (card-deps cleaned-card))]
-           (when-not (underlying ::not-found)
-             {:affinity-name card-name
-              :affinity-set  underlying})))
-       card-templates))))
+      (into []
+            (comp (keep
+                   (fn [card-template]
+                     (let [[card-name template] (first card-template) ;; {"card name" <template>}
+                           cleaned-card         (clean-card template) ;; simplify a bit
+                           underlying           (into #{} (keep dimension->types)
+                                                      (card-deps cleaned-card))]
+                       (when-not (underlying ::not-found)
+                         {:affinity-name card-name
+                          :affinity-set  underlying}))))
+                  (m/distinct-by :affinity-set))
+            card-templates))))
 
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
