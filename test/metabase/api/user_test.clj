@@ -1262,8 +1262,7 @@
                     :user_id  (mt/user->id :crowberto)
                     :model    "User"
                     :model_id id
-                    :details  {:updater (mt/user->id :crowberto)
-                               :changes {:first_name "Johnny"
-                                         :last_name "Appleseed"
-                                         :id id}}}
+                    :details  {:first_name "Johnny"
+                               :last_name "Appleseed"
+                               :id id}}
                    (audit-log-test/event :user-update id))))))))
