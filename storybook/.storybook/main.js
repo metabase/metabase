@@ -19,13 +19,13 @@ module.exports = {
     rootMode: 'upward',
     cacheDirectory: path.join(__dirname, "../../.babel_cache")
   }),
-  webpackFinal: storybookConfig => ({
-    ...storybookConfig,
-    plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],
+  webpackFinal: webpackConfig => ({
+    ...webpackConfig,
+    plugins: [...webpackConfig.plugins, new MiniCssExtractPlugin()],
     module: {
-      ...storybookConfig.module,
+      ...webpackConfig.module,
       rules: [
-        ...storybookConfig.module.rules.filter(
+        ...webpackConfig.module.rules.filter(
           rule => !isCSSRule(rule) && !isSvgRule(rule),
         ),
         ...appConfig.module.rules.filter(
@@ -34,9 +34,9 @@ module.exports = {
       ],
     },
     resolve: {
-      ...storybookConfig.resolve,
+      ...webpackConfig.resolve,
       modules: [
-        ...storybookConfig.resolve.modules,
+        ...webpackConfig.resolve.modules,
         path.join(__dirname, "../node_modules")
       ],
       alias: appConfig.resolve.alias,
