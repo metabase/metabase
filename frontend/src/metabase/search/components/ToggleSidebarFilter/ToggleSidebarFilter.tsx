@@ -46,7 +46,7 @@ export const ToggleSidebarFilter = ({
   "data-testid": dataTestId,
 }: ToggleSidebarFilterProps) => {
   return (
-    <Group noWrap py="0.5rem" spacing="xs" data-testid={dataTestId}>
+    <Group noWrap spacing="xs" data-testid={dataTestId}>
       <Text w="100%" c="text.1" size="md" fw={700}>
         {label()}
       </Text>
