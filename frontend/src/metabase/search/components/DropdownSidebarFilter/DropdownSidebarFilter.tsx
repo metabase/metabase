@@ -150,10 +150,11 @@ export const DropdownSidebarFilter = ({
         {({ maxHeight }: { maxHeight: number }) =>
           popoverWidth && (
             <SearchEventSandbox>
-              <Box mah={`${maxHeight}px`} miw={popoverWidth}>
+              <Box mah={`${maxHeight}px`}>
                 <ContentComponent
                   value={selectedValues}
                   onChange={selected => onApplyFilter(selected)}
+                  width={popoverWidth}
                 />
               </Box>
             </SearchEventSandbox>

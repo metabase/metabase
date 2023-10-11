@@ -7,6 +7,7 @@ import {
   stringifyUserId,
   parseUserId,
 } from "metabase/search/utils/user-search-params";
+import { Box } from "metabase/ui";
 
 export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   iconName: "person",
@@ -15,7 +16,11 @@ export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   DisplayComponent: ({ value: userId }) => (
     <UserNameDisplay label={CreatedByFilter.label()} userId={userId} />
   ),
-  ContentComponent: SearchUserPicker,
+  ContentComponent: ({ value, onChange, width }) => (
+    <Box w={width}>
+      <SearchUserPicker value={value} onChange={onChange} />
+    </Box>
+  ),
   fromUrl: parseUserId,
   toUrl: stringifyUserId,
 };
