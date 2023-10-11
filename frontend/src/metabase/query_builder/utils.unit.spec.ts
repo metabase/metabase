@@ -79,13 +79,6 @@ const runQuestionLocation = createMockLocation({
   hash: `#${window.btoa(JSON.stringify(nativeCard))}`,
 });
 
-const locations = [
-  anyLocation,
-  modelQueryTabLocation,
-  modelMetadataTabLocation,
-  runQuestionLocation,
-];
-
 describe("isNavigationAllowed", () => {
   describe("when there is no destination (i.e. it's a beforeunload event)", () => {
     const destination = undefined;
@@ -116,7 +109,14 @@ describe("isNavigationAllowed", () => {
   describe("when there is no question", () => {
     const question = undefined;
 
-    it.each(locations)("allows navigating away to `$pathname`", destination => {
+    it.each([
+      anyLocation,
+      modelQueryTabLocation,
+      modelMetadataTabLocation,
+      newModelQueryTabLocation,
+      newModelMetadataTabLocation,
+      runQuestionLocation,
+    ])("allows navigating away to `$pathname`", destination => {
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion: true }),
       ).toBe(true);
@@ -130,7 +130,14 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
 
     describe("allows navigating away", () => {
-      describe.each(locations)("to `$pathname`", destination => {
+      describe.each([
+        anyLocation,
+        modelQueryTabLocation,
+        modelMetadataTabLocation,
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+        runQuestionLocation,
+      ])("to `$pathname`", destination => {
         it.each([notebookQuestion, nativeQuestion])(
           "from creating new `$_card.name`",
           question => {
@@ -147,7 +154,14 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = notebookQuestion;
 
-    it.each(locations)("allows navigating away to `$pathname`", destination => {
+    it.each([
+      anyLocation,
+      modelQueryTabLocation,
+      modelMetadataTabLocation,
+      newModelQueryTabLocation,
+      newModelMetadataTabLocation,
+      runQuestionLocation,
+    ])("allows navigating away to `$pathname`", destination => {
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(true);
@@ -167,28 +181,23 @@ describe("isNavigationAllowed", () => {
     });
 
     describe("disallows all other navigation", () => {
-      it.each([anyLocation, modelQueryTabLocation, modelMetadataTabLocation])(
-        "to `$pathname`",
-        destination => {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(false);
-        },
-      );
+      it.each([
+        anyLocation,
+        modelQueryTabLocation,
+        modelMetadataTabLocation,
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 
   describe("when creating new model", () => {
     const isNewQuestion = true;
     const question = notebookModelQuestion;
-
-    describe("does not allow navigating away from creating new model", () => {
-      it.each(locations)("to `$pathname`", destination => {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(false);
-      });
-    });
 
     describe("allows navigating between model query & metadata tabs", () => {
       it.each([newModelQueryTabLocation, newModelMetadataTabLocation])(
@@ -200,28 +209,46 @@ describe("isNavigationAllowed", () => {
         },
       );
     });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        modelQueryTabLocation,
+        modelMetadataTabLocation,
+        runQuestionLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
+    });
   });
 
   describe("when editing notebook model", () => {
     const isNewQuestion = false;
     const question = notebookModelQuestion;
 
-    it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [modelQueryTabLocation, modelMetadataTabLocation];
-
-      for (const destination of destinations) {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      }
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each([modelQueryTabLocation, modelMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
 
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        newModelMetadataTabLocation,
+        newModelQueryTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 
