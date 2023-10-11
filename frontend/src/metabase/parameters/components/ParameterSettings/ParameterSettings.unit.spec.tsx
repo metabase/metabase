@@ -77,6 +77,7 @@ const setup = ({ parameter = createMockUiParameter() }: SetupOpts = {}) => {
   renderWithProviders(
     <ParameterSettings
       parameter={parameter}
+      isParameterSlugUsed={jest.fn()}
       onChangeName={onChangeName}
       onChangeDefaultValue={jest.fn()}
       onChangeIsMultiSelect={jest.fn()}

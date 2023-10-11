@@ -49,6 +49,7 @@ runs:
             ["visualizations", {} ],
             ["oss-subset", { edition: 'oss', context: "special" } ],
             ["slow", { runner: beefierRunner, context: "special" } ],
+            ["mongo", { context: "qa-database" } ],
           ];
 
           const config = testSets.map(([name, specialOptions]) => {
