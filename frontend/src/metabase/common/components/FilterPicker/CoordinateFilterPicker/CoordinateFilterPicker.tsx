@@ -7,6 +7,7 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Field from "metabase-lib/metadata/Field";
 
 import type { FilterPickerWidgetProps } from "../types";
+import { getAvailableOperatorOptions } from "../utils";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
@@ -30,13 +31,10 @@ export function CoordinateFilterPicker({
     ? Lib.coordinateFilterParts(query, stageIndex, filter)
     : null;
 
-  const availableOperators = useMemo(() => {
-    const operators = Lib.filterableColumnOperators(column);
-    const operatorNames = operators.map(
-      operator => Lib.displayInfo(query, stageIndex, operator).shortName,
-    );
-    return OPTIONS.filter(option => operatorNames.includes(option.operator));
-  }, [query, stageIndex, column]);
+  const availableOperators = useMemo(
+    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    [query, stageIndex, column],
+  );
 
   const [operatorName, setOperatorName] = useState(
     filterParts?.operator ?? "=",

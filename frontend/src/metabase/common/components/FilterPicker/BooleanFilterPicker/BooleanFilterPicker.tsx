@@ -5,7 +5,9 @@ import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
-import { getFilterClause, getOptions, getOptionType } from "./utils";
+import { getAvailableOperatorOptions } from "../utils";
+import { OPTIONS } from "./constants";
+import { getFilterClause, getOptionType } from "./utils";
 import type { OptionType } from "./types";
 
 export function BooleanFilterPicker({
@@ -16,13 +18,15 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(() => {
-    return Lib.displayInfo(query, stageIndex, column);
-  }, [query, stageIndex, column]);
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
 
-  const options = useMemo(() => {
-    return getOptions(query, stageIndex, column);
-  }, [query, stageIndex, column]);
+  const options = useMemo(
+    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    [query, stageIndex, column],
+  );
 
   const [optionType, setOptionType] = useState(() =>
     getOptionType(query, stageIndex, filter),

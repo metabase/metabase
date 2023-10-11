@@ -5,11 +5,12 @@ import * as Lib from "metabase-lib";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Field from "metabase-lib/metadata/Field";
+
 import type { FilterPickerWidgetProps } from "../types";
+import { getAvailableOperatorOptions } from "../utils";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
-
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
@@ -28,13 +29,10 @@ export function NumberFilterPicker({
     ? Lib.numberFilterParts(query, stageIndex, filter)
     : null;
 
-  const availableOperators = useMemo(() => {
-    const operators = Lib.filterableColumnOperators(column);
-    const operatorNames = operators.map(
-      operator => Lib.displayInfo(query, stageIndex, operator).shortName,
-    );
-    return OPTIONS.filter(option => operatorNames.includes(option.operator));
-  }, [query, stageIndex, column]);
+  const availableOperators = useMemo(
+    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    [query, stageIndex, column],
+  );
 
   const [operatorName, setOperatorName] = useState(
     filterParts?.operator ?? "=",
