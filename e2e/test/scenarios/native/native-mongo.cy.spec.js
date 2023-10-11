@@ -2,7 +2,7 @@ import { restore, modal } from "e2e/support/helpers";
 
 const MONGO_DB_NAME = "QA Mongo4";
 
-describe("scenarios > question > native > mongo", { tags: "@external" }, () => {
+describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   before(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");

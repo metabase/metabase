@@ -37,7 +37,7 @@ describe("issue 32121", () => {
     });
   });
 
-  describe("on native Mongo questions", { tags: "@external" }, () => {
+  describe("on native Mongo questions", { tags: "@mongo" }, () => {
     before(() => {
       restore("mongo-4");
       cy.signInAsAdmin();
