@@ -129,7 +129,7 @@ For a list of releases, see [Metabase versions](../releases.md).
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly.
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly. Upgrades of major versions (i.e. from x.46.x to x.47.x) often take longer--usually 6-8 weeks--before our Cloud customers are updated, but early upgrades can be requested by account primary contacts or technical contacts emailing Metabase support at help@metabase.com with the URL of the instance they want upgraded and requesting to upgrade.
 
 ## Upgrading Metabase on other platforms
 
