@@ -290,8 +290,8 @@
   },
   "scripts": {
     "concurrently": "concurrently --kill-others -p name",
-    "dev": "yarn concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn build-static-viz:watch'",
-    "dev-ee": "yarn concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn build-static-viz:watch'",
+    "dev": "yarn && yarn concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn build-static-viz:watch'",
+    "dev-ee": "yarn && yarn concurrently -n 'backend,frontend,cljs,static-viz' -c 'blue,green,yellow,magenta,red' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn build-static-viz:watch'",
     "type-check": "rm -rf frontend/src/{cljs,cljs_release} && yarn build:cljs && tsc --noEmit",
     "type-check-pure": "tsc --noEmit",
     "remove-webpack-cache": "rm -rf ./node_modules/.cache",
