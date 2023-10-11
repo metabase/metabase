@@ -12,8 +12,10 @@ import "ace/ace";
 import "ace/ext-language_tools";
 import "ace/ext-searchbox";
 import "ace/mode-sql";
+import "ace/mode-json";
 import "ace/snippets/text";
 import "ace/snippets/sql";
+import "ace/snippets/json";
 
 import { Flex } from "metabase/ui";
 import ExplicitSize from "metabase/components/ExplicitSize";
