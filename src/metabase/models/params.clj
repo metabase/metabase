@@ -54,7 +54,7 @@
     [:field field-form nil]
     (mbql.u/match-one field-form :field)))
 
-(mu/defn unwrap-field-or-expression-clause :- [:maybe mbql.s/Field]
+(mu/defn unwrap-field-or-expression-clause :- mbql.s/Field
   "Unwrap a `:field` clause or expression clause, such as a template tag. Also handles unwrapped integers for
   legacy compatibility."
   [field-or-ref-form]
@@ -112,11 +112,13 @@
   [target card]
   (let [target (mbql.normalize/normalize target)]
     (when (mbql.u/is-clause? :dimension target)
-      (let [[_ dimension] target]
-        (unwrap-field-or-expression-clause
-         (if (mbql.u/is-clause? :template-tag dimension)
-           (template-tag->field-form dimension card)
-           dimension))))))
+      (let [[_ dimension] target
+            field-form    (if (mbql.u/is-clause? :template-tag dimension)
+                            (template-tag->field-form dimension card)
+                            dimension)]
+        ;; field-form can be an expression as well, but
+        (when (and (some? field-form) (not (mbql.u/is-clause? :expression field-form)))
+          (unwrap-field-or-expression-clause field-form))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
