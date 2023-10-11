@@ -1,8 +1,5 @@
 import fetchMock from "fetch-mock";
-import {
-  renderWithProviders,
-  waitForLoaderToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import {
   createMockDashboard,
