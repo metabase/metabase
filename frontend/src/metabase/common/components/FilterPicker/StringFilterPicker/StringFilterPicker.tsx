@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Flex, Button, Checkbox } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
@@ -10,40 +10,59 @@ import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
 
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
-import { isStringFilterValid } from "./utils";
-import { stringFilterValueCountMap } from "./constants";
+import { OPTIONS } from "./constants";
 
 export function StringFilterPicker({
   query,
   stageIndex,
   column,
   filter,
-  onBack,
   onChange,
+  onBack,
 }: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
   const filterParts = filter
     ? Lib.stringFilterParts(query, stageIndex, filter)
     : null;
 
-  const [operatorName, setOperatorName] =
-    useState<Lib.StringFilterOperatorName>(
-      filterParts
-        ? filterParts.operator
-        : (Lib.defaultFilterOperatorName(
-            query,
-            stageIndex,
-            column,
-          ) as Lib.StringFilterOperatorName),
+  const availableOperators = useMemo(() => {
+    const operators = Lib.filterableColumnOperators(column);
+    const operatorNames = operators.map(
+      operator => Lib.displayInfo(query, stageIndex, operator).shortName,
     );
+    return OPTIONS.filter(option => operatorNames.includes(option.operator));
+  }, [query, stageIndex, column]);
 
-  const [values, setValues] = useState<string[]>(filterParts?.values ?? []);
-  const [options, setOptions] = useState<Lib.StringFilterOptions>(
-    filterParts?.options ?? {},
+  const operatorOptions = useMemo(
+    () =>
+      availableOperators.map(option => ({
+        label: option.name,
+        value: option.operator,
+      })),
+    [availableOperators],
   );
+
+  const [operatorName, setOperatorName] = useState(
+    filterParts?.operator ?? "=",
+  );
+
+  const [values, setValues] = useState(filterParts?.values ?? []);
+  const [options, setOptions] = useState(filterParts?.options ?? {});
+
+  const { valueCount, hasCaseSensitiveOption } = useMemo(() => {
+    const option = availableOperators.find(
+      option => option.operator === operatorName,
+    );
+    return option ?? { valueCount: 0, hasCaseSensitiveOption: false };
+  }, [availableOperators, operatorName]);
+
+  const isFilterValid = useMemo(() => {
+    return Number.isFinite(valueCount)
+      ? values.length === valueCount
+      : values.length >= 1;
+  }, [values, valueCount]);
 
   const handleOperatorChange = (
     newOperatorName: Lib.StringFilterOperatorName,
@@ -70,26 +89,20 @@ export function StringFilterPicker({
 
   const fieldId = useMemo(() => Lib._fieldId(column), [column]);
 
-  const valueCount = stringFilterValueCountMap[operatorName];
-  const isFilterValid = isStringFilterValid(operatorName, values);
-  const hasValuesInput = valueCount !== 0;
-  const hasCaseSensitiveOption = valueCount === 1;
+  const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
     <>
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
-        <FilterOperatorPicker
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
+        <Select
           value={operatorName}
-          onChange={newOperator =>
-            handleOperatorChange(newOperator as Lib.StringFilterOperatorName)
-          }
+          data={operatorOptions}
+          onChange={handleOperatorChange}
+          withinPortal={false}
         />
       </Header>
-      {hasValuesInput && (
+      {valueCount > 0 && (
         <FlexWithScroll p="md" mah={300}>
           <FieldValuesWidget
             fields={[new Field({ id: fieldId })]} // TODO adapt for MLv2
@@ -100,8 +113,8 @@ export function StringFilterPicker({
             placeholder={placeholder}
             disablePKRemappingForSearch
             autoFocus
-            multi={valueCount === "multiple"}
-            disableSearch={valueCount !== "multiple"}
+            multi={canHaveManyValues}
+            disableSearch={!canHaveManyValues}
           />
         </FlexWithScroll>
       )}

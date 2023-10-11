@@ -1,7 +1,16 @@
-import type { StringFilterOperatorName } from "metabase-lib";
+export type Operator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with"
+  | "is-empty"
+  | "not-empty";
 
-export type StringFilterValueCount = 0 | 1 | "multiple";
-export type StringFilterValueCountMap = Record<
-  StringFilterOperatorName,
-  StringFilterValueCount
->;
+export interface Option {
+  name: string;
+  operator: Operator;
+  valueCount: number;
+  hasCaseSensitiveOption?: boolean;
+}
