@@ -35,7 +35,7 @@ describe("scenarios > question > new", () => {
     it("data selector popover should not be too small (metabase#15591)", () => {
       // Add 10 more databases
       for (let i = 0; i < 10; i++) {
-        cy.addH2SampleDatabase({ name: "Sample" + i });
+        cy.addSQLiteDatabase({ name: "Sample" + i });
       }
 
       startNewQuestion();
@@ -135,7 +135,6 @@ describe("scenarios > question > new", () => {
     it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
-        color: "#509EE3",
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection

@@ -21,8 +21,8 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
+const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
@@ -38,6 +38,7 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
+  cacheCompression: true
 };
 
 const CSS_CONFIG = {
@@ -212,9 +213,6 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      // Using default of "defer" creates race-condition when applying whitelabel colors (metabase#18173)
-      scriptLoading: "blocking",
       alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
@@ -222,18 +220,12 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      scriptLoading: "blocking",
-      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      scriptLoading: "blocking",
-      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackHarddiskPlugin({
       outputPath: __dirname + "/resources/frontend_client/app/dist",
@@ -309,9 +301,14 @@ if (WEBPACK_BUNDLE === "hot") {
     // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
   };
 
+  config.watchOptions = {
+    ignored: [
+      CLJS_SRC_PATH_DEV + "/**",
+    ],
+  };
+
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
-    new webpack.HotModuleReplacementPlugin(),
     new ReactRefreshPlugin({
       overlay: false,
     }),

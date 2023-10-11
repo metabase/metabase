@@ -8,6 +8,7 @@ const tableQuestion = {
   query: {
     "source-table": ORDERS_ID,
   },
+  limit: 5,
 };
 
 const tableQuestionWithJoin = {
@@ -26,6 +27,7 @@ const tableQuestionWithJoin = {
         alias: "Products",
       },
     ],
+    limit: 5,
   },
 };
 
@@ -45,6 +47,7 @@ const tableQuestionWithJoinOnQuestion = card => ({
         alias: `Question ${card.id}`,
       },
     ],
+    limit: 5,
   },
 });
 
@@ -65,6 +68,7 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
+  limit: 5,
 };
 
 const tableQuestionWithSelfJoinAndFields = {
@@ -90,6 +94,7 @@ const tableQuestionWithSelfJoinAndFields = {
         alias: "Orders",
       },
     ],
+    limit: 5,
   },
 };
 
@@ -100,6 +105,7 @@ const tableQuestionWithExpression = {
     expressions: {
       Math: ["+", 1, 1],
     },
+    limit: 5,
   },
 };
 
@@ -125,6 +131,7 @@ const tableWithAggregations = {
       ["count"],
       ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
     ],
+    limit: 5,
   },
 };
 
@@ -136,6 +143,7 @@ const multiStageQuestion = {
       breakout: [["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }]],
     },
     filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+    limit: 5,
   },
 };
 
@@ -144,6 +152,7 @@ const nativeQuestion = {
   native: {
     query: "SELECT * FROM ORDERS",
   },
+  limit: 5,
 };
 
 const nestedQuestion = card => ({
@@ -151,6 +160,7 @@ const nestedQuestion = card => ({
   query: {
     "source-table": `card__${card.id}`,
   },
+  limit: 5,
 });
 
 const nestedQuestionWithJoinOnTable = card => ({
@@ -169,6 +179,7 @@ const nestedQuestionWithJoinOnTable = card => ({
         alias: "Products",
       },
     ],
+    limit: 5,
   },
 });
 
@@ -188,6 +199,7 @@ const nestedQuestionWithJoinOnQuestion = card => ({
         alias: `Question ${card.id}`,
       },
     ],
+    limit: 5,
   },
 });
 
@@ -349,7 +361,6 @@ describe("scenarios > visualizations > table column settings", () => {
       disabledColumns().findByText("Orders → Tax").should("not.exist");
       disabledColumns().findByText("Tax").should("not.exist");
       additionalColumns().findByText("Tax").should("not.exist");
-      scrollVisualization();
       visualization().findByText("Orders → Tax").should("exist");
     });
 

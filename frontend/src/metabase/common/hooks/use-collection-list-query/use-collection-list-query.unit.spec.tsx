@@ -5,7 +5,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
@@ -47,7 +47,7 @@ describe("useCollectionListQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should display error", async () => {
@@ -55,7 +55,7 @@ describe("useCollectionListQuery", () => {
 
     setup({ error: ERROR });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
   });
@@ -63,14 +63,16 @@ describe("useCollectionListQuery", () => {
   it("should show data from the response", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
   });
 
   it("should not have any metadata in the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    await waitForLoaderToBeRemoved();
+
     expect(
       within(screen.getByTestId("metadata")).getByText("No metadata"),
     ).toBeInTheDocument();

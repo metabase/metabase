@@ -3,7 +3,7 @@ import {
   getBrokenUpTextMatcher,
   renderWithProviders,
   screen,
-  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import Fields from "metabase/entities/fields";
@@ -69,9 +69,7 @@ async function setup({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return { fetchFieldValues };
 }
