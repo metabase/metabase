@@ -134,19 +134,19 @@ describe("SearchUserPicker", () => {
     expect(searchUserList.queryByText("Bob")).not.toBeInTheDocument();
   });
 
-  it("should call onChange with a list of user ids when the user clicks Apply filters with a selection", async () => {
+  it("should call onChange with a list of user ids when the user clicks Apply with a selection", async () => {
     const { mockOnChange } = await setup();
 
     const searchUserList = within(screen.getByTestId("search-user-list"));
     userEvent.click(searchUserList.getByText("Alice"));
     userEvent.click(searchUserList.getByText("Bob"));
 
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
 
     expect(mockOnChange).toHaveBeenCalledWith([1, 2]);
   });
 
-  it("should call onChange with an empty list when the user clicks Apply filters with no selection", async () => {
+  it("should call onChange with an empty list when the user clicks Apply with no selection", async () => {
     const { mockOnChange } = await setup({
       initialSelectedUsers: TEST_USERS.map(user => user.id),
     });
@@ -154,7 +154,7 @@ describe("SearchUserPicker", () => {
     userEvent.click(searchUserList.getByText("Alice"));
     userEvent.click(searchUserList.getByText("Bob"));
 
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
     expect(mockOnChange).toHaveBeenCalledWith([]);
   });
 });
