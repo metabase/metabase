@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Flex, NumberInput, Select, Text } from "metabase/ui";
+import { Box, Button, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
@@ -11,6 +11,7 @@ import { Header } from "../Header";
 import { Footer } from "../Footer";
 
 import { FlexWithScroll } from "../FilterPicker.styled";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { OPTIONS } from "./constants";
 
@@ -34,15 +35,6 @@ export function NumberFilterPicker({
     );
     return OPTIONS.filter(option => operatorNames.includes(option.operator));
   }, [query, stageIndex, column]);
-
-  const operatorOptions = useMemo(
-    () =>
-      availableOperators.map(option => ({
-        label: option.name,
-        value: option.operator,
-      })),
-    [availableOperators],
-  );
 
   const [operatorName, setOperatorName] = useState(
     filterParts?.operator ?? "=",
@@ -86,11 +78,10 @@ export function NumberFilterPicker({
     <>
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
-        <Select
+        <FilterOperatorPicker
           value={operatorName}
-          data={operatorOptions}
+          options={availableOperators}
           onChange={handleOperatorChange}
-          withinPortal={false}
         />
       </Header>
       <NumberValueInput

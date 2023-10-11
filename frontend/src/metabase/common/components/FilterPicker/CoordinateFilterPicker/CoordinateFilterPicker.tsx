@@ -1,15 +1,7 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
 
-import {
-  Box,
-  Button,
-  Flex,
-  NumberInput,
-  Text,
-  Select,
-  Stack,
-} from "metabase/ui";
+import { Box, Button, Flex, NumberInput, Text, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Field from "metabase-lib/metadata/Field";
@@ -19,6 +11,7 @@ import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
+import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { OPTIONS } from "./constants";
 import { findSecondColumn } from "./utils";
@@ -44,15 +37,6 @@ export function CoordinateFilterPicker({
     );
     return OPTIONS.filter(option => operatorNames.includes(option.operator));
   }, [query, stageIndex, column]);
-
-  const operatorOptions = useMemo(
-    () =>
-      availableOperators.map(option => ({
-        label: option.name,
-        value: option.operator,
-      })),
-    [availableOperators],
-  );
 
   const [operatorName, setOperatorName] = useState(
     filterParts?.operator ?? "=",
@@ -120,11 +104,10 @@ export function CoordinateFilterPicker({
     <>
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
-        <Select
+        <FilterOperatorPicker
           value={operatorName}
-          data={operatorOptions}
+          options={availableOperators}
           onChange={handleOperatorChange}
-          withinPortal={false}
         />
       </Header>
       {operatorName === "inside" && (
