@@ -73,9 +73,6 @@ export const isNavigationAllowed = ({
    * If there is no "question" there is no reason to prevent navigation.
    * If there is no "destination" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
-   *
-   * If it's a new question, we're going to deal with it later as part of the epic:
-   * https://github.com/metabase/metabase/issues/33749
    */
   if (!question || !destination) {
     return true;
@@ -95,6 +92,10 @@ export const isNavigationAllowed = ({
     return isQueryTab || isMetadataTab;
   }
 
+  /**
+   * If it's a new question, we're going to deal with it later as part of the epic:
+   * https://github.com/metabase/metabase/issues/33749
+   */
   if (!isNewQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
