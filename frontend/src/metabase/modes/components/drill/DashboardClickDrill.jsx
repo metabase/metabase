@@ -59,7 +59,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     if (linkType === "url") {
       behavior = {
         url: () =>
-          renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
+          new URL(renderLinkURLForClick(clickBehavior.linkTemplate || "", data)).toString(),
       };
     } else if (linkType === "dashboard") {
       const url = new URL(`/dashboard/${targetId}`, location.href);

@@ -18,7 +18,7 @@ export function renderLinkTextForClick(template, data) {
 
 export function renderLinkURLForClick(template, data) {
   return renderTemplateForClick(template, data, ({ value, column }) =>
-    encodeURIComponent(formatValueForLinkTemplate(value, column)),
+    formatValueForLinkTemplate(value, column),
   );
 }
 
