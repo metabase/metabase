@@ -1,9 +1,14 @@
-import { t } from "ttag/types";
+import { t } from "ttag";
 import type { DashCardId } from "metabase-types/api";
 import type { StoreDashboardTab } from "metabase-types/store";
-import { Icon } from "metabase/core/components/Icon";
-import { Menu } from "metabase/ui";
+import { Menu, Text } from "metabase/ui";
+import Tooltip from "metabase/core/components/Tooltip";
 import { useDashCardTabMenu } from "./use-dash-card-tab-menu";
+import {
+  TabButton,
+  VerticalDivider,
+  ChevronStyledIcon,
+} from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
@@ -17,19 +22,26 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
     return null;
   }
 
-  // TODO menu html + styles
   return (
-    <div>
-      <a onClick={() => moveToTab(suggestedTab.id)}>
-        {t`Move to`} {suggestedTab.name}
-      </a>
+    <>
+      <Text color="bg-dark" size="sm" ml={5}>
+        {t`Move to `}
+        <Tooltip tooltip={t`Move to ${suggestedTab.name} tab`}>
+          <TabButton size="sm" onClick={() => moveToTab(suggestedTab.id)}>
+            {suggestedTab.name}
+          </TabButton>
+        </Tooltip>
+      </Text>
+
       {otherTabs.length > 1 && (
         <TabChevronMenu
           tabs={otherTabs}
           onTabSelect={tabId => moveToTab(tabId)}
         />
       )}
-    </div>
+
+      <VerticalDivider />
+    </>
   );
 }
 
@@ -45,7 +57,7 @@ function TabChevronMenu({ tabs, onTabSelect }: TabChevronMenuProps) {
       withinPortal={false}
     >
       <Menu.Target>
-        <Icon name="chevrondown" />
+        <ChevronStyledIcon name="chevrondown" />
       </Menu.Target>
       <Menu.Dropdown>
         {tabs.map(tab => {
