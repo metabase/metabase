@@ -340,8 +340,8 @@ jobs:
         if: github.event_name == 'schedule' && !cancelled()
         uses: replayio/action-upload@v0.4.7
         with:
-          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
-          public: true
+          api-key: ${{ secrets.REPLAY_IO_TOKEN }}
+          public: false
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
