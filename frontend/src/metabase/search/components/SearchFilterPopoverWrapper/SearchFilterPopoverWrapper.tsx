@@ -35,7 +35,7 @@ export const SearchFilterPopoverWrapper = ({
         {children}
         <DropdownApplyButtonDivider />
         <Group position="right" align="center" px="sm" pb="sm">
-          <Button onClick={onApply}>{t`Apply filters`}</Button>
+          <Button onClick={onApply}>{t`Apply`}</Button>
         </Group>
       </SearchPopoverContainer>
     </FocusTrap>
