@@ -56,10 +56,13 @@ describe("SearchUserPicker", () => {
     expect(screen.getByText("Bob")).toBeInTheDocument();
   });
 
-  it("should show 'No users found' when no users match the filter", async () => {
+  it("should show 'No results' when no users match the filter", async () => {
     await setup();
-    userEvent.type(screen.getByPlaceholderText("Search for users…"), "Charlie");
-    expect(screen.getByText("No users found.")).toBeInTheDocument();
+    userEvent.type(
+      screen.getByPlaceholderText("Search for someone…"),
+      "Charlie",
+    );
+    expect(screen.getByText("No results.")).toBeInTheDocument();
   });
 
   it("should show selected users in the select box on initial load", async () => {
@@ -69,7 +72,7 @@ describe("SearchUserPicker", () => {
     ).toEqual(["Alice", "Bob"]);
 
     // all users are in the select box, so the search list should be empty
-    expect(screen.getByText("No users found.")).toBeInTheDocument();
+    expect(screen.getByText("No results.")).toBeInTheDocument();
   });
 
   it("should not show any users when there are no selected users on initial load", async () => {
@@ -95,7 +98,7 @@ describe("SearchUserPicker", () => {
       screen.getAllByTestId("selected-user-button").map(el => el.textContent),
     ).toEqual(["Alice", "Bob"]);
 
-    expect(searchUserList.getByText("No users found")).toBeInTheDocument();
+    expect(searchUserList.getByText("No results")).toBeInTheDocument();
   });
 
   it("should remove user from select box and add them to search list when user is remove from select box", async () => {
@@ -107,7 +110,7 @@ describe("SearchUserPicker", () => {
     const selectBox = within(screen.getByTestId("search-user-select-box"));
 
     // expect the two users are in the select box and not in the search list
-    expect(searchUserList.getByText("No users found")).toBeInTheDocument();
+    expect(searchUserList.getByText("No results")).toBeInTheDocument();
     expect(selectBox.getByText("Alice")).toBeInTheDocument();
     expect(selectBox.getByText("Bob")).toBeInTheDocument();
 
@@ -127,7 +130,7 @@ describe("SearchUserPicker", () => {
 
   it("should filter users when user types in the search box", async () => {
     await setup();
-    userEvent.type(screen.getByPlaceholderText("Search for users…"), "Alice");
+    userEvent.type(screen.getByPlaceholderText("Search for someone…"), "Alice");
     const searchUserList = within(screen.getByTestId("search-user-list"));
     expect(searchUserList.getByText("Alice")).toBeInTheDocument();
 
