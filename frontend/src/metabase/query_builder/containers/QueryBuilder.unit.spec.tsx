@@ -544,6 +544,19 @@ describe("QueryBuilder", () => {
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
+
+      it("shows custom warning modal when leaving via Cancel button", async () => {
+        await setup({
+          card: null,
+          initialRoute: `/model/new`,
+        });
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
     });
 
     describe("editing models", () => {
