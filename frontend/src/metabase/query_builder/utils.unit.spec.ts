@@ -256,22 +256,27 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = nativeModelQuestion;
 
-    it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [modelQueryTabLocation, modelMetadataTabLocation];
-
-      for (const destination of destinations) {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      }
+    describe("allows navigating between model query & metadata tabs", () => {
+      it.each([modelQueryTabLocation, modelMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
 
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        newModelMetadataTabLocation,
+        newModelQueryTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 });
