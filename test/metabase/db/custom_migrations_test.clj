@@ -11,10 +11,8 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.db.setup :as db.setup]
    [metabase.models :refer [Card Database Revision User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
@@ -189,8 +187,7 @@
 (deftest add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            result_metadata
+      (let [result_metadata
             [{:field_ref [:field 1 nil]}
              {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
              {:field_ref [:field 2 {:source-field 3}]}
@@ -244,7 +241,7 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-        (db.setup/migrate! db-type data-source :down 46)
+        (migrate! :down 46)
         (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
                  (-> (t2/query-one {:select [:visualization_settings]
@@ -259,9 +256,7 @@
     ;; SOMETIMES the rollback of custom migration doens't get triggered on mysql and this test got flaky.
     (impl/test-migrations "v47.00-030" [migrate!]
       (migrate!)
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            migrate-down! (partial db.setup/migrate! db-type data-source :down)
-            user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+      (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
                                                                 :last_name   "Hughes"
                                                                 :email       "howard@aircraft.com"
                                                                 :password    "superstrong"
@@ -329,7 +324,7 @@
                                                                                    :col              0
                                                                                    :size_x           4
                                                                                    :size_y           2})))]
-       (migrate-down! 46)
+       (migrate! :down 46)
        (is (= [;; tab 1
                {:id  tab1-card1-id
                 :row 0}
@@ -351,9 +346,7 @@
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-          migrate-down! (partial db.setup/migrate! db-type data-source :down)
-          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
                                                               :last_name   "Hughes"
                                                               :email       "howard@aircraft.com"
                                                               :password    "superstrong"
@@ -396,15 +389,13 @@
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
-     (migrate-down! 46)
+     (migrate! :down 46)
      (testing "downgrade works correctly"
       (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
-    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-          migrate-down! (partial db.setup/migrate! db-type data-source :down)
-          user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+    (let [user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
                                                               :last_name   "Hughes"
                                                               :email       "howard@aircraft.com"
                                                               :password    "superstrong"
@@ -429,7 +420,7 @@
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
-      (migrate-down! 46)
+      (migrate! :down 46)
 
       (testing "downgrade works correctly and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}
@@ -581,8 +572,7 @@
 (deftest revision-add-join-alias-to-column-settings-field-refs-test
   (testing "Migrations v47.00-034: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-034"] [migrate!]
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            visualization-settings
+      (let [visualization-settings
             {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]         {"column_title" "THIS SHOULD TAKE PRECENDCE"}
                                     ["ref" ["field" 1 nil]]                                   {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
@@ -628,7 +618,7 @@
                      :object
                      json/parse-string
                      (get "visualization_settings")))))
-        (db.setup/migrate! db-type data-source :down 46)
+        (migrate! :down 46)
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
@@ -720,8 +710,7 @@
 (deftest add-join-alias-to-dashboard-card-visualization-settings-field-refs-test
   (testing "Migrations v47.00-044: update report_dashboardcard.visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-044"] [migrate!]
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            result_metadata
+      (let [result_metadata
             [{:field_ref [:field 1 nil]}
              {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
              {:field_ref [:field 2 {:source-field 3}]}
@@ -785,7 +774,7 @@
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/parse-string))))
-        (db.setup/migrate! db-type data-source :down 46)
+        (migrate! :down 46)
         (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
           (is (= visualization-settings
                  (-> (t2/query-one {:select [:visualization_settings]
@@ -859,8 +848,7 @@
 (deftest revision-add-join-alias-to-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-046: update dashboard cards' visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-046"] [migrate!]
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            visualization-settings
+      (let [visualization-settings
             {"column_settings" (-> {["ref" ["field" 1 {"join-alias" "Joined table"}]]         {"column_title" "THIS SHOULD TAKE PRECENDCE"}
                                     ["ref" ["field" 1 nil]]                                   {"column_title" "THIS SHOULD NOT TAKE PRECEDENCE"}
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
@@ -923,7 +911,7 @@
                      :object
                      json/parse-string
                      (get-in ["cards" 0 "visualization_settings"])))))
-        (db.setup/migrate! db-type data-source :down 46)
+        (migrate! :down 46)
         (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
           (is (= (m/dissoc-in visualization-settings
                               ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
@@ -1000,8 +988,7 @@
                          (t2/select-one-fn :settings :model/Database empty-options-id)))))
 
              (testing "rollback migration"
-               (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*]
-                 (db.setup/migrate! db-type data-source :down 46)
+                 (migrate! :down 46)
                  (testing "the persist-models-enabled is assoced back to options"
                    (is (= {:options  "{\"persist-models-enabled\":true}"
                            :settings {:database-enable-actions true}}
@@ -1010,7 +997,7 @@
                            :settings {:database-enable-actions true}}
                           (t2/select-one [:model/Database :settings :options] empty-options-id))))
 
-                 (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
+                 (testing "if settings doesn't have :persist-models-enabled, then options is empty map")))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))

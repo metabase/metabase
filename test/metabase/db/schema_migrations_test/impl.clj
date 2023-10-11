@@ -199,10 +199,24 @@
     (log/debugf "Finding and running migrations before %s..." start-id)
     (#'mdb.setup/initialize-db! driver conn)
     (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
-    (f
-     (fn migrate! []
-       (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-       (run-migrations-in-range! conn [start-id end-id]))))
+    (letfn [(migrate
+              ([]
+               (migrate :up nil))
+              ([direction]
+               (migrate direction nil))
+
+              ([direction version]
+               (case direction
+                 :up
+                 (do
+                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+                  (run-migrations-in-range! conn [start-id end-id]))
+
+                 :down
+                 (do
+                  (assert (int? version), "Downgrade requires a version")
+                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
+     (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations
