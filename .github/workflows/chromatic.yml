@@ -37,12 +37,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Prepare front-end environment
+      - name: Prepare frontend environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
+      - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
+      - name: Prepare storybook
+        run: yarn --cwd ./storybook
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:
