@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { isEmpty } from "underscore";
 import type { MouseEvent } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -143,15 +144,21 @@ export const DropdownSidebarFilter = ({
         ignoreTrigger
         autoWidth
         sizeToFit
+        pinInitialAttachment
+        horizontalAttachments={["right"]}
       >
-        <SearchEventSandbox>
-          <Box w={popoverWidth ?? "100%"}>
-            <ContentComponent
-              value={selectedValues}
-              onChange={selected => onApplyFilter(selected)}
-            />
-          </Box>
-        </SearchEventSandbox>
+        {({ maxHeight }: { maxHeight: number }) =>
+          popoverWidth && (
+            <SearchEventSandbox>
+              <Box mah={`${maxHeight}px`} miw={popoverWidth}>
+                <ContentComponent
+                  value={selectedValues}
+                  onChange={selected => onApplyFilter(selected)}
+                />
+              </Box>
+            </SearchEventSandbox>
+          )
+        }
       </Popover>
     </Box>
   );

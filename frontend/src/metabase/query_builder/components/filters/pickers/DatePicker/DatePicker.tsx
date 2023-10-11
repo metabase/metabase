@@ -136,6 +136,7 @@ type Props = {
   primaryColor?: string;
   minWidth?: number | null;
   maxWidth?: number | null;
+  withPadding?: boolean;
 
   onBack?: () => void;
   onCommit: (filter: any[]) => void;
@@ -156,6 +157,7 @@ const DatePicker: React.FC<Props> = props => {
     children,
     hideTimeSelectors,
     operators = DATE_OPERATORS,
+    withPadding = true,
   } = props;
 
   const operator = getOperator(filter, operators);
@@ -180,7 +182,7 @@ const DatePicker: React.FC<Props> = props => {
     <div className={cx(className)} data-testid="date-picker">
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
-          className="p2"
+          className={withPadding ? "p2" : ""}
           primaryColor={primaryColor}
           dateShortcutOptions={dateShortcutOptions}
           onFilterChange={filter => {

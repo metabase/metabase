@@ -68,6 +68,17 @@ const TEST_QUESTION = {
 
 const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
 
+const TEST_CREATED_AT_FILTERS = [
+  ["Today", "thisday"],
+  ["Yesterday", "past1days"],
+  ["Previous Week", "past1weeks"],
+  ["Previous 7 Days", "past7days"],
+  ["Previous 30 Days", "past30days"],
+  ["Previous Month", "past1months"],
+  ["Previous 3 Months", "past3months"],
+  ["Previous 12 Months", "past12months"],
+];
+
 describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
@@ -434,6 +445,79 @@ describe("scenarios > search", () => {
             expect(uniqueLabels).to.include(TEST_QUESTION.name);
           },
         );
+      });
+    });
+
+    describe("created_at filter", () => {
+      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
+        it(`should hydrate created_at=${filter}`, () => {
+          cy.visit(`/search?q=orders&created_at=${filter}`);
+
+          cy.wait("@search");
+
+          cy.findByTestId("created_at-search-filter").within(() => {
+            cy.findByText(label).should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+        });
+      });
+
+      // we can only test the 'today' filter since we currently
+      // can't edit the created_at column of a question in our database
+      it(`should filter results by Today (created_at=thisday)`, () => {
+        cy.visit(`/search?q=Test`);
+        cy.findByTestId("created_at-search-filter").click();
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        cy.createQuestion({
+          name: "Test Question from Today",
+          query: { "source-table": ORDERS_ID },
+        });
+
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("exist");
+        });
+      });
+
+      it("should remove created_at filter when `X` is clicked on search filter", () => {
+        cy.createQuestion({
+          name: "Test Question from Today",
+          query: { "source-table": ORDERS_ID },
+        });
+
+        cy.visit(`/search?q=Test&created_at=past1days`);
+
+        cy.wait("@search");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByText("Yesterday").should("exist");
+          cy.findByLabelText("close icon").click();
+          cy.findByText("Yesterday").should("not.exist");
+          cy.findByText("Creation date").should("exist");
+        });
+
+        cy.url().should("not.contain", "created_at");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("exist");
+        });
+
+        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
       });
     });
 

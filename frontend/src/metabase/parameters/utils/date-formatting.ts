@@ -5,10 +5,7 @@ import moment from "moment-timezone";
 import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
-import {
-  DATE_MBQL_FILTER_MAPPING,
-  PARAMETER_OPERATOR_TYPES,
-} from "metabase-lib/parameters/constants";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeInterval,
@@ -100,7 +97,7 @@ const prefixedOperators = new Set([
   "not-empty",
 ]);
 
-function getFilterTitle(filter: any[]) {
+export function getFilterTitle(filter: any[]) {
   const values = generateTimeFilterValuesDescriptions(filter);
   const desc =
     values.length > 2
@@ -114,68 +111,52 @@ function getFilterTitle(filter: any[]) {
   return prefix + desc;
 }
 
-export function formatAllOptionsWidget(urlEncoded: string): string | null {
+export function formatAllOptionsWidget(urlEncoded: string) {
   if (urlEncoded == null) {
     return null;
   }
   const filter = dateParameterValueToMBQL(urlEncoded, noopRef);
+
   return filter ? getFilterTitle(filter) : null;
 }
 
 function parseDateRangeValue(value: string) {
   const [start, end] = (value || "").split(RANGE_SEPARATOR);
-  return { start: moment(start, true), end: moment(end, true) };
+  return { start, end };
 }
 
-export function formatRangeWidget(value: string): string | null {
+export function formatRangeWidget(value: string) {
   const { start, end } = parseDateRangeValue(value);
-  return start.isValid() && end.isValid()
-    ? start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY")
-    : null;
+  return start && end
+    ? moment(start).format("MMMM D, YYYY") +
+        " - " +
+        moment(end).format("MMMM D, YYYY")
+    : "";
 }
 
-function formatSingleWidget(value: string): string | null {
-  const m = moment(value, true);
-  return m.isValid() ? m.format("MMMM D, YYYY") : null;
+export function formatSingleWidget(value: string) {
+  return value ? moment(value).format("MMMM D, YYYY") : "";
 }
 
-function formatMonthYearWidget(value: string): string | null {
-  const m = moment(value, "YYYY-MM", true);
-  return m.isValid() ? m.format("MMMM YYYY") : null;
+export function formatMonthYearWidget(value: string) {
+  const m = moment(value, "YYYY-MM");
+  return m.isValid() ? m.format("MMMM YYYY") : "";
 }
 
-function formatQuarterYearWidget(value: string): string | null {
-  const m = moment(value, "[Q]Q-YYYY", true);
-  return m.isValid() ? m.format("[Q]Q YYYY") : null;
+export function formatQuarterYearWidget(value: string) {
+  const m = moment(value, "[Q]Q-YYYY");
+  return m.isValid() ? m.format("[Q]Q YYYY") : "";
 }
 
-function formatRelativeWidget(value: string): string | null {
+export function formatRelativeWidget(value: string) {
   return DATE_MBQL_FILTER_MAPPING[value]
     ? DATE_MBQL_FILTER_MAPPING[value].name
-    : null;
-}
-
-export function formatDateValue(
-  value: string,
-  parameter: UiParameter,
-): string | null {
-  // the value can be from a mismatching parameter, so we need to test every date parameter type
-  const types = [
-    parameter.type,
-    ...PARAMETER_OPERATOR_TYPES.date.map(({ type }) => type),
-  ];
-
-  return types.reduce((result: string | null, type) => {
-    return result ?? formatDateValueForType(value, type);
-  }, null);
+    : "";
 }
 
 // This should miror the logic in `metabase.shared.parameters.parameters`
-export function formatDateValueForType(
-  value: string,
-  type: string,
-): string | null {
-  switch (type) {
+export function formatDateValue(value: string, parameter: UiParameter) {
+  switch (parameter.type) {
     case "date/range":
       return formatRangeWidget(value);
     case "date/single":

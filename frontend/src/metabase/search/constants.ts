@@ -4,6 +4,7 @@ export const SearchFilterKeys = {
   Type: "type",
   Verified: "verified",
   CreatedBy: "created_by",
+  CreatedAt: "created_at",
   LastEditedBy: "last_edited_by",
   NativeQuery: "search_native_query",
 } as const;
