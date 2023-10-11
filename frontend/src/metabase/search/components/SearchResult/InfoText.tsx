@@ -6,7 +6,7 @@ import { useInfoText } from "metabase/search/components/SearchResult/use-info-te
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import type { AnchorProps, TextProps } from "metabase/ui";
-import { Box, Text } from "metabase/ui";
+import { Group, Box, Text } from "metabase/ui";
 
 type InfoTextProps = {
   result: WrappedResult;
@@ -34,7 +34,7 @@ export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
   );
 
   return (
-    <Box>
+    <Group noWrap spacing={0}>
       {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <>
           {index > 0 && (
@@ -68,6 +68,6 @@ export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
           />
         </>
       )}
-    </Box>
+    </Group>
   );
 }

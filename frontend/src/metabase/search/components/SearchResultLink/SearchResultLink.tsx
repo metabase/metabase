@@ -30,6 +30,7 @@ export const SearchResultLink = ({
         span
         td={href ? "underline" : "none"}
         c="text.1"
+        truncate
         {...componentProps}
         {...textProps}
       >
