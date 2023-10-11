@@ -2,7 +2,7 @@ import { without } from "underscore";
 import { useState } from "react";
 import { t } from "ttag";
 import type { UserId, UserListResult } from "metabase-types/api";
-import { Center, Text, TextInput } from "metabase/ui";
+import { Center, Text } from "metabase/ui";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
   SearchUserItemContainer,
@@ -10,6 +10,7 @@ import {
   SearchUserPickerContent,
   SearchUserSelectBox,
   SelectedUserButton,
+  UserPickerInput,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { UserListElement } from "metabase/search/components/UserListElement";
@@ -73,44 +74,43 @@ export const SearchUserPicker = ({
     >
       <SearchUserPickerContainer p="sm">
         <SearchUserSelectBox spacing={0}>
-          {selectedUserIds.length > 0 && (
-            <SearchUserItemContainer
-              data-testid="search-user-select-box"
-              spacing="xs"
-              p="xs"
-              mah="30vh"
-            >
-              {selectedUserIds.map(userId => {
-                const user = users.find(user => user.id === userId);
-                return (
-                  <SelectedUserButton
-                    data-testid="selected-user-button"
-                    key={userId}
-                    c="brand.1"
-                    px="md"
-                    py="sm"
-                    maw="100%"
-                    rightIcon={<Icon name="close" />}
-                    onClick={() => removeUser(user)}
-                  >
-                    <Text align="left" w="100%" truncate c="inherit">
-                      {user?.common_name}
-                    </Text>
-                  </SelectedUserButton>
-                );
-              })}
-            </SearchUserItemContainer>
-          )}
-          <TextInput
-            px="md"
-            variant="unstyled"
-            size="md"
-            placeholder={t`Search for someone…`}
-            value={userFilter}
-            tabIndex={0}
-            onChange={event => setUserFilter(event.currentTarget.value)}
-            mt="-0.25rem"
-          />
+          <SearchUserItemContainer
+            data-testid="search-user-select-box"
+            spacing="xs"
+            p="xs"
+            mah="30vh"
+          >
+            {selectedUserIds.map(userId => {
+              const user = users.find(user => user.id === userId);
+              return (
+                <SelectedUserButton
+                  data-testid="selected-user-button"
+                  key={userId}
+                  c="brand.1"
+                  px="md"
+                  py="sm"
+                  maw="100%"
+                  rightIcon={<Icon name="close" />}
+                  onClick={() => removeUser(user)}
+                >
+                  <Text align="left" w="100%" truncate c="inherit">
+                    {user?.common_name}
+                  </Text>
+                </SelectedUserButton>
+              );
+            })}
+            <UserPickerInput
+              variant="unstyled"
+              pl="sm"
+              size="md"
+              placeholder={t`Search for someone…`}
+              value={userFilter}
+              tabIndex={0}
+              onChange={event => setUserFilter(event.currentTarget.value)}
+              mt="-0.25rem"
+              miw="10rem"
+            />
+          </SearchUserItemContainer>
         </SearchUserSelectBox>
         <SearchUserPickerContent
           data-testid="search-user-list"
