@@ -773,7 +773,7 @@
                 :base-dims base-dims))))
         card-templates))))
 
-(mu/defn dash-template->affinities :- ads/affinities
+(mu/defn dash-template->affinities :- [:map-of [:set keyword?] [:sequential map?]]
   "Takes a dashboard-template and the ground dimensions and produces a sequence of affinities. An affinity is a map
  with a set of semantic/effective types that have an affinity with each other, a name, and an optional score. We mine
  the cards of a dashboard template to find which types have an affinity for each other, but these are easily derivable
@@ -781,17 +781,32 @@
  have affinities and not deal with permutations of those types (eg different levels of temporal types with count, etc)
 
   eg:
-  (let [template   (dashboard-templates/get-dashboard-template [\"table\" \"TransactionTable\"])
-        context    (make-base-context (->root (t2/select-one :model/Table :id 2)))
-        dimensions (foo/find-dimensions context (:dimensions template))]
+  (let [template   (dashboard-templates/get-dashboard-template [\"table\" \"GenericTable\"])
+        context    (make-base-context (->root (t2/select-one :model/Table :id 1)))
+        dimensions (interesting/find-dimensions context (:dimensions template))]
     (dash-template->affinities template dimensions))
-
   #_ ->
-  ({:affinity-name \"Rowcount\", :affinity-set #{}}
-   {:affinity-name \"RowcountLast30Days\",
-    :affinity-set #{:type/CreationTimestamp}}
-   {:affinity-name \"AverageQuantityByMonth\",
-    :affinity-set #{:type/Quantity :type/CreationTimestamp}})"
+
+  {#{}                        [{:group               \"Overview\",
+                                :semantic-dimensions nil,
+                                :card-name           \"Rowcount\",
+                                :width               6,
+                                :affinity-set        #{},
+                                :score               100,
+                                :visualization       [\"scalar\" {}],
+                                :metrics             [\"Count\"],
+                                :height              4}]
+   #{:type/CreationTimestamp} [{:group               \"ByTime\",
+                                :semantic-dimensions {:type/CreationTimestamp {}},
+                                :card-name           \"CountByCreateDate\",
+                                :affinity-set        #{:type/CreationTimestamp},
+                                ,,,}
+                               {:group               \"ByTime\",
+                                :semantic-dimensions {:type/CreationTimestamp {:aggregation \"day-of-week\"}},
+                                :card-name           \"DayOfWeekCreateDate\",
+                                :width               6,
+                                :affinity-set        #{:type/CreationTimestamp}
+                                ,,,}]}"
   [{card-templates :cards :as dashboard-template} :- ads/dashboard-template
    dimensions]
   (let [combine-maps (fn [k]
@@ -800,10 +815,10 @@
                                 ;; go from vector of maps with a single key to a map with the key and value is
                                 ;; either :filter or :metric of the definition
                                 [m-name (k m)]))))
-        metric-defs (into {} (combine-maps :metric)
-                          (:metrics dashboard-template))
-        filter-defs (into {} (combine-maps :filter)
-                          (:filters dashboard-template))]
+        metric-defs  (into {} (combine-maps :metric)
+                           (:metrics dashboard-template))
+        filter-defs  (into {} (combine-maps :filter)
+                           (:filters dashboard-template))]
     (letfn [(clean-card [card]
               (-> (select-keys card [:dimensions :filters :metrics :score])
                   (update :dimensions (partial mapv ffirst))))
@@ -821,29 +836,37 @@
             (dimension->types [dimension]
               ;; look up in dimensions to get what it matched on eg [:entity/GenericTable :type/Latitude]
               (-> dimension dimensions (get :field_type [::not-found]) last))]
-      (keep
+      (transduce
+       (keep
         (fn [card-template]
           (let [[card-name {card-dimensions :dimensions :as template}] (first card-template) ;; {"card name" <template>}
-                cleaned-card        (clean-card template)   ;; simplify a bit
-                nominal-dimensions  (card-deps cleaned-card)
-                semantic-dimensions (map dimension->types nominal-dimensions)
-                nom->sem            (zipmap nominal-dimensions semantic-dimensions)
-                underlying          (set semantic-dimensions)]
+                cleaned-card                                           (clean-card template) ;; simplify a bit
+                nominal-dimensions                                     (card-deps cleaned-card)
+                semantic-dimensions                                    (map dimension->types nominal-dimensions)
+                nom->sem                                               (zipmap nominal-dimensions semantic-dimensions)
+                underlying                                             (set semantic-dimensions)]
             (when-not (underlying ::not-found)
               {:affinity-name card-name
                :affinity-set  underlying
                :card-template (assoc template
-                                :card-name card-name
-                                :affinity-set underlying
-                                :semantic-dimensions (->> card-dimensions
-                                                          (mapv #(update-keys % nom->sem))
-                                                          (apply merge)))})))
-
-        card-templates))))
+                                     :card-name card-name
+                                     :affinity-set underlying
+                                     :semantic-dimensions (->> card-dimensions
+                                                               (mapv #(update-keys % nom->sem))
+                                                               (apply merge)))}))))
+       (completing (fn [acc {:keys [affinity-set card-template]}]
+                     (update acc affinity-set (fnil conj []) card-template)))
+       {}
+       card-templates))))
 
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
         context    (make-base-context (->root (t2/select-one :model/Table :id 2)))
+        dimensions (interesting/find-dimensions context (:dimensions template))]
+    (dash-template->affinities template dimensions))
+
+  (let [template   (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+        context    (make-base-context (->root (t2/select-one :model/Table :id 1)))
         dimensions (interesting/find-dimensions context (:dimensions template))]
     (dash-template->affinities template dimensions))
   )
@@ -1003,12 +1026,10 @@
                                            {:dimension-specs template-dimensions
                                             :metric-specs    template-metrics})
         affinities          (dash-template->affinities template grounded-dimensions)
-        affinity-set->cards (->> (map :card-template affinities)
-                                 (sort-by :score >)
-                                 (group-by :affinity-set))
+        affinity-set->cards affinities
         cards               (->> grounded-metrics
                                  (combination/interesting-combinations grounded-dimensions
-                                                                       (set (map :affinity-set affinities)))
+                                                                       (set (keys affinities)))
                                  (combination/combinations->cards base-context
                                                                   affinity-set->cards)
                                  (map-indexed (fn [i card]
