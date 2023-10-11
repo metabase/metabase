@@ -125,6 +125,7 @@ export const SearchResultContainer = styled(Box)<
     isActive &&
     css`
       color: ${isSelected && theme.colors.brand[1]};
+      background-color: ${isSelected && theme.colors.brand[0]};
 
       &:hover {
         background-color: ${theme.colors.brand[0]};
