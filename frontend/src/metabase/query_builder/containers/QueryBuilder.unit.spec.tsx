@@ -237,7 +237,7 @@ const setup = async ({
 
   const { history } = renderWithProviders(
     <Route>
-      <Route path="/home" component={TestHome} />
+      <Route path="/" component={TestHome} />
       <Route path="/model">
         <Route path="new" component={NewModelOptions} />
         <Route path="query" component={TestQueryBuilder} />
@@ -548,7 +548,7 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when leaving via Cancel button", async () => {
         await setup({
           card: null,
-          initialRoute: `/model/new`,
+          initialRoute: "/model/new",
         });
 
         await startNewNotebookModel();
@@ -564,7 +564,7 @@ describe("QueryBuilder", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
@@ -580,7 +580,7 @@ describe("QueryBuilder", () => {
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
@@ -652,7 +652,7 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
@@ -669,7 +669,7 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
@@ -772,7 +772,7 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -787,7 +787,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -827,7 +827,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal when saving edited question", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -857,7 +857,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal when saving edited question as a new one", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
