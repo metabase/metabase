@@ -11,6 +11,7 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -534,6 +535,10 @@ describe("QueryBuilder", () => {
 
   describe("unsaved changes warning", () => {
     describe("creating models", () => {
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
       it("shows custom warning modal when leaving via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
