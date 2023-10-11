@@ -146,14 +146,11 @@ describe("isNavigationAllowed", () => {
   describe("when editing notebook question", () => {
     const isNewQuestion = false;
     const question = notebookQuestion;
-    const destinations = [...locations, undefined];
 
-    it("always allows navigating away from editing notebook question", () => {
-      for (const destination of destinations) {
-        expect(
-          isNavigationAllowed({ destination, question, isNewQuestion }),
-        ).toBe(true);
-      }
+    it.each(locations)("allows navigating away to `$pathname`", destination => {
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
     });
   });
 
@@ -169,12 +166,15 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
-    it("disallows all other navigation", () => {
-      const destination = anyLocation;
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(false);
+    describe("disallows all other navigation", () => {
+      it.each([anyLocation, modelQueryTabLocation, modelMetadataTabLocation])(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(false);
+        },
+      );
     });
   });
 
