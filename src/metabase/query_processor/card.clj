@@ -196,17 +196,16 @@
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
-  {:pre [(u/maybe? sequential? parameters)]}
+  {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [run   (or run
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
                   ;; customize the `context` passed to the QP
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                                                     (qp-runner query info context))))
-        card  (api/read-check
-               (t2/select-one [Card :id :name :dataset_query :database_id
-                               :cache_ttl :collection_id :dataset :result_metadata]
-                              :id card-id))
+        card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id
+                                              :cache_ttl :collection_id :dataset :result_metadata]
+                                             :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
