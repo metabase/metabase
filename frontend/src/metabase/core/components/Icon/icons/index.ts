@@ -1049,7 +1049,7 @@ export const Icons = {
     component: number_component,
     source: number_source,
   },
-  balloons: {
+  cake: {
     component: birthday_component,
     source: birthday_source,
   },
