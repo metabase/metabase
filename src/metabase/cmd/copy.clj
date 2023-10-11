@@ -94,7 +94,9 @@
     :model/ModelIndex
     :model/ModelIndexValue
     ;; 48+
-    :model/TablePrivileges]
+    :model/TablePrivileges
+    :model/AuditLog
+    :model/RecentViews]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))
