@@ -86,18 +86,18 @@ export const isNavigationAllowed = ({
 
   if (question.isDataset()) {
     if (isNewQuestion) {
-      return pathname === "/model/query" || pathname === "/model/metadata";
+      const isQueryTab = pathname === "/model/query";
+      const isMetadataTab = pathname === "/model/metadata";
+      return isQueryTab || isMetadataTab;
     }
 
-    return Boolean(
-      pathname.match(/^\/model\/.+\/query$/) ||
-        pathname.match(/^\/model\/.+\/metadata$/),
-    );
+    const isQueryTab = pathname.match(/^\/model\/.+\/query$/) !== null;
+    const isMetadataTab = pathname.match(/^\/model\/.+\/metadata$/) !== null;
+    return isQueryTab || isMetadataTab;
   }
 
   if (isExistingQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
     return isRunningQuestion;
   }
 
