@@ -349,7 +349,7 @@ jobs:
 
       - name: Upload Replay.io recordings
         if: github.event_name == 'schedule' && !cancelled()
-        uses: replayio/action-upload@v0.4.7
+        uses: replayio/action-upload@v0.5.1
         with:
           api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
           public: true
