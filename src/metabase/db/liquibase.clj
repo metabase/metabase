@@ -77,7 +77,7 @@
   [^java.sql.Connection conn]
   (if (fresh-install? conn)
    changelog-file
-   (let [latest-migration (->> (jdbc/query {:connection conn} ["select id from databasechangelog order by dateexecuted desc limit 1"])
+   (let [latest-migration (->> (jdbc/query {:connection conn} [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
                                first
                                :id)]
      (cond
