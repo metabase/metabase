@@ -821,26 +821,25 @@
             (dimension->types [dimension]
               ;; look up in dimensions to get what it matched on eg [:entity/GenericTable :type/Latitude]
               (-> dimension dimensions (get :field_type [::not-found]) last))]
-      (into []
-            (comp (keep
-                    (fn [card-template]
-                      (let [[card-name {card-dimensions :dimensions :as template}] (first card-template) ;; {"card name" <template>}
-                            cleaned-card (clean-card template) ;; simplify a bit
-                            nominal-dimensions  (card-deps cleaned-card)
-                            semantic-dimensions (map dimension->types nominal-dimensions)
-                            nom->sem            (zipmap nominal-dimensions semantic-dimensions)
-                            underlying          (set semantic-dimensions)]
-                        (when-not (underlying ::not-found)
-                          {:affinity-name card-name
-                           :affinity-set  underlying
-                           :card-template (assoc template
-                                            :card-name card-name
-                                            :affinity-set underlying
-                                            :semantic-dimensions (->> card-dimensions
-                                                                      (mapv #(update-keys % nom->sem))
-                                                                      (apply merge)))}))))
-                  (m/distinct-by :affinity-set))
-            card-templates))))
+      (keep
+        (fn [card-template]
+          (let [[card-name {card-dimensions :dimensions :as template}] (first card-template) ;; {"card name" <template>}
+                cleaned-card        (clean-card template)   ;; simplify a bit
+                nominal-dimensions  (card-deps cleaned-card)
+                semantic-dimensions (map dimension->types nominal-dimensions)
+                nom->sem            (zipmap nominal-dimensions semantic-dimensions)
+                underlying          (set semantic-dimensions)]
+            (when-not (underlying ::not-found)
+              {:affinity-name card-name
+               :affinity-set  underlying
+               :card-template (assoc template
+                                :card-name card-name
+                                :affinity-set underlying
+                                :semantic-dimensions (->> card-dimensions
+                                                          (mapv #(update-keys % nom->sem))
+                                                          (apply merge)))})))
+
+        card-templates))))
 
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])

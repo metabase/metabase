@@ -67,10 +67,12 @@
             :affinity-set affinity-set)
           (update :metric-definition add-breakouts (vals ground-dimension-fields))))))
 
-(defn interesting-combinations
+(mu/defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
-  [ground-dimensions semantic-affinity-sets grounded-metrics]
+  [ground-dimensions :- ads/dimension-bindings
+   semantic-affinity-sets :- [:set ads/semantic-affinity-set]
+   grounded-metrics]
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
 
