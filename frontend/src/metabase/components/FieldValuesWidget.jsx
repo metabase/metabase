@@ -290,7 +290,7 @@ class FieldValuesWidgetInner extends Component {
     return (
       <div
         style={{
-          width: this.props.expand ? this.props.maxWidth : null,
+          // width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
         }}

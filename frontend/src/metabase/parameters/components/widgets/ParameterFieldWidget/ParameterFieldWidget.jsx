@@ -85,7 +85,7 @@ export default function ParameterFieldWidget({
                 operator && getFilterArgumentFormatOptions(operator, index)
               }
               color="brand"
-              minWidth={300}
+              minWidth={200}
               maxWidth={400}
             />
           );

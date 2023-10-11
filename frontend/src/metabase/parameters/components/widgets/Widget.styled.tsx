@@ -5,7 +5,7 @@ import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 
 export const WidgetRoot = styled.div`
-  min-width: 300px;
+  min-width: 100%;
 `;
 
 export const WidgetLabel = styled.label`
