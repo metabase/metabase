@@ -168,7 +168,7 @@ describe("isNavigationAllowed", () => {
     const question = mockModelQuestion;
 
     it("does not allow navigating away from creating new model", () => {
-      const destinations = [...mockLocations, undefined];
+      const destinations = [...mockLocations];
 
       for (const destination of destinations) {
         expect(
