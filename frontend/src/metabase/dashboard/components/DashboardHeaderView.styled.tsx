@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import { LastEditInfoLabel } from "metabase/components/LastEditInfoLabel";
 
 import { color } from "metabase/lib/colors";
 import {
