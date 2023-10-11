@@ -5,11 +5,13 @@ import fetchMock from "fetch-mock";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockColumn,
   createMockDataset,
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -529,6 +531,10 @@ describe("QueryBuilder", () => {
 
   describe("unsaved changes warning", () => {
     describe("creating models", () => {
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
       it("shows custom warning modal when leaving via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
@@ -556,6 +562,40 @@ describe("QueryBuilder", () => {
         userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving new model", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+
+        fetchMock.get("path:/api/collection/1", [createMockCollection()]);
+        fetchMock.get(
+          "path:/api/table/card__1/query_metadata",
+          createMockResultsMetadata(),
+        );
+        fetchMock.post("path:/api/card", TEST_MODEL_CARD);
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
       });
     });
 
