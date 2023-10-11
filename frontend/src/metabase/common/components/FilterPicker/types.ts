@@ -13,3 +13,8 @@ export interface FilterPickerWidgetProps {
   onChange: (filter: ExpressionClause) => void;
   onBack: () => void;
 }
+
+export interface PickerOperatorOption<Operator> {
+  name: string;
+  operator: Operator;
+}

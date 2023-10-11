@@ -1,4 +1,6 @@
-export type Operator =
+import type { PickerOperatorOption } from "../types";
+
+type NumberPickerOperator =
   | "="
   | "!="
   | ">"
@@ -9,8 +11,6 @@ export type Operator =
   | "is-null"
   | "not-null";
 
-export interface Option {
-  name: string;
-  operator: Operator;
+export interface Option extends PickerOperatorOption<NumberPickerOperator> {
   valueCount: number;
 }

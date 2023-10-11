@@ -1,4 +1,6 @@
-export type Operator =
+import type { PickerOperatorOption } from "../types";
+
+type CoordinatePickerOperator =
   | "="
   | "!="
   | ">"
@@ -8,8 +10,6 @@ export type Operator =
   | ">="
   | "<=";
 
-export interface Option {
-  name: string;
-  operator: Operator;
+export interface Option extends PickerOperatorOption<CoordinatePickerOperator> {
   valueCount: number;
 }

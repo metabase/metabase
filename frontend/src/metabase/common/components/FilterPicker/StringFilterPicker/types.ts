@@ -1,4 +1,6 @@
-export type Operator =
+import type { PickerOperatorOption } from "../types";
+
+type StringPickerOperator =
   | "="
   | "!="
   | "contains"
@@ -8,9 +10,7 @@ export type Operator =
   | "is-empty"
   | "not-empty";
 
-export interface Option {
-  name: string;
-  operator: Operator;
+export interface Option extends PickerOperatorOption<StringPickerOperator> {
   valueCount: number;
   hasCaseSensitiveOption?: boolean;
 }
