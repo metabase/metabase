@@ -26,7 +26,7 @@
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set [:sequence any?]]
+   semantic-affinity-sets  :- [:map-of ads/semantic-affinity-set sequential?]
    {grounded-metric-fields :grounded-metric-fields :as metric}]
   (let [grounded-field-ids (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
@@ -83,7 +83,7 @@
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set [:sequence any?]]
+   semantic-affinity-sets :- [:map-of ads/semantic-affinity-set sequential?]
    grounded-metrics]
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
