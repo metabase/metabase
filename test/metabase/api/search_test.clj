@@ -22,7 +22,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -45,14 +44,21 @@
    :collection_authority_level nil
    :collection_position        nil
    :context                    nil
+   :created_at                 true
+   :creator_common_name        nil
+   :creator_id                 false
    :dashboardcard_count        nil
    :database_id                false
+   :dataset_query              nil
    :description                nil
    :id                         true
    :initial_sync_status        nil
    :model_id                   false
    :model_name                 nil
    :moderated_status           nil
+   :last_editor_common_name    nil
+   :last_editor_id             false
+   :last_edited_at             false
    :pk_ref                     nil
    :model_index_id             false ;; columns ending in _id get booleaned
    :table_description          nil
@@ -95,16 +101,17 @@
 
 (defn- default-search-results []
   (sorted-results
-   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false)
+   [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0)
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0)
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true)
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                 :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
-     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
+     (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))
     (merge
-     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry")
+     (make-result "segment test segment", :model "segment", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
 (defn- default-metric-segment-results []
@@ -236,6 +243,7 @@
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -329,12 +337,18 @@
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
-                                          :created_at "today"))))))))
+                                          :created_at "today")))))
+
+      (testing "return a subset of model for search_native_query filter"
+        (is (= #{"dataset" "action" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :search_native_query true))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false))]
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -385,8 +399,10 @@
                              (into
                               (default-results-with-collection)
                               (map #(merge default-search-row % (table-search-results))
-                                   [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-                                    {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))))
+                                   [{:name "metric test2 metric", :description "Lookin' for a blueberry",
+                                     :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                                    {:name "segment test2 segment", :description "Lookin' for a blueberry",
+                                     :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))))
                    (search-request-data :rasta :q "test"))))))))
 
   (testing (str "Users with root collection permissions should be able to search root collection data long with "
@@ -434,8 +450,10 @@
                     (into
                      (default-results-with-collection)
                      (map #(merge default-search-row % (table-search-results))
-                          [{:name "metric test2 metric" :description "Lookin' for a blueberry" :model "metric"}
-                           {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"}]))))
+                          [{:name "metric test2 metric" :description "Lookin' for a blueberry"
+                            :model "metric" :creator_id true :creator_common_name "Rasta Toucan"}
+                           {:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
+                            :creator_id true :creator_common_name "Rasta Toucan"}]))))
                   (search-request-data :rasta :q "test"))))))))
 
  (testing "Metrics on tables for which the user does not have access to should not show up in results"
@@ -539,16 +557,16 @@
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
             (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Rome"
-                                 :model_id      (:id model)
+              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Rome"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}
-                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Tromsø"
-                                 :model_id      (:id model)
+                                 :model_index_id #hawk/malli :int}
+                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Tromsø"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}}
+                                 :model_index_id #hawk/malli :int}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
 
@@ -638,7 +656,7 @@
 
 (deftest table-test
   (testing "You should see Tables in the search results!\n"
-    (t2.with-temp/with-temp [Table _ {:name "RoundTable"}]
+    (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable"))))))
@@ -650,25 +668,25 @@
                (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
+      (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
-      (t2.with-temp/with-temp [Table _ {:name "RoundTable" :description lancelot}]
+      (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
                  (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
-      (t2.with-temp/with-temp [Table _ {:name table-name}]
+      (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
-      (t2.with-temp/with-temp [Table _ {:name table-name, :active false}]
+      (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
           (is (= []
                  (search-request-data user :q table-name)))))))
@@ -770,7 +788,7 @@
         ;; the call count number here are expected to change if we change the search api
         ;; we have this test here just to keep tracks this number to remind us to put effort
         ;; into keep this number as low as we can
-        (is (= 10 (call-count)))))))
+        (is (= 11 (call-count)))))))
 
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
@@ -1260,3 +1278,105 @@
 
         (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+
+(deftest search-native-query-test
+  (let [search-term "search-native-query"]
+    (mt/with-temp
+      [:model/Card {mbql-card :id}             {:name search-term}
+       :model/Card {native-card-in-name :id}   {:name search-term}
+       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:name search-term :dataset true}
+       :model/Card {native-model-in-name :id}  {:name search-term :dataset true}
+       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :dataset true}]
+      (mt/with-actions
+        [_                         {:dataset true :dataset_query (mt/mbql-query venues)}
+         {http-action :action-id}  {:type :http :name search-term}
+         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
+        (testing "by default do not search for native content"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+        (testing "if search-native-query is true, search both dataset_query and the name"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]
+
+                   ["card" native-card-in-query]
+                   ["dataset" native-model-in-query]
+                   ["action" query-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                    :data
+                    (map (juxt :model :id))
+                    set))))))))
+
+(deftest search-result-with-user-metadata-test
+  (let [search-term "with-user-metadata"]
+    (mt/with-temp
+      [:model/User {user-id-1 :id} {:first_name "Ngoc"
+                                    :last_name  "Khuat"}
+       :model/User {user-id-2 :id} {:first_name nil
+                                    :last_name  nil
+                                    :email      "ngoc@metabase.com"}
+       :model/Card {card-id-1 :id} {:creator_id user-id-1
+                                    :name       search-term}
+       :model/Card {card-id-2 :id} {:creator_id user-id-2
+                                    :name       search-term}]
+
+      (revision/push-revision!
+       :entity      :model/Card
+       :id          card-id-1
+       :user-id     user-id-1
+       :is_creation true
+       :object      {:id card-id-1})
+
+      (revision/push-revision!
+       :entity      :model/Card
+       :id          card-id-2
+       :user-id     user-id-2
+       :is_creation true
+       :object      {:id card-id-2})
+
+      (testing "search result should returns creator_common_name and last_editor_common_name"
+        (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
+                 ;; for user that doesn't have first_name or last_name, should fall backs to email
+                 ["card" card-id-2 "ngoc@metabase.com" "ngoc@metabase.com"]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                    :data
+                    (map (juxt :model :id :creator_common_name :last_editor_common_name))
+                    set)))))))
+
+(deftest models-table-db-id-test
+  (testing "search/models request includes `table-db-id` param"
+    (with-search-items-in-root-collection "Available models"
+      (testing "`table-db-id` is invalid"
+        (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
+                (mt/user-http-request :crowberto :get 400 "search/models" :table-db-id -1))))
+      (testing "`table-db-id` is for a non-existent database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
+      (testing "`table-db-id` is for an existing database"
+        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
+
+(deftest models-archived-string-test
+  (testing "search/models request includes `archived-string` param"
+    (with-search-items-in-root-collection "Available models"
+      (mt/with-temp [Card        {model-id :id} action-model-params
+                     Action      _              (archived {:name     "test action"
+                                                           :type     :query
+                                                           :model_id model-id})]
+       (testing "`archived-string` is 'false'"
+         (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
+       (testing "`archived-string` is 'true'"
+         (is (= #{"action"}
+                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))

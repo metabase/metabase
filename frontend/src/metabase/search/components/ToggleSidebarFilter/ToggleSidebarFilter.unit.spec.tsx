@@ -6,7 +6,7 @@ import type { ToggleSidebarFilterProps } from "metabase/search/components/Toggle
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
 
 const mockFilter: SearchFilterComponent = {
-  label: "Mock Filter",
+  label: () => "Mock Filter",
   iconName: "filter",
   type: "toggle",
   fromUrl: value => value,
@@ -59,7 +59,7 @@ describe("ToggleSidebarFilter", () => {
       onChange: jest.fn(),
     });
 
-    const titleElement = screen.getByText(mockFilter.label);
+    const titleElement = screen.getByText("Mock Filter");
     const switchElement = screen.getByTestId("toggle-filter-switch");
 
     expect(titleElement).toBeInTheDocument();

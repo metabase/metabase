@@ -80,6 +80,8 @@ const LAST_EDITED_BY_NORMAL_USER_QUESTION = ADMIN_TEST_QUESTION;
 
 const REVIEWS_TABLE_NAME = "Reviews";
 
+const TEST_NATIVE_QUESTION_NAME = "GithubUptimeisMagnificentlyHigh";
+
 describe("scenarios > search", () => {
   beforeEach(() => {
     restore();
@@ -181,7 +183,6 @@ describe("scenarios > search", () => {
       });
     });
   });
-
   describe("applying search filters", () => {
     describe("no filters", () => {
       it("hydrating search from URL", () => {
@@ -660,6 +661,170 @@ describe("scenarios > search", () => {
           });
       });
     });
+
+    describe("native query filter", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        cy.createNativeQuestion({
+          name: TEST_NATIVE_QUESTION_NAME,
+          native: {
+            query: "SELECT 'reviews';",
+          },
+        });
+
+        cy.createNativeQuestion({
+          name: "Native Query",
+          native: {
+            query: `SELECT '${TEST_NATIVE_QUESTION_NAME}';`,
+          },
+        });
+      });
+
+      it("should hydrate search with search text and native query filter", () => {
+        cy.visit(
+          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
+        );
+        cy.wait("@search");
+
+        getSearchBar().should("have.value", TEST_NATIVE_QUESTION_NAME);
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText(`Results for "${TEST_NATIVE_QUESTION_NAME}"`).should(
+            "exist",
+          );
+        });
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
+
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
+          },
+        );
+      });
+
+      it("should include results that contain native query data when the toggle is on", () => {
+        cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
+        cy.wait("@search");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(1);
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
+          },
+        );
+
+        cy.findByTestId("search_native_query-search-filter").within(() => {
+          cy.findByTestId("toggle-filter-switch").click();
+        });
+
+        cy.url().should("include", "search_native_query=true");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
+
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
+          },
+        );
+      });
+
+      it("should not include results that contain native query data if the toggle is off", () => {
+        cy.visit(
+          `/search?q=${TEST_NATIVE_QUESTION_NAME}&search_native_query=true`,
+        );
+        cy.wait("@search");
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(2);
+            expect(uniqueSearchResultItemNames).to.contain("Native Query");
+
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
+          },
+        );
+
+        cy.findByTestId("search_native_query-search-filter").within(() => {
+          cy.findByTestId("toggle-filter-switch").click();
+        });
+
+        cy.findAllByTestId("search-result-item-name").then(
+          $searchResultItemNames => {
+            const uniqueSearchResultItemNames = new Set(
+              $searchResultItemNames.toArray().map(el => el.textContent),
+            );
+            expect(uniqueSearchResultItemNames.size).to.eq(1);
+            expect(uniqueSearchResultItemNames).to.contain(
+              TEST_NATIVE_QUESTION_NAME,
+            );
+          },
+        );
+      });
+    });
+
+    it("should persist filters when the user changes the text query", () => {
+      cy.visit("/search?q=orders");
+
+      // add created_by filter
+      cy.findByTestId("created_by-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Bobby Tables").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      // add last_edited_by filter
+      cy.findByTestId("last_edited_by-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Bobby Tables").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      // add type filter
+      cy.findByTestId("type-search-filter").click();
+      popover().within(() => {
+        cy.findByText("Question").click();
+        cy.findByText("Apply filters").click();
+      });
+
+      expectSearchResultItemNameContent({
+        itemNames: [
+          "Orders",
+          "Orders, Count",
+          "Orders, Count, Grouped by Created At (year)",
+        ],
+      });
+
+      getSearchBar().clear().type("count{enter}");
+
+      expectSearchResultItemNameContent({
+        itemNames: [
+          "Orders, Count",
+          "Orders, Count, Grouped by Created At (year)",
+        ],
+      });
+    });
   });
 });
 
@@ -703,7 +868,6 @@ function expectSearchResultItemNameContent({ itemNames }) {
       .toArray()
       .map(el => el.textContent);
 
-    expect(searchResultLabelList).to.have.length(itemNames.length);
-    expect(searchResultLabelList).to.include.members(itemNames);
+    expect(searchResultLabelList).to.deep.eq(itemNames);
   });
 }

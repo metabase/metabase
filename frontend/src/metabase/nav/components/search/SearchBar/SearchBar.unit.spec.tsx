@@ -1,6 +1,11 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { waitFor, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  within,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
@@ -89,9 +94,7 @@ describe("SearchBar", () => {
       setup({ searchResultItems: [] });
       const searchBar = getSearchBar();
       userEvent.type(searchBar, "XXXXX");
-      await waitFor(() =>
-        expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-      );
+      await waitForLoaderToBeRemoved();
 
       expect(screen.getByText("Didn't find anything")).toBeInTheDocument();
     });
@@ -156,6 +159,36 @@ describe("SearchBar", () => {
       });
 
       expect(getSearchBar()).toHaveValue("");
+    });
+  });
+
+  describe("persisting search filters", () => {
+    it("should keep URL search filters when changing the text query", () => {
+      const { history } = setup({
+        initialRoute: "/search?q=foo&type=card",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar&type=card");
+    });
+
+    it("should not keep URL search filters when not in the search app", () => {
+      const { history } = setup({
+        initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar");
     });
   });
 });

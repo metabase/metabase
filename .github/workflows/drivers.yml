@@ -183,7 +183,7 @@ jobs:
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
 
-  be-tests-mongo-4-2-ee:
+  be-tests-mongo-4-4-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -195,18 +195,18 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: metabase/qa-databases:mongo-sample-4.2
+        image: metabase/qa-databases:mongo-sample-4.4
         ports:
           - "27017:27017"
     steps:
     - uses: actions/checkout@v3
-    - name: Test MongoDB driver (4.2)
+    - name: Test MongoDB driver (4.4)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-4-2-ee'
+        junit-name: 'be-tests-mongo-4-4-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-mongo-4-2-ssl-ee:
+  be-tests-mongo-4-4-ssl-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -220,7 +220,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Spin up Mongo docker container
-        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.2 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
+        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
         run: while ! nc -z localhost 27017; do sleep 1; done
         timeout-minutes: 5
@@ -235,10 +235,10 @@ jobs:
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
 
-      - name: Test MongoDB SSL driver (4.2)
+      - name: Test MongoDB SSL driver (4.4)
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'be-tests-mongo-4-2-ee'
+          junit-name: 'be-tests-mongo-4-4-ee'
           test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ee:

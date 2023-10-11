@@ -1050,7 +1050,7 @@
                                                  (map #(merge % {:dashboard_id dashboard-id
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
-      (testing "forward migration migrate correclty"
+      (testing "forward migration migrate correctly"
         (migrate! :up)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
                                                 :model/DashboardCard :id [:in dashcard-ids]

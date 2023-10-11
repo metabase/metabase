@@ -5,7 +5,7 @@ import * as dom from "metabase/lib/dom";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCollectionsEndpoints,
@@ -37,9 +37,6 @@ async function setup({
   user = createMockUser(),
   embedOptions = {},
 }: SetupOpts = {}) {
-  const hasContentToFetch = !!user;
-  const isAdminApp = pathname.startsWith("/admin");
-
   setupCollectionsEndpoints({ collections: [] });
   setupDatabasesEndpoints([createMockDatabase()]);
   fetchMock.get("path:/api/bookmark", []);
@@ -57,12 +54,7 @@ async function setup({
     withDND: true,
   });
 
-  // Admin navbar component doesn't have a loading state
-  if (hasContentToFetch && !isAdminApp) {
-    await waitForElementToBeRemoved(() =>
-      screen.queryAllByTestId("loading-spinner"),
-    );
-  }
+  await waitForLoaderToBeRemoved();
 }
 
 describe("nav > containers > Navbar > Core App", () => {

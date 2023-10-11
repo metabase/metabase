@@ -62,26 +62,37 @@
      [:= (search.config/column-with-model-alias model :active) true]
      [:= (search.config/column-with-model-alias model :visibility_type) nil]]))
 
-(defn- search-string-clause
-  [model query searchable-columns]
-  (when query
-    (into [:or]
-          (for [column searchable-columns
-                token (search.util/tokenize (search.util/normalize query))]
-            (if (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
-              [:= 0 1]
-
-              [:like
-               [:lower column]
-               (search.util/wildcard-match token)])))))
-
 (mu/defn ^:private search-string-clause-for-model
-  [model          :- SearchableModel
-   search-context :- SearchContext]
-  (search-string-clause model (:search-string search-context)
-                        (map #(search.config/column-with-model-alias model %)
-                             (search.config/searchable-columns-for-model model))))
+  [model                :- SearchableModel
+   search-context       :- SearchContext
+   search-native-query? :- [:maybe :boolean]]
+  (when-let [query (:search-string search-context)]
+    (into
+     [:or]
+     (for [column           (cond->> (search.config/searchable-columns-for-model model)
+                              (not search-native-query?)
+                              (remove #{:dataset_query})
 
+                              true
+                              (map #(search.config/column-with-model-alias model %)))
+           wildcarded-token (->> (search.util/normalize query)
+                                 search.util/tokenize
+                                 (map search.util/wildcard-match))]
+       (cond
+        (and (= model "indexed-entity") (premium-features/sandboxed-or-impersonated-user?))
+        [:= 0 1]
+
+        (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
+        [:and
+         [:= (search.config/column-with-model-alias model :query_type) "native"]
+         [:like [:lower column] wildcarded-token]]
+
+        (and (#{"action"} model)
+             (= column (search.config/column-with-model-alias model :dataset_query)))
+        [:like [:lower :query_action.dataset_query] wildcarded-token]
+
+        :else
+        [:like [:lower column] wildcarded-token])))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Optional filters                                        ;;
@@ -162,38 +173,31 @@
                               (search.config/column-with-model-alias model :created_at)
                               created-at))))
 
-
 ;; Last edited by filter
 
 (defn- joined-with-table?
   "Check if  the query have a join with `table`.
-  Note: this does a very shallow check by only checking the join-clause is already the same.
+  Note: this does a very shallow check by only checking if the join-clause is the same.
   Using the same table with a different alias will return false.
 
     (-> (sql.helpers/select :*)
-    (sql.helpers/from [:a])
-    (sql.helpers/join :b [:= :a.id :b.id])
-    (joined-with-table? :join :b))
+        (sql.helpers/from [:a])
+        (sql.helpers/join :b [:= :a.id :b.id])
+        (joined-with-table? :join :b))
 
     ;; => true"
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
-(defn- search-model->revision-model
-  [model]
-  (case model
-    "dataset" (recur "card")
-    (str/capitalize model)))
-
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
     (cond-> query
-      ;; both last-edited-by and last-edited at join with revision, so we should be careful not to join twice
+      ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search.config/search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -204,11 +208,11 @@
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
     (cond-> query
-      ;; both last-edited-by and last-edited at join with revision, so we should be careful not to join twice
+      ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search.config/search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -229,11 +233,18 @@
 
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
-  (->> (dissoc (methods build-optional-filter-query) :default)
-       keys
-       (reduce (fn [acc [filter model]]
-                 (update acc filter set/union #{model}))
-               {})))
+  (merge
+   ;; models support search-native-query if dataset_query is one of the searchable columns
+   {:search-native-query (->> (dissoc (methods search.config/searchable-columns-for-model) :default)
+                              (filter (fn [[k v]]
+                                        (contains? (set (v k)) :dataset_query)))
+                              (map first)
+                              set)}
+   (->> (dissoc (methods build-optional-filter-query) :default)
+        keys
+        (reduce (fn [acc [filter model]]
+                  (update acc filter set/union #{model}))
+                {}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                        Public functions                                         ;;
@@ -249,13 +260,16 @@
                 last-edited-at
                 last-edited-by
                 models
-                verified]} search-context]
+                search-native-query
+                verified]}        search-context
+        feature->supported-models (feature->supported-models)]
     (cond-> models
-      (some? created-at)     (set/intersection (:created-at (feature->supported-models)))
-      (some? created-by)     (set/intersection (:created-by (feature->supported-models)))
-      (some? last-edited-at) (set/intersection (:last-edited-at (feature->supported-models)))
-      (some? last-edited-by) (set/intersection (:last-edited-by (feature->supported-models)))
-      (some? verified)       (set/intersection (:verified (feature->supported-models))))))
+      (some? created-at)          (set/intersection (:created-at feature->supported-models))
+      (some? created-by)          (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
+      (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
+      (true? verified)            (set/intersection (:verified feature->supported-models)))))
 
 (mu/defn build-filters :- map?
   "Build the search filters for a model."
@@ -268,10 +282,11 @@
                 last-edited-at
                 last-edited-by
                 search-string
+                search-native-query
                 verified]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
-      (sql.helpers/where (search-string-clause-for-model model search-context))
+      (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
 
       (some? archived?)
       (sql.helpers/where (archived-clause model archived?))

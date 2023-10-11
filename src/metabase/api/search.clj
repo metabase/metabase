@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [compojure.core :refer [GET]]
-   [flatland.ordered.map :as ordered-map]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -35,59 +34,6 @@
    [:tuple :any :keyword]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            Columns for each Entity                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private all-search-columns
-  "All columns that will appear in the search results, and the types of those columns. The generated search query is a
-  `UNION ALL` of the queries for each different entity; it looks something like:
-
-    SELECT 'card' AS model, id, cast(NULL AS integer) AS table_id, ...
-    FROM report_card
-    UNION ALL
-    SELECT 'metric' as model, id, table_id, ...
-    FROM metric
-
-  Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
-  are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
-  `UNION` two columns of two different types.)"
-  (ordered-map/ordered-map
-   ;; returned for all models. Important to be first for changing model for dataset
-   :model               :text
-   :id                  :integer
-   :name                :text
-   :display_name        :text
-   :description         :text
-   :archived            :boolean
-   ;; returned for Card, Dashboard, and Collection
-   :collection_id       :integer
-   :collection_name     :text
-   :collection_authority_level :text
-   ;; returned for Card and Dashboard
-   :collection_position :integer
-   :bookmark            :boolean
-   ;; returned for everything except Collection
-   :updated_at          :timestamp
-   ;; returned for Card only
-   :dashboardcard_count :integer
-   :moderated_status    :text
-   ;; returned for Metric and Segment
-   :table_id            :integer
-   :table_schema        :text
-   :table_name          :text
-   :table_description   :text
-   ;; returned for Metric, Segment, and Action
-   :database_id         :integer
-   ;; returned for Database and Table
-   :initial_sync_status :text
-   ;; returned for Action
-   :model_id            :integer
-   :model_name          :text
-   ;; returned for indexed-entity
-   :pk_ref              :text
-   :model_index_id      :integer))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -104,7 +50,7 @@
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
   [model :- SearchableModel, col-alias->honeysql-clause :- [:map-of :keyword HoneySQLColumn]]
-  (for [[search-col col-type] all-search-columns
+  (for [[search-col col-type] search.config/all-search-columns
         :let                  [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
       (= search-col :model)
@@ -132,7 +78,7 @@
 (mu/defn ^:private select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
-  missing from `entity-columns` but found in `all-search-columns`."
+  missing from `entity-columns` but found in `search.config/all-search-columns`."
   [model :- SearchableModel]
   (let [entity-columns                (search.config/columns-for-model model)
         column-alias->honeysql-clause (m/index-by ->column-alias entity-columns)
@@ -192,6 +138,40 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
+(mu/defn ^:private replace-select :- :map
+  "Replace a select from query that has alias is `target-alias` with the `with` column, throw an error if
+  can't find the target select.
+
+  This works with the assumption that `query` contains a list of select from [[select-clause-for-model]],
+  and some of them are dummy column casted to the correct type.
+
+  This function then will replace the dummy column with alias is `target-alias` with the `with` column."
+  [query        :- :map
+   target-alias :- :keyword
+   with         :- [:or :keyword [:sequential :any]]]
+  (let [selects (:select query)
+        idx     (first (keep-indexed (fn [index item]
+                                       (when (and (coll? item)
+                                                  (= (last item) target-alias))
+                                         index))
+                                     selects))]
+    (if (some? idx)
+      (assoc query :select (m/replace-nth idx with selects))
+      (throw (ex-info "Failed to replace selector" {:status-code  400
+                                                    :target-alias target-alias
+                                                    :with         with})))))
+
+(mu/defn ^:private with-last-editing-info :- :map
+  [query :- :map
+   model :- [:enum "card" "dataset" "dashboard" "metric"]]
+  (-> query
+       (replace-select :last_editor_id [:r.user_id :last_editor_id])
+       (replace-select :last_edited_at [:r.timestamp :last_edited_at])
+       (sql.helpers/left-join [:revision :r]
+                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
+                               [:= :r.most_recent true]
+                               [:= :r.model (search.config/search-model->revision-model model)]])))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -201,15 +181,17 @@
   (fn [model _] model))
 
 (mu/defn ^:private shared-card-impl
-  [dataset? :- :boolean search-ctx :- SearchContext]
+  [model      :- [:enum "card" "dataset"]
+   search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
-      (update :where (fn [where] [:and [:= :card.dataset dataset?] where]))
+      (update :where (fn [where] [:and [:= :card.dataset (= "dataset" model)] where]))
       (sql.helpers/left-join [:card_bookmark :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
-      (add-card-db-id-clause (:table-db-id search-ctx))))
+      (add-card-db-id-clause (:table-db-id search-ctx))
+      (with-last-editing-info model)))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]
@@ -220,13 +202,14 @@
                              [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
+
 (defmethod search-query-for-model "card"
   [_model search-ctx]
-  (shared-card-impl false search-ctx))
+  (shared-card-impl "card" search-ctx))
 
 (defmethod search-query-for-model "dataset"
   [_model search-ctx]
-  (-> (shared-card-impl true search-ctx)
+  (-> (shared-card-impl "dataset" search-ctx)
       (update :select (fn [columns]
                         (cons [(h2x/literal "dataset") :model] (rest columns))))))
 
@@ -250,12 +233,14 @@
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id api/*current-user-id*]])
-      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)
+      (with-last-editing-info model)))
 
 (defmethod search-query-for-model "metric"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])))
+      (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
+      (with-last-editing-info model)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
@@ -281,7 +266,7 @@
            {:select (:select base-query)
             :from   [[(merge
                        base-query
-                       {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
+                       {:select [:id :schema :db_id :name :description :display_name :created_at :updated_at :initial_sync_status
                                  [(h2x/concat (h2x/literal "/db/")
                                               :db_id
                                               (h2x/literal "/schema/")
@@ -302,7 +287,7 @@
   "CASE expression that lets the results be ordered by whether they're an exact (non-fuzzy) match or not"
   [query]
   (let [match             (search.util/wildcard-match (search.util/normalize query))
-        columns-to-search (->> all-search-columns
+        columns-to-search (->> search.config/all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
                                (remove #{:collection_authority_level :moderated_status
@@ -369,6 +354,20 @@
                                      query))} :alias_is_required_by_sql_but_not_needed_here]]
       :order-by order-clause})))
 
+(defn- hydrate-user-metadata
+  "Hydrate common-name for last_edited_by and created_by from result."
+  [results]
+  (let [user-ids             (set (flatten (for [result results]
+                                             (remove nil? ((juxt :last_editor_id :creator_id) result)))))
+        user-id->common-name (if (pos? (count user-ids))
+                               (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids])
+                               {})]
+    (mapv (fn [{:keys [creator_id last_editor_id] :as result}]
+            (assoc result
+                   :creator_common_name (get user-id->common-name creator_id)
+                   :last_editor_common_name (get user-id->common-name last_editor_id)))
+          results)))
+
 (mu/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
@@ -391,7 +390,7 @@
                             (map #(update % :pk_ref json/parse-string))
                             (map (partial scoring/score-and-result (:search-string search-ctx)))
                             (filter #(pos? (:score %))))
-        total-results      (scoring/top-results reducible-results search.config/max-filtered-results xf)]
+        total-results      (hydrate-user-metadata (scoring/top-results reducible-results search.config/max-filtered-results xf))]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -420,18 +419,20 @@
            offset
            search-string
            table-db-id
+           search-native-query
            verified]}      :- [:map {:closed true}
-                               [:search-string                    [:maybe ms/NonBlankString]]
-                               [:models                           [:maybe [:set SearchableModel]]]
-                               [:archived        {:optional true} [:maybe :boolean]]
-                               [:created-at      {:optional true} [:maybe ms/NonBlankString]]
-                               [:created-by      {:optional true} [:maybe [:set ms/PositiveInt]]]
-                               [:last-edited-at  {:optional true} [:maybe ms/NonBlankString]]
-                               [:last-edited-by  {:optional true} [:maybe [:set ms/PositiveInt]]]
-                               [:limit           {:optional true} [:maybe ms/Int]]
-                               [:offset          {:optional true} [:maybe ms/Int]]
-                               [:table-db-id     {:optional true} [:maybe ms/PositiveInt]]
-                               [:verified        {:optional true} [:maybe true?]]]]
+                               [:search-string                        [:maybe ms/NonBlankString]]
+                               [:models                               [:maybe [:set SearchableModel]]]
+                               [:archived            {:optional true} [:maybe :boolean]]
+                               [:created-at          {:optional true} [:maybe ms/NonBlankString]]
+                               [:created-by          {:optional true} [:maybe [:set ms/PositiveInt]]]
+                               [:last-edited-at      {:optional true} [:maybe ms/NonBlankString]]
+                               [:last-edited-by      {:optional true} [:maybe [:set ms/PositiveInt]]]
+                               [:limit               {:optional true} [:maybe ms/Int]]
+                               [:offset              {:optional true} [:maybe ms/Int]]
+                               [:table-db-id         {:optional true} [:maybe ms/PositiveInt]]
+                               [:search-native-query {:optional true} [:maybe boolean?]]
+                               [:verified            {:optional true} [:maybe true?]]]]
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -441,35 +442,38 @@
                         :current-user-perms @api/*current-user-permissions-set*
                         :archived?          (boolean archived)
                         :models             models}
-                 (some? created-at)     (assoc :created-at created-at)
-                 (seq created-by)       (assoc :created-by created-by)
-                 (some? last-edited-at) (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)   (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)    (assoc :table-db-id table-db-id)
-                 (some? limit)          (assoc :limit-int limit)
-                 (some? offset)         (assoc :offset-int offset)
-                 (some? verified)       (assoc :verified verified))]
+                 (some? created-at)          (assoc :created-at created-at)
+                 (seq created-by)            (assoc :created-by created-by)
+                 (some? last-edited-at)      (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)        (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)         (assoc :table-db-id table-db-id)
+                 (some? limit)               (assoc :limit-int limit)
+                 (some? offset)              (assoc :offset-int offset)
+                 (some? search-native-query) (assoc :search-native-query search-native-query)
+                 (some? verified)            (assoc :verified verified))]
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived table-db-id created_at created_by last_edited_at last_edited_by verified]
-  {archived       [:maybe ms/BooleanValue]
-   table-db-id    [:maybe ms/PositiveInt]
-   created_at     [:maybe ms/NonBlankString]
-   created_by     [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   last_edited_at [:maybe ms/PositiveInt]
-   last_edited_by [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   verified       [:maybe true?]}
-  (query-model-set (search-context {:search-string  q
-                                    :archived       archived
-                                    :table-db-id    table-db-id
-                                    :created-at     created_at
-                                    :created-by     (set (u/one-or-many created_by))
-                                    :last-edited-at last_edited_at
-                                    :last-edited-by (set (u/one-or-many last_edited_by))
-                                    :verified       verified
-                                    :models         search.config/all-models})))
+  [q archived table-db-id created_at created_by last_edited_at last_edited_by search_native_query verified]
+  {archived            [:maybe ms/BooleanValue]
+   table-db-id         [:maybe ms/PositiveInt]
+   created_at          [:maybe ms/NonBlankString]
+   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_at      [:maybe ms/PositiveInt]
+   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   search_native_query [:maybe true?]
+   verified            [:maybe true?]}
+  (query-model-set (search-context {:search-string       q
+                                    :archived            archived
+                                    :table-db-id         table-db-id
+                                    :created-at          created_at
+                                    :created-by          (set (u/one-or-many created_by))
+                                    :last-edited-at      last_edited_at
+                                    :last-edited-by      (set (u/one-or-many last_edited_by))
+                                    :search-native-query search_native_query
+                                    :verified            verified
+                                    :models              search.config/all-models})))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -480,16 +484,17 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by verified]
-  {q              [:maybe ms/NonBlankString]
-   archived       [:maybe :boolean]
-   table_db_id    [:maybe ms/PositiveInt]
-   models         [:maybe [:or SearchableModel [:sequential SearchableModel]]]
-   created_at     [:maybe ms/NonBlankString]
-   created_by     [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   last_edited_at [:maybe ms/NonBlankString]
-   last_edited_by [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   verified       [:maybe true?]}
+  [q archived created_at created_by table_db_id models last_edited_at last_edited_by search_native_query verified]
+  {q                   [:maybe ms/NonBlankString]
+   archived            [:maybe :boolean]
+   table_db_id         [:maybe ms/PositiveInt]
+   models              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   created_at          [:maybe ms/NonBlankString]
+   created_by          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   last_edited_at      [:maybe ms/NonBlankString]
+   last_edited_by      [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+   search_native_query [:maybe true?]
+   verified            [:maybe true?]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         models-set (cond
@@ -497,17 +502,18 @@
                     (string? models) #{models}
                     :else            (set models))
         results    (search (search-context
-                            {:search-string  q
-                             :archived       archived
-                             :created-at     created_at
-                             :created-by     (set (u/one-or-many created_by))
-                             :last-edited-at last_edited_at
-                             :last-edited-by (set (u/one-or-many last_edited_by))
-                             :table-db-id    table_db_id
-                             :models         models-set
-                             :limit          mw.offset-paging/*limit*
-                             :offset         mw.offset-paging/*offset*
-                             :verified       verified}))
+                            {:search-string       q
+                             :archived            archived
+                             :created-at          created_at
+                             :created-by          (set (u/one-or-many created_by))
+                             :last-edited-at      last_edited_at
+                             :last-edited-by      (set (u/one-or-many last_edited_by))
+                             :table-db-id         table_db_id
+                             :models              models-set
+                             :limit               mw.offset-paging/*limit*
+                             :offset              mw.offset-paging/*offset*
+                             :search-native-query search_native_query
+                             :verified            verified}))
         duration   (- (System/currentTimeMillis) start-time)]
     ;; Only track global searches
     (when (and (nil? models)

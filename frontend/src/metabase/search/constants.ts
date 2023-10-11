@@ -5,6 +5,7 @@ export const SearchFilterKeys = {
   Verified: "verified",
   CreatedBy: "created_by",
   LastEditedBy: "last_edited_by",
+  NativeQuery: "search_native_query",
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModelType[] = [
