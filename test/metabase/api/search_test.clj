@@ -34,6 +34,8 @@
           (recur rest-x rest-y)
           (recur xs rest-y)))))
 
+(def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
+
 (def ^:private default-search-row
   {:archived                   false
    :bookmark                   nil
@@ -80,8 +82,6 @@
   {:action_id     action-id
    :database_id   (u/the-id (mt/db))
    :dataset_query (mt/query venues)})
-
-(def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
