@@ -85,19 +85,14 @@ export const isNavigationAllowed = ({
   const { hash, pathname } = destination;
 
   if (question.isDataset()) {
-    const isGoingToNewModelTab =
-      pathname === "/model/query" || pathname === "/model/metadata";
-    const isGoingToQueryTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/query");
-    const isGoingToMetadataTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/metadata");
-    const isGoingToModelEditorTab = isGoingToQueryTab || isGoingToMetadataTab;
-
     if (isNewQuestion) {
-      return isGoingToModelEditorTab && isGoingToNewModelTab;
+      return pathname === "/model/query" || pathname === "/model/metadata";
     }
 
-    return isGoingToModelEditorTab && !isGoingToNewModelTab;
+    return Boolean(
+      pathname.match(/^\/model\/.+\/query$/) ||
+        pathname.match(/^\/model\/.+\/metadata$/),
+    );
   }
 
   if (isExistingQuestion && question.isNative()) {
