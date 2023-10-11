@@ -6,42 +6,13 @@
    [medley.core :as m]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.automagic-dashboards.interesting :as interesting]
+   [metabase.automagic-dashboards.schema :as ads]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.automagic-dashboards.visualization-macros :as visualization]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
-
-(defn make-affinity-set->cards
-  "Construct a map of affinity sets to card templates. The affinitie sets are a set of semantic types and the card
-  templates are as they are in the yaml templates, but with the `:dimensions` updated from string dimension keys to
-  semantic type keys."
-  [ground-dimensions template-cards affinities]
-  (let [card-name->cards (->> template-cards
-                              (map
-                                (comp
-                                  (fn [[card-name card-template]]
-                                    (assoc card-template :card-name card-name))
-                                  first))
-                              (group-by :card-name))]
-    (update-vals
-      (group-by :affinity-set affinities)
-      (fn [affinities]
-        (->>
-          (for [affinity-name (map :affinity-name affinities)
-                {:keys [dimensions] :as card} (card-name->cards affinity-name)
-                :let [semantic-dims (reduce
-                                      (fn [acc [dim attrs]]
-                                        (if-some [k (-> dim ground-dimensions :field_type peek)]
-                                          (assoc acc k attrs)
-                                          (reduced nil)))
-                                      {}
-                                      (map first dimensions))]
-                :when semantic-dims]
-            (assoc card :semantic-dimensions semantic-dims))
-          distinct
-          vec)))))
 
 (defn add-breakouts
   "Add breakouts to a query based on the breakout fields"
