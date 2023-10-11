@@ -74,12 +74,16 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   };
 
   return (
-    <Stack>
+    <Stack spacing="lg">
       {getFilter(SearchFilterKeys.Type)}
-      {getFilter(SearchFilterKeys.CreatedBy)}
-      {getFilter(SearchFilterKeys.CreatedAt)}
-      {getFilter(SearchFilterKeys.LastEditedBy)}
-      {getFilter(SearchFilterKeys.LastEditedAt)}
+      <Stack spacing="sm">
+        {getFilter(SearchFilterKeys.CreatedBy)}
+        {getFilter(SearchFilterKeys.LastEditedBy)}
+      </Stack>
+      <Stack spacing="sm">
+        {getFilter(SearchFilterKeys.CreatedAt)}
+        {getFilter(SearchFilterKeys.LastEditedAt)}
+      </Stack>
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
     </Stack>
