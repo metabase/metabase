@@ -17,7 +17,11 @@ const TEST_DAY_MONTH_OPTIONS: Record<string, string> = {
   "Last 12 Months": "past12months",
 };
 
-const TEST_MISC_OPTIONS = ["Specific dates…", "Relative dates…", "Exclude…"];
+const TEST_MISC_OPTIONS = [
+  "Specific dates...",
+  "Relative dates...",
+  "Exclude...",
+];
 
 const TEST_DAY_MONTH_SHORTCUTS = Object.keys(TEST_DAY_MONTH_OPTIONS);
 
@@ -104,20 +108,26 @@ describe("DateAllOptionsWidget", () => {
       },
     );
 
-    it("should call setValue in the correct string format when 'Specific dates…' is clicked", () => {
+    it("should call setValue in the correct string format when 'Specific dates...' is clicked", () => {
       const { onCloseMock, setValueMock } = setup();
-      userEvent.click(screen.getByText("Specific dates…"));
-      userEvent.click(screen.getByText("1"));
-      userEvent.click(screen.getByText("15"));
+      userEvent.click(screen.getByText("Specific dates..."));
+      userEvent.click(screen.getAllByText("1")[0]);
+      userEvent.click(screen.getAllByText("15")[0]);
       userEvent.click(screen.getByText("Update filter"));
 
-      expect(setValueMock).toHaveBeenCalledWith("2023-09-01~2023-09-15");
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = `0${date.getMonth() + 1}`.slice(-2);
+
+      expect(setValueMock).toHaveBeenCalledWith(
+        `${year}-${month}-01~${year}-${month}-15`,
+      );
       expect(onCloseMock).toHaveBeenCalled();
     });
 
-    it("should call setValue in the correct string format when 'Relative dates…' is clicked", () => {
+    it("should call setValue in the correct string format when 'Relative dates...' is clicked", () => {
       const { onCloseMock, setValueMock } = setup();
-      userEvent.click(screen.getByText("Relative dates…"));
+      userEvent.click(screen.getByText("Relative dates..."));
       userEvent.clear(screen.getByTestId("relative-datetime-value"));
       userEvent.type(screen.getByTestId("relative-datetime-value"), "90");
       userEvent.click(screen.getByTestId("relative-datetime-unit"));
@@ -129,9 +139,9 @@ describe("DateAllOptionsWidget", () => {
       expect(onCloseMock).toHaveBeenCalled();
     });
 
-    it("should call setValue in the correct string format when 'Exclude…' is clicked", () => {
+    it("should call setValue in the correct string format when 'Exclude...' is clicked", () => {
       const { onCloseMock, setValueMock } = setup();
-      userEvent.click(screen.getByText("Exclude…"));
+      userEvent.click(screen.getByText("Exclude..."));
       userEvent.click(screen.getByText("Days of the week..."));
       userEvent.click(screen.getByText("Monday"));
       userEvent.click(screen.getByText("Tuesday"));
