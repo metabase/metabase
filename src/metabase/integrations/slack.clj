@@ -12,9 +12,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -201,9 +200,9 @@
                              (:channels (slack-cached-channels-and-usernames)))]
      (and channel-name (contains? channel-names channel-name)))))
 
-(s/defn valid-token?
+(mu/defn valid-token?
   "Check whether a Slack token is valid by checking if the `conversations.list` Slack api accepts it."
-  [token :- su/NonBlankString]
+  [token :- ms/NonBlankString]
   (try
     (binding [*send-token-error-emails?* false]
       (boolean (take 1 (:channels (GET "conversations.list" :limit 1, :token token)))))
@@ -282,15 +281,14 @@
         (throw (ex-info message {:status-code 400}))))))
 
 (def ^:private NonEmptyByteArray
-  (s/constrained
-   (Class/forName "[B")
-   not-empty
-   "Non-empty byte array"))
+  [:and
+   (ms/InstanceOfClass (Class/forName "[B"))
+   [:fn not-empty]])
 
-(s/defn join-channel!
+(mu/defn join-channel!
   "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
   This must be done before uploading a file to the channel, if using a Slack app integration."
-  [channel-id :- su/NonBlankString]
+  [channel-id :- ms/NonBlankString]
   (POST "conversations.join" {:form-params {:channel channel-id}}))
 
 (defn- maybe-lookup-id
@@ -305,9 +303,11 @@
         channel-id' (get name->id channel-id channel-id)]
     channel-id'))
 
-(s/defn upload-file!
+(mu/defn upload-file!
   "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
-  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
+  [file       :- NonEmptyByteArray
+   filename   :- ms/NonBlankString
+   channel-id :- ms/NonBlankString]
   {:pre [(slack-configured?)]}
   (let [request  {:multipart [{:name "file",     :content file}
                               {:name "filename", :content filename}
@@ -326,10 +326,12 @@
     (u/prog1 (get-in response [:file :url_private])
       (log/debug (trs "Uploaded image") <>))))
 
-(s/defn post-chat-message!
+(mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. `attachments` should be serialized
   JSON."
-  [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
+  [channel-id  :- ms/NonBlankString
+   text-or-nil :- [:maybe :string]
+   & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
         {:form-params

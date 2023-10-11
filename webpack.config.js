@@ -212,9 +212,6 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      // Using default of "defer" creates race-condition when applying whitelabel colors (metabase#18173)
-      scriptLoading: "blocking",
       alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
@@ -222,18 +219,12 @@ const config = (module.exports = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      scriptLoading: "blocking",
-      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
-      inject: "head",
-      scriptLoading: "blocking",
-      alwaysWriteToDisk: true,
     }),
     new HtmlWebpackHarddiskPlugin({
       outputPath: __dirname + "/resources/frontend_client/app/dist",

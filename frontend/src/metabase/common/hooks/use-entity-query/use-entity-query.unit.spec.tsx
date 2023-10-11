@@ -11,7 +11,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -84,13 +84,13 @@ describe("useEntityQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should initially load data only once the reload flag", async () => {
     setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe("useEntityQuery", () => {
   it("should not reload data when re-rendered", async () => {
     const { rerender } = setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     rerender(<TestComponent />);
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
@@ -113,10 +113,10 @@ describe("useEntityQuery", () => {
   it("should reload data only for calls with the reload flag when re-mounted", async () => {
     const { rerender } = setup();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     rerender(<div />);
     rerender(<TestComponent />);
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();

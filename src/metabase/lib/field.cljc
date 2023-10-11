@@ -47,13 +47,14 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-(mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+  "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
    column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
-  (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
-                    column-metadatas)
-      (m/find-first #(= (:name %) column-name)
-                    column-metadatas)
+  (or (some (fn [k]
+              (m/find-first #(= (get % k) column-name)
+                            column-metadatas))
+            [:lib/desired-column-alias :name])
       (do
         (log/warn (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
                             (pr-str column-name)

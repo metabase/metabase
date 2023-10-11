@@ -1,7 +1,6 @@
 (ns metabase.lib.fe-util
   (:require
    [metabase.lib.common :as lib.common]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -28,12 +27,12 @@
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
    (let [[op options & args] expression-clause
-         stage            (lib.util/query-stage query stage-number)
-         columns          (lib.metadata.calculation/visible-columns query stage-number stage)
-         ->maybe-col      #(when (lib.util/ref-clause? %)
-                             (when-let [col (lib.equality/find-matching-column % columns)]
-                               (lib.filter/add-column-operators
-                                 (lib.field/extend-column-metadata-from-ref query stage-number col %))))]
+         ->maybe-col #(when (lib.util/ref-clause? %)
+                        (lib.filter/add-column-operators
+                          (lib.field/extend-column-metadata-from-ref
+                            query stage-number
+                            (lib.metadata.calculation/metadata query stage-number %)
+                            %)))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options
