@@ -349,6 +349,22 @@ describe("QueryBuilder", () => {
   });
 
   describe("beforeunload events", () => {
+    describe("creating models", () => {
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+
+        await startNewNotebookModel();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      });
+    });
+
     describe("editing models", () => {
       describe("editing queries", () => {
         afterEach(() => {
@@ -522,21 +538,7 @@ describe("QueryBuilder", () => {
         history.push("/model/new");
         await waitForLoaderToBeRemoved();
 
-        userEvent.click(screen.getByText("Use the notebook editor"));
-        await waitForLoaderToBeRemoved();
-
-        userEvent.click(screen.getByText("Pick your starting data"));
-        const popover = screen.getByTestId("popover");
-        userEvent.click(within(popover).getByText("Sample Database"));
-        await waitForLoaderToBeRemoved();
-        userEvent.click(within(popover).getByText("Orders"));
-        userEvent.click(
-          within(screen.getByTestId("popover")).getByText("Orders"),
-        );
-
-        expect(
-          screen.getByRole("button", { name: "Get Answer" }),
-        ).toBeEnabled();
+        await startNewNotebookModel();
 
         history.goBack();
 
@@ -946,6 +948,20 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const startNewNotebookModel = async () => {
+  userEvent.click(screen.getByText("Use the notebook editor"));
+  await waitForLoaderToBeRemoved();
+
+  userEvent.click(screen.getByText("Pick your starting data"));
+  const popover = screen.getByTestId("popover");
+  userEvent.click(within(popover).getByText("Sample Database"));
+  await waitForLoaderToBeRemoved();
+  userEvent.click(within(popover).getByText("Orders"));
+  userEvent.click(within(screen.getByTestId("popover")).getByText("Orders"));
+
+  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
+};
 
 const triggerNativeQueryChange = async () => {
   await waitFor(() => {
