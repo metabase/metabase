@@ -521,6 +521,88 @@ describe("scenarios > search", () => {
       });
     });
 
+    describe("last_edited_at filter", () => {
+      beforeEach(() => {
+        // create a question that was last edited by the normal user, so
+        // we can check that the last editor is the normal user, from the admin view
+        cy.createQuestion({
+          name: "Test Question from Today",
+          query: { "source-table": ORDERS_ID },
+        }).then(({ body: { id: questionId } }) => {
+          cy.signOut();
+          cy.signInAsNormalUser();
+          cy.visit(`/question/${questionId}`);
+          summarize();
+          cy.findByTestId("sidebar-right").findByText("Done").click();
+          cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+          modal().findByText("Save").click();
+          cy.signOut();
+          cy.signInAsAdmin();
+        });
+      });
+
+      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
+        it(`should hydrate last_edited_at=${filter}`, () => {
+          cy.visit(`/search?q=orders&last_edited_at=${filter}`);
+
+          cy.wait("@search");
+
+          cy.findByTestId("created_at-search-filter").within(() => {
+            cy.findByText(label).should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+        });
+      });
+
+      // we can only test the 'today' filter since we currently
+      // can't edit the created_at column of a question in our database
+      it(`should filter results by Today (last_edited_at=thisday)`, () => {
+        cy.visit(`/search?q=Test`);
+        cy.findByTestId("last_edited_at-search-filter").click();
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("exist");
+        });
+      });
+
+      it("should remove last_edited_at filter when `X` is clicked on search filter", () => {
+        cy.visit(`/search?q=Test&last_edited_at=past1days`);
+
+        cy.wait("@search");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("not.exist");
+        });
+
+        cy.findByTestId("last_edited_at-search-filter").within(() => {
+          cy.findByText("Yesterday").should("exist");
+          cy.findByLabelText("close icon").click();
+          cy.findByText("Yesterday").should("not.exist");
+          cy.findByText("Last edited at").should("exist");
+        });
+
+        cy.url().should("not.contain", "last_edited_at");
+
+        cy.findByTestId("search-app").within(() => {
+          cy.findByText('Results for "Test"').should("exist");
+          cy.findByText("Test Question from Today").should("exist");
+        });
+
+        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
+      });
+    });
+
     describeEE("verified filter", () => {
       beforeEach(() => {
         setTokenFeatures("all");

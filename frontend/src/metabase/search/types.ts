@@ -33,6 +33,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
   [SearchFilterKeys.CreatedAt]: string;
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
+  [SearchFilterKeys.LastEditedAt]: string;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
 };
 
