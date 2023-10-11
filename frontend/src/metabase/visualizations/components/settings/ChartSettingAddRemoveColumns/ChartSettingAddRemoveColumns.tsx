@@ -146,6 +146,14 @@ export const ChartSettingAddRemoveColumns = ({
     [question, query, columnSettings, onChange],
   );
 
+  const showAddRemoveAll = (columns: ColumnMetadataItem[]) => {
+    return (
+      !columns.some(
+        columnItem => columnItem.isAggregation || columnItem.isBreakout,
+      ) && !search
+    );
+  };
+
   console.log(metadataColumnGroups);
 
   return (
@@ -181,7 +189,7 @@ export const ChartSettingAddRemoveColumns = ({
             <Text fz="lg" fw={700} mb="1rem">
               {columnGroup.displayName}
             </Text>
-            {!search && (
+            {showAddRemoveAll(columnGroup.columns) && (
               <Box mb="0.75rem">
                 {areAllColumnsInQuery(columnGroup.columns) ? (
                   <StackedCheckBox
@@ -213,6 +221,7 @@ export const ChartSettingAddRemoveColumns = ({
                   }
                   checked={columnItem.selected}
                   onClick={() => toggleColumn(columnItem)}
+                  disabled={columnItem.isBreakout || columnItem.isAggregation}
                 />
               </Box>
             ))}

@@ -23,6 +23,8 @@ export interface ColumnMetadataItem {
   name: string;
   displayName: string;
   selected?: boolean;
+  isAggregation?: boolean;
+  isBreakout?: boolean;
 }
 
 export interface ColumnGroupItem {

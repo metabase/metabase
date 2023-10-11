@@ -28,6 +28,7 @@ export const ChartSettingTableColumns = ({
   onShowWidget,
   onWidgetOverride,
 }: ChartSettingTableColumnsProps) => {
+  console.log(value);
   const handleChange = useCallback(
     (newValue: TableColumnOrderSetting[], newQuery?: Lib.Query) => {
       if (newQuery) {

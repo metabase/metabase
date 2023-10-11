@@ -1,14 +1,16 @@
 import { renderWithProviders, screen } from "__support__/ui";
-import { DEFAULT_QUERY, SAMPLE_METADATA } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_QUERY,
+  SAMPLE_DATABASE,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
 import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import {
   ORDERS,
-  PRODUCTS,
   ORDERS_ID,
-  SAMPLE_DB_ID,
+  PRODUCTS,
   createOrdersTableDatasetColumns,
-  createOrdersTable,
 } from "metabase-types/api/mocks/presets";
 import { ChartSettingAddRemoveColumns } from "./ChartSettingAddRemoveColumns";
 import userEvent from "@testing-library/user-event";
@@ -40,16 +42,17 @@ const COLUMN_SETTINGS = [
   }),
 ];
 
-const setup = ({ value = COLUMN_SETTINGS } = {}) => {
-  const onChange = jest.fn();
-  const onWidgetOverride = jest.fn();
-
-  const question = new Question(
+const setup = ({
+  value = COLUMN_SETTINGS,
+  question = new Question(
     {
       dataset_query: DEFAULT_QUERY,
     },
     SAMPLE_METADATA,
-  );
+  ),
+} = {}) => {
+  const onChange = jest.fn();
+  const onWidgetOverride = jest.fn();
 
   renderWithProviders(
     <ChartSettingAddRemoveColumns
@@ -66,12 +69,14 @@ const setup = ({ value = COLUMN_SETTINGS } = {}) => {
 };
 
 describe("AddRemoveColumns", () => {
-  it("should render and display columns present in column settings", () => {
+  it.only("should render and display columns present in column settings", () => {
     setup();
+    screen.logTestingPlaygroundURL();
     expect(screen.getByLabelText("Total")).toBeChecked();
     expect(screen.getByLabelText("Tax")).toBeChecked();
     expect(screen.getByLabelText("Discount")).not.toBeChecked();
   });
+
   it("should allow you to remove columns", () => {
     const { onChange } = setup();
     userEvent.click(screen.getByLabelText("Total"));
@@ -83,6 +88,7 @@ describe("AddRemoveColumns", () => {
       expect.anything(),
     );
   });
+
   it("should show fk tables and allow you to add columns", () => {
     const { onChange } = setup();
     expect(screen.getByText("User")).toBeInTheDocument();
@@ -135,10 +141,38 @@ describe("AddRemoveColumns", () => {
     );
   });
 
+  it("should disable aggregate fields", () => {
+    setup({
+      question: new Question(
+        {
+          dataset_query: {
+            database: SAMPLE_DATABASE.id,
+            type: "query",
+            query: {
+              aggregation: [
+                ["count"],
+                ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+              ],
+              breakout: [
+                ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+              ],
+              "source-table": ORDERS_ID,
+            },
+          },
+        },
+        SAMPLE_METADATA,
+      ),
+    });
+
+    screen.logTestingPlaygroundURL();
+    expect(screen.getByLabelText("Count")).toBeDisabled();
+    expect(screen.getByLabelText("Sum of Total")).toBeDisabled();
+    expect(screen.getByLabelText("Product ID")).toBeDisabled();
+  });
+
   describe("bulk add / remove", () => {
     const ordersTableColumnSettings = createOrdersTableDatasetColumns().reduce(
       (memo: TableColumnOrderSetting[], column) => {
-        console.log(column);
         memo.push(
           createMockTableColumnOrderSetting({
             name: column.name,
