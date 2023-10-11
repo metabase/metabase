@@ -105,7 +105,7 @@ export const SearchUserPicker = ({
             px="md"
             variant="unstyled"
             size="md"
-            placeholder={t`Search for users…`}
+            placeholder={t`Search for someone…`}
             value={userFilter}
             tabIndex={0}
             onChange={event => setUserFilter(event.currentTarget.value)}
