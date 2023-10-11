@@ -176,7 +176,7 @@
               (moment/utc input moment/ISO_8601))]
       (case unit
         :day-of-week (.format t "dddd")
-        :month-of-year (.format t "MMMM")
+        :month-of-year (.format t "MMM")
         :minute-of-hour (.format t "m")
         :hour-of-day (.format t "h A")
         :day-of-month (.format t "D")
@@ -185,8 +185,8 @@
         :quarter-of-year (.format t "[Q]Q")
         (cond
           time? input
-          date? (.format t "MMMM D, YYYY")
-          :else (.format t "MMMM D, YYYY, h:mm A"))))
+          date? (.format t "MMM D, YYYY")
+          :else (.format t "MMM D, YYYY, h:mm A"))))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
@@ -219,13 +219,13 @@
             hour-matches? (= (.format lhs "H") (.format rhs "H"))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches? day-matches? hour-matches?)
-                                ["MMMM D, YYYY, h:mm" "mm A"]
+                                ["MMM D, YYYY, h:mm" "mm A"]
 
                                 (and year-matches? month-matches? day-matches?)
-                                ["MMMM D, YYYY, h:mm A " " h:mm A"]
+                                ["MMM D, YYYY, h:mm A " " h:mm A"]
 
                                 year-matches?
-                                ["MMMM D, h:mm A " " MMMM D, YYYY, h:mm A"])]
+                                ["MMM D, h:mm A " " MMM D, YYYY, h:mm A"])]
 
         (if lhs-fmt
           (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
@@ -239,10 +239,10 @@
             month-matches? (= (.format lhs "MM") (.format rhs "MM"))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches?)
-                                ["MMMM D" "D, YYYY"]
+                                ["MMM D" "D, YYYY"]
 
                                 year-matches?
-                                ["MMMM D " " MMMM D, YYYY"])]
+                                ["MMM D " " MMM D, YYYY"])]
         (if lhs-fmt
           (str (.format lhs lhs-fmt) "–" (.format rhs rhs-fmt))
           (default-format)))

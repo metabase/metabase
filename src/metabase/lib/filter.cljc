@@ -26,6 +26,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
@@ -156,24 +157,22 @@
        [:+ _ (x :guard temporal?) [:interval _ n unit]]
        [:relative-datetime _ n2 unit2]
        [:relative-datetime _ 0 _]]
-      (i18n/tru "{0} {1}, starting {2} {3} ago"
+      (i18n/tru "{0} is in the {1}, starting {2} ago"
                 (->display-name x)
-                (lib.temporal-bucket/describe-temporal-interval n2 unit2)
-                (str n)
-                (inflections/plural (name unit)))
+                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+                (inflections/pluralize n (name unit)))
 
       [:between _
        [:+ _ (x :guard temporal?) [:interval _ n unit]]
        [:relative-datetime _ 0 _]
        [:relative-datetime _ n2 unit2]]
-      (i18n/tru "{0} {1}, starting {2} {3} from now"
+      (i18n/tru "{0} is in the {1}, starting {2} from now"
                 (->display-name x)
-                (lib.temporal-bucket/describe-temporal-interval n2 unit2)
-                (str (abs n))
-                (inflections/plural (name unit)))
+                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+                (inflections/pluralize (abs n) (name unit)))
 
       [:between _ x y z]
-      (i18n/tru "{0} between {1} {2}"
+      (i18n/tru "{0} is between {1} and {2}"
                 (->display-name x)
                 (->display-name y)
                 (->display-name z)))))
@@ -201,9 +200,9 @@
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
-  (i18n/tru "{0} {1}"
+  (i18n/tru "{0} is in the {1}"
             (lib.metadata.calculation/display-name query stage-number expr style)
-            (lib.temporal-bucket/describe-temporal-interval n unit)))
+            (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
