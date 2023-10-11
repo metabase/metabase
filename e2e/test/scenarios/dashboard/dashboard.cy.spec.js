@@ -336,6 +336,9 @@ describe("scenarios > dashboard", () => {
         cy.log("Should revert the title change if editing is cancelled");
         cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
         cy.findByTestId("edit-bar").button("Cancel").click();
+        modal().within(() => {
+          cy.button("Leave anyway").click();
+        });
         cy.findByTestId("edit-bar").should("not.exist");
         cy.get("@updateDashboardSpy").should("not.have.been.called");
         cy.findByDisplayValue(originalDashboardName);
@@ -691,8 +694,8 @@ describe("scenarios > dashboard", () => {
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}/cards`, {
       cards: [
         {
-          id: 1,
-          card_id: 1,
+          id: ORDERS_DASHBOARD_DASHCARD_ID,
+          card_id: ORDERS_QUESTION_ID,
           row: 0,
           col: 0,
           size_x: 16,
@@ -700,7 +703,7 @@ describe("scenarios > dashboard", () => {
           parameter_mappings: [
             {
               parameter_id: FILTER_ID,
-              card_id: 1,
+              card_id: ORDERS_QUESTION_ID,
               target: [
                 "dimension",
                 [

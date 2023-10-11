@@ -1,5 +1,5 @@
 import { render, getIcon, queryIcon } from "__support__/ui";
-import ModerationStatusIcon from "./ModerationStatusIcon";
+import { ModerationStatusIcon } from "./ModerationStatusIcon";
 
 describe("ModerationReviewBanner", () => {
   it("should show an icon when given a real moderation status", () => {

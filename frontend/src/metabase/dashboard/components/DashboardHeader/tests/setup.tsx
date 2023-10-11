@@ -1,5 +1,6 @@
 import fetchMock from "fetch-mock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+
 import {
   createMockDashboard,
   createMockDashboardOrderedCard,
@@ -155,7 +156,5 @@ export const setup = async ({
     },
   });
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 };

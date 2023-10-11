@@ -45,7 +45,6 @@
     :model/CardBookmark
     :model/CollectionBookmark
     :model/DashboardBookmark
-    :metabase.models.collection.root/RootCollection
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
@@ -68,7 +67,6 @@
     :model/QueryExecution
     :model/RecentViews
     :model/Revision
-    :model/FakedCard
     :model/Secret
     :model/Session
     :model/TablePrivileges
@@ -81,6 +79,8 @@
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+                     (remove (fn [model]
+                               (not= (namespace model) "model")))
                      (remove entities-not-exported)
                      (remove entities-external-name))]
     (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "

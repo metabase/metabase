@@ -1,9 +1,13 @@
 import { combineReducers } from "@reduxjs/toolkit";
-import { waitForElementToBeRemoved } from "@testing-library/react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
 import { shared } from "metabase-enterprise/shared/reducer";
 import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
@@ -75,7 +79,7 @@ const setup = async ({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  await waitForLoaderToBeRemoved();
 
   return store;
 };

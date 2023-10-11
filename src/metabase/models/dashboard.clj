@@ -140,19 +140,23 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
+(defn- migrate-parameter [p]
+  (cond-> p
+    ;; It was previously possible for parameters to have empty strings for :name and
+    ;; :slug, but these are now required to be non-blank strings. (metabase#24500)
+    (or (= (:name p) "")
+        (= (:slug p) ""))
+    (assoc :name "unnamed" :slug "unnamed")
+    ;; We don't support linked filters for parameters with :values_source_type of anything except nil,
+    ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
+    ;; have linked filters. (metabase#33892)
+    (some? (:values_source_type p))
+    (dissoc :filteringParameters)))
+
 (defn- migrate-parameters-list
   "Update the `:parameters` list of a dashboard from legacy formats."
   [dashboard]
-  (cond-> dashboard
-    (:parameters dashboard)
-    (update :parameters (fn [params]
-                          (for [p params]
-                            (cond-> p
-                              ;; It was previously possible for parameters to have empty strings for :name and
-                              ;; :slug, but these are now required to be non-blank strings.
-                              (or (= (:name p) "")
-                                  (= (:slug p) ""))
-                              (assoc :name "unnamed" :slug "unnamed")))))))
+  (m/update-existing dashboard :parameters #(map migrate-parameter %)))
 
 (t2/define-after-select :model/Dashboard
   [dashboard]
