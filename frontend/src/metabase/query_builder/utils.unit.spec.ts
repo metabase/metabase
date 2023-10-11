@@ -9,7 +9,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 
 import { isNavigationAllowed } from "./utils";
 
-const mockCard = createMockCard({
+const mockNotebookCard = createMockCard({
   id: getNextId(),
 });
 
@@ -18,7 +18,7 @@ const mockNativeCard = createMockCard({
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const mockModelCard = createMockCard({
+const mockNotebookModelCard = createMockCard({
   id: getNextId(),
   dataset: true,
 });
@@ -30,28 +30,32 @@ const mockNativeModelCard = createMockCard({
 });
 
 const mockCards = [
-  mockCard,
+  mockNotebookCard,
   mockNativeCard,
-  mockModelCard,
+  mockNotebookModelCard,
   mockNativeModelCard,
 ];
 
 const metadata = createMockMetadata({ questions: mockCards });
 
-const mockQuestion = checkNotNull(metadata.question(mockCard.id));
+const mockNotebookQuestion = checkNotNull(
+  metadata.question(mockNotebookCard.id),
+);
 
 const mockNativeQuestion = checkNotNull(metadata.question(mockNativeCard.id));
 
-const mockModelQuestion = checkNotNull(metadata.question(mockModelCard.id));
+const mockNotebookModelQuestion = checkNotNull(
+  metadata.question(mockNotebookModelCard.id),
+);
 
 const mockNativeModelQuestion = checkNotNull(
   metadata.question(mockNativeModelCard.id),
 );
 
 const mockQuestions = [
-  mockQuestion,
+  mockNotebookQuestion,
   mockNativeQuestion,
-  mockModelQuestion,
+  mockNotebookModelQuestion,
   mockNativeModelQuestion,
 ];
 
@@ -66,11 +70,11 @@ const mockNewModelMetadataTabLocation = createMockLocation({
 });
 
 const mockModelQueryTabLocation = createMockLocation({
-  pathname: `/model/${mockModelCard.id}/query`,
+  pathname: `/model/${mockNotebookModelCard.id}/query`,
 });
 
 const mockModelMetadataTabLocation = createMockLocation({
-  pathname: `/model/${mockModelCard.id}/metadata`,
+  pathname: `/model/${mockNotebookModelCard.id}/metadata`,
 });
 
 const mockRunQuestionLocation = createMockLocation({
@@ -115,7 +119,7 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
 
     it("always allows navigating away from creating new question", () => {
-      const questions = [mockQuestion, mockNativeQuestion, undefined];
+      const questions = [mockNotebookQuestion, mockNativeQuestion, undefined];
       const destinations = [...mockLocations, undefined];
 
       for (const question of questions) {
@@ -130,7 +134,7 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing notebook question", () => {
     const isNewQuestion = false;
-    const question = mockQuestion;
+    const question = mockNotebookQuestion;
     const destinations = [...mockLocations, undefined];
 
     it("always allows navigating away from editing notebook question", () => {
@@ -165,7 +169,7 @@ describe("isNavigationAllowed", () => {
 
   describe("when creating new model", () => {
     const isNewQuestion = true;
-    const question = mockModelQuestion;
+    const question = mockNotebookModelQuestion;
 
     it("does not allow navigating away from creating new model", () => {
       const destinations = [...mockLocations];
@@ -193,7 +197,7 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing notebook model", () => {
     const isNewQuestion = false;
-    const question = mockModelQuestion;
+    const question = mockNotebookModelQuestion;
 
     it("allows navigating between model query & metadata tabs", () => {
       const destinations = [
