@@ -1,5 +1,6 @@
 (ns metabase.automagic-dashboards.schema
-  (:require [malli.core :as mc]))
+  (:require [malli.core :as mc]
+            [malli.generator :as mg]))
 
 ;; --
 (def context
@@ -132,15 +133,19 @@
   "A set of dimensions that belong together. This is the basic unity of affinity."
   [:set string?])
 
+(def semantic-affinity-set
+  "A set of sematic types that belong together. This is the basic unity of semantic affinity."
+  [:set :keyword])
+
 (def affinity
   "A collection of things that go together. In this case, we're a bit specialized on
   card affinity, but the key element in the structure is `:base-dims`, which are a
    set of dimensions which, when satisfied, enable this affinity object."
   (mc/schema
-   [:map
-    [:affinity-name string?]
-    [:score {:optional true} nat-int?]
-    [:affinity-set [:set keyword?]]]))
+    [:map
+     [:affinity-name string?]
+     [:score {:optional true} nat-int?]
+     [:affinity-set [:set keyword?]]]))
 
 (def affinities
   "A sequence of affinity objects."
@@ -198,8 +203,23 @@
     [:sequential dimension-map]))
 
 
+(def grounded-metric
+  (mc/schema
+    [:map
+     [:metric-name :string]
+     [:metric-title :string]
+     [:metric-definition
+      [:map
+       [:aggregation [:sequential some?]]]]
+     [:grounded-metric-fields
+      [:vector
+       [:map
+        [:id :int]
+        [:name :string]]]]]))
+
 (comment
   (require '[malli.generator :as mg])
   (mg/sample dashboard-template)
   (mg/sample affinities)
-  (mg/sample affinity-matches))
+  (mg/sample affinity-matches)
+  (mg/sample grounded-metric))
