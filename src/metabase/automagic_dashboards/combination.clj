@@ -47,11 +47,23 @@
                                (group-by (comp boolean grounded-field-ids :id)))
         groundable-fields  (->> available
                                 (remove (comp grounded-field-ids :id))
-                                (group-by field-type))]
-    (for [affinity-set            semantic-affinity-sets    ;;These are *only* dimensions in cards -- we don't care about metrics]
-          ground-dimension-fields (->> (map groundable-fields affinity-set)
+                                (group-by field-type))
+        grounded-field-types (map (some-fn
+                                    :semantic_type
+                                    :effective_type) grounded-metric-fields)]
+    (for [affinity-set            semantic-affinity-sets
+          dimset                  (math.combo/permutations affinity-set)
+          :when (and
+                  (>= (count dimset)
+                      (count grounded-metric-fields))
+                  (->> (map
+                         (fn [a b] (isa? a b))
+                         grounded-field-types dimset)
+                       (every? true?)))
+          :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
+          ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
                                        (apply math.combo/cartesian-product)
-                                       (map (partial zipmap affinity-set)))]
+                                       (map (partial zipmap unsatisfied-semantic-dims)))]
       (-> metric
           (assoc
             :grounded-metric-fields grounded
