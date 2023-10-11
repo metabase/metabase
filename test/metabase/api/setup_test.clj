@@ -134,13 +134,13 @@
                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
                 (testing "The audit-log :user-invited event is recorded"
                   (let [audit-log (event :user-invited (u/the-id (t2/select-one User :email email)))]
-                    (is (partial= {:topic    :user-invited
-                                   :user_id  nil
-                                   :model    "User"
-                                   :model_id (u/the-id (t2/select-one User :email email))
-                                   :details  {}}
-                                  audit-log))
-                    (is (= #{:id :invitor :email :first_name :last_name :groups :user_attributes :invite_method}
+                    (is (=? {:topic    :user-invited
+                             :user_id  nil
+                             :model    "User"
+                             :model_id (u/the-id (t2/select-one User :email email))
+                             :details  {}}
+                            audit-log))
+                    (is (= #{:id :invitor :email :first_name :last_name :groups :invite_method}
                            (set (keys (:details audit-log)))))))))))))))
 
 (deftest invite-user-test-2
