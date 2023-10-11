@@ -1480,7 +1480,7 @@
                       :dashboard_id dashboard-id
                       :name         "Tab 2"
                       :position 1}
-                     {:id           #hawk/schema (s/pred pos-int?)
+                     {:id           #hawk/malli [:fn pos-int?]
                       :dashboard_id dashboard-id
                       :name         "New tab"
                       :position     2}]
@@ -1503,7 +1503,7 @@
                         :size_y           2
                         :col              2
                         :row              2}
-                       {:id               #hawk/schema (s/pred pos-int?)
+                       {:id               #hawk/malli [:fn pos-int?]
                         :size_x           1
                         :size_y           1
                         :col              3
@@ -1651,11 +1651,11 @@
                           :card_id          card-id-1
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-1-id}
-                         {:id               #hawk/schema (s/pred pos-int?)
+                         {:id               #hawk/malli [:fn pos-int?]
                           :card_id          card-id-1
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-1-id}
-                         {:id               #hawk/schema (s/pred pos-int?)
+                         {:id               #hawk/malli [:fn pos-int?]
                           :card_id          card-id-2
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-2-id}]

@@ -36,8 +36,8 @@ jobs:
       uses: actions/github-script@v6
       id: canonical_version
       with:
-        script: |
-          const { isValidVersionString, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+        script: | # js
+          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
@@ -45,10 +45,60 @@ jobs:
             throw new Error("The version format is invalid! It must start with either 'v0.' or 'v1.'.");
           }
 
-          return {
+          const versions = {
             ee: getCanonicalVersion(version, 'ee'),
             oss: getCanonicalVersion(version, 'oss'),
           };
+
+          const ossReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.oss,
+          });
+
+          const eeReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.ee,
+          });
+
+          if (ossReleased || eeReleased) {
+            throw new Error("This version has already been released!", version);
+          }
+
+          return versions;
+
+  check-commit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - name: Check out the code to verify the release branch
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # IMPORTANT! to get all the branches
+    - name: Ensure that the specified commit exists in the latest release branch
+      env:
+        COMMIT: ${{ inputs.commit }}
+      run: |
+        echo "Checking if the specified commit is in a release branch..."
+
+        git branch -a --contains $COMMIT > branches.txt
+        if [[ $(grep -c master branches.txt) =~ 1 ]]; then
+          echo "Found in master branch. ABORT!"
+          exit -1
+        fi
+        if [[ $(grep -c 'release-x' branches.txt) =~ 1 ]]; then
+          echo "Found the commit $COMMIT in:"
+          git branch -a --contains $COMMIT
+          echo "Proceeding to the next step..."
+          exit 0
+        else
+          echo "Commit $COMMIT is not found in a single release branch"
+          echo "ABORT!."
+          exit -1
+        fi
 
   build-uberjar-for-release:
     needs: check-version

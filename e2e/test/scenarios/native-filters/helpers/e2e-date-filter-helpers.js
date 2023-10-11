@@ -10,10 +10,10 @@ export function setMonthAndYear({ month, year } = {}) {
 }
 
 export function setQuarterAndYear({ quarter, year } = {}) {
-  cy.findByText(currentYearString).click();
+  popover().findByText(currentYearString).click();
 
-  cy.findByText(year).click();
-  cy.findByText(quarter).click();
+  popover().last().findByText(year).click();
+  popover().findByText(quarter).click();
 }
 
 function setDate(date, container) {

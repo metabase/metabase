@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -63,7 +63,7 @@ async function setup({
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onClose };
 }

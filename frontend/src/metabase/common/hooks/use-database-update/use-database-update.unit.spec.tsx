@@ -5,7 +5,7 @@ import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useDatabaseQuery } from "../use-database-query";
 import { useDatabaseUpdate } from "./use-database-update";
@@ -36,7 +36,7 @@ const TestComponent = () => {
 const setup = async () => {
   setupDatabaseEndpoints(TEST_DB);
   renderWithProviders(<TestComponent />);
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("useDatabaseUpdate", () => {

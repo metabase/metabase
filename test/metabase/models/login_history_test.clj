@@ -10,9 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
@@ -65,14 +63,16 @@
                                              :device_id device
                                              :timestamp #t "2021-04-02T15:52:00-07:00[US/Pacific]"}]
 
-                (is (schema= {(s/eq email)
-                              [{:from    su/Email
-                                :to      (s/eq [email])
-                                :subject (s/eq (format "We've Noticed a New Metabase Login, %s" first-name))
-                                :body    [(s/one {:type    (s/eq "text/html; charset=utf-8")
-                                                  :content s/Str}
-                                                 "HTML body")]}]}
-                             @mt/inbox))
+                (is (malli= [:map-of [:= email]
+                             [:sequential
+                              [:map {:closed true}
+                               [:from ms/Email]
+                               [:to [:= [email]]]
+                               [:subject [:= (format "We've Noticed a New Metabase Login, %s" first-name)]]
+                               [:body [:sequential [:map
+                                                    [:type [:= "text/html; charset=utf-8"]]
+                                                    [:content :string]]]]]]]
+                            @mt/inbox))
                 (let [message (-> @mt/inbox (get email) first :body first :content)
                       site-url (public-settings/site-url)]
                   (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))

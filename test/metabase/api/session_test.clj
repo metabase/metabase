@@ -20,8 +20,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -55,15 +54,15 @@
         (is (schema= SessionResponse
                      response))
         (testing "Login should record a LoginHistory item"
-          (is (schema= {:id                 su/IntGreaterThanZero
-                        :timestamp          java.time.OffsetDateTime
-                        :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          su/UUIDString
-                        :device_description su/NonBlankString
-                        :ip_address         su/NonBlankString
-                        :active             (s/eq true)
-                        s/Keyword s/Any}
-                       (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+          (is (malli= [:map
+                       [:id                 ms/PositiveInt]
+                       [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
+                       [:user_id            [:= (mt/user->id :rasta)]]
+                       [:device_id          ms/UUIDString]
+                       [:device_description ms/NonBlankString]
+                       [:ip_address         ms/NonBlankString]
+                       [:active             [:= true]]]
+                      (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-real-response :post 200 "session" body)]
@@ -212,15 +211,15 @@
         (is (= nil
                (t2/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
-          (is (schema= {:id                 (s/eq login-history-id)
-                        :timestamp          java.time.OffsetDateTime
-                        :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          su/UUIDString
-                        :device_description su/NonBlankString
-                        :ip_address         su/NonBlankString
-                        :active             (s/eq false)
-                        s/Keyword           s/Any}
-                       (t2/select-one LoginHistory :id login-history-id))))))))
+          (is (malli= [:map
+                       [:id                 ms/PositiveInt]
+                       [:timestamp          (ms/InstanceOfClass java.time.OffsetDateTime)]
+                       [:user_id            [:= (mt/user->id :rasta)]]
+                       [:device_id          ms/UUIDString]
+                       [:device_description ms/NonBlankString]
+                       [:ip_address         ms/NonBlankString]
+                       [:active             [:= false]]]
+                (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (reset-throttlers!)
