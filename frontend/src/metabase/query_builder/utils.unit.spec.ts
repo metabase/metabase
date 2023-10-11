@@ -9,95 +9,86 @@ import { checkNotNull } from "metabase/core/utils/types";
 
 import { isNavigationAllowed } from "./utils";
 
-const mockNotebookCard = createMockCard({
+const notebookCard = createMockCard({
   id: getNextId(),
 });
 
-const mockNativeCard = createMockCard({
+const nativeCard = createMockCard({
   id: getNextId(),
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const mockNotebookModelCard = createMockCard({
+const notebookModelCard = createMockCard({
   id: getNextId(),
   dataset: true,
 });
 
-const mockNativeModelCard = createMockCard({
+const nativeModelCard = createMockCard({
   id: getNextId(),
   dataset: true,
   dataset_query: createMockNativeDatasetQuery(),
 });
 
-const mockCards = [
-  mockNotebookCard,
-  mockNativeCard,
-  mockNotebookModelCard,
-  mockNativeModelCard,
-];
+const cards = [notebookCard, nativeCard, notebookModelCard, nativeModelCard];
 
-const metadata = createMockMetadata({ questions: mockCards });
+const metadata = createMockMetadata({ questions: cards });
 
-const mockNotebookQuestion = checkNotNull(
-  metadata.question(mockNotebookCard.id),
+const notebookQuestion = checkNotNull(metadata.question(notebookCard.id));
+
+const nativeQuestion = checkNotNull(metadata.question(nativeCard.id));
+
+const notebookModelQuestion = checkNotNull(
+  metadata.question(notebookModelCard.id),
 );
 
-const mockNativeQuestion = checkNotNull(metadata.question(mockNativeCard.id));
+const nativeModelQuestion = checkNotNull(metadata.question(nativeModelCard.id));
 
-const mockNotebookModelQuestion = checkNotNull(
-  metadata.question(mockNotebookModelCard.id),
-);
-
-const mockNativeModelQuestion = checkNotNull(
-  metadata.question(mockNativeModelCard.id),
-);
-
-const mockQuestions = [
-  mockNotebookQuestion,
-  mockNativeQuestion,
-  mockNotebookModelQuestion,
-  mockNativeModelQuestion,
+const questions = [
+  notebookQuestion,
+  nativeQuestion,
+  notebookModelQuestion,
+  nativeModelQuestion,
 ];
 
 const anyLocation = createMockLocation();
 
-const mockNewModelQueryTabLocation = createMockLocation({
+const newModelQueryTabLocation = createMockLocation({
   pathname: `/model/query`,
 });
 
-const mockNewModelMetadataTabLocation = createMockLocation({
+const newModelMetadataTabLocation = createMockLocation({
   pathname: `/model/metadata`,
 });
 
-const mockModelQueryTabLocation = createMockLocation({
-  pathname: `/model/${mockNotebookModelCard.id}/query`,
+const modelQueryTabLocation = createMockLocation({
+  pathname: `/model/${notebookModelCard.id}/query`,
 });
 
-const mockModelMetadataTabLocation = createMockLocation({
-  pathname: `/model/${mockNotebookModelCard.id}/metadata`,
+const modelMetadataTabLocation = createMockLocation({
+  pathname: `/model/${notebookModelCard.id}/metadata`,
 });
 
-const mockRunQuestionLocation = createMockLocation({
+const runQuestionLocation = createMockLocation({
   pathname: "/question",
-  hash: `#${window.btoa(JSON.stringify(mockNativeCard))}`,
+  hash: `#${window.btoa(JSON.stringify(nativeCard))}`,
 });
 
-const mockLocations = [
+const locations = [
   anyLocation,
-  mockModelQueryTabLocation,
-  mockModelMetadataTabLocation,
-  mockRunQuestionLocation,
+  modelQueryTabLocation,
+  modelMetadataTabLocation,
+  runQuestionLocation,
 ];
 
 describe("isNavigationAllowed", () => {
   describe("when there is no destination (i.e. it's a beforeunload event)", () => {
     const destination = undefined;
-    const questions = [...mockQuestions, undefined];
+    const testQuestions = [...questions, undefined];
 
     it("always allows navigating away from creating new question", () => {
       const isNewQuestion = true;
 
-      for (const question of questions) {
+      for (const question of testQuestions) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
@@ -119,8 +110,8 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
 
     it("always allows navigating away from creating new question", () => {
-      const questions = [mockNotebookQuestion, mockNativeQuestion, undefined];
-      const destinations = [...mockLocations, undefined];
+      const questions = [notebookQuestion, nativeQuestion, undefined];
+      const destinations = [...locations, undefined];
 
       for (const question of questions) {
         for (const destination of destinations) {
@@ -134,8 +125,8 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing notebook question", () => {
     const isNewQuestion = false;
-    const question = mockNotebookQuestion;
-    const destinations = [...mockLocations, undefined];
+    const question = notebookQuestion;
+    const destinations = [...locations, undefined];
 
     it("always allows navigating away from editing notebook question", () => {
       for (const destination of destinations) {
@@ -148,10 +139,10 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing native question", () => {
     const isNewQuestion = false;
-    const question = mockNativeQuestion;
+    const question = nativeQuestion;
 
     it("allows to run the question", () => {
-      const destination = mockRunQuestionLocation;
+      const destination = runQuestionLocation;
 
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
@@ -169,10 +160,10 @@ describe("isNavigationAllowed", () => {
 
   describe("when creating new model", () => {
     const isNewQuestion = true;
-    const question = mockNotebookModelQuestion;
+    const question = notebookModelQuestion;
 
     it("does not allow navigating away from creating new model", () => {
-      const destinations = [...mockLocations];
+      const destinations = [...locations];
 
       for (const destination of destinations) {
         expect(
@@ -183,8 +174,8 @@ describe("isNavigationAllowed", () => {
 
     it("allows navigating between model query & metadata tabs", () => {
       const destinations = [
-        mockNewModelQueryTabLocation,
-        mockNewModelMetadataTabLocation,
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
       ];
 
       for (const destination of destinations) {
@@ -197,13 +188,10 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing notebook model", () => {
     const isNewQuestion = false;
-    const question = mockNotebookModelQuestion;
+    const question = notebookModelQuestion;
 
     it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [
-        mockModelQueryTabLocation,
-        mockModelMetadataTabLocation,
-      ];
+      const destinations = [modelQueryTabLocation, modelMetadataTabLocation];
 
       for (const destination of destinations) {
         expect(
@@ -223,13 +211,10 @@ describe("isNavigationAllowed", () => {
 
   describe("when editing native-query model", () => {
     const isNewQuestion = false;
-    const question = mockNativeModelQuestion;
+    const question = nativeModelQuestion;
 
     it("allows navigating between model query & metadata tabs", () => {
-      const destinations = [
-        mockModelQueryTabLocation,
-        mockModelMetadataTabLocation,
-      ];
+      const destinations = [modelQueryTabLocation, modelMetadataTabLocation];
 
       for (const destination of destinations) {
         expect(
