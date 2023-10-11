@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Flex, Text, NumberInput } from "metabase/ui";
+import { Box, Button, Flex, NumberInput, Select, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
@@ -10,38 +10,58 @@ import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
 
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
-import { isNumberFilterValid } from "./utils";
-import { numberFilterValueCountMap } from "./constants";
-import type { NumberFilterValueCount } from "./types";
+import { OPTIONS } from "./constants";
 
 export function NumberFilterPicker({
   query,
   stageIndex,
   column,
   filter,
-  onBack,
   onChange,
+  onBack,
 }: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
   const filterParts = filter
     ? Lib.numberFilterParts(query, stageIndex, filter)
     : null;
 
-  const [operatorName, setOperatorName] =
-    useState<Lib.NumberFilterOperatorName>(
-      filterParts
-        ? filterParts.operator
-        : (Lib.defaultFilterOperatorName(
-            query,
-            stageIndex,
-            column,
-          ) as Lib.NumberFilterOperatorName),
+  const availableOperators = useMemo(() => {
+    const operators = Lib.filterableColumnOperators(column);
+    const operatorNames = operators.map(
+      operator => Lib.displayInfo(query, stageIndex, operator).shortName,
     );
+    return OPTIONS.filter(option => operatorNames.includes(option.operator));
+  }, [query, stageIndex, column]);
 
-  const [values, setValues] = useState<number[]>(filterParts?.values ?? []);
+  const operatorOptions = useMemo(
+    () =>
+      availableOperators.map(option => ({
+        label: option.name,
+        value: option.operator,
+      })),
+    [availableOperators],
+  );
+
+  const [operatorName, setOperatorName] = useState(
+    filterParts?.operator ?? "=",
+  );
+
+  const [values, setValues] = useState(filterParts?.values ?? []);
+
+  const valueCount = useMemo(() => {
+    const option = availableOperators.find(
+      option => option.operator === operatorName,
+    );
+    return option?.valueCount ?? 0;
+  }, [availableOperators, operatorName]);
+
+  const isFilterValid = useMemo(() => {
+    return Number.isFinite(valueCount)
+      ? values.length === valueCount
+      : values.length >= 1;
+  }, [values, valueCount]);
 
   const handleOperatorChange = (
     newOperatorName: Lib.NumberFilterOperatorName,
@@ -62,27 +82,21 @@ export function NumberFilterPicker({
     }
   };
 
-  const valueCount = numberFilterValueCountMap[operatorName];
-  const isFilterValid = isNumberFilterValid(operatorName, values);
-
   return (
     <>
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
-        <FilterOperatorPicker
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
+        <Select
           value={operatorName}
-          onChange={newOperator =>
-            handleOperatorChange(newOperator as Lib.NumberFilterOperatorName)
-          }
+          data={operatorOptions}
+          onChange={handleOperatorChange}
+          withinPortal={false}
         />
       </Header>
       <NumberValueInput
         values={values}
         onChange={setValues}
-        valueCount={valueCount ?? 0}
+        valueCount={valueCount}
         column={column}
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
@@ -95,37 +109,39 @@ export function NumberFilterPicker({
   );
 }
 
+interface NumberValueInputProps {
+  values: number[];
+  valueCount: number;
+  column: Lib.ColumnMetadata;
+  onChange: (values: number[]) => void;
+}
+
 function NumberValueInput({
   values,
   onChange,
   valueCount,
   column,
-}: {
-  values: number[];
-  onChange: (values: number[]) => void;
-  valueCount: NumberFilterValueCount;
-  column: Lib.ColumnMetadata;
-}) {
+}: NumberValueInputProps) {
   const placeholder = t`Enter a number`;
   const fieldId = useMemo(() => Lib._fieldId(column), [column]);
 
   // const prefix = '$'; TODO
 
   switch (valueCount) {
-    case "multiple":
+    case Infinity:
       return (
         <FlexWithScroll p="md" mah={300}>
           <FieldValuesWidget
             fields={[new Field({ id: fieldId })]} // TODO adapt for MLv2
             className="input"
             value={values}
-            minWidth={"300px"}
+            minWidth="300px"
             onChange={onChange}
             placeholder={placeholder}
             disablePKRemappingForSearch
             autoFocus
             disableSearch
-            multi={valueCount === "multiple"}
+            multi
           />
         </FlexWithScroll>
       );
