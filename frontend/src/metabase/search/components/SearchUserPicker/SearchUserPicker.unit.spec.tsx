@@ -62,7 +62,7 @@ describe("SearchUserPicker", () => {
       screen.getByPlaceholderText("Search for someone…"),
       "Charlie",
     );
-    expect(screen.getByText("No results.")).toBeInTheDocument();
+    expect(screen.getByText("No results")).toBeInTheDocument();
   });
 
   it("should show selected users in the select box on initial load", async () => {
@@ -72,7 +72,7 @@ describe("SearchUserPicker", () => {
     ).toEqual(["Alice", "Bob"]);
 
     // all users are in the select box, so the search list should be empty
-    expect(screen.getByText("No results.")).toBeInTheDocument();
+    expect(screen.getByText("No results")).toBeInTheDocument();
   });
 
   it("should not show any users when there are no selected users on initial load", async () => {
