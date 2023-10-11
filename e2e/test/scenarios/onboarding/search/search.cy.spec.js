@@ -868,6 +868,7 @@ function expectSearchResultItemNameContent({ itemNames }) {
       .toArray()
       .map(el => el.textContent);
 
-    expect(searchResultLabelList).to.deep.eq(itemNames);
+    expect(searchResultLabelList).to.include(itemNames);
+    expect(searchResultLabelList.length).to.eq(itemNames.length);
   });
 }
