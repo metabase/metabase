@@ -13,7 +13,8 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -153,9 +154,22 @@
                                       :pivot-cols [2])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map (fn [actual-val] (dissoc actual-val :database))
+                              (#'qp.pivot/generate-queries request {:pivot-rows [1 0] :pivot-cols [2]}))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
+
+(deftest pivot-options-test
+  (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
+    (let [pivot-query (api.pivots/pivot-query false)
+          breakout    (-> pivot-query :query :breakout)]
+      (t2.with-temp/with-temp [:model/Card card {:dataset_query pivot-query
+                                                 :visualization_settings
+                                                 {:pivot_table.column_split
+                                                  {:rows    [(get breakout 1) (get breakout 0)]
+                                                   :columns [(get breakout 2)]}}}]
+        (is (= {:pivot-rows [1 0] :pivot-cols [2]}
+             (qp.pivot/pivot-options pivot-query (u/the-id card))))))))
 
 (deftest dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
