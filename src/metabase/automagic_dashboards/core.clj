@@ -1029,7 +1029,7 @@
         affinity-set->cards affinities
         cards               (->> grounded-metrics
                                  (combination/interesting-combinations grounded-dimensions
-                                                                       (set (keys affinities)))
+                                                                       affinities)
                                  (combination/combinations->cards base-context
                                                                   affinity-set->cards)
                                  (map-indexed (fn [i card]
