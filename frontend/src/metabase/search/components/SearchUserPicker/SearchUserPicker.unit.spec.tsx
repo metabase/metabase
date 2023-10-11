@@ -59,11 +59,11 @@ describe("SearchUserPicker", () => {
     expect(mockOnChange).not.toHaveBeenCalled();
   });
 
-  it("should call onChange when 'Apply Filters' selected", async () => {
+  it("should call onChange when 'Apply' selected", async () => {
     const { mockOnChange } = await setup();
 
     userEvent.click(screen.getByText("Alice"));
-    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    userEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(mockOnChange).toHaveBeenCalledWith(1);
   });
 });

@@ -150,7 +150,7 @@ describe("TypeFilterContent", () => {
       userEvent.click(options[i]);
     }
 
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
@@ -163,7 +163,7 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });
