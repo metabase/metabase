@@ -122,7 +122,7 @@ export const SearchUserPicker = ({
             generateUserListElements(filteredUsers)
           ) : (
             <Center py="md">
-              <Text size="md" weight={700}>{t`No users found.`}</Text>
+              <Text size="md" weight={700}>{t`No results`}</Text>
             </Center>
           )}
         </SearchUserPickerContent>
