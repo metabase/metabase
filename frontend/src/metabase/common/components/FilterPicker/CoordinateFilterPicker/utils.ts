@@ -1,25 +1,6 @@
 import * as Lib from "metabase-lib";
 import type { CoordinateFilterOperatorName } from "metabase-lib";
 
-import { coordinateFilterValueCountMap } from "./constants";
-
-export function isCoordinateFilterValid(
-  operatorName: CoordinateFilterOperatorName | null,
-  values: number[],
-): boolean {
-  if (!operatorName) {
-    return false;
-  }
-
-  const valueCount = coordinateFilterValueCountMap[operatorName];
-
-  if (valueCount === "multiple") {
-    return values.length >= 1;
-  }
-
-  return values.length === valueCount;
-}
-
 export function findLatitudeColumns(query: Lib.Query, stageIndex: number) {
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
 

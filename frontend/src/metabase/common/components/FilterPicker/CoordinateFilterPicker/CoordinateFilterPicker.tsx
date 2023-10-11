@@ -1,54 +1,79 @@
 import { t } from "ttag";
 import { useState, useMemo } from "react";
-import { Box, Button, Flex, Text, NumberInput, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
+import {
+  Box,
+  Button,
+  Flex,
+  NumberInput,
+  Text,
+  Select,
+  Stack,
+} from "metabase/ui";
+import * as Lib from "metabase-lib";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Field from "metabase-lib/metadata/Field";
+
 import type { FilterPickerWidgetProps } from "../types";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
 import { Footer } from "../Footer";
-
-import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
+import { OPTIONS } from "./constants";
+import { findSecondColumn } from "./utils";
 import { CoordinateColumnSelect } from "./CoordinateColumnSelect";
-
-import { findSecondColumn, isCoordinateFilterValid } from "./utils";
-
-import { coordinateFilterValueCountMap } from "./constants";
-import type { CoordinateFilterValueCount } from "./types";
 
 export function CoordinateFilterPicker({
   query,
   stageIndex,
   column,
   filter,
-  onBack,
   onChange,
+  onBack,
 }: FilterPickerWidgetProps) {
   const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
   const filterParts = filter
     ? Lib.coordinateFilterParts(query, stageIndex, filter)
     : null;
 
-  const [operatorName, setOperatorName] =
-    useState<Lib.CoordinateFilterOperatorName>(
-      filterParts
-        ? filterParts.operator
-        : (Lib.defaultFilterOperatorName(
-            query,
-            stageIndex,
-            column,
-          ) as Lib.CoordinateFilterOperatorName),
+  const availableOperators = useMemo(() => {
+    const operators = Lib.filterableColumnOperators(column);
+    const operatorNames = operators.map(
+      operator => Lib.displayInfo(query, stageIndex, operator).shortName,
     );
+    return OPTIONS.filter(option => operatorNames.includes(option.operator));
+  }, [query, stageIndex, column]);
 
-  const [values, setValues] = useState<number[]>(filterParts?.values ?? []);
+  const operatorOptions = useMemo(
+    () =>
+      availableOperators.map(option => ({
+        label: option.name,
+        value: option.operator,
+      })),
+    [availableOperators],
+  );
 
-  const [column2, setColumn2] = useState<Lib.ColumnMetadata | null>(
+  const [operatorName, setOperatorName] = useState(
+    filterParts?.operator ?? "=",
+  );
+  const [values, setValues] = useState(filterParts?.values ?? []);
+  const [column2, setColumn2] = useState(
     findSecondColumn({ query, stageIndex, column, filter, operatorName }),
   );
+
+  const valueCount = useMemo(() => {
+    const option = availableOperators.find(
+      option => option.operator === operatorName,
+    );
+    return option?.valueCount ?? 0;
+  }, [availableOperators, operatorName]);
+
+  const isFilterValid = useMemo(() => {
+    return Number.isFinite(valueCount)
+      ? values.length === valueCount
+      : values.length >= 1;
+  }, [values, valueCount]);
 
   const handleOperatorChange = (
     newOperatorName: Lib.CoordinateFilterOperatorName,
@@ -67,49 +92,39 @@ export function CoordinateFilterPicker({
   };
 
   const handleFilterChange = () => {
-    if (operatorName && values.length) {
-      if (operatorName === "inside" && column2) {
-        const [latitudeColumn, longitudeColumn] = Lib.isLatitude(column)
-          ? [column, column2]
-          : [column2, column];
+    if (operatorName === "inside" && column2) {
+      const [latitudeColumn, longitudeColumn] = Lib.isLatitude(column)
+        ? [column, column2]
+        : [column2, column];
 
-        onChange(
-          Lib.coordinateFilterClause({
-            operator: operatorName,
-            column: latitudeColumn,
-            longitudeColumn,
-            values,
-          }),
-        );
-      } else {
-        onChange(
-          Lib.coordinateFilterClause({
-            operator: operatorName,
-            column,
-            values,
-          }),
-        );
-      }
+      onChange(
+        Lib.coordinateFilterClause({
+          operator: operatorName,
+          column: latitudeColumn,
+          longitudeColumn,
+          values,
+        }),
+      );
+    } else {
+      onChange(
+        Lib.coordinateFilterClause({
+          operator: operatorName,
+          column,
+          values,
+        }),
+      );
     }
   };
-
-  const valueCount = coordinateFilterValueCountMap[operatorName];
-  const isFilterValid = isCoordinateFilterValid(operatorName, values);
 
   return (
     <>
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
-        <FilterOperatorPicker
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
+        <Select
           value={operatorName}
-          onChange={newOperator =>
-            handleOperatorChange(
-              newOperator as Lib.CoordinateFilterOperatorName,
-            )
-          }
+          data={operatorOptions}
+          onChange={handleOperatorChange}
+          withinPortal={false}
         />
       </Header>
       {operatorName === "inside" && (
@@ -145,14 +160,14 @@ function CoordinateValueInput({
 }: {
   values: number[];
   onChange: (values: number[]) => void;
-  valueCount: CoordinateFilterValueCount;
+  valueCount: number;
   column: Lib.ColumnMetadata;
 }) {
   const placeholder = t`Enter a number`;
   const fieldId = useMemo(() => Lib._fieldId(column), [column]);
 
   switch (valueCount) {
-    case "multiple":
+    case Infinity:
       return (
         <FlexWithScroll p="md" mah={300}>
           <FieldValuesWidget
@@ -165,7 +180,7 @@ function CoordinateValueInput({
             disablePKRemappingForSearch
             autoFocus
             disableSearch
-            multi={valueCount === "multiple"}
+            multi
           />
         </FlexWithScroll>
       );
