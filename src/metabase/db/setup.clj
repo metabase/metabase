@@ -192,8 +192,8 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection db-type data-source)
-         (when-not #p (or (liquibase/table-exists? data-source "core_user")
-                          (liquibase/table-exists? data-source "CORE_USER"))
+         (when-not (or (liquibase/table-exists? data-source "core_user")
+                       (liquibase/table-exists? data-source "CORE_USER"))
            (log/info "Running database initialization")
            (initialize-db! db-type data-source)
            (log/info "Done database initialization"))

@@ -1253,4 +1253,40 @@ CREATE TABLE `view_log` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+INSERT INTO permissions_group (name) VALUES ('All Users'), ('Administrators');
 
+INSERT INTO permissions (group_id, object) SELECT
+  admin_group.id AS group_id,
+  '/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'Administrators'
+) admin_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/collection/root/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/application/subscription/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/collection/namespace/snippets/root/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group ;

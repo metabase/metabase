@@ -1019,3 +1019,39 @@ ALTER TABLE "PUBLIC"."PULSE_CHANNEL_RECIPIENT" ADD CONSTRAINT "PUBLIC"."FK_PULSE
 ALTER TABLE "PUBLIC"."SEGMENT" ADD CONSTRAINT "PUBLIC"."FK_SEGMENT_REF_CREATOR_ID" FOREIGN KEY("CREATOR_ID") REFERENCES "PUBLIC"."CORE_USER"("ID") ON DELETE CASCADE NOCHECK;
 ALTER TABLE "PUBLIC"."PULSE_CARD" ADD CONSTRAINT "PUBLIC"."FK_PULSE_CARD_REF_CARD_ID" FOREIGN KEY("CARD_ID") REFERENCES "PUBLIC"."REPORT_CARD"("ID") ON DELETE CASCADE NOCHECK;
 ALTER TABLE "PUBLIC"."TIMELINE" ADD CONSTRAINT "PUBLIC"."FK_TIMELINE_CREATOR_ID" FOREIGN KEY("CREATOR_ID") REFERENCES "PUBLIC"."CORE_USER"("ID") ON DELETE CASCADE NOCHECK;
+INSERT INTO permissions_group (name) VALUES ('All Users'), ('Administrators');
+INSERT INTO permissions (group_id, object) SELECT
+  admin_group.id AS group_id,
+  '/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'Administrators'
+) admin_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/collection/root/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/application/subscription/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group;
+
+INSERT INTO permissions (group_id, object) SELECT
+  all_users_group.id AS group_id,
+  '/collection/namespace/snippets/root/' AS object
+FROM (
+  SELECT id
+  FROM permissions_group
+  WHERE name = 'All Users'
+) all_users_group;
