@@ -9,9 +9,6 @@ import { usePrevious } from "react-use";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Confirm from "metabase/components/Confirm";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -203,7 +200,6 @@ function DatasetEditor(props) {
   } = props;
 
   const isDirty = isModelQueryDirty || isMetadataDirty;
-  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
     [dataset, resultsMetadata],
@@ -303,20 +299,12 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelEdit = () => {
-    onCancelDatasetChanges();
-    setQueryBuilderMode("view");
-  };
-
-  const handleCancelEditWarningClose = () => {
-    setShowCancelEditWarning(false);
-  };
-
-  const handleRequestCancelEdit = () => {
-    if (isDirty) {
-      setShowCancelEditWarning(true);
+  const handleCancelClick = () => {
+    if (dataset.isSaved()) {
+      onCancelDatasetChanges();
+      setQueryBuilderMode("view");
     } else {
-      handleCancelEdit();
+      onCancelCreateNewModel();
     }
   };
 
@@ -441,23 +429,11 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          dataset.isSaved() ? (
-            <Button
-              key="cancel"
-              small
-              onClick={handleRequestCancelEdit}
-            >{t`Cancel`}</Button>
-          ) : (
-            <Confirm
-              key="cancel"
-              action={onCancelCreateNewModel}
-              title={t`Discard changes?`}
-              message={t`Your model won't be created.`}
-              confirmButtonText={t`Discard`}
-            >
-              <Button small>{t`Cancel`}</Button>
-            </Confirm>
-          ),
+          <Button
+            key="cancel"
+            small
+            onClick={handleCancelClick}
+          >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
             disabled={!canSaveChanges}
@@ -515,13 +491,6 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
-
-      <Modal isOpen={showCancelEditWarning}>
-        <LeaveConfirmationModalContent
-          onAction={handleCancelEdit}
-          onClose={handleCancelEditWarningClose}
-        />
-      </Modal>
     </>
   );
 }
