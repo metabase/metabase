@@ -1,4 +1,5 @@
-
+-- This is manually added;
+ALTER DATABASE CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -28,7 +29,7 @@ CREATE TABLE `activity` (
   KEY `idx_activity_user_id` (`user_id`),
   KEY `idx_activity_custom_id` (`custom_id`),
   CONSTRAINT `fk_activity_ref_user_id` FOREIGN KEY (`user_id`) REFERENCES `core_user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `application_permissions_revision`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -396,7 +397,7 @@ CREATE TABLE `metabase_database` (
   PRIMARY KEY (`id`),
   KEY `fk_database_creator_id` (`creator_id`),
   CONSTRAINT `fk_database_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `core_user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `metabase_field`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -483,7 +484,7 @@ CREATE TABLE `metabase_table` (
   KEY `idx_metabase_table_show_in_getting_started` (`show_in_getting_started`),
   KEY `idx_metabase_table_db_id_schema` (`db_id`,`schema`),
   CONSTRAINT `fk_table_ref_database_id` FOREIGN KEY (`db_id`) REFERENCES `metabase_database` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `metric`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -581,7 +582,7 @@ CREATE TABLE `permissions` (
   KEY `idx_permissions_object` (`object`),
   KEY `idx_permissions_group_id_object` (`group_id`,`object`),
   CONSTRAINT `fk_permissions_group_id` FOREIGN KEY (`group_id`) REFERENCES `permissions_group` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `permissions_group`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -592,7 +593,7 @@ CREATE TABLE `permissions_group` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_permissions_group_name` (`name`),
   KEY `idx_permissions_group_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `permissions_group_membership`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1179,7 +1180,7 @@ CREATE TABLE `task_history` (
   PRIMARY KEY (`id`),
   KEY `idx_task_history_end_time` (`ended_at`),
   KEY `idx_task_history_db_id` (`db_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Timing and metadata info about background/quartz processes';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Timing and metadata info about background/quartz processes';
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `timeline`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
