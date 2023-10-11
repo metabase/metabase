@@ -81,7 +81,6 @@ export const isNavigationAllowed = ({
     return true;
   }
 
-  const isExistingQuestion = !isNewQuestion;
   const { hash, pathname } = destination;
 
   if (question.isDataset()) {
@@ -96,7 +95,7 @@ export const isNavigationAllowed = ({
     return isQueryTab || isMetadataTab;
   }
 
-  if (isExistingQuestion && question.isNative()) {
+  if (!isNewQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
   }
