@@ -11,20 +11,24 @@ import { isNavigationAllowed } from "./utils";
 
 const notebookCard = createMockCard({
   id: getNextId(),
+  name: "notebook question",
 });
 
 const nativeCard = createMockCard({
   id: getNextId(),
+  name: "native question",
   dataset_query: createMockNativeDatasetQuery(),
 });
 
 const notebookModelCard = createMockCard({
   id: getNextId(),
+  name: "notebook model",
   dataset: true,
 });
 
 const nativeModelCard = createMockCard({
   id: getNextId(),
+  name: "native model",
   dataset: true,
   dataset_query: createMockNativeDatasetQuery(),
 });
@@ -83,27 +87,45 @@ const locations = [
 describe("isNavigationAllowed", () => {
   describe("when there is no destination (i.e. it's a beforeunload event)", () => {
     const destination = undefined;
-    const testQuestions = [...questions, undefined];
 
-    it("always allows navigating away from creating new question", () => {
-      const isNewQuestion = true;
+    it.each(questions)(
+      "allows navigating away from creating new $_card.name",
+      question => {
+        const isNewQuestion = true;
 
-      for (const question of testQuestions) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
-    });
+      },
+    );
 
-    it("always allows navigating away from editing question", () => {
-      const isNewQuestion = false;
+    it.each(questions)(
+      "allows navigating away from editing $_card.name",
+      question => {
+        const isNewQuestion = false;
 
-      for (const question of questions) {
         expect(
           isNavigationAllowed({ destination, question, isNewQuestion }),
         ).toBe(true);
-      }
-    });
+      },
+    );
+  });
+
+  describe("when there is no question", () => {
+    const destinations = [...locations, undefined];
+    const question = undefined;
+
+    it.each(destinations)(
+      "allows navigating away from $pathname",
+      destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion: true }),
+        ).toBe(true);
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion: false }),
+        ).toBe(true);
+      },
+    );
   });
 
   describe("when creating new question", () => {
