@@ -115,7 +115,7 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = true;
 
     it("always allows navigating away from creating new question", () => {
-      const questions = [...mockQuestions, undefined];
+      const questions = [mockQuestion, mockNativeQuestion, undefined];
       const destinations = [...mockLocations, undefined];
 
       for (const question of questions) {
