@@ -137,6 +137,7 @@
     (init-status/set-progress! 0.9))
 
   (ensure-audit-db-installed!)
+  (init-status/set-progress! 0.95)
 
   ;; start scheduler at end of init!
   (task/start-scheduler!)
