@@ -282,6 +282,10 @@ const setup = async ({
 };
 
 describe("QueryBuilder", () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe("rendering", () => {
     describe("renders structured queries", () => {
       it("renders a structured question in the simple mode", async () => {
@@ -383,10 +387,6 @@ describe("QueryBuilder", () => {
 
     describe("editing models", () => {
       describe("editing queries", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
-        });
-
         it("should trigger beforeunload event when leaving edited query", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
@@ -414,10 +414,6 @@ describe("QueryBuilder", () => {
       });
 
       describe("editing metadata", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
-        });
-
         it("should trigger beforeunload event when leaving edited metadata", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
@@ -443,6 +439,45 @@ describe("QueryBuilder", () => {
           expect(mockEvent.preventDefault).not.toHaveBeenCalled();
           expect(mockEvent.returnValue).toBe(undefined);
         });
+      });
+    });
+
+    describe("creating native questions", () => {
+      it("should trigger beforeunload event when leaving new non-empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      });
+
+      it("should not trigger beforeunload event when leaving new empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(undefined);
       });
     });
 
@@ -835,7 +870,7 @@ describe("QueryBuilder", () => {
     });
 
     describe("creating native questions", () => {
-      it("shows custom warning modal when leaving creating question via SPA navigation", async () => {
+      it("shows custom warning modal when leaving creating non-empty question via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
           initialRoute: "/",
