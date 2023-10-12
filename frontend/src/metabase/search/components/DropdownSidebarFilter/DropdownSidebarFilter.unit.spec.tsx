@@ -147,7 +147,7 @@ describe("DropdownSidebarFilter", () => {
       { skipPointerEventsCheck: true },
     );
 
-    expect(onChange).toHaveBeenCalledWith(undefined);
+    expect(onChange).toHaveBeenCalledWith(null);
     expect(screen.getByText("Mock Filter")).toBeInTheDocument();
     expect(screen.getByLabelText("filter icon")).toBeInTheDocument();
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();

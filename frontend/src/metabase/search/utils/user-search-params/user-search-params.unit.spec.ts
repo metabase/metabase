@@ -1,6 +1,44 @@
-import { parseUserId, stringifyUserId } from "./user-search-params";
+import {
+  parseUserId,
+  stringifyUserIdArray,
+  parseUserIdArray,
+} from "./user-search-params";
 
-describe("parseUserIdString", () => {
+describe("parseUserIdArray", () => {
+  it("should return a UserId array when value is a string", () => {
+    const userId = "123";
+    const result = parseUserIdArray(userId);
+    expect(result).toStrictEqual([123]);
+  });
+
+  it("should return a UserId array when value is an array of strings", () => {
+    const userId = ["123", "456"];
+    const result = parseUserIdArray(userId);
+    expect(result).toStrictEqual([123, 456]);
+  });
+
+  it("should filter invalid values from an array of strings", () => {
+    const userId = ["123", "abc", "456", "def", "789", ""];
+    const result = parseUserIdArray(userId);
+    expect(result).toStrictEqual([123, 456, 789]);
+  });
+
+  it("should return an empty array when value is null or undefined", () => {
+    const nullResult = parseUserIdArray(null);
+    expect(nullResult).toStrictEqual([]);
+
+    const undefinedResult = parseUserIdArray(undefined);
+    expect(undefinedResult).toStrictEqual([]);
+  });
+
+  it("should return an empty array when value is an empty array", () => {
+    const userId: string[] = [];
+    const result = parseUserIdArray(userId);
+    expect(result).toStrictEqual([]);
+  });
+});
+
+describe("parseUserId", () => {
   it("should convert a valid string to a number", () => {
     const userId = "123";
     const result = parseUserId(userId);
@@ -46,16 +84,21 @@ describe("parseUserIdString", () => {
   });
 });
 
-describe("convertUserIdToString", () => {
+describe("stringifyUserIdArray", () => {
+  it("should convert an UserId number array to a string", () => {
+    const userId = [1, 2, 3, 4];
+    const result = stringifyUserIdArray(userId);
+    expect(result).toStrictEqual(["1", "2", "3", "4"]);
+  });
+
   it("should convert an UserId number to a string", () => {
-    const userId = 1;
-    const result = stringifyUserId(userId);
-    expect(result).toBe("1");
+    const userId = [1];
+    const result = stringifyUserIdArray(userId);
+    expect(result).toStrictEqual(["1"]);
   });
 
   it("should return null if the input is null", () => {
-    const userId = null;
-    const result = stringifyUserId(userId);
-    expect(result).toBeNull();
+    const result = stringifyUserIdArray([]);
+    expect(result).toStrictEqual([]);
   });
 });

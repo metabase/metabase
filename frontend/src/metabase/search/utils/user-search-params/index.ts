@@ -1,1 +1,1 @@
-export { parseUserId, stringifyUserId } from "./user-search-params";
+export { parseUserIdArray, stringifyUserIdArray } from "./user-search-params";

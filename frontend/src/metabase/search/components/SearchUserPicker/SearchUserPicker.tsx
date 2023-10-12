@@ -1,40 +1,58 @@
+import { without } from "underscore";
 import { useState } from "react";
-import { isEqual } from "underscore";
 import { t } from "ttag";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type { UserId, UserListResult } from "metabase-types/api";
-import { UserListElement } from "metabase/search/components/UserListElement";
+import { Center, Text } from "metabase/ui";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import {
+  SearchUserItemContainer,
   SearchUserPickerContainer,
   SearchUserPickerContent,
+  SearchUserSelectBox,
+  SelectedUserButton,
+  UserPickerInput,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
-import { Center, Text, TextInput } from "metabase/ui";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { UserListElement } from "metabase/search/components/UserListElement";
+import { Icon } from "metabase/core/components/Icon";
 
 export const SearchUserPicker = ({
   value,
   onChange,
 }: {
-  value: UserId | null;
-  onChange: (value: UserId | null) => void;
+  value: UserId[];
+  onChange: (value: UserId[]) => void;
 }) => {
   const { data: users = [], isLoading } = useUserListQuery();
+
   const [userFilter, setUserFilter] = useState("");
-
-  const [selectedUserId, setSelectedUserId] = useState(value);
-
-  const filteredUsers = users.filter(user => {
-    return user.common_name.toLowerCase().includes(userFilter.toLowerCase());
-  });
+  const [selectedUserIds, setSelectedUserIds] = useState(value);
 
   const isSelected = (user: UserListResult) =>
-    selectedUserId ? isEqual(selectedUserId, user.id) : false;
+    selectedUserIds.includes(user.id);
+
+  const filteredUsers = users.filter(user => {
+    return (
+      user.common_name.toLowerCase().includes(userFilter.toLowerCase()) &&
+      !isSelected(user)
+    );
+  });
+
+  const removeUser = (user?: UserListResult) => {
+    if (user) {
+      setSelectedUserIds(without(selectedUserIds, user.id));
+    }
+  };
+
+  const addUser = (user: UserListResult) => {
+    setSelectedUserIds([...selectedUserIds, user.id]);
+  };
 
   const onUserSelect = (user: UserListResult) => {
-    if (selectedUserId && isEqual(selectedUserId, user.id)) {
-      setSelectedUserId(null);
+    if (isSelected(user)) {
+      removeUser(user);
     } else {
-      setSelectedUserId(user.id);
+      addUser(user);
     }
   };
 
@@ -52,26 +70,62 @@ export const SearchUserPicker = ({
   return (
     <SearchFilterPopoverWrapper
       isLoading={isLoading}
-      onApply={() => onChange(selectedUserId)}
+      onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" h="100%" spacing="xs">
-        <TextInput
-          size="md"
-          mb="sm"
-          placeholder={t`Search for users…`}
-          value={userFilter}
-          tabIndex={0}
-          onChange={event => setUserFilter(event.currentTarget.value)}
-        />
-        {filteredUsers.length > 0 ? (
-          <SearchUserPickerContent h="100%" spacing="xs" p="xs">
-            {generateUserListElements(filteredUsers)}
-          </SearchUserPickerContent>
-        ) : (
-          <Center py="md">
-            <Text size="md" weight={700}>{t`No users found.`}</Text>
-          </Center>
-        )}
+      <SearchUserPickerContainer p="sm" spacing="xs">
+        <SearchUserSelectBox spacing={0}>
+          <SearchUserItemContainer
+            data-testid="search-user-select-box"
+            spacing="xs"
+            p="xs"
+            mah="30vh"
+          >
+            {selectedUserIds.map(userId => {
+              const user = users.find(user => user.id === userId);
+              return (
+                <SelectedUserButton
+                  data-testid="selected-user-button"
+                  key={userId}
+                  c="brand.1"
+                  px="md"
+                  py="sm"
+                  maw="100%"
+                  rightIcon={<Icon name="close" />}
+                  onClick={() => removeUser(user)}
+                >
+                  <Text align="left" w="100%" truncate c="inherit">
+                    {user?.common_name}
+                  </Text>
+                </SelectedUserButton>
+              );
+            })}
+            <UserPickerInput
+              variant="unstyled"
+              pl="sm"
+              size="md"
+              placeholder={t`Search for someone…`}
+              value={userFilter}
+              tabIndex={0}
+              onChange={event => setUserFilter(event.currentTarget.value)}
+              mt="-0.25rem"
+              miw="18ch"
+            />
+          </SearchUserItemContainer>
+        </SearchUserSelectBox>
+        <SearchUserPickerContent
+          data-testid="search-user-list"
+          h="100%"
+          spacing="xs"
+          p="xs"
+        >
+          {filteredUsers.length > 0 ? (
+            generateUserListElements(filteredUsers)
+          ) : (
+            <Center py="md">
+              <Text size="md" weight={700}>{t`No results`}</Text>
+            </Center>
+          )}
+        </SearchUserPickerContent>
       </SearchUserPickerContainer>
     </SearchFilterPopoverWrapper>
   );
