@@ -631,10 +631,12 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 
     const shouldShowUnsavedChangesWarningForModels =
       isEditingModel && (isDirty || isMetadataDirty);
+    const isNewNonEmptyQuestion =
+      question && isNewQuestion && !question.isEmpty();
     const shouldShowUnsavedChangesWarningForSqlQuery =
       question != null &&
       question.isNative() &&
-      (isSavedQuestionChanged || isNewQuestion);
+      (isSavedQuestionChanged || isNewNonEmptyQuestion);
 
     return (
       shouldShowUnsavedChangesWarningForModels ||

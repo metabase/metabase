@@ -847,10 +847,31 @@ describe("QueryBuilder", () => {
         );
 
         await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
 
         history.goBack();
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when leaving creating empty question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
       });
 
       it("does not show custom warning modal when running new question", async () => {
