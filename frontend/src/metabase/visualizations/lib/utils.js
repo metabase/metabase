@@ -62,8 +62,13 @@ export function getAvailableCanvasWidth(element) {
 
 function generateSplits(list, left = [], right = [], depth = 0) {
   // NOTE: currently generates all permutations, some of which are equivalent
-  if (list.length === 0 || depth > SPLIT_AXIS_MAX_DEPTH) {
+  if (list.length === 0) {
     return [[left, right]];
+  } else if (depth > SPLIT_AXIS_MAX_DEPTH) {
+    // If we reach our max depth, we need to ensure that any item that haven't been added either list are accounted for
+    return left.length < right.length
+      ? [[left.concat(list), right]]
+      : [[left, right.concat(list)]];
   } else {
     return [
       ...generateSplits(
