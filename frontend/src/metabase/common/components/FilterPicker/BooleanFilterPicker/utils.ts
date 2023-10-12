@@ -1,18 +1,5 @@
 import * as Lib from "metabase-lib";
-import { OPTIONS } from "./constants";
-import type { Option, OptionType } from "./types";
-
-export function getOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): Option[] {
-  const operators = Lib.filterableColumnOperators(column);
-  const operatorNames = operators.map(
-    operator => Lib.displayInfo(query, stageIndex, operator).shortName,
-  );
-  return OPTIONS.filter(option => operatorNames.includes(option.operator));
-}
+import type { OptionType } from "./types";
 
 export function getOptionType(
   query: Lib.Query,

@@ -1,7 +1,17 @@
-import type { StringFilterOperatorName } from "metabase-lib";
+import type { PickerOperatorOption } from "../types";
 
-export type StringFilterValueCount = 0 | 1 | "multiple";
-export type StringFilterValueCountMap = Record<
-  StringFilterOperatorName,
-  StringFilterValueCount
->;
+type StringPickerOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with"
+  | "is-empty"
+  | "not-empty";
+
+export interface OperatorOption
+  extends PickerOperatorOption<StringPickerOperator> {
+  valueCount: number;
+  hasCaseSensitiveOption?: boolean;
+}

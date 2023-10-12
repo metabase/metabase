@@ -1,7 +1,17 @@
-import type { NumberFilterOperatorName } from "metabase-lib";
+import type { PickerOperatorOption } from "../types";
 
-export type NumberFilterValueCount = 0 | 1 | 2 | "multiple";
-export type NumberFilterValueCountMap = Record<
-  NumberFilterOperatorName,
-  NumberFilterValueCount
->;
+type NumberPickerOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | "between"
+  | ">="
+  | "<="
+  | "is-null"
+  | "not-null";
+
+export interface OperatorOption
+  extends PickerOperatorOption<NumberPickerOperator> {
+  valueCount: number;
+}

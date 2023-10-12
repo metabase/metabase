@@ -36,7 +36,6 @@ import type {
   ExpressionParts,
   FilterClause,
   FilterOperator,
-  FilterOperatorName,
   FilterParts,
   NumberFilterOperatorName,
   NumberFilterParts,
@@ -62,14 +61,6 @@ export function filterableColumnOperators(
   column: ColumnMetadata,
 ): FilterOperator[] {
   return ML.filterable_column_operators(column);
-}
-
-export function defaultFilterOperatorName(
-  query: Query,
-  stageIndex: number,
-  column: ColumnMetadata,
-): FilterOperatorName {
-  return "=";
 }
 
 export function filter(

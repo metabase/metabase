@@ -1,13 +1,36 @@
-import type { CoordinateFilterValueCountMap } from "./types";
+import type { OperatorOption } from "./types";
 
-// why doesn't mbql recognize is-null not-null for coordinates?
-export const coordinateFilterValueCountMap: CoordinateFilterValueCountMap = {
-  ">": 1,
-  ">=": 1,
-  "<": 1,
-  "<=": 1,
-  between: 2,
-  inside: 4,
-  "=": "multiple",
-  "!=": "multiple",
-};
+export const OPERATOR_OPTIONS: OperatorOption[] = [
+  {
+    operator: "=",
+    valueCount: Infinity,
+  },
+  {
+    operator: "!=",
+    valueCount: Infinity,
+  },
+  {
+    operator: "inside",
+    valueCount: 4,
+  },
+  {
+    operator: ">",
+    valueCount: 1,
+  },
+  {
+    operator: "<",
+    valueCount: 1,
+  },
+  {
+    operator: "between",
+    valueCount: 2,
+  },
+  {
+    operator: ">=",
+    valueCount: 1,
+  },
+  {
+    operator: "<=",
+    valueCount: 1,
+  },
+];

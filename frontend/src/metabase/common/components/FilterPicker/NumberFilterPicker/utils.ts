@@ -1,20 +1,23 @@
-import type { NumberFilterOperatorName } from "metabase-lib";
+import type { NumberFilterOperatorName } from "metabase-lib/types";
+import { OPERATOR_OPTIONS } from "./constants";
 
-import { numberFilterValueCountMap } from "./constants";
-
-export function isNumberFilterValid(
-  operatorName: NumberFilterOperatorName | null,
+export function isFilterValid(
+  operatorName: NumberFilterOperatorName,
   values: number[],
-): boolean {
-  if (!operatorName) {
+) {
+  const option = OPERATOR_OPTIONS.find(
+    option => option.operator === operatorName,
+  );
+  if (!option) {
     return false;
   }
 
-  const valueCount = numberFilterValueCountMap[operatorName];
+  const { valueCount } = option;
+  const filledValues = values.filter(
+    value => typeof value === "number" && Number.isFinite(value),
+  );
 
-  if (valueCount === "multiple") {
-    return values.length >= 1;
-  }
-
-  return values.length === valueCount;
+  return Number.isFinite(valueCount)
+    ? filledValues.length === valueCount
+    : filledValues.length >= 1;
 }

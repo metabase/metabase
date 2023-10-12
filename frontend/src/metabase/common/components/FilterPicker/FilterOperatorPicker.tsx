@@ -1,59 +1,24 @@
-import type { ChangeEvent } from "react";
 import { useMemo } from "react";
-import Select from "metabase/core/components/Select";
-import * as Lib from "metabase-lib";
+import type { SelectProps } from "metabase/ui";
+import { Select } from "metabase/ui";
+import type { FilterOperatorName } from "metabase-lib";
+import type { PickerOperatorOption } from "./types";
 
-type Option = {
-  name: string;
-  value: Lib.FilterOperatorName;
-};
-
-type FilterOperatorPickerProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  value: Lib.FilterOperatorName | null;
-  onChange: (operator: Lib.FilterOperatorName) => void;
-};
-
-export function FilterOperatorPicker({
-  query,
-  stageIndex,
-  column,
-  value,
-  onChange,
-}: FilterOperatorPickerProps) {
-  const options: Option[] = useMemo(
-    () => getOptions(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
-
-  return (
-    <div>
-      <Select
-        options={options}
-        value={value}
-        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-          onChange(e.target.value as Lib.FilterOperatorName)
-        }
-      />
-    </div>
-  );
+interface FilterOperatorPickerProps
+  extends Omit<SelectProps, "data" | "withinPortal"> {
+  options: PickerOperatorOption<FilterOperatorName>[];
 }
 
-function getOptions(
-  query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): Option[] {
-  const operators = Lib.filterableColumnOperators(column);
+export function FilterOperatorPicker({
+  options,
+  ...props
+}: FilterOperatorPickerProps) {
+  const data = useMemo(() => {
+    return options.map(option => ({
+      label: option.name,
+      value: option.operator,
+    }));
+  }, [options]);
 
-  return operators.map(operator => {
-    const operatorInfo = Lib.displayInfo(query, stageIndex, operator);
-
-    return {
-      name: operatorInfo.longDisplayName,
-      value: operatorInfo.shortName,
-    };
-  });
+  return <Select data={data} {...props} withinPortal={false} />;
 }

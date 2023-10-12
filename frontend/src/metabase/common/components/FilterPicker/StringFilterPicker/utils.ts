@@ -1,20 +1,23 @@
-import type { StringFilterOperatorName } from "metabase-lib";
+import type { StringFilterOperatorName } from "metabase-lib/types";
+import { OPERATOR_OPTIONS } from "./constants";
 
-import { stringFilterValueCountMap } from "./constants";
-
-export function isStringFilterValid(
-  operatorName: StringFilterOperatorName | null,
+export function isFilterValid(
+  operatorName: StringFilterOperatorName,
   values: string[],
-): boolean {
-  if (!operatorName) {
+) {
+  const option = OPERATOR_OPTIONS.find(
+    option => option.operator === operatorName,
+  );
+  if (!option) {
     return false;
   }
 
-  const valueCount = stringFilterValueCountMap[operatorName];
+  const { valueCount } = option;
+  const filledValues = values.filter(
+    value => typeof value === "string" && value.length > 0,
+  );
 
-  if (valueCount === "multiple") {
-    return values.length >= 1;
-  }
-
-  return values.length === valueCount;
+  return Number.isFinite(valueCount)
+    ? filledValues.length === valueCount
+    : filledValues.length >= 1;
 }
