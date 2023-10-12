@@ -85,6 +85,7 @@
                   :last_name        last-name
                   :email            email
                   :sso_source       :saml
+                  :groups           group-names
                   :login_attributes user-attributes}]
     (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
                         (sso-utils/create-new-sso-user! new-user))]
