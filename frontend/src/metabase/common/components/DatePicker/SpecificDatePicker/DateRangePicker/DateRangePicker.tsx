@@ -19,17 +19,19 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({
-  value: initialValue,
+  value: [initialStartDate, initialEndDate],
   isNew,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
-  const [[startDate, endDate], setValue] =
-    useState<DatesRangeValue>(initialValue);
-  const isValid = true;
+  const [startDate, setStartDate] = useState<DateValue>(initialStartDate);
+  const [endDate, setEndDate] = useState<DateValue>(initialEndDate);
+  const [openedDate, setOpenedDate] = useState(initialEndDate);
+  const isValid = startDate != null && endDate != null;
 
   const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
-    setValue([newStartDate, newEndDate]);
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
     if (newStartDate != null && newEndDate != null) {
       onChange([newStartDate, newEndDate]);
     }
@@ -45,8 +47,8 @@ export function DateRangePicker({
 
   return (
     <div>
-      <Stack p="md">
-        <Group>
+      <Stack p="md" align="center">
+        <Group align="center">
           <DateInput
             value={startDate}
             popoverProps={{ opened: false }}
@@ -55,15 +57,19 @@ export function DateRangePicker({
           <Text>{t`and`}</Text>
           <DateInput
             value={endDate}
+            date={openedDate}
             popoverProps={{ opened: false }}
             onChange={handleEndDateChange}
+            onDateChange={setOpenedDate}
           />
         </Group>
         <DatePicker
           type="range"
           value={[startDate, endDate]}
+          date={openedDate}
           allowSingleDateInRange
           onChange={handleRangeChange}
+          onDateChange={setOpenedDate}
         />
       </Stack>
       <Divider />

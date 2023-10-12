@@ -48,6 +48,13 @@ export function setDate(value: SpecificDatePickerValue, date: Date) {
   return { ...value, values: [date] };
 }
 
+export function setDateRange(
+  value: SpecificDatePickerValue,
+  dates: [Date, Date],
+) {
+  return { ...value, values: dates };
+}
+
 export function isDateRange(value: Date[]): value is [Date, Date] {
   return value.length === 2;
 }
