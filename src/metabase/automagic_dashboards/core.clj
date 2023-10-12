@@ -863,7 +863,15 @@
             (update-vals
               (group-by :affinity-set vs)
               (fn [vs]
-                {:cards (mapv :card-template vs)}))))))
+                ;; *At the moment* we are only using metric and dimension types to match cards.
+                ;; This logic should deduplicate cards that are identical except for filters.
+                ;; Once we add filters back into the mix, this will go away and just be
+                ;; `(mapv :card-template vs)`
+                (let [deduplicated-cards (->> (mapv :card-template vs)
+                                              (group-by (juxt :metrics :dimensions :visualization))
+                                              vals
+                                              (mapv first))]
+                  {:cards deduplicated-cards})))))))
 
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
