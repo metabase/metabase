@@ -5,14 +5,20 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Group, Text, Stack, Loader, Box, Divider, Title } from "metabase/ui";
+import { Group, Text, Loader, Title } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
-import { InfoText } from "../InfoText/InfoText";
+import { InfoText } from "../InfoText";
 import { ItemIcon } from "./components";
 
-import { SearchResultContainer } from "./SearchResult.styled";
+import {
+  DescriptionDivider,
+  DescriptionSection,
+  LoadingSection,
+  ResultNameSection,
+  SearchResultContainer,
+} from "./SearchResult.styled";
 
 export function SearchResult({
   result,
@@ -65,7 +71,7 @@ export function SearchResult({
       p="sm"
     >
       <ItemIcon active={isActive} item={result} type={model} />
-      <Stack justify="center" spacing={0} style={{ overflow: "hidden" }}>
+      <ResultNameSection justify="center" spacing={0}>
         <Group spacing="xs" align="center">
           <Title order={4} truncate>
             {name}
@@ -76,36 +82,25 @@ export function SearchResult({
           />
         </Group>
         <InfoText isCompact={compact} result={result} />
-      </Stack>
+      </ResultNameSection>
       {isLoading && (
-        <Box
-          style={{
-            gridRow: "1 / span 2",
-            gridColumn: 3,
-          }}
-          px="xs"
-        >
+        <LoadingSection px="xs">
           <Loader />
-        </Box>
+        </LoadingSection>
       )}
       {!compact && description && showDescription && (
-        <Box
-          style={{
-            gridColumnStart: 2,
-          }}
-        >
+        <DescriptionSection>
           <Group noWrap spacing="sm">
-            <Divider
+            <DescriptionDivider
               size="md"
               color="focus.0"
               orientation="vertical"
-              style={{ borderRadius: "0.25rem" }}
             />
             <Text align="left" size="sm" lineClamp={3}>
               {description}
             </Text>
           </Group>
-        </Box>
+        </DescriptionSection>
       )}
     </SearchResultContainer>
   );

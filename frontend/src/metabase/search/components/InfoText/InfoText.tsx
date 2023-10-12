@@ -1,13 +1,13 @@
 import { Fragment } from "react";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";
-import { LastEditedInfo } from "metabase/search/components/InfoText/InfoText.styled";
-import type { InfoTextData } from "metabase/search/components/InfoText/use-info-text";
-import { useInfoText } from "metabase/search/components/InfoText/use-info-text";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import type { AnchorProps, TextProps } from "metabase/ui";
 import { Group, Box, Text } from "metabase/ui";
+import { useInfoText } from "./use-info-text";
+import type { InfoTextData } from "./use-info-text";
+import { LastEditedInfo } from "./InfoText.styled";
 
 type InfoTextProps = {
   result: WrappedResult;

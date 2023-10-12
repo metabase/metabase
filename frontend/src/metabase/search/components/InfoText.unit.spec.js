@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { InfoText } from "./InfoText/InfoText";
+import { InfoText } from "./InfoText";
 
 const collection = { id: 1, name: "Collection Name" };
 const table = { id: 1, display_name: "Table Name" };

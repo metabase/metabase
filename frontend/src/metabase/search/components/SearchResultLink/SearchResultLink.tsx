@@ -13,16 +13,25 @@ export const SearchResultLink = ({
   href?: string | null;
   textProps?: TextProps | AnchorProps;
 }) => {
+  const componentProps = href
+    ? {
+        as: Anchor,
+        href,
+        td: "underline",
+      }
+    : {
+        as: Text,
+        td: "none",
+      };
+
   return (
     <ResultLink
-      as={href ? Anchor : Text}
-      href={href ?? undefined}
-      td={href ? "underline" : "none"}
+      {...componentProps}
       span
       c="text.1"
       truncate
-      {...textProps}
       onClick={e => e.stopPropagation()}
+      {...textProps}
     >
       {leftIcon && (
         <Box mr="xs" component="span">

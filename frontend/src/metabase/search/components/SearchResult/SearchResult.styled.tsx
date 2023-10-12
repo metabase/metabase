@@ -7,7 +7,7 @@ import { space } from "metabase/styled-components/theme";
 import Link from "metabase/core/components/Link";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { BoxProps, TextProps } from "metabase/ui";
-import { Box, Text } from "metabase/ui";
+import { Divider, Box, Text, Stack } from "metabase/ui";
 
 interface ResultStylesProps {
   compact: boolean;
@@ -93,12 +93,6 @@ const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
   }
 `;
 
-export const Description = styled(Text)`
-  padding-left: ${space(1)};
-  margin-top: ${space(1)} !important;
-  border-left: 2px solid ${lighten("brand", 0.45)};
-`;
-
 export const ResultSpinner = styled(LoadingSpinner)`
   display: flex;
   flex-grow: 1;
@@ -139,4 +133,21 @@ export const SearchResultContainer = styled(Box)<
         }
       }
     `}
+`;
+
+export const ResultNameSection = styled(Stack)`
+  overflow: hidden;
+`;
+
+export const LoadingSection = styled(Box)<BoxProps>`
+  grid-row: 1 / span 2;
+  grid-column: 3;
+`;
+
+export const DescriptionSection = styled(Box)`
+  grid-column-start: 2;
+`;
+
+export const DescriptionDivider = styled(Divider)`
+  border-radius: ${({ theme }) => theme.radius.xs};
 `;
