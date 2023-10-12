@@ -1,13 +1,14 @@
 import { t } from "ttag";
 import type { DashCardId } from "metabase-types/api";
 import type { StoreDashboardTab } from "metabase-types/store";
-import { Menu, Text } from "metabase/ui";
+import { Menu } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { useDashCardTabMenu } from "./use-dash-card-tab-menu";
 import {
   TabButton,
   VerticalDivider,
   ChevronStyledIcon,
+  TextWithMaxLines,
 } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
@@ -24,14 +25,14 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
 
   return (
     <>
-      <Text color="bg-dark" size="sm" ml={5}>
+      <TextWithMaxLines maxLines={2} color="bg-dark" size="sm" ml={5}>
         {t`Move to `}
         <Tooltip tooltip={t`Move to ${suggestedTab.name} tab`}>
           <TabButton size="sm" onClick={() => moveToTab(suggestedTab.id)}>
             {suggestedTab.name}
           </TabButton>
         </Tooltip>
-      </Text>
+      </TextWithMaxLines>
 
       {tabs.length > 1 && (
         <TabChevronMenu tabs={tabs} onTabSelect={tabId => moveToTab(tabId)} />
