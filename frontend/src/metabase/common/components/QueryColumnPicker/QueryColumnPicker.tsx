@@ -17,6 +17,13 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
+type Section<T = ColumnListItem> = {
+  key?: string;
+  name: string;
+  items: T[];
+  icon?: IconName;
+};
+
 export interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
@@ -25,18 +32,14 @@ export interface QueryColumnPickerProps {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   withDefaultBucketing?: boolean;
+  extraSections?: Section[];
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
+  onChangeSection?: (section: Section) => void;
   onClose?: () => void;
 }
-
-type Sections = {
-  name: string;
-  items: ColumnListItem[];
-  icon?: IconName;
-};
 
 export function QueryColumnPicker({
   className,
@@ -46,30 +49,32 @@ export function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
+  extraSections = [],
   maxHeight = DEFAULT_MAX_HEIGHT,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
+  onChangeSection,
   onClose,
 }: QueryColumnPickerProps) {
-  const sections: Sections[] = useMemo(
-    () =>
-      columnGroups.map(group => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  const sections: Section[] = useMemo(() => {
+    const columnSections = columnGroups.map(group => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+      const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
+        ...Lib.displayInfo(query, stageIndex, column),
+        column,
+      }));
 
-        return {
-          name: getGroupName(groupInfo),
-          icon: getGroupIcon(groupInfo),
-          items,
-        };
-      }),
-    [query, stageIndex, columnGroups],
-  );
+      return {
+        name: getGroupName(groupInfo),
+        icon: getGroupIcon(groupInfo),
+        items,
+      };
+    });
+
+    return [...columnSections, ...extraSections];
+  }, [query, stageIndex, columnGroups, extraSections]);
 
   const handleSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -157,6 +162,7 @@ export function QueryColumnPicker({
       maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleSelectColumn}
+      onChangeSection={onChangeSection}
       itemIsSelected={checkIsColumnSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
@@ -188,7 +194,9 @@ function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
-function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
+function getGroupIcon(
+  groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
+): IconName | undefined {
   if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
     return "table";
   }
