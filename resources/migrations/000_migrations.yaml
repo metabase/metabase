@@ -15372,6 +15372,14 @@ databaseChangeLog:
                   remarks: 'Metabase version used to create the revision.'
 
   - changeSet:
+      id: v48.00-022
+      author: piranha
+      comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
+
+  - changeSet:
       id: v48.00-026
       author: lbrdnk
       comment: Set semantic_type with value type/Number to null (#18754)

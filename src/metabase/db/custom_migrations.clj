@@ -18,6 +18,8 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -716,6 +718,8 @@
     (run! rollback-one! (t2/reducible-query {:select [:id :settings :options]
                                              :from   [:metabase_database]}))))
 
+;;; Fix click through migration
+
 (defn- fix-click-through
   "Fixes click behavior settings on dashcards, returns nil if no fix available. Format changed from:
 
@@ -809,11 +813,10 @@
 
 ;; This was previously a data migration, hence the metadata. The metadata is unused but potentially useful
 ;; as documentation.
-(defn-
-  ^{:author "dpsutton"
-    :added  "0.38.1"
-    :doc    "Migration of old 'custom drill-through' to new 'click behavior'; see #15014"}
-  migrate-click-through!
+(defn- migrate-click-through!
+  {:author "dpsutton"
+   :added  "0.38.1"
+   :doc    "Migration of old 'custom drill-through' to new 'click behavior'; see #15014"}
   []
   (transduce (comp (map (parse-to-json :card_visualization :dashcard_visualization))
                    (map fix-click-through)
@@ -841,3 +844,49 @@
 
 (define-migration MigrateClickThrough
   (migrate-click-through!))
+
+;;; Removing admin from group mapping migration
+
+(defn- raw-setting
+  "Get raw setting directly from DB.
+  For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
+  [[metabase.models.setting/defsetting]] instead of value from Setting table."
+  [k]
+  (t2/select-one-fn :value setting/Setting :key (name k)))
+
+(defn- remove-admin-group-from-mappings-by-setting-key!
+  [mapping-setting-key]
+  (let [admin-group-id (:id (perms-group/admin))
+        mapping        (try
+                        (json/parse-string (raw-setting mapping-setting-key))
+                        (catch Exception _e
+                          {}))]
+    (when-not (empty? mapping)
+      (t2/update! setting/Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
+
+(defn migrate-remove-admin-from-group-mapping-if-needed
+  {:author "qnkhuat"
+    :added  "0.43.0"
+    :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken
+            and haven't really worked (see #13820).
+            In #20991 we remove this option entirely and make sync for admin group just like a regular group.
+            But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
+              - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
+              - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
+            if `ldap-sync-admin-group` has never been written, getting raw-setting will return a `nil`, and nil could
+            also be interpreted as disabled. so checking `(not= x \"true\")` is safer than `(= x \"false\")`."}
+  []
+  (when (not= (raw-setting :ldap-sync-admin-group) "true")
+    (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
+  ;; sso are enterprise feature but we still run this even in OSS in case a customer
+  ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
+  (remove-admin-group-from-mappings-by-setting-key! :jwt-group-mappings)
+  (remove-admin-group-from-mappings-by-setting-key! :saml-group-mappings))
+
+(define-migration MigrateRemoveAdminFromGroupMappingIfNeeded
+  (migrate-remove-admin-from-group-mapping-if-needed))
