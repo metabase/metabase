@@ -33,15 +33,13 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
   };
 
-  const onOutputChange = (key: FilterTypeKeys, val: SearchQueryParamValue) => {
+  const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
     if (!val) {
       onChange(_.omit(value, key));
     } else {
-      const filterMapElement = filterMap[key];
-      const toUrl = filterMapElement?.toUrl;
       onChange({
         ...value,
-        [key]: toUrl?.(val) ?? val,
+        [key]: val,
       });
     }
   };
@@ -49,15 +47,19 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const getFilter = (key: FilterTypeKeys) => {
     const Filter: SearchFilterComponent = filterMap[key];
 
-    const filterValue = Filter.fromUrl?.(value[key]) ?? value[key];
+    if (!Filter.type) {
+      return null;
+    }
+
+    const filterValue = Filter.fromUrl(value[key]);
 
     if (Filter.type === "toggle") {
       return (
         <ToggleSidebarFilter
-          data-testid={`${key}-search-filter`}
-          value={filterValue}
-          onChange={value => onOutputChange(key, Filter.toUrl(value))}
           filter={Filter}
+          value={filterValue}
+          data-testid={`${key}-search-filter`}
+          onChange={value => onOutputChange(key, Filter.toUrl(value))}
         />
       );
     } else if (Filter.type === "dropdown") {

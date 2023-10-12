@@ -22,10 +22,10 @@ export interface WrappedResult extends SearchResult {
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedByFilterProps = UserId;
-export type LastEditedByProps = UserId;
-export type VerifiedFilterProps = true;
-export type NativeQueryFilterProps = true;
+export type CreatedByFilterProps = UserId[];
+export type LastEditedByProps = UserId[];
+export type VerifiedFilterProps = true | null;
+export type NativeQueryFilterProps = true | null;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
@@ -52,8 +52,8 @@ export type SearchAwareLocation = Location<
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
-  value: SearchFilterPropTypes[T] | null;
-  onChange: (value: SearchFilterPropTypes[T] | null) => void;
+  value: SearchFilterPropTypes[T];
+  onChange: (value: SearchFilterPropTypes[T]) => void;
   "data-testid"?: string;
   width?: string;
 } & Record<string, unknown>;

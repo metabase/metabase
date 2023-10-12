@@ -1,5 +1,26 @@
 import type { UserId } from "metabase-types/api";
 import type { SearchQueryParamValue } from "metabase/search/types";
+import { isNotNull } from "metabase/core/utils/types";
+
+export const parseUserIdArray = (value: SearchQueryParamValue): UserId[] => {
+  if (!value) {
+    return [];
+  }
+
+  if (typeof value === "string") {
+    const parsedValue = parseUserId(value);
+    return parsedValue ? [parsedValue] : [];
+  }
+
+  if (Array.isArray(value)) {
+    const parsedIds: (number | null)[] = value.map(idString =>
+      parseUserId(idString),
+    );
+    return parsedIds.filter(isNotNull);
+  }
+
+  return [];
+};
 
 export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   if (!value || Array.isArray(value)) {
@@ -14,5 +35,7 @@ export const parseUserId = (value: SearchQueryParamValue): UserId | null => {
   return numValue;
 };
 
-export const stringifyUserId = (value: UserId | null): SearchQueryParamValue =>
-  Number.isInteger(value) ? String(value) : null;
+export const stringifyUserIdArray = (
+  value?: UserId[] | null,
+): SearchQueryParamValue =>
+  value ? value.map(idString => String(idString)) : [];
