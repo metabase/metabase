@@ -36,6 +36,10 @@
                 ;; Truncate middle of token so that the full value isn't visibile in the UI
                 (str (subs token 0 9) "..." (subs token (- (count token) 4)))))))
 
+(defn- unobfuscated-slack-app-token
+  []
+  (setting/get-value-of-type :string :slack-app-token))
+
 (defsetting slack-token-valid?
   (deferred-tru
     (str "Whether the current Slack app token, if set, is valid. "
@@ -121,7 +125,7 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (slack-app-token)
+                  (unobfuscated-slack-app-token)
                   (slack-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
