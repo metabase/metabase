@@ -31,6 +31,7 @@ export const TabButton = styled(Anchor)<TapButtonProps>`
 `;
 
 export const ChevronStyledIcon = styled(Icon)`
+  flex-shrink: 0;
   &:hover {
     cursor: pointer;
     color: ${color("brand")};
