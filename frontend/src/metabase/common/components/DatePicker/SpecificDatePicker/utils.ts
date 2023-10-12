@@ -40,6 +40,14 @@ export function setOperator(
   }
 }
 
+export function getDate(value: SpecificDatePickerValue) {
+  return value.values[0];
+}
+
+export function setDate(value: SpecificDatePickerValue, date: Date) {
+  return { ...value, values: [date] };
+}
+
 export function isDateRange(value: SpecificDatePickerValue) {
   return value.operator === "between";
 }
