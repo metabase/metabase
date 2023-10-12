@@ -13,6 +13,7 @@ import {
   TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
+import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
 import {
   availableTemporalBuckets,
@@ -494,10 +495,6 @@ function findTemporalBucket(
     const bucketInfo = displayInfo(query, stageIndex, bucket);
     return bucketInfo.shortName === bucketName;
   });
-}
-
-function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
-  return ML.is_column_metadata(arg);
 }
 
 function isExpression(arg: unknown): arg is ExpressionParts {

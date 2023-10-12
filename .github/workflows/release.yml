@@ -459,7 +459,7 @@ jobs:
               repo: '${{ secrets.DOCS_REPO }}',
               event_type: 'trigger-docs-update',
               client_payload: {
-                version: '${{ github.ref_name }}'
+                version: '${{ inputs.version }}'
               }
             });
 

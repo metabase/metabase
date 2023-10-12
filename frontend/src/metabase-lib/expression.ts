@@ -7,6 +7,7 @@ import type {
   ExpressionOptions,
   ExpressionParts,
   FilterClause,
+  JoinCondition,
   Query,
 } from "./types";
 
@@ -37,7 +38,7 @@ export function expressionableColumns(
 export function expressionParts(
   query: Query,
   stageIndex: number,
-  clause: ExpressionClause | FilterClause,
+  clause: ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
   return ML.expression_parts(query, stageIndex, clause);
 }

@@ -10,6 +10,8 @@ import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -81,7 +83,7 @@ class DashboardHeader extends Component {
   }
 
   state = {
-    modal: null,
+    showCancelWarning: false,
   };
 
   static propTypes = {
@@ -89,6 +91,7 @@ class DashboardHeader extends Component {
     fetchPulseFormInput: PropTypes.func.isRequired,
     formInput: PropTypes.object.isRequired,
     isAdmin: PropTypes.bool,
+    isDirty: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -151,6 +154,10 @@ class DashboardHeader extends Component {
     this.props.onEditingChange(dashboard);
   }
 
+  handleCancelWarningClose = () => {
+    this.setState({ showCancelWarning: false });
+  };
+
   handleToggleBookmark() {
     const { createBookmark, deleteBookmark, isBookmarked } = this.props;
 
@@ -206,10 +213,20 @@ class DashboardHeader extends Component {
     this.onDoneEditing();
   }
 
-  async onCancel() {
+  onRequestCancel = () => {
+    const { isDirty, isEditing } = this.props;
+
+    if (isDirty && isEditing) {
+      this.setState({ showCancelWarning: true });
+    } else {
+      this.onCancel();
+    }
+  };
+
+  onCancel = () => {
     this.onRevert();
     this.onDoneEditing();
-  }
+  };
 
   getEditWarning(dashboard) {
     if (dashboard.embedding_params) {
@@ -234,7 +251,7 @@ class DashboardHeader extends Component {
         data-metabase-event="Dashboard;Cancel Edits"
         key="cancel"
         className="Button Button--small mr1"
-        onClick={() => this.onCancel()}
+        onClick={this.onRequestCancel}
       >
         {t`Cancel`}
       </Button>,
@@ -502,31 +519,43 @@ class DashboardHeader extends Component {
       setSidebar,
       isHomepageDashboard,
     } = this.props;
+    const { showCancelWarning } = this.state;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderComponent
-        headerClassName="wrapper"
-        objectType="dashboard"
-        analyticsContext="Dashboard"
-        location={this.props.location}
-        dashboard={dashboard}
-        isEditing={isEditing}
-        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
-        isEditingInfo={isEditing}
-        isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
-        editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`.concat(
-          isHomepageDashboard
-            ? t` Remember that this dashboard is set as homepage.`
-            : "",
-        )}
-        editingButtons={this.getEditingButtons()}
-        setDashboardAttribute={setDashboardAttribute}
-        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-      />
+      <>
+        <DashboardHeaderComponent
+          headerClassName="wrapper"
+          objectType="dashboard"
+          analyticsContext="Dashboard"
+          location={this.props.location}
+          dashboard={dashboard}
+          isEditing={isEditing}
+          isBadgeVisible={
+            !isEditing && !isFullscreen && isAdditionalInfoVisible
+          }
+          isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+          isEditingInfo={isEditing}
+          isNavBarOpen={this.props.isNavBarOpen}
+          headerButtons={this.getHeaderButtons()}
+          editWarning={this.getEditWarning(dashboard)}
+          editingTitle={t`You're editing this dashboard.`.concat(
+            isHomepageDashboard
+              ? t` Remember that this dashboard is set as homepage.`
+              : "",
+          )}
+          editingButtons={this.getEditingButtons()}
+          setDashboardAttribute={setDashboardAttribute}
+          onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
+        />
+
+        <Modal isOpen={showCancelWarning}>
+          <LeaveConfirmationModalContent
+            onAction={this.onCancel}
+            onClose={this.handleCancelWarningClose}
+          />
+        </Modal>
+      </>
     );
   }
 }
