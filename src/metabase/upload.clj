@@ -350,7 +350,8 @@
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
            :num-columns       (count csv-col-names)
-           :generated-columns (count gen-col->upload-type)
+           :generated-columns (- (count col-to-create->col-spec)
+                                 (count col-to-insert->upload-type))
            :size-mb           (/ (.length csv-file)
                                  1048576.0)}))
       (catch Throwable e
