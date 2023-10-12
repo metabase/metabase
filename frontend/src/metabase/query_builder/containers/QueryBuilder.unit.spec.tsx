@@ -375,7 +375,6 @@ describe("QueryBuilder", () => {
         await startNewNotebookModel();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
@@ -392,7 +391,6 @@ describe("QueryBuilder", () => {
           await triggerNotebookQueryChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
           expect(mockEvent.preventDefault).toHaveBeenCalled();
           expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
         });
@@ -513,9 +511,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
 
@@ -536,9 +532,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when user tries to leave an ad-hoc structured query", async () => {
@@ -553,9 +547,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -565,9 +557,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
   });
