@@ -46,7 +46,7 @@ export function DateRangePicker({
 
   return (
     <div>
-      <Stack p="md">
+      <Stack p="md" align="center">
         <Group align="center">
           <DateInput
             value={startDate}

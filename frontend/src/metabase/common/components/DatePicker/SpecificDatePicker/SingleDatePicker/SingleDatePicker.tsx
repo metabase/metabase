@@ -36,11 +36,12 @@ export function SingleDatePicker({
 
   return (
     <div>
-      <Stack p="md">
+      <Stack p="md" align="center">
         <DateInput
           value={value}
           date={openedDate}
           popoverProps={{ opened: false }}
+          w="100%"
           onChange={handleChange}
           onDateChange={setOpenedDate}
         />
