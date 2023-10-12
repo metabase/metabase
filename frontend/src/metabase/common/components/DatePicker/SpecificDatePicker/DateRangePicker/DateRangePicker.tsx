@@ -8,8 +8,11 @@ import {
   Group,
   Stack,
   Text,
+  TimeInput,
 } from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
+import { setTime } from "./utils";
 
 interface DateRangePickerProps {
   value: [Date, Date];
@@ -26,6 +29,7 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
   const [startDate, setStartDate] = useState<DateValue>(initialStartDate);
   const [endDate, setEndDate] = useState<DateValue>(initialEndDate);
+  const [hasTime, setHasTime] = useState(false);
   const isValid = startDate != null && endDate != null;
 
   const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
@@ -44,6 +48,18 @@ export function DateRangePicker({
     handleRangeChange([startDate, newEndDate]);
   };
 
+  const handleStartTimeChange = (newStartTime: Date) => {
+    handleStartDateChange(setTime(startDate ?? initialStartDate, newStartTime));
+  };
+
+  const handleEndTimeChange = (newEndTime: Date) => {
+    handleEndDateChange(setTime(endDate ?? initialEndDate, newEndTime));
+  };
+
+  const handleTimeToggle = () => {
+    setHasTime(!hasTime);
+  };
+
   return (
     <div>
       <Stack p="md" align="center">
@@ -60,6 +76,13 @@ export function DateRangePicker({
             onChange={handleEndDateChange}
           />
         </Group>
+        {hasTime && (
+          <Group align="center">
+            <TimeInput value={startDate} onChange={handleStartTimeChange} />
+            <Text>{t`and`}</Text>
+            <TimeInput value={endDate} onChange={handleEndTimeChange} />
+          </Group>
+        )}
         <DatePicker
           type="range"
           value={[startDate, endDate]}
@@ -69,7 +92,15 @@ export function DateRangePicker({
         />
       </Stack>
       <Divider />
-      <Group p="sm" position="right">
+      <Group p="sm" position="apart">
+        <Button
+          c="text.1"
+          variant="subtle"
+          leftIcon={<Icon name="clock" />}
+          onClick={handleTimeToggle}
+        >
+          {hasTime ? t`Remove time` : t`Add time`}
+        </Button>
         <Button variant="filled" disabled={!isValid} onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>

@@ -37,7 +37,9 @@ export function SingleDatePicker({
   };
 
   const handleTimeChange = (newTime: Date) => {
-    onChange(setTime(value ?? initialValue, newTime));
+    const newDate = setTime(value ?? initialValue, newTime);
+    setValue(newDate);
+    onChange(newDate);
   };
 
   const handleTimeToggle = () => {
@@ -46,18 +48,15 @@ export function SingleDatePicker({
 
   return (
     <div>
-      <Stack p="md" align="center">
+      <Stack p="md">
         <DateInput
           value={value}
           date={openedDate}
           popoverProps={{ opened: false }}
-          w="100%"
           onChange={handleDateChange}
           onDateChange={setOpenedDate}
         />
-        {hasTime && (
-          <TimeInput value={value} w="100%" onChange={handleTimeChange} />
-        )}
+        {hasTime && <TimeInput value={value} onChange={handleTimeChange} />}
         <DatePicker
           value={value}
           date={openedDate}
