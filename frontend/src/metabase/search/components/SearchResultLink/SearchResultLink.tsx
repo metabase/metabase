@@ -1,11 +1,10 @@
-import { ResultLink } from "metabase/search/components/SearchResultLink/SearchResultLink.styled";
 import type { TextProps, AnchorProps } from "metabase/ui";
-import { Anchor, Box, Text } from "metabase/ui";
+import { Anchor, Text } from "metabase/ui";
 
 export const SearchResultLink = ({
   children,
   leftIcon = null,
-  href,
+  href = null,
   ...textProps
 }: {
   children: JSX.Element | string | null;
@@ -13,29 +12,18 @@ export const SearchResultLink = ({
   href?: string | null;
   textProps?: TextProps | AnchorProps;
 }) => {
-  const componentProps = href ? { as: Anchor, href } : { as: Text };
+  const Component = href ? Anchor : Text;
+
   return (
-    <Box
-      display="contents"
-      onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-        e.stopPropagation();
-      }}
+    <Component
+      href={href ?? undefined}
+      td={href ? "underline" : "none"}
+      span
+      c="text.1"
+      truncate
+      {...textProps}
     >
-      {leftIcon && (
-        <Box component="span" mr="0.15rem" pos="relative" top="0.15rem">
-          {leftIcon}
-        </Box>
-      )}
-      <ResultLink
-        span
-        td={href ? "underline" : "none"}
-        c="text.1"
-        truncate
-        {...componentProps}
-        {...textProps}
-      >
-        {children}
-      </ResultLink>
-    </Box>
+      {children}
+    </Component>
   );
 };

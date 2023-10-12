@@ -5,14 +5,14 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Group, Text, Stack, Loader, Box, Divider } from "metabase/ui";
+import { Group, Text, Stack, Loader, Box, Divider, Title } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
 import { InfoText } from "./InfoText";
 import { ItemIcon } from "./components";
 
-import { ResultTitle, SearchResultContainer } from "./SearchResult.styled";
+import { SearchResultContainer } from "./SearchResult.styled";
 
 export function SearchResult({
   result,
@@ -40,7 +40,7 @@ export function SearchResult({
     [dispatch],
   );
 
-  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
     if (!isActive) {
@@ -57,7 +57,7 @@ export function SearchResult({
 
   return (
     <SearchResultContainer
-      tabIndex={0}
+      component="button"
       onClick={handleClick}
       isActive={isActive}
       isSelected={isSelected}
@@ -66,9 +66,9 @@ export function SearchResult({
       <ItemIcon active={isActive} item={result} type={model} />
       <Stack justify="center" spacing={0} style={{ overflow: "hidden" }}>
         <Group spacing="xs" align="center">
-          <ResultTitle lh="unset" fw={700} size="md" truncate>
+          <Title order={4} truncate>
             {name}
-          </ResultTitle>
+          </Title>
           <PLUGIN_MODERATION.ModerationStatusIcon
             status={moderated_status}
             size={14}
@@ -100,7 +100,7 @@ export function SearchResult({
               orientation="vertical"
               style={{ borderRadius: "0.25rem" }}
             />
-            <Text size="sm" lineClamp={3}>
+            <Text align="left" size="sm" lineClamp={3}>
               {description}
             </Text>
           </Group>

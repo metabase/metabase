@@ -112,18 +112,21 @@ export const ResultTitle = styled(Text)<TextProps>``;
 
 export const SearchResultContainer = styled(Box)<
   BoxProps &
-    HTMLAttributes<HTMLDivElement> & { isActive: boolean; isSelected: boolean }
+    HTMLAttributes<HTMLButtonElement> & {
+      isActive: boolean;
+      isSelected: boolean;
+    }
 >`
   display: grid;
   grid-template-columns: auto 1fr auto;
   justify-content: center;
   align-items: center;
   gap: 0.5rem 0.75rem;
-  border-radius: ${({ theme }) => theme.radius.md};
 
   ${({ theme, isActive, isSelected }) =>
     isActive &&
     css`
+      border-radius: ${theme.radius.md};
       color: ${isSelected && theme.colors.brand[1]};
       background-color: ${isSelected && theme.colors.brand[0]};
 
