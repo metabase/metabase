@@ -73,8 +73,11 @@
             (.setAutoCommit conn false)
             (try
              (doseq [stmt stmts]
-               (jdbc/execute! {:connection conn} [stmt])
-               #_(next.jdbc/execute! conn [stmt]))
+               (let [stmt (str/trim stmt)]
+                 (if (or (str/starts-with? stmt "select")
+                         (str/starts-with? stmt "SELECT"))
+                   (jdbc/query {:connection conn} [stmt])
+                   (jdbc/execute! {:connection conn} [stmt]))))
              (.commit conn)
              (catch Exception e
                (.rollback conn)

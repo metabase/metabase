@@ -79,7 +79,7 @@
 
 (defn- fresh-install?
   [^java.sql.Connection conn]
-  (table-exists? "databasechangelog" conn))
+  (not (table-exists? "databasechangelog" conn)))
 
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
@@ -216,12 +216,11 @@
     ;; sure something still needs to be done...
      (let [unrun-migrations-count (count (unrun-migrations liquibase))]
        (if (pos? unrun-migrations-count)
-         (do
-          (log/info (trs "Migration lock is cleared. Running {0} migrations ..." unrun-migrations-count))
-          (let [^Contexts contexts nil
-                start-time         (System/currentTimeMillis)]
-            (.update liquibase contexts)
-            (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))))
+         (let [^Contexts contexts nil
+               start-time         (System/currentTimeMillis)]
+           (log/info (trs "Migration lock is cleared. Running {0} migrations ..." unrun-migrations-count))
+           (.update liquibase contexts)
+           (log/info (trs "Migration complete in {0}" (u/format-milliseconds (- (System/currentTimeMillis) start-time)))))
          (log/info
           (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (log/info (trs "No unrun migrations found."))))

@@ -1,16 +1,12 @@
 --
 -- PostgreSQL database dump
 --
-
--- Dumped from database version 14.6 (Homebrew)
--- Dumped by pg_dump version 14.6 (Homebrew)
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
---SELECT pg_catalog.set_config('search_path', '', false); # TODO: this should be uncommented
+SELECT pg_catalog.set_config('search_path', '', true);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -3945,50 +3941,50 @@ ALTER TABLE ONLY public.view_log
 -- PostgreSQL database dump complete
 --
 
--- v43.00-002 and v43.00-003;
+--
+-- Metabase initialization data
+--
 
-INSERT INTO permissions_group (name) VALUES ('All Users'), ('Administrators');
+
+-- v43.00-002 and v43.00-003;
+INSERT INTO public.permissions_group (name) VALUES ('All Users'), ('Administrators');
 
 -- v43.00-006;
-
-INSERT INTO permissions (group_id, object) SELECT
+INSERT INTO public.permissions (group_id, object) SELECT
   admin_group.id AS group_id,
   '/' AS object
 FROM (
   SELECT id
-  FROM permissions_group
+  FROM public.permissions_group
   WHERE name = 'Administrators'
 ) admin_group;
 
 -- v43.00-020;
-
-INSERT INTO permissions (group_id, object) SELECT
+INSERT INTO public.permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/collection/root/' AS object
 FROM (
   SELECT id
-  FROM permissions_group
+  FROM public.permissions_group
   WHERE name = 'All Users'
 ) all_users_group;
 
 -- v43.00-047 but change general => application because we renamed in v43.00-058;
-
-INSERT INTO permissions (group_id, object) SELECT
+INSERT INTO public.permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/application/subscription/' AS object
 FROM (
   SELECT id
-  FROM permissions_group
+  FROM public.permissions_group
   WHERE name = 'All Users'
 ) all_users_group ;
 
 -- v44.00-033;
-
-INSERT INTO permissions (group_id, object) SELECT
+INSERT INTO public.permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/collection/namespace/snippets/root/' AS object
 FROM (
   SELECT id
-  FROM permissions_group
+  FROM public.permissions_group
   WHERE name = 'All Users'
 ) all_users_group;

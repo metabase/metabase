@@ -1254,8 +1254,15 @@ CREATE TABLE `view_log` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+--
+-- Metabase initialization data
+--
+
+-- v43.00-002 and v43.00-003;
 INSERT INTO permissions_group (name) VALUES ('All Users'), ('Administrators');
 
+-- v43.00-006;
 INSERT INTO permissions (group_id, object) SELECT
   admin_group.id AS group_id,
   '/' AS object
@@ -1265,6 +1272,7 @@ FROM (
   WHERE name = 'Administrators'
 ) admin_group;
 
+-- v43.00-020;
 INSERT INTO permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/collection/root/' AS object
@@ -1274,6 +1282,7 @@ FROM (
   WHERE name = 'All Users'
 ) all_users_group;
 
+-- v43.00-047 but change general => application because we renamed in v43.00-058;
 INSERT INTO permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/application/subscription/' AS object
@@ -1283,6 +1292,7 @@ FROM (
   WHERE name = 'All Users'
 ) all_users_group;
 
+-- v44.00-033;
 INSERT INTO permissions (group_id, object) SELECT
   all_users_group.id AS group_id,
   '/collection/namespace/snippets/root/' AS object
