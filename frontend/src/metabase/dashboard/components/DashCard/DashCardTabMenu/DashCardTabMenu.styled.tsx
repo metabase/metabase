@@ -2,16 +2,8 @@ import styled from "@emotion/styled";
 import type { MouseEventHandler } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import type { AnchorProps, TextProps } from "metabase/ui";
-import { Text, Anchor } from "metabase/ui";
-
-export const TextWithMaxLines = styled(Text)<TextProps & { maxLines: number }>`
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: ${props => props.maxLines};
-  line-clamp: ${props => props.maxLines};
-  -webkit-box-orient: vertical;
-`;
+import type { AnchorProps } from "metabase/ui";
+import { Anchor } from "metabase/ui";
 
 export const VerticalDivider = styled.div`
   align-self: stretch;
