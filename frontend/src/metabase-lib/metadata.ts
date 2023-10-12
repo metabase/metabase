@@ -20,6 +20,8 @@ import type {
   ColumnMetadata,
   DrillThru,
   DrillThruDisplayInfo,
+  FilterOperator,
+  FilterOperatorDisplayInfo,
   JoinConditionOperator,
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
@@ -29,11 +31,11 @@ import type {
   MetricDisplayInfo,
   OrderByClause,
   OrderByClauseDisplayInfo,
+  Query,
+  SegmentMetadata,
+  SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
-  Query,
-  FilterOperator,
-  FilterOperatorDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -127,6 +129,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   filterOperator: FilterOperator,
 ): FilterOperatorDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  segment: SegmentMetadata,
+): SegmentDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

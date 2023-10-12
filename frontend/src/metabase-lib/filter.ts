@@ -42,6 +42,7 @@ import type {
   Query,
   RelativeDateBucketName,
   RelativeDateFilterParts,
+  SegmentMetadata,
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterOperatorName,
@@ -66,7 +67,7 @@ export function filterableColumnOperators(
 export function filter(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause | ExpressionClause,
+  filterClause: FilterClause | ExpressionClause | SegmentMetadata,
 ): Query {
   return ML.filter(query, stageIndex, filterClause);
 }

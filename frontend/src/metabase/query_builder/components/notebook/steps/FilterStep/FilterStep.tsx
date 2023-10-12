@@ -36,7 +36,7 @@ export function FilterStep({
 
   const handleUpdateFilter = (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause,
+    nextFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,

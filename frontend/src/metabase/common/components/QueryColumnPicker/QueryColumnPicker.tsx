@@ -20,6 +20,16 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
+export type SegmentListItem = Lib.SegmentDisplayInfo & {
+  segment: Lib.SegmentMetadata;
+};
+
+const isSegmentListItem = (
+  item: ColumnListItem | SegmentListItem,
+): item is SegmentListItem => {
+  return (item as SegmentListItem).segment !== undefined;
+};
+
 export interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
@@ -32,12 +42,13 @@ export interface QueryColumnPickerProps {
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
+  onSelectSegment?: (segment: Lib.SegmentMetadata) => void;
   onClose?: () => void;
 }
 
 type Sections = {
   name: string;
-  items: ColumnListItem[];
+  items: (ColumnListItem | SegmentListItem)[];
   icon?: IconName;
 };
 
@@ -53,6 +64,7 @@ export function QueryColumnPicker({
   color = "brand",
   checkIsColumnSelected,
   onSelect,
+  onSelectSegment,
   onClose,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
@@ -83,7 +95,11 @@ export function QueryColumnPicker({
   );
 
   const handleSelectColumn = useCallback(
-    (item: ColumnListItem) => {
+    (item: ColumnListItem | SegmentListItem) => {
+      if (isSegmentListItem(item)) {
+        onSelectSegment?.(item.segment);
+        return;
+      }
       const isSameColumn = checkIsColumnSelected(item);
 
       if (isSameColumn) {
@@ -125,6 +141,7 @@ export function QueryColumnPicker({
       checkIsColumnSelected,
       handleSelect,
       onClose,
+      onSelectSegment,
     ],
   );
 
@@ -181,6 +198,12 @@ function omitItemDescription() {
   return null;
 }
 
-function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getColumnIcon(item.column)} size={18} />;
+function renderItemIcon(item: ColumnListItem | SegmentListItem) {
+  if (isSegmentListItem(item)) {
+    return <Icon name="star" size={18} />;
+  }
+
+  if (item.column) {
+    return <Icon name={getColumnIcon(item.column)} size={18} />;
+  }
 }

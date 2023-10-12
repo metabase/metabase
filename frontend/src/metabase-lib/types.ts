@@ -141,6 +141,14 @@ export type ColumnDisplayInfo = {
   selected?: boolean; // used in aggregation and field clauses
 };
 
+export type SegmentDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  effectiveType: string;
+};
+
 export type AggregationOperatorDisplayInfo = {
   columnName: string;
   displayName: string;
@@ -192,7 +200,8 @@ export type ExpressionOperatorName =
   | "interval"
   | "time-interval"
   | "relative-datetime"
-  | "inside";
+  | "inside"
+  | "segment";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 

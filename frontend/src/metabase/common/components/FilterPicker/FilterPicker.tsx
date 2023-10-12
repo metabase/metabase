@@ -102,7 +102,7 @@ export function FilterPicker({
 
   const checkColumnSelected = () => false;
 
-  const handleChange = (filter: Lib.ExpressionClause) => {
+  const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
     onClose?.();
   };
