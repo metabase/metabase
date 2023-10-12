@@ -1,7 +1,16 @@
-import type { CoordinateFilterOperatorName } from "metabase-lib";
+import type { PickerOperatorOption } from "../types";
 
-export type CoordinateFilterValueCount = 0 | 1 | 2 | 4 | "multiple";
-export type CoordinateFilterValueCountMap = Record<
-  CoordinateFilterOperatorName,
-  CoordinateFilterValueCount
->;
+type CoordinatePickerOperator =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | "between"
+  | "inside"
+  | ">="
+  | "<=";
+
+export interface OperatorOption
+  extends PickerOperatorOption<CoordinatePickerOperator> {
+  valueCount: number;
+}

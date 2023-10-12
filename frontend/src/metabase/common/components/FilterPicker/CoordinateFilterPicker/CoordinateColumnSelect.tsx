@@ -10,19 +10,21 @@ import {
   findLongitudeColumns,
 } from "./utils";
 
+interface CoordinateColumnSelectProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  value: Lib.ColumnMetadata | null;
+  onChange: (column: Lib.ColumnMetadata) => void;
+}
+
 export function CoordinateColumnSelect({
   query,
   stageIndex,
   column,
   value,
   onChange,
-}: {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  value: Lib.ColumnMetadata | null;
-  onChange: (column: Lib.ColumnMetadata) => void;
-}) {
+}: CoordinateColumnSelectProps) {
   const latitudeColumns = findLatitudeColumns(query, stageIndex);
   const longitudeColumns = findLongitudeColumns(query, stageIndex);
 
@@ -36,16 +38,17 @@ export function CoordinateColumnSelect({
     return null;
   }
 
+  const options = getColumnOptions({
+    query,
+    stageIndex,
+    columns:
+      columnDirection === "latitude" ? longitudeColumns : latitudeColumns,
+  });
+
   const selectLabel =
     columnDirection === "latitude"
       ? t`Select longitude column`
       : t`Select latitude column`;
-
-  const options = (
-    columnDirection === "latitude"
-      ? () => getColumnOptions({ query, stageIndex, columns: longitudeColumns })
-      : () => getColumnOptions({ query, stageIndex, columns: latitudeColumns })
-  )();
 
   const handleChange = (newValue: string) => {
     const selectedOption = options.find(option => option.value === newValue);

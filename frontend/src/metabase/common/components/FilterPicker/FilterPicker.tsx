@@ -7,6 +7,7 @@ import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
 import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
 import { StringFilterPicker } from "./StringFilterPicker";
+import { TimeFilterPicker } from "./TimeFilterPicker";
 
 export interface FilterPickerProps {
   query: Lib.Query;
@@ -92,17 +93,20 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isBoolean(column)) {
     return BooleanFilterPicker;
   }
+  if (Lib.isTime(column)) {
+    return TimeFilterPicker;
+  }
   if (Lib.isDate(column)) {
     return DateFilterPicker;
   }
   if (Lib.isCoordinate(column)) {
     return CoordinateFilterPicker;
   }
-  if (Lib.isNumber(column)) {
-    return NumberFilterPicker;
-  }
   if (Lib.isString(column)) {
     return StringFilterPicker;
+  }
+  if (Lib.isNumeric(column)) {
+    return NumberFilterPicker;
   }
   return NotImplementedPicker;
 }

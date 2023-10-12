@@ -1,14 +1,40 @@
-import type { StringFilterValueCountMap } from "./types";
+import type { OperatorOption } from "./types";
 
-export const stringFilterValueCountMap: StringFilterValueCountMap = {
-  "is-null": 0,
-  "not-null": 0,
-  "is-empty": 0,
-  "not-empty": 0,
-  "starts-with": 1,
-  "ends-with": 1,
-  contains: 1,
-  "does-not-contain": 1,
-  "=": "multiple",
-  "!=": "multiple",
-};
+export const OPERATOR_OPTIONS: OperatorOption[] = [
+  {
+    operator: "=",
+    valueCount: Infinity,
+  },
+  {
+    operator: "!=",
+    valueCount: Infinity,
+  },
+  {
+    operator: "contains",
+    valueCount: 1,
+    hasCaseSensitiveOption: true,
+  },
+  {
+    operator: "does-not-contain",
+    valueCount: 1,
+    hasCaseSensitiveOption: true,
+  },
+  {
+    operator: "starts-with",
+    valueCount: 1,
+    hasCaseSensitiveOption: true,
+  },
+  {
+    operator: "ends-with",
+    valueCount: 1,
+    hasCaseSensitiveOption: true,
+  },
+  {
+    operator: "is-empty",
+    valueCount: 0,
+  },
+  {
+    operator: "not-empty",
+    valueCount: 0,
+  },
+];
