@@ -93,8 +93,9 @@ jobs:
           return releaseBranch;
     - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
       run: |
-        git checkout ${{ steps.release_branch.outputs.result }}
-        git branch --contains ${{ inputs.commit }} | grep -q ${{ steps.release_branch.outputs.result }} \
+        RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
+        git checkout $RELEASE_BRANCH
+        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
           && echo "Commit found in correct release branch" \
           || (echo "Commit not found in correct release branch" && exit 1)
 
