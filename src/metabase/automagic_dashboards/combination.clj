@@ -45,12 +45,8 @@
                                                (assoc matching-field :dimension dim))
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields  (->> available
-                                (remove (comp grounded-field-ids :id))
-                                (group-by field-type))
-        grounded-field-types (map (some-fn
-                                    :semantic_type
-                                    :effective_type) grounded-metric-fields)]
+        groundable-fields  (group-by field-type available)
+        grounded-field-types (map field-type grounded)]
     (for [affinity-set            (keys semantic-affinity-sets)
           dimset                  (math.combo/permutations affinity-set)
           :when (and
@@ -169,36 +165,39 @@
            (count semantic-dimensions))
     (let [dims (merge-with into grounded-dimensions semantic-dimensions)
           card (visualization/expand-visualization
-                card
-                (vals nominal-dimensions->fields)
-                nil)]
+                 card
+                 (vals nominal-dimensions->fields)
+                 nil)]
       (-> grounded-metric
           (update :metric-definition add-breakouts (vals dims))
           (add-dataset-query source)
           (into card)
           (instantiate-metadata base-context {} nominal-dimensions->fields)
           (assoc
-           :id (gensym)
-           :title (if (pos? (count grounded-dimensions))
-                    (format "%s by %s"
-                            metric-name
-                            (items->str (map dim-name (vals grounded-dimensions))))
-                    metric-name))
+            :id (gensym)
+            :title (if (pos? (count grounded-dimensions))
+                     (format "%s by %s"
+                             metric-name
+                             (items->str (map dim-name (vals grounded-dimensions))))
+                     metric-name))
           (dissoc
-            ;:grounded-dimensions
-            ;:metric-definition
-            ;:grounded-metric-fields
-           :affinity-set
-            ;:nominal-dimensions->fields
+            :grounded-dimensions
+            :metric-definition
+            :grounded-metric-fields
+            :affinity-set
+            :nominal-dimensions->fields
+            :dimensions
             ;:nominal-dimensions
-            ;:semantic-dimensions
-            ;:card-name
-            ;:metric-name
-            ;:metrics
+            :semantic-dimensions
+            :card-name
+            :metric-name
+            :metric-title
+            :metrics
             ;:visualization
             ;:score
             ;:title
-           )))))
+            )))))
+
 (defn ground-metric->cards
   "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
   the affinity-set->cards map."
