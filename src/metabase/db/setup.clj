@@ -70,21 +70,13 @@
                                         (str/blank? s)
                                         (str/starts-with? s "--")))))
         f (fn [^java.sql.Connection conn]
-            (.setAutoCommit conn false)
-            (try
-             (doseq [stmt stmts]
-               (let [stmt (str/trim stmt)]
-                 (if (or (str/starts-with? stmt "select")
-                         (str/starts-with? stmt "SELECT"))
-                   (jdbc/query {:connection conn} [stmt])
-                   (jdbc/execute! {:connection conn} [stmt]))))
-             (.commit conn)
-             (catch Exception e
-               (.rollback conn)
-               (log/error e "Error while initializing db")
-               (throw e))
-             (finally
-              (.setAutoCommit conn true))))]
+            (jdbc/with-db-transaction [tx {:connection conn}]
+              (doseq [stmt stmts]
+                (let [stmt (str/trim stmt)]
+                  (if (or (str/starts-with? stmt "select")
+                          (str/starts-with? stmt "SELECT"))
+                    (jdbc/query tx [stmt])
+                    (jdbc/execute! tx [stmt]))))))]
     (if (instance? java.sql.Connection conn-or-data-source)
       (f conn-or-data-source)
       (with-open [conn (.getConnection ^javax.sql.DataSource conn-or-data-source)]
