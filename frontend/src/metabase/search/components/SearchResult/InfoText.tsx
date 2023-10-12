@@ -22,6 +22,10 @@ export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
   const user = users.find(user => user.id === userId);
   const infoText: InfoTextData[] = useInfoText(result);
 
+  if (infoText.length > 1) {
+    console.log(result.name, infoText)
+  }
+
   const resultTextProps = {
     ...textProps,
     size: "sm",

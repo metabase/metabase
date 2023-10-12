@@ -107,19 +107,14 @@ const useTablePath = (result: WrappedResult): InfoTextData[] => {
     };
   }, [database, isDatabaseLoading]);
 
-  const { data: schema = [], isLoading: isSchemaListLoading } =
-    useSchemaListQuery({
-      query: {
-        dbId: result.database_id,
-      },
-    });
+  const { data = [], isLoading: isSchemaListLoading } = useSchemaListQuery({
+    query: {
+      dbId: result.database_id,
+    },
+  });
 
   const tableLink: InfoTextData | null = useMemo(() => {
-    if (
-      isSchemaListLoading ||
-      schema?.length <= 1 ||
-      result.table_schema === null
-    ) {
+    if (isSchemaListLoading || result.table_schema === null) {
       return null;
     }
 
@@ -132,12 +127,7 @@ const useTablePath = (result: WrappedResult): InfoTextData[] => {
       link,
       label: result.table_schema,
     };
-  }, [
-    isSchemaListLoading,
-    result.database_id,
-    result.table_schema,
-    schema?.length,
-  ]);
+  }, [isSchemaListLoading, result.database_id, result.table_schema]);
 
   return [databaseLink, databaseLink ? tableLink : null].filter(
     Boolean,

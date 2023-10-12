@@ -57,6 +57,7 @@ export function SearchResult({
 
   return (
     <SearchResultContainer
+      // as="button"
       component="button"
       onClick={handleClick}
       isActive={isActive}
