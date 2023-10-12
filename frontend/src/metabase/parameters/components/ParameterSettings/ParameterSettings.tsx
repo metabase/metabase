@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import type {
@@ -53,6 +53,10 @@ const ParameterSettings = ({
     labelValue: tempLabelValue,
     isParameterSlugUsed,
   });
+
+  useLayoutEffect(() => {
+    setTempLabelValue(parameter.name);
+  }, [parameter.name]);
 
   const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setTempLabelValue(event.target.value);
