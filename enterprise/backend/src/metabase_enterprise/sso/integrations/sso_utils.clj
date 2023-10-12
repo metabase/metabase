@@ -1,7 +1,6 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
-   [metabase-enterprise.sso.api.interface :as sso.interface]
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -24,7 +23,9 @@
    [:first_name       [:maybe ms/NonBlankString]]
    [:last_name        [:maybe ms/NonBlankString]]
    [:email            ms/Email]
-   [:sso_source       (into [:enum] (keys (dissoc (methods sso.interface/sso-get) :default)))]
+   ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
+   ;; the keys of `(methods sso/sso-get)`
+   [:sso_source       [:enum :saml :jwt]]
    [:groups {:optional true} [:maybe seqable?]]
    [:login_attributes [:maybe :map]]])
 
