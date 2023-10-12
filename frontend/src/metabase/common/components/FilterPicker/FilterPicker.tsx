@@ -98,11 +98,11 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isCoordinate(column)) {
     return CoordinateFilterPicker;
   }
-  if (Lib.isNumber(column)) {
-    return NumberFilterPicker;
-  }
   if (Lib.isString(column)) {
     return StringFilterPicker;
+  }
+  if (Lib.isNumeric(column)) {
+    return NumberFilterPicker;
   }
   return NotImplementedPicker;
 }
