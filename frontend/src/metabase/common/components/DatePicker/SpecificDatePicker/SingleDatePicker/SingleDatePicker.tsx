@@ -11,7 +11,12 @@ import {
   TimeInput,
 } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { clearTime, hasTimeParts, setTime } from "../utils";
+import {
+  clearTimePart,
+  hasTimeParts,
+  setDatePart,
+  setTimePart,
+} from "../utils";
 
 interface SingleDatePickerProps {
   value: Date;
@@ -33,18 +38,19 @@ export function SingleDatePicker({
 
   const handleDateChange = (newDate: DateValue) => {
     if (newDate) {
-      setValue(newDate);
-      onChange(newDate);
+      const newValue = setDatePart(value, newDate);
+      setValue(newValue);
+      onChange(newValue);
     }
   };
 
   const handleTimeChange = (newTime: Date) => {
-    handleDateChange(setTime(value, newTime));
+    handleDateChange(setTimePart(value, newTime));
   };
 
   const handleTimeToggle = () => {
     setHasTime(!hasTime);
-    handleDateChange(clearTime(value));
+    handleDateChange(clearTimePart(value));
   };
 
   return (

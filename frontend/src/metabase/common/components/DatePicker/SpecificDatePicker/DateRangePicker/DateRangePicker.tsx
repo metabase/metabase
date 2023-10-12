@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 import { Button, DatePicker, Divider, Group, Stack, Text } from "metabase/ui";
-import type { DateValue, DatesRangeValue } from "metabase/ui";
+import type { DateValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { clearTime, setTime } from "../utils";
+import { clearTimePart, setDatePart, setTimePart } from "../utils";
 import { FlexDateInput, FlexTimeInput } from "./DateRangePicker.styled";
 
 interface DateRangePickerProps {
@@ -24,33 +24,35 @@ export function DateRangePicker({
   const [hasTime, setHasTime] = useState(false);
   const isValid = startDate != null && endDate != null;
 
-  const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
-    if (newStartDate != null && newEndDate != null) {
-      setStartDate(newStartDate);
-      setEndDate(newEndDate);
-      onChange([newStartDate, newEndDate]);
-    }
+  const handleRangeChange = (newStartDate: Date, newEndDate: Date) => {
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
+    onChange([newStartDate, newEndDate]);
   };
 
   const handleStartDateChange = (newStartDate: DateValue) => {
-    handleRangeChange([newStartDate, endDate]);
+    if (newStartDate) {
+      handleRangeChange(setDatePart(startDate, newStartDate), endDate);
+    }
   };
 
   const handleEndDateChange = (newEndDate: DateValue) => {
-    handleRangeChange([startDate, newEndDate]);
+    if (newEndDate) {
+      handleRangeChange(startDate, setDatePart(endDate, newEndDate));
+    }
   };
 
   const handleStartTimeChange = (newStartTime: Date) => {
-    handleStartDateChange(setTime(startDate, newStartTime));
+    handleStartDateChange(setTimePart(startDate, newStartTime));
   };
 
   const handleEndTimeChange = (newEndTime: Date) => {
-    handleEndDateChange(setTime(endDate, newEndTime));
+    handleEndDateChange(setTimePart(endDate, newEndTime));
   };
 
   const handleTimeToggle = () => {
     setHasTime(!hasTime);
-    handleRangeChange([clearTime(startDate), clearTime(endDate)]);
+    handleRangeChange(clearTimePart(startDate), clearTimePart(endDate));
   };
 
   return (
