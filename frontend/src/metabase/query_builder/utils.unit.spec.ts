@@ -126,11 +126,12 @@ describe("isNavigationAllowed", () => {
     });
   });
 
-  describe("when creating new question", () => {
+  describe("when creating new notebook question", () => {
     const isNewQuestion = true;
+    const question = notebookQuestion;
 
     describe("allows navigating away", () => {
-      describe.each([
+      it.each([
         anyLocation,
         modelQueryTabLocation,
         modelMetadataTabLocation,
@@ -138,14 +139,36 @@ describe("isNavigationAllowed", () => {
         newModelMetadataTabLocation,
         runQuestionLocation,
       ])("to `$pathname`", destination => {
-        it.each([notebookQuestion, nativeQuestion])(
-          "from creating new `$_card.name`",
-          question => {
-            expect(
-              isNavigationAllowed({ destination, question, isNewQuestion }),
-            ).toBe(true);
-          },
-        );
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
+    });
+  });
+
+  describe("when creating new native question", () => {
+    const isNewQuestion = true;
+    const question = nativeQuestion;
+
+    it("allows to run the question", () => {
+      const destination = runQuestionLocation;
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        modelQueryTabLocation,
+        modelMetadataTabLocation,
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
       });
     });
   });
