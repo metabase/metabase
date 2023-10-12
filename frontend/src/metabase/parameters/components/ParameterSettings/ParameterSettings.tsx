@@ -49,14 +49,15 @@ const ParameterSettings = ({
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
-  const labelError = getLabelError({
-    labelValue: tempLabelValue,
-    isParameterSlugUsed,
-  });
 
   useLayoutEffect(() => {
     setTempLabelValue(parameter.name);
   }, [parameter.name]);
+
+  const labelError = getLabelError({
+    labelValue: tempLabelValue,
+    isParameterSlugUsed,
+  });
 
   const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setTempLabelValue(event.target.value);
