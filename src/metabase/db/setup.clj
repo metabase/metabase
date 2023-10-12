@@ -169,6 +169,12 @@
     (classloader/require 'metabase.db.data-migrations)
     ((resolve 'metabase.db.data-migrations/run-all!))))
 
+(defn- fresh-install?
+  [db-type data-source]
+  (not (liquibase/table-exists? (if (= :h2 db-type)
+                                  "CORE_USER"
+                                  "core_user") data-source)))
+
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
 ;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
@@ -183,8 +189,7 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection db-type data-source)
-         (when-not (and (liquibase/table-exists? "core_user" data-source)
-                        (liquibase/table-exists? "CORE_USER" data-source))
+         (when (fresh-install? db-type data-source)
            (log/info "Running database initialization")
            (initialize-db! db-type data-source)
            (log/info "Done database initialization"))

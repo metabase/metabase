@@ -57,37 +57,43 @@
        :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
   ^String changelog-file "liquibase.yaml")
 
+(defn- changelog-table-name
+  [^java.sql.Connection conn]
+  (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
+    "databasechangelog"
+    "DATABASECHANGELOG"))
+
 (defn- format-table-name
   "Correctly format table name based on the type of database"
   [table-name ^java.sql.Connection conn]
-  (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
-    (u/lower-case-en table-name)
-    (u/upper-case-en table-name)))
+  (if (not= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
+    (u/upper-case-en table-name)
+    (u/lower-case-en table-name)))
 
 (defn table-exists?
   "Check if a table exists."
   [table-name data-source-or-conn]
-  (letfn [(exists? [^java.sql.Connection conn table-name]
+  (letfn [(exists? [table-name ^java.sql.Connection conn]
             (-> (.getMetaData conn)
                 (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
                 jdbc/metadata-query
-                seq))]
+                seq
+                boolean))]
     (if (instance? java.sql.Connection data-source-or-conn)
-      (exists? data-source-or-conn table-name)
+      (exists? table-name data-source-or-conn)
       (with-open [conn (.getConnection ^javax.sql.DataSource data-source-or-conn)]
-        (exists? conn table-name)))))
+        (exists? table-name conn)))))
 
 (defn- fresh-install?
   [^java.sql.Connection conn]
-  (not (or (table-exists? "databasechangelog" conn)
-           (table-exists? "DATABASECHANGELOG" conn))))
+  (not (table-exists? (changelog-table-name conn) conn)))
 
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
   (if (fresh-install? conn)
    changelog-file
    (let [latest-migration (->> (jdbc/query {:connection conn}
-                                           [(format "select id from %s order by dateexecuted desc limit 1" (format-table-name "databasechangelog" conn))])
+                                           [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
                                first
                                :id)]
      (cond
