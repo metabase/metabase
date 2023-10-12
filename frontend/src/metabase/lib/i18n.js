@@ -7,6 +7,17 @@ import updateLocalePlugin from "dayjs/plugin/updateLocale";
 import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 
+(function preserveLatinNumbersInArabic() {
+  ["ar", "ar-sa"].map(l =>
+    moment.updateLocale(l, {
+      // Preserve latin numbers, but still replace commas.
+      // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
+      postformat: string =>
+        string.replace(/\d/g, match => match).replace(/,/g, "،"),
+    }),
+  );
+})();
+
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
