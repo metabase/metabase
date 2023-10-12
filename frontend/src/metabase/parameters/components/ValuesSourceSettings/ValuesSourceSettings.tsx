@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
+import Tooltip from "metabase/core/components/Tooltip";
+import { Button } from "metabase/ui";
 import type {
   Parameter,
   ValuesQueryType,
@@ -10,11 +12,7 @@ import type {
 } from "metabase-types/api";
 import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import ValuesSourceModal from "../ValuesSourceModal";
-import {
-  RadioLabelButton,
-  RadioLabelRoot,
-  RadioLabelTitle,
-} from "./ValuesSourceSettings.styled";
+import { RadioLabelRoot, RadioLabelTitle } from "./ValuesSourceSettings.styled";
 
 export interface ValuesSourceSettingsProps {
   parameter: Parameter;
@@ -34,8 +32,12 @@ const ValuesSourceSettings = ({
   const [isModalOpened, setIsModalOpened] = useState(false);
 
   const radioOptions = useMemo(() => {
-    return getRadioOptions(queryType, () => setIsModalOpened(true));
-  }, [queryType]);
+    return getRadioOptions({
+      queryType: queryType,
+      onEditClick: () => setIsModalOpened(true),
+      isEditDisabled: isOnlyConnectedFieldSourceAllowed(parameter),
+    });
+  }, [queryType, parameter]);
 
   const handleModalClose = useCallback(() => {
     setIsModalOpened(false);
@@ -62,31 +64,59 @@ const ValuesSourceSettings = ({
   );
 };
 
+function isOnlyConnectedFieldSourceAllowed(parameter: Parameter) {
+  // linked filters only work with connected field sources (metabase#33892)
+  return !!parameter.filteringParameters?.length;
+}
+
 interface RadioLabelProps {
   title: string;
   isSelected?: boolean;
   onEditClick?: () => void;
+  isEditDisabled?: boolean;
 }
 
 const RadioLabel = ({
   title,
   isSelected,
   onEditClick,
+  isEditDisabled,
 }: RadioLabelProps): JSX.Element => {
   return (
     <RadioLabelRoot>
       <RadioLabelTitle>{title}</RadioLabelTitle>
       {isSelected && (
-        <RadioLabelButton onClick={onEditClick}>{t`Edit`}</RadioLabelButton>
+        <Tooltip
+          tooltip={t`You can’t customize selectable values for this filter because it is linked to another one.`}
+          placement="top"
+          isEnabled={!!isEditDisabled}
+        >
+          <div>
+            <Button
+              onClick={onEditClick}
+              disabled={!!isEditDisabled}
+              variant="subtle"
+              p={0}
+              compact={true}
+            >
+              {t`Edit`}
+            </Button>
+          </div>
+        </Tooltip>
       )}
     </RadioLabelRoot>
   );
 };
 
-const getRadioOptions = (
-  queryType: ValuesQueryType,
-  onEditClick: () => void,
-) => {
+const getRadioOptions = ({
+  queryType,
+  onEditClick,
+  isEditDisabled,
+}: {
+  queryType: ValuesQueryType;
+  onEditClick: () => void;
+  isEditDisabled: boolean;
+}) => {
   return [
     {
       name: (
@@ -94,6 +124,7 @@ const getRadioOptions = (
           title={t`Dropdown list`}
           isSelected={queryType === "list"}
           onEditClick={onEditClick}
+          isEditDisabled={isEditDisabled}
         />
       ),
       value: "list",
@@ -104,6 +135,7 @@ const getRadioOptions = (
           title={t`Search box`}
           isSelected={queryType === "search"}
           onEditClick={onEditClick}
+          isEditDisabled={isEditDisabled}
         />
       ),
       value: "search",
