@@ -63,7 +63,7 @@ export function SpecificDatePicker({
       <Divider />
       {tabs.map(tab => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
-          {isDateRange(value) ? null : (
+          {isDateRange(value.values) ? null : (
             <SingleDatePicker
               value={getDate(value)}
               isNew={isNew}

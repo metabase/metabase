@@ -24,14 +24,13 @@ export function SingleDatePicker({
   onSubmit,
 }: SingleDatePickerProps) {
   const [value, setValue] = useState<DateValue>(initialValue);
-  const [date, setDate] = useState<Date>(initialValue);
+  const [openedDate, setOpenedDate] = useState<Date>(initialValue);
   const isValid = value != null;
 
-  const handleChange = (value: DateValue) => {
-    setValue(value);
-
-    if (value) {
-      onChange(value);
+  const handleChange = (newDate: DateValue) => {
+    setValue(newDate);
+    if (newDate != null) {
+      onChange(newDate);
     }
   };
 
@@ -40,16 +39,16 @@ export function SingleDatePicker({
       <Stack p="md">
         <DateInput
           value={value}
-          date={date}
+          date={openedDate}
           popoverProps={{ opened: false }}
           onChange={handleChange}
-          onDateChange={setDate}
+          onDateChange={setOpenedDate}
         />
         <DatePicker
           value={value}
-          date={date}
+          date={openedDate}
           onChange={handleChange}
-          onDateChange={setDate}
+          onDateChange={setOpenedDate}
         />
       </Stack>
       <Divider />

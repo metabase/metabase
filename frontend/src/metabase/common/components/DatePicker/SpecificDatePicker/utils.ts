@@ -48,6 +48,6 @@ export function setDate(value: SpecificDatePickerValue, date: Date) {
   return { ...value, values: [date] };
 }
 
-export function isDateRange(value: SpecificDatePickerValue) {
-  return value.operator === "between";
+export function isDateRange(value: Date[]): value is [Date, Date] {
+  return value.length === 2;
 }
