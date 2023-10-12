@@ -22,3 +22,7 @@
   "filter `tables` by `tablespec`, which is just an entity type (eg. :entity/GenericTable)"
   [tablespec tables]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
+
+(def field-type
+  "Coalesce the first type of the field based on the semantic or effective type."
+  (some-fn :semantic_type :effective_type))

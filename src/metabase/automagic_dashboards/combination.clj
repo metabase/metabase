@@ -1,33 +1,32 @@
 (ns metabase.automagic-dashboards.combination
   (:require
-   [clojure.math.combinatorics :as math.combo]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [medley.core :as m]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.interesting :as interesting]
-   [metabase.automagic-dashboards.schema :as ads]
-   [metabase.automagic-dashboards.util :as magic.util]
-   [metabase.automagic-dashboards.visualization-macros :as visualization]
-   [metabase.query-processor.util :as qp.util]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+    [clojure.math.combinatorics :as math.combo]
+    [clojure.string :as str]
+    [clojure.walk :as walk]
+    [medley.core :as m]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.interesting :as interesting]
+    [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.util :as magic.util]
+    [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.query-processor.util :as qp.util]
+    [metabase.util :as u]
+    [metabase.util.i18n :as i18n]
+    [metabase.util.malli :as mu]))
 
 (defn add-breakouts
   "Add breakouts to a query based on the breakout fields"
   [query breakout-fields]
   (assoc query
-         :breakout (mapv (partial interesting/->reference :mbql) breakout-fields)))
-
-(def ^:private field-type (some-fn :semantic_type :effective_type))
+    :breakout (mapv (partial interesting/->reference :mbql) breakout-fields)))
 
 (mu/defn add-breakout-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets  :- [:map-of ads/semantic-affinity-set sequential?]
-   {grounded-metric-fields :grounded-metric-fields :as metric}]
+   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set sequential?]
+   {required-metric-field-types :metric-field-types
+    grounded-metric-fields      :grounded-metric-fields :as metric}]
   (let [grounded-field-ids (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
@@ -45,41 +44,32 @@
                                                (assoc matching-field :dimension dim))
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields  (group-by field-type available)
-        grounded-field-types (map field-type grounded)]
-    (for [affinity-set            (keys semantic-affinity-sets)
-          dimset                  (math.combo/permutations affinity-set)
-          :when (and
-                  (>= (count dimset)
-                      (count grounded-metric-fields))
-                  (->> (map
-                         (fn [a b] (isa? a b))
-                         grounded-field-types dimset)
-                       (every? true?)))
-          :let [unsatisfied-semantic-dims (vec (drop (count grounded-field-types) dimset))]
-          ground-dimension-fields (->> (map groundable-fields unsatisfied-semantic-dims)
+        groundable-fields  (group-by magic.util/field-type available)]
+    (for [[metric-field-types dims->cards] semantic-affinity-sets
+          [dimset _cards] dims->cards
+          :when (= metric-field-types required-metric-field-types)
+          ground-dimension-fields (->> (map groundable-fields dimset)
                                        (apply math.combo/cartesian-product)
-                                       (map (partial zipmap unsatisfied-semantic-dims)))]
+                                       (map (partial zipmap dimset)))]
       (-> metric
           (assoc
             :grounded-metric-fields grounded
-            :grounded-dimensions ground-dimension-fields
-            :nominal-dimensions->fields (into
+            :dimension-type->field ground-dimension-fields
+            :dimension-name->field (into
                                           (zipmap
                                             (map (comp :dimension-name :dimension) grounded)
                                             grounded)
                                           (zipmap
                                             (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
                                             (vals ground-dimension-fields)))
-            :semantic-dimensions ground-dimension-fields
-            :affinity-set affinity-set)
+            :dimension-field-types (set (keys ground-dimension-fields)))
           (update :metric-definition add-breakouts (vals ground-dimension-fields))))))
 
 (mu/defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets :- [:map-of ads/semantic-affinity-set sequential?]
+   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set sequential?]
    grounded-metrics]
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
@@ -119,15 +109,15 @@
 (defn- instantiate-metadata
   [x context available-metrics bindings]
   (-> (walk/postwalk
-       (fn [form]
-         (if (i18n/localized-string? form)
-           (let [s     (str form)
-                 new-s (fill-templates :string context bindings s)]
-             (if (not= new-s s)
-               (capitalize-first new-s)
-               s))
-           form))
-       x)
+        (fn [form]
+          (if (i18n/localized-string? form)
+            (let [s     (str form)
+                  new-s (fill-templates :string context bindings s)]
+              (if (not= new-s s)
+                (capitalize-first new-s)
+                s))
+            form))
+        x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (defn add-dataset-query
@@ -158,34 +148,33 @@
   definitions then removing most of the metric fields that aren't relevant to cards."
   [{{:keys [source]} :root
     :as              base-context}
-   {:keys [grounded-dimensions metric-name nominal-dimensions->fields] :as grounded-metric}
+   {:keys [dimension-type->field metric-name dimension-name->field] :as grounded-metric}
    {:keys [semantic-dimensions] :as card}]
   ;; This updates the query to contain the specializations contained in the card template (basically the aggregate definitions)
-  (when (= (count grounded-dimensions)
+  (when (= (count dimension-type->field)
            (count semantic-dimensions))
-    (let [dims (merge-with into grounded-dimensions semantic-dimensions)
+    (let [dims (merge-with into dimension-type->field semantic-dimensions)
           card (visualization/expand-visualization
                  card
-                 (vals nominal-dimensions->fields)
+                 (vals dimension-name->field)
                  nil)]
       (-> grounded-metric
           (update :metric-definition add-breakouts (vals dims))
           (add-dataset-query source)
           (into card)
-          (instantiate-metadata base-context {} nominal-dimensions->fields)
+          (instantiate-metadata base-context {} dimension-name->field)
           (assoc
             :id (gensym)
-            :title (if (pos? (count grounded-dimensions))
+            :title (if (pos? (count dimension-type->field))
                      (format "%s by %s"
                              metric-name
-                             (items->str (map dim-name (vals grounded-dimensions))))
+                             (items->str (map dim-name (vals dimension-type->field))))
                      metric-name))
           (dissoc
-            :grounded-dimensions
+            :dimension-type->field
             :metric-definition
             :grounded-metric-fields
-            :affinity-set
-            :nominal-dimensions->fields
+            :dimension-name->field
             :dimensions
             ;:nominal-dimensions
             :semantic-dimensions
@@ -201,9 +190,8 @@
 (defn ground-metric->cards
   "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
   the affinity-set->cards map."
-  [base-context affinity-set->cards {:keys [affinity-set] :as grounded-metric}]
-  (->> affinity-set
-       affinity-set->cards
+  [base-context affinity-set->cards {:keys [metric-field-types dimension-field-types] :as grounded-metric}]
+  (->> (get-in affinity-set->cards [metric-field-types dimension-field-types :cards])
        (map (partial ground-metric->card base-context grounded-metric))
        (filter identity)
        (map-indexed (fn [i card]

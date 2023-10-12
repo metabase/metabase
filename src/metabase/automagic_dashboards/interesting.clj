@@ -140,13 +140,15 @@
          (apply math.combo/cartesian-product)
          (map (partial zipmap named-dimensions))
          (map (fn [nm->field]
-                (let [xform (update-vals nm->field (fn [{field-id :id}]
+                (let [constituent-fields (vals nm->field)
+                      xform (update-vals nm->field (fn [{field-id :id}]
                                                      [:field field-id nil]))]
                   {:metric-name            metric-name
                    :metric-title           metric-name
                    :metric-definition      {:aggregation
                                             (transform-metric-aggregate metric-definition xform)}
-                   :grounded-metric-fields (vals nm->field)}))))))
+                   :metric-field-types     (into #{} (map magic.util/field-type) constituent-fields)
+                   :grounded-metric-fields constituent-fields}))))))
 
 (defn grounded-metrics
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
