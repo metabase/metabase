@@ -578,6 +578,7 @@
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
     ::upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity :primary-key]
+    ::upload/string-pk                [:varchar :primary-key]
     ::upload/float                    [(keyword "DOUBLE PRECISION")]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]

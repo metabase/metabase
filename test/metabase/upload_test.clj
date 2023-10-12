@@ -20,15 +20,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type      ::upload/boolean)
-(def ^:private int-type       ::upload/int)
-(def ^:private float-type     ::upload/float)
-(def ^:private vchar-type     ::upload/varchar_255)
-(def ^:private date-type      ::upload/date)
-(def ^:private datetime-type  ::upload/datetime)
-(def ^:private text-type      ::upload/text)
-(def ^:private int-pk-type    ::upload/int-pk)
-(def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
+(def ^:private bool-type         ::upload/boolean)
+(def ^:private int-type          ::upload/int)
+(def ^:private float-type        ::upload/float)
+(def ^:private vchar-type        ::upload/varchar_255)
+(def ^:private date-type         ::upload/date)
+(def ^:private datetime-type     ::upload/datetime)
+(def ^:private text-type         ::upload/text)
+(def ^:private int-pk-type       ::upload/int-pk)
+(def ^:private ai-int-pk-type    ::upload/auto-incrementing-int-pk)
+(def ^:private string-pk-type    ::upload/string-pk)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -245,51 +246,71 @@
                               ;; comma, but blank column
                               "Sebulba, 112,"])))))
     (testing "Existing ID column"
-      (is (= {:extant-columns    {:id     int-pk-type
-                                  :ship   vchar-type
-                                  :name   vchar-type
-                                  :weapon vchar-type}
-              :generated-columns {}}
-             (upload/detect-schema
-              (csv-file-with ["id,ship,name,weapon"
-                              "1,Serenity,Malcolm Reynolds,Pistol"
-                              "2,Millennium Falcon, Han Solo,Blaster"]))))
-      (is (= {:extant-columns    {:id     int-pk-type
-                                  :ship   vchar-type
-                                  :name   vchar-type
-                                  :weapon vchar-type}
-              :generated-columns {}}
-             (upload/detect-schema
-              (csv-file-with ["ID,ship,name,weapon"
-                              "1,Serenity,Malcolm Reynolds,Pistol"
-                              "2,Millennium Falcon, Han Solo,Blaster"]))))
-      (is (= {:extant-columns    {:pk     int-pk-type
-                                  :ship   vchar-type
-                                  :name   vchar-type
-                                  :weapon vchar-type}
-              :generated-columns {}}
-             (upload/detect-schema
-              (csv-file-with ["pk,ship,name,weapon"
-                              "1,Serenity,Malcolm Reynolds,Pistol"
-                              "2,Millennium Falcon, Han Solo,Blaster"]))))
-      (is (= {:extant-columns    {:pk     int-pk-type
-                                  :ship   vchar-type
-                                  :name   vchar-type
-                                  :weapon vchar-type}
-              :generated-columns {}}
-             (upload/detect-schema
-              (csv-file-with ["PK,ship,name,weapon"
-                              "1,Serenity,Malcolm Reynolds,Pistol"
-                              "2,Millennium Falcon, Han Solo,Blaster"]))))
-      (testing "The type must match"
-        (is (= (with-ai-id {:id     vchar-type
-                            :ship   vchar-type
-                            :name   vchar-type
-                            :weapon vchar-type})
+      (testing "Integer ID; various names for it"
+        (is (= {:extant-columns    {:id     int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
                (upload/detect-schema
                 (csv-file-with ["id,ship,name,weapon"
                                 "1,Serenity,Malcolm Reynolds,Pistol"
-                                "potato,Millennium Falcon, Han Solo,Blaster"]))))))))
+                                "2,Millennium Falcon, Han Solo,Blaster"]))))
+        (is (= {:extant-columns    {:id     int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["ID,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "2,Millennium Falcon, Han Solo,Blaster"]))))
+        (is (= {:extant-columns    {:pk     int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["pk,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "2,Millennium Falcon, Han Solo,Blaster"]))))
+        (is (= {:extant-columns    {:pk     int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["PK,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "2,Millennium Falcon, Han Solo,Blaster"]))))
+        (is (= {:extant-columns    {:guid   int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["GUID,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "2,Millennium Falcon, Han Solo,Blaster"]))))
+        (is (= {:extant-columns    {:uuid   int-pk-type
+                                    :ship   vchar-type
+                                    :name   vchar-type
+                                    :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["UUID,ship,name,weapon"
+                                "1,Serenity,Malcolm Reynolds,Pistol"
+                                "2,Millennium Falcon, Han Solo,Blaster"])))))
+      (testing "String ID"
+        (is (= {:extant-columns {:id     string-pk-type
+                                 :ship   vchar-type
+                                 :name   vchar-type
+                                 :weapon vchar-type}
+                :generated-columns {}}
+               (upload/detect-schema
+                (csv-file-with ["id,ship,name,weapon"
+                                "a,Serenity,Malcolm Reynolds,Pistol"
+                                "b,Millennium Falcon, Han Solo,Blaster"]))))))))
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -536,8 +557,8 @@
                        :database_is_auto_increment false}
                       (t2/select-one Field :database_position 0 :table_id (:id table)))))))))))
 
-(deftest load-from-csv-existing-id-column-duplicate-test
-  (testing "Upload a CSV file with an existing ID column: don't create an additional ID column"
+(deftest load-from-csv-existing-string-id-column-test
+  (testing "Upload a CSV file with an existing string ID column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (with-mysql-local-infile-activated
@@ -546,8 +567,8 @@
            (mt/id)
            "upload_test"
            (csv-file-with ["id,ship,name,weapon"
-                           "1,Serenity,Malcolm Reynolds,Pistol"
-                           "potato,Millennium Falcon,Han Solo,Blaster"])))
+                           "a,Serenity,Malcolm Reynolds,Pistol"
+                           "b,Millennium Falcon,Han Solo,Blaster"])))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]

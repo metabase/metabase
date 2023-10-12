@@ -28,11 +28,11 @@
 ;;              text
 ;;               |
 ;;               |
-;;          varchar_255
-;;              / \
-;;             /   \
-;;            /     \
-;;         float   datetime
+;;          varchar_255┐
+;;              / \    |
+;;             /   \   └—————————┐
+;;            /     \            |
+;;         float   datetime  string-pk
 ;;           |       |
 ;;           |       |
 ;;          int     date
@@ -54,11 +54,19 @@
    ::auto-incrementing-int-pk ::int-pk
    ::boolean                  ::int
    ::datetime                 ::varchar_255
-   ::date                     ::datetime})
+   ::date                     ::datetime
+   ::string-pk                ::varchar_255})
+
+(def ^:private base-type->pk-type
+  {::varchar_255 ::string-pk
+   ::int         ::int-pk})
 
 (def ^:private types
   (set/union (set (keys type->parent))
              (set (vals type->parent))))
+
+(def ^:private pk-base-types
+  (set (keys base-type->pk-type)))
 
 (def ^:private type->ancestors
   (into {} (for [type types]
@@ -181,18 +189,16 @@
 
 (defn- is-pk?
   [[col-name type]]
-  (and (#{"id" "pk"} (u/lower-case-en (name col-name)))
-       (isa? type ::int)))
+  (and (#{"id" "pk" "uuid" "guid"} (u/lower-case-en (name col-name)))
+       (pk-base-types type)))
 
 (defn- ->ordered-maps-with-pk-column
   "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
 
   Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
   [name-type-pairs]
-  (if-let [pk-name (first (keep (fn [[name _type :as p]]
-                                  (when (is-pk? p) name))
-                                name-type-pairs))]
-    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name ::int-pk)
+  (if-let [[pk-name pk-base-type] (first (filter is-pk? name-type-pairs))]
+    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name (base-type->pk-type pk-base-type))
      :generated-columns (ordered-map/ordered-map)}
     {:extant-columns    (ordered-map/ordered-map name-type-pairs)
      :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
@@ -277,6 +283,7 @@
     ::float                    (partial parse-number (get-number-separators))
     ::int-pk                   (partial parse-number (get-number-separators))
     ::auto-incrementing-int-pk (partial parse-number (get-number-separators))
+    ::string-pk                identity
     ::boolean                  #(parse-bool (str/trim %))
     ::date                     #(parse-date (str/trim %))
     ::datetime                 #(parse-datetime (str/trim %))))

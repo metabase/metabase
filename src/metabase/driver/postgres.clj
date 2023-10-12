@@ -757,6 +757,7 @@
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
     ::upload/auto-incrementing-int-pk [:bigserial]
+    ::upload/string-pk                [[:varchar 255] :primary-key]
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
