@@ -1,14 +1,10 @@
 import { t } from "ttag";
 import type { DashCardId } from "metabase-types/api";
 import type { StoreDashboardTab } from "metabase-types/store";
-import { Menu, Text } from "metabase/ui";
+import { Menu, Divider, Text } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import { useDashCardTabMenu } from "./use-dash-card-tab-menu";
-import {
-  TabButton,
-  VerticalDivider,
-  ChevronStyledIcon,
-} from "./DashCardTabMenu.styled";
+import { TabButton, ChevronStyledIcon } from "./DashCardTabMenu.styled";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
@@ -37,7 +33,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
         <TabChevronMenu tabs={tabs} onTabSelect={tabId => moveToTab(tabId)} />
       )}
 
-      <VerticalDivider />
+      <Divider orientation="vertical" my={4} />
     </>
   );
 }

@@ -5,13 +5,6 @@ import { color } from "metabase/lib/colors";
 import type { AnchorProps } from "metabase/ui";
 import { Anchor } from "metabase/ui";
 
-export const VerticalDivider = styled.div`
-  align-self: stretch;
-  width: 1px;
-  background-color: ${color("border")};
-  padding: 5px 0px;
-`;
-
 export const ActionContainer = styled.div`
   padding: 4px;
   &:hover {
