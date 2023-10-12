@@ -72,11 +72,7 @@
         f (fn [^java.sql.Connection conn]
             (jdbc/with-db-transaction [tx {:connection conn}]
               (doseq [stmt stmts]
-                (let [stmt (str/trim stmt)]
-                  (if (or (str/starts-with? stmt "select")
-                          (str/starts-with? stmt "SELECT"))
-                    (jdbc/query tx [stmt])
-                    (jdbc/execute! tx [stmt]))))))]
+                (jdbc/execute! tx [stmt]))))]
     (if (instance? java.sql.Connection conn-or-data-source)
       (f conn-or-data-source)
       (with-open [conn (.getConnection ^javax.sql.DataSource conn-or-data-source)]
