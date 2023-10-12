@@ -49,6 +49,7 @@ import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import QueryBuilder from "./QueryBuilder";
 
 registerVisualizations();
@@ -201,7 +202,11 @@ const TestQueryBuilder = (
   );
 };
 
-const TestHome = () => <div />;
+const TestHome = () => (
+  <div>
+    <NewItemMenu trigger={<button>New</button>} />
+  </div>
+);
 
 function isSavedCard(card: Card | UnsavedCard | null): card is Card {
   return card !== null && "id" in card;
@@ -804,6 +809,26 @@ describe("QueryBuilder", () => {
         expect(
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("creating native questions", () => {
+      it("shows custom warning modal when leaving creating question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
     });
 
