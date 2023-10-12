@@ -12,7 +12,7 @@ import {
 } from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { setTime } from "./utils";
+import { clearTime, setTime } from "../utils";
 
 interface DateRangePickerProps {
   value: [Date, Date];
@@ -27,15 +27,15 @@ export function DateRangePicker({
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
-  const [startDate, setStartDate] = useState<DateValue>(initialStartDate);
-  const [endDate, setEndDate] = useState<DateValue>(initialEndDate);
+  const [startDate, setStartDate] = useState<Date>(initialStartDate);
+  const [endDate, setEndDate] = useState<Date>(initialEndDate);
   const [hasTime, setHasTime] = useState(false);
   const isValid = startDate != null && endDate != null;
 
   const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
     if (newStartDate != null && newEndDate != null) {
+      setStartDate(newStartDate);
+      setEndDate(newEndDate);
       onChange([newStartDate, newEndDate]);
     }
   };
@@ -49,20 +49,21 @@ export function DateRangePicker({
   };
 
   const handleStartTimeChange = (newStartTime: Date) => {
-    handleStartDateChange(setTime(startDate ?? initialStartDate, newStartTime));
+    handleStartDateChange(setTime(startDate, newStartTime));
   };
 
   const handleEndTimeChange = (newEndTime: Date) => {
-    handleEndDateChange(setTime(endDate ?? initialEndDate, newEndTime));
+    handleEndDateChange(setTime(endDate, newEndTime));
   };
 
   const handleTimeToggle = () => {
     setHasTime(!hasTime);
+    handleRangeChange([clearTime(startDate), clearTime(endDate)]);
   };
 
   return (
     <div>
-      <Stack p="md" align="center">
+      <Stack p="md">
         <Group align="center">
           <DateInput
             value={startDate}

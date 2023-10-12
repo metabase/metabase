@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
+import type { DateValue } from "metabase/ui";
 import {
   Button,
   DateInput,
@@ -9,9 +10,8 @@ import {
   Stack,
   TimeInput,
 } from "metabase/ui";
-import type { DateValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import { hasTimeParts, setTime } from "./utils";
+import { clearTime, hasTimeParts, setTime } from "../utils";
 
 interface SingleDatePickerProps {
   value: Date;
@@ -26,24 +26,25 @@ export function SingleDatePicker({
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
-  const [value, setValue] = useState<DateValue>(initialValue);
+  const [value, setValue] = useState<Date>(initialValue);
   const [openedDate, setOpenedDate] = useState<Date>(initialValue);
   const [hasTime, setHasTime] = useState(hasTimeParts(initialValue));
   const isValid = value != null;
 
   const handleDateChange = (newDate: DateValue) => {
-    setValue(newDate);
-    newDate && onChange(newDate);
+    if (newDate) {
+      setValue(newDate);
+      onChange(newDate);
+    }
   };
 
   const handleTimeChange = (newTime: Date) => {
-    const newDate = setTime(value ?? initialValue, newTime);
-    setValue(newDate);
-    onChange(newDate);
+    handleDateChange(setTime(value, newTime));
   };
 
   const handleTimeToggle = () => {
     setHasTime(!hasTime);
+    handleDateChange(clearTime(value));
   };
 
   return (
