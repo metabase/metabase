@@ -10,6 +10,7 @@
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]
@@ -58,6 +59,30 @@
                                          :subject "Pulse: Test Pulse"}]}
                  (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
           (get-in results ["rasta@metabase.com" 0 :body 0 :result]))))))
+
+(deftest bcc-enabled-pulse-test
+  (testing "When bcc is not enabled, return an email that uses to:"
+    (mt/with-temp [Card                  pulse-card {}
+                   Pulse                 pulse {:name "Test Pulse"}
+                   PulseCard             _ {:pulse_id (:id pulse), :card_id (:id pulse-card)}
+                   PulseChannel          pc {:channel_type :email
+                                             :pulse_id     (:id pulse)
+                                             :enabled      true}
+                   PulseChannelRecipient _ {:pulse_channel_id (:id pc)
+                                            :user_id          (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
+        (mt/with-fake-inbox
+          (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+                                                       [{:result result}])
+                        public-settings/bcc-enabled? (constantly false)]
+            (mt/with-test-user nil
+              (metabase.pulse/send-pulse! pulse)))
+          (let [results @mt/inbox]
+            (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
+                                           :to      ["rasta@metabase.com"]
+                                           :subject "Pulse: Test Pulse"}]}
+                   (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
+            (get-in results ["rasta@metabase.com" 0 :body 0 :result])))))))
 
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"
