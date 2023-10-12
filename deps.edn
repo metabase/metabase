@@ -283,8 +283,8 @@
   {:extra-paths ["enterprise/backend/src"]}
 
   ;; Include EE tests.
-  ;; for ee dev: :dev:ee:ee-dev
-  ;; for ee tests: clojure -X:dev:ee:ee-dev:test
+  ;; for EE dev:   `clojure -X:dev:ee:ee-dev`
+  ;; for EE tests: `clojure -X:dev:ee:ee-dev:test`
   :ee-dev
   {:extra-paths ["enterprise/backend/test"]}
 
@@ -294,6 +294,11 @@
 
   :oss-dev
   {}
+
+  :marginalia
+  {:extra-deps
+   {marginalia/marginalia {:mvn/version "0.9.1"}}
+   :main-opts ["-m" "marginalia.main" "-d" "backend-docs" "src/**/*.clj"]}
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
   :outdated {;; Note that it is `:deps`, not `:extra-deps`
