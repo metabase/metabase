@@ -46,11 +46,26 @@ export type OrderByDirection = "asc" | "desc";
 declare const FilterClause: unique symbol;
 export type FilterClause = unknown & { _opaque: typeof FilterClause };
 
+declare const Join: unique symbol;
+export type Join = unknown & { _opaque: typeof Join };
+
+declare const JoinStrategy: unique symbol;
+export type JoinStrategy = unknown & { _opaque: typeof JoinStrategy };
+
+declare const JoinCondition: unique symbol;
+export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
+
+declare const JoinConditionOperator: unique symbol;
+export type JoinConditionOperator = unknown & {
+  _opaque: typeof JoinConditionOperator;
+};
+
 export type Clause =
   | AggregationClause
   | BreakoutClause
   | ExpressionClause
   | FilterClause
+  | JoinCondition
   | OrderByClause;
 
 export type Limit = number | null;
@@ -214,25 +229,17 @@ export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
 };
 
-declare const Join: unique symbol;
-export type Join = unknown & { _opaque: typeof Join };
-
-declare const JoinCondition: unique symbol;
-export type JoinCondition = unknown & { _opaque: typeof JoinCondition };
-
-declare const JoinConditionOperator: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperator;
-};
-
 export type JoinConditionOperatorDisplayInfo = {
   displayName: string;
   shortName: string;
   default?: boolean;
 };
 
-declare const JoinStrategy: unique symbol;
-export type JoinStrategy = unknown & { _opaque: typeof Join };
+export type JoinConditionParts = {
+  operator: JoinConditionOperator;
+  lhsColumn: ColumnMetadata;
+  rhsColumn: ColumnMetadata;
+};
 
 export type JoinStrategyDisplayInfo = {
   displayName: string;
