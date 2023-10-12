@@ -207,11 +207,7 @@ const TestQueryBuilder = (
   );
 };
 
-const TestHome = () => (
-  <div>
-    <NewItemMenu trigger={<button>New</button>} />
-  </div>
-);
+const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
 function isSavedCard(card: Card | UnsavedCard | null): card is Card {
   return card !== null && "id" in card;
