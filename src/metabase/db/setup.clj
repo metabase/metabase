@@ -57,7 +57,7 @@
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
 (mu/defn ^:private initialize-db!
-  "a"
+  "Initialize the application database by running an initialization sql script."
   [db-type             :- :keyword
    conn-or-data-source :- [:or (ms/InstanceOfClass javax.sql.DataSource) (ms/InstanceOfClass java.sql.Connection)]]
   (let [init-file (case db-type
@@ -104,7 +104,7 @@
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
    & args]
-  ;; TODO: replace with [[jdbc/with-db-transaction]]
+  ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
@@ -192,8 +192,7 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection db-type data-source)
-         (when-not (or (liquibase/table-exists? data-source "core_user")
-                       (liquibase/table-exists? data-source "CORE_USER"))
+         (when-not (liquibase/table-exists? "core_user" data-source)
            (log/info "Running database initialization")
            (initialize-db! db-type data-source)
            (log/info "Done database initialization"))

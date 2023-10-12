@@ -49,35 +49,44 @@
   ;; we can't use `java.io.OutputStream/nullOutputStream` here because it's not available on Java 8
   (.setOutputStream (java.io.PrintStream. (org.apache.commons.io.output.NullOutputStream.))))
 
-;; used for upgarding from 45 -> latest
-(def ^:private ^String changelog-legacy-file "liquibase_legacy.yaml")
-(def ^:private ^String changelog-file "liquibase.yaml")
+(def ^{:private true
+       :doc     "Liquibase setting used for upgrading instances running version < 45."}
+  ^String changelog-legacy-file "liquibase_legacy.yaml")
 
-(defn- changelog-table-name
-  "Returns case-sensitive database-specific name for Liquibase changelog table for db-type"
-  [^java.sql.Connection conn]
+(def ^{:private true
+       :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
+  ^String changelog-file "liquibase.yaml")
+
+(defn- format-table-name
+  "Correctly format table name based on the type of database"
+  [table-name ^java.sql.Connection conn]
   (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
-    "databasechangelog"
-    "DATABASECHANGELOG"))
+    (u/lower-case-en table-name)
+    (u/upper-case-en table-name)))
 
 (defn table-exists?
-  [data-source table-name]
-  (with-open [conn (.getConnection data-source)]
-   (let [meta (.getMetaData conn)] ; don't migrate on fresh install
-        (not (empty? (jdbc/metadata-query
-                       (.getTables meta nil nil table-name (u/varargs String ["TABLE"]))))))))
+  "Check if a table exists."
+  [table-name data-source-or-conn]
+  (letfn [(exists? [^java.sql.Connection conn table-name]
+            (-> (.getMetaData conn)
+                (.getTables  nil nil (format-table-name table-name conn) (u/varargs String ["TABLE"]))
+                jdbc/metadata-query
+                seq))]
+    (if (instance? java.sql.Connection data-source-or-conn)
+      (exists? data-source-or-conn table-name)
+      (with-open [conn (.getConnection ^javax.sql.DataSource data-source-or-conn)]
+        (exists? conn table-name)))))
 
-(defn fresh-install?
+(defn- fresh-install?
   [^java.sql.Connection conn]
-  (let [meta (.getMetaData conn)] ; don't migrate on fresh install
-       (empty? (jdbc/metadata-query
-                (.getTables meta nil nil (changelog-table-name conn) (u/varargs String ["TABLE"]))))))
+  (table-exists? "databasechangelog" conn))
 
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
   (if (fresh-install? conn)
    changelog-file
-   (let [latest-migration (->> (jdbc/query {:connection conn} [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
+   (let [latest-migration (->> (jdbc/query {:connection conn}
+                                           [(format "select id from %s order by dateexecuted desc limit 1" (format-table-name "databasechangelog" conn))])
                                first
                                :id)]
      (cond
@@ -294,6 +303,7 @@
             (.setFailOnError change-set fail-on-error?)))))))
 
 
+;; TODO this should be a migration
 (s/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
@@ -303,7 +313,7 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn :- java.sql.Connection]
-  (let [liquibase-table-name (changelog-table-name conn)
+  (let [liquibase-table-name (format-table-name "databasechangelog" conn)
         statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
     (when-not (fresh-install? conn)
       (jdbc/execute!
@@ -328,14 +338,14 @@
    (rollback-major-version db-type conn liquibase (dec (current-major-version))))
 
   ;; with explicit target version
-  ([db-type conn ^Liquibase liquibase target-version]
+  ([_db-type conn ^Liquibase liquibase target-version]
    (when (or (not (integer? target-version)) (< target-version 44))
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (current-major-version)))))
    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC"
-                                 (changelog-table-name conn))
+                                 (format-table-name "databasechangelog" conn))
          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
