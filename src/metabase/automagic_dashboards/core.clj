@@ -837,8 +837,7 @@
                 name->type                (zipmap named-dimensions
                                                   (map dimension->types named-dimensions))
                 affinity-set              (set (vals name->type))
-                metric-constituent-types  (into #{} (map dimension->types) named-metric-constituents)
-                ]
+                metric-constituent-types  (into #{} (map dimension->types) named-metric-constituents)]
             (when-not (or (affinity-set ::not-found)
                           (metric-constituent-types ::not-found))
               {:affinity-name            card-name
@@ -855,23 +854,29 @@
         card-templates))))
 
 (defn metric->dim->cards [flat-affinities]
-  (as-> flat-affinities affinities
-        (group-by :metric-field-types affinities)
-        (update-vals
-          affinities
-          (fn [vs]
-            (update-vals
-              (group-by :affinity-set vs)
-              (fn [vs]
-                ;; *At the moment* we are only using metric and dimension types to match cards.
-                ;; This logic should deduplicate cards that are identical except for filters.
-                ;; Once we add filters back into the mix, this will go away and just be
-                ;; `(mapv :card-template vs)`
-                (let [deduplicated-cards (->> (mapv :card-template vs)
-                                              (group-by (juxt :metrics :dimensions :visualization))
-                                              vals
-                                              (mapv first))]
-                  {:cards deduplicated-cards})))))))
+  (let [mdc     (as-> flat-affinities affinities
+                      (group-by :metric-field-types affinities)
+                      (update-vals
+                        affinities
+                        (fn [vs]
+                          (update-vals
+                            (group-by :affinity-set vs)
+                            (fn [vs]
+                              ;; *At the moment* we are only using metric and dimension types to match cards.
+                              ;; This logic should deduplicate cards that are identical except for filters.
+                              ;; Once we add filters back into the mix, this will go away and just be
+                              ;; `(mapv :card-template vs)`
+                              (let [deduplicated-cards (->> (mapv :card-template vs)
+                                                            (group-by (juxt :metrics :dimensions :visualization))
+                                                            vals
+                                                            (mapv first))]
+                                {:cards deduplicated-cards}))))))
+        default (apply
+                  merge-with
+                  (fn [{a :cards} {b :cards}]
+                    {:cards (distinct (into a b))})
+                  (vals mdc))]
+    (assoc mdc :default default)))
 
 (comment
   (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])

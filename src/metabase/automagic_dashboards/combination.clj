@@ -24,9 +24,8 @@
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set sequential?]
-   {required-metric-field-types :metric-field-types
-    grounded-metric-fields      :grounded-metric-fields :as metric}]
+   {default-affinities :default :as semantic-affinity-sets} ;:- [:map-of ads/semantic-affinity-set sequential?]
+   {grounded-metric-fields :grounded-metric-fields :as metric}]
   (let [grounded-field-ids (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
@@ -45,25 +44,25 @@
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
         groundable-fields  (group-by magic.util/field-type available)]
-    (for [[metric-field-types dims->cards] semantic-affinity-sets
-          [dimset _cards] dims->cards
-          :when (= metric-field-types required-metric-field-types)
-          ground-dimension-fields (->> (map groundable-fields dimset)
-                                       (apply math.combo/cartesian-product)
-                                       (map (partial zipmap dimset)))]
-      (-> metric
-          (assoc
-            :grounded-metric-fields grounded
-            :dimension-type->field ground-dimension-fields
-            :dimension-name->field (into
-                                          (zipmap
-                                            (map (comp :dimension-name :dimension) grounded)
-                                            grounded)
-                                          (zipmap
-                                            (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
-                                            (vals ground-dimension-fields)))
-            :dimension-field-types (set (keys ground-dimension-fields)))
-          (update :metric-definition add-breakouts (vals ground-dimension-fields))))))
+    (->> (keys (semantic-affinity-sets grounded-metric-fields default-affinities))
+         (mapcat (fn [dimensions-set]
+                   (->> (map groundable-fields dimensions-set)
+                        (apply math.combo/cartesian-product)
+                        (map (partial zipmap dimensions-set)))))
+         (map (fn [ground-dimension-fields]
+                (-> metric
+                    (assoc
+                      :grounded-metric-fields grounded
+                      :dimension-type->field ground-dimension-fields
+                      :dimension-name->field (into
+                                               (zipmap
+                                                 (map (comp :dimension-name :dimension) grounded)
+                                                 grounded)
+                                               (zipmap
+                                                 (map (comp :dimension-name :dimension) (vals ground-dimension-fields))
+                                                 (vals ground-dimension-fields)))
+                      :dimension-field-types (set (keys ground-dimension-fields)))
+                    (update :metric-definition add-breakouts (vals ground-dimension-fields))))))))
 
 (mu/defn interesting-combinations
   "Expand simple ground metrics in to ground metrics with dimensions
@@ -191,7 +190,9 @@
   "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
   the affinity-set->cards map."
   [base-context affinity-set->cards {:keys [metric-field-types dimension-field-types] :as grounded-metric}]
-  (->> (get-in affinity-set->cards [metric-field-types dimension-field-types :cards])
+  (->> (or
+         (get-in affinity-set->cards [metric-field-types dimension-field-types :cards])
+         (get-in affinity-set->cards [:default dimension-field-types :cards]))
        (map (partial ground-metric->card base-context grounded-metric))
        (filter identity)
        (map-indexed (fn [i card]
