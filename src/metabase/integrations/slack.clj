@@ -27,8 +27,14 @@
 
 (defsetting slack-app-token
   (deferred-tru
-    (str "Bot user OAuth token for connecting the Metabase Slack app. "
-         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+   (str "Bot user OAuth token for connecting the Metabase Slack app. "
+        "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :visibility :settings-manager
+  :getter (fn []
+            (let [token (setting/get-value-of-type :string :slack-app-token)]
+              (when (string? token)
+                ;; Truncate middle of token so that the full value isn't visibile in the UI
+                (str (subs token 0 9) "..." (subs token (- (count token) 4)))))))
 
 (defsetting slack-token-valid?
   (deferred-tru
