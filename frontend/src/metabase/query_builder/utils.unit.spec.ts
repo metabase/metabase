@@ -6,6 +6,7 @@ import {
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
+import { serializeCardForUrl } from "metabase/lib/card";
 
 import { isNavigationAllowed } from "./utils";
 
@@ -76,7 +77,7 @@ const modelMetadataTabLocation = createMockLocation({
 
 const runQuestionLocation = createMockLocation({
   pathname: "/question",
-  hash: `#${window.btoa(JSON.stringify(nativeCard))}`,
+  hash: `#${serializeCardForUrl(nativeCard)}`,
 });
 
 describe("isNavigationAllowed", () => {
