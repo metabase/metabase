@@ -77,6 +77,7 @@
    ;; returned for Card, Dashboard, and Collection
    :collection_id       :integer
    :collection_name     :text
+   :collection_type     :text
    :collection_authority_level :text
    ;; returned for Card and Dashboard
    :collection_position :integer
