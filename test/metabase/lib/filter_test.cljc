@@ -439,14 +439,27 @@
 (deftest ^:parallel frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)
-        last-online-time (meta/field-metadata :products :created-at)
         tax (meta/field-metadata :orders :tax)
         nam (meta/field-metadata :venues :name)
         pk (meta/field-metadata :venues :id)
         fk (meta/field-metadata :orders :user-id)
-        is-active (meta/field-metadata :venues :category-id)
         longitude (meta/field-metadata :venues :longitude)
-        people-longitude (meta/field-metadata :venues :longitude)
+        latitude (meta/field-metadata :venues :latitude)
+        last-online-time (assoc (meta/field-metadata :people :birth-date)
+                          :display-name   "Last Online Time"
+                          :base-type      :type/Time
+                          :effective-type :type/Time
+                          :semantic-type  :type/Time)
+        is-active (assoc  (meta/field-metadata :orders :discount)
+                          :display-name   "Is Active"
+                          :base-type      :type/Boolean
+                          :effective-type :type/Boolean
+                          :semantic-type  :type/Boolean)
+        metadata-provider (lib/composed-metadata-provider
+                            (lib.tu/mock-metadata-provider
+                              {:fields [last-online-time is-active]})
+                            meta/metadata-provider)
+        query (lib/query metadata-provider (meta/table-metadata :venues))
         tests {"EXCLUDE_DATE_FILTERS"
                [{"clause" [:!= (created-at-with :day-of-week) "2023-10-02"],
                  "name" "Created At excludes Monday"}
@@ -469,10 +482,10 @@
                 {"clause" [:is-null created-at], "name" "Created At is empty"}
                 {"clause" [:not-null created-at], "name" "Created At is not empty"}],
                "TIME_FILTERS"
-               [{"clause" [:< last-online-time "00:00:00.000"], "name" "Last Online Time is before 00:00:00.000"}
-                {"clause" [:> last-online-time "12:00:00.000"], "name" "Last Online Time is after 12:00:00.000"}
-                {"clause" [:between last-online-time "12:00:00.000" "00:00:00.000+00:00"],
-                 "name" "Last Online Time between 12:00:00.000 00:00:00.000+00:00"}
+               [{"clause" [:< last-online-time "00:00:00.000"], "name" "Last Online Time is before 12:00 AM"}
+                {"clause" [:> last-online-time "12:00:00.000"], "name" "Last Online Time is after 12:00 PM"}
+                {"clause" [:between last-online-time "12:00:00.000" "00:00:00.000"],
+                 "name" "Last Online Time is 12:00 PM – 12:00 AM"}
                 {"clause" [:is-null last-online-time], "name" "Last Online Time is empty"}
                 {"clause" [:not-null last-online-time], "name" "Last Online Time is not empty"}],
                "PK_FILTERS"
@@ -491,8 +504,8 @@
                 {"clause" [:is-null pk], "name" "ID is empty"}
                 {"clause" [:not-null pk], "name" "ID is not empty"}],
                "COORDINATE_FILTERS"
-               [{"clause" [:inside longitude people-longitude 1 2 3 4],
-                 "name" "Longitude inside 1 2 3 4"}],
+               [{"clause" [:inside longitude latitude 1 2 3 4],
+                 "name" "Longitude is between 3 and 1 and Latitude is between 2 and 4"}],
                "FK_FILTERS"
                [{"clause" [:= fk 1], "name" "User ID is 1"}
                 {"clause" [:= fk 11], "name" "User ID is 11"}
@@ -549,7 +562,7 @@
                 {"clause" [:time-interval created-at -3 :minute], "name" "Created At is in the previous 3 minutes"}
                 {"clause" [:time-interval created-at -1 :hour], "name" "Created At is in the previous hour"}
                 {"clause" [:time-interval created-at -3 :hour], "name" "Created At is in the previous 3 hours"}
-                {"clause" [:time-interval created-at -1 :day], "name" "Created At is in the previous day"}
+                {"clause" [:time-interval created-at -1 :day], "name" "Created At is yesterday"}
                 {"clause" [:time-interval created-at -3 :day], "name" "Created At is in the previous 3 days"}
                 {"clause" [:time-interval created-at -1 :week], "name" "Created At is in the previous week"}
                 {"clause" [:time-interval created-at -3 :week], "name" "Created At is in the previous 3 weeks"}
@@ -565,17 +578,17 @@
                            [:relative-datetime -1 :month]
                            [:relative-datetime 0 :month]],
                  "name" "Created At is in the previous month, starting 1 month ago"}
-                {"clause" [:time-interval created-at :current :day], "name" "Created At Today"}
-                {"clause" [:time-interval created-at :current :week], "name" "Created At This Week"}
-                {"clause" [:time-interval created-at :current :month], "name" "Created At This Month"}
+                {"clause" [:time-interval created-at :current :day], "name" "Created At is today"}
+                {"clause" [:time-interval created-at :current :week], "name" "Created At is this week"}
+                {"clause" [:time-interval created-at :current :month], "name" "Created At is this month"}
                 {"clause" [:time-interval created-at :current :quarter],
-                 "name" "Created At This Quarter"}
-                {"clause" [:time-interval created-at :current :year], "name" "Created At This Year"}
+                 "name" "Created At is this quarter"}
+                {"clause" [:time-interval created-at :current :year], "name" "Created At is this year"}
                 {"clause" [:time-interval created-at 1 :minute], "name" "Created At is in the next minute"}
                 {"clause" [:time-interval created-at 3 :minute], "name" "Created At is in the next 3 minutes"}
                 {"clause" [:time-interval created-at 1 :hour], "name" "Created At is in the next hour"}
                 {"clause" [:time-interval created-at 3 :hour], "name" "Created At is in the next 3 hours"}
-                {"clause" [:time-interval created-at 1 :day], "name" "Created At is in the next day"}
+                {"clause" [:time-interval created-at 1 :day], "name" "Created At is tomorrow"}
                 {"clause" [:time-interval created-at 3 :day], "name" "Created At is in the next 3 days"}
                 {"clause" [:time-interval created-at 1 :week], "name" "Created At is in the next week"}
                 {"clause" [:time-interval created-at 3 :week], "name" "Created At is in the next 3 weeks"}
@@ -591,9 +604,9 @@
                            [:relative-datetime 1 :month]],
                  "name" "Created At is in the next month, starting 1 month from now"}],
                "SPECIFIC_DATE_FILTERS"
-               [{"clause" [:= created-at "2023-10-03"], "name" "Created At is Oct 3, 2023"}
+               [{"clause" [:= created-at "2023-10-03"], "name" "Created At is on Oct 3, 2023"}
                 {"clause" [:= created-at "2023-10-03T12:30:00"],
-                 "name" "Created At is Oct 3, 2023, 12:30 PM"}
+                 "name" "Created At is on Oct 3, 2023, 12:30 PM"}
                 {"clause" [:> created-at "2023-10-03"], "name" "Created At is after Oct 3, 2023"}
                 {"clause" [:> created-at "2023-10-03T12:30:00"],
                  "name" "Created At is after Oct 3, 2023, 12:30 PM"}
@@ -616,16 +629,18 @@
                  "name" "Created At is Sep 1, 2022 – Oct 3, 2023"}
                 {"clause" [:between created-at "2022-09-01T13:00:00" "2023-10-03T01:00:00"],
                  "name" "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}]}]
-    (doseq [[test-name clauses] tests]
+    (doseq [[test-name clauses] tests
+            #_#_
+            :when (= test-name "TIME_FILTERS")]
       (testing test-name
         (doseq [clause clauses
                 :let [exp (get clause "name")
                       expression (get clause "clause")
                       options (update-keys (get clause "options") keyword)]
                 #_#_
-                :when (= exp  "Created At is in the previous month, starting 1 month ago")]
+                :when (= exp  "Is Active is false")]
           (testing exp
-            (is (= exp (lib/display-name lib.tu/venues-query -1
+            (is (= exp (lib/display-name query -1
                                          (walk/postwalk
                                            (fn [node]
                                              (let [node-options (when (= node expression)

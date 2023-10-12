@@ -157,13 +157,13 @@
   (.diff after before "day"))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
@@ -172,21 +172,25 @@
   (if (string? input)
     (let [time? (matches-time? input)
           date? (matches-date? input)
-          t (when-not time?
+          date-time? (matches-date-time? input)
+          t (if time?
+              (moment/utc (str "2023-01-01T" input moment/ISO_8601))
               (moment/utc input moment/ISO_8601))]
-      (case unit
-        :day-of-week (.format t "dddd")
-        :month-of-year (.format t "MMM")
-        :minute-of-hour (.format t "m")
-        :hour-of-day (.format t "h A")
-        :day-of-month (.format t "D")
-        :day-of-year (.format t "DDD")
-        :week-of-year (.format t "w")
-        :quarter-of-year (.format t "[Q]Q")
-        (cond
-          time? input
-          date? (.format t "MMM D, YYYY")
-          :else (.format t "MMM D, YYYY, h:mm A"))))
+      (if t
+        (case unit
+          :day-of-week (.format t "dddd")
+          :month-of-year (.format t "MMM")
+          :minute-of-hour (.format t "m")
+          :hour-of-day (.format t "h A")
+          :day-of-month (.format t "D")
+          :day-of-year (.format t "DDD")
+          :week-of-year (.format t "w")
+          :quarter-of-year (.format t "[Q]Q")
+          (cond
+            time? (.format t "h:mm A")
+            date? (.format t "MMM D, YYYY")
+            date-time? (.format t "MMM D, YYYY, h:mm A")))
+        t))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
@@ -214,7 +218,7 @@
       (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
             rhs (moment/utc temporal-value-2 moment/ISO_8601)
             year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
-            month-matches? (= (.format lhs "MM") (.format rhs "MM"))
+            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
             day-matches? (= (.format lhs "D") (.format rhs "D"))
             hour-matches? (= (.format lhs "H") (.format rhs "H"))
             [lhs-fmt rhs-fmt] (cond
@@ -236,7 +240,7 @@
       (let [lhs (moment/utc temporal-value-1 moment/ISO_8601)
             rhs (moment/utc temporal-value-2 moment/ISO_8601)
             year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
-            month-matches? (= (.format lhs "MM") (.format rhs "MM"))
+            month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches?)
                                 ["MMM D" "D, YYYY"]

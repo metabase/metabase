@@ -77,7 +77,7 @@
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
 
       [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
-      (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
+      (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
 
       [:!= _ (a :guard numeric?) b]
       (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
@@ -200,9 +200,17 @@
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
-  (i18n/tru "{0} is in the {1}"
-            (lib.metadata.calculation/display-name query stage-number expr style)
-            (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit))))
+  (if (clojure.core/or
+        (clojure.core/= n :current)
+        (clojure.core/and
+          (clojure.core/= (abs n) 1)
+          (clojure.core/= unit :day)))
+    (i18n/tru "{0} is {1}"
+              (lib.metadata.calculation/display-name query stage-number expr style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))
+    (i18n/tru "{0} is in the {1}"
+              (lib.metadata.calculation/display-name query stage-number expr style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]

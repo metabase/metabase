@@ -206,13 +206,13 @@
   (.toDays (t/duration before after)))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d(?:\+\d\d:\d\d)?)?)?" input))
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
@@ -221,23 +221,26 @@
   (if (string? input)
     (let [time? (matches-time? input)
           date? (matches-date? input)
+          date-time? (matches-date-time? input)
           t (cond
               time? (t/local-time input)
               date? (t/local-date input)
-              :else (t/local-date-time input))]
-      (case unit
-        :day-of-week (t/format "EEEE" t)
-        :month-of-year (t/format "MMM" t)
-        :minute-of-hour (t/format "m" t)
-        :hour-of-day (t/format "h a" t)
-        :day-of-month (t/format "d" t)
-        :day-of-year (t/format "D" t)
-        :week-of-year (t/format "w" t)
-        :quarter-of-year (t/format "'Q'Q" t)
-        (cond
-          time? (t/format t)
-          date? (t/format "MMM d, YYYY" t)
-          :else (t/format "MMM d, YYYY, h:mm a" t))))
+              date-time? (t/local-date-time input))]
+      (if t
+        (case unit
+          :day-of-week (t/format "EEEE" t)
+          :month-of-year (t/format "MMM" t)
+          :minute-of-hour (t/format "m" t)
+          :hour-of-day (t/format "h a" t)
+          :day-of-month (t/format "d" t)
+          :day-of-year (t/format "D" t)
+          :week-of-year (t/format "w" t)
+          :quarter-of-year (t/format "'Q'Q" t)
+          (cond
+            time? (t/format "h:mm a" t)
+            date? (t/format "MMM d, YYYY" t)
+            :else (t/format "MMM d, YYYY, h:mm a" t)))
+        input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
