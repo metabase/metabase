@@ -608,13 +608,15 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "BIGINT"
-    ::upload/float       "DOUBLE"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/float                    [:double]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]))
 
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
@@ -674,7 +676,7 @@
         (let [tsvs (map (partial row->tsv (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
                                 :columns (map keyword column-names)}
-                               :quoted true
+                               :quoted  true
                                :dialect (sql.qp/quote-style driver))]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
