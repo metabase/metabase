@@ -145,7 +145,7 @@ export const DropdownSidebarFilter = ({
         {({ maxHeight }: { maxHeight: number }) =>
           popoverWidth && (
             <SearchEventSandbox>
-              <Stack mah={maxHeight} w={popoverWidth ?? "100%"}>
+              <Stack mah={maxHeight}>
                 <ContentComponent
                   value={value}
                   onChange={selected => onApplyFilter(selected)}

@@ -17,7 +17,7 @@ export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
     />
   ),
   ContentComponent: ({ value, onChange, width }) => (
-    <Box w={width}>
+    <Box m={width}>
       <SearchUserPicker value={value} onChange={onChange} />
     </Box>
   ),

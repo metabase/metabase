@@ -744,7 +744,7 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
 
           cy.findByText("Today").should("not.exist");
-          cy.findByText("Last edited at").should("exist");
+          cy.findByText("Last edit date").should("exist");
         });
 
         cy.url().should("not.contain", "last_edited_at");
@@ -864,36 +864,18 @@ describe("scenarios > search", () => {
           );
         });
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: ["Native Query", TEST_NATIVE_QUESTION_NAME],
+        });
       });
 
       it("should include results that contain native query data when the toggle is on", () => {
         cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(1);
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME],
+        });
 
         cy.findByTestId("search_native_query-search-filter").within(() => {
           cy.findByTestId("toggle-filter-switch").click();
@@ -901,19 +883,9 @@ describe("scenarios > search", () => {
 
         cy.url().should("include", "search_native_query=true");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
+        });
       });
 
       it("should not include results that contain native query data if the toggle is off", () => {
@@ -922,35 +894,17 @@ describe("scenarios > search", () => {
         );
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
+        });
 
         cy.findByTestId("search_native_query-search-filter").within(() => {
           cy.findByTestId("toggle-filter-switch").click();
         });
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(1);
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME],
+        });
       });
     });
 
