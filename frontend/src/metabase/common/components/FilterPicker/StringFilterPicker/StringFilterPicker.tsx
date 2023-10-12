@@ -15,6 +15,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
 import { OPTIONS } from "./constants";
+import { isFilterValid } from "./utils";
 
 export function StringFilterPicker({
   query,
@@ -48,11 +49,10 @@ export function StringFilterPicker({
     return option ?? { valueCount: 0, hasCaseSensitiveOption: false };
   }, [availableOperators, operatorName]);
 
-  const isFilterValid = useMemo(() => {
-    return Number.isFinite(valueCount)
-      ? values.length === valueCount
-      : values.length >= 1;
-  }, [values, valueCount]);
+  const isValid = useMemo(
+    () => isFilterValid(operatorName, values),
+    [operatorName, values],
+  );
 
   const handleOperatorChange = (
     newOperatorName: Lib.StringFilterOperatorName,
@@ -114,7 +114,7 @@ export function StringFilterPicker({
         ) : (
           <Box />
         )}
-        <Button disabled={!isFilterValid} onClick={handleFilterChange}>
+        <Button disabled={!isValid} onClick={handleFilterChange}>
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
       </Footer>

@@ -1,15 +1,14 @@
 import * as Lib from "metabase-lib";
 import type { CoordinateFilterOperatorName } from "metabase-lib";
+import { OPTIONS } from "./constants";
 
 export function findLatitudeColumns(query: Lib.Query, stageIndex: number) {
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
-
   return filterableColumns.filter(column => Lib.isLatitude(column));
 }
 
 export function findLongitudeColumns(query: Lib.Query, stageIndex: number) {
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
-
   return filterableColumns.filter(column => Lib.isLongitude(column));
 }
 
@@ -83,3 +82,22 @@ export const getColumnIdentifier = (
 
   return `${columnInfo?.table?.name ?? "computed"}_${columnInfo.name}`;
 };
+
+export function isFilterValid(
+  operatorName: CoordinateFilterOperatorName,
+  values: number[],
+) {
+  const option = OPTIONS.find(option => option.operator === operatorName);
+  if (!option) {
+    return false;
+  }
+
+  const { valueCount } = option;
+  const filledValues = values.filter(
+    value => typeof value === "number" && Number.isFinite(value),
+  );
+
+  return Number.isFinite(valueCount)
+    ? filledValues.length === valueCount
+    : filledValues.length >= 1;
+}

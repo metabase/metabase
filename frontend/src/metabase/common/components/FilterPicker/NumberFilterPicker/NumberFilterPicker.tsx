@@ -15,6 +15,7 @@ import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { OPTIONS } from "./constants";
+import { isFilterValid } from "./utils";
 
 export function NumberFilterPicker({
   query,
@@ -47,11 +48,10 @@ export function NumberFilterPicker({
     return option?.valueCount ?? 0;
   }, [availableOperators, operatorName]);
 
-  const isFilterValid = useMemo(() => {
-    return Number.isFinite(valueCount)
-      ? values.length === valueCount
-      : values.length >= 1;
-  }, [values, valueCount]);
+  const isValid = useMemo(
+    () => isFilterValid(operatorName, values),
+    [operatorName, values],
+  );
 
   const handleOperatorChange = (
     newOperatorName: Lib.NumberFilterOperatorName,
@@ -88,7 +88,7 @@ export function NumberFilterPicker({
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
         <Box />
-        <Button disabled={!isFilterValid} onClick={handleFilterChange}>
+        <Button disabled={!isValid} onClick={handleFilterChange}>
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
       </Footer>
