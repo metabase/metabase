@@ -12,6 +12,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import { usePrevious } from "react-use";
 
+import { isCypressActive } from "metabase/env";
 import Radio from "metabase/core/components/Radio";
 
 import {
@@ -319,7 +320,7 @@ function DatasetFieldMetadataSidebar({
   return (
     <SidebarContent>
       <AnimatableContent
-        animated={shouldAnimateFieldChange}
+        animated={shouldAnimateFieldChange && !isCypressActive}
         onAnimationEnd={onFieldChangeAnimationEnd}
       >
         <RootForm
