@@ -603,6 +603,13 @@ describe("scenarios > search", () => {
     });
 
     describe("created_at filter", () => {
+      beforeEach(() => {
+        cy.signInAsNormalUser();
+        cy.createQuestion(NORMAL_USER_TEST_QUESTION);
+        cy.signOut();
+        cy.signInAsAdmin();
+      });
+
       TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
         it(`should hydrate created_at=${filter}`, () => {
           cy.visit(`/search?q=orders&created_at=${filter}`);
@@ -613,65 +620,55 @@ describe("scenarios > search", () => {
             cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
+
+          // TODO: Add more tests once the search result elements are redesigned to include 'created_at' times.
         });
       });
 
       // we can only test the 'today' filter since we currently
       // can't edit the created_at column of a question in our database
       it(`should filter results by Today (created_at=thisday)`, () => {
-        cy.visit(`/search?q=Test`);
+        cy.visit(`/search?q=Reviews`);
+
+        expectSearchResultItemNameContent({
+          itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+        });
+
         cy.findByTestId("created_at-search-filter").click();
-
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "Test"').should("exist");
-          cy.findByText("Test Question from Today").should("not.exist");
-        });
-
-        cy.createQuestion({
-          name: "Test Question from Today",
-          query: { "source-table": ORDERS_ID },
-        });
-
         popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "Test"').should("exist");
-          cy.findByText("Test Question from Today").should("exist");
+        expectSearchResultItemNameContent({
+          itemNames: [NORMAL_USER_TEST_QUESTION.name],
         });
       });
 
       it("should remove created_at filter when `X` is clicked on search filter", () => {
-        cy.createQuestion({
-          name: "Test Question from Today",
-          query: { "source-table": ORDERS_ID },
-        });
-
-        cy.visit(`/search?q=Test&created_at=past1days`);
-
+        cy.visit(`/search?q=Reviews&created_at=thisday`);
         cy.wait("@search");
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "Test"').should("exist");
-          cy.findByText("Test Question from Today").should("not.exist");
+        expectSearchResultItemNameContent({
+          itemNames: [NORMAL_USER_TEST_QUESTION.name],
         });
 
         cy.findByTestId("created_at-search-filter").within(() => {
-          cy.findByText("Yesterday").should("exist");
+          cy.findByText("Today").should("exist");
+
           cy.findByLabelText("close icon").click();
-          cy.findByText("Yesterday").should("not.exist");
+
+          cy.findByText("Today").should("not.exist");
           cy.findByText("Creation date").should("exist");
         });
 
         cy.url().should("not.contain", "created_at");
 
-        cy.findByTestId("search-app").within(() => {
-          cy.findByText('Results for "Test"').should("exist");
-          cy.findByText("Test Question from Today").should("exist");
+        expectSearchResultItemNameContent({
+          itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
         });
 
-        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
+        // TODO: Add more assertions for search results when we redesign the search result elements to include
+        // creation times
       });
     });
 
@@ -952,7 +949,7 @@ function expectSearchResultItemNameContent({ itemNames }) {
       .toArray()
       .map(el => el.textContent);
 
-    expect(searchResultLabelList).to.include(itemNames);
-    expect(searchResultLabelList.length).to.eq(itemNames.length);
+    expect(searchResultLabelList).to.have.length(itemNames.length);
+    expect(searchResultLabelList).to.include.members(itemNames);
   });
 }
