@@ -98,6 +98,8 @@
 ;; Also, be aware that there's [a big epic under way](https://github.com/metabase/metabase/issues/27982) to add
 ;; filtering to search results, which should help people find what they're looking for (and spares us from having to
 ;; make the above algorithm better).
+;;
+;;  <hr />
 
 (ns metabase.search.scoring
   (:require

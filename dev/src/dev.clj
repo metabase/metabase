@@ -16,11 +16,11 @@
 ;;
 ;; ## Important Parts of the Codebase
 ;;
-;; - [Drivers](#metabase.driver)
-;; - [The Query Processor](#metabase.query-processor)
-;; - [Permissions](#metabase.models.permissions)
-;; - [Application Settings](#metabase.models.setting)
 ;; - [API Endpoints](file:///home/tmacdonald/src/metabase/backend-docs/uberdoc.html#metabase.api.common)
+;; - [Drivers](#metabase.driver)
+;; - [Permissions](#metabase.models.permissions)
+;; - [The Query Processor](#metabase.query-processor)
+;; - [Application Settings](#metabase.models.setting)
 ;;
 ;; ## Important Libraries
 ;;
@@ -29,7 +29,7 @@
 ;; - [Liquibase](https://docs.liquibase.com/concepts/changelogs/changeset.html) for database migrations
 ;; - [Compojure](https://github.com/weavejester/compojure) on top of [Ring](https://github.com/ring-clojure/ring) for our API
 ;;
-;; <hr>
+;; <hr />
 
 
 (ns dev
