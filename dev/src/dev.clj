@@ -1,3 +1,37 @@
+;; # Metabase Backend Developer Documentation
+;;
+;; Welcome to Metabase! Here are links to useful resources.
+;;
+;; ## Project Management
+;;
+;; - [Engineering and Product Playbook](https://www.notion.so/metabase/Engineering-and-Product-Playbook-cd4bc1c0b8744470bebc0b979f8f5268)
+;; - [Weekly Tactical Board: how to](https://www.notion.so/metabase/Weekly-Tactical-Board-how-to-6e81f994a792493ba7ae430f2afa1673)
+;; - [The Escalations Process](https://www.notion.so/Escalating-a-bug-b876f78c801345f3bda8504d4a63ba80)
+;;
+;; ## Dev Environment
+;;
+;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
+;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
+;; - [Other tips](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
+;;
+;; ## Important Parts of the Codebase
+;;
+;; - [Drivers](#metabase.driver)
+;; - [The Query Processor](#metabase.query-processor)
+;; - [Permissions](#metabase.models.permissions)
+;; - [Application Settings](#metabase.models.setting)
+;; - [API Endpoints](file:///home/tmacdonald/src/metabase/backend-docs/uberdoc.html#metabase.api.common)
+;;
+;; ## Important Libraries
+;;
+;; - [Toucan 2](https://github.com/camsaul/toucan2/) to work with models
+;; - [Honey SQL](https://github.com/seancorfield/honeysql) (version 2) for SQL queries
+;; - [Liquibase](https://docs.liquibase.com/concepts/changelogs/changeset.html) for database migrations
+;; - [Compojure](https://github.com/weavejester/compojure) on top of [Ring](https://github.com/ring-clojure/ring) for our API
+;;
+;; <hr>
+
+
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require
