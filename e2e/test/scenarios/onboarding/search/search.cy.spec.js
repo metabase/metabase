@@ -547,7 +547,7 @@ describe("scenarios > search", () => {
 
           cy.wait("@search");
 
-          cy.findByTestId("created_at-search-filter").within(() => {
+          cy.findByTestId("last_edited_at-search-filter").within(() => {
             cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
@@ -555,7 +555,7 @@ describe("scenarios > search", () => {
       });
 
       // we can only test the 'today' filter since we currently
-      // can't edit the created_at column of a question in our database
+      // can't edit the last_edited_at column of a question in our database
       it(`should filter results by Today (last_edited_at=thisday)`, () => {
         cy.visit(`/search?q=Test`);
         cy.findByTestId("last_edited_at-search-filter").click();
