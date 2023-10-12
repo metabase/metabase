@@ -62,6 +62,8 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
+      - name: Prepare storybook
+        run: yarn --cwd ./storybook
       - run: yarn build-pure:cljs
         name: Compile CLJS
       - run: yarn type-check-pure
