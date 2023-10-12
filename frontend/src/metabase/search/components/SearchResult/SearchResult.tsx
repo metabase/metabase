@@ -9,7 +9,7 @@ import { Group, Text, Stack, Loader, Box, Divider, Title } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
-import { InfoText } from "./InfoText";
+import { InfoText } from "../InfoText/InfoText";
 import { ItemIcon } from "./components";
 
 import { SearchResultContainer } from "./SearchResult.styled";

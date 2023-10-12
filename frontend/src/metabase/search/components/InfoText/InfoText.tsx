@@ -1,9 +1,9 @@
 import { Fragment } from "react";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";
-import { LastEditedInfo } from "metabase/search/components/SearchResult/InfoText.styled";
-import type { InfoTextData } from "metabase/search/components/SearchResult/use-info-text";
-import { useInfoText } from "metabase/search/components/SearchResult/use-info-text";
+import { LastEditedInfo } from "metabase/search/components/InfoText/InfoText.styled";
+import type { InfoTextData } from "metabase/search/components/InfoText/use-info-text";
+import { useInfoText } from "metabase/search/components/InfoText/use-info-text";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import type { AnchorProps, TextProps } from "metabase/ui";
