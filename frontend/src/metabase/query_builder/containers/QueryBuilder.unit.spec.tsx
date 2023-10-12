@@ -11,6 +11,7 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -37,6 +38,7 @@ import {
   setupCardCreateEndpoint,
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -191,6 +193,10 @@ const TEST_MODEL_DATASET = createMockDataset({
   running_time: 35,
 });
 
+const TEST_COLLECTION = createMockCollection();
+
+const TEST_METADATA = createMockResultsMetadata();
+
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -230,6 +236,9 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
+  setupCollectionsEndpoints({
+    collections: [TEST_COLLECTION],
+  });
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
@@ -457,7 +466,7 @@ describe("QueryBuilder", () => {
         expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
-      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      it("should trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
         const { mockEventListener } = await setup({
           card: TEST_UNSAVED_NATIVE_CARD,
         });
@@ -465,10 +474,8 @@ describe("QueryBuilder", () => {
         await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -846,9 +853,50 @@ describe("QueryBuilder", () => {
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
-            name: "Refresh",
+            name: "Get Answer",
           }),
         );
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
+        });
+        fetchMock.post("path:/api/card", TEST_NATIVE_CARD);
+        fetchMock.get("path:/api/table/card__1/query_metadata", TEST_METADATA);
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        userEvent.click(screen.getByText("Save"));
+
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        userEvent.type(
+          within(saveQuestionModal).getByLabelText("Name"),
+          TEST_NATIVE_CARD.name,
+        );
+        await waitFor(() => {
+          expect(
+            within(saveQuestionModal).getByTestId("select-button"),
+          ).toHaveTextContent(TEST_COLLECTION.name);
+        });
+        userEvent.click(
+          within(saveQuestionModal).getByRole("button", { name: "Save" }),
+        );
+
+        await waitFor(() => {
+          expect(saveQuestionModal).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByTestId("leave-confirmation"),
