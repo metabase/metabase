@@ -85,12 +85,14 @@
                                (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
 (defmacro with-saml-default-setup [& body]
-  `(with-sso-saml-token
-     (call-with-login-attributes-cleared!
-      (fn []
-        (call-with-default-saml-config
-         (fn []
-           ~@body))))))
+  ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
+  `(mt/with-ensure-with-temp-no-transaction!
+    (with-sso-saml-token
+      (call-with-login-attributes-cleared!
+       (fn []
+         (call-with-default-saml-config
+          (fn []
+            ~@body)))))))
 
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"

@@ -21,8 +21,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
@@ -60,6 +61,15 @@ export class SmartScalar extends Component {
   static noHeader = true;
 
   static settings = {
+    ...fieldSetting("scalar.field", {
+      title: t`Field to show`,
+      fieldFilter: isNumeric,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.filter(isNumeric).length < 2,
+    }),
     ...columnSettings({
       getColumns: (
         [
@@ -76,6 +86,7 @@ export class SmartScalar extends Component {
           // but if there's only one column use that
           cols[0],
       ],
+      readDependencies: ["scalar.field"],
     }),
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
@@ -127,7 +138,9 @@ export class SmartScalar extends Component {
       fontFamily,
     } = this.props;
 
-    const metricIndex = cols.findIndex(col => !isDate(col));
+    const metricIndex = cols.findIndex(
+      col => col.name === settings["scalar.field"],
+    );
     const dimensionIndex = cols.findIndex(col => isDate(col));
 
     const lastRow = rows[rows.length - 1];

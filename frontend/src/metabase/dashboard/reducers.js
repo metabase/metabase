@@ -338,7 +338,11 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: () => ({}) },
+    [INITIALIZE]: {
+      next: (state, { payload: { clearCache = true } = {} }) => {
+        return clearCache ? {} : state;
+      },
+    },
     [FETCH_DASHBOARD]: {
       next: (
         state,
@@ -358,7 +362,6 @@ const draftParameterValues = handleActions(
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
-    [RESET]: { next: () => ({}) },
   },
   {},
 );

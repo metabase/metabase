@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
-import { SearchResult } from "metabase/search/components/SearchResult";
+import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
 import type { SearchFilters } from "metabase/search/types";
 import {

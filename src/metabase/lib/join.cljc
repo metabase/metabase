@@ -758,9 +758,10 @@
   "Given something `x` (e.g. a Table metadata) find the PK column."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   x]
+   x
+   options]
   (m/find-first lib.types.isa/primary-key?
-                (lib.metadata.calculation/visible-columns query stage-number x)))
+                (lib.metadata.calculation/visible-columns query stage-number x options)))
 
 (mu/defn ^:private fk-column-for-pk-in :- [:maybe lib.metadata/ColumnMetadata]
   [pk-col          :- [:maybe lib.metadata/ColumnMetadata]
@@ -791,14 +792,17 @@
   ([query         :- ::lib.schema/query
     stage-number  :- :int
     joinable]
-   (letfn [(filter-clause [x y]
-             (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
-     (or (when-let [pk-col (pk-column query stage-number joinable)]
-           (when-let [fk-col (fk-column-for query stage-number pk-col)]
-             (filter-clause fk-col pk-col)))
-         (when-let [pk-col (pk-column query stage-number (lib.util/query-stage query stage-number))]
-           (when-let [fk-col (fk-column-for-pk-in pk-col (lib.metadata.calculation/visible-columns query stage-number joinable))]
-             (filter-clause pk-col fk-col)))))))
+   (let [joinable-col-options {:include-implicitly-joinable? false
+                               :include-implicitly-joinable-for-source-card? false}]
+     (letfn [(filter-clause [x y]
+                   (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
+           (or (when-let [pk-col (pk-column query stage-number joinable joinable-col-options)]
+                 (when-let [fk-col (fk-column-for query stage-number pk-col)]
+                   (filter-clause fk-col pk-col)))
+               (when-let [pk-col (pk-column query stage-number (lib.util/query-stage query stage-number) nil)]
+                 (when-let [fk-col (fk-column-for-pk-in pk-col (lib.metadata.calculation/visible-columns
+                                                                query stage-number joinable joinable-col-options))]
+                   (filter-clause pk-col fk-col))))))))
 
 (defn- add-join-alias-to-joinable-columns [cols a-join]
   (let [join-alias     (lib.join.util/current-join-alias a-join)

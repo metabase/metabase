@@ -30,10 +30,7 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     addJoin({
-      leftTable: "Orders",
-      leftColumn: "Product ID",
       rightTable: "Products",
-      rightColumn: "ID",
       joinType: "inner",
     });
 
@@ -72,8 +69,13 @@ function addJoin({
     selectFromDropdown(leftTable).click();
   }
 
-  selectFromDropdown(leftColumn).click();
-  selectFromDropdown(rightColumn).click();
+  if (leftColumn) {
+    selectFromDropdown(leftColumn).click();
+  }
+
+  if (rightColumn) {
+    selectFromDropdown(rightColumn).click();
+  }
 
   cy.findAllByText("Join data")
     .last()

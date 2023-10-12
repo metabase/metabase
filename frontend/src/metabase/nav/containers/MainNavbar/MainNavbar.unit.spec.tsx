@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupCardsEndpoints,
@@ -143,9 +143,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }
 
 async function setupCollectionPage({

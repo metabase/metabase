@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
-    "test": "jest",
-    "prettier": "prettier --write"
+    "prettier": "prettier --write",
+    "test": "jest"
   },
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",

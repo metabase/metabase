@@ -44,16 +44,20 @@ CREATE USER metabase WITH PASSWORD "your_password";
 -- Give the role to the metabase user.
 GRANT analytics TO metabase;
 
--- Add query privileges to the role (options 1-3):
+-- Add query privileges to the role (options 1-4):
 
--- Option 1: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
--- GRANT pg_read_all_data ON DATABASE "your_database" TO analytics;
+-- Option 1: Uncomment the line below to let users with the analytics role query ALL DATA (In Postgres 14 or higher. See [Predefined Roles](https://www.postgresql.org/docs/current/predefined-roles.html#PREDEFINED-ROLES)).
+-- GRANT pg_read_all_data TO analytics;
 
--- Option 2: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
+-- Option 2: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
+-- GRANT USAGE ON DATABASE "your_schema" TO analytics;
+-- GRANT SELECT ON DATABASE "your_schema"  TO analytics;
+
+-- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
 -- GRANT SELECT ON ALL TABLES IN SCHEMA "your_schema" TO analytics;
 
--- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific TABLE.
+-- Option 4: Uncomment the line below to let users with the analytics role query anything in a specific TABLE.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
