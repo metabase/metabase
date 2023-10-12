@@ -99,8 +99,9 @@
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (cached-active-users-count)
-                                    :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
+          (http/get {:query-params {:users      (cached-active-users-count)
+                                    :site-uuid  (setting/get :site-uuid-for-premium-features-token-checks)
+                                    :mb-version (:tag config/mb-version-info)}})
           :body
           (json/parse-string keyword)))
 
