@@ -127,6 +127,18 @@
                               {:source-query    source-query
                                :source-metadata source-metadata}))))))))
 
+(deftest ^:parallel expression-with-only-field-in-source-query-test
+  (testing "Field coming from expression in source query should have string id"
+    (let [{{source-query :query} :dataset_query
+           source-metadata       :result_metadata}
+          (qp.test-util/card-with-source-metadata-for-query
+           (mt/mbql-query venues {:expressions {"ccprice" $price}}))]
+      (is (some #(when (= % [:field "ccprice" {:base-type :type/Integer}]) %)
+                (-> (mt/mbql-query nil
+                                   {:source-query    source-query
+                                    :source-metadata source-metadata})
+                    :query (#'qp.add-implicit-clauses/add-implicit-fields) :fields))))))
+
 (deftest joined-field-test
   (testing "When adding implicit `:fields` clauses, should include `join-alias` clauses for joined fields (#14745)"
     (doseq [field-ref (mt/$ids
