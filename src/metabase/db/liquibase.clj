@@ -69,7 +69,7 @@
   [table-name data-source-or-conn]
   (letfn [(exists? [^java.sql.Connection conn table-name]
             (-> (.getMetaData conn)
-                (.getTables  nil nil (format-table-name table-name conn) (u/varargs String ["TABLE"]))
+                (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
                 jdbc/metadata-query
                 seq))]
     (if (instance? java.sql.Connection data-source-or-conn)
@@ -79,7 +79,8 @@
 
 (defn- fresh-install?
   [^java.sql.Connection conn]
-  (not (table-exists? "databasechangelog" conn)))
+  (not (or (table-exists? "databasechangelog" conn)
+           (table-exists? "DATABASECHANGELOG" conn))))
 
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
