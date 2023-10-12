@@ -605,6 +605,24 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
+
+      it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
+        const { history } = await setup({
+          card: TEST_UNSAVED_NATIVE_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(
+          `/question#${serializeCardForUrl(TEST_UNSAVED_NATIVE_CARD)}`,
+        );
+        await waitForLoaderToBeRemoved();
+
+        await triggerNativeQueryChange();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
     });
 
     describe("editing models", () => {
