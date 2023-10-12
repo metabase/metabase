@@ -1,3 +1,4 @@
+import _ from "underscore";
 import * as Lib from "metabase-lib";
 import type { PickerOperatorOption } from "./types";
 
@@ -9,11 +10,19 @@ export function getAvailableOperatorOptions<
   column: Lib.ColumnMetadata,
   pickerOptions: T[],
 ) {
-  const columnOperators = Lib.filterableColumnOperators(column);
-  const columnOperatorNames = columnOperators.map(
-    operator => Lib.displayInfo(query, stageIndex, operator).shortName,
+  const columnOperatorInfos = Lib.filterableColumnOperators(column).map(
+    operator => Lib.displayInfo(query, stageIndex, operator),
   );
-  return pickerOptions.filter(option =>
+
+  const columnOperatorsByName = _.indexBy(columnOperatorInfos, "shortName");
+  const columnOperatorNames = Object.keys(columnOperatorsByName);
+
+  const supportedPickerOptions = pickerOptions.filter(option =>
     columnOperatorNames.includes(option.operator),
   );
+
+  return supportedPickerOptions.map(option => ({
+    name: columnOperatorsByName[option.operator].longDisplayName,
+    ...option,
+  }));
 }
