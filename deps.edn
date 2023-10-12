@@ -295,6 +295,8 @@
   :oss-dev
   {}
 
+  ;; Generate BE documentation with
+  ;; clojure -M:marginalia
   :marginalia
   {:extra-deps
    {com.github.tsmacdonald/marginalia {:mvn/version "0.9.2"}}
