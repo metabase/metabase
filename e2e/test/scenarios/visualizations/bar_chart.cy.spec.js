@@ -412,5 +412,7 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.get(".value-labels").should("contain", "6");
     cy.get(".value-labels").should("contain", "13");
     cy.get(".value-labels").should("contain", "19");
+
+    cy.get(".axis.yr").should("not.exist");
   });
 });

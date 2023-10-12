@@ -362,6 +362,7 @@ export function shouldSplitYAxis(
     isScalarSeries ||
     chartType === "scatter" ||
     settings["graph.y_axis.auto_split"] === false ||
+    settings["graph.metrics"]?.length < 2 ||
     isStacked(settings, datas)
   ) {
     return false;
