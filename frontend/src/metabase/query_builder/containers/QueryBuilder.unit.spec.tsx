@@ -830,6 +830,30 @@ describe("QueryBuilder", () => {
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
+
+      it("does not show custom warning modal when running new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(
+          within(screen.getByTestId("query-builder-main")).getByRole("button", {
+            name: "Refresh",
+          }),
+        );
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     describe("editing native questions", () => {
