@@ -12,17 +12,20 @@ export function useDashCardTabMenu(dashCardId: DashCardId) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
-  const lastSelectedTabId = useSelector(getLastSelectedTabId);
+  const _lastSelectedTabId = useSelector(getLastSelectedTabId);
 
   const orderedTabs = useMemo(() => {
-    const lastSelectedTab = tabs.find(t => t.id === lastSelectedTabId);
+    // recency logic for milestone 2, temporarily disabled
 
-    const withLastSelectedOnTop = lastSelectedTab
-      ? [lastSelectedTab, ...tabs.filter(t => t.id !== lastSelectedTabId)]
-      : tabs;
+    // const lastSelectedTab = tabs.find(t => t.id === lastSelectedTabId);
 
-    return withLastSelectedOnTop.filter(t => t.id !== selectedTabId);
-  }, [lastSelectedTabId, selectedTabId, tabs]);
+    // const withLastSelectedOnTop = lastSelectedTab
+    //   ? [lastSelectedTab, ...tabs.filter(t => t.id !== lastSelectedTabId)]
+    //   : tabs;
+
+    // return withLastSelectedOnTop.filter(t => t.id !== selectedTabId)
+    return tabs.filter(t => t.id !== selectedTabId);
+  }, [selectedTabId, tabs]);
 
   return {
     showMenu: tabs.length > 1,
