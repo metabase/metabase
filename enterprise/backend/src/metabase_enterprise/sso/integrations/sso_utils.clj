@@ -1,8 +1,10 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
+   [metabase-enterprise.sso.api.interface :as sso.interface]
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
@@ -22,9 +24,8 @@
    [:first_name       [:maybe ms/NonBlankString]]
    [:last_name        [:maybe ms/NonBlankString]]
    [:email            ms/Email]
-   ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
-   ;; the keys of `(methods sso/sso-get)`
-   [:sso_source       [:enum :saml :jwt]]
+   [:sso_source       (into [:enum] (keys (dissoc (methods sso.interface/sso-get) :default)))]
+   [:groups           seqable?]
    [:login_attributes [:maybe :map]]])
 
 (mu/defn create-new-sso-user!
@@ -34,6 +35,14 @@
   [user :- UserAttributes]
   (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
+    ;; publish user-invited event for audit logging
+    (let [details (-> (into {} <>)
+                      (dissoc :last_login :is_qbnewb :is_superuser :date_joined :common_name :invitor)
+                      (merge {:invitor       nil
+                              :invite_method "sso"
+                              :groups (:groups user)}))]
+      (events/publish-event! :event/user-invited {:user-id api/*current-user-id*
+                                                  :details details}))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
