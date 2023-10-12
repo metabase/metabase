@@ -760,7 +760,7 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").click();
 
           cy.findByText("Today").should("not.exist");
-          cy.findByText("Last edited at").should("exist");
+          cy.findByText("Last edit date").should("exist");
         });
 
         cy.url().should("not.contain", "last_edited_at");
