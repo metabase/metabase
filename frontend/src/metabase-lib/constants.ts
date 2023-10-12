@@ -49,7 +49,13 @@ export const EXCLUDE_DATE_FILTER_OPERATORS = [
   "not-null",
 ] as const;
 
-export const TIME_FILTER_OPERATORS = [">", "<", "between"] as const;
+export const TIME_FILTER_OPERATORS = [
+  ">",
+  "<",
+  "between",
+  "is-null",
+  "not-null",
+] as const;
 
 export const RELATIVE_DATE_BUCKETS = [
   "minute",
