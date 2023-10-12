@@ -99,3 +99,41 @@ export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
 
   return compareVersions(String(coerce(thisVersion.replace(/(v1|v0)\./, ''))), lastVersion) > -1;
 };
+
+export const getNextVersions = (versionString: string): string[] => {
+  if (!isValidVersionString(versionString)) {
+    throw new Error(`Invalid version string: ${versionString}`);
+  }
+
+  const versionType = getVersionType(versionString);
+
+  if (versionType === 'rc' || versionType === 'patch') {
+    return [];
+  }
+
+  const editionString = isEnterpriseVersion(versionString)
+    ? 'v1.'
+    : 'v0.';
+
+  // minor releases -> next minor release
+  const [major, minor] = versionString
+    .replace(/(v1|v0)\./, '')
+    .replace(/.0$/, "")
+    .split('.')
+    .map(Number);
+
+  if (versionType === 'minor') {
+    return [editionString + [major, minor + 1].join('.')];
+  }
+
+
+  // major releases -> x.1 minor release AND next .0 major release
+  if (versionType === 'major') {
+    return [
+      editionString + [major, 1].join('.'),
+      editionString + [major + 1, 0].join('.'),
+    ];
+  }
+
+  return [];
+};
