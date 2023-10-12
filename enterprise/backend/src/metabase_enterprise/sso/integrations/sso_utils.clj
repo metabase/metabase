@@ -25,7 +25,7 @@
    [:last_name        [:maybe ms/NonBlankString]]
    [:email            ms/Email]
    [:sso_source       (into [:enum] (keys (dissoc (methods sso.interface/sso-get) :default)))]
-   [:groups           seqable?]
+   [:groups {:optional true} [:maybe seqable?]]
    [:login_attributes [:maybe :map]]])
 
 (mu/defn create-new-sso-user!
