@@ -1,37 +1,57 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { Box, Button, DatePicker, Divider, Group } from "metabase/ui";
+import {
+  Button,
+  DateInput,
+  DatePicker,
+  Divider,
+  Group,
+  Stack,
+} from "metabase/ui";
 import type { DateValue } from "metabase/ui";
-import type { SpecificDatePickerValue } from "../../types";
 
 interface SingleDatePickerProps {
-  value: SpecificDatePickerValue;
+  value: Date;
   isNew: boolean;
-  onChange: (value: SpecificDatePickerValue) => void;
+  onChange: (value: Date) => void;
   onSubmit: () => void;
 }
 
 export function SingleDatePicker({
-  value,
+  value: initialValue,
   isNew,
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
-  const [date, setDate] = useState<DateValue>(value.values[0]);
-  const isValid = date != null;
+  const [value, setValue] = useState<DateValue>(initialValue);
+  const [openedDate, setOpenedDate] = useState<Date>(initialValue);
+  const isValid = value != null;
 
-  const handleChange = (date: DateValue) => {
-    setDate(date);
-    if (date) {
-      onChange({ ...value, values: [date] });
+  const handleChange = (newDate: DateValue) => {
+    setValue(newDate);
+    if (newDate != null) {
+      onChange(newDate);
     }
   };
 
   return (
     <div>
-      <Box p="md">
-        <DatePicker value={date} onChange={handleChange} />
-      </Box>
+      <Stack p="md" align="center">
+        <DateInput
+          value={value}
+          date={openedDate}
+          popoverProps={{ opened: false }}
+          w="100%"
+          onChange={handleChange}
+          onDateChange={setOpenedDate}
+        />
+        <DatePicker
+          value={value}
+          date={openedDate}
+          onChange={handleChange}
+          onDateChange={setOpenedDate}
+        />
+      </Stack>
       <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" disabled={!isValid} onClick={onSubmit}>

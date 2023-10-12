@@ -4,7 +4,15 @@ import { BackButton } from "../BackButton";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { DateRangePicker } from "./DateRangePicker";
-import { getDefaultValue, getTabs, isDateRange, setOperator } from "./utils";
+import {
+  getDate,
+  getDefaultValue,
+  getTabs,
+  isDateRange,
+  setDate,
+  setDateRange,
+  setOperator,
+} from "./utils";
 import { TabList } from "./SpecificDatePicker.styled";
 
 export interface SpecificDatePickerProps {
@@ -34,6 +42,14 @@ export function SpecificDatePicker({
     }
   };
 
+  const handleDateChange = (date: Date) => {
+    setValue(setDate(value, date));
+  };
+
+  const handleDateRangeChange = (dates: [Date, Date]) => {
+    setValue(setDateRange(value, dates));
+  };
+
   const handleSubmit = () => {
     onChange(value);
   };
@@ -53,18 +69,18 @@ export function SpecificDatePicker({
       <Divider />
       {tabs.map(tab => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
-          {isDateRange(value) ? (
+          {isDateRange(value.values) ? (
             <DateRangePicker
-              value={value}
+              value={value.values}
               isNew={isNew}
-              onChange={setValue}
+              onChange={handleDateRangeChange}
               onSubmit={handleSubmit}
             />
           ) : (
             <SingleDatePicker
-              value={value}
+              value={getDate(value)}
               isNew={isNew}
-              onChange={setValue}
+              onChange={handleDateChange}
               onSubmit={handleSubmit}
             />
           )}
