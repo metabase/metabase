@@ -16,7 +16,7 @@ interface DashCardTabMenuProps {
 
 export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
   const { showMenu, tabs, moveToTab } = useDashCardTabMenu(dashCardId);
-  const [suggestedTab, ...otherTabs] = tabs;
+  const [suggestedTab] = tabs;
 
   if (!showMenu) {
     return null;
@@ -33,11 +33,8 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
         </Tooltip>
       </Text>
 
-      {otherTabs.length > 1 && (
-        <TabChevronMenu
-          tabs={otherTabs}
-          onTabSelect={tabId => moveToTab(tabId)}
-        />
+      {tabs.length > 1 && (
+        <TabChevronMenu tabs={tabs} onTabSelect={tabId => moveToTab(tabId)} />
       )}
 
       <VerticalDivider />
