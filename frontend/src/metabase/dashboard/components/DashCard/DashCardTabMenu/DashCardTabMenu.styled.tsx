@@ -1,18 +1,11 @@
 import styled from "@emotion/styled";
-import type { MouseEventHandler } from "react";
+import type { HTMLAttributes } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import type { AnchorProps } from "metabase/ui";
 import { Anchor } from "metabase/ui";
 
-export const ActionContainer = styled.div`
-  padding: 4px;
-  &:hover {
-    color: ${color("text-dark")};
-  }
-`;
-
-type TapButtonProps = AnchorProps & { onClick: MouseEventHandler };
+type TapButtonProps = AnchorProps & HTMLAttributes<HTMLAnchorElement>;
 export const TabButton = styled(Anchor)<TapButtonProps>`
   font-weight: bold;
   color: ${color("text-dark")};
