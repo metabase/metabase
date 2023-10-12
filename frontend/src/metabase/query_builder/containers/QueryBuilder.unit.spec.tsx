@@ -38,7 +38,6 @@ import {
   setupCardCreateEndpoint,
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -236,9 +235,7 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
-  setupCollectionsEndpoints({
-    collections: [TEST_COLLECTION],
-  });
+  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);

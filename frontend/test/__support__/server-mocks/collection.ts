@@ -45,12 +45,6 @@ export function setupCollectionsEndpoints({
     { url: "path:/api/collection", overwriteRoutes: false },
     collections,
   );
-  for (const collection of collections) {
-    fetchMock.get(
-      { url: `path:/api/collection/${collection.id}`, overwriteRoutes: false },
-      collection,
-    );
-  }
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
