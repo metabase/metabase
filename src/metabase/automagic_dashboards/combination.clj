@@ -25,7 +25,8 @@
    mixed in based on the provided ground dimensions and semantic affinity sets."
   [ground-dimensions :- ads/dimension-bindings
    {default-affinities :default :as semantic-affinity-sets} ;:- [:map-of ads/semantic-affinity-set sequential?]
-   {grounded-metric-fields :grounded-metric-fields :as metric}]
+   {metric-field-types     :metric-field-types
+    grounded-metric-fields :grounded-metric-fields :as metric}]
   (let [grounded-field-ids (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
@@ -44,7 +45,7 @@
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
         groundable-fields  (group-by magic.util/field-type available)]
-    (->> (keys (semantic-affinity-sets grounded-metric-fields default-affinities))
+    (->> (keys (semantic-affinity-sets metric-field-types default-affinities))
          (mapcat (fn [dimensions-set]
                    (->> (map groundable-fields dimensions-set)
                         (apply math.combo/cartesian-product)
