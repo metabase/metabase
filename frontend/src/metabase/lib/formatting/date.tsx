@@ -543,6 +543,8 @@ export function formatDateTimeForParameter(value: string, unit: DatetimeUnit) {
   } else if (unit) {
     return formatDateToRangeForParameter(value, unit);
   }
+
+  return String(value);
 }
 
 export function formatDateToRangeForParameter(

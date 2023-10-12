@@ -2,7 +2,10 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { formatDateToRangeForParameter } from "metabase/lib/formatting/date";
+import {
+  formatDateTimeForParameter,
+  formatDateToRangeForParameter,
+} from "metabase/lib/formatting/date";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
@@ -251,6 +254,8 @@ export function formatSourceForTarget(
 ) {
   const datum = data[source.type][source.id.toLowerCase()] || [];
   if (datum.column && isDate(datum.column)) {
+    const sourceDateUnit = datum.column.unit;
+
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
       const parameter = getParameter(target, { extraData, clickBehavior });
@@ -258,12 +263,11 @@ export function formatSourceForTarget(
         return formatDateForParameterType(
           datum.value,
           parameter.type,
-          datum.column.unit,
+          sourceDateUnit,
         );
       }
     } else {
-      // If the target is a dimension or variable, we serialize as a date to remove the timestamp.
-      // TODO: provide better serialization for field filter widget types
+      // If the target is a dimension or variable, we serialize as a date to remove the timestamp
 
       if (["default", "day"].includes(datum.column.unit)) {
         return formatDateForParameterType(datum.value, "date/single");
@@ -289,7 +293,7 @@ function formatDateForParameterType(value, parameterType, unit) {
   } else if (parameterType === "date/single") {
     return m.format("YYYY-MM-DD");
   } else if (parameterType === "date/all-options") {
-    return formatDateToRangeForParameter(value, unit);
+    return formatDateTimeForParameter(value, unit);
   }
 
   return value;
