@@ -7,6 +7,7 @@ import {
   getVersionType,
   getReleaseBranch,
   isLatestVersion,
+  getNextVersions,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -277,4 +278,69 @@ describe("version-helpers", () => {
       });
     });
   });
+
+  describe('getNextVersions', () => {
+    it('should get next versions for a major release', () => {
+      const testCases: [string, string[]][] = [
+        ['v0.75.0', ['v0.75.1', 'v0.76.0']],
+        ['v0.99.0', ['v0.99.1', 'v0.100.0']],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getNextVersions(input)).toEqual(expected);
+      });
+    });
+
+    it('should handle ee and oss versions', () => {
+      const testCases: [string, string[]][] = [
+        ['v0.75.1', ['v0.75.2']],
+        ['v1.75.1', ['v1.75.2']],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getNextVersions(input)).toEqual(expected);
+      });
+    });
+
+    it('should get next versions for a minor release', () => {
+      const testCases: [string, string[]][] = [
+        ['v0.75.1', ['v0.75.2']],
+        ['v0.75.1.0', ['v0.75.2']], // disregards extra .0
+        ['v0.79.99', ['v0.79.100']],
+        ['v0.79.99.0', ['v0.79.100']],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getNextVersions(input)).toEqual(expected);
+      });
+    });
+
+    it('should not get next versions for a patch release', () => {
+      const testCases: [string, string[]][] = [
+        ['v0.75.1.1', []],
+        ['v0.79.99.3', []],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getNextVersions(input)).toEqual(expected);
+      });
+    });
+
+    it('should not get next versions for an RC release', () => {
+      const testCases: [string, string[]][] = [
+        ['v0.75.0-RC2', []],
+        ['v0.79.0-rc99', []],
+      ];
+
+      testCases.forEach(([input, expected]) => {
+        expect(getNextVersions(input)).toEqual(expected);
+      });
+    });
+
+    it('should throw an error for an invalid version string', () => {
+      expect(() => getNextVersions('foo')).toThrow();
+      expect(() => getNextVersions('v2.75')).toThrow();
+      expect(() => getNextVersions('v0.75-RC2')).toThrow();
+    });
+  })
 });

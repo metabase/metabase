@@ -47,14 +47,16 @@
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
   (distinct
-   (for [{field-name :name, base-type :base_type, field-id :id, field-ref :field_ref} source-metadata]
+   (for [{field-name :name, base-type :base_type, field-id :id, [ref-type :as field-ref] :field_ref} source-metadata]
      ;; return field-ref directly if it's a `:field` clause already. It might include important info such as
      ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
      ;; bucketed in the source query; don't need to apply bucketing again in the parent query.
      (or (some-> (mbql.u/match-one field-ref :field)
                  (mbql.u/update-field-options dissoc :binning :temporal-unit))
          ;; otherwise construct a field reference that can be used to refer to this Field.
-         (if field-id
+         ;; Force string id field if expression contains just field. See issue #28451.
+         (if (and (not= ref-type :expression)
+                  field-id)
            ;; If we have a Field ID, return a `:field` (id) clause
            [:field field-id nil]
            ;; otherwise return a `:field` (name) clause, e.g. for a Field that's the result of an aggregation or

@@ -16,7 +16,7 @@ import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 type NotebookStepDef = Pick<NotebookStep, "type" | "clean" | "revert"> & {
   valid: NotebookStepFn<boolean>;
   active: NotebookStepFn<boolean>;
-  subSteps?: (query: StructuredQuery) => number;
+  subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
 
 function convertStageQueryToLegacyStageQuery(
@@ -44,21 +44,27 @@ const STEPS: NotebookStepDef[] = [
       const database = query.database();
       return query.hasData() && database != null && database.hasFeature("join");
     },
-    subSteps: query => query.joins().length,
-    active: (query, index) =>
-      typeof index === "number" && query.joins().length > index,
-    revert: (query, index) => query.removeJoin(index),
-    clean: (query, index) => {
-      const join = typeof index === "number" ? query.joins()[index] : null;
-      if (!join || join.isValid() || join.hasGaps()) {
-        return query;
+    subSteps: (topLevelQuery, stageIndex) =>
+      Lib.joins(topLevelQuery, stageIndex).length,
+    active: (legacyQuery, index, topLevelQuery, stageIndex) =>
+      typeof index === "number" &&
+      Lib.joins(topLevelQuery, stageIndex).length > index,
+    revert: (legacyQuery, index, topLevelQuery, stageIndex) => {
+      if (typeof index !== "number") {
+        return legacyQuery;
       }
-      const cleanJoin = join.clean();
-      if (cleanJoin.isValid()) {
-        return query.updateJoin(index, cleanJoin);
+      const join = Lib.joins(topLevelQuery, stageIndex)[index];
+      if (!join) {
+        return legacyQuery;
       }
-      return query.removeJoin(index);
+      const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
+      return convertStageQueryToLegacyStageQuery(
+        nextQuery,
+        legacyQuery,
+        stageIndex,
+      );
     },
+    clean: query => query,
   },
   {
     type: "expression",
@@ -265,7 +271,10 @@ function getStageSteps(
     STEPS.map(STEP => {
       if (STEP.subSteps) {
         // add 1 for the initial or next action button
-        const itemIndexes = _.range(0, STEP.subSteps(stageQuery) + 1);
+        const itemIndexes = _.range(
+          0,
+          STEP.subSteps(topLevelQuery, stageIndex) + 1,
+        );
         return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
       } else {
         return [getStep(STEP)];
