@@ -17,7 +17,7 @@ export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
-type Section<T = ColumnListItem> = {
+export type Section<T = ColumnListItem> = {
   key?: string;
   name: string;
   items: T[];

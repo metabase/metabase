@@ -1,6 +1,19 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
+
 import { Box } from "metabase/ui";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+
+import type { Expression as LegacyExpressionClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+
+import { isExpression as isLegacyExpression } from "metabase-lib/expressions";
+import LegacyFilter from "metabase-lib/queries/structured/Filter";
+import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
+
+import type { Section } from "../QueryColumnPicker";
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
@@ -13,6 +26,11 @@ export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+
+  legacyQuery: LegacyQuery;
+  legacyFilter?: LegacyFilter;
+  onSelectLegacy: (legacyFilter: LegacyFilter) => void;
+
   onSelect: (filter: Lib.ExpressionClause) => void;
   onClose?: () => void;
 }
@@ -20,13 +38,30 @@ export interface FilterPickerProps {
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
 
+const CUSTOM_EXPRESSION_SECTION: Section = {
+  key: "custom-expression",
+  name: t`Custom Expression`,
+  items: [],
+  icon: "filter",
+};
+
+const EXTRA_SECTIONS = [CUSTOM_EXPRESSION_SECTION];
+
 export function FilterPicker({
   query,
   stageIndex,
   filter,
+  legacyQuery,
+  legacyFilter,
   onSelect,
+  onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
+  const [
+    isEditingExpression,
+    { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
+  ] = useToggle(filter && Lib.isCustomFilter(query, stageIndex, filter));
+
   const [column, setColumn] = useState<Lib.ColumnMetadata | undefined>(
     getInitialColumn(query, stageIndex, filter),
   );
@@ -43,6 +78,41 @@ export function FilterPicker({
     onClose?.();
   };
 
+  const handleSectionChange = useCallback(
+    (section: Section) => {
+      if (section.key === "custom-expression") {
+        openExpressionEditor();
+      }
+    },
+    [openExpressionEditor],
+  );
+
+  const handleExpressionChange = useCallback(
+    (name: string, expression: LegacyExpressionClause) => {
+      if (Array.isArray(expression) && isLegacyExpression(expression)) {
+        const baseFilter =
+          legacyFilter || new LegacyFilter([], null, legacyQuery);
+        const nextFilter = baseFilter.set(expression);
+        onSelectLegacy(nextFilter);
+        onClose?.();
+      }
+    },
+    [legacyQuery, legacyFilter, onSelectLegacy, onClose],
+  );
+
+  if (isEditingExpression) {
+    return (
+      <ExpressionWidget
+        query={legacyQuery}
+        expression={legacyFilter?.raw() as LegacyExpressionClause}
+        startRule="boolean"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeExpression={handleExpressionChange}
+        onClose={closeExpressionEditor}
+      />
+    );
+  }
+
   const renderContent = () => {
     if (!column) {
       return (
@@ -50,9 +120,11 @@ export function FilterPicker({
           query={query}
           stageIndex={stageIndex}
           columnGroups={columnGroups}
+          extraSections={EXTRA_SECTIONS}
           color="filter"
           checkIsColumnSelected={checkColumnSelected}
           onSelect={setColumn}
+          onChangeSection={handleSectionChange}
         />
       );
     }
