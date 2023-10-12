@@ -63,13 +63,6 @@
     "databasechangelog"
     "DATABASECHANGELOG"))
 
-(defn- format-table-name
-  "Correctly format table name based on the type of database"
-  [table-name ^java.sql.Connection conn]
-  (if (not= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
-    (u/upper-case-en table-name)
-    (u/lower-case-en table-name)))
-
 (defn table-exists?
   "Check if a table exists."
   [table-name data-source-or-conn]
@@ -319,7 +312,7 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn :- java.sql.Connection]
-  (let [liquibase-table-name (format-table-name "databasechangelog" conn)
+  (let [liquibase-table-name (changelog-table-name conn)
         statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
     (when-not (fresh-install? conn)
       (jdbc/execute!
@@ -350,8 +343,7 @@
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (current-major-version)))))
    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC"
-                                 (format-table-name "databasechangelog" conn))
+   (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
          ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
