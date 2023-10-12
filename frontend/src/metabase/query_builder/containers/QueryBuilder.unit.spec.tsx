@@ -476,10 +476,6 @@ describe("QueryBuilder", () => {
     });
 
     describe("editing native questions", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-      });
-
       it("should trigger beforeunload event when leaving edited question", async () => {
         const { mockEventListener } = await setup({
           card: TEST_NATIVE_CARD,
@@ -516,10 +512,6 @@ describe("QueryBuilder", () => {
     });
 
     describe("editing notebook questions", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-      });
-
       it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
         const { mockEventListener } = await setup({
           card: TEST_STRUCTURED_CARD,
@@ -564,10 +556,6 @@ describe("QueryBuilder", () => {
 
   describe("unsaved changes warning", () => {
     describe("creating models", () => {
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
       it("shows custom warning modal when leaving via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
