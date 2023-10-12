@@ -26,31 +26,25 @@ interface SingleDatePickerProps {
 }
 
 export function SingleDatePicker({
-  value: initialValue,
+  value,
   isNew,
   onChange,
   onSubmit,
 }: SingleDatePickerProps) {
-  const [value, setValue] = useState<Date>(initialValue);
-  const [openedDate, setOpenedDate] = useState<Date>(initialValue);
-  const [hasTime, setHasTime] = useState(hasTimeParts(initialValue));
-  const isValid = value != null;
+  const [date, setDate] = useState<Date>(value);
+  const [hasTime, setHasTime] = useState(hasTimeParts(value));
 
   const handleDateChange = (newDate: DateValue) => {
-    if (newDate) {
-      const newValue = setDatePart(value, newDate);
-      setValue(newValue);
-      onChange(newValue);
-    }
+    newDate && onChange(setDatePart(value, newDate));
   };
 
   const handleTimeChange = (newTime: Date) => {
-    handleDateChange(setTimePart(value, newTime));
+    onChange(setTimePart(value, newTime));
   };
 
   const handleTimeToggle = () => {
     setHasTime(!hasTime);
-    handleDateChange(clearTimePart(value));
+    onChange(clearTimePart(value));
   };
 
   return (
@@ -58,18 +52,18 @@ export function SingleDatePicker({
       <Stack p="md">
         <DateInput
           value={value}
-          date={openedDate}
+          date={date}
           popoverProps={{ opened: false }}
           onChange={handleDateChange}
-          onDateChange={setOpenedDate}
+          onDateChange={setDate}
         />
         {hasTime && <TimeInput value={value} onChange={handleTimeChange} />}
         <Stack align="center">
           <DatePicker
             value={value}
-            date={openedDate}
+            date={date}
             onChange={handleDateChange}
-            onDateChange={setOpenedDate}
+            onDateChange={setDate}
           />
         </Stack>
       </Stack>
@@ -83,7 +77,7 @@ export function SingleDatePicker({
         >
           {hasTime ? t`Remove time` : t`Add time`}
         </Button>
-        <Button variant="filled" disabled={!isValid} onClick={onSubmit}>
+        <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
