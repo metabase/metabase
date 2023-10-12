@@ -630,27 +630,40 @@ describe("scenarios > search", () => {
       it(`should filter results by Today (created_at=thisday)`, () => {
         cy.visit(`/search?q=Reviews`);
 
-        expectSearchResultItemNameContent({
-          itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-        });
+        // we have to use {strict: false} here because the CI environment creates
+        // the reviews table on first run (i.e. today), while the local environment may not
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
 
         cy.findByTestId("created_at-search-filter").click();
         popover().within(() => {
           cy.findByText("Today").click();
         });
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name],
-        });
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
       });
 
       it("should remove created_at filter when `X` is clicked on search filter", () => {
         cy.visit(`/search?q=Reviews&created_at=thisday`);
         cy.wait("@search");
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name],
-        });
+        // we have to use {strict: false} here because the CI environment creates
+        // the reviews table on first run (i.e. today), while the local environment may not
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
 
         cy.findByTestId("created_at-search-filter").within(() => {
           cy.findByText("Today").should("exist");
@@ -663,9 +676,12 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "created_at");
 
-        expectSearchResultItemNameContent({
-          itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
-        });
+        expectSearchResultItemNameContent(
+          {
+            itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
+          },
+          { strict: false },
+        );
 
         // TODO: Add more assertions for search results when we redesign the search result elements to include
         // creation times
@@ -1032,13 +1048,18 @@ function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
 }
 
-function expectSearchResultItemNameContent({ itemNames }) {
+function expectSearchResultItemNameContent(
+  { itemNames },
+  { strict } = { strict: true },
+) {
   cy.findAllByTestId("search-result-item-name").then($searchResultLabel => {
     const searchResultLabelList = $searchResultLabel
       .toArray()
       .map(el => el.textContent);
 
-    expect(searchResultLabelList).to.have.length(itemNames.length);
+    if (strict) {
+      expect(searchResultLabelList).to.have.length(itemNames.length);
+    }
     expect(searchResultLabelList).to.include.members(itemNames);
   });
 }
