@@ -1,18 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
-import {
-  Button,
-  DateInput,
-  DatePicker,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  TimeInput,
-} from "metabase/ui";
+import { Button, DatePicker, Divider, Group, Stack, Text } from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { clearTime, setTime } from "../utils";
+import { FlexDateInput, FlexTimeInput } from "./DateRangePicker.styled";
 
 interface DateRangePickerProps {
   value: [Date, Date];
@@ -65,13 +57,13 @@ export function DateRangePicker({
     <div>
       <Stack p="md">
         <Group align="center">
-          <DateInput
+          <FlexDateInput
             value={startDate}
             popoverProps={{ opened: false }}
             onChange={handleStartDateChange}
           />
           <Text>{t`and`}</Text>
-          <DateInput
+          <FlexDateInput
             value={endDate}
             popoverProps={{ opened: false }}
             onChange={handleEndDateChange}
@@ -79,18 +71,20 @@ export function DateRangePicker({
         </Group>
         {hasTime && (
           <Group align="center">
-            <TimeInput value={startDate} onChange={handleStartTimeChange} />
+            <FlexTimeInput value={startDate} onChange={handleStartTimeChange} />
             <Text>{t`and`}</Text>
-            <TimeInput value={endDate} onChange={handleEndTimeChange} />
+            <FlexTimeInput value={endDate} onChange={handleEndTimeChange} />
           </Group>
         )}
-        <DatePicker
-          type="range"
-          value={[startDate, endDate]}
-          defaultDate={initialEndDate}
-          allowSingleDateInRange
-          onChange={handleRangeChange}
-        />
+        <Stack align="center">
+          <DatePicker
+            type="range"
+            value={[startDate, endDate]}
+            defaultDate={initialEndDate}
+            allowSingleDateInRange
+            onChange={handleRangeChange}
+          />
+        </Stack>
       </Stack>
       <Divider />
       <Group p="sm" position="apart">

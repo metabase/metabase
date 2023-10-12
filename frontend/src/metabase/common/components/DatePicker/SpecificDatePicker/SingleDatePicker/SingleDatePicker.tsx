@@ -58,12 +58,14 @@ export function SingleDatePicker({
           onDateChange={setOpenedDate}
         />
         {hasTime && <TimeInput value={value} onChange={handleTimeChange} />}
-        <DatePicker
-          value={value}
-          date={openedDate}
-          onChange={handleDateChange}
-          onDateChange={setOpenedDate}
-        />
+        <Stack align="center">
+          <DatePicker
+            value={value}
+            date={openedDate}
+            onChange={handleDateChange}
+            onDateChange={setOpenedDate}
+          />
+        </Stack>
       </Stack>
       <Divider />
       <Group p="sm" position="apart">
