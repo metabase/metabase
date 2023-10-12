@@ -11,6 +11,7 @@ type NumberPickerOperator =
   | "is-null"
   | "not-null";
 
-export interface Option extends PickerOperatorOption<NumberPickerOperator> {
+export interface OperatorOption
+  extends PickerOperatorOption<NumberPickerOperator> {
   valueCount: number;
 }

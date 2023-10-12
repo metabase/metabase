@@ -10,6 +10,7 @@ type CoordinatePickerOperator =
   | ">="
   | "<=";
 
-export interface Option extends PickerOperatorOption<CoordinatePickerOperator> {
+export interface OperatorOption
+  extends PickerOperatorOption<CoordinatePickerOperator> {
   valueCount: number;
 }

@@ -10,7 +10,8 @@ type StringPickerOperator =
   | "is-empty"
   | "not-empty";
 
-export interface Option extends PickerOperatorOption<StringPickerOperator> {
+export interface OperatorOption
+  extends PickerOperatorOption<StringPickerOperator> {
   valueCount: number;
   hasCaseSensitiveOption?: boolean;
 }

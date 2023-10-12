@@ -1,6 +1,6 @@
-import type { Option } from "./types";
+import type { OperatorOption } from "./types";
 
-export const OPTIONS: Option[] = [
+export const OPERATOR_OPTIONS: OperatorOption[] = [
   {
     operator: "=",
     valueCount: Infinity,

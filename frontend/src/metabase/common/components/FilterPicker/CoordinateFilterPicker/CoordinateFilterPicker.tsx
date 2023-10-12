@@ -14,7 +14,7 @@ import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-import { OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import { findSecondColumn, isFilterValid } from "./utils";
 import { CoordinateColumnSelect } from "./CoordinateColumnSelect";
 
@@ -32,7 +32,8 @@ export function CoordinateFilterPicker({
     : null;
 
   const availableOperators = useMemo(
-    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    () =>
+      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
     [query, stageIndex, column],
   );
 

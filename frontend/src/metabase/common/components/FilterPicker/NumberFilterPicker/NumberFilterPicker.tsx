@@ -14,7 +14,7 @@ import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-import { OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
 
 export function NumberFilterPicker({
@@ -31,7 +31,8 @@ export function NumberFilterPicker({
     : null;
 
   const availableOperators = useMemo(
-    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    () =>
+      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
     [query, stageIndex, column],
   );
 

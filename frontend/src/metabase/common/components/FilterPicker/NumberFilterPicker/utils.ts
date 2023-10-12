@@ -1,11 +1,13 @@
 import type { NumberFilterOperatorName } from "metabase-lib/types";
-import { OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 
 export function isFilterValid(
   operatorName: NumberFilterOperatorName,
   values: number[],
 ) {
-  const option = OPTIONS.find(option => option.operator === operatorName);
+  const option = OPERATOR_OPTIONS.find(
+    option => option.operator === operatorName,
+  );
   if (!option) {
     return false;
   }
