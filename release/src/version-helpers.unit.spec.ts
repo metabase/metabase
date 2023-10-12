@@ -319,6 +319,7 @@ describe("version-helpers", () => {
         node: 18,
         java: 11,
       });
+    });
   });
 
   describe('getNextVersions', () => {
