@@ -1,6 +1,6 @@
-import { ResultLink } from "metabase/search/components/SearchResultLink/SearchResultLink.styled";
 import type { TextProps, AnchorProps } from "metabase/ui";
-import { Anchor, Text } from "metabase/ui";
+import { Anchor, Text, Box } from "metabase/ui";
+import { ResultLink } from "./SearchResultLink.styled";
 
 export const SearchResultLink = ({
   children,
@@ -15,6 +15,7 @@ export const SearchResultLink = ({
 }) => {
   return (
     <ResultLink
+      as={href ? Anchor : Text}
       href={href ?? undefined}
       td={href ? "underline" : "none"}
       span
@@ -23,6 +24,11 @@ export const SearchResultLink = ({
       {...textProps}
       onClick={e => e.stopPropagation()}
     >
+      {leftIcon && (
+        <Box mr="xs" component="span">
+          {leftIcon}
+        </Box>
+      )}
       {children}
     </ResultLink>
   );

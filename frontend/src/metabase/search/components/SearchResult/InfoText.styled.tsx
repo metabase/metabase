@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LastEditedInfo = styled(LastEditInfoLabel)`
   ${({ theme }) => {
@@ -16,4 +17,11 @@ export const LastEditedInfo = styled(LastEditInfoLabel)`
       }
     `;
   }}
+  ${breakpointMaxSmall} {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+
+    max-width: 50%;
+  }
 `;

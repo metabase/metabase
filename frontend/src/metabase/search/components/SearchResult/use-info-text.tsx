@@ -2,11 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import type { WrappedResult } from "metabase/search/types";
 import type { Collection } from "metabase-types/api";
-import {
-  useDatabaseQuery,
-  useSchemaListQuery,
-  useTableQuery,
-} from "metabase/common/hooks";
+import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
   browseSchema,
@@ -107,14 +103,8 @@ const useTablePath = (result: WrappedResult): InfoTextData[] => {
     };
   }, [database, isDatabaseLoading]);
 
-  const { data = [], isLoading: isSchemaListLoading } = useSchemaListQuery({
-    query: {
-      dbId: result.database_id,
-    },
-  });
-
   const tableLink: InfoTextData | null = useMemo(() => {
-    if (isSchemaListLoading || result.table_schema === null) {
+    if (result.table_schema === null) {
       return null;
     }
 
@@ -127,7 +117,7 @@ const useTablePath = (result: WrappedResult): InfoTextData[] => {
       link,
       label: result.table_schema,
     };
-  }, [isSchemaListLoading, result.database_id, result.table_schema]);
+  }, [result.database_id, result.table_schema]);
 
   return [databaseLink, databaseLink ? tableLink : null].filter(
     Boolean,
@@ -154,11 +144,9 @@ const useCollectionResultLink = (result: WrappedResult): InfoTextData[] => {
   return collectionName
     ? [
         {
-          icon:
-            !PLUGIN_COLLECTIONS.isRegularCollection &&
-            collection.authority_level ? (
-              <CollectionAuthorityLevelIcon size={15} collection={collection} />
-            ) : null,
+          icon: collection.authority_level ? (
+            <CollectionAuthorityLevelIcon size={15} collection={collection} />
+          ) : null,
           link: colUrl,
           label: collectionName,
         },
