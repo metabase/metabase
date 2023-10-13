@@ -55,6 +55,8 @@ export const MoreButton = styled(Button)`
   height: 36px;
   padding: 8px 16px;
 
+  transition: none !important;
+
   ${Button.Content} {
     justify-content: flex-start;
   }
