@@ -277,7 +277,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -287,7 +287,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -305,7 +305,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           CYPRESS_QA_DB_MONGO: true
 
