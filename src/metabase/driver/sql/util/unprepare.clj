@@ -6,7 +6,7 @@
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]

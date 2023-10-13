@@ -4,7 +4,7 @@
   cookie is deleted, it's fine; the user will just get an email saying they logged in from a new device next time
   they log in."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.server.request.util :as request.u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
