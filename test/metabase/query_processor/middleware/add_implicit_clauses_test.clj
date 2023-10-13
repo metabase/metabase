@@ -152,14 +152,14 @@
                          {:source-query    source-query
                           :source-metadata source-metadata}))))))))
 
-(deftest ^:parrallel expression-with-only-field-in-source-query-test
+(deftest ^:parallel expression-with-only-field-in-source-query-test
   (testing "Field coming from expression in source query should have string id"
     (let [{{source-query :query} :dataset_query
            source-metadata       :result_metadata}
           (qp.test-util/card-with-source-metadata-for-query
            (mt/mbql-query venues {:expressions {"ccprice" $price}}))]
       (is (some #(when (= % [:field "ccprice" {:base-type :type/Integer}]) %)
-                (-> (lib.tu.macros/mbql-query checkins
+                (-> (lib.tu.macros/mbql-query nil
                                               {:source-query    source-query
                                                :source-metadata source-metadata})
                     :query add-implicit-fields :fields))))))

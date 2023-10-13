@@ -58,3 +58,23 @@ export function setDateRange(
 export function isDateRange(value: Date[]): value is [Date, Date] {
   return value.length === 2;
 }
+
+export function setDatePart(value: Date, date: Date) {
+  const newValue = new Date(value);
+  newValue.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+  return newValue;
+}
+
+export function setTimePart(value: Date, time: Date) {
+  const newValue = new Date(value);
+  newValue.setHours(time.getHours(), time.getMinutes());
+  return newValue;
+}
+
+export function clearTimePart(value: Date) {
+  return moment(value).startOf("date").toDate();
+}
+
+export function hasTimeParts(value: Date) {
+  return value.getHours() !== 0 || value.getMinutes() !== 0;
+}

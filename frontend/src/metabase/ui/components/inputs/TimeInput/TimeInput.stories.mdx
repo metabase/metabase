@@ -17,7 +17,7 @@ export const args = {
 };
 
 export const sampleArgs = {
-  value: "20:40",
+  value: new Date(0, 0, 1, 20, 40),
   label: "Time of day",
   description: "The time you've this page",
   placholder: "HH:MM",
@@ -58,7 +58,7 @@ export const argTypes = {
 
 <Meta title="Inputs/TimeInput" component={TimeInput} args={args} />
 
-# Textarea
+# TimeInput
 
 Our themed wrapper around [Mantine TimeInput](https://v6.mantine.dev/dates/time-input/).
 
@@ -67,7 +67,7 @@ Our themed wrapper around [Mantine TimeInput](https://v6.mantine.dev/dates/time-
 - [Mantine TimeInput Docs](https://v6.mantine.dev/dates/time-input/)
 - [HTML Time Input Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/time)
 
-# Exxamples
+# Examples
 
 export const DefaultTemplate = args => <TimeInput {...args} />;
 

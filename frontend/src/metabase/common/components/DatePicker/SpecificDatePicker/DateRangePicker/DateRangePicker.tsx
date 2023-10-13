@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
-import {
-  Button,
-  DateInput,
-  DatePicker,
-  Divider,
-  Group,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, DatePicker, Divider, Group, Stack, Text } from "metabase/ui";
 import type { DateValue, DatesRangeValue } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
+import {
+  clearTimePart,
+  hasTimeParts,
+  setDatePart,
+  setTimePart,
+} from "../utils";
+import { FlexDateInput, FlexTimeInput } from "./DateRangePicker.styled";
 
 interface DateRangePickerProps {
   value: [Date, Date];
@@ -19,58 +19,97 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({
-  value: [initialStartDate, initialEndDate],
+  value: [startDate, endDate],
   isNew,
   onChange,
   onSubmit,
 }: DateRangePickerProps) {
-  const [startDate, setStartDate] = useState<DateValue>(initialStartDate);
-  const [endDate, setEndDate] = useState<DateValue>(initialEndDate);
-  const isValid = startDate != null && endDate != null;
+  const [hasTime, setHasTime] = useState(
+    hasTimeParts(startDate) || hasTimeParts(endDate),
+  );
+  const [hasEndDate, setHasEndDate] = useState(true);
 
-  const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
-    if (newStartDate != null && newEndDate != null) {
-      onChange([newStartDate, newEndDate]);
+  const handleRangeChange = ([startDate, endDate]: DatesRangeValue) => {
+    setHasEndDate(endDate != null);
+    if (startDate && endDate) {
+      onChange([startDate, endDate]);
     }
   };
 
-  const handleStartDateChange = (newStartDate: DateValue) => {
-    handleRangeChange([newStartDate, endDate]);
+  const handleStartDateChange = (newDate: DateValue) => {
+    newDate && onChange([setDatePart(startDate, newDate), endDate]);
   };
 
-  const handleEndDateChange = (newEndDate: DateValue) => {
-    handleRangeChange([startDate, newEndDate]);
+  const handleEndDateChange = (newDate: DateValue) => {
+    newDate && onChange([startDate, setDatePart(endDate, newDate)]);
+  };
+
+  const handleStartTimeChange = (newTime: Date) => {
+    onChange([setTimePart(startDate, newTime), endDate]);
+  };
+
+  const handleEndTimeChange = (newTime: Date) => {
+    onChange([startDate, setTimePart(endDate, newTime)]);
+  };
+
+  const handleTimeToggle = () => {
+    setHasTime(!hasTime);
+    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
   };
 
   return (
     <div>
-      <Stack p="md" align="center">
+      <Stack p="md">
         <Group align="center">
-          <DateInput
+          <FlexDateInput
             value={startDate}
+            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleStartDateChange}
           />
-          <Text>{t`and`}</Text>
-          <DateInput
+          <Text c="text.0">{t`and`}</Text>
+          <FlexDateInput
             value={endDate}
+            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleEndDateChange}
           />
         </Group>
+        {hasTime && (
+          <Group align="center">
+            <FlexTimeInput
+              value={startDate}
+              size="xs"
+              onChange={handleStartTimeChange}
+            />
+            <Text c="text.0">{t`and`}</Text>
+            <FlexTimeInput
+              value={endDate}
+              size="xs"
+              onChange={handleEndTimeChange}
+            />
+          </Group>
+        )}
         <DatePicker
           type="range"
-          value={[startDate, endDate]}
-          defaultDate={initialEndDate}
+          value={[startDate, hasEndDate ? endDate : null]}
+          defaultDate={endDate}
+          numberOfColumns={2}
           allowSingleDateInRange
           onChange={handleRangeChange}
         />
       </Stack>
       <Divider />
-      <Group p="sm" position="right">
-        <Button variant="filled" disabled={!isValid} onClick={onSubmit}>
+      <Group p="sm" position="apart">
+        <Button
+          c="text.1"
+          variant="subtle"
+          leftIcon={<Icon name="clock" />}
+          onClick={handleTimeToggle}
+        >
+          {hasTime ? t`Remove time` : t`Add time`}
+        </Button>
+        <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>

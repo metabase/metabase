@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Text } from "metabase/ui";
+import { Box, Button, Flex, Text, TimeInput } from "metabase/ui";
 
 import * as Lib from "metabase-lib";
 
@@ -14,7 +14,6 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 import { DEFAULT_VALUE, OPERATOR_OPTIONS } from "./constants";
 import { getDefaultValuesForOperator, isFilterValid } from "./utils";
-import { FilterTimeInput } from "./FilterTimeInput";
 
 export function TimeFilterPicker({
   query,
@@ -114,7 +113,7 @@ function ValuesInput({
   if (valueCount === 1) {
     const [value = DEFAULT_VALUE] = values;
     return (
-      <FilterTimeInput
+      <TimeInput
         value={value}
         onChange={newValue => onChange([newValue])}
         w="100%"
@@ -126,13 +125,13 @@ function ValuesInput({
     const [value1 = DEFAULT_VALUE, value2 = DEFAULT_VALUE] = values;
     return (
       <Flex direction="row" align="center" gap="sm" w="100%">
-        <FilterTimeInput
+        <TimeInput
           value={value1}
           onChange={newValue1 => onChange([newValue1, value2])}
           w="100%"
         />
         <Text>{t`and`}</Text>
-        <FilterTimeInput
+        <TimeInput
           value={value2}
           onChange={newValue2 => onChange([value1, newValue2])}
           w="100%"

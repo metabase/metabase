@@ -15,7 +15,7 @@ export function getDefaultValuesForOperator(
 
 export function isFilterValid(
   operatorName: TimeFilterOperatorName,
-  values: Date[],
+  values: (Date | null)[],
 ) {
   const option = OPERATOR_OPTIONS.find(
     option => option.operator === operatorName,

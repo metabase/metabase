@@ -1,3 +1,2 @@
-export { TimeInput } from "@mantine/dates";
-export type { TimeInputProps } from "@mantine/dates";
+export * from "./TimeInput";
 export { getTimeInputOverrides } from "./TimeInput.styled";
