@@ -414,17 +414,19 @@
 
 (mu/defn identify
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
-  interesting metrics which are satisfied."
+  interesting metrics which are satisfied. Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
            metric-specs]} :- [:map
                               [:dimension-specs [:sequential ads/dimension-template]]
                               [:metric-specs    [:sequential ads/metric-template]]]]
-  (let [dims    (find-dimensions context dimension-specs)
-        metrics (-> (normalize-metrics metric-specs)
-                    (grounded-metrics dims))]
+  (let [dims      (find-dimensions context dimension-specs)
+        metrics   (-> (normalize-metrics metric-specs)
+                      (grounded-metrics dims))
+        set-score (fn [score metrics]
+                    (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
-     :metrics (concat metrics linked-metrics)}))
+     :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics))}))
 
 (defn card->dashcard
   "Convert a card to a dashboard card."
