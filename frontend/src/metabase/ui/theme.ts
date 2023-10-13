@@ -17,6 +17,7 @@ import {
   getSelectOverrides,
   getTabsOverrides,
   getTextareaOverrides,
+  getTimeInputOverrides,
   getSwitchOverrides,
   getTextInputOverrides,
   getTimeInputOverrides,
@@ -125,6 +126,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getTextInputOverrides(),
     ...getTimeInputOverrides(),
     ...getTextOverrides(),
+    ...getTimeInputOverrides(),
     ...getTitleOverrides(),
   },
 });
