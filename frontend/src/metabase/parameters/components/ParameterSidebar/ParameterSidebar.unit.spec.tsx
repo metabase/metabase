@@ -1,6 +1,7 @@
+/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
-import React from "react";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { useState } from "react";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import ParameterSidebar from "./ParameterSidebar";
@@ -10,23 +11,32 @@ interface SetupOpts {
   otherParameters: UiParameter[];
 }
 
-const setup = ({
+const TestWrapper = ({
   initialParameter,
   otherParameters,
-}: SetupOpts): {
-  setParameter: (parameter: UiParameter) => void;
-} => {
-  let setParameter: (parameter: UiParameter) => void;
+  onSetParameter,
+}: SetupOpts & {
+  onSetParameter: (parameter: UiParameter) => void;
+}) => {
+  const [parameter, internalSetParameter] = useState(initialParameter);
 
-  const TestWrapper = () => {
-    const [parameter, internalSetParameter] = React.useState(initialParameter);
-    setParameter = internalSetParameter;
+  const onChangeParameter = (parameter: UiParameter) => {
+    internalSetParameter(parameter);
+    onSetParameter(parameter);
+  };
 
-    const onChangeName = (_parameterId: string, name: string) => {
-      setParameter({ ...initialParameter, name });
-    };
+  const onChangeName = (_parameterId: string, name: string) => {
+    onChangeParameter({ ...initialParameter, name });
+  };
 
-    return (
+  return (
+    <div>
+      <button
+        data-testid="parameter-sidebar-test-change"
+        onClick={() => onChangeParameter(otherParameters[0])}
+      >
+        Change Parameter
+      </button>
       <ParameterSidebar
         parameter={parameter}
         otherParameters={otherParameters}
@@ -41,12 +51,22 @@ const setup = ({
         onShowAddParameterPopover={jest.fn()}
         onClose={jest.fn()}
       />
-    );
-  };
+    </div>
+  );
+};
 
-  renderWithProviders(<TestWrapper />);
+const setup = ({ initialParameter, otherParameters }: SetupOpts) => {
+  const setParameterMock = jest.fn();
 
-  return { setParameter };
+  renderWithProviders(
+    <TestWrapper
+      initialParameter={initialParameter}
+      otherParameters={otherParameters}
+      onSetParameter={setParameterMock}
+    />,
+  );
+
+  return { setParameterMock };
 };
 
 function fillValue(input: HTMLElement, value: string) {
@@ -100,7 +120,7 @@ describe("ParameterSidebar", () => {
       name: "Baz",
       slug: "baz",
     });
-    const { setParameter } = setup({
+    const { setParameterMock } = setup({
       initialParameter,
       otherParameters: [otherParameter],
     });
@@ -108,9 +128,8 @@ describe("ParameterSidebar", () => {
     const labelInput = screen.getByLabelText("Label");
     expect(labelInput).toHaveValue("Foo");
 
-    act(() => {
-      setParameter(otherParameter);
-    });
+    userEvent.click(screen.getByTestId("parameter-sidebar-test-change"));
+    expect(setParameterMock).toHaveBeenCalledWith(otherParameter);
     expect(labelInput).toHaveValue("Baz");
   });
 });
