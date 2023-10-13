@@ -309,7 +309,6 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
     :model/Session
-    :model/DataMigrations
     :model/ImplicitAction
     :model/HTTPAction
     :model/QueryAction

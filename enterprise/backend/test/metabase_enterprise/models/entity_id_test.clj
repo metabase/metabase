@@ -32,8 +32,7 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/DataMigrations
-    :model/HTTPAction
+  #{:model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/Activity

@@ -15174,14 +15174,6 @@ databaseChangeLog:
                 name: action_id
 
   - changeSet:
-      id: v48.00-007
-      author: johnswanson
-      comment: Migrate migrate-click-through to a custom migration
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.MigrateClickThrough"
-
-  - changeSet:
       id: v48.00-009
       author: calherries
       comment: Added 0.48.0 - Create table_privileges table
@@ -15373,11 +15365,57 @@ databaseChangeLog:
 
   - changeSet:
       id: v48.00-022
+      author: johnswanson
+      comment: Migrate migrate-click-through to a custom migration
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-click-through';
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateClickThrough"
+
+  - changeSet:
+      id: v48.00-023
       author: piranha
       comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-remove-admin-from-group-mapping-if-needed';
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
+
+  - changeSet:
+      id: v48.00-024
+      author: piranha
+      comment: All data migrations were transferred to custom_migrations!
+      changes:
+        - dropTable:
+            tableName: data_migrations
+      rollback:
+        - createTable:
+            tableName: data_migrations
+            columns:
+              - column:
+                  name: id
+                  type: varchar(254)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              INSERT INTO data_migrations VALUES
+                ('migrate-click-through', current_timestamp),
+                ('migrate-remove-admin-from-group-mapping-if-needed', current_timestamp);
 
   - changeSet:
       id: v48.00-026

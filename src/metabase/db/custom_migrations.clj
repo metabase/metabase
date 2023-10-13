@@ -18,8 +18,6 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -108,7 +106,7 @@
 (define-reversible-migration SplitDataPermissions
   (let [current-perms-set (t2/select-fn-set
                            (juxt :object :group_id)
-                           :model/Permissions
+                           :permissions
                            {:where [:or
                                     [:like :object (h2x/literal "/db/%")]
                                     [:like :object (h2x/literal "/data/db/%")]
@@ -823,7 +821,8 @@
                    (filter :visualization_settings))
              (completing
               (fn [_ {:keys [id visualization_settings]}]
-                (t2/update! :model/DashboardCard id {:visualization_settings visualization_settings})))
+                (t2/update! :report_dashboardcard id
+                            {:visualization_settings (json/generate-string visualization_settings)})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
@@ -852,17 +851,17 @@
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (t2/select-one-fn :value setting/Setting :key (name k)))
+  (t2/select-one-fn :value :setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
-  (let [admin-group-id (:id (perms-group/admin))
+  (let [admin-group-id (t2/select-one-pk :permissions_group :name "Administrators")
         mapping        (try
                         (json/parse-string (raw-setting mapping-setting-key))
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (t2/update! setting/Setting (name mapping-setting-key)
+      (t2/update! :setting {:key (name mapping-setting-key)}
                   {:value
                    (->> mapping
                         (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
@@ -871,8 +870,8 @@
 
 (defn migrate-remove-admin-from-group-mapping-if-needed
   {:author "qnkhuat"
-    :added  "0.43.0"
-    :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken
+   :added  "0.43.0"
+   :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken
             and haven't really worked (see #13820).
             In #20991 we remove this option entirely and make sync for admin group just like a regular group.
             But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:

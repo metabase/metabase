@@ -25,7 +25,9 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   [clojure.lang ExceptionInfo]))
 
 (set! *warn-on-reflection* true)
 
@@ -1038,6 +1040,7 @@
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest fix-click-through-test
   (let [migrate (fn [card dash]
                   (:visualization_settings
@@ -1375,12 +1378,14 @@
                                         :linkTemplate     "http://example.com//{{id}}",
                                         :linkTextTemplate "here is my id: {{id}}"}}}}]
               (f)
-              (is (= expected-settings (:visualization_settings (t2/select-one DashboardCard :id dashcard-id)))))))]
+              (is (= expected-settings
+                     (-> (t2/select-one DashboardCard :id dashcard-id)
+                         :visualization_settings))))))]
     (testing "Running the migration from scratch"
-      (impl/test-migrations ["v48.00-007"] [migrate!]
+      (impl/test-migrations ["v48.00-022"] [migrate!]
         (expect-correct-settings! migrate!)))
     (testing "Running the migration after a previous data-migration still works"
-      (impl/test-migrations ["v48.00-007"] [migrate!]
+      (impl/test-migrations ["v48.00-022"] [migrate!]
         (expect-correct-settings! (fn []
                                     (#'custom-migrations/migrate-click-through!)
                                     (migrate!)))))))
@@ -1421,7 +1426,7 @@
         ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-      (impl/test-migrations ["v48.00-022"] [migrate!]
+      (impl/test-migrations ["v48.00-023"] [migrate!]
         (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
           (migrate!)
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
@@ -1429,7 +1434,7 @@
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
 
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
-      (impl/test-migrations ["v48.00-022"] [migrate!]
+      (impl/test-migrations ["v48.00-023"] [migrate!]
         (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
           (mt/with-temporary-raw-setting-values
             [ldap-enabled "false"
@@ -1441,7 +1446,7 @@
             (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))))
 
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-      (impl/test-migrations ["v48.00-022"] [migrate!]
+      (impl/test-migrations ["v48.00-023"] [migrate!]
         (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
           (mt/with-temporary-raw-setting-values
             [ldap-sync-admin-group "true"]
@@ -1449,10 +1454,30 @@
             (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings)))))))
 
     (testing "Running the migration after a previous data-migration still works"
-      (impl/test-migrations ["v48.00-022"] [migrate!]
+      (impl/test-migrations ["v48.00-023"] [migrate!]
         (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (migrate!)
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))))
+
+
+(deftest check-data-migrations-rollback
+  (testing "that rollback causes data_migrations table to reappear with data"
+    (impl/test-migrations ["v48.00-024"] [_]
+      (let [{:keys [db-type ^javax.sql.DataSource
+                    data-source]} mdb.connection/*application-db*
+            ;; approach from schema-migrations-test/migrate-field-database-type-test
+            migrate!              (partial db.setup/migrate! db-type data-source)]
+        ;; 0 because we removed them and normal path won't trigger any
+        (is (<= 0 (:cnt (t2/query-one {:from   [:data_migrations]
+                                       :select [[[:count :id] :cnt]]}))))
+        (migrate! :up)
+        (is (thrown? ExceptionInfo
+                     (t2/query-one {:from   [:data_migrations]
+                                    :select [[[:count :id] :cnt]]})))
+        (migrate! :down 47)
+        ;; 2 because there were two data migrations left in release 0.47
+        (is (<= 2 (:cnt (t2/query-one {:from   [:data_migrations]
+                                       :select [[[:count :id] :cnt]]}))))))))
