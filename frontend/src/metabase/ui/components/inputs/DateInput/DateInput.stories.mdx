@@ -17,7 +17,8 @@ export const args = {
 export const sampleArgs = {
   value: new Date(2015, 0, 8),
   label: "Event date",
-  description: "Date the event happened",
+  description:
+    "The event is visible if the date falls within the chart’s time range",
   placeholder: "Enter date",
   error: "required",
 };
@@ -197,6 +198,21 @@ ReadOnlyMd.args = {
   <Story name="Read only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
+#### No popover
+
+export const NoPopoverMd = VariantTemplate.bind({});
+NoPopoverMd.args = {
+  defaultValue: sampleArgs.value,
+  label: sampleArgs.label,
+  description: sampleArgs.description,
+  placeholder: sampleArgs.placeholder,
+  popoverProps: { opened: false },
+};
+
+<Canvas>
+  <Story name="No popover, md">{NoPopoverMd}</Story>
+</Canvas>
+
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
@@ -291,4 +307,16 @@ ReadOnlyXs.args = {
 
 <Canvas>
   <Story name="Read only, xs">{ReadOnlyXs}</Story>
+</Canvas>
+
+#### No popover
+
+export const NoPopoverXs = VariantTemplate.bind({});
+NoPopoverXs.args = {
+  ...NoPopoverMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="No popover, xs">{NoPopoverXs}</Story>
 </Canvas>
