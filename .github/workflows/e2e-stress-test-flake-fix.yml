@@ -30,6 +30,8 @@ jobs:
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
     steps:
+      - uses: actions/checkout@v3
+
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -41,7 +43,6 @@ jobs:
           mysql: true
           mongo: true
 
-      - uses: actions/checkout@v3
       - name: Download Metabase uberjar from a previously stored artifact
         run: |
           curl -L \
