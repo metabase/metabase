@@ -1,6 +1,5 @@
 import { rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
-import type { DayStylesParams } from "@mantine/dates";
 
 export const getDatePickerOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -10,7 +9,7 @@ export const getDatePickerOverrides =
         maxLevel: "month",
         hideOutsideDates: true,
       },
-      styles: (theme, { isStatic }: DayStylesParams) => ({
+      styles: theme => ({
         day: {
           width: rem(24),
           height: rem(24),
