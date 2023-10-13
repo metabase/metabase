@@ -80,6 +80,7 @@ export function DateIntervalPicker({
               c="text.2"
               variant="subtle"
               leftIcon={<Icon name="ellipsis" />}
+              aria-label={t`Options`}
             />
           </Menu.Target>
           <Menu.Dropdown>
