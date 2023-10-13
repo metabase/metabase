@@ -51,7 +51,7 @@
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
-(deftest user-list-authentication-test
+(deftest ^:parallel user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
       (is (= (get mw.util/response-unauthentic :body)
@@ -235,7 +235,7 @@
                           (filter mt/test-user?)
                           (map :email)))))))))))
 
-(deftest admin-user-list-test
+(deftest ^:parallel admin-user-list-test
   (testing "GET /api/user"
     (testing "Check that admins can get a list of active Users. Should include additional admin Fields"
       (is (= (->> [{:email                  "crowberto@metabase.com"
@@ -282,7 +282,7 @@
                   mt/boolean-ids-and-timestamps
                   (map #(dissoc % :is_qbnewb :last_login))))))))
 
-(deftest user-list-include-inactive-test
+(deftest ^:parallel user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
     (testing "Non-admins should *not* be allowed to pass in include_deactivated or status"
       (is (= "You don't have permissions to do that."
@@ -471,7 +471,7 @@
                                            custom-homepage-dashboard -3]
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
-(deftest get-user-test
+(deftest ^:parallel get-user-test
   (testing "GET /api/user/:id"
     (testing "should return a smaller set of fields"
       (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
@@ -556,7 +556,7 @@
                                      :last_name  "Random"
                                      :email      (:email (mt/fetch-user :rasta))}))))))
 
-(deftest create-user-validate-input-test
+(deftest ^:parallel create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
       (is (=? {:errors {:email "value must be a valid email address."}}
@@ -674,7 +674,7 @@
   [user]
   (t2/select-one-fn :name Collection :id (:personal_collection_id user)))
 
-(deftest admin-update-other-user-test
+(deftest ^:parallel admin-update-other-user-test
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
       (mt/with-temp [User {user-id :id} {:first_name   "Cam"
@@ -719,7 +719,7 @@
                     ::personal-collection-name "Cam Eron's Personal Collection"}
                    (user)))))))))
 
-(deftest update-login-attributes-test
+(deftest ^:parallel update-login-attributes-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
       (t2.with-temp/with-temp [User {user-id :id} {:first_name   "Test"
@@ -740,7 +740,7 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
-(deftest updated-user-name-test
+(deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.api.user/updated-user-name` works as intended."
     (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
           nonames   {:first_name nil :last_name nil}
@@ -1115,7 +1115,7 @@
       ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
       (not= hashed-password (t2/select-one-fn :password User, :%lower.email (u/lower-case-en (:email user)))))))
 
-(deftest can-reset-password-test
+(deftest ^:parallel can-reset-password-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
@@ -1125,7 +1125,7 @@
         (is (= true
                (user-can-reset-password? (not :superuser))))))))
 
-(deftest reset-password-permissions-test
+(deftest ^:parallel reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
     (testing "Check that a non-superuser CANNOT update someone else's password"
       (is (= "You don't have permissions to do that."
@@ -1133,7 +1133,7 @@
                                    {:password     "whateverUP12!!"
                                     :old_password "whatever"}))))))
 
-(deftest reset-password-input-validation-test
+(deftest ^:parallel reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
       (is (=? {:errors {:password "password is too common."}}
@@ -1221,7 +1221,7 @@
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 
-(deftest send-invite-test
+(deftest ^:parallel send-invite-test
   (testing "POST /api/user/:id/send_invite"
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."

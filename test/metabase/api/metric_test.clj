@@ -40,7 +40,7 @@
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))))
 
-(deftest auth-tests
+(deftest ^:parallel auth-tests
   (testing "AUTHENTICATION"
     ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
     ;; authentication test on every single individual endpoint
@@ -50,7 +50,7 @@
     (is (= (get mw.util/response-unauthentic :body)
            (client/client :put 401 "metric/13")))))
 
-(deftest create-test
+(deftest ^:parallel create-test
   (testing "POST /api/metric"
     (testing "test security. Requires superuser perms"
       (is (= "You don't have permissions to do that."
@@ -104,7 +104,7 @@
                                                               :definition              {:database 21
                                                                                         :query    {:filter ["abc"]}}})))))))
 
-(deftest update-test
+(deftest ^:parallel update-test
   (testing "PUT /api/metric"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric metric]
@@ -159,7 +159,7 @@
                 :definition              {:database 2
                                           :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}})))))))
 
-(deftest archive-test
+(deftest ^:parallel archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
     (t2.with-temp/with-temp [Metric {:keys [id]}]
       (is (some? (mt/user-http-request
@@ -168,7 +168,7 @@
       (is (= true
              (t2/select-one-fn :archived Metric :id id))))))
 
-(deftest unarchive-test
+(deftest ^:parallel unarchive-test
   (testing "Can we unarchive a Metric with the PUT endpoint?"
     (t2.with-temp/with-temp [Metric {:keys [id]} {:archived true}]
       (is (some? (mt/user-http-request
@@ -176,7 +176,7 @@
                   {:archived false, :revision_message "Unarchive the Metric"})))
       (is (= false (t2/select-one-fn :archived Metric :id id))))))
 
-(deftest delete-test
+(deftest ^:parallel delete-test
   (testing "DELETE /api/metric/:id"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric {:keys [id]}]
@@ -196,7 +196,7 @@
              (mt/user-http-request
               :crowberto :delete 400 "metric/1" :revision_message ""))))))
 
-(deftest fetch-archived-test
+(deftest ^:parallel fetch-archived-test
   (testing "should still be able to fetch the archived Metric"
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
@@ -289,7 +289,7 @@
              (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
-(deftest revert-metric-test
+(deftest ^:parallel revert-metric-test
   (testing "POST /api/metric/:id/revert"
     (testing "test security. Requires superuser perms"
       (t2.with-temp/with-temp [Metric {:keys [id]}]
@@ -304,7 +304,7 @@
     (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "metric/1/revert" {:revision_id "foobar"})))))
 
-(deftest metric-revisions-test-2
+(deftest ^:parallel metric-revisions-test-2
   (mt/with-temp [Database {database-id :id} {}
                  Table    {table-id :id}    {:db_id database-id}
                  Metric   {:keys [id]}      {:creator_id              (mt/user->id :crowberto)
@@ -390,7 +390,7 @@
                              :crowberto :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
-(deftest list-metrics-test
+(deftest ^:parallel list-metrics-test
   (testing "GET /api/metric/"
     (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Segment"
                                                        :table_id   (mt/id :checkins)
@@ -419,7 +419,7 @@
                         (contains? #{id-1 id-2 id-3} metric-id))
                       (mt/user-http-request :rasta :get 200 "metric/")))))))
 
-(deftest metric-related-entities-test
+(deftest ^:parallel metric-related-entities-test
   (testing "Test related/recommended entities"
     (t2.with-temp/with-temp [Metric {metric-id :id}]
       (is (= #{:table :metrics :segments}

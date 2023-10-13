@@ -2757,7 +2757,7 @@
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc"))))
           (is (some? (mt/user-http-request :rasta :get 200 (param-values-url card-id "abc" "search-query")))))))))
 
-(deftest paramters-using-old-style-field-values
+(deftest ^:parallel paramters-using-old-style-field-values
   (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
     (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
       (testing "without search query"
@@ -2774,6 +2774,7 @@
           (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                            (-> response :values set)))
           (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))
+
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags

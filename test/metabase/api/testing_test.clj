@@ -22,7 +22,7 @@
             (finally
               (.delete file))))))))
 
-(deftest restore-test
+(deftest ^:parallel restore-test
   (when (= (mdb.connection/db-type) :h2)
     (testing "Should throw Exception if file does not exist"
       (is (= "Not found."

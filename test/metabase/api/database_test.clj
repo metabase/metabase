@@ -160,7 +160,7 @@
               :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
-(deftest ^:parallel get-database-can-upload-test
+(deftest get-database-can-upload-test
   (t2.with-temp/with-temp [Database {db-id :id} {:engine :postgres :name "The Chosen One"}]
     (doseq [uploads-enabled? [true false]]
       (testing (format "The database with uploads enabled for the public schema has can_upload=%s" uploads-enabled?)

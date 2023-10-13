@@ -26,7 +26,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest unauthenticated-test
+(deftest ^:parallel unauthenticated-test
   (is (= (get mw.util/response-unauthentic :body)
          (client/client :get 401 "table")))
   (is (= (get mw.util/response-unauthentic :body)
@@ -84,7 +84,7 @@
       (dissoc :dimension_options :default_dimension_option)))
 
 
-(deftest list-table-test
+(deftest ^:parallel list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
       (is (= #{{:name         (mt/format-name "categories")
@@ -145,7 +145,7 @@
   (-> (table-defaults)
       (assoc :dimension_options (default-dimension-options))))
 
-(deftest sensitive-fields-included-test
+(deftest ^:parallel sensitive-fields-included-test
   (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
     (testing "Sensitive fields are included"
       (is (= (merge
@@ -216,7 +216,7 @@
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
 
-(deftest sensitive-fields-not-included-test
+(deftest ^:parallel sensitive-fields-not-included-test
   (testing "GET api/table/:id/query_metadata"
     (testing "Sensitive fields should not be included"
       (is (= (merge
@@ -289,7 +289,7 @@
                       (-> (select-keys field [:name :target])
                           (update :target boolean))))))))))
 
-(deftest update-table-test
+(deftest ^:parallel update-table-test
   (testing "PUT /api/table/:id"
     (t2.with-temp/with-temp [Table table]
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
@@ -395,7 +395,7 @@
             (set-many-vis! [id-1 id-2] nil) ;; both are made unhidden so both synced
             (is (= @unhidden-ids #{id-1 id-2}))))))))
 
-(deftest get-fks-test
+(deftest ^:parallel get-fks-test
   (testing "GET /api/table/:id/fks"
     (testing "We expect a single FK from CHECKINS.USER_ID -> USERS.ID"
       (let [checkins-user-field (t2/select-one Field :id (mt/id :checkins :user_id))
@@ -445,7 +445,7 @@
       (is (= []
              (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
 
-(deftest basic-query-metadata-test
+(deftest ^:parallel basic-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
@@ -504,7 +504,7 @@
     :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
-(deftest virtual-table-metadata-test
+(deftest ^:parallel virtual-table-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure metadata for 'virtual' tables comes back as expected"
       (t2.with-temp/with-temp [Card card {:name          "Go Dubs!"
@@ -562,7 +562,7 @@
                     (format "table/card__%d/query_metadata")
                     (mt/user-http-request :crowberto :get 200))))))))
 
-(deftest include-date-dimensions-in-nested-query-test
+(deftest ^:parallel include-date-dimensions-in-nested-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Test date dimensions being included with a nested query"
       (t2.with-temp/with-temp [Card card {:name          "Users"
@@ -681,7 +681,7 @@
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
-(deftest dimension-options-sort-test
+(deftest ^:parallel dimension-options-sort-test
   (testing "Ensure dimensions options are sorted numerically, but returned as strings"
     (testing "datetime indexes"
       (is (= (map str (sort (map #(Long/parseLong %) (var-get #'api.table/datetime-dimension-indexes))))
@@ -811,13 +811,13 @@
               (is (= (repeat 2 (var-get #'api.table/coordinate-dimension-indexes))
                      (dimension-options))))))))))
 
-(deftest related-test
+(deftest ^:parallel related-test
   (testing "GET /api/table/:id/related"
     (testing "related/recommended entities"
       (is (= #{:metrics :segments :linked-from :linking-to :tables}
              (-> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues))) keys set))))))
 
-(deftest discard-values-test
+(deftest ^:parallel discard-values-test
   (testing "POST /api/table/:id/discard_values"
     (mt/with-temp [Table       table        {}
                    Field       field        {:table_id (u/the-id table)}
@@ -839,7 +839,7 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))))))
 
-(deftest field-ordering-test
+(deftest ^:parallel field-ordering-test
   (let [original-field-order (t2/select-one-fn :field_order Table :id (mt/id :venues))]
     (try
       (testing "Cane we set alphabetical field ordering?"

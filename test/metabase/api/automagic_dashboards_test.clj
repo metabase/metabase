@@ -68,7 +68,7 @@
 
 ;;; ------------------- X-ray  -------------------
 
-(deftest table-xray-test
+(deftest ^:parallel table-xray-test
   (testing "GET /api/automagic-dashboards/table/:id"
     (is (some? (api-call "table/%s" [(mt/id :venues)]))))
 
@@ -90,13 +90,13 @@
                 (is (=? {:id (u/the-id saved-dashboard)}
                         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))))))))))))
 
-(deftest metric-xray-test
+(deftest ^:parallel metric-xray-test
   (testing "GET /api/automagic-dashboards/metric/:id"
     (t2.with-temp/with-temp [Metric {metric-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:query {:aggregation ["count"]}}}]
       (is (some? (api-call "metric/%s" [metric-id]))))))
 
-(deftest segment-xray-test
+(deftest ^:parallel segment-xray-test
   (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                      :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]
     (testing "GET /api/automagic-dashboards/segment/:id"
@@ -106,7 +106,7 @@
       (is (some? (api-call "segment/%s/rule/example/indepth" [segment-id]))))))
 
 
-(deftest field-xray-test
+(deftest ^:parallel field-xray-test
   (testing "GET /api/automagic-dashboards/field/:id"
     (is (some? (api-call "field/%s" [(mt/id :venues :price)])))))
 
@@ -172,7 +172,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-fn collection-id card-id)))))))
 
-(deftest adhoc-query-xray-test
+(deftest ^:parallel adhoc-query-xray-test
   (let [query (#'magic/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
@@ -195,7 +195,7 @@
     {:table_id   (mt/id :venues)
      :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}))
 
-(deftest comparisons-test
+(deftest ^:parallel comparisons-test
   (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
     (testing "GET /api/automagic-dashboards/table/:id/compare/segment/:segment-id"
       (is (some?
@@ -272,7 +272,7 @@
 
 ;;; ------------------- Index Entities Xrays -------------------
 
-(deftest add-source-model-link-auto-width-test
+(deftest ^:parallel add-source-model-link-auto-width-test
   (testing "An empty set of input cards will return a default card of width 4"
     (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} nil)]
       (is (= 4 size_x))))
@@ -335,7 +335,7 @@
              "\nwith filter: " (-> dashcard :card :dataset_query :query :filter)
              "\nis missing one of " filters))))
 
-(deftest create-linked-dashboard-test-no-linked
+(deftest ^:parallel create-linked-dashboard-test-no-linked
   (testing "If there are no linked-tables, create a default view explaining the situation."
     (is (=? {:ordered_cards [{:visualization_settings {:virtual_card {:display "link", :archived false}
                                                        :link         {:entity {:model   "dataset"
@@ -349,7 +349,7 @@
                                                   :model-index       nil
                                                   :model-index-value nil})))))
 
-(deftest create-linked-dashboard-test-regular-queries
+(deftest ^:parallel create-linked-dashboard-test-regular-queries
   (mt/dataset sample-dataset
     (testing "x-ray an mbql model"
       (with-indexed-model [{:keys [model model-index model-index-value]}
@@ -445,7 +445,7 @@
                                                     :model-index-value model-index-value})]
                   (cards-have-filters? (:ordered_cards dash) pk-filters))))))))))
 
-(deftest create-linked-dashboard-test-single-link
+(deftest ^:parallel create-linked-dashboard-test-single-link
   (mt/dataset sample-dataset
     (testing "with only single linked table"
       (with-indexed-model [{:keys [model model-index model-index-value]}

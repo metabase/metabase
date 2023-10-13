@@ -290,7 +290,7 @@
           (is (= [{:name "A" :children []}]
                  (collection-tree-view ids response))))))))
 
-(deftest collection-tree-exclude-other-users-personal-collections-test
+(deftest ^:parallel collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
     (testing "Excludes other user collections"
       (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
@@ -647,7 +647,7 @@
                         (mt/boolean-ids-and-timestamps
                          (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))))
 
-(deftest ^:parallel collection-items-revision-history-and-ordering-test
+(deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp!
       [Collection {collection-id :id}      {:name "Collection with Items"}

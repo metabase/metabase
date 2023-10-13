@@ -213,7 +213,7 @@
   [& args]
   (apply search-request-data-with identity args))
 
-(deftest order-clause-test
+(deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
              [:like [:lower :model]             "%foo%"] [:inline 0]
@@ -272,7 +272,7 @@
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
-(deftest query-model-set
+(deftest ^:parallel query-model-set
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
@@ -284,7 +284,7 @@
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
 
-(deftest query-model-set-test
+(deftest ^:parallel query-model-set-test
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should return a list of models that search result will return"
@@ -302,7 +302,7 @@
           (make-card 3)
           (make-card 0)])))
 
-(deftest dashboard-count-test
+(deftest ^:parallel dashboard-count-test
   (testing "It sorts by dashboard count"
     (mt/with-temp [Card          {card-id-3 :id} {:name "dashboard-count 3"}
                    Card          {card-id-5 :id} {:name "dashboard-count 5"}
@@ -434,7 +434,7 @@
                       set)
                  "db-1"))))))
 
-(deftest bookmarks-test
+(deftest ^:parallel bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp [CardBookmark      _ {:card_id (u/the-id card)
@@ -458,7 +458,7 @@
 (defn- archived [m]
   (assoc m :archived true))
 
-(deftest database-test
+(deftest ^:parallel database-test
   (testing "Should search database names and descriptions"
     (mt/with-temp [Database       _ {:name "aviaries"}
                    Database       _ {:name "user_favorite_places" :description "Join table between users and their favorite places, which could include aviaries"}
@@ -529,7 +529,7 @@
                                                                            :search-string "foo"
                                                                            :current-user-perms #{"/"}})))))))
 
-(deftest archived-results-test
+(deftest ^:parallel archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
       (mt/with-temp [Card        action-model {:dataset true}
@@ -582,7 +582,7 @@
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
 
-(deftest alerts-test
+(deftest ^:parallel alerts-test
   (testing "Search should not return alerts"
     (with-search-items-in-root-collection "test"
       (mt/with-temp [Pulse pulse {:alert_condition  "rows"
@@ -681,7 +681,7 @@
                      (binding [*search-request-results-database-id* db-id]
                        (search-request-data :rasta :q "RoundTable"))))))))
 
-(deftest collection-namespaces-test
+(deftest ^:parallel collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp [Collection _c1 {:name "Normal Collection"}
                    Collection _c2 {:name "Coin Collection" :namespace "currency"}]
@@ -691,7 +691,7 @@
                    (filter #(and (= (:model %) "collection")
                                  (#{"Normal Collection" "Coin Collection"} (:name %))))))))))
 
-(deftest no-dashboard-subscription-pulses-test
+(deftest ^:parallel no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
               (->> (:data (mt/user-http-request :crowberto :get "search?q=electro"))
@@ -765,7 +765,7 @@
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
 
-(deftest available-models-should-be-independent-of-models-param-test
+(deftest ^:parallel available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
     (let [search-term "Available models"]
       (with-search-items-in-root-collection search-term
@@ -787,7 +787,7 @@
           (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card"}
                  (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
 
-(deftest models-table-db-id-test
+(deftest ^:parallel models-table-db-id-test
   (testing "search/models request includes `table-db-id` param"
     (with-search-items-in-root-collection "Available models"
       (testing "`table-db-id` is invalid"
@@ -800,7 +800,7 @@
         (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
 
-(deftest models-archived-string-test
+(deftest ^:parallel models-archived-string-test
   (testing "search/models request includes `archived-string` param"
     (with-search-items-in-root-collection "Available models"
       (mt/with-temp [Card        {model-id :id} action-model-params

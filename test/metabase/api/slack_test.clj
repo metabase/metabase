@@ -77,7 +77,7 @@
       (mt/user-http-request :rasta :put 403 "slack/settings"
                             {:slack-files-channel "fake-channel"}))))
 
-(deftest manifest-test
+(deftest ^:parallel manifest-test
   (testing "GET /api/slack/manifest"
     (testing "The Slack manifest can be fetched via an API call"
       (is (str/starts-with?

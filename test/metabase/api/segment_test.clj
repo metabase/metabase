@@ -32,7 +32,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest authentication-test
+(deftest ^:parallel authentication-test
   (is (= (get mw.util/response-unauthentic :body)
          (client/client :get 401 "segment")))
 
@@ -41,7 +41,7 @@
 
 ;; ## POST /api/segment
 
-(deftest create-segment-permissions-test
+(deftest ^:parallel create-segment-permissions-test
   (testing "POST /api/segment"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
@@ -49,7 +49,7 @@
                                                                :table_id   123
                                                                :definition {}}))))))
 
-(deftest create-segment-input-validation-test
+(deftest ^:parallel create-segment-input-validation-test
   (testing "POST /api/segment"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "segment" {})))
@@ -70,7 +70,7 @@
                                                                   :table_id   123
                                                                   :definition "foobar"})))))
 
-(deftest create-segment-test
+(deftest ^:parallel create-segment-test
   (mt/with-temp [Database {database-id :id} {}
                  Table    {:keys [id]} {:db_id database-id}]
     (is (= {:name                    "A Segment"
@@ -97,7 +97,7 @@
 
 ;; ## PUT /api/segment
 
-(deftest update-permissions-test
+(deftest ^:parallel update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
       (t2.with-temp/with-temp [Segment segment]
@@ -107,7 +107,7 @@
                                       :definition       {}
                                       :revision_message "something different"})))))))
 
-(deftest update-input-validation-test
+(deftest ^:parallel update-input-validation-test
   (testing "PUT /api/segment/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
            (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
@@ -124,7 +124,7 @@
                                                                   :revision_message "123"
                                                                   :definition       "foobar"})))))
 
-(deftest update-test
+(deftest ^:parallel update-test
   (testing "PUT /api/segment/:id"
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
@@ -154,7 +154,7 @@
                 :revision_message        "I got me some revisions"
                 :definition              {:filter [:!= [:field 2 nil] "cans"]}})))))))
 
-(deftest partial-update-test
+(deftest ^:parallel partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
       (t2.with-temp/with-temp [Segment segment]
@@ -164,7 +164,7 @@
                                           :revision_message "WOW HOW COOL"
                                           :definition       {}})))))))
 
-(deftest archive-test
+(deftest ^:parallel archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
       (t2.with-temp/with-temp [Segment {:keys [id]}]
@@ -173,7 +173,7 @@
         (is (= true
                (t2/select-one-fn :archived Segment :id id)))))))
 
-(deftest unarchive-test
+(deftest ^:parallel unarchive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we unarchive a Segment with the PUT endpoint?"
       (t2.with-temp/with-temp [Segment {:keys [id]} {:archived true}]
@@ -185,7 +185,7 @@
 
 ;; ## DELETE /api/segment/:id
 
-(deftest delete-permissions-test
+(deftest ^:parallel delete-permissions-test
   (testing "DELETE /api/segment/:id"
     (testing "test security. requires superuser perms"
       (t2.with-temp/with-temp [Segment {:keys [id]}]
@@ -193,7 +193,7 @@
                (mt/user-http-request :rasta :delete 403 (str "segment/" id)
                                      :revision_message "yeeeehaw!")))))))
 
-(deftest delete-input-validation-test
+(deftest ^:parallel delete-input-validation-test
   (testing "DELETE /api/segment/:id"
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
@@ -201,7 +201,7 @@
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
 
-(deftest delete-test
+(deftest ^:parallel delete-test
   (testing "DELETE /api/segment/:id"
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id} {:db_id database-id}
@@ -237,7 +237,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
-(deftest fetch-segment-test
+(deftest ^:parallel fetch-segment-test
   (testing "GET /api/segment/:id"
     (mt/with-temp [Database {database-id :id} {}
                    Table    {table-id :id}    {:db_id database-id}
@@ -274,7 +274,7 @@
                (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
 
 
-(deftest revisions-test
+(deftest ^:parallel revisions-test
   (testing "GET /api/segment/:id/revisions"
     (mt/with-temp
       [Database {database-id :id} {}
@@ -315,14 +315,14 @@
 
 ;; ## POST /api/segment/:id/revert
 
-(deftest revert-permissions-test
+(deftest ^:parallel revert-permissions-test
   (testing "POST /api/segment/:id/revert"
     (testing "test security.  requires superuser perms"
       (t2.with-temp/with-temp [Segment {:keys [id]}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "segment/%d/revert" id) {:revision_id 56})))))))
 
-(deftest revert-input-validation-test
+(deftest ^:parallel revert-input-validation-test
   (testing "POST /api/segment/:id/revert"
     (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "segment/1/revert" {})))
@@ -330,7 +330,7 @@
     (is (=? {:errors {:revision_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "segment/1/revert" {:revision_id "foobar"})))))
 
-(deftest revert-test
+(deftest ^:parallel revert-test
   (testing "POST /api/segment/:id/revert"
     (mt/with-temp
       [Database {database-id :id} {}
@@ -407,7 +407,7 @@
                (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
                  (dissoc revision :timestamp :id))))))))
 
-(deftest list-test
+(deftest ^:parallel list-test
   (testing "GET /api/segment/"
     (t2.with-temp/with-temp [Segment {id-1 :id} {:name     "Segment 1"
                                                  :table_id (mt/id :users)}
@@ -432,7 +432,7 @@
                         (contains? #{id-1 id-2 id-3} segment-id))
                       (mt/user-http-request :rasta :get 200 "segment/")))))))
 
-(deftest related-entities-test
+(deftest ^:parallel related-entities-test
   (testing "GET /api/segment/:id/related"
     (testing "related/recommended entities"
       (t2.with-temp/with-temp [Segment {segment-id :id}]

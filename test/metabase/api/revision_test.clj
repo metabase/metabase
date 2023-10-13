@@ -23,7 +23,7 @@
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
     (dissoc revision :timestamp :id)))
 
-(defn- create-card-revision! [card-id is-creation? user]
+(defn- create-card-revision [card-id is-creation? user]
   (revision/push-revision!
     :object       (t2/select-one Card :id card-id)
     :entity       Card
@@ -31,7 +31,7 @@
     :user-id      (test.users/user->id user)
     :is-creation? is-creation?))
 
-(defn- create-dashboard-revision!
+(defn- create-dashboard-revision
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation? user]
   (revision/push-revision!
@@ -49,17 +49,17 @@
 ;  3. :description is calculated
 
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
-(deftest no-revisions-test
+(deftest ^:parallel no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
     (t2.with-temp/with-temp [Card {:keys [id]}]
       (is (= [{:user {}, :diff nil, :description "modified this.", :has_multiple_changes false}]
              (get-revisions :card id))))))
 
 ;; case with single creation revision
-(deftest single-revision-test
+(deftest ^:parallel single-revision-test
   (testing "Loading a single revision works"
     (t2.with-temp/with-temp [Card {:keys [id] :as card}]
-      (create-card-revision! (:id card) true :rasta)
+      (create-card-revision (:id card) true :rasta)
       (is (= [{:is_reversion         false
                :is_creation          true
                :message              nil
@@ -69,12 +69,12 @@
                :description          "created this."}]
              (get-revisions :card id))))))
 
-(deftest get-revision-for-entity-with-revision-exceeds-max-revision-test
+(deftest ^:parallel get-revision-for-entity-with-revision-exceeds-max-revision-test
   (t2.with-temp/with-temp [Card {:keys [id] :as card} {:name "A card"}]
-    (create-card-revision! (:id card) true :rasta)
+    (create-card-revision (:id card) true :rasta)
     (doseq [i (range (inc revision/max-revisions))]
       (t2/update! :model/Card (:id card) {:name (format "New name %d" i)})
-      (create-card-revision! (:id card) false :rasta))
+      (create-card-revision (:id card) false :rasta))
 
     (is (= ["renamed this Card from \"New name 14\" to \"New name 15\"."
             "renamed this Card from \"New name 13\" to \"New name 14\"."
@@ -94,12 +94,12 @@
            (map :description (get-revisions :card id))))))
 
 ;; case with multiple revisions, including reversion
-(deftest multiple-revisions-with-reversion-test
+(deftest ^:parallel multiple-revisions-with-reversion-test
   (testing "Creating multiple revisions, with a reversion, works"
     (t2.with-temp/with-temp [Card {:keys [id name], :as card}]
-      (create-card-revision! (:id card) true :rasta)
+      (create-card-revision (:id card) true :rasta)
       (t2/update! Card {:name "something else"})
-      (create-card-revision! (:id card) false :rasta)
+      (create-card-revision (:id card) false :rasta)
       (t2/insert! Revision
                   :model        "Card"
                   :model_id     id
@@ -151,12 +151,12 @@
    :parameter_mappings     []
    :visualization_settings {}})
 
-(deftest revert-test
+(deftest ^:parallel revert-test
   (testing "Reverting through API works"
     (t2.with-temp/with-temp [Dashboard {:keys [id] :as dash}   {}
                              Card      {card-id :id, :as card} {}]
       (is (=? {:id id}
-              (create-dashboard-revision! (:id dash) true :rasta)))
+              (create-dashboard-revision (:id dash) true :rasta)))
       (let [dashcard (first (t2/insert-returning-instances! DashboardCard
                                                             :dashboard_id id
                                                             :card_id (:id card)
@@ -165,10 +165,10 @@
                                                             :row    0
                                                             :col    0))]
         (is (=? {:id id}
-                (create-dashboard-revision! (:id dash) false :rasta)))
+                (create-dashboard-revision (:id dash) false :rasta)))
         (is (pos? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))
       (is (=? {:id id}
-              (create-dashboard-revision! (:id dash) false :rasta)))
+              (create-dashboard-revision (:id dash) false :rasta)))
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
         (let [[_ {previous-revision-id :id}] (revision/revisions Dashboard id)]
           (is (=? {:id          int?
@@ -220,10 +220,10 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [Collection collection {:name "Personal collection"}
                      Dashboard  dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]
-        (create-dashboard-revision! (:id dashboard) true :crowberto)
+        (create-dashboard-revision (:id dashboard) true :crowberto)
         ;; update so that the revision is accepted
         (t2/update! Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
-        (create-dashboard-revision! (:id dashboard) false :crowberto)
+        (create-dashboard-revision (:id dashboard) false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions Dashboard dashboard-id)
               update-req            {:entity :dashboard, :id dashboard-id, :revision_id prev-rev-id}]
@@ -241,15 +241,15 @@
        Card       {card-id-2 :id}    {:name "Card 2"}
        Dashboard  {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create the dashboard
-      (create-dashboard-revision! dashboard-id true :crowberto)
+      (create-dashboard-revision dashboard-id true :crowberto)
 
       ;; 1. rename
       (t2/update! Dashboard :id dashboard-id {:name "New name"})
-      (create-dashboard-revision! dashboard-id false :crowberto)
+      (create-dashboard-revision dashboard-id false :crowberto)
 
       ;; 2. add description
       (t2/update! Dashboard :id dashboard-id {:description "A beautiful dashboard"})
-      (create-dashboard-revision! dashboard-id false :crowberto)
+      (create-dashboard-revision dashboard-id false :crowberto)
 
       ;; 3. add 2 cards
       (let [dashcard-ids (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
@@ -264,20 +264,20 @@
                                                                    :size_y       4
                                                                    :col          1
                                                                    :row          1}])]
-        (create-dashboard-revision! dashboard-id false :crowberto)
+        (create-dashboard-revision dashboard-id false :crowberto)
 
         ;; 4. remove 1 card
         (t2/delete! DashboardCard :id (first dashcard-ids))
-        (create-dashboard-revision! dashboard-id false :crowberto)
+        (create-dashboard-revision dashboard-id false :crowberto)
 
         ;; 5. arrange cards
         (t2/update! DashboardCard :id (second dashcard-ids) {:col 2
                                                              :row 2})
-        (create-dashboard-revision! dashboard-id false :crowberto))
+        (create-dashboard-revision dashboard-id false :crowberto))
 
       ;; 6. Move to a new collection
       (t2/update! Dashboard :id dashboard-id {:collection_id coll-id})
-      (create-dashboard-revision! dashboard-id false :crowberto)
+      (create-dashboard-revision dashboard-id false :crowberto)
 
       ;; 7. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
@@ -311,29 +311,29 @@
                                  :dataset_query          (mt/mbql-query venues)
                                  :visualization_settings {}}]
       ;; 0. create the card
-      (create-card-revision! card-id true :crowberto)
+      (create-card-revision card-id true :crowberto)
 
       ;; 1. rename
       (t2/update! Card :id card-id {:name "New name"})
-      (create-card-revision! card-id false :crowberto)
+      (create-card-revision card-id false :crowberto)
 
       ;; 2. turn to a model
       (t2/update! Card :id card-id {:dataset true})
-      (create-card-revision! card-id false :crowberto)
+      (create-card-revision card-id false :crowberto)
 
       ;; 3. edit query and metadata
       (t2/update! Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
                                     :display       "scalar"})
-      (create-card-revision! card-id false :crowberto)
+      (create-card-revision card-id false :crowberto)
 
       ;; 4. add description
       (t2/update! Card :id card-id {:description "meaningful number"})
-      (create-card-revision! card-id false :crowberto)
+      (create-card-revision card-id false :crowberto)
 
 
       ;; 5. change collection
       (t2/update! Card :id card-id {:collection_id coll-id})
-      (create-card-revision! card-id false :crowberto)
+      (create-card-revision card-id false :crowberto)
 
       ;; 6. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
@@ -373,12 +373,12 @@
                                      :dataset_query          (mt/mbql-query venues)
                                      :visualization_settings {}}]
           ;; 0. create the card
-          (create-card-revision! card-id true :crowberto)
+          (create-card-revision card-id true :crowberto)
 
           ;; 1. rename
           (t2/update! Card :id card-id {:description "meaningful number"
                                         :name        "New name"})
-          (create-card-revision! card-id false :crowberto)
+          (create-card-revision card-id false :crowberto)
 
 
           ;; 2. revert to an earlier revision
@@ -400,7 +400,7 @@
     (t2.with-temp/with-temp
       [Dashboard  {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create the dashboard
-      (create-dashboard-revision! dashboard-id true :crowberto)
+      (create-dashboard-revision dashboard-id true :crowberto)
 
       ;; 1. add 2 cards
       (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
@@ -413,7 +413,7 @@
                                                 :size_y       4
                                                 :col          1
                                                 :row          1}])
-      (create-dashboard-revision! dashboard-id false :crowberto)
+      (create-dashboard-revision dashboard-id false :crowberto)
 
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
         (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))

@@ -100,6 +100,12 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     toucan2.core/update!
+     toucan2.core/update-returning-pks!
+     toucan2.core/delete!
+     toucan2.core/insert!
+     toucan2.core/insert-returning-instances!
+     toucan2.core/insert-returning-pks!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})

@@ -26,14 +26,14 @@
   (str/starts-with? (or (get-in response [:errors :name]) "")
                     "snippet names cannot include"))
 
-(defn- grant-native-perms
+(defn- grant-native-perms!
   "Grants native query perms for the All Users group to the test database if not already granted."
   []
   (u/ignore-exceptions
    (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))))
 
 (deftest list-snippets-api-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "GET /api/native-query-snippet"
     (mt/with-temp [NativeQuerySnippet snippet-1 {:content "1"
                                                  :name    "snippet_1"}
@@ -49,7 +49,7 @@
               (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields))))))))))
 
 (deftest read-snippet-api-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "GET /api/native-query-snippet/:id"
     (t2.with-temp/with-temp [NativeQuerySnippet snippet {:content "-- SQL comment here"
                                                          :name    "comment"}]
@@ -61,7 +61,7 @@
                      (select-keys snippet-from-api test-snippet-fields))))))))))
 
 (deftest create-snippet-api-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "POST /api/native-query-snippet"
     (testing "new snippet field validation"
       (is (=? {:errors {:content "string"}}
@@ -120,7 +120,7 @@
         (t2/delete! NativeQuerySnippet :name "test-snippet")))))
 
 (deftest create-snippet-in-collection-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "POST /api/native-query-snippet"
     (testing "\nShould be able to create a Snippet in a Collection"
       (letfn [(create! [expected-status-code collection-id]
@@ -153,7 +153,7 @@
                  (:response (create! 404 Integer/MAX_VALUE)))))))))
 
 (deftest update-snippet-api-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "PUT /api/native-query-snippet/:id"
     (t2.with-temp/with-temp [NativeQuerySnippet snippet {:content "-- SQL comment here"
                                                          :name    "comment"}]
@@ -186,7 +186,7 @@
                  (t2/select-one-fn :creator_id NativeQuerySnippet :id (:id snippet)))))))))
 
 (deftest update-snippet-collection-test
-  (grant-native-perms)
+  (grant-native-perms!)
   (testing "PUT /api/native-query-snippet/:id"
     (testing "\nChange collection_id"
       (t2.with-temp/with-temp [Collection collection-1 {:name "a Collection" :namespace "snippets"}

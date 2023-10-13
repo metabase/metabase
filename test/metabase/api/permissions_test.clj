@@ -35,7 +35,7 @@
   (set (mt/user-http-request
         :crowberto :get 200 "permissions/group")))
 
-(deftest fetch-groups-test
+(deftest ^:parallel fetch-groups-test
   (testing "GET /api/permissions/group"
     (letfn [(check-default-groups-returned [id->group]
               (testing "All Users Group should be returned"
@@ -67,7 +67,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
-(deftest groups-list-limit-test
+(deftest ^:parallel groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"
       (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
@@ -78,7 +78,7 @@
       (is (partial= [{:id 1, :name "All Users"}]
              (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
-(deftest fetch-group-test
+(deftest ^:parallel fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} (mt/user-http-request
                              :crowberto :get 200 (format "permissions/group/%d" (:id (perms-group/all-users))))
@@ -132,7 +132,7 @@
               :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
              (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
 
-(deftest delete-group-test
+(deftest ^:parallel delete-group-test
   (testing "DELETE /permissions/group/:id"
     (testing "happy path"
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
@@ -144,7 +144,7 @@
          (is (= "You don't have permissions to do that."
                 (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
-(deftest fetch-perms-graph-test
+(deftest ^:parallel fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
       (t2.with-temp/with-temp [Database {db-id :id}]
@@ -156,7 +156,7 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
-(deftest fetch-perms-graph-v2-test
+(deftest ^:parallel fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
     (testing "make sure we can fetch the perms graph from the API"
       (t2.with-temp/with-temp [Database {db-id :id}]
@@ -168,7 +168,7 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph-v2"))))
 
-(deftest update-perms-graph-test
+(deftest ^:parallel update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (let [db-id (mt/id :venues)]
@@ -184,7 +184,7 @@
                   :data {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
                  (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))))
 
-(deftest update-perms-graph-table-specific-perms-test
+(deftest ^:parallel update-perms-graph-table-specific-perms-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (testing "Table-specific perms"
@@ -201,7 +201,7 @@
                   :data  {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}
                  (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) (mt/id)]))))))))
 
-(deftest update-perms-graph-perms-for-new-db-test
+(deftest ^:parallel update-perms-graph-perms-for-new-db-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db"
       (t2.with-temp/with-temp [PermissionsGroup group       {}
@@ -217,7 +217,7 @@
         (is (= {:data {:native :write}, :query {:schemas :all}}
                (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-perms-for-new-db-with-no-tables-test
+(deftest ^:parallel update-perms-graph-perms-for-new-db-with-no-tables-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db with no tables"
       (t2.with-temp/with-temp [PermissionsGroup group       {}
@@ -232,7 +232,7 @@
         (is (= {:query {:schemas :all}, :data {:native :write}}
                (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-group-has-no-permissions-test
+(deftest ^:parallel update-perms-graph-group-has-no-permissions-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions when group has no permissions"
       (t2.with-temp/with-temp [PermissionsGroup group]
@@ -242,7 +242,7 @@
         (is (nil? (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (nil? (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
 
-(deftest can-delete-permsissions-via-graph-test
+(deftest ^:parallel can-delete-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions when group has no permissions"
       (let [db-id (mt/id :venues)]
@@ -264,7 +264,7 @@
           (is (= #{}
                  (set (mapv :object (t2/select Permissions :group_id (u/the-id group)))))))))))
 
-(deftest update-perms-graph-error-test
+(deftest ^:parallel update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
       (is (= "Sandboxes is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
@@ -339,7 +339,7 @@
                 (is (= :all
                        (get-in (perms/execution-perms-graph) [:groups group-id db-id])))))))))))
 
-(deftest get-group-membership-test
+(deftest ^:parallel get-group-membership-test
   (testing "GET /api/permissions/membership"
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
@@ -355,7 +355,7 @@
                     result))
         (is (= (t2/select-fn-set :id 'User) (set (keys result))))))))
 
-(deftest add-group-membership-test
+(deftest ^:parallel add-group-membership-test
   (testing "POST /api/permissions/membership"
     (t2.with-temp/with-temp [User             user  {}
                              PermissionsGroup group {}]
@@ -369,7 +369,7 @@
                               {:group_id         (:id group)
                                :user_id          (:id user)})))))
 
-(deftest update-group-membership-test
+(deftest ^:parallel update-group-membership-test
   (testing "PUT /api/permissions/membership/:id"
     (t2.with-temp/with-temp [User                       user     {}
                              PermissionsGroup           group    {}
@@ -379,7 +379,7 @@
         (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false})))))))
 
-(deftest clear-group-membership-test
+(deftest ^:parallel clear-group-membership-test
   (testing "PUT /api/permissions/membership/:group-id/clear"
     (t2.with-temp/with-temp [User                       {user-id :id}  {}
                              PermissionsGroup           {group-id :id} {}
@@ -398,7 +398,7 @@
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
-(deftest delete-group-membership-test
+(deftest ^:parallel delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"
     (t2.with-temp/with-temp [User                       user     {}
                              PermissionsGroup           group    {}
