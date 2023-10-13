@@ -5,7 +5,6 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.ref :as lib.ref]
-   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
@@ -63,8 +62,11 @@
     stage-number                 :- :int
     {:keys [column], :as _drill} :- ::lib.schema.drill-thru/drill-thru.sort
     direction                    :- ::lib.schema.order-by/direction]
+   ;; if you have an existing order by, the drill thru returned by [[sort-drill]] would only be one that would suggest
+   ;; changing it to the opposite direction, so we can safely assume we want to change the direction and
+   ;; use [[lib.order-by/change-direction]] here.
    (if-let [existing-clause (existing-order-by-clause query stage-number column)]
-     (lib.remove-replace/replace-clause query stage-number existing-clause (lib.order-by/order-by-clause column (keyword direction)))
+     (lib.order-by/change-direction query existing-clause)
      (lib.order-by/order-by query stage-number column (keyword direction)))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/sort
