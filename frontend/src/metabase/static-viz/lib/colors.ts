@@ -1,7 +1,6 @@
 import { colors, color } from "metabase/lib/colors/palette";
 import type { ColorPalette } from "metabase/lib/colors/types";
-
-export type ColorGetter = (colorName: string) => string;
+import type { ColorGetter } from "metabase/visualizations/types";
 
 export const createColorGetter = (
   instanceColors: ColorPalette = {},
