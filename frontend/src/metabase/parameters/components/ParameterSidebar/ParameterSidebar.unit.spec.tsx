@@ -89,7 +89,7 @@ describe("ParameterSidebar", () => {
     expect(labelInput).toHaveValue("Bar");
   });
 
-  it("if the parameter updates, the label should update (metabase#34613)", () => {
+  it("if the parameter updates, the label should update (metabase#34611)", () => {
     const initialParameter = createMockUiParameter({
       id: "id1",
       name: "Foo",
