@@ -109,17 +109,37 @@ describe("ExpressionWidget", () => {
       // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
+      // Type characters with lowercase, uppercase, numbers, and special characters
       userEvent.type(
         screen.getByPlaceholderText("Something nice and descriptive"),
-        "some name",
+        "Some n_am!e for-expression_123!@#$%^&*()Zxcbyut",
       );
 
       expect(doneButton).toBeEnabled();
 
       userEvent.click(doneButton);
 
+      // Spaces must be removed from the name
       expect(onChangeExpression).toHaveBeenCalledTimes(1);
-      expect(onChangeExpression).toHaveBeenCalledWith("some name", expression);
+      expect(onChangeExpression).toHaveBeenCalledWith(
+        "Somen_am!efor-expression_123!@#$%^&*()Zxcbyut",
+        expression,
+      );
+
+      // Paste text with spaces
+      userEvent.paste(
+        screen.getByPlaceholderText("Something nice and descriptive"),
+        " added- another pasted text",
+      );
+
+      userEvent.click(doneButton);
+
+      // Pasted text must be added to the previous name
+      // and its spaces must be removed
+      expect(onChangeExpression).toHaveBeenCalledWith(
+        "Somen_am!efor-expression_123!@#$%^&*()Zxcbyutadded-anotherpastedtext",
+        expression,
+      );
     });
   });
 });
