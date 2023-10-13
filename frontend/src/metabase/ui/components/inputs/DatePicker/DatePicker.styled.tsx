@@ -13,10 +13,10 @@ export const getDatePickerOverrides =
         day: {
           width: rem(24),
           height: rem(24),
+          color: theme.colors.text[2],
           fontSize: theme.fontSizes.sm,
           lineHeight: theme.lineHeight,
           borderRadius: theme.radius.xs,
-          color: theme.colors.text[2],
 
           "&:hover": {
             backgroundColor: theme.colors.bg[0],
@@ -62,15 +62,21 @@ export const getDatePickerOverrides =
           textAlign: "center",
           paddingBottom: theme.spacing.xs,
         },
+        calendarHeader: {
+          marginBottom: rem(8),
+        },
         calendarHeaderLevel: {
+          height: rem(32),
           color: theme.colors.text[2],
           fontSize: theme.fontSizes.sm,
           fontWeight: "bold",
           lineHeight: theme.lineHeight,
         },
         calendarHeaderControl: {
-          color: theme.colors.text[2],
+          width: rem(32),
+          height: rem(32),
           borderRadius: theme.radius.sm,
+          color: theme.colors.text[2],
           "&:hover": {
             backgroundColor: theme.colors.bg[0],
           },
