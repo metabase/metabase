@@ -31,6 +31,7 @@ export const getDatePickerOverrides =
             color: theme.colors.text[0],
           },
           "&[data-in-range]": {
+            color: theme.white,
             borderRadius: 0,
             backgroundColor: theme.colors.focus[0],
             "&:hover": {

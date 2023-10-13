@@ -6,8 +6,13 @@ export const args = {
   type: "default",
   allowDeselect: undefined,
   allowSingleDateInRange: undefined,
-  defaultDate: undefined,
   numberOfColumns: undefined,
+};
+
+export const sampleArgs = {
+  date1: new Date(2015, 0, 8),
+  date2: new Date(2015, 0, 24),
+  date3: new Date(2015, 1, 16),
 };
 
 export const argTypes = {
@@ -20,9 +25,6 @@ export const argTypes = {
   },
   allowSingleDateInRange: {
     control: { type: "boolean" },
-  },
-  defaultDate: {
-    control: { type: "date" },
   },
   numberOfColumns: {
     control: { type: "number" },
@@ -47,13 +49,8 @@ Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date
 
 ## Examples
 
-export const DefaultTemplate = ({ defaultDate, ...args }) => {
-  return (
-    <DatePicker
-      {...args}
-      defaultDate={defaultDate ? new Date(defaultDate) : undefined}
-    />
-  );
+export const DefaultTemplate = args => {
+  return <DatePicker {...args} />;
 };
 
 export const Default = DefaultTemplate.bind({});
@@ -67,6 +64,8 @@ export const Default = DefaultTemplate.bind({});
 export const AllowDeselect = DefaultTemplate.bind({});
 AllowDeselect.args = {
   allowDeselect: true,
+  defaultDate: sampleArgs.date1,
+  defaultValue: sampleArgs.date1,
 };
 
 <Canvas>
@@ -78,6 +77,8 @@ AllowDeselect.args = {
 export const MultipleDates = DefaultTemplate.bind({});
 MultipleDates.args = {
   type: "multiple",
+  defaultValue: [sampleArgs.date1, sampleArgs.date2],
+  defaultDate: sampleArgs.date1,
 };
 
 <Canvas>
@@ -89,6 +90,8 @@ MultipleDates.args = {
 export const DatesRange = DefaultTemplate.bind({});
 DatesRange.args = {
   type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date2],
+  defaultDate: sampleArgs.date1,
 };
 
 <Canvas>
@@ -100,6 +103,8 @@ DatesRange.args = {
 export const SingleDateInRange = DefaultTemplate.bind({});
 SingleDateInRange.args = {
   type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date1],
+  defaultDate: sampleArgs.date1,
   allowSingleDateInRange: true,
 };
 
@@ -107,21 +112,13 @@ SingleDateInRange.args = {
   <Story name="Single date in range">{SingleDateInRange}</Story>
 </Canvas>
 
-### Default date
-
-export const DefaultDate = DefaultTemplate.bind({});
-DefaultDate.args = {
-  defaultDate: new Date(2015, 0, 1),
-};
-
-<Canvas>
-  <Story name="Default date">{DefaultDate}</Story>
-</Canvas>
-
 ### Number of columns
 
 export const NumberOfColumns = DefaultTemplate.bind({});
 NumberOfColumns.args = {
+  type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date3],
+  defaultDate: sampleArgs.date1,
   numberOfColumns: 2,
 };
 
