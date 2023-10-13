@@ -97,5 +97,9 @@ export const isNavigationAllowed = ({
     return isRunningQuestion;
   }
 
+  if (question.isStructured()) {
+    return false;
+  }
+
   return true;
 };

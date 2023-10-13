@@ -617,6 +617,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getIsSavedQuestionChanged,
     getOriginalQuestion,
+    getUiControls,
   ],
   (
     queryBuilderMode,
@@ -625,20 +626,26 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     isSavedQuestionChanged,
     originalQuestion,
+    uiControls,
   ) => {
-    const isEditingModel = queryBuilderMode === "dataset";
-    const isNewQuestion = !originalQuestion;
+    const isModel = queryBuilderMode === "dataset";
 
-    if (isEditingModel) {
+    if (isModel) {
       return isDirty || isMetadataDirty;
     }
 
     if (question && question.isNative()) {
+      const isNewQuestion = !originalQuestion;
+
       if (isNewQuestion) {
         return !question.isEmpty();
       }
 
       return isSavedQuestionChanged;
+    }
+
+    if (originalQuestion && originalQuestion.isStructured()) {
+      return uiControls.isModifiedFromNotebook;
     }
 
     return false;
