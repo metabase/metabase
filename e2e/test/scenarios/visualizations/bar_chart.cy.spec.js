@@ -413,6 +413,7 @@ describe("scenarios > visualizations > bar chart", () => {
     cy.get(".value-labels").should("contain", "13");
     cy.get(".value-labels").should("contain", "19");
 
+    cy.log("Should not produce a split axis graph (#34618)");
     cy.get(".axis.yr").should("not.exist");
   });
 });
