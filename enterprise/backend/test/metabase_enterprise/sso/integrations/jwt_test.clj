@@ -16,8 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -58,13 +57,14 @@
     (^:once fn* [] ~@body)))
 
 (defmacro ^:private with-jwt-default-setup! [& body]
-  `(disable-other-sso-types!
-    (^:once fn* []
-      (with-sso-jwt-token!
-        (saml-test/do-with-login-attributes-cleared!
-         (^:once fn* []
-          (do-with-default-jwt-config!
-           (^:once fn* [] ~@body))))))))
+  `(mt/with-ensure-with-temp-no-transaction!
+     (disable-other-sso-types!
+      (^:once fn* []
+              (with-sso-jwt-token!
+                (saml-test/do-with-login-attributes-cleared!
+                 (^:once fn* []
+                         (do-with-default-jwt-config!
+                          (^:once fn* [] ~@body)))))))))
 
 (deftest sso-prereqs-test
   (disable-other-sso-types!
@@ -277,7 +277,7 @@
   (testing "login should sync group memberships if enabled"
     (mt/test-helpers-set-global-values!
       (with-jwt-default-setup!
-        (t2.with-temp/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
+        (mt/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
           (mt/with-temporary-setting-values [jwt-group-sync       true
                                              jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                              jwt-attribute-groups "GrOuPs"]

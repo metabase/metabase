@@ -26,7 +26,7 @@
 
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
- [:enum "star" "balloons" "mail" "warning" "bell" "cloud"])
+ [:enum "star" "cake" "mail" "warning" "bell" "cloud"])
 
 (def DefaultIcon
   "Timeline default icon"

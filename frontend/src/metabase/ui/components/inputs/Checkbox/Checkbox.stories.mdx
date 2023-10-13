@@ -33,7 +33,7 @@ export const argTypes = {
 
 # Checkbox
 
-Our themed wrapper around [Mantine Checkbox](https://mantine.dev/core/checkbox/).
+Our themed wrapper around [Mantine Checkbox](https://v6.mantine.dev/core/checkbox/).
 
 ## When to use Checkbox
 
@@ -42,7 +42,7 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 ## Docs
 
 - [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Checkbox Docs](https://mantine.dev/core/checkbox/)
+- [Mantine Checkbox Docs](https://v6.mantine.dev/core/checkbox/)
 
 ## Usage guidelines
 
@@ -127,9 +127,7 @@ LabelLeft.args = {
 };
 
 <Canvas>
-  <Story name="Label, left position" args={LabelLeft.args}>
-    {LabelLeft}
-  </Story>
+  <Story name="Label, left position">{LabelLeft}</Story>
 </Canvas>
 
 ### Description
@@ -148,9 +146,7 @@ DescriptionLeft.args = {
 };
 
 <Canvas>
-  <Story name="Description, left position" args={DescriptionLeft.args}>
-    {DescriptionLeft}
-  </Story>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
 </Canvas>
 
 ## Related components

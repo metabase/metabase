@@ -7,8 +7,7 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty9 :as ring-jetty]
    [schema.core :as s])
   (:import
@@ -39,7 +38,7 @@
                   :region_name nil}})
 
 (deftest ^:parallel geojson-schema-test
-  (is (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))
+  (is (@#'api.geojson/CustomGeoJSONValidator test-custom-geojson)))
 
 (deftest ^:parallel validate-geojson-test
   (testing "It validates URLs and files appropriately"
@@ -213,35 +212,35 @@
 (deftest set-custom-geojson-from-env-var-test
   (testing "Should be able to set the `custom-geojson` Setting via env var (#18862)"
     (mt/test-helpers-set-global-values!
-      (mt/with-current-user (mt/user->id :crowberto) ;; need admin permissions to get admin-writable settings
-        (let [custom-geojson {:custom_states
-                              {:name        "Custom States"
-                               :url         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/us-states.json"
-                               :region_key  "STATE"
-                               :region_name "NAME"}}
-              expected-value (merge @#'api.geojson/builtin-geojson custom-geojson)]
-          (mt/with-temporary-setting-values [custom-geojson nil]
-            (mt/with-temp-env-var-value [mb-custom-geojson (json/generate-string custom-geojson)]
-              (binding [setting/*disable-cache* true]
-                (testing "Should parse env var custom GeoJSON and merge in"
-                  (is (= expected-value
-                         (api.geojson/custom-geojson))))
-                (testing "Env var value SHOULD NOT come back with [[setting/writable-settings]] -- should NOT be WRITABLE"
-                  (is (schema= {:key            (s/eq :custom-geojson)
-                                :value          (s/eq nil)
-                                :is_env_setting (s/eq true)
-                                :env_name       (s/eq "MB_CUSTOM_GEOJSON")
-                                :description    su/NonBlankString
-                                :default        (s/eq "Using value of env var $MB_CUSTOM_GEOJSON")
-                                s/Keyword       s/Any}
-                               (some
-                                (fn [{setting-name :key, :as setting}]
-                                  (when (= setting-name :custom-geojson)
-                                    setting))
-                                (setting/writable-settings)))))
-                (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
-                  (is (= expected-value
-                         (get (setting/user-readable-values-map #{:public}) :custom-geojson))))))))))))
+     (mt/with-current-user (mt/user->id :crowberto) ;; need admin permissions to get admin-writable settings
+       (let [custom-geojson {:custom_states
+                             {:name        "Custom States"
+                              :url         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/us-states.json"
+                              :region_key  "STATE"
+                              :region_name "NAME"}}
+             expected-value (merge @#'api.geojson/builtin-geojson custom-geojson)]
+         (mt/with-temporary-setting-values [custom-geojson nil]
+           (mt/with-temp-env-var-value [mb-custom-geojson (json/generate-string custom-geojson)]
+             (binding [setting/*disable-cache* true]
+               (testing "Should parse env var custom GeoJSON and merge in"
+                 (is (= expected-value
+                        (api.geojson/custom-geojson))))
+               (testing "Env var value SHOULD NOT come back with [[setting/writable-settings]] -- should NOT be WRITABLE"
+                 (is (malli= [:map
+                              [:key [:= :custom-geojson]]
+                              [:value nil?]
+                              [:is_env_setting [:= true]]
+                              [:env_name       [:= "MB_CUSTOM_GEOJSON"]]
+                              [:description    ms/NonBlankString]
+                              [:default         [:= "Using value of env var $MB_CUSTOM_GEOJSON"]]]
+                             (some
+                              (fn [{setting-name :key, :as setting}]
+                                (when (= setting-name :custom-geojson)
+                                  setting))
+                              (setting/writable-settings)))))
+               (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
+                 (is (= expected-value
+                        (get (setting/user-readable-values-map #{:public}) :custom-geojson))))))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"

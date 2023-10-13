@@ -1,5 +1,6 @@
 import { queryIcon, renderWithProviders, screen } from "__support__/ui";
 
+import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockDashboard,
@@ -15,6 +16,8 @@ import { createMockMetadata } from "__support__/metadata";
 import { createMockState } from "metabase-types/store/mocks";
 import type { DashCardProps } from "./DashCard";
 import Dashcard from "./DashCard";
+
+registerVisualizations();
 
 const dashboard = createMockDashboard();
 

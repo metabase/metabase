@@ -7,11 +7,11 @@
 
 (def moderated-item-types
   "Schema enum of the acceptable values for the `moderated_item_type` column"
-  [:enum "card" "dashboard" :card :dashboard])
+  [:enum "card" :card])
 
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
-  {"card"      'Card
+  {"card" 'Card
    :card       'Card
    "dashboard" 'Dashboard
    :dashboard  'Dashboard})

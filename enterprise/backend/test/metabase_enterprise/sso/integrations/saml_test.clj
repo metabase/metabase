@@ -86,12 +86,13 @@
         (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
 
 (defmacro ^:private with-saml-default-setup! [& body]
-  `(with-sso-saml-token!
-     (do-with-login-attributes-cleared!
-      (fn []
-        (do-with-default-saml-config!
-         (fn []
-           ~@body))))))
+  `(mt/with-ensure-with-temp-no-transaction!
+     (with-sso-saml-token!
+       (do-with-login-attributes-cleared!
+        (fn []
+          (do-with-default-saml-config!
+           (fn []
+             ~@body)))))))
 
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"

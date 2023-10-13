@@ -140,7 +140,7 @@
                                         :lonlat [0.0 0.0]}}))))
         (is (some (fn [{message :msg, :as entry}]
                     (when (str/includes? (str message)
-                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :address :id]\n"
+                                         (str "Unexpected parameters at [:post \"/post/test-address\"]: [:tags :id]\n"
                                               "Please add them to the schema or remove them from the API client"))
                       entry))
                   (mb.logger/messages))))

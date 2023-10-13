@@ -20,6 +20,7 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require
    [java-time :as t]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -29,10 +30,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def ^Long category-cardinality-threshold
@@ -96,7 +95,7 @@
    :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+  (when-not (mc/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
@@ -206,17 +205,12 @@
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
            visibility-type  :visibility_type
-           has-field-values :has_field_values
-           :as              field} field-or-field-id]
-      (s/check {:visibility_type  su/KeywordOrString
-                :base_type        (s/maybe su/KeywordOrString)
-                :has_field_values (s/maybe su/KeywordOrString)
-                s/Keyword         s/Any}
-               field)
+           has-field-values :has_field_values} field-or-field-id]
       (boolean
-       (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-            (not (isa? (keyword base-type) :type/Temporal))
-            (#{:list :auto-list} (keyword has-field-values)))))))
+       (and
+        (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+        (not (isa? (keyword base-type) :type/Temporal))
+        (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
   "Like `take` but condition by the total length of elements.

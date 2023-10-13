@@ -2735,9 +2735,11 @@ databaseChangeLog:
             tableName: setting
             columnName: value
             newDataType: TEXT
-        - addNotNullContstraint:
+        - addNotNullConstraint:
             tableName: setting
-            columnNames: value
+            columnDataType: text
+            columnName: value
+      validCheckSum: 8:91b72167fca724e6b6a94b64f886cf09
   - changeSet:
       id: 36
       author: agilliland
@@ -5624,6 +5626,7 @@ databaseChangeLog:
   - changeSet:
       id: 98
       author: camsaul
+      validCheckSum: 8:f036d20a4dc86fb60ffb64ea838ed6b9
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
@@ -5654,6 +5657,7 @@ databaseChangeLog:
   - changeSet:
       id: 99
       author: camsaul
+      validCheckSum: 8:274bb516dd95b76c954b26084eed1dfe
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
@@ -8211,6 +8215,7 @@ databaseChangeLog:
   - changeSet:
       id: 282
       author: camsaul
+      validCheckSum: 8:d4b8566ee11d9f8a3d6c8c9539f6526d
       comment: Added 0.39.0
       changes:
         - sql:
@@ -8233,6 +8238,7 @@ databaseChangeLog:
   - changeSet:
       id: 283
       author: camsaul
+      validCheckSum: 8:2220e1b1cdb57212820b96fa3107f7c3
       comment: Added 0.39.0
       changes:
         - sql:
@@ -8723,6 +8729,7 @@ databaseChangeLog:
       id: 312
       author: noahmoss
       comment: Added 0.41.0 Backfill collection_id for dashboard subscriptions
+      validCheckSum: 8:77ef89ba2e7bc19231d9364492091764
       changes:
         - sql:
             dbms: mariadb,mysql
@@ -8953,6 +8960,7 @@ databaseChangeLog:
       id: v42.00-001
       author: camsaul
       comment: Added 0.42.0 Attempt to add Card.database_id (by parsing query) to rows that are missing it (#5999)
+      validCheckSum: 8:9952153cbff16147bcb47b4a26e02089
       # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
       failOnError: false
       # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
@@ -12479,6 +12487,7 @@ databaseChangeLog:
       id: v45.00-032
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12511,6 +12520,7 @@ databaseChangeLog:
       id: v45.00-034
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12620,6 +12630,7 @@ databaseChangeLog:
       id: v45.00-038
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12652,6 +12663,7 @@ databaseChangeLog:
       id: v45.00-040
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
+      dbms: postgresql,h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -12783,6 +12795,7 @@ databaseChangeLog:
       id: v45.00-049
       author: camsaul
       comment: Added 0.45.0 -- set Collection.created_at to User.date_joined for Personal Collections
+      validCheckSum: 8:df2097d176fad99c142c5dd75ce8a3db
       changes:
         - sql:
             dbms: postgresql
@@ -14842,6 +14855,7 @@ databaseChangeLog:
       id: v47.00-031
       author: qnkhuat
       comment: Added 0.47.0 - migrate dashboard grid size from 18 to 24
+      validCheckSum: 8:ad9bdb62df65cf26a5a9892a82779ea7
       changes:
           # new_size_x = size_x + ((col + size_x + 1) // 3) - ((col + 1) // 3)
           # new_col    = col + ((col + 1) // 3)
@@ -15303,6 +15317,25 @@ databaseChangeLog:
             columnName: slug
             newDataType: varchar(254)
 
+  - changeSet:
+      id: v48.00-019
+      author: nemanjaglumac
+      comment: 'Collection color is removed in 0.48.0'
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: color
+      rollback:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: color
+                  type: char(7)
+                  remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
+                  constraints:
+                    nullable: false
+                  defaultValue: '#31698A'
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

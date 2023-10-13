@@ -1,4 +1,8 @@
 (ns metabase.util.malli.schema
+  "TODO: Consider refacor this namespace by defining custom schema with [[mr/def]] instead.
+
+  For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)
+  "
   (:require
    [cheshire.core :as json]
    [malli.core :as mc]
@@ -38,7 +42,7 @@
    (partial instance? klass)])
 
 (defn maps-with-unique-key
-  "Given a schema of a sequence of maps, returns as chema that do an additional unique check on key `k`."
+  "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
   [maps-schema k]
   (mu/with-api-error-message
     [:and
@@ -85,7 +89,7 @@
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (mu/with-api-error-message
-    pos?
+    [:and number? pos?]
     (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString

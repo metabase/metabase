@@ -356,4 +356,61 @@ describe("scenarios > visualizations > bar chart", () => {
     );
     cy.get("[data-testid^=draggable-item]").should("have.length", 0);
   });
+
+  it("should support showing data points with > 10 series (#33725)", () => {
+    visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: [
+            "and",
+            [
+              "time-interval",
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                },
+              ],
+              -1,
+              "month",
+              {},
+            ],
+            [
+              "=",
+              ["field", PEOPLE.STATE, {}],
+              "AK",
+              "AL",
+              "AR",
+              "AZ",
+              "CA",
+              "CO",
+              "CT",
+              "FL",
+              "GA",
+              "IA",
+            ],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+          ],
+        },
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "STATE"],
+        "graph.metrics": ["count"],
+        "graph.show_values": true,
+      },
+    });
+
+    cy.get(".value-labels").should("contain", "6");
+    cy.get(".value-labels").should("contain", "13");
+    cy.get(".value-labels").should("contain", "19");
+  });
 });

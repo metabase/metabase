@@ -628,38 +628,40 @@
                                 {}
                                 [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
 
-(defn- parse-column-width
+(defn- parse-column-widths
   [^org.apache.poi.ss.usermodel.Sheet sheet]
-  (for [^org.apache.poi.ss.usermodel.Row row (spreadsheet/into-seq sheet)]
+  (let [^org.apache.poi.ss.usermodel.Row row (first (spreadsheet/into-seq sheet))]
     (for [i (range (.getLastCellNum row))]
       (.getColumnWidth sheet i))))
 
+(defn- assert-non-default-widths
+  [^org.apache.poi.ss.usermodel.Sheet sheet]
+  (let [widths        (parse-column-widths sheet)
+        default-width (* (.getDefaultColumnWidth sheet) 256)]
+    (doseq [col-width widths]
+      (is (not= default-width col-width)))))
+
 (deftest auto-sizing-test
   (testing "Columns in export are autosized to fit their content"
-    (let [[col1-width col2-width] (second (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
-                                                       {}
-                                                       [["a" "abcdefghijklmnopqrstuvwxyz"]]
-                                                       parse-column-width))]
-      ;; Provide a marign for error since width measurements end up being slightly different on CI
-      (is (<= 2300 col1-width 2400))
-      (is (<= 7950 col2-width 8200))))
+    (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
+                 {}
+                 [["a" "abcdefghijklmnopqrstuvwxyz"]]
+                 assert-non-default-widths))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
     (binding [qp.xlsx/*auto-sizing-threshold* 2]
-      (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
-                                             {}
-                                             [["abcdef"] ["abcedf"]]
-                                             parse-column-width))]
-        (is (<= 2800 col-width 2900)))
-      (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
-                                             {}
-                                             [["abcdef"] ["abcedf"] ["abcdef"]]
-                                             parse-column-width))]
-        (is (<= 2800 col-width 2900)))))
+      (xlsx-export [{:id 0, :name "Col1"}]
+                   {}
+                   [["abcdef"] ["abcedf"]]
+                   assert-non-default-widths)
+      (xlsx-export [{:id 0, :name "Col1"}]
+                   {}
+                   [["abcdef"] ["abcedf"] ["abcdef"]]
+                   assert-non-default-widths)))
   (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
-    (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
-                                           {}
-                                           [[(apply str (repeat 256 "0"))]]
-                                           parse-column-width))]
+    (let [[col-width] (xlsx-export [{:id 0, :name "Col1"}]
+                                   {}
+                                   [[(apply str (repeat 256 "0"))]]
+                                   parse-column-widths)]
       (is (= 65280 col-width)))))
 
 (deftest poi-tempfiles-test

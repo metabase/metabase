@@ -213,7 +213,7 @@
 
 (deftest destroy-pool-test
   (let [details   (-> (#'sample-data/try-to-extract-sample-database!)
-                                (update :db str ";ACCESS_MODE_DATA=r"))
+                      (update :db str ";ACCESS_MODE_DATA=r"))
         pooled-data-source* (atom nil)]
     (mt/with-temp [:model/Database database {:engine :h2, :name "Sample Database", :details details}]
       (sql-jdbc.execute/do-with-connection-with-options
@@ -235,3 +235,14 @@
            java.sql.SQLException
            #"\Qhas been closed() -- you can no longer use it\E"
            (.getNumConnectionsAllUsers pooled-data-source))))))
+
+(deftest ^:parallel include-unreturned-connection-timeout-test
+  (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
+    (is (=? {"unreturnedConnectionTimeout" integer?}
+            (sql-jdbc.conn/data-warehouse-connection-pool-properties :h2 (mt/db))))))
+
+(deftest unreturned-connection-timeout-test
+  (testing "We should be able to set jdbc-data-warehouse-unreturned-connection-timeout-seconds via env var (#33646)"
+    (mt/with-temp-env-var-value [mb-jdbc-data-warehouse-unreturned-connection-timeout-seconds "20"]
+      (is (= 20
+             (sql-jdbc.conn/jdbc-data-warehouse-unreturned-connection-timeout-seconds))))))

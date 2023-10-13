@@ -928,7 +928,12 @@
 (defmethod syncable-schemas ::driver [_ _] #{})
 
 (defmulti upload-type->database-type
-  "Returns the database type for a given `metabase.upload` type."
+  "Returns the database type for a given `metabase.upload` type as a HoneySQL spec. This will be a vector, which allows
+  for additional options. Sample values:
+
+  - [:bigint]
+  - [[:varchar 255]]
+  - [:generated-always :as :identity :primary-key]"
   {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

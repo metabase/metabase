@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
-import { waitFor } from "@testing-library/react";
 import { Route } from "react-router";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
@@ -43,9 +46,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return { onSearchItemSelect, goToSearchApp, history: checkNotNull(history) };
 };
