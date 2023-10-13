@@ -21,7 +21,7 @@ interface ClauseStepProps<T> {
   "data-testid"?: string;
 }
 
-const ClauseStep = <T,>({
+export const ClauseStep = <T,>({
   color,
   items,
   renderName,
@@ -78,6 +78,3 @@ const ClauseStep = <T,>({
     </NotebookCell>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClauseStep;

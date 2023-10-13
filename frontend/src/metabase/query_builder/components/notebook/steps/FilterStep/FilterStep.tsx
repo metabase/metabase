@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 import type LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 
 export function FilterStep({
   query: legacyQuery,

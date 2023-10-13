@@ -4,7 +4,7 @@ import { AggregationPicker } from "metabase/common/components/AggregationPicker"
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 
 const aggTetherOptions = {
   attachment: "top left",

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
-import ClauseStep from "../ClauseStep";
+import { ClauseStep } from "../ClauseStep";
 
 const breakoutTetherOptions = {
   attachment: "top left",
