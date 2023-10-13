@@ -57,7 +57,7 @@
     (^:once fn* [] ~@body)))
 
 (defmacro ^:private with-jwt-default-setup! [& body]
-  `(mt/with-ensure-with-temp-no-transaction!
+  `(mt/test-helpers-set-global-values!
      (disable-other-sso-types!
       (^:once fn* []
               (with-sso-jwt-token!

@@ -300,7 +300,7 @@
 
 (deftest update-user-api-test
   (testing "PUT /api/user/:id"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]

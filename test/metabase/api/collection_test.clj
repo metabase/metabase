@@ -649,72 +649,73 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (mt/with-temp!
-      [Collection {collection-id :id}      {:name "Collection with Items"}
-       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-       Card       _                        {:name "ZZ" :collection_id collection-id}
-       Card       _                        {:name "AA" :collection_id collection-id}
-       Revision   revision1                {:model    "Card"
-                                            :model_id card1-id
-                                            :user_id  user2-id
-                                            :object   (revision/serialize-instance card1 card1-id card1)}
-       Revision   _revision2               {:model    "Card"
-                                            :model_id card2-id
-                                            :user_id  user1-id
-                                            :object   (revision/serialize-instance card2 card2-id card2)}]
-      ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
-      (is (= 1
-             (t2/query-one {:update :revision
-                            ;; in the past
-                            :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                            :where  [:= :id (:id revision1)]})))
-      (testing "Results include last edited information from the `Revision` table"
-        (is (= [{:name "AA"}
-                {:name "Card with history 1",
-                 :last-edit-info
-                 {:id         true,
-                  :email      "zzzz@example.com",
-                  :first_name "Test",
-                  :last_name  "ZZZZ",
-                  :timestamp  true}}
-                {:name "Card with history 2",
-                 :last-edit-info
-                 {:id         true,
-                  :email      "aaaa@example.com",
-                  :first_name "Test",
-                  :last_name  "AAAA",
-                  ;; timestamp collapsed to true, ordinarily a OffsetDateTime
-                  :timestamp  true}}
-                {:name "ZZ"}]
-               (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
-                    mt/boolean-ids-and-timestamps
-                    (map #(select-keys % [:name :last-edit-info]))))))
-      (testing "Results can be ordered by last-edited-at"
-        (testing "ascending"
-          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
-                      :data
-                      (map :name)))))
-        (testing "descending"
-          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
-                      :data
-                      (map :name))))))
-      (testing "Results can be ordered by last-edited-by"
-        (testing "ascending"
-          ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
-          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
-                      :data
-                      (map :name)))))
-        (testing "descending"
-          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
-                      :data
-                      (map :name)))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [Collection {collection-id :id}      {:name "Collection with Items"}
+         User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+         User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+         Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+         Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+         Card       _                        {:name "ZZ" :collection_id collection-id}
+         Card       _                        {:name "AA" :collection_id collection-id}
+         Revision   revision1                {:model    "Card"
+                                              :model_id card1-id
+                                              :user_id  user2-id
+                                              :object   (revision/serialize-instance card1 card1-id card1)}
+         Revision   _revision2               {:model    "Card"
+                                              :model_id card2-id
+                                              :user_id  user1-id
+                                              :object   (revision/serialize-instance card2 card2-id card2)}]
+        ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
+        (is (= 1
+               (t2/query-one {:update :revision
+                              ;; in the past
+                              :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                              :where  [:= :id (:id revision1)]})))
+        (testing "Results include last edited information from the `Revision` table"
+          (is (= [{:name "AA"}
+                  {:name "Card with history 1",
+                   :last-edit-info
+                   {:id         true,
+                    :email      "zzzz@example.com",
+                    :first_name "Test",
+                    :last_name  "ZZZZ",
+                    :timestamp  true}}
+                  {:name "Card with history 2",
+                   :last-edit-info
+                   {:id         true,
+                    :email      "aaaa@example.com",
+                    :first_name "Test",
+                    :last_name  "AAAA",
+                    ;; timestamp collapsed to true, ordinarily a OffsetDateTime
+                    :timestamp  true}}
+                  {:name "ZZ"}]
+                 (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
+                      mt/boolean-ids-and-timestamps
+                      (map #(select-keys % [:name :last-edit-info]))))))
+        (testing "Results can be ordered by last-edited-at"
+          (testing "ascending"
+            (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
+                        :data
+                        (map :name)))))
+          (testing "descending"
+            (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                        :data
+                        (map :name))))))
+       (testing "Results can be ordered by last-edited-by"
+         (testing "ascending"
+           ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
+           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                       :data
+                       (map :name)))))
+         (testing "descending"
+           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                       :data
+                       (map :name))))))))))
 
 (deftest collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"

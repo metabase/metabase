@@ -94,19 +94,20 @@
 
 (deftest reactivate-nested-field-when-parent-is-reactivated-test
   (testing "Nested fields get reactivated if the parent field gets reactivated"
-    (mt/with-temp! [Database db {:engine ::toucanery/toucanery}]
-      ;; do the initial sync
-      (sync-metadata/sync-db-metadata! db)
-      ;; delete our entry for the `transactions.toucan.details.age` field
-      (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
-            toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
-            details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
-            age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
-        (t2/update! Field details-field-id {:active false})
-        ;; now sync again.
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
+        ;; do the initial sync
         (sync-metadata/sync-db-metadata! db)
-        ;; field should be reactivated
-        (is (t2/select-one-fn :active Field :id age-field-id))))))
+        ;; delete our entry for the `transactions.toucan.details.age` field
+        (let [transactions-table-id (u/the-id (t2/select-one-pk Table :db_id (u/the-id db), :name "transactions"))
+              toucan-field-id       (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "toucan"))
+              details-field-id      (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "details", :parent_id toucan-field-id))
+              age-field-id          (u/the-id (t2/select-one-pk Field :table_id transactions-table-id, :name "age", :parent_id details-field-id))]
+          (t2/update! Field details-field-id {:active false})
+          ;; now sync again.
+          (sync-metadata/sync-db-metadata! db)
+          ;; field should be reactivated
+          (is (t2/select-one-fn :active Field :id age-field-id)))))))
 
 (deftest mark-nested-field-inactive-test
   (testing "Nested fields can be marked inactive"

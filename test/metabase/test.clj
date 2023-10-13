@@ -211,10 +211,6 @@
   with-temp
   with-temp-defaults]
 
- [test.redefs
-  with-temp!
-  with-ensure-with-temp-no-transaction!]
-
  [tu
   boolean-ids-and-timestamps
   call-with-paused-query
@@ -297,4 +293,4 @@
   set-test-drivers!
   with-test-drivers])
 
-(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
+(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, wraps the [[with-temp]] with [[test-helpers-set-global-values!]]\n"))

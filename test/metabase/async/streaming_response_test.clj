@@ -123,7 +123,7 @@
 
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
         (with-test-driver-db!
           (reset! canceled? false)
