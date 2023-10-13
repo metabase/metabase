@@ -11,7 +11,6 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -35,6 +34,9 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupModelIndexEndpoints,
+  setupCollectionsEndpointsByIds,
+  setupCardCreateEndpoint,
+  setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -569,13 +571,9 @@ describe("QueryBuilder", () => {
           card: null,
           initialRoute: "/model/new",
         });
-
-        fetchMock.get("path:/api/collection/1", [createMockCollection()]);
-        fetchMock.get(
-          "path:/api/table/card__1/query_metadata",
-          createMockResultsMetadata(),
-        );
-        fetchMock.post("path:/api/card", TEST_MODEL_CARD);
+        setupCollectionsEndpointsByIds([createMockCollection()]);
+        setupCardCreateEndpoint();
+        setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
         await startNewNotebookModel();
 
