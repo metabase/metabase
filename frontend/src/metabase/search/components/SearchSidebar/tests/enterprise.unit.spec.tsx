@@ -3,7 +3,7 @@ import type { SearchSidebarSetupOptions } from "./setup";
 import { setup } from "./setup";
 
 const setupEnterprise = async (opts?: SearchSidebarSetupOptions) => {
-  await setup({
+  setup({
     ...opts,
     hasEnterprisePlugins: true,
   });
