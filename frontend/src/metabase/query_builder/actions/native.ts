@@ -117,6 +117,11 @@ export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
   payload: { isNativeEditorOpen },
 });
 
+export const setIsModifiedFromNotebook = (isModifiedFromNotebook: boolean) => ({
+  type: SET_UI_CONTROLS,
+  payload: { isModifiedFromNotebook },
+});
+
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
 export const setNativeEditorSelectedRange = createAction(
