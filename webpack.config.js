@@ -38,7 +38,6 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-  cacheCompression: true
 };
 
 const CSS_CONFIG = {

@@ -106,7 +106,7 @@
                                             {:mvn/version "2.20.0"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.logging.log4j/log4j-layout-template-json
                                             {:mvn/version "2.20.0"}             ; allows the custom json logging format
-  org.apache.poi/poi                        {:mvn/version "5.2.3"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
+  org.apache.poi/poi                        {:mvn/version "5.2.4"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.3"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
@@ -136,7 +136,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.15"}            ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.3"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.21.1"              ; migration management (Java lib)

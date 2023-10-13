@@ -3,6 +3,7 @@ import {
   isEnterpriseVersion,
   getOSSVersion,
   isLatestVersion,
+  getNextVersions,
 } from "./version-helpers";
 
 import type { ReleaseProps, Issue } from "./types";
@@ -23,9 +24,41 @@ const findMilestone = async ({
   const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "");
 
   return milestones.data.find(
-    milestone => milestone.title === expectedMilestoneName,
+    (milestone: { title: string, number: number } ) => milestone.title === expectedMilestoneName,
   )?.number;
 };
+
+export const closeMilestone = async ({ github, owner, repo, version }: ReleaseProps) => {
+  const milestoneId = await findMilestone({ version, github, owner, repo });
+
+  if (!milestoneId) {
+    console.log(`No milestone found for ${version}`);
+    return;
+  }
+
+  await github.rest.issues.updateMilestone({
+    owner,
+    repo,
+    milestone_number: milestoneId,
+    state: 'closed',
+  });
+};
+
+export const openNextMilestones = async ({ github, owner, repo, version }: ReleaseProps) => {
+  const nextMilestones = getNextVersions(version)
+    .map(version => getOSSVersion(version).replace(/^v/, ''));
+
+  await Promise.all(
+    nextMilestones.map((milestoneName) => (
+      github.rest.issues.createMilestone({
+        owner,
+        repo,
+        title: milestoneName,
+      })
+    )
+  ));
+};
+
 
 export const getMilestoneIssues = async ({
   version,
