@@ -8,6 +8,7 @@ export const getDatePickerOverrides =
       defaultProps: {
         size: "sm",
         maxLevel: "month",
+        hideOutsideDates: true,
       },
       styles: (theme, { isStatic }: DayStylesParams) => ({
         day: {

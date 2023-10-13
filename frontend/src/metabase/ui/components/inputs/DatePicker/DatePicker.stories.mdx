@@ -54,6 +54,9 @@ export const DefaultTemplate = args => {
 };
 
 export const Default = DefaultTemplate.bind({});
+Default.args = {
+  defaultDate: sampleArgs.date1,
+};
 
 <Canvas>
   <Story name="Default">{Default}</Story>
