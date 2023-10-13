@@ -20,6 +20,44 @@
   (assoc query
     :breakout (mapv (partial interesting/->reference :mbql) breakout-fields)))
 
+(defn matching-types?
+  "Given two seqs of types, return true of the types of the child
+  types are satisfied by some permutation of the parent types."
+  [parent-types child-types]
+  (true?
+    (when (= (count parent-types)
+             (count child-types))
+      (some
+        (fn [parent-types-permutation]
+          (when (->> (map
+                       (fn [child-type parent-type]
+                         (isa? child-type parent-type))
+                       child-types
+                       parent-types-permutation)
+                     (every? true?))
+            true))
+        (math.combo/permutations parent-types)))))
+
+(comment
+  (true? (matching-types? #{:type/Number} #{:type/Integer}))
+  (false? (matching-types? #{} #{:type/Integer}))
+  )
+
+(defn filter-to-matching-types
+  "Take a map with keys as sets of types and collection of types and return the map with only
+  the type set keys that satisfy the types."
+  [types->x types]
+  (into {} (filter #(matching-types? (first %) types)) types->x))
+
+(comment
+  (filter-to-matching-types
+    {#{} :fail
+     #{:type/Number} :pass
+     #{:type/Integer} :pass
+     #{:type/CreationTimestamp} :fail}
+    #{:type/Integer})
+  )
+
 (mu/defn add-breakout-combinations
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
@@ -44,8 +82,14 @@
                                                (assoc matching-field :dimension dim))
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields  (group-by magic.util/field-type available)]
-    (->> (keys (semantic-affinity-sets metric-field-types default-affinities))
+        groundable-fields  (group-by magic.util/field-type available)
+        potential-dimension-sets (or (->> metric-field-types
+                                          (filter-to-matching-types (dissoc semantic-affinity-sets :default))
+                                          vals
+                                          (mapcat keys)
+                                          seq)
+                                     (keys default-affinities))]
+    (->> potential-dimension-sets
          (mapcat (fn [dimensions-set]
                    (->> (map groundable-fields dimensions-set)
                         (apply math.combo/cartesian-product)
