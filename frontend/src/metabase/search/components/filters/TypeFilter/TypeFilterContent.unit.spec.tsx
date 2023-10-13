@@ -50,11 +50,9 @@ const TestTypeFilterComponent = ({
   initialValue?: EnabledSearchModelType[];
   onChangeFilters: jest.Mock;
 }) => {
-  const [value, setValue] = useState<EnabledSearchModelType[] | null>(
-    initialValue,
-  );
+  const [value, setValue] = useState<EnabledSearchModelType[]>(initialValue);
 
-  const onChange = (selectedValues: EnabledSearchModelType[] | null) => {
+  const onChange = (selectedValues: EnabledSearchModelType[]) => {
     onChangeFilters(selectedValues);
     setValue(selectedValues);
   };
@@ -150,7 +148,7 @@ describe("TypeFilterContent", () => {
       userEvent.click(options[i]);
     }
 
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
@@ -163,7 +161,7 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-    userEvent.click(screen.getByText("Apply filters"));
+    userEvent.click(screen.getByText("Apply"));
     expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });

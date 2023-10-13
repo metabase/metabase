@@ -178,7 +178,7 @@ describe("SearchApp", () => {
             ] as EnabledSearchModelType,
           }),
         );
-        userEvent.click(popover.getByRole("button", { name: "Apply filters" }));
+        userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
         const url = history.getCurrentLocation();
         expect(url.query.type).toEqual(model);
