@@ -5,7 +5,7 @@ import {
   NotebookCell,
   NotebookCellAdd,
   NotebookCellItem,
-} from "../NotebookCell";
+} from "../../NotebookCell";
 
 interface ClauseStepProps<T> {
   color: string;
