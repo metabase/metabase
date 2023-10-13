@@ -48,4 +48,32 @@ describe("ValuesSourceSettings", () => {
       values: ["A"],
     });
   });
+
+  it("Edit button on should be disabled with field has linked filters enabled", () => {
+    setup({
+      parameter: createMockParameter({
+        type: "category",
+        values_query_type: "list",
+        id: "1",
+        name: "Category",
+        filteringParameters: ["2"],
+      }),
+    });
+
+    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    userEvent.click(screen.getByRole("radio", { name: "Search box" }));
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    // Test that hovering over the button shows the tooltip
+    // calling .parentElement is needed because the button has pointer-events: none when disabled
+    // eslint-disable-next-line testing-library/no-node-access
+    userEvent.hover(
+      screen.getByRole("button", { name: "Edit" }).parentElement as HTMLElement,
+    );
+    expect(
+      screen.getByText(
+        "You can’t customize selectable values for this filter because it is linked to another one.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
