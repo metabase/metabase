@@ -47,12 +47,6 @@ export function setupCollectionsEndpoints({
   );
 }
 
-export function setupCollectionsEndpointsByIds(collections: Collection[]) {
-  for (const collection of collections) {
-    fetchMock.get(`path:/api/collection/${collection.id}`, [collection]);
-  }
-}
-
 function getCollectionVirtualSchemaURLs(collection: Collection) {
   const db = SAVED_QUESTIONS_VIRTUAL_DB_ID;
   const schemaName = getCollectionVirtualSchemaName(collection);
