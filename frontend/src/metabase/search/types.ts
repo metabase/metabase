@@ -53,6 +53,7 @@ export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
   value: SearchFilterPropTypes[T];
   onChange: (value: SearchFilterPropTypes[T]) => void;
   "data-testid"?: string;
+  width?: string;
 } & Record<string, unknown>;
 
 type SidebarFilterType = "dropdown" | "toggle";
