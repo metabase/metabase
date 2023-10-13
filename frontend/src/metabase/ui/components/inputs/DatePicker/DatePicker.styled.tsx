@@ -1,3 +1,4 @@
+import { rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 import type { DayStylesParams } from "@mantine/dates";
 
@@ -5,13 +6,13 @@ export const getDatePickerOverrides =
   (): MantineThemeOverride["components"] => ({
     DatePicker: {
       defaultProps: {
-        size: "md",
+        size: "sm",
         maxLevel: "month",
       },
       styles: (theme, { isStatic }: DayStylesParams) => ({
         day: {
-          width: "1.5rem",
-          height: "1.5rem",
+          width: rem(24),
+          height: rem(24),
           fontSize: theme.fontSizes.sm,
           lineHeight: theme.lineHeight,
           borderRadius: theme.radius.xs,
@@ -50,6 +51,15 @@ export const getDatePickerOverrides =
               backgroundColor: theme.colors.brand[1],
             },
           },
+        },
+        weekday: {
+          width: rem(24),
+          height: rem(28),
+          color: theme.colors.text[0],
+          fontSize: theme.fontSizes.xs,
+          lineHeight: theme.lineHeight,
+          textAlign: "center",
+          paddingBottom: theme.spacing.xs,
         },
       }),
     },
