@@ -1,5 +1,9 @@
 import { action } from "@storybook/addon-actions";
 import type { ComponentStory } from "@storybook/react";
+import { Provider } from "react-redux";
+import { getStore } from "__support__/entities-store";
+import mainReducers from "metabase/reducers-main";
+import { createMockState } from "metabase-types/store/mocks";
 import PinnedItemCard from "./PinnedItemCard";
 
 export default {
@@ -18,8 +22,14 @@ const collection = {
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 
+const store = getStore(mainReducers, createMockState());
+
 const Template: ComponentStory<typeof PinnedItemCard> = args => {
-  return <PinnedItemCard {...args} />;
+  return (
+    <Provider store={store}>
+      <PinnedItemCard {...args} />
+    </Provider>
+  );
 };
 
 export const Question = Template.bind({});
