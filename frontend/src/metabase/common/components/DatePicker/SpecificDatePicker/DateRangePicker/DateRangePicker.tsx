@@ -61,32 +61,41 @@ export function DateRangePicker({
         <Group align="center">
           <FlexDateInput
             value={startDate}
+            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleStartDateChange}
           />
-          <Text>{t`and`}</Text>
+          <Text c="text.0">{t`and`}</Text>
           <FlexDateInput
             value={endDate}
+            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleEndDateChange}
           />
         </Group>
         {hasTime && (
           <Group align="center">
-            <FlexTimeInput value={startDate} onChange={handleStartTimeChange} />
-            <Text>{t`and`}</Text>
-            <FlexTimeInput value={endDate} onChange={handleEndTimeChange} />
+            <FlexTimeInput
+              value={startDate}
+              size="xs"
+              onChange={handleStartTimeChange}
+            />
+            <Text c="text.0">{t`and`}</Text>
+            <FlexTimeInput
+              value={endDate}
+              size="xs"
+              onChange={handleEndTimeChange}
+            />
           </Group>
         )}
-        <Stack align="center">
-          <DatePicker
-            type="range"
-            value={[startDate, endDate]}
-            defaultDate={endDate}
-            allowSingleDateInRange
-            onChange={handleRangeChange}
-          />
-        </Stack>
+        <DatePicker
+          type="range"
+          value={[startDate, endDate]}
+          defaultDate={endDate}
+          numberOfColumns={2}
+          allowSingleDateInRange
+          onChange={handleRangeChange}
+        />
       </Stack>
       <Divider />
       <Group p="sm" position="apart">
