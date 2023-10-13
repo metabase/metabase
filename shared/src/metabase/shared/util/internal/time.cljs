@@ -174,7 +174,7 @@
           date? (matches-date? input)
           date-time? (matches-date-time? input)
           t (if time?
-              (moment/utc (str "2023-01-01T" input moment/ISO_8601))
+              (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
               (moment/utc input moment/ISO_8601))]
       (if t
         (case unit
