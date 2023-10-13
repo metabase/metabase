@@ -2,7 +2,7 @@
   "Ring middleware related to session (binding current user and permissions)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common
     :as api
     :refer [*current-user*

@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]

@@ -1,7 +1,7 @@
 (ns metabase.search.scoring
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search-config]
    [metabase.search.util :as search-util]

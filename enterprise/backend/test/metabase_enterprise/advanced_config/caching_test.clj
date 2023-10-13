@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-config.caching-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models :refer [Card Dashboard Database PersistedInfo TaskHistory]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features-test

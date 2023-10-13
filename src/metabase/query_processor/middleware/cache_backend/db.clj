@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.models.query-cache :refer [QueryCache]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]

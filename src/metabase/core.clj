@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]

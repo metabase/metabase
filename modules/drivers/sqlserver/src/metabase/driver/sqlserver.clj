@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [honeysql.helpers :as hh]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]

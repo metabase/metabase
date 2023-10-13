@@ -1,7 +1,7 @@
 (ns metabase.api.setup
   (:require
    [compojure.core :refer [GET POST]]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]

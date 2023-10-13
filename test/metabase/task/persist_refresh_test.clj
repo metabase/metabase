@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
    [metabase.query-processor.timezone :as qp.timezone]

@@ -1,7 +1,7 @@
 (ns metabase.events.view-log-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events.view-log :as view-log]
    [metabase.models :refer [Card Dashboard Table User ViewLog]]
    [metabase.models.setting :as setting]

@@ -1,6 +1,6 @@
 (ns metabase.models.timeline
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]

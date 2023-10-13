@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting :refer [defsetting]]

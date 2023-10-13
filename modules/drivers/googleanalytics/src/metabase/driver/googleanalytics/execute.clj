@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.googleanalytics.metadata :as ga.metadata]
    [metabase.models :refer [Database]]
    [metabase.util :as u]

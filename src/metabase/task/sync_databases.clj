@@ -8,7 +8,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
