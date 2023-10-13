@@ -27,7 +27,7 @@
 
 (def icons
   "Valid Timeline and TimelineEvent icons"
-  ["star" "balloons" "mail" "warning" "bell" "cloud"])
+  ["star" "cake" "mail" "warning" "bell" "cloud"])
 
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
