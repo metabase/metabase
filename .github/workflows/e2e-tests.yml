@@ -165,6 +165,8 @@ jobs:
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      # Record runs using Deploysentinel except for the release branch
+      CYPRESS_DEPLOYSENTINEL_KEY: ${{ !(startsWith(github.event.pull_request.base.ref, 'release')) && secrets.CYPRESS_DEPLOYSENTINEL_KEY ||  '' }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
@@ -243,19 +245,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Install Chrome v111
-        uses: browser-actions/setup-chrome@v1
-        with:
-          # https://chromium.cypress.io/linux/stable/111.0.5563.146
-          chrome-version: 1097615
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
-      - name: Record runs using Deploysentinel except for the release branch
-        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
-        run: |
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -264,7 +254,10 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+        with:
+          is-replay-browser: ${{ github.event_name == 'schedule' }}
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
@@ -274,7 +267,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -433,20 +426,7 @@ jobs:
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Install Chrome v111
-        uses: browser-actions/setup-chrome@v1
-        with:
-          # https://chromium.cypress.io/linux/stable/111.0.5563.146
-          chrome-version: 1097615
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -456,9 +436,10 @@ jobs:
           java-version: 11
           distribution: 'temurin'
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
+          PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}
