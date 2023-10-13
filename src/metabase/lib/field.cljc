@@ -316,7 +316,7 @@
     (assoc metadata
            ::temporal-unit unit
            ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
-    (dissoc metadata ::temporal-unit)))
+    (dissoc metadata ::temporal-unit ::original-effective-type)))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
