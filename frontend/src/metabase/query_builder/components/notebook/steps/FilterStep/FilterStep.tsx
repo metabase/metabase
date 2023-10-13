@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { FilterPicker } from "metabase/common/components/FilterPicker";
 import * as Lib from "metabase-lib";
-import ErrorBoundary from "metabase/ErrorBoundary";
+import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
+import type LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
 
 export function FilterStep({
+  query: legacyQuery,
   topLevelQuery,
   step,
   color,
@@ -56,13 +59,20 @@ export function FilterStep({
         color={color}
         isLastOpened={isLastOpened}
         renderName={renderFilterName}
-        renderPopover={filter => (
+        renderPopover={(filter, index) => (
           <FilterPopover
             query={topLevelQuery}
             stageIndex={stageIndex}
             filter={filter}
+            legacyQuery={legacyQuery}
+            legacyFilter={
+              typeof index === "number"
+                ? legacyQuery.filters()[index]
+                : undefined
+            }
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
+            onLegacyQueryChange={updateQuery}
           />
         )}
         onRemove={handleRemoveFilter}
@@ -74,12 +84,15 @@ export function FilterStep({
 interface FilterPopoverProps {
   query: Lib.Query;
   stageIndex: number;
-  filter: Lib.FilterClause | undefined;
+  filter?: Lib.FilterClause;
+  legacyQuery: LegacyQuery;
+  legacyFilter?: LegacyFilter;
   onAddFilter: (filter: Lib.ExpressionClause) => void;
   onUpdateFilter: (
     targetFilter: Lib.FilterClause,
     nextFilter: Lib.ExpressionClause,
   ) => void;
+  onLegacyQueryChange: (query: LegacyQuery) => void;
   onClose?: () => void;
 }
 
@@ -87,8 +100,11 @@ function FilterPopover({
   query,
   stageIndex,
   filter,
+  legacyQuery,
+  legacyFilter,
   onAddFilter,
   onUpdateFilter,
+  onLegacyQueryChange,
   onClose,
 }: FilterPopoverProps) {
   return (
@@ -96,14 +112,23 @@ function FilterPopover({
       query={query}
       stageIndex={stageIndex}
       filter={filter}
+      legacyQuery={legacyQuery}
+      legacyFilter={legacyFilter}
       onSelect={newFilter => {
         if (filter) {
           onUpdateFilter(filter, newFilter);
         } else {
           onAddFilter(newFilter);
         }
-        onClose?.();
       }}
+      onSelectLegacy={newFilter => {
+        if (legacyFilter) {
+          onLegacyQueryChange(legacyFilter.replace(newFilter));
+        } else {
+          onLegacyQueryChange(legacyQuery.filter(newFilter));
+        }
+      }}
+      onClose={onClose}
     />
   );
 }
