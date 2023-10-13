@@ -1053,39 +1053,22 @@
                                          base-context
                                          {:dimension-specs template-dimensions
                                           :metric-specs    template-metrics})
-        ;; The keys of the affinity set are the sets of potentially interesting dimensions
-        ;; keys - set of semantic types in the metric #{Income Discount}, #{EnrollDate, DisenrollDate}
-        ;; keys - set of semantic types of the card dimensions - #{}, #{timestamp}, #{lon lat}, #{Category}
-        ;; values - map where keys are sets of types of the dimensions and values are sequence of cards
-
-        ;; Option 1
-        ;; {#{EnrollDate, DisenrollDate} {#{timestamp} [card...] #{lon lat} [card...]}}
-        ;; Do ALL metrics show up
-        ;; If we have known metric constituent matches, we use the above and we have explicit scores
-        ;; If we don't match, we rate the metric as intrinsically interesting (high score), but we just have to use the
-        ;; default dimension set (whatever that is -- probably everything).
-        ;;
-        ;; Option 2 - keys are dimension affinity sets
-        ;; {#{} [card...]
-        ;; #{timestamp} [card...]
-        ;; #{Lon Lat} [card...]}
-        ;; We now score metrics intrinsically
-        ;;
-        affinity-set->cards (metric->dim->cards (dash-template->affinities template grounded-dimensions))
-        cards               (->> grounded-metrics
-                                 (combination/interesting-combinations grounded-dimensions
-                                                                       affinity-set->cards)
-                                 (combination/combinations->cards base-context
-                                                                  affinity-set->cards)
-                                 (map-indexed (fn [i card]
-                                                (assoc card :position i))))
-        empty-dashboard     (make-dashboard root template)]
+        affinity-set->cards           (metric->dim->cards (dash-template->affinities template grounded-dimensions))
+        metrics+interesting-breakouts (combination/interesting-combinations
+                                        grounded-dimensions
+                                        affinity-set->cards
+                                        grounded-metrics)
+        cards                         (combination/combinations->cards
+                                        base-context
+                                        affinity-set->cards
+                                        metrics+interesting-breakouts)
+        empty-dashboard               (make-dashboard root template)]
     (populate/create-dashboard
       (assoc empty-dashboard :cards cards)
       :all)))
 
 (comment
-  (let [entity (t2/select-one :model/Table :name "ACCOUNTS")
+  (let [entity  (t2/select-one :model/Table :name "ACCOUNTS")
         context (make-base-context (->root entity))]
     (generate-dashboard
       context

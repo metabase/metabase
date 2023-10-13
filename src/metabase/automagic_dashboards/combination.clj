@@ -239,13 +239,25 @@
          (get-in affinity-set->cards [metric-field-types dimension-field-types :cards])
          (get-in affinity-set->cards [:default dimension-field-types :cards]))
        (map (partial ground-metric->card base-context grounded-metric))
-       (filter identity)
-       (map-indexed (fn [i card]
-                      (assoc card :position i)))))
+       (filter identity)))
 
 (defn combinations->cards
   "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
   templates. This pairing is expanded to create a card seq."
   [base-context affinity-set->cards ground-metrics]
-  (mapcat (partial ground-metric->cards base-context affinity-set->cards)
-          ground-metrics))
+  (->> (mapcat (partial ground-metric->cards base-context affinity-set->cards)
+               ground-metrics)
+       ;; We really should order based on something like:
+       ;; 1 group
+       ;; 2 base metric score
+       ;; 3 metric group (keep them together)
+       (map-indexed (fn [i card] (assoc card :position i)))
+       ;; The next 3 lines deduplicate some cards. Specifically, a card
+       ;; group for a particular dimension may have a default no-dimension
+       ;; view. If multiple of these groups exist, you'll get multiple of
+       ;; these default cards.
+       (group-by (juxt :title :x_label :dataset_query :visualization))
+       vals
+       (map first)
+       ;; This restores the sort order so the card layout doesn't go all weird.
+       (sort-by :position)))
