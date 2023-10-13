@@ -51,7 +51,17 @@ export const Content = styled.div`
 `;
 
 export const MoreButton = styled(Button)`
+  width: 100%;
+  height: 36px;
   padding: 8px 16px;
+
+  ${Button.Content} {
+    justify-content: flex-start;
+  }
+
+  &:hover {
+    background-color: ${color("brand-lighter")};
+  }
 `;
 
 MoreButton.defaultProps = { onlyText: true };
