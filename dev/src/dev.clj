@@ -87,11 +87,11 @@
 (defn start!
   []
   (server/start-web-server! #'handler/app)
+  (when-not @initialized?
+    (init!))
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
-    (with-out-str (malli-dev/start!)))
-  (when-not @initialized?
-    (init!)))
+    (with-out-str (malli-dev/start!))))
 
 (defn stop!
   []
