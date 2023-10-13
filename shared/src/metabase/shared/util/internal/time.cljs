@@ -163,7 +163,7 @@
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.

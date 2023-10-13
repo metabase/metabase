@@ -224,7 +224,7 @@
   (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
 
 (deftest format-diff-test
-  (are [exp a b] (= exp (shared.ut/format-diff a b nil))
+  (are [exp a b] (= exp (shared.ut/format-diff a b))
     "Oct 3–5, 2023" "2023-10-03" "2023-10-05"
     "Sep 3 – Oct 5, 2023" "2023-09-03" "2023-10-05"
     "Oct 3, 2023, 10:20 AM – 4:30 PM" "2023-10-03T10:20" "2023-10-03T16:30"

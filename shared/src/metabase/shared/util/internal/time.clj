@@ -212,7 +212,7 @@
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
+  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
@@ -238,8 +238,8 @@
           :quarter-of-year (t/format "'Q'Q" t)
           (cond
             time? (t/format "h:mm a" t)
-            date? (t/format "MMM d, YYYY" t)
-            :else (t/format "MMM d, YYYY, h:mm a" t)))
+            date? (t/format "MMM d, yyyy" t)
+            :else (t/format "MMM d, yyyy, h:mm a" t)))
         input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
@@ -273,13 +273,13 @@
             hour-matches? (= (t/format "H" lhs) (t/format "H" rhs))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches? day-matches? hour-matches?)
-                                ["MMM d, YYYY, h:mm" "mm a"]
+                                ["MMM d, yyyy, h:mm" "mm a"]
 
                                 (and year-matches? month-matches? day-matches?)
-                                ["MMM d, YYYY, h:mm a " " h:mm a"]
+                                ["MMM d, yyyy, h:mm a " " h:mm a"]
 
                                 year-matches?
-                                ["MMM d, h:mm a " " MMM d, YYYY, h:mm a"])]
+                                ["MMM d, h:mm a " " MMM d, yyyy, h:mm a"])]
 
         (if lhs-fmt
           (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
@@ -293,10 +293,10 @@
             month-matches? (= (t/month lhs) (t/month rhs))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches?)
-                                ["MMM d" "d, YYYY"]
+                                ["MMM d" "d, yyyy"]
 
                                 year-matches?
-                                ["MMM d " " MMM d, YYYY"])]
+                                ["MMM d " " MMM d, yyyy"])]
         (if lhs-fmt
           (str (t/format lhs-fmt lhs) "–" (t/format rhs-fmt rhs))
           (default-format)))
