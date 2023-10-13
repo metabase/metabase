@@ -89,7 +89,7 @@ const getDatasetParams = ({
   if (isPublicQuestion) {
     return {
       method: "GET",
-      url: Urls.publicQuestion(uuid, type),
+      url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
       params: new URLSearchParams({
         parameters: JSON.stringify(result?.json_query?.parameters ?? []),
       }),
