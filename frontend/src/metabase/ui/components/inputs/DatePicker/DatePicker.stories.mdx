@@ -4,12 +4,28 @@ import { DatePicker } from "metabase/ui";
 
 export const args = {
   type: "default",
+  allowDeselect: undefined,
+  allowSingleDateInRange: undefined,
+  defaultDate: undefined,
+  numberOfColumns: undefined,
 };
 
 export const argTypes = {
   type: {
     options: ["default", "multiple", "range"],
     control: { type: "inline-radio" },
+  },
+  allowDeselect: {
+    control: { type: "boolean" },
+  },
+  allowSingleDateInRange: {
+    control: { type: "boolean" },
+  },
+  defaultDate: {
+    control: { type: "date" },
+  },
+  numberOfColumns: {
+    control: { type: "number" },
   },
 };
 
@@ -31,10 +47,84 @@ Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date
 
 ## Examples
 
-export const DefaultTemplate = args => <DatePicker {...args} />;
+export const DefaultTemplate = ({ defaultDate, ...args }) => {
+  return (
+    <DatePicker
+      {...args}
+      defaultDate={defaultDate ? new Date(defaultDate) : undefined}
+    />
+  );
+};
 
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Allow deselect
+
+export const AllowDeselect = DefaultTemplate.bind({});
+AllowDeselect.args = {
+  allowDeselect: true,
+};
+
+<Canvas>
+  <Story name="Allow deselect">{AllowDeselect}</Story>
+</Canvas>
+
+### Multiple dates
+
+export const MultipleDates = DefaultTemplate.bind({});
+MultipleDates.args = {
+  type: "multiple",
+};
+
+<Canvas>
+  <Story name="Multiple dates">{MultipleDates}</Story>
+</Canvas>
+
+### Dates range
+
+export const DatesRange = DefaultTemplate.bind({});
+DatesRange.args = {
+  type: "range",
+};
+
+<Canvas>
+  <Story name="Dates range">{DatesRange}</Story>
+</Canvas>
+
+### Single date in range
+
+export const SingleDateInRange = DefaultTemplate.bind({});
+SingleDateInRange.args = {
+  type: "range",
+  allowSingleDateInRange: true,
+};
+
+<Canvas>
+  <Story name="Single date in range">{SingleDateInRange}</Story>
+</Canvas>
+
+### Default date
+
+export const DefaultDate = DefaultTemplate.bind({});
+DefaultDate.args = {
+  defaultDate: new Date(2015, 0, 1),
+};
+
+<Canvas>
+  <Story name="Default date">{DefaultDate}</Story>
+</Canvas>
+
+### Number of columns
+
+export const NumberOfColumns = DefaultTemplate.bind({});
+NumberOfColumns.args = {
+  numberOfColumns: 2,
+};
+
+<Canvas>
+  <Story name="Number of columns">{NumberOfColumns}</Story>
 </Canvas>
