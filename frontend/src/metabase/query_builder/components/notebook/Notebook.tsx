@@ -79,7 +79,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
     }
   }
 
-  const handleUpdateQuestion = (question: Question) => {
+  const handleUpdateQuestion = (question: Question): Promise<void> => {
     dispatch(setIsModifiedFromNotebook(true));
     return updateQuestion(question);
   };
