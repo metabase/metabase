@@ -71,7 +71,21 @@
                                     (-> (lib.metadata.calculation/metadata query stage-number %)
                                         lib.types.isa/id?
                                         clojure.core/not))
-        temporal? #(lib.util/original-isa? % :type/Temporal)]
+        temporal? #(lib.util/original-isa? % :type/Temporal)
+        unit-is (fn [unit]
+                  (fn [a]
+                    (clojure.core/and
+                      (temporal? a)
+                      (lib.util/clause? a)
+                      (clojure.core/= unit (:temporal-unit (second a))))))
+        ->unbucketed-display-name #(-> %
+                                       (update 1 dissoc :temporal-unit)
+                                       ->display-name)
+        ->bucket-name #(-> %
+                           second
+                           :temporal-unit
+                           lib.temporal-bucket/describe-temporal-unit
+                           u/lower-case-en)]
     (mbql.u/match-one expr
       [:= _ (a :guard numeric?) b]
       (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
@@ -82,11 +96,29 @@
       [:!= _ (a :guard numeric?) b]
       (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
 
+      [:!= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (inflections/plural (->temporal-name a b)))
+
+      [:!= _ (a :guard (unit-is :month-of-year)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard (unit-is :quarter-of-year)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard (unit-is :hour-of-day)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (->temporal-name a b))
+
       [:!= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} excludes {1}" (->display-name a) (->temporal-name a b))
 
+      [:= _ a (b :guard string?)]
+      (i18n/tru "{0} is {1}" (->display-name a) b)
+
       [:= _ a b]
       (i18n/tru "{0} is {1}" (->display-name a) (->display-name b))
+
+      [:!= _ a (b :guard string?)]
+      (i18n/tru "{0} is not {1}" (->display-name a) b)
 
       [:!= _ a b]
       (i18n/tru "{0} is not {1}" (->display-name a) (->display-name b))
@@ -98,7 +130,7 @@
       (i18n/tru "{0} is not equal to {1} selections" (->display-name a) (count args))
 
       [:!= _ (a :guard temporal?) & args]
-      (i18n/tru "{0} excludes {1} selections" (->display-name a) (count args))
+      (i18n/tru "{0} excludes {1} {2} selections" (->unbucketed-display-name a) (count args) (->bucket-name a))
 
       [:= _ a & args]
       (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
@@ -130,14 +162,26 @@
       [:>= _ x y]
       (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
 
+      [:starts-with _ x (y :guard string?)]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
+
       [:starts-with _ x y]
       (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
+
+      [:ends-with _ x (y :guard string?)]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
 
       [:ends-with _ x y]
       (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
 
+      [:contains _ x (y :guard string?)]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
+
       [:contains _ x y]
       (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
+
+      [:does-not-contain _ x (y :guard string?)]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
 
       [:does-not-contain _ x y]
       (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y)))))

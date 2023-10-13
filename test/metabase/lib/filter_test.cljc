@@ -462,23 +462,23 @@
         query (lib/query metadata-provider (meta/table-metadata :venues))
         tests {"EXCLUDE_DATE_FILTERS"
                [{"clause" [:!= (created-at-with :day-of-week) "2023-10-02"],
-                 "name" "Created At excludes Monday"}
+                 "name" "Created At excludes Mondays"}
                 {"clause" [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
-                 "name" "Created At excludes 3 selections"}
+                 "name" "Created At excludes 3 day of week selections"}
                 {"clause" [:!= (created-at-with :month-of-year) "2023-01-01"],
-                 "name" "Created At excludes Jan"}
+                 "name" "Created At excludes each Jan"}
                 {"clause" [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
-                 "name" "Created At excludes 3 selections"}
+                 "name" "Created At excludes 3 month of year selections"}
                 {"clause" [:!= (created-at-with :quarter-of-year) "2023-01-03"],
-                 "name" "Created At excludes Q1"}
+                 "name" "Created At excludes Q1 each year"}
                 {"clause" [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"],
-                 "name" "Created At excludes 3 selections"}
-                {"clause" [:!= (created-at-with :hour-of-day) 0], "name" "Created At excludes 12 AM"}
-                {"clause" [:!= (created-at-with :hour-of-day) 4], "name" "Created At excludes 4 AM"}
-                {"clause" [:!= (created-at-with :hour-of-day) 12], "name" "Created At excludes 12 PM"}
-                {"clause" [:!= (created-at-with :hour-of-day) 16], "name" "Created At excludes 4 PM"}
+                 "name" "Created At excludes 3 quarter of year selections"}
+                {"clause" [:!= (created-at-with :hour-of-day) 0], "name" "Created At excludes the hour of 12 AM"}
+                {"clause" [:!= (created-at-with :hour-of-day) 4], "name" "Created At excludes the hour of 4 AM"}
+                {"clause" [:!= (created-at-with :hour-of-day) 12], "name" "Created At excludes the hour of 12 PM"}
+                {"clause" [:!= (created-at-with :hour-of-day) 16], "name" "Created At excludes the hour of 4 PM"}
                 {"clause" [:!= (created-at-with :hour-of-day) 0 1 2],
-                 "name" "Created At excludes 3 selections"}
+                 "name" "Created At excludes 3 hour of day selections"}
                 {"clause" [:is-null created-at], "name" "Created At is empty"}
                 {"clause" [:not-null created-at], "name" "Created At is not empty"}],
                "TIME_FILTERS"
@@ -615,6 +615,8 @@
                  "name" "Created At is before Oct 3, 2023, 12:30 PM"}
                 {"clause" [:between created-at "2023-10-03" "2023-10-05"],
                  "name" "Created At is Oct 3–5, 2023"}
+                {"clause" [:between created-at "2023-10-03T01:00:00" "2023-10-03T14:00:00"],
+                 "name" "Created At is Oct 3, 2023, 1:00 AM – 2:00 PM"}
                 {"clause" [:between created-at "2023-10-03T13:00:00" "2023-10-05T01:00:00"],
                  "name" "Created At is Oct 3, 1:00 PM – Oct 5, 2023, 1:00 AM"}
                 {"clause" [:between created-at "2023-09-03" "2023-10-03"],
@@ -638,7 +640,7 @@
                       expression (get clause "clause")
                       options (update-keys (get clause "options") keyword)]
                 #_#_
-                :when (= exp  "Is Active is false")]
+                :when (= exp  "Created At excludes Monday")]
           (testing exp
             (is (= exp (lib/display-name query -1
                                          (walk/postwalk
