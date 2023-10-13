@@ -9,6 +9,7 @@
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.models.interface :as mi]
     [metabase.query-processor.util :as qp.util]
     [metabase.util :as u]
     [metabase.util.i18n :as i18n]
@@ -168,12 +169,14 @@
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {:keys [db_id id]}]
+   {{:keys [database]} :root :keys [source]}]
   (assoc ground-metric-with-dimensions
-    :dataset_query {:database db_id
+    :dataset_query {:database database
                     :type     :query
                     :query    (assoc metric-definition
-                                :source-table id)}))
+                                :source-table (if (->> source (mi/instance-of? :model/Table))
+                                                (-> source u/the-id)
+                                                (->> source u/the-id (str "card__"))))}))
 
 (defn items->str
   "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
@@ -190,8 +193,7 @@
 (defn ground-metric->card
   "Convert a grounded metric to a card. This includes adding any special breakout aggregations specified in the card
   definitions then removing most of the metric fields that aren't relevant to cards."
-  [{{:keys [source]} :root
-    :as              base-context}
+  [base-context
    {:keys [dimension-type->field metric-name dimension-name->field] :as grounded-metric}
    {:keys [semantic-dimensions] :as card}]
   ;; This updates the query to contain the specializations contained in the card template (basically the aggregate definitions)
@@ -204,7 +206,7 @@
                  nil)]
       (-> grounded-metric
           (update :metric-definition add-breakouts (vals dims))
-          (add-dataset-query source)
+          (add-dataset-query base-context)
           (into card)
           (instantiate-metadata base-context {} dimension-name->field)
           (assoc
