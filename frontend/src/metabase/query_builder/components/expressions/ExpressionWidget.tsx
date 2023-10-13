@@ -124,22 +124,14 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             value={name}
             placeholder={t`Something nice and descriptive`}
             fullWidth
-            onChange={event => {
-              // The expression's name shouldn't contain spaces. This checks
-              // handles if the user pastes a name with spaces.
-              if (event.target.value.includes(" ")) {
-                setName(event.target.value.replace(/\s/g, ""));
-              } else {
-                setName(event.target.value);
-              }
-            }}
+            onChange={event => setName(event.target.value.replace(/\s/g, ""))}
             onKeyPress={e => {
               if (e.key === "Enter") {
                 handleCommit(expression);
               }
               // Prevent the user to type spaces since the expression's name
               // can't contain spaces.
-              if (e.key === " " || e.key === "Spacebar") {
+              if (e.key === " ") {
                 e.preventDefault();
               }
             }}
