@@ -12,43 +12,6 @@ interface SetupOpts {
   otherParameters: UiParameter[];
 }
 
-const TestWrapper = ({
-  initialParameter,
-  nextParameter,
-  otherParameters,
-}: SetupOpts) => {
-  const [parameter, setParameter] = useState(initialParameter);
-
-  const onChangeName = (_parameterId: string, name: string) => {
-    setParameter({ ...initialParameter, name });
-  };
-
-  return (
-    <div>
-      <button
-        data-testid="parameter-sidebar-test-change"
-        onClick={() => nextParameter && setParameter(nextParameter)}
-      >
-        Next Parameter Button
-      </button>
-      <ParameterSidebar
-        parameter={parameter}
-        otherParameters={otherParameters}
-        onChangeName={onChangeName}
-        onChangeDefaultValue={jest.fn()}
-        onChangeIsMultiSelect={jest.fn()}
-        onChangeQueryType={jest.fn()}
-        onChangeSourceType={jest.fn()}
-        onChangeSourceConfig={jest.fn()}
-        onChangeFilteringParameters={jest.fn()}
-        onRemoveParameter={jest.fn()}
-        onShowAddParameterPopover={jest.fn()}
-        onClose={jest.fn()}
-      />
-    </div>
-  );
-};
-
 const setup = ({
   initialParameter,
   nextParameter,
@@ -56,6 +19,45 @@ const setup = ({
 }: SetupOpts): {
   clickNextParameterButton: () => void;
 } => {
+  const NEXT_PARAMETER_BUTTON_ID = "parameter-sidebar-test-change";
+
+  const TestWrapper = ({
+    initialParameter,
+    nextParameter,
+    otherParameters,
+  }: SetupOpts) => {
+    const [parameter, setParameter] = useState(initialParameter);
+
+    const onChangeName = (_parameterId: string, name: string) => {
+      setParameter({ ...initialParameter, name });
+    };
+
+    return (
+      <div>
+        <button
+          data-testid={NEXT_PARAMETER_BUTTON_ID}
+          onClick={() => nextParameter && setParameter(nextParameter)}
+        >
+          Next Parameter Button
+        </button>
+        <ParameterSidebar
+          parameter={parameter}
+          otherParameters={otherParameters}
+          onChangeName={onChangeName}
+          onChangeDefaultValue={jest.fn()}
+          onChangeIsMultiSelect={jest.fn()}
+          onChangeQueryType={jest.fn()}
+          onChangeSourceType={jest.fn()}
+          onChangeSourceConfig={jest.fn()}
+          onChangeFilteringParameters={jest.fn()}
+          onRemoveParameter={jest.fn()}
+          onShowAddParameterPopover={jest.fn()}
+          onClose={jest.fn()}
+        />
+      </div>
+    );
+  };
+
   renderWithProviders(
     <TestWrapper
       initialParameter={initialParameter}
@@ -64,10 +66,9 @@ const setup = ({
     />,
   );
 
-  // clicking the next parameter button will update the parameter from initialParameter to nextParameter
   return {
     clickNextParameterButton: () =>
-      userEvent.click(screen.getByTestId("parameter-sidebar-test-change")),
+      userEvent.click(screen.getByTestId(NEXT_PARAMETER_BUTTON_ID)),
   };
 };
 
