@@ -242,7 +242,7 @@
         (is (nil? (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (nil? (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
 
-(deftest ^:parallel can-delete-permsissions-via-graph-test
+(deftest can-delete-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions when group has no permissions"
       (let [db-id (mt/id :venues)]
