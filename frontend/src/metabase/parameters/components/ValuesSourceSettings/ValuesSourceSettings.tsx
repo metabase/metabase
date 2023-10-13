@@ -92,7 +92,7 @@ const RadioLabel = ({
           isEnabled={!!isEditDisabled}
         >
           {/* This div is needed to make the tooltip work when the button is disabled */}
-          <div>
+          <div data-testid="values-source-settings-edit-btn">
             <Button
               onClick={onEditClick}
               disabled={!!isEditDisabled}

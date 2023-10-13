@@ -49,13 +49,9 @@ describe("ValuesSourceSettings", () => {
     });
   });
 
-  it("Edit button on should be disabled with field has linked filters enabled", () => {
+  it("Editing the values source should be disabled when the filter has linked filters", () => {
     setup({
       parameter: createMockParameter({
-        type: "category",
-        values_query_type: "list",
-        id: "1",
-        name: "Category",
         filteringParameters: ["2"],
       }),
     });
@@ -64,16 +60,34 @@ describe("ValuesSourceSettings", () => {
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
     userEvent.click(screen.getByRole("radio", { name: "Search box" }));
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
-    // Test that hovering over the button shows the tooltip
-    // calling .parentElement is needed because the button has pointer-events: none when disabled
-    // eslint-disable-next-line testing-library/no-node-access
-    userEvent.hover(
-      screen.getByRole("button", { name: "Edit" }).parentElement as HTMLElement,
-    );
+
+    // hovering over the button shows the tooltip"
+    userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
     expect(
       screen.getByText(
         "You can’t customize selectable values for this filter because it is linked to another one.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("Editing the values source should be enabled when the filter has no linked filters", () => {
+    setup({
+      parameter: createMockParameter({
+        filteringParameters: [],
+      }),
+    });
+
+    userEvent.click(screen.getByRole("radio", { name: "Dropdown list Edit" }));
+    expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
+    userEvent.click(screen.getByRole("radio", { name: "Search box" }));
+    expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
+
+    // hovering over the button doesn't show the tooltip
+    userEvent.hover(screen.getByTestId("values-source-settings-edit-btn"));
+    expect(
+      screen.queryByText(
+        "You can’t customize selectable values for this filter because it is linked to another one.",
+      ),
+    ).not.toBeInTheDocument();
   });
 });
