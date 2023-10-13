@@ -590,7 +590,6 @@ describe("QueryBuilder", () => {
           card: null,
           initialRoute: "/model/new",
         });
-        setupCollectionByIdEndpoint({ collections: [createMockCollection()] });
         setupCardCreateEndpoint();
         setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
