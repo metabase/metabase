@@ -1,7 +1,18 @@
 import userEvent from "@testing-library/user-event";
+import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
+
+import type { StructuredDatasetQuery } from "metabase-types/api";
+import {
+  createAdHocCard,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+
 import { FilterPicker } from "./FilterPicker";
 
 function createQueryWithFilter() {
@@ -20,15 +31,24 @@ type SetupOpts = {
   filter?: Lib.FilterClause;
 };
 
+const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
+
 function setup({ query = createQuery(), filter }: SetupOpts = {}) {
+  const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
+  const question = new Question(createAdHocCard({ dataset_query }), metadata);
+  const legacyQuery = question.query() as StructuredQuery;
+
   const onSelect = jest.fn();
+  const onSelectLegacy = jest.fn();
 
   render(
     <FilterPicker
       query={query}
       stageIndex={0}
       filter={filter}
+      legacyQuery={legacyQuery}
       onSelect={onSelect}
+      onSelectLegacy={onSelectLegacy}
     />,
   );
 }
@@ -49,7 +69,7 @@ describe("FilterPicker", () => {
   describe("with a filter", () => {
     it("should show the filter editor", () => {
       setup(createQueryWithFilter());
-      expect(screen.getByText(/filter editor/i)).toBeInTheDocument();
+      expect(screen.getByText("Update filter")).toBeInTheDocument();
     });
   });
 });
