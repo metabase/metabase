@@ -27,8 +27,10 @@ export function DateRangePicker({
   const [hasTime, setHasTime] = useState(
     hasTimeParts(startDate) || hasTimeParts(endDate),
   );
+  const [hasEndDate, setHasEndDate] = useState(true);
 
   const handleRangeChange = ([startDate, endDate]: DatesRangeValue) => {
+    setHasEndDate(endDate != null);
     if (startDate && endDate) {
       onChange([startDate, endDate]);
     }
@@ -90,7 +92,7 @@ export function DateRangePicker({
         )}
         <DatePicker
           type="range"
-          value={[startDate, endDate]}
+          value={[startDate, hasEndDate ? endDate : null]}
           defaultDate={endDate}
           numberOfColumns={2}
           allowSingleDateInRange
