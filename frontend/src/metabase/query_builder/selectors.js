@@ -656,20 +656,8 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getQueryResults,
-    getIsObjectDetail,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (
-    question,
-    results,
-    isObjectDetail,
-    lastRunDatasetQuery,
-    isShowingRawTable,
-  ) => {
+  [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
+  (question, results, lastRunDatasetQuery, isShowingRawTable) => {
     let display = question && question.display();
     let settings = question && question.settings();
 
