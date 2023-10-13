@@ -34,9 +34,9 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupModelIndexEndpoints,
-  setupCollectionsEndpointsByIds,
   setupCardCreateEndpoint,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -571,7 +571,7 @@ describe("QueryBuilder", () => {
           card: null,
           initialRoute: "/model/new",
         });
-        setupCollectionsEndpointsByIds([createMockCollection()]);
+        setupCollectionByIdEndpoint({ collections: [createMockCollection()] });
         setupCardCreateEndpoint();
         setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
