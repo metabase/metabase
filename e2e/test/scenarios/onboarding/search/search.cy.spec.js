@@ -445,6 +445,7 @@ describe("scenarios > search", () => {
         // We'll create a question as a normal user, then edit it as an admin user
         cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
           ({ body: { id: questionId } }) => {
+            cy.signOut();
             cy.signInAsNormalUser();
             cy.visit(`/question/${questionId}`);
             summarize();
@@ -516,10 +517,10 @@ describe("scenarios > search", () => {
         );
       });
 
-      it("should filter last_edited results by more than user", () => {
+      it("should filter last_edited results by more than one user", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("reviews{enter}");
+        getSearchBar().clear().type("e{enter}");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
