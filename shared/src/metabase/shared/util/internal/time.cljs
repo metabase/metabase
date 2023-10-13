@@ -196,18 +196,18 @@
       (str input))))
 
 (defn format-diff
-  "Formats a time difference between two temporal values in the given unit.
+  "Formats a time difference between two temporal values.
    Drops redundant information."
-  [temporal-value-1 temporal-value-2 unit]
-  (let [default-format #(str (format-unit temporal-value-1 unit)
+  [temporal-value-1 temporal-value-2]
+  (let [default-format #(str (format-unit temporal-value-1 nil)
                              " – "
-                             (format-unit temporal-value-2 unit))]
+                             (format-unit temporal-value-2 nil))]
     (cond
-      (or unit (some (complement string?) [temporal-value-1 temporal-value-2]))
+      (some (complement string?) [temporal-value-1 temporal-value-2])
       (default-format)
 
       (= temporal-value-1 temporal-value-2)
-      (format-unit temporal-value-1 unit)
+      (format-unit temporal-value-1 nil)
 
       (and (matches-time? temporal-value-1)
            (matches-time? temporal-value-2))

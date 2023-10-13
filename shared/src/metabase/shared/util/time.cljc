@@ -60,7 +60,7 @@
   (internal/format-unit temporal-value unit))
 
 (defn format-diff
-  "Formats a time difference between two temporal values in the given unit.
+  "Formats a time difference between two temporal values.
    Drops redundant information."
-  [temporal-value-1 temporal-value-2 unit]
-  (internal/format-diff temporal-value-1 temporal-value-2 unit))
+  [temporal-value-1 temporal-value-2]
+  (internal/format-diff temporal-value-1 temporal-value-2))
