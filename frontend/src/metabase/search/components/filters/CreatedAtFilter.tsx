@@ -16,7 +16,7 @@ export const CreatedAtFilter: SearchFilterDropdown<"created_at"> = {
     />
   ),
   ContentComponent: ({ value, onChange, width }) => (
-    <Box miw={width}>
+    <Box miw={width} maw="30rem">
       <SearchFilterDatePicker value={value} onChange={onChange} />
     </Box>
   ),
