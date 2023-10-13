@@ -136,6 +136,7 @@ describe("ExpressionWidget", () => {
 
       // Pasted text must be added to the previous name
       // and its spaces must be removed
+      expect(onChangeExpression).toHaveBeenCalledTimes(2);
       expect(onChangeExpression).toHaveBeenCalledWith(
         "Somen_am!efor-expression_123!@#$%^&*()Zxcbyutadded-anotherpastedtext",
         expression,
