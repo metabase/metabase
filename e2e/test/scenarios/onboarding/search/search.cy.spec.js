@@ -517,10 +517,10 @@ describe("scenarios > search", () => {
         );
       });
 
-      it("should filter last_edited results by more than one user", () => {
+      it("should filter last_edited results by more than user", () => {
         cy.visit("/");
 
-        getSearchBar().clear().type("e{enter}");
+        getSearchBar().clear().type("reviews{enter}");
         cy.wait("@search");
 
         cy.findByTestId("last_edited_by-search-filter").click();
