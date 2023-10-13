@@ -8,34 +8,28 @@ import ParameterSidebar from "./ParameterSidebar";
 
 interface SetupOpts {
   initialParameter: UiParameter;
+  nextParameter?: UiParameter;
   otherParameters: UiParameter[];
 }
 
 const TestWrapper = ({
   initialParameter,
+  nextParameter,
   otherParameters,
-  onSetParameter,
-}: SetupOpts & {
-  onSetParameter: (parameter: UiParameter) => void;
-}) => {
-  const [parameter, internalSetParameter] = useState(initialParameter);
-
-  const onChangeParameter = (parameter: UiParameter) => {
-    internalSetParameter(parameter);
-    onSetParameter(parameter);
-  };
+}: SetupOpts) => {
+  const [parameter, setParameter] = useState(initialParameter);
 
   const onChangeName = (_parameterId: string, name: string) => {
-    onChangeParameter({ ...initialParameter, name });
+    setParameter({ ...initialParameter, name });
   };
 
   return (
     <div>
       <button
         data-testid="parameter-sidebar-test-change"
-        onClick={() => onChangeParameter(otherParameters[0])}
+        onClick={() => nextParameter && setParameter(nextParameter)}
       >
-        Change Parameter
+        Next Parameter Button
       </button>
       <ParameterSidebar
         parameter={parameter}
@@ -55,18 +49,26 @@ const TestWrapper = ({
   );
 };
 
-const setup = ({ initialParameter, otherParameters }: SetupOpts) => {
-  const setParameterMock = jest.fn();
-
+const setup = ({
+  initialParameter,
+  nextParameter,
+  otherParameters,
+}: SetupOpts): {
+  clickNextParameterButton: () => void;
+} => {
   renderWithProviders(
     <TestWrapper
       initialParameter={initialParameter}
+      nextParameter={nextParameter}
       otherParameters={otherParameters}
-      onSetParameter={setParameterMock}
     />,
   );
 
-  return { setParameterMock };
+  // clicking the next parameter button will update the parameter from initialParameter to nextParameter
+  return {
+    clickNextParameterButton: () =>
+      userEvent.click(screen.getByTestId("parameter-sidebar-test-change")),
+  };
 };
 
 function fillValue(input: HTMLElement, value: string) {
@@ -115,21 +117,20 @@ describe("ParameterSidebar", () => {
       name: "Foo",
       slug: "foo",
     });
-    const otherParameter = createMockUiParameter({
+    const nextParameter = createMockUiParameter({
       id: "id1",
-      name: "Baz",
-      slug: "baz",
+      name: "Bar",
+      slug: "Bar",
     });
-    const { setParameterMock } = setup({
+    const { clickNextParameterButton } = setup({
       initialParameter,
-      otherParameters: [otherParameter],
+      nextParameter,
+      otherParameters: [],
     });
 
     const labelInput = screen.getByLabelText("Label");
     expect(labelInput).toHaveValue("Foo");
-
-    userEvent.click(screen.getByTestId("parameter-sidebar-test-change"));
-    expect(setParameterMock).toHaveBeenCalledWith(otherParameter);
-    expect(labelInput).toHaveValue("Baz");
+    clickNextParameterButton();
+    expect(labelInput).toHaveValue("Bar");
   });
 });
