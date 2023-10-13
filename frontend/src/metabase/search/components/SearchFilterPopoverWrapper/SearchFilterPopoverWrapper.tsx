@@ -16,6 +16,12 @@ type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
   isLoading?: boolean;
 };
 
+export const SearchFilterApplyButton = ({
+  onApply,
+}: Pick<SearchFilterPopoverWrapperProps, "onApply">) => (
+  <Button onClick={onApply}>{t`Apply`}</Button>
+);
+
 export const SearchFilterPopoverWrapper = ({
   children,
   onApply,
@@ -35,7 +41,7 @@ export const SearchFilterPopoverWrapper = ({
         {children}
         <DropdownApplyButtonDivider />
         <Group position="right" align="center" px="sm" pb="sm">
-          <Button onClick={onApply}>{t`Apply`}</Button>
+          <SearchFilterApplyButton onApply={onApply} />
         </Group>
       </SearchPopoverContainer>
     </FocusTrap>
