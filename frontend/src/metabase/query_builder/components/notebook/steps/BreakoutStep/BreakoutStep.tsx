@@ -78,6 +78,7 @@ function BreakoutStep({
       )}
       onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
+      withLegacyPopover
     />
   );
 }

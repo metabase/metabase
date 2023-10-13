@@ -82,6 +82,7 @@ export function AggregateStep({
       )}
       onRemove={handleRemoveAggregation}
       data-testid="aggregate-step"
+      withLegacyPopover
     />
   );
 }
