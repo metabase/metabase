@@ -830,6 +830,11 @@
   (->> (sql.qp/current-datetime-honeysql-form driver)
        (->temporal-type :timestamp)))
 
+;; In BigQuery, log syntax is `log(x, base)`
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :log]
+  [driver [_ field]]
+  (hx/call :log (sql.qp/->honeysql driver field) 10))
+
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_]
   :mysql)
