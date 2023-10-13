@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import ParameterSidebar from "./ParameterSidebar";
@@ -10,12 +10,20 @@ interface SetupOpts {
   otherParameters: UiParameter[];
 }
 
-const setup = ({ initialParameter, otherParameters }: SetupOpts) => {
-  const TestWrapper = () => {
-    const [parameter, setParameter] = React.useState(initialParameter);
+const setup = ({
+  initialParameter,
+  otherParameters,
+}: SetupOpts): {
+  setParameter: (parameter: UiParameter) => void;
+} => {
+  let setParameter: (parameter: UiParameter) => void;
 
-    const onChangeName = (newName: string) => {
-      setParameter(prevParameter => ({ ...prevParameter, name: newName }));
+  const TestWrapper = () => {
+    const [parameter, internalSetParameter] = React.useState(initialParameter);
+    setParameter = internalSetParameter;
+
+    const onChangeName = (_parameterId: string, name: string) => {
+      setParameter({ ...initialParameter, name });
     };
 
     return (
@@ -37,6 +45,8 @@ const setup = ({ initialParameter, otherParameters }: SetupOpts) => {
   };
 
   renderWithProviders(<TestWrapper />);
+
+  return { setParameter };
 };
 
 function fillValue(input: HTMLElement, value: string) {
@@ -77,5 +87,30 @@ describe("ParameterSidebar", () => {
     fillValue(labelInput, "Bar");
     labelInput.blur();
     expect(labelInput).toHaveValue("Bar");
+  });
+
+  it("if the parameter updates, the label should update (metabase#34613)", () => {
+    const initialParameter = createMockUiParameter({
+      id: "id1",
+      name: "Foo",
+      slug: "foo",
+    });
+    const otherParameter = createMockUiParameter({
+      id: "id1",
+      name: "Baz",
+      slug: "baz",
+    });
+    const { setParameter } = setup({
+      initialParameter,
+      otherParameters: [otherParameter],
+    });
+
+    const labelInput = screen.getByLabelText("Label");
+    expect(labelInput).toHaveValue("Foo");
+
+    act(() => {
+      setParameter(otherParameter);
+    });
+    expect(labelInput).toHaveValue("Baz");
   });
 });
