@@ -629,19 +629,19 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     const isEditingModel = queryBuilderMode === "dataset";
     const isNewQuestion = !originalQuestion;
 
-    const shouldShowUnsavedChangesWarningForModels =
-      isEditingModel && (isDirty || isMetadataDirty);
-    const isNewNonEmptyQuestion =
-      question && isNewQuestion && !question.isEmpty();
-    const shouldShowUnsavedChangesWarningForSqlQuery =
-      question != null &&
-      question.isNative() &&
-      (isSavedQuestionChanged || isNewNonEmptyQuestion);
+    if (isEditingModel) {
+      return isDirty || isMetadataDirty;
+    }
 
-    return (
-      shouldShowUnsavedChangesWarningForModels ||
-      shouldShowUnsavedChangesWarningForSqlQuery
-    );
+    if (question && question.isNative()) {
+      if (isNewQuestion) {
+        return !question.isEmpty();
+      }
+
+      return isSavedQuestionChanged;
+    }
+
+    return false;
   },
 );
 
