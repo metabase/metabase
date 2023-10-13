@@ -95,13 +95,21 @@
 ;; be pinned, bookmarked, part of an official collection, verified, and edited a couple hours ago…whereas the card is
 ;; none of those things.
 ;;
-;; Also, be aware that there's [a big epic under way](https://github.com/metabase/metabase/issues/27982) to add
-;; filtering to search results, which should help people find what they're looking for (and spares us from having to
-;; make the above algorithm better).
+;; Also, be aware that as of October 2023 there's [a big epic under
+;; way](https://github.com/metabase/metabase/issues/27982) to add filtering to search results, which should help
+;; people find what they're looking for (and spares us from having to make the above algorithm better).
 ;;
 ;;  <hr />
 
 (ns metabase.search.scoring
+  "Computes a relevancy score for search results using the weighted average of various scorers. Scores are determined by
+  various ways of comparing the text of the search string and the item's title or description, as well as by
+  Metabase-specific features such as how many dashboards a card appears in or whether an item is pinned.
+
+  Get the score for a result with `score-and-result`, and efficiently get the most relevant results with
+  `top-results`.
+
+  Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
   (:require
    [clojure.string :as str]
    [java-time :as t]
