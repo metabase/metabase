@@ -6,11 +6,11 @@
    [medley.core :as m]
    [metabase-enterprise.test :as met]
    [metabase.api.alert :as api.alert]
+   [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models
     :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
    [metabase.pulse.test-util :as pulse.tu]
@@ -74,7 +74,7 @@
         (mt/with-fake-inbox
           (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
                                                        [{:result result}])
-                        public-settings/bcc-enabled? (constantly false)]
+                        email/bcc-enabled? (constantly false)]
             (mt/with-test-user nil
               (metabase.pulse/send-pulse! pulse)))
           (let [results @mt/inbox]

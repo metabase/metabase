@@ -683,9 +683,3 @@
   (deferred-tru "Prefix for upload table names")
   :visibility   :authenticated
   :type         :string)
-
-(defsetting bcc-enabled?
-  (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
-  :visibility :authenticated
-  :type       :boolean
-  :default    true)
