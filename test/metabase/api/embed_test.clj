@@ -353,7 +353,7 @@
 (deftest card-locked-params-test
   (with-embedding-enabled-and-new-secret-key!
     (mt/with-ensure-with-temp-no-transaction!
-      (with-embedding-enabled-and-new-secret-key
+      (with-embedding-enabled-and-new-secret-key!
         (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
           (do-response-formats [response-format request-options]
             (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
@@ -484,7 +484,7 @@
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
-  (with-embedding-enabled-and-new-secret-key
+  (with-embedding-enabled-and-new-secret-key!
     (mt/with-temp! [Card card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* ""]

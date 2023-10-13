@@ -168,10 +168,9 @@
                                            uploads-schema-name "public"
                                            uploads-database-id db-id]
           (let [result (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
-            (is (= uploads-enabled? (:can_upload result))))))))))
+            (is (= uploads-enabled? (:can_upload result)))))))))
 
-(deftest get-database-usage-info-test
->>>>>>> master
+(deftest ^:parallel get-database-usage-info-test
   (mt/with-temp
     [Database {db-id :id}      {}
      Table    {table-id-1 :id} {:db_id db-id}
