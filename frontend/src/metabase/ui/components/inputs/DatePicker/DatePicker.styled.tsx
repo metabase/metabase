@@ -5,7 +5,7 @@ export const getDatePickerOverrides =
   (): MantineThemeOverride["components"] => ({
     DatePicker: {
       defaultProps: {
-        size: "sm",
+        size: "md",
         maxLevel: "month",
         hideOutsideDates: true,
       },
