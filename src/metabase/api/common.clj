@@ -7,25 +7,20 @@
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.api.common.internal
-    :refer [add-route-param-regexes
-            add-route-param-schema
+    :refer [add-route-param-schema
             auto-coerce
-            auto-parse
-            malli-route-dox
-            malli-validate-params
             route-dox
-            route-fn-name
             validate-params
+            route-fn-name
             wrap-response-if-needed]]
    [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.middleware.multipart-params :as mp]
-   [schema.core :as schema]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
@@ -235,25 +230,6 @@
 (defn- parse-defendpoint-args [args]
   (let [parsed (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
-      (throw (ex-info (str "Invalid defendpoint-schema args: " (s/explain-str ::defendpoint-args args))
-                      (s/explain-data ::defendpoint-args args))))
-    (let [{:keys [method route docstr args arg->schema body]} parsed
-          fn-name                                             (route-fn-name method route)
-          route                                               (add-route-param-regexes route)
-          ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
-          ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                         body)]
-      ;; Don't i18n this, it's dev-facing only
-      (when-not docstr
-        (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
-                                  (ns-name *ns*) fn-name)))
-      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
-
-(defn- malli-parse-defendpoint-args [args]
-  (let [parsed (s/conform ::defendpoint-args args)]
-    (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
@@ -261,7 +237,7 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (malli-route-dox method route docstr args
+          docstr                                              (route-dox method route docstr args
                                                                                (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
                                                                                body)]
       ;; Don't i18n this, it's dev-facing only
@@ -296,7 +272,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
@@ -317,37 +293,6 @@
            (compojure/let-request [~args request#]
                                   ~@body)))))))
 
-;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
-;; e.g. `auto-parse`
-(defmacro defendpoint-schema
-  "Define an API function with Plumatic Schema.
-   This automatically does several things:
-
-   -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
-      `Integer/parseInt`
-
-   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
-
-   -  sequentially applies specified annotation functions on args to validate them.
-
-   -  automatically calls `wrap-response-if-needed` on the result of `body`
-
-   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
-      the function in the generated `defroutes` form.
-
-   -  Generates a super-sophisticated Markdown-formatted docstring.
-
-  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
-  {:arglists   '([method route docstr? args schemas-map? & body])
-   :deprecated "0.46.0"}
-  [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
-                                     ~@(validate-params arg->schema)
-                                     (wrap-response-if-needed
-                                      (do ~@body))))))))
-
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -365,26 +310,12 @@
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [& defendpoint-args]
-  (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
-    `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-coerce ~args ~arg->schema
-                                                ~@(malli-validate-params arg->schema)
-                                                (wrap-response-if-needed
-                                                 (do ~@body))))))))
-
-(defmacro defendpoint-async-schema
-  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
-
-  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
-  {:arglists   '([method route docstr? args schemas-map? & body])
-   :deprecated "0.46.0"}
-  [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :args []
-                           :body `((fn ~args
-                                     ~@(validate-params arg->schema)
-                                     ~@body))))))
+                           :body `((auto-coerce ~args ~arg->schema
+                                                ~@(validate-params arg->schema)
+                                                (wrap-response-if-needed
+                                                 (do ~@body))))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -394,15 +325,15 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(malli-validate-params arg->schema)
+                                     ~@(validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
-  (for [[symb varr] (ns-publics nmspace)
+  (for [[_symb varr] (ns-publics nmspace)
         :when       (:is-endpoint? (meta varr))]
-    symb))
+    varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str
@@ -518,7 +449,7 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
-(schema/defn column-will-change? :- schema/Bool
+(mu/defn column-will-change? :- :boolean
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
 
@@ -528,7 +459,7 @@
     (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
     (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  [k :- :keyword object-before-updates :- :map object-updates :- :map]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -536,12 +467,12 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
-(schema/defn reconcile-position-for-collection!
+(mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (schema/maybe su/IntGreaterThanZero)
-   old-position  :- (schema/maybe su/IntGreaterThanZero)
-   new-position  :- (schema/maybe su/IntGreaterThanZero)]
+  [collection-id :- [:maybe ms/PositiveInt]
+   old-position  :- [:maybe ms/PositiveInt]
+   new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (t2/update! model {:collection_id       collection-id
@@ -564,25 +495,25 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (schema/maybe su/IntGreaterThanZero)
-   :collection_position (schema/maybe su/IntGreaterThanZero)
-   schema/Any           schema/Any})
+  [:map
+   [:collection_id       [:maybe ms/PositiveInt]]
+   [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
-   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
-   schema/Any                                 schema/Any})
+  [:map
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
-(schema/defn maybe-reconcile-collection-position!
+(mu/defn maybe-reconcile-collection-position!
   "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
   ([new-model-data :- ModelWithPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
-  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (schema/maybe ModelWithPosition)
+  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
    (let [updated-collection? (and (contains? model-updates :collection_id)
                                   (not= old-collection-id new-collection-id))

@@ -92,7 +92,12 @@
            (visible-joins source-query)))))
 
 (defn- distinct-fields [fields]
-  (m/distinct-by mbql.u/remove-namespaced-options fields))
+  (m/distinct-by
+   (fn [field]
+     (mbql.u/replace (mbql.u/remove-namespaced-options field)
+       [:field id-or-name (opts :guard map?)]
+       [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
+   fields))
 
 (mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
                                                          ::lib.schema.id/field

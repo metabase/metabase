@@ -4,7 +4,7 @@ import { space, breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Icon } from "metabase/core/components/Icon";
 

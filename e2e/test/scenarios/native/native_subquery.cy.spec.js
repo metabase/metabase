@@ -7,6 +7,7 @@ import {
   runNativeQuery,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
@@ -181,6 +182,7 @@ describe("scenarios > question > native subquery", () => {
         query: "SELECT id AS a_unique_column_name FROM PEOPLE",
       },
     }).then(({ body: { id: questionId1 } }) => {
+      cy.wrap(questionId1).as("questionId");
       const tagID = `#${questionId1}`;
       cy.createNativeQuestion({
         name: "Count of People",
@@ -200,7 +202,11 @@ describe("scenarios > question > native subquery", () => {
         // check the original name is in the query
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
-        cy.get(".ace_content:visible").contains("{{#4-a-people-question-1}}");
+        cy.get("@questionId").then(questionId => {
+          cy.get(".ace_content:visible").contains(
+            `{{#${questionId}-a-people-question-1}}`,
+          );
+        });
 
         // change the name
         cy.visit(`/question/${questionId1}`);
@@ -211,9 +217,11 @@ describe("scenarios > question > native subquery", () => {
         // check the name has changed
         cy.visit(`/question/${questionId2}`);
         cy.findByText("Open Editor").click();
-        cy.get(".ace_content:visible").contains(
-          "{{#4-a-people-question-1-changed}}",
-        );
+        cy.get("@questionId").then(questionId => {
+          cy.get(".ace_content:visible").contains(
+            `{{#${questionId}-a-people-question-1-changed}}`,
+          );
+        });
       });
     });
   });
@@ -272,7 +280,7 @@ describe("scenarios > question > native subquery", () => {
     const questionDetails = {
       name: "Nested GUI question",
       query: {
-        "source-table": "card__1",
+        "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
     };

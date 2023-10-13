@@ -20,9 +20,9 @@ import {
   getZoomedObjectId,
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
-import { ObjectDetailWrapper } from "metabase/visualizations/components/ObjectDetail/ObjectDetailWrapper";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
+import { ObjectDetailWrapper } from "./ObjectDetailWrapper";
 import type { ObjectDetailProps, ObjectId } from "./types";
 import { getIdValue, getSingleResultsRow } from "./utils";
 
@@ -46,9 +46,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   const canZoomNextRow = isZooming ? Boolean(getCanZoomNextRow(state)) : false;
 
   return {
-    // FIXME: remove the non-null assertion operator
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    question: getQuestion(state)!,
+    question: getQuestion(state),
     table,
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
@@ -59,6 +57,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     canZoomNextRow,
   };
 };
+type MapStateProps = ReturnType<typeof mapStateToProps>;
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = (dispatch: any) => ({
@@ -77,9 +76,15 @@ const mapDispatchToProps = (dispatch: any) => ({
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
+type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
+
+type OwnProps = Omit<
+  ObjectDetailProps,
+  keyof MapStateProps | keyof MapDispatchProps
+>;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(ObjectDetailWrapper);
+)(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;

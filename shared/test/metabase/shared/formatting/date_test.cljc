@@ -66,6 +66,7 @@
       (is (= (str "Dec 11" date/range-separator "17, 2022")
              (week-of "2022-12-14T11:19:04"))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest ^:parallel format-datetime-with-unit-test
   (testing "special cases"
     (testing "is-exclude"

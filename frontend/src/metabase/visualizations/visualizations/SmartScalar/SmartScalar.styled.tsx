@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Ellipsified from "metabase/core/components/Ellipsified/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium, space } from "metabase/styled-components/theme";

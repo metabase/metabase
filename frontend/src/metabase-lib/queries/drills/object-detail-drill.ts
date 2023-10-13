@@ -81,7 +81,7 @@ function objectDetailDrillType({
   data,
 }: {
   question: Question;
-  column: DatasetColumn;
+  column: DatasetColumn | null;
   value: RowValue | undefined;
   extraData: ClickObject["extraData"];
   data?: ClickObject["data"];

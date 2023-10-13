@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Audit logs" %}
 
-As an administrator of Metabase, you already know the importance of using data to understand your how people interact with your products or services. With the Audit tool, you can use Metabase to understand how people in your organization use Metabase. It's, well, meta!
+As an administrator of Metabase, you already know the importance of using data to understand how people interact with your products or services. With the Audit tool, you can use Metabase to understand how people in your organization use Metabase. It's, well, meta!
 
 To view the audit logs, go to the top right of the screen and click on the **gear** icon > **Admin settings** > **Audit**. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
 

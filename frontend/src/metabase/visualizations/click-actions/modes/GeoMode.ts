@@ -1,8 +1,11 @@
-import type { QueryMode } from "metabase/visualizations/types";
-import { getPivotDrill } from "../drills/PivotDrill";
+import { getPivotDrill } from "metabase/visualizations/click-actions/drills/PivotDrill";
+import type { QueryClickActionsMode } from "../../types";
 import { DefaultMode } from "./DefaultMode";
 
-export const GeoMode: QueryMode = {
+export const GeoMode: QueryClickActionsMode = {
   name: "geo",
-  drills: [...DefaultMode.drills, getPivotDrill({ withLocation: false })],
+  clickActions: [
+    ...DefaultMode.clickActions,
+    getPivotDrill({ withLocation: false }),
+  ],
 };

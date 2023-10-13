@@ -5,7 +5,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type { Collection } from "metabase-types/api";
@@ -66,7 +66,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   );
 
   if (folder.id) {
-    await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+    await waitForLoaderToBeRemoved();
   }
 
   return { onClose };

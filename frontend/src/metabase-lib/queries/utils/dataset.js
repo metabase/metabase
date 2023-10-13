@@ -1,6 +1,4 @@
 import _ from "underscore";
-
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension, { FieldDimension } from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = data =>
@@ -72,66 +70,4 @@ export function findColumnSettingIndexForColumn(columnSettings, column) {
     _.isEqual(fieldRef, normalizeFieldRef(columnSetting.fieldRef)),
   );
   return index;
-}
-
-export function syncTableColumnsToQuery(question) {
-  let query = question.query();
-  const columnSettings = question.settings()["table.columns"];
-  if (columnSettings && query instanceof StructuredQuery) {
-    // clear `fields` first
-    query = query.clearFields();
-
-    // do this before clearing join columns since the default is "none" thus joined columns will be removed
-    const columnDimensions = query.columnDimensions();
-    const columnNames = query.columnNames();
-
-    // clear join's `fields`
-    for (let i = query.joins().length - 1; i >= 0; i--) {
-      const join = query.joins()[i];
-      query = join.clearFields().parent();
-    }
-
-    for (const columnSetting of columnSettings) {
-      if (columnSetting.enabled) {
-        let fieldRef;
-        if (columnSetting.fieldRef) {
-          fieldRef = columnSetting.fieldRef;
-        } else if (columnSetting.name) {
-          const index = _.findIndex(columnNames, n => n === columnSetting.name);
-          if (index >= 0) {
-            fieldRef = columnDimensions[index].mbql();
-          }
-        }
-        if (fieldRef) {
-          const dimension = query.parseFieldReference(fieldRef);
-          // NOTE: this logic should probably be in StructuredQuery
-          if (dimension instanceof FieldDimension && dimension.joinAlias()) {
-            const join = dimension.join();
-            if (join) {
-              query = join.addField(dimension.mbql()).parent();
-            } else {
-              console.warn("missing join?", query, dimension);
-            }
-          } else {
-            query = query.addField(dimension.mbql());
-          }
-        } else {
-          console.warn("Unknown column", columnSetting);
-        }
-      }
-    }
-    // if removing `fields` wouldn't change the resulting columns, just remove it
-    const newColumnDimensions = query.columnDimensions();
-    if (
-      columnDimensions.length === newColumnDimensions.length &&
-      _.all(columnDimensions, (d, i) =>
-        d.isSameBaseDimension(newColumnDimensions[i]),
-      )
-    ) {
-      return query.clearFields().question();
-    } else {
-      return query.question();
-    }
-  }
-  return question;
 }

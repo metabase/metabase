@@ -260,6 +260,33 @@ describe("getStackedTooltipModel", () => {
       }),
     );
   });
+
+  it("should show sum of a metric for the same X-axis value", () => {
+    const hasBreakout = true;
+    const series = [
+      getMockSeries({
+        card: { id: 1, name: "Series 1", _breakoutColumn: StringColumn() },
+        rows: [
+          ["foo", 100],
+          ["foo", 100],
+        ],
+        hasBreakout,
+      }),
+    ];
+    const datas = getDatas({ series, settings });
+    const { headerRows } = getStackedTooltipModel(
+      series,
+      datas,
+      settings,
+      hoveredIndex,
+      dashboard,
+      xValue,
+    );
+
+    expect(headerRows).toHaveLength(1);
+    expect(headerRows[0].value).toBe(200);
+  });
+
   it("should include breakouts from all cards", () => {
     const cardA = { id: 1, name: "Series 1" };
     const cardB = { id: 2, name: "Series 2" };
@@ -285,6 +312,7 @@ describe("getStackedTooltipModel", () => {
     expect(showTotal).toBe(true);
     expect(showPercentages).toBe(true);
   });
+
   it("should include metrics and breakouts from all cards", () => {
     const cardA = { id: 1, name: "Series 1" };
     const cardB = { id: 2, name: "Series 2" };

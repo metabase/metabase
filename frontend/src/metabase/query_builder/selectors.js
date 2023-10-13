@@ -220,10 +220,14 @@ export const getTableMetadata = createSelector(
   (tableId, metadata) => metadata.table(tableId),
 );
 
-export const getTableForeignKeys = createSelector(
-  [getTableMetadata],
-  table => table?.fks ?? [],
-);
+export const getTableForeignKeys = createSelector([getTableMetadata], table => {
+  const tableForeignKeys = table?.fks ?? [];
+  const tableForeignKeysWithoutHiddenTables = tableForeignKeys.filter(
+    tableForeignKey => tableForeignKey.origin != null,
+  );
+
+  return tableForeignKeysWithoutHiddenTables;
+});
 
 export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
@@ -557,11 +561,13 @@ export const getIsDirty = createSelector(
 export const getIsSavedQuestionChanged = createSelector(
   [getQuestion, getOriginalQuestion],
   (question, originalQuestion) => {
+    const isSavedQuestion = originalQuestion != null;
+    const hasChanges = question != null;
+    const wereChangesSaved = question?.isSaved();
+    const hasUnsavedChanges = hasChanges && !wereChangesSaved;
+
     return (
-      question != null &&
-      !question.isSaved() &&
-      originalQuestion != null &&
-      !originalQuestion.isDataset()
+      isSavedQuestion && hasUnsavedChanges && !originalQuestion.isDataset()
     );
   },
 );

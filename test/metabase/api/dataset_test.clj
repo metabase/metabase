@@ -25,9 +25,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -127,38 +125,38 @@
                     :native   {:query "foobar"}}
             result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (schema= {:data        (s/eq {:rows []
-                                            :cols []})
-                        :row_count   (s/eq 0)
-                        :status      (s/eq "failed")
-                        :context     (s/eq "ad-hoc")
-                        :error       #"Syntax error in SQL statement"
-                        :json_query  (s/eq (merge
-                                            query-defaults
-                                            {:database (mt/id)
-                                             :type     "native"
-                                             :native   {:query "foobar"}}))
-                        :database_id (s/eq (mt/id))
-                        :state       (s/eq "42000")
-                        :class       (s/eq "class org.h2.jdbc.JdbcSQLSyntaxErrorException")
-                        s/Keyword    s/Any}
-                       result)))
+          (is (malli= [:map
+                       [:data        [:fn #(= % {:rows [] :cols []})]]
+                       [:row_count   [:= 0]]
+                       [:status      [:= "failed"]]
+                       [:context     [:= "ad-hoc"]]
+                       [:error       #"Syntax error in SQL statement"]
+                       [:json_query  [:fn #(= % (merge
+                                                  query-defaults
+                                                  {:database (mt/id)
+                                                   :type     "native"
+                                                   :native   {:query "foobar"}}))]]
+                       [:database_id [:= (mt/id)]]
+                       [:state       [:= "42000"]]
+                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                      result)))
 
         (testing "\nSaved QueryExecution"
-          (is (schema= {:hash         (Class/forName "[B")
-                        :id           su/IntGreaterThanZero
-                        :result_rows  (s/eq 0)
-                        :row_count    (s/eq 0)
-                        :context      (s/eq :ad-hoc)
-                        :error        #"Syntax error in SQL statement"
-                        :database_id  (s/eq (mt/id))
-                        :executor_id  (s/eq (mt/user->id :rasta))
-                        :native       (s/eq true)
-                        :pulse_id     (s/eq nil)
-                        :card_id      (s/eq nil)
-                        :dashboard_id (s/eq nil)
-                        s/Keyword     s/Any}
-                       (most-recent-query-execution-for-query query))))))))
+          (is (malli=
+               [:map
+                [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
+                [:id           ms/PositiveInt]
+                [:result_rows  [:= 0]]
+                [:row_count    [:= 0]]
+                [:context      [:= :ad-hoc]]
+                [:error        #"Syntax error in SQL statement"]
+                [:database_id  [:= (mt/id)]]
+                [:executor_id  [:= (mt/user->id :rasta)]]
+                [:native       [:= true]]
+                [:pulse_id     nil?]
+                [:card_id      nil?]
+                [:dashboard_id nil?]]
+               (most-recent-query-execution-for-query query))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -268,11 +266,11 @@
       ;; the Database
       (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
       (perms/grant-permissions! (perms-group/all-users) (mt/id) "schema_that_does_not_exist")
-      (is (schema= {:status   (s/eq "failed")
-                    :error    (s/eq "You do not have permissions to run this query.")
-                    s/Keyword s/Any}
-                   (mt/user-http-request :rasta :post "dataset"
-                                         (mt/mbql-query venues {:limit 1})))))))
+      (is (malli= [:map
+                   [:status [:= "failed"]]
+                   [:error  [:= "You do not have permissions to run this query."]]]
+                  (mt/user-http-request :rasta :post "dataset"
+                                        (mt/mbql-query venues {:limit 1})))))))
 
 (deftest compile-test
   (testing "POST /api/dataset/native"
@@ -302,12 +300,12 @@
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-          (is (schema= {:permissions-error? (s/eq true)
-                        :message            (s/eq "You do not have permissions to run this query.")
-                        s/Any               s/Any}
-                       (mt/user-http-request :rasta :post "dataset/native"
-                                             (mt/mbql-query venues
-                                               {:fields [$id $name]})))))))
+          (is (malli= [:map
+                       [:permissions-error? [:= true]]
+                       [:message            [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset/native"
+                                            (mt/mbql-query venues
+                                                           {:fields [$id $name]})))))))
     (testing "We should be able to format the resulting SQL query if desired"
       ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
       (is (= {:query  (str "SELECT\n"

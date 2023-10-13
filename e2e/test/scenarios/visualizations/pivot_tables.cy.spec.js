@@ -8,6 +8,7 @@ import {
   visitIframe,
   dragField,
   leftSidebar,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -31,7 +32,7 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME },
 ];
 
-describe("scenarios > visualizations > pivot tables", () => {
+describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -51,7 +52,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should correctly display saved question", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.get(".Visualization").within(() => {
       assertOnPivotFields();
     });
@@ -63,7 +64,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should not show sub-total data after a switch to other viz type", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Switch to "ordinary" table
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -87,7 +88,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should allow drill through on cells", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("783").click();
@@ -105,7 +106,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should allow drill through on left/top header values", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu and filter to that value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
@@ -129,7 +130,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should rearrange pivoted columns", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Open Pivot table side-bar
     cy.findByTestId("viz-settings-button").click();
@@ -695,7 +696,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should open the download popover (metabase#14750)", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.icon("download").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Download full results"));
@@ -958,8 +959,15 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["field", REVIEWS.RATING, null],
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+            [
+              "field",
+              REVIEWS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+                "base-type": "type/DateTimeWithLocalTZ",
+              },
+            ],
           ],
         },
         type: "query",
@@ -1044,6 +1052,31 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
   });
+
+  it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
+    cy.intercept("POST", "api/card/pivot/*/query", req => {
+      req.on("response", res => {
+        res.setDelay(20_000);
+      });
+    });
+
+    createTestQuestion({ visitQuestion: false }).then(({ body }) => {
+      // manually visiting the question to avoid the auto wait logic,
+      // we need to go to the editor while the query is still loading
+      cy.visit(`/question/${body.id}`);
+    });
+
+    // confirm that it's loading
+    main().findByText("Doing science...").should("be.visible");
+
+    cy.icon("notebook").click();
+
+    main().findByText("User → Source").click();
+
+    popover().findByText("Address").click();
+
+    main().findByText("User → Address").should("be.visible");
+  });
 });
 
 const testQuery = {
@@ -1059,11 +1092,11 @@ const testQuery = {
   database: SAMPLE_DB_ID,
 };
 
-function createAndVisitTestQuestion({ display = "pivot" } = {}) {
+function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  cy.createQuestion(questionDetails, { visitQuestion: true });
+  return cy.createQuestion(questionDetails, { visitQuestion });
 }
 
 function assertOnPivotSettings() {

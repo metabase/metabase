@@ -54,7 +54,7 @@
             (metabase.pulse/send-pulse! pulse)))
         (let [results @mt/inbox]
           (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
-                                         :to      ["rasta@metabase.com"]
+                                         :bcc     ["rasta@metabase.com"]
                                          :subject "Pulse: Test Pulse"}]}
                  (m/dissoc-in results ["rasta@metabase.com" 0 :body])))
           (get-in results ["rasta@metabase.com" 0 :body 0 :result]))))))

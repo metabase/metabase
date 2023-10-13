@@ -1,10 +1,14 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
-import { setupDashboardEndpoints } from "__support__/server-mocks";
+import {
+  setupDashboardEndpoints,
+  setupDashboardNotFoundEndpoint,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "./use-dashboard-query";
 
 const TEST_DASHBOARD = createMockDashboard();
@@ -14,13 +18,11 @@ const TestComponent = () => {
     id: TEST_DASHBOARD.id,
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  } else if (error) {
-    return <div>Error</div>;
-  } else {
-    return <div>{data?.name}</div>;
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
+
+  return <div>{data?.name}</div>;
 };
 
 const setup = () => {
@@ -31,17 +33,19 @@ const setup = () => {
 describe("useDatabaseQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_DASHBOARD.name)).toBeInTheDocument();
   });
+
   it("should return an error when it can't find a dashboard", async () => {
+    setupDashboardNotFoundEndpoint(TEST_DASHBOARD);
     renderWithProviders(<TestComponent />);
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
-    expect(screen.getByText("Error")).toBeInTheDocument();
+    await waitForLoaderToBeRemoved();
+    expect(screen.getByText("An error occurred")).toBeInTheDocument();
   });
 });

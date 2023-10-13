@@ -70,7 +70,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(doseq [feature [:actions :actions/custom :uploads]]
+(doseq [feature [:actions
+                 :actions/custom
+                 :table-privileges
+                 :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
@@ -106,17 +109,15 @@
 
     message))
 
-(defmethod driver.common/current-db-time-date-formatters :postgres
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
-
-(defmethod driver.common/current-db-time-native-query :postgres
-  [_]
-  "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
-
-(defmethod driver/current-db-time :postgres
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :postgres
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "show timezone;")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 (defmethod driver/connection-properties :postgres
   [_]
@@ -751,13 +752,16 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR(255)"
-    ::upload/text        "TEXT"
-    ::upload/int         "INTEGER"
-    ::upload/float       "FLOAT"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigserial]
+    ::upload/string-pk                [[:varchar 255] :primary-key]
+    ::upload/float                    [:float]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -824,24 +828,24 @@
     (jdbc/query
      conn-spec
      (str/join
-        "\n"
-        ["with table_privileges as ("
-         "select"
-         "  NULL as role,"
-         "  t.schemaname as schema,"
-         "  t.tablename as table,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
-         "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
-         "from pg_catalog.pg_tables t"
-         "where t.schemaname !~ '^pg_'"
-         "  and t.schemaname <> 'information_schema'"
-         "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-         ")"
-         "select t.*"
-         "from table_privileges t"
-         "where t.select or t.update or t.insert or t.delete"]))))
+      "\n"
+      ["with table_privileges as ("
+       "select"
+       "  NULL as role,"
+       "  t.schemaname as schema,"
+       "  t.tablename as table,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
+       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+       "from pg_catalog.pg_tables t"
+       "where t.schemaname !~ '^pg_'"
+       "  and t.schemaname <> 'information_schema'"
+       "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+       ")"
+       "select t.*"
+       "from table_privileges t"
+       "where t.select or t.update or t.insert or t.delete"]))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

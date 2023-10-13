@@ -1,6 +1,6 @@
 import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
+import { getEmailDomain } from "metabase/lib/utils";
 
 import type {
   Channel,
@@ -9,9 +9,8 @@ import type {
   Pulse,
   PulseParameter,
 } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
 import {
-  hasDefaultParameterValue,
+  getDefaultValuePopulatedParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 
@@ -98,7 +97,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
     return true;
   }
 
-  const recipientDomain = MetabaseUtils.getEmailDomain(recipient.email);
+  const recipientDomain = getEmailDomain(recipient.email);
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
     _.isEmpty(allowedDomains) ||
@@ -204,20 +203,11 @@ export function getActivePulseParameters(
   pulse: Pulse,
   parameters: PulseParameter[],
 ) {
-  const pulseParameters = getPulseParameters(pulse);
-  const pulseParametersById = _.indexBy(pulseParameters, "id");
-
-  return parameters
-    .map(parameter => {
-      const pulseParameter = pulseParametersById[parameter.id];
-      if (!pulseParameter && !hasDefaultParameterValue(parameter)) {
-        return;
-      }
-
-      return {
-        ...parameter,
-        value: pulseParameter?.value ?? parameter.default,
-      };
-    })
-    .filter(isNotNull);
+  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+    map[parameter.id] = parameter.value;
+    return map;
+  }, {});
+  return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
+    (parameter: any) => parameter.value != null,
+  );
 }

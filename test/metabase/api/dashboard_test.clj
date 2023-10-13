@@ -179,11 +179,12 @@
 
 (deftest ^:parallel create-dashboard-validation-test
   (testing "POST /api/dashboard"
-    (is (= {:errors {:name "value must be a non-blank string."}}
+    (is (= {:errors {:name "value must be a non-blank string."}
+            :specific-errors {:name ["should be a string, received: nil" "non-blank string, received: nil"]}}
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
-    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                      "Each parameter must be a map with :id and :type keys")}}
+    (is (= {:errors {:parameters "nullable sequence of parameter must be a map with :id and :type keys"}
+            :specific-errors {:parameters ["invalid type, received: \"abc\""]}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 
@@ -523,7 +524,27 @@
                  (into {} (for [[field-id m] response]
                             [field-id (update m :values (partial take 3))])))))))))
 
-
+(deftest dashboard-param-link-to-a-field-without-full-field-values-test
+  (testing "GET /api/dashboard/:id"
+    (t2.with-temp/with-temp
+      [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+       :model/Card {card-id :id} {:name "Dashboard Test Card"}
+       :model/DashboardCard _ {:dashboard_id       dashboard-id
+                               :card_id            card-id
+                               :parameter_mappings [{:card_id      card-id
+                                                     :parameter_id "foo"
+                                                     :target       [:dimension
+                                                                    [:field (mt/id :venues :name) nil]]}]}]
+      (t2/delete! :model/FieldValues :field_id (mt/id :venues :name) :type :full)
+      (testing "Request triggers computation of field values if missing (#30218)"
+        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                               "25°"
+                                                               "33 Taps"]
+                                       :field_id              (mt/id :venues :name)
+                                       :human_readable_values []}}
+               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                 (into {} (for [[field-id m] response]
+                            [field-id (update m :values (partial take 3))])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
@@ -878,8 +899,10 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (t2/delete! Dashboard :id (u/the-id response)))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))))
 
+(deftest copy-dashboard-test-2
+  (testing "POST /api/dashboard/:id/copy"
     (testing "Ensure name / description / user set when copying"
       (t2.with-temp/with-temp [Dashboard dashboard  {:name        "Test Dashboard"
                                                      :description "An old description"}]
@@ -899,8 +922,9 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (t2/delete! Dashboard :id (u/the-id response))))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))))
 
+(deftest copy-dashboard-test-3
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp [Collection source-coll {:name "Source collection"}
@@ -984,7 +1008,11 @@
                     "Should preserve the titles of the original cards"))
               (testing "Should not deep-copy models"
                 (is (every? (comp false? :dataset) copied-cards)
-                    "Copied a model"))))))
+                    "Copied a model")))))))))
+
+(deftest copy-dashboard-test-4
+  (testing "Deep copy: POST /api/dashboard/:id/copy"
+    (mt/dataset sample-dataset
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Collection no-read-coll {:name "Crowberto lacks write coll"}
@@ -1062,7 +1090,11 @@
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
                   ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count)))))))))
+                  (is (= 2 (->> resp :uncopied count))))))))))))
+
+(deftest copy-dashboard-test-5
+  (testing "Deep copy: POST /api/dashboard/:id/copy"
+    (mt/dataset sample-dataset
       (testing "When source and destination are the same"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Dashboard  dashboard {:name          "Dashboard to be Copied"
@@ -1398,46 +1430,47 @@
 
 (deftest ^:parallel e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-       (t2.with-temp/with-temp
-         [Dashboard               {dashboard-id :id}  {}
-          Card                    {card-id-1 :id}     {}
-          Card                    {card-id-2 :id}     {}
-          :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
-          :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
-          :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
-          DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
-          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
-          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
+    (mt/with-ensure-with-temp-no-transaction!
+      (t2.with-temp/with-temp
+        [Dashboard               {dashboard-id :id}  {}
+         Card                    {card-id-1 :id}     {}
+         Card                    {card-id-2 :id}     {}
+         :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+         :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+         :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
+         DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
+         DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
+         DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                         {:ordered_tabs  [{:id   dashtab-id-1
-                                                                           :name "Tab 1 edited"}
-                                                                          {:id   dashtab-id-2
-                                                                           :name "Tab 2"}
-                                                                          {:id   -1
-                                                                           :name "New tab"}]
-                                                          :cards [{:id     dashcard-id-1
-                                                                   :size_x 4
-                                                                   :size_y 4
-                                                                   :col    1
-                                                                   :row    1
-                                                                   ;; initialy was in tab1, now in tab 2
-                                                                   :dashboard_tab_id dashtab-id-2
-                                                                   :card_id card-id-1}
-                                                                  {:id     dashcard-id-2
-                                                                   :dashboard_tab_id dashtab-id-2
-                                                                   :size_x 2
-                                                                   :size_y 2
-                                                                   :col    2
-                                                                   :row    2}
-                                                                  ;; remove the dashcard3 and create a new card using negative numbers
-                                                                  ;; and assign into the newly created dashcard
-                                                                  {:id     -1
-                                                                   :size_x 1
-                                                                   :size_y 1
-                                                                   :col    3
-                                                                   :row    3
-                                                                   :dashboard_tab_id -1
-                                                                   :card_id card-id-2}]})]
+                                         {:ordered_tabs  [{:id   dashtab-id-1
+                                                           :name "Tab 1 edited"}
+                                                          {:id   dashtab-id-2
+                                                           :name "Tab 2"}
+                                                          {:id   -1
+                                                           :name "New tab"}]
+                                          :cards [{:id     dashcard-id-1
+                                                   :size_x 4
+                                                   :size_y 4
+                                                   :col    1
+                                                   :row    1
+                                                   ;; initialy was in tab1, now in tab 2
+                                                   :dashboard_tab_id dashtab-id-2
+                                                   :card_id card-id-1}
+                                                  {:id     dashcard-id-2
+                                                   :dashboard_tab_id dashtab-id-2
+                                                   :size_x 2
+                                                   :size_y 2
+                                                   :col    2
+                                                   :row    2}
+                                                  ;; remove the dashcard3 and create a new card using negative numbers
+                                                  ;; and assign into the newly created dashcard
+                                                  {:id     -1
+                                                   :size_x 1
+                                                   :size_y 1
+                                                   :col    3
+                                                   :row    3
+                                                   :dashboard_tab_id -1
+                                                   :card_id card-id-2}]})]
           (testing "tabs got updated correctly "
             (is (=? [{:id           dashtab-id-1
                       :dashboard_id dashboard-id
@@ -1447,7 +1480,7 @@
                       :dashboard_id dashboard-id
                       :name         "Tab 2"
                       :position 1}
-                     {:id           #hawk/schema (s/pred pos-int?)
+                     {:id           #hawk/malli [:fn pos-int?]
                       :dashboard_id dashboard-id
                       :name         "New tab"
                       :position     2}]
@@ -1470,7 +1503,7 @@
                         :size_y           2
                         :col              2
                         :row              2}
-                       {:id               #hawk/schema (s/pred pos-int?)
+                       {:id               #hawk/malli [:fn pos-int?]
                         :size_x           1
                         :size_y           1
                         :col              3
@@ -1479,11 +1512,11 @@
                         :card_id           card-id-2}]
                       (:cards resp))))
             (testing "dashcard 3 got deleted"
-             (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
+              (is (nil? (t2/select-one DashboardCard :id dashcard-id-3))))))))))
 
 (deftest ^:parallel e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-    (t2.with-temp/with-temp
+    (mt/with-temp!
       [Dashboard           {dashboard-id :id}  {}
        Card                {card-id-1 :id}     {}
        Card                {card-id-2 :id}     {}
@@ -1618,11 +1651,11 @@
                           :card_id          card-id-1
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-1-id}
-                         {:id               #hawk/schema (s/pred pos-int?)
+                         {:id               #hawk/malli [:fn pos-int?]
                           :card_id          card-id-1
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-1-id}
-                         {:id               #hawk/schema (s/pred pos-int?)
+                         {:id               #hawk/malli [:fn pos-int?]
                           :card_id          card-id-2
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-2-id}]
@@ -2647,7 +2680,7 @@
                  (:parameters dashboard))))))
 
     (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
                                             :parameters [{:id                    "_value_"
@@ -2656,7 +2689,7 @@
                                                           :values_source_type    "random-type"
                                                           :values_source_config {"values" [1 2 3]}}]})
                      [:errors :parameters])))
-      (is (= "value may be nil, or if non-nil, value must be an array. Each parameter must be a map with :id and :type keys"
+      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
                                             :parameters [{:id                    "_value_"
@@ -2990,10 +3023,10 @@
                       %categories.name (sort [%venues.price %categories.name])}
                      {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
           (testing "filtered-ids cannot be nil"
-            (is (= {:errors {:filtered (str "value must satisfy one of the following requirements:"
-                                            " 1) value must be a valid integer greater than zero."
-                                            " 2) value must be an array. Each value must be a valid integer greater than zero."
-                                            " The array cannot be empty.")}}
+            (is (= {:errors {:filtered
+                             "value must be an integer greater than zero., or one or more value must be an integer greater than zero."}
+                    :specific-errors
+                    {:filtered ["value must be an integer greater than zero., received: nil" "invalid type, received: nil"]}}
                    (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
       (testing "should check perms for the Fields in question"
         (mt/with-temp-copy-of-db
@@ -3087,8 +3120,8 @@
                                           {:parameters [{:id    "_THIS_PARAMETER_DOES_NOT_EXIST_"
                                                          :value 3}]}))))
           (testing "Should return sensible error message for invalid parameter input"
-            (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                              "Each value must be a parameter map with an 'id' key")}}
+            (is (= {:errors {:parameters "nullable sequence of value must be a parameter map with an id key"},
+                    :specific-errors {:parameters ["invalid type, received: {:_PRICE_ 3}"]}}
                    (mt/user-http-request :rasta :post 400 url
                                          {:parameters {"_PRICE_" 3}}))))
           (testing "Should ignore parameters that are valid for the Dashboard but not part of this Card (no mapping)"
@@ -3158,19 +3191,20 @@
 
 (deftest ^:parallel dashboard-card-query-export-format-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
-    (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-      (doseq [export-format [:csv :json :xlsx]]
-        (testing (format "Export format = %s" export-format)
-          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
-            (is (= (streaming.test-util/process-query-basic-streaming
-                    export-format
-                    (mt/mbql-query venues {:filter [:= $price 4]}))
-                   (parse-export-format-results
-                    (mt/user-real-request :rasta :post 200 url
-                                          {:request-options {:as :byte-array}}
-                                          :parameters (json/generate-string [{:id    "_PRICE_"
-                                                                              :value 4}]))
-                    export-format)))))))))
+    (mt/with-ensure-with-temp-no-transaction!
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
+        (doseq [export-format [:csv :json :xlsx]]
+          (testing (format "Export format = %s" export-format)
+            (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
+              (is (= (streaming.test-util/process-query-basic-streaming
+                      export-format
+                      (mt/mbql-query venues {:filter [:= $price 4]}))
+                     (parse-export-format-results
+                      (mt/user-real-request :rasta :post 200 url
+                                            {:request-options {:as :byte-array}}
+                                            :parameters (json/generate-string [{:id    "_PRICE_"
+                                                                                :value 4}]))
+                      export-format))))))))))
 
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))

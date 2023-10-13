@@ -12,7 +12,8 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
-  getisNavigatingBackToDashboard,
+  getIsNavigatingBackToDashboard,
+  getSelectedTabId,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -21,10 +22,11 @@ const mapStateToProps = (state, props) => {
   return {
     dashboard: getDashboardComplete(state, props),
     dashcardData: getCardData(state, props),
+    selectedTabId: getSelectedTabId(state),
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 
@@ -88,6 +90,12 @@ export default ComposedComponent =>
             reload: false,
             clearCache: true,
           });
+        } else if (
+          !_.isEqual(nextProps.selectedTabId, this.props.selectedTabId)
+        ) {
+          this.props.fetchDashboardCardData();
+          this.props.fetchDashboardCardMetadata();
+          return;
         }
       }
 

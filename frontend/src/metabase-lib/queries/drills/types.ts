@@ -20,6 +20,11 @@ export interface ClickObjectDimension {
   column: DatasetColumn;
 }
 
+export interface ClickObjectDataRow {
+  col: DatasetColumn | null; // can be null for custom columns
+  value: RowValue;
+}
+
 export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
@@ -34,8 +39,5 @@ export interface ClickObject {
     cols: DatasetColumn[];
   };
   extraData?: Record<string, unknown>;
-  data?: {
-    col: DatasetColumn;
-    value: RowValue;
-  }[];
+  data?: ClickObjectDataRow[];
 }

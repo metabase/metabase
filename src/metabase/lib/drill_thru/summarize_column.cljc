@@ -17,6 +17,7 @@
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
+    ;; I'm not really super clear on how the FE is supposed to be able to display these.
     (let [aggregation-ops (concat [:distinct]
                                   (when (lib.types.isa/summable? column)
                                     [:sum :avg]))]
@@ -30,8 +31,14 @@
   {:type         :drill-thru/summarize-column
    :aggregations aggregations})
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/summarize-column
-  [query stage-number {:keys [column] :as _drill-thru} aggregation & _]
+(mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/summarize-column :- ::lib.schema/query
+  [query                            :- ::lib.schema/query
+   stage-number                     :- :int
+   {:keys [column] :as _drill-thru} :- ::lib.schema.drill-thru/drill-thru.summarize-column
+   aggregation                      :- [:or
+                                        ::lib.schema.drill-thru/drill-thru.summarize-column.aggregation-type
+                                        ;; I guess we'll be ok with strings too for now.
+                                        [:enum "distinct" "sum" "avg"]]]
   ;; TODO: The original FE code for this does `setDefaultDisplay` as well.
   (let [aggregation-fn (case (keyword aggregation)
                          :distinct lib.aggregation/distinct
