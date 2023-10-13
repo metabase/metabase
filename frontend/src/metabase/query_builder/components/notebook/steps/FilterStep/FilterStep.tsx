@@ -1,12 +1,17 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
+import type { PopoverBaseProps } from "metabase/ui";
 import { FilterPicker } from "metabase/common/components/FilterPicker";
 import * as Lib from "metabase-lib";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 import type LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
+
+const POPOVER_PROPS: PopoverBaseProps = {
+  offset: { crossAxis: 32, mainAxis: 4 },
+};
 
 export function FilterStep({
   query: legacyQuery,
@@ -58,6 +63,7 @@ export function FilterStep({
         readOnly={readOnly}
         color={color}
         isLastOpened={isLastOpened}
+        popoverProps={POPOVER_PROPS}
         renderName={renderFilterName}
         renderPopover={(filter, index) => (
           <FilterPopover
