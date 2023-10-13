@@ -1077,3 +1077,8 @@
                1234.1234567890124
                1234.1234567890123456M]]
              (mt/rows (mt/process-query query)))))))
+
+(deftest ^:parallel test-bigquery-log
+  (testing "correct format of log10 for BigQuery"
+    (is (= ["log(150, 10)"]
+           (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))

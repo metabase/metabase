@@ -313,7 +313,7 @@
 
 (def Tab-Id-Schema
   "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
-  (s/pred neg-int? 'ui-temp-id?))
+  [:fn neg-int?])
 
 (defn- expected-filters
   [{:keys [model-index-value] :as info}]
@@ -364,9 +364,9 @@
                                                    :linked-field-id %reviews.product_id}
                                                   {:linked-table-id $$orders
                                                    :linked-field-id %orders.product_id}])})]
-          (is (=? [{:id   #hawk/schema Tab-Id-Schema
+          (is (=? [{:id   #hawk/malli Tab-Id-Schema
                     :name "A look at Reviews" :position 0}
-                   {:id   #hawk/schema Tab-Id-Schema
+                   {:id   #hawk/malli Tab-Id-Schema
                     :name "A look at Orders" :position 1}]
                   (:ordered_tabs dash)))
           (testing "The first card for each tab is a linked model card to the source model"
@@ -434,9 +434,9 @@
                                                         :linked-field-id %reviews.product_id}
                                                        {:linked-table-id $$orders
                                                         :linked-field-id %orders.product_id}])})]
-              (is (=? [{:id   #hawk/schema Tab-Id-Schema
+              (is (=? [{:id   #hawk/malli Tab-Id-Schema
                         :name "A look at Reviews" :position 0}
-                       {:id   #hawk/schema Tab-Id-Schema
+                       {:id   #hawk/malli Tab-Id-Schema
                         :name "A look at Orders" :position 1}]
                       (:ordered_tabs dash)))
               (testing "All query cards have the correct filters"

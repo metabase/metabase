@@ -3,10 +3,12 @@
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -68,18 +70,27 @@
    (test-drill-applications query context 0))
 
   ([query context depth]
-   (doseq [drill (lib/available-drill-thrus query -1 context)
-           args  (drill-thru-test-args drill)]
-     (testing (str "\ndrill =\n" (u/pprint-to-str drill)
-                   "\nargs =\n" (u/pprint-to-str args))
-       (try
-         (let [query' (apply lib/drill-thru query -1 drill args)]
-           (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
-           (when (< depth test-drill-applications-max-depth)
-             (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
-               (test-drill-applications query' context (inc depth)))))
-         (catch #?(:clj Throwable :cljs :default) e
-           (is (not e))))))))
+   (testing "\nTest drill applications"
+     (doseq [drill (lib/available-drill-thrus query -1 context)
+             args  (drill-thru-test-args drill)]
+       (condp = (:type drill)
+         :drill-thru/pivot
+         (log/warnf "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
+
+         :drill-thru/underlying-records
+         (log/warnf "drill-thru-method is not yet implemented for :drill-thru/underlying-records (#34233)")
+
+         (testing (str "\nquery =\n" (u/pprint-to-str query)
+                       "\ndrill =\n" (u/pprint-to-str drill)
+                       "\nargs =\n" (u/pprint-to-str args))
+           (try
+             (let [query' (apply lib/drill-thru query -1 drill args)]
+               (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
+               (when (< depth test-drill-applications-max-depth)
+                 (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))
+                   (test-drill-applications query' context (inc depth)))))
+             (catch #?(:clj Throwable :cljs :default) e
+               (is (not e))))))))))
 
 (deftest ^:parallel table-view-available-drill-thrus-headers-pk-test
   (testing "column headers: click on"
@@ -340,6 +351,132 @@
                                          "2018-05-15T08:04:04.58Z"]})}]
                 (lib/available-drill-thrus orders-query -1 context)))
         (test-drill-applications orders-query context)))))
+
+(def ^:private orders-count-aggregation-breakout-on-created-at-by-month-query
+  "ORDERS + count aggregation + breakout on CREATED_AT by month query"
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/aggregate (lib/count))
+      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))))
+
+(deftest ^:parallel timeseries-breakout-table-view-available-drill-thrus-test
+  (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"
+    (testing "options for CREATED_AT column + value"
+      (let [query             orders-count-aggregation-breakout-on-created-at-by-month-query
+            count-column      (m/find-first #(= (:name %) "count")
+                                            (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
+            _                 (assert count-column)
+            created-at-column (m/find-first #(= (:name %) "CREATED_AT")
+                                            (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
+            _                 (assert created-at-column)
+            row               [{:column-name "CREATED_AT", :value "2018-05-01T00:00:00Z"}
+                               {:column-name "count", :value 457}]
+            expected-drills   {:quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                                                    :type      :drill-thru/quick-filter
+                                                    :operators [{:name "<"}
+                                                                {:name ">"}
+                                                                {:name "="}
+                                                                {:name "≠"}]}
+                               :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
+                                                    :type       :drill-thru/underlying-records
+                                                    :row-count  2
+                                                    :table-name "Orders"}
+                               :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
+                                                    :display-name "See this month by week"
+                                                    :type         :drill-thru/zoom-in.timeseries
+                                                    :column       {:name                             "CREATED_AT"
+                                                                   :metabase.lib.field/temporal-unit :month}
+                                                    :value        "2018-05-01T00:00:00Z"
+                                                    :next-unit    :week}}]
+        (let [context {:column created-at-column
+                       :value  "2018-05-01T00:00:00Z"
+                       :row    row}]
+          (testing (str "\ncontext =\n" (u/pprint-to-str context))
+            (is (=? (map expected-drills [:quick-filter :zoom-in.timeseries])
+                    (lib/available-drill-thrus query -1 context)))
+            (test-drill-applications query context)))
+        (testing "with :dimensions"
+          (let [context {:column     count-column
+                         :value      457
+                         :row        row
+                         :dimensions [{:column-name "CREATED_AT", :value "2018-05-01T00:00:00Z"}]}]
+            (testing (str "\ncontext =\n" (u/pprint-to-str context))
+              (is (=? (map expected-drills [:quick-filter :underlying-records :zoom-in.timeseries])
+                      (lib/available-drill-thrus query -1 context)))
+              (test-drill-applications query context))))))))
+
+(deftest ^:parallel count-aggregation-table-view-available-drill-thrus-test
+  (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"
+    (testing "options for COUNT column + value"
+      (let [query   orders-count-aggregation-breakout-on-created-at-by-month-query
+            column  (m/find-first #(= (:name %) "count")
+                                  (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
+            _       (assert column)]
+        (doseq [column [column
+                        ;; should still work even if we're using metadata as returned by the QP...
+                        ;; see [[metabase.lib.drill-thru/icky-hack-add-source-uuid-to-aggregation-column-metadata]]
+                        (-> column
+                            (dissoc :lib/source-uuid)
+                            (assoc :aggregation-index 0))]
+                :let   [context {:column column
+                                 :value  "2018-05"
+                                 :row    [{:column-name "CREATED_AT", :value "2018-05"}
+                                          {:column-name "count", :value 10}]}]]
+          (testing (str "\ncontext =\n" (u/pprint-to-str context))
+            (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
+                      :type     :drill-thru/pivot
+                      :pivots   {:category [{:name "NAME"}
+                                            {:name "SOURCE"}
+                                            {:name "TITLE"}
+                                            {:name "CATEGORY"}
+                                            {:name "VENDOR"}]
+                                 :location [{:name "CITY"}
+                                            {:name "STATE"}
+                                            {:name "ZIP"}]}}
+                     {:lib/type :metabase.lib.drill-thru/drill-thru
+                      :type     :drill-thru/quick-filter
+                      :operators [{:name "<"}
+                                  {:name ">"}
+                                  {:name "="}
+                                  {:name "≠"}]}]
+                    (lib/available-drill-thrus query -1 context)))
+            (test-drill-applications query context)))))))
+
+(deftest ^:parallel table-view-available-drill-thrus-aggregate-column-header-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
+                  (lib/aggregate (lib/max (meta/field-metadata :orders :discount)))
+                  (lib/breakout (meta/field-metadata :orders :product-id))
+                  (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                    (lib/with-temporal-bucket :month))))]
+    (testing "Drills for count aggregation"
+      (let [count-col (m/find-first (fn [col]
+                                      (= (:display-name col) "Count"))
+                                    (lib/returned-columns query))]
+        (is (some? count-col))
+        (let [context {:column count-col
+                       :value  nil}]
+          (is (=? [{:type   :drill-thru/sort
+                    :column {:name "count"}}
+                   {:type         :drill-thru/summarize-column
+                    :column       {:name "count"}
+                    :aggregations [:distinct :sum :avg]}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for max(discount) aggregation"
+      (let [max-of-discount-col (m/find-first (fn [col]
+                                                (= (:display-name col) "Max of Discount"))
+                                              (lib/returned-columns query))]
+        (is (some? max-of-discount-col))
+        (let [context {:column max-of-discount-col
+                       :value  nil}]
+          (is (=? [{:type   :drill-thru/sort
+                    :column {:display-name "Max of Discount"}}
+                   {:type         :drill-thru/summarize-column
+                    :column       {:display-name "Max of Discount"}
+                    :aggregations [:distinct :sum :avg]}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))))
 
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
 #_(deftest ^:parallel histogram-available-drill-thrus-test

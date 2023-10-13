@@ -98,10 +98,10 @@ describe("metabase/parameters/utils/dashboards", () => {
       });
     });
 
-    it("should default", () => {
+    it("should not default", () => {
       expect(setParameterName({}, "")).toEqual({
-        name: "unnamed",
-        slug: "unnamed",
+        name: "",
+        slug: "",
       });
     });
   });

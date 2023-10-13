@@ -2,6 +2,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [dev.debug-qp :as debug-qp]
    [dev.model-tracking :as model-tracking]
    [honeysql.core :as hsql]
@@ -24,6 +25,7 @@
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.connection]
@@ -58,13 +60,38 @@
   (mbc/init!)
   (reset! initialized? true))
 
+(defn deleted-inmem-databases
+  "Finds in-memory Databases for which the underlying in-mem h2 db no longer exists."
+  []
+  (let [h2-dbs (t2/select :model/Database :engine :h2)
+        in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
+        can-connect? (fn [db]
+                       (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+                         (try
+                           (driver/can-connect? :h2 (:details db))
+                           (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException _
+                             false)
+                           (catch Exception e
+                             (log/error e "Error checking in-memory database for deletion")
+                             ;; we don't want to delete these, so just pretend we could connect
+                             true))))]
+    (remove can-connect? (filter in-memory? h2-dbs))))
+
+(defn prune-deleted-inmem-databases!
+  "Delete any in-memory Databases to which we can't connect (in order to trigger cleanup of their related tasks, which
+  will otherwise spam logs)."
+  []
+  (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
+    (t2/delete! :model/Database :id [:in outdated-ids])))
+
 (defn start!
   []
   (server/start-web-server! #'handler/app)
-  (when config/is-dev?
-    (with-out-str (malli-dev/start!)))
   (when-not @initialized?
-    (init!)))
+    (init!))
+  (when config/is-dev?
+    (prune-deleted-inmem-databases!)
+    (with-out-str (malli-dev/start!))))
 
 (defn stop!
   []

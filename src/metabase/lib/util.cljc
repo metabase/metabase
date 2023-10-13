@@ -112,7 +112,10 @@
 
         (= [:joins :conditions] [first-loc last-loc])
         (throw (ex-info (i18n/tru "Cannot remove the final join condition")
-                        {:conditions (get-in stage location)}))
+                        {:error ::cannot-remove-final-join-condition
+                         :conditions (get-in stage location)
+                         :join (get-in stage (pop location))
+                         :stage stage}))
 
         (= [:joins :fields] [first-loc last-loc])
         (update-in stage (pop location) dissoc last-loc)
