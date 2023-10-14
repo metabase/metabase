@@ -536,7 +536,7 @@
                                      :recipients   recipients
                                      :message-type message-type
                                      :message      message
-                                     :bcc?         true})
+                                     :bcc?         (email/bcc-enabled?)})
       (catch ExceptionInfo e
         (when (not= :smtp-host-not-set (:cause (ex-data e)))
           (throw e))))))

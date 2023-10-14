@@ -156,7 +156,7 @@
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
    of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
 
-   If handle-sql-comments is true (default) then we make a best effort to ignore params in SQL comments."
+   If `handle-sql-comments` is true (default) then we make a best effort to ignore params in SQL comments."
   ([s :- s/Str]
    (parse s true))
   ([s :- s/Str, handle-sql-comments :- s/Bool]
