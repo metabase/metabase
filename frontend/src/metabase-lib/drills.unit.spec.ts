@@ -1092,18 +1092,17 @@ describe("availableDrillThrus", () => {
         operators: ["<", ">", "=", "≠"],
       },
     },
-    // FIXME: quick-filter returns extra "<", ">" operators for cell with no value (metabase#34445)
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/quick-filter",
-    //     operators: ["=", "≠"],
-    //   },
-    // },
-    // endregion
+    // quick-filter returns extra "<", ">" operators for cell with no value (metabase#34445)
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/quick-filter",
+        operators: ["=", "≠"],
+      },
+    },
 
     // region --- drill-thru/underlying-records
     {
