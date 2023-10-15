@@ -864,28 +864,26 @@ describe("availableDrillThrus", () => {
         initialOp: null,
       },
     },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
     // endregion
 
     // region --- drill-thru/summarize-column
