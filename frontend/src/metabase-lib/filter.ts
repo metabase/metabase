@@ -482,7 +482,23 @@ export function isCustomFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  return !filterParts(query, stageIndex, filter);
+  // This is a hack, we should get a real API method for is_custom_filter
+  return (
+    !filterParts(query, stageIndex, filter) &&
+    !isSegmentFilter(query, stageIndex, filter)
+  );
+}
+
+export function isSegmentFilter(
+  query: Query,
+  stageIndex: number,
+  filter: FilterClause,
+) {
+  // This is a hack, we should get a real API method for is_segment
+  return (
+    !filterParts(query, stageIndex, filter) &&
+    displayInfo(query, stageIndex, filter)?.name !== "nil"
+  );
 }
 
 function findTemporalBucket(

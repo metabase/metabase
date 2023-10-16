@@ -12,7 +12,7 @@ import type { IconName } from "metabase/core/components/Icon";
 
 import * as Lib from "metabase-lib";
 
-import { StyledAccordionList } from "../FilterPicker.styled";
+import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
   query: Lib.Query;
@@ -47,7 +47,7 @@ export type SegmentListItem = Lib.SegmentDisplayInfo & {
 const isSegmentListItem = (
   item: ColumnListItem | SegmentListItem,
 ): item is SegmentListItem => {
-  return (item as SegmentListItem).segment !== undefined;
+  return (item as SegmentListItem).segment != null;
 };
 
 /**
@@ -73,10 +73,10 @@ export function FilterColumnPicker({
         column,
       }));
 
-      const includeSegments = !groupInfo.isFromJoin;
+      const includeSegments = (groupInfo as Lib.TableDisplayInfo).isSourceTable;
 
       const segmentItems = includeSegments
-        ? Lib.availableSegments(query).map((segment: Lib.SegmentMetadata) => ({
+        ? Lib.availableSegments(query).map(segment => ({
             ...Lib.displayInfo(query, stageIndex, segment),
             segment,
           }))

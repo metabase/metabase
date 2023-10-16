@@ -146,7 +146,6 @@ export type SegmentDisplayInfo = {
   displayName: string;
   longDisplayName: string;
   description: string;
-  effectiveType: string;
 };
 
 export type AggregationOperatorDisplayInfo = {
