@@ -1379,7 +1379,7 @@
                                         :linkTextTemplate "here is my id: {{id}}"}}}}]
               (f)
               (is (= expected-settings
-                     (-> (t2/select-one DashboardCard :id dashcard-id)
+                     (-> (t2/select-one :model/DashboardCard :id dashcard-id)
                          :visualization_settings))))))]
     (testing "Running the migration from scratch"
       (impl/test-migrations ["v48.00-022"] [migrate!]
@@ -1470,14 +1470,11 @@
                     data-source]} mdb.connection/*application-db*
             ;; approach from schema-migrations-test/migrate-field-database-type-test
             migrate!              (partial db.setup/migrate! db-type data-source)]
-        ;; 0 because we removed them and normal path won't trigger any
-        (is (<= 0 (:cnt (t2/query-one {:from   [:data_migrations]
-                                       :select [[[:count :id] :cnt]]}))))
+        ;; 0 because we removed them and fresh db won't trigger any
+        (is (<= 0 (t2/count :data_migrations)))
         (migrate! :up)
         (is (thrown? ExceptionInfo
-                     (t2/query-one {:from   [:data_migrations]
-                                    :select [[[:count :id] :cnt]]})))
+                     (t2/count :data_migrations)))
         (migrate! :down 47)
         ;; 2 because there were two data migrations left in release 0.47
-        (is (<= 2 (:cnt (t2/query-one {:from   [:data_migrations]
-                                       :select [[[:count :id] :cnt]]}))))))))
+        (is (<= 34 (t2/count :data_migrations)))))))
