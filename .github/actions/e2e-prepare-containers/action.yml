@@ -5,7 +5,7 @@ inputs:
     description: DockerHub username
     required: true
   password:
-    description: DockerHub password/token.
+    description: DockerHub password/token
     required: true
   maildev:
     description: Maildev
@@ -28,8 +28,10 @@ runs:
   using: "composite"
   steps:
     - name: Authenticate to prevent API rate limit
-      run: docker login -u ${{ inputs.username }} -p ${{ inputs.password }}
-      shell: bash
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.username }}
+        password: ${{ inputs.password }}
 
     - name: Start maildev container
       if: inputs.maildev == true
