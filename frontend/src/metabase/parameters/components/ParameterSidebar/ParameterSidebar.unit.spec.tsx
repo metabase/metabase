@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
