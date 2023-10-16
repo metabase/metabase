@@ -3,12 +3,11 @@ import { useState, useMemo } from "react";
 import { Box, Button, Checkbox, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import Field from "metabase-lib/metadata/Field";
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
+import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -74,10 +73,6 @@ export function StringFilterPicker({
     );
   };
 
-  const placeholder = t`Enter a value`; // TODO: this logic was handled by MLv1 / TokenField
-
-  const fieldId = useMemo(() => Lib._fieldId(column), [column]);
-
   const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
@@ -92,17 +87,11 @@ export function StringFilterPicker({
       </Header>
       {valueCount > 0 && (
         <FlexWithScroll p="md" mah={300}>
-          <FieldValuesWidget
-            fields={[new Field({ id: fieldId })]} // TODO adapt for MLv2
-            className="input"
+          <ColumnValuesWidget
+            column={column}
             value={values}
-            minWidth={"300px"}
+            canHaveManyValues={canHaveManyValues}
             onChange={setValues}
-            placeholder={placeholder}
-            disablePKRemappingForSearch
-            autoFocus
-            multi={canHaveManyValues}
-            disableSearch={!canHaveManyValues}
           />
         </FlexWithScroll>
       )}
@@ -115,7 +104,11 @@ export function StringFilterPicker({
         ) : (
           <Box />
         )}
-        <Button disabled={!isValid} onClick={handleFilterChange}>
+        <Button
+          variant="filled"
+          disabled={!isValid}
+          onClick={handleFilterChange}
+        >
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
       </Footer>
