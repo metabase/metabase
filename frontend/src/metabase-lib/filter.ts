@@ -476,6 +476,14 @@ export function filterParts(
   );
 }
 
+export function isCustomFilter(
+  query: Query,
+  stageIndex: number,
+  filter: FilterClause,
+) {
+  return !filterParts(query, stageIndex, filter);
+}
+
 function findTemporalBucket(
   query: Query,
   stageIndex: number,
