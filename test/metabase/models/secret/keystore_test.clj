@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.models :refer [Database Secret]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -60,7 +59,7 @@
 
 (deftest secret-keystore-type-test
   (testing "A secret with :type :keystore can be saved and loaded properly"
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (with-open [baos (ByteArrayOutputStream.)]
         (let [key-alias "my-secret-key"
               key-value "cromulent"

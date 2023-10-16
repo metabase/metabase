@@ -193,10 +193,11 @@
   (let [dashcard (api/check-404 (t2/select-one DashboardCard
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
-                                                                             :type      (:type action)
-                                                                             :action_id (:id action)})
+        action   (api/check-404 (action/select-action :id (:action_id dashcard)))]
+    (snowplow/track-event! ::snowplow/action-executed #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
+                           {:source    :dashboard
+                            :type      (:type action)
+                            :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -206,7 +207,7 @@
              (tru "Values can only be fetched for actions that require a Primary Key."))
   (let [implicit-action (keyword (:kind action))
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
-        info {:executed-by api/*current-user-id*
+        info {:executed-by #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
         card (t2/select-one Card :id (:model_id action))

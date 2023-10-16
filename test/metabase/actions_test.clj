@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.api.common :refer [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Table]]
    [metabase.models.action :as action]
@@ -19,6 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro with-actions-test-data-and-actions-permissively-enabled
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}
@@ -138,7 +139,7 @@
   (doseq [{:keys [action request-body]} (mock-requests)]
     (testing action
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
-        (binding [*current-user-permissions-set* (delay #{"/"})]
+        (binding [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
             (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
                           (try
@@ -185,7 +186,7 @@
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
-      (binding [*current-user-permissions-set* (delay #{"/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
@@ -202,7 +203,7 @@
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
-      (binding [*current-user-permissions-set* (delay #{"/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})

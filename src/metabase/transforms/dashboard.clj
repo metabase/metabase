@@ -37,7 +37,7 @@
 (defn- card-for-source-table
   [table]
   {:pre [(map? table)]}
-  {:creator_id             api/*current-user-id*
+  {:creator_id             #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
    :dataset_query          {:type     :query
                             :query    {:source-table (u/the-id table)}
                             :database (:db_id table)}

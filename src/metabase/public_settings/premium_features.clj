@@ -578,7 +578,7 @@
   error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.sandbox.api.util
   []
-  (when-not api/*current-user-id*
+  (when-not #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
     ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
     ;; returning `false` for users who should actually be sandboxes.
     (throw (ex-info (str (tru "No current user found"))
@@ -592,7 +592,7 @@
   Will throw an error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.advanced-permissions.api.util
   []
-  (when-not api/*current-user-id*
+  (when-not #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
     ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
     ;; returning `false` for users who should actually be using impersonations.
     (throw (ex-info (str (tru "No current user found"))

@@ -30,6 +30,6 @@
   [feedback]
   (let [snowplow-feedback (select-keys feedback snowplow-keys)]
     (snowplow/track-event!
-     ::snowplow/metabot-feedback-received api/*current-user-id*
+     ::snowplow/metabot-feedback-received #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
      snowplow-feedback)
     (store-detailed-feedback feedback)))

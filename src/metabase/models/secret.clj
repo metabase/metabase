@@ -241,14 +241,16 @@
   {:added "0.42.0"}
   [existing-id nm kind src value]
   (let [insert-new     (fn [id v]
-                         (let [inserted (first (t2/insert-returning-instances! Secret (cond-> {:version    v
-                                                                                               :name       nm
-                                                                                               :kind       kind
-                                                                                               :source     src
-                                                                                               :value      value
-                                                                                               :creator_id api/*current-user-id*}
-                                                                                        id
-                                                                                        (assoc :id id))))]
+                         (let [inserted (first (t2/insert-returning-instances!
+                                                Secret
+                                                (cond-> {:version    v
+                                                         :name       nm
+                                                         :kind       kind
+                                                         :source     src
+                                                         :value      value
+                                                         :creator_id #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*}
+                                                  id
+                                                  (assoc :id id))))]
                            ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
                            ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
                            ;; manually select it here
@@ -257,7 +259,7 @@
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
         (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
-                        {:name nm}))
+                          {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 

@@ -12,6 +12,6 @@
                             #{"/collection/root/"} true}
           f                [#'mi/can-read? #'mi/can-write?]]
     (testing (format "%s with perms %s" f (pr-str perms))
-      (binding [api/*current-user-permissions-set* (atom perms)]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-permissions-set* (atom perms)]
         (is (= expected
                (f collection.root/root-collection)))))))

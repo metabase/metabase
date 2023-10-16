@@ -42,7 +42,7 @@
   (-> card
       (select-keys [:dataset_query :description :display :name :result_metadata
                     :visualization_settings])
-      (assoc :creator_id    api/*current-user-id*
+      (assoc :creator_id    #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
              :collection_id nil
              :id            (gensym))))
 
@@ -284,7 +284,7 @@
                               :description       (tru "Automatically generated comparison dashboard comparing {0} and {1}"
                                                       (comparison-name left)
                                                       (comparison-name right))
-                              :creator_id        api/*current-user-id*
+                              :creator_id        #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
                               :parameters        []
                               :related           (update-related (:related dashboard) left right)}
                              (add-title-row left right))))

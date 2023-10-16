@@ -105,7 +105,8 @@
     (let [current-version (:tag config/mb-version-info)]
       (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
       ;; Can't use mw.session/with-current-user due to circular require
-      (binding [api/*current-user-id*       user-id
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-id*       user-id
                 setting/*user-local-values* (delay (atom (user-local-settings user)))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.

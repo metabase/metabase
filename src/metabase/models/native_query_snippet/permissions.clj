@@ -9,7 +9,8 @@
 (defn has-any-native-permissions?
   "Checks whether the current user has native query permissions for any database."
   []
-  (perms/set-has-any-native-query-permissions? @api/*current-user-permissions-set*))
+  (perms/set-has-any-native-query-permissions?
+   #_{:clj-kondo/ignore [:discouraged-var]} @api/*current-user-permissions-set*))
 
 (defenterprise can-read?
   "Can the current User read this `snippet`?"

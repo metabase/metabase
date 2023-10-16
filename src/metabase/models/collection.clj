@@ -9,7 +9,8 @@
    [clojure.string :as str]
    [metabase.api.common
     :as api
-    :refer [*current-user-id* *current-user-permissions-set*]]
+    :refer [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-id*
+            #_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set*]]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -330,7 +331,8 @@
    (if (collection.root/is-root-collection? collection)
      nil
      (effective-location-path* (:location collection)
-                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
+                               (permissions-set->visible-collection-ids
+                                #_{:clj-kondo/ignore [:discouraged-var]} @*current-user-permissions-set*))))
 
   ([real-location-path     :- LocationPath
     allowed-collection-ids :- VisibleCollections]
@@ -459,7 +461,8 @@
                                                    ;; cluttered with Personal Collections belonging to randos
                                                    [:or
                                                     [:= :personal_owner_id nil]
-                                                    [:= :personal_owner_id *current-user-id*]]
+                                                    [:= :personal_owner_id
+                                                     #_{:clj-kondo/ignore [:discouraged-var]} *current-user-id*]]
                                                    additional-honeysql-where-clauses)}))
         ;; Next, build a function to add children to a given `coll`. This function will recursively call itself to add
         ;; children to each child
@@ -479,7 +482,8 @@
 
 (mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
-  (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
+  (let [visible-collection-ids (permissions-set->visible-collection-ids
+                                #_{:clj-kondo/ignore [:discouraged-var]} @*current-user-permissions-set*)]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
@@ -1003,7 +1007,7 @@
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
   `collection-id` is `nil`, this check is done for the Root Collection."
   [collection-or-id-or-nil]
-  (let [actual-perms   @*current-user-permissions-set*
+  (let [actual-perms   #_{:clj-kondo/ignore [:discouraged-var]} @*current-user-permissions-set*
         required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
                                                           collection-or-id-or-nil
                                                           root-collection))]

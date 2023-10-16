@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.api.common :refer [*current-user-id*]]
    [metabase.models :refer [User]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision
@@ -150,7 +149,7 @@
     ;; need to bind *current-user-id* or the Revision won't get updated
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
-      (binding [*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-current-user (mt/user->id :crowberto)
         (graph/update-graph! (graph :clear-revisions? true))
         (is (= {:revision 0
                 :groups   {(u/the-id (perms-group/all-users)) {:root :none}
@@ -163,7 +162,7 @@
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection]
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :read))
@@ -175,7 +174,7 @@
   (testing "can we give them *write* perms?"
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection]
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :write))
@@ -189,7 +188,7 @@
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
       (t2.with-temp/with-temp [Collection collection]
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
@@ -204,7 +203,7 @@
     (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]
                                          :read))
@@ -218,7 +217,7 @@
     (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]
                                          :write))
@@ -233,7 +232,7 @@
     (t2.with-temp/with-temp [PermissionsGroup new-group]
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
-        (binding [*current-user-id* (mt/user->id :crowberto)]
+        (mt/with-current-user (mt/user->id :crowberto)
           (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
           (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]

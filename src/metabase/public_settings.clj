@@ -658,7 +658,7 @@
 
 (defn- not-handling-api-request?
   []
-  (nil? @api/*current-user*))
+  (nil? #_{:clj-kondo/ignore [:discouraged-var]} @api/*current-user*))
 
 (defn set-uploads-database-id!
   "Sets the :uploads-database-id setting, with an appropriate permission check."

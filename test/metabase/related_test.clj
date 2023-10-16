@@ -205,7 +205,9 @@
                                                         :object   {}}
                            DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
                            DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
-    (binding [api/*current-user-id*              (mt/user->id :rasta)
+    (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+              api/*current-user-id*              (mt/user->id :rasta)
+              #_{:clj-kondo/ignore [:discouraged-var]}
               api/*current-user-permissions-set* (atom #{"/"})]
       (is (=? [{:id dash-id}]
               (#'related/recommended-dashboards [card-1 card-2 card-3]))))))

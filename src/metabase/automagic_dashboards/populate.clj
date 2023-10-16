@@ -136,7 +136,7 @@
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
-  (let [card (-> {:creator_id    api/*current-user-id*
+  (let [card (-> {:creator_id    #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
                   :name          title
@@ -159,7 +159,7 @@
   [dashboard {:keys [text width height visualization-settings]} [x y]]
   (update dashboard :ordered_cards conj
           (merge (card-defaults)
-                 {:creator_id             api/*current-user-id*
+                 {:creator_id             #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
                   :visualization_settings (merge
                                             {:text         text
                                              :virtual_card {:name                   nil
@@ -285,7 +285,7 @@
          dashboard     {:name           title
                         :transient_name (or transient_title title)
                         :description    description
-                        :creator_id     api/*current-user-id*
+                        :creator_id     #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
                         :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards

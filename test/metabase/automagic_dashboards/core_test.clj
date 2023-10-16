@@ -1027,6 +1027,7 @@
                  Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
       ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
+      #_{:clj-kondo/ignore [:discouraged-var]}
       @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]

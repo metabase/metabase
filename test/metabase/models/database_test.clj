@@ -3,7 +3,6 @@
    [cheshire.core :refer [decode encode]]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
@@ -233,7 +232,7 @@
 (deftest secret-db-details-integration-test
   (testing "manipulating secret values in db-details works correctly"
     (mt/with-driver :secret-test-driver
-      (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (mt/with-current-user (mt/user->id :crowberto)
         (let [secret-ids  (atom #{})    ; keep track of all secret IDs created with the temp database
               check-db-fn (fn [{:keys [details] :as _database} exp-secret]
                             (when (not= :file-path (:source exp-secret))

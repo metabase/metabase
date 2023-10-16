@@ -68,7 +68,7 @@
 
   This function should be executed under pulse's creator permissions."
   [dashboard dashcard card-or-id parameters]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
           card    (t2/select-one Card :id card-id)
@@ -127,7 +127,7 @@
 
   This function should be executed under pulse's creator permissions."
   [dashcard]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (let [link-card (get-in dashcard [:visualization_settings :link])]
     (cond
       (some? (:url link-card))
@@ -154,7 +154,7 @@
 
   The result will follow the pulse's creator permissions."
   [dashcard pulse dashboard]
-  (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
+  (assert #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (cond
     (:card_id dashcard)
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]

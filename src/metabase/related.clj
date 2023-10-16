@@ -175,7 +175,7 @@
   []
   (when-let [dashboard-ids (not-empty (t2/select-fn-set :model_id 'Revision
                                                         :model     "Dashboard"
-                                                        :user_id   api/*current-user-id*
+                                                        :user_id   #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
                                                         {:order-by [[:timestamp :desc]]}))]
     (->> (t2/select Dashboard :id [:in dashboard-ids])
          filter-visible

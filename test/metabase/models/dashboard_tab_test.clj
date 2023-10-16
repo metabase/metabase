@@ -43,13 +43,15 @@
 
     (testing (str "Check that if a Dashtab of a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (mi/perms-objects-set dashtab :read)
         (is (= true (mi/can-read? dashtab)))
         (is (= false (mi/can-write? dashtab)))))
 
     (testing "Do we have *write* Permissions for a dashtab if we have *write* Permissions for the Collection it's in?"
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-permissions-set* (delay #{(perms/collection-readwrite-path collection)})]
         (is (= true (mi/can-read? dashtab)))
         (is (= true (mi/can-write? dashtab)))))
 

@@ -435,12 +435,14 @@
 (deftest dashboard-subscription-permissions-test
   (with-dashboard-subscription-in-collection [_ collection dashboard subscription]
     (testing "An admin has read and write access to any dashboard subscription"
-      (binding [api/*is-superuser?* true]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*is-superuser?* true]
         (is (mi/can-read? subscription))
         (is (mi/can-write? subscription))))
 
     (mt/with-current-user (mt/user->id :rasta)
-      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (testing "A non-admin has read and write access to a subscription they created"
             (is (mi/can-read? subscription))
             (is (mi/can-write? subscription)))

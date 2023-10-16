@@ -163,7 +163,9 @@
 
 (defn- create-database-with-bound-settings! [driver dbdef]
   (letfn [(thunk []
-            (binding [api/*current-user-id*              nil
+            (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                      api/*current-user-id*              nil
+                      #_{:clj-kondo/ignore [:discouraged-var]}
                       api/*current-user-permissions-set* nil]
               (create-database! driver dbdef)))]
     ;; make sure report timezone isn't set, possibly causing weird things to happen when data is loaded -- this

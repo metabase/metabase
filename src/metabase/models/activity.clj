@@ -32,6 +32,7 @@
 ;; the future we might want to change this and come up with some sort of system where we can determine which users get
 ;; to see other users -- perhaps if they are in a group together other than 'All Users'
 (defmethod can-? :user-joined [_ _]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   api/*is-superuser?*)
 
 ;; For every other activity topic we'll look at the read/write perms for the object the activty is about (e.g. a Card

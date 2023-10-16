@@ -658,6 +658,8 @@
    :name    printable-namespaces}
   {:pattern "^metabase\\.lib\\.*"
    :name    metabase-lib}
+  {:pattern "^metabase\\.(?!(api|query-processor|server)).*$"
+   :name    non-api-namespaces}
   ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
   ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2.
   ;;
@@ -744,6 +746,15 @@
      toucan.models    {:message "Don't use application database inside MLv2 code"}
      toucan.util.test {:message "Don't use application database inside MLv2 code"}
      toucan2.core     {:message "Don't use application database inside MLv2 code"}}}}
+
+  non-api-namespaces
+  {:linters
+   {:discouraged-var
+    {metabase.api.common/*current-user*                 {:message "Only use API-related dynamic variables in the API namespaces"}
+     metabase.api.common/*current-user-id*              {:message "Only use API-related dynamic variables in the API namespaces"}
+     metabase.api.common/*current-user-permissions-set* {:message "Only use API-related dynamic variables in the API namespaces"}
+     metabase.api.common/*is-superuser?*                {:message "Only use API-related dynamic variables in the API namespaces"}
+     metabase.api.common/*is-group-manager?*            {:message "Only use API-related dynamic variables in the API namespaces"}}}}
 
   qp-and-driver-source-namespaces
   {:linters

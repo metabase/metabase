@@ -133,7 +133,7 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (binding [api/*current-user-id* nil]
+  (binding [#_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id* nil]
     ((resolve 'metabase.query-processor/preprocess) query)))
 
 (mu/defn ^:private mbql-permissions-path-set :- [:set perms/PathSchema]
@@ -194,7 +194,7 @@
   "Return `true` if the current-user has sufficient permissions to run `query`. Handles checking for full table
   permissions and segmented table permissions"
   [query]
-  (let [user-perms @api/*current-user-permissions-set*]
+  (let [user-perms #_{:clj-kondo/ignore [:discouraged-var]} @api/*current-user-permissions-set*]
     (or (perms/set-has-full-permissions-for-set? user-perms (perms-set query))
         (perms/set-has-full-permissions-for-set? user-perms (segmented-perms-set query)))))
 

@@ -382,11 +382,12 @@
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
         (let [ssl-details  (#'oracle.tx/connection-details)
-              orig-user-id api/*current-user-id*]
+              orig-user-id #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*]
           (testing "Oracle can-connect? with SSL connection"
             (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
             (binding [sync-util/*log-exceptions-and-continue?* false
+                      #_{:clj-kondo/ignore [:discouraged-var]}
                       api/*current-user-id* (mt/user->id :crowberto)]
               (doseq [[details variant] [[ssl-details "SSL with Truststore Path"]
                                          ;; in the file upload scenario, the truststore bytes are base64 encoded
@@ -410,7 +411,7 @@
                         (sync/sync-database! database {:scan :schema})
                         ;; should be four tables from test-data
                         (is (= 4 (t2/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
-                        (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                        (binding [#_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
                                   ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
                                   ;; actually the name of the database, and not some variation on the :name specified
                                   ;; above, so that the table names resolve correctly in the generated query we can't

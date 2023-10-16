@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.api.common :refer [#_{:clj-kondo/ignore [:discouraged-var]} *current-user-permissions-set*]]
    [metabase.models
     :refer [Card
             Collection
@@ -162,6 +162,7 @@
   [[collections-binding options] & body]
   `(do-with-collection-hierarchy ~options (fn [~collections-binding] ~@body)))
 
+#_{:clj-kondo/ignore [:discouraged-var]}
 (defmacro with-current-user-perms-for-collections
   "Run `body` with the current User permissions for `collections-or-ids`.
 
@@ -323,27 +324,32 @@
 
   (testing "Does the function also work if we call the single-arity version that powers hydration?"
     (testing "mix of full and read perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                *current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
         (is (= "/10/20/"
                (collection/effective-location-path {:location "/10/20/30/"})))))
 
     (testing "missing some perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                *current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
         (is (= "/10/30/"
                (collection/effective-location-path {:location "/10/20/30/"})))))
 
     (testing "no perms"
-      (binding [*current-user-permissions-set* (atom #{})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                *current-user-permissions-set* (atom #{})]
         (is (= "/"
                (collection/effective-location-path {:location "/10/20/30/"})))))
 
     (testing "read perms for all"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                *current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
         (is (= "/10/20/30/"
                (collection/effective-location-path {:location "/10/20/30/"})))))
 
     (testing "root perms"
-      (binding [*current-user-permissions-set* (atom #{"/"})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                *current-user-permissions-set* (atom #{"/"})]
         (is (= "/10/20/30/"
                (collection/effective-location-path {:location "/10/20/30/"})))))))
 

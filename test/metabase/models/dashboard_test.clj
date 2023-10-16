@@ -13,7 +13,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
-   [metabase.models.user :as user]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
@@ -783,27 +782,29 @@
   (with-dash-in-collection [db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]
         (is (= true
                (mi/can-read? dash)))))
 
     (testing (str "Check that if a Dashboard is in a Collection, someone who would otherwise be able to see it under "
                   "the old artifact-permissions regime will *NOT* be able to see it if they don't have permissions for "
                   "that Collection"))
-    (binding [api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
+    (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+              api/*current-user-permissions-set* (atom #{(perms/data-perms-path (u/the-id db))})]
       (is (= false
              (mi/can-read? dash))))
 
     (testing "Do we have *write* Permissions for a Dashboard if we have *write* Permissions for the Collection its in?"
-      (binding [api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
+      (binding [#_{:clj-kondo/ignore [:discouraged-var]}
+                api/*current-user-permissions-set* (atom #{(perms/collection-readwrite-path collection)})]
         (mi/can-write? dash)))))
 
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
-        (binding [api/*current-user-id*              (test.users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
+        (mt/with-current-user (mt/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count DashboardCard :dashboard_id (u/the-id saved-dashboard))

@@ -52,7 +52,7 @@
 (defn make-card-for-step!
   "Make and save a card for a given transform step and query."
   [{:keys [name transform description]} query]
-  (->> {:creator_id             api/*current-user-id*
+  (->> {:creator_id             #_{:clj-kondo/ignore [:discouraged-var]} api/*current-user-id*
         :dataset_query          query
         :description            description
         :name                   name
