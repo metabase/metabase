@@ -7,6 +7,7 @@ import {
 } from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
 import { serializeCardForUrl } from "metabase/lib/card";
+import type Question from "metabase-lib/Question";
 
 import { isNavigationAllowed } from "./utils";
 
@@ -67,13 +68,25 @@ const newModelMetadataTabLocation = createMockLocation({
   pathname: "/model/metadata",
 });
 
-const modelQueryTabLocation = createMockLocation({
-  pathname: `/model/${notebookModelCard.id}/query`,
-});
+const getModelQueryTabLocation = (model: Question) =>
+  createMockLocation({
+    pathname: `/model/${model.id()}/query`,
+  });
 
-const modelMetadataTabLocation = createMockLocation({
-  pathname: `/model/${notebookModelCard.id}/metadata`,
-});
+const getModelMetadataTabLocation = (model: Question) =>
+  createMockLocation({
+    pathname: `/model/${model.id()}/metadata`,
+  });
+
+const getQuestionLocation = (question: Question) =>
+  createMockLocation({
+    pathname: `/question/${question.id()}`,
+  });
+
+const getQuestionNotebookLocation = (question: Question) =>
+  createMockLocation({
+    pathname: `/question/${question.id()}/notebook`,
+  });
 
 const runQuestionLocation = createMockLocation({
   pathname: "/question",
@@ -112,8 +125,12 @@ describe("isNavigationAllowed", () => {
 
     it.each([
       anyLocation,
-      modelQueryTabLocation,
-      modelMetadataTabLocation,
+      getModelQueryTabLocation(notebookModelQuestion),
+      getModelMetadataTabLocation(notebookModelQuestion),
+      getModelQueryTabLocation(nativeModelQuestion),
+      getModelMetadataTabLocation(nativeModelQuestion),
+      getQuestionLocation(notebookQuestion),
+      getQuestionNotebookLocation(notebookQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runQuestionLocation,
@@ -134,8 +151,12 @@ describe("isNavigationAllowed", () => {
     describe("allows navigating away", () => {
       it.each([
         anyLocation,
-        modelQueryTabLocation,
-        modelMetadataTabLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runQuestionLocation,
@@ -162,8 +183,12 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        modelQueryTabLocation,
-        modelMetadataTabLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -178,17 +203,38 @@ describe("isNavigationAllowed", () => {
     const isNewQuestion = false;
     const question = notebookQuestion;
 
-    it.each([
-      anyLocation,
-      modelQueryTabLocation,
-      modelMetadataTabLocation,
-      newModelQueryTabLocation,
-      newModelMetadataTabLocation,
-      runQuestionLocation,
-    ])("allows navigating away to `$pathname`", destination => {
+    it("allows to run the question", () => {
+      const destination = runQuestionLocation;
+
       expect(
         isNavigationAllowed({ destination, question, isNewQuestion }),
       ).toBe(true);
+    });
+
+    it("allows to open notebook editor", () => {
+      const destination = getQuestionNotebookLocation(question);
+
+      expect(
+        isNavigationAllowed({ destination, question, isNewQuestion }),
+      ).toBe(true);
+    });
+
+    describe("disallows all other navigation", () => {
+      it.each([
+        anyLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(nativeQuestion),
+        getQuestionNotebookLocation(nativeQuestion),
+        newModelQueryTabLocation,
+        newModelMetadataTabLocation,
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(false);
+      });
     });
   });
 
@@ -207,8 +253,12 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        modelQueryTabLocation,
-        modelMetadataTabLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -237,8 +287,12 @@ describe("isNavigationAllowed", () => {
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
-        modelQueryTabLocation,
-        modelMetadataTabLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         runQuestionLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -253,19 +307,23 @@ describe("isNavigationAllowed", () => {
     const question = notebookModelQuestion;
 
     describe("allows navigating between model query & metadata tabs", () => {
-      it.each([modelQueryTabLocation, modelMetadataTabLocation])(
-        "to `$pathname`",
-        destination => {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(true);
-        },
-      );
+      it.each([
+        getModelQueryTabLocation(question),
+        getModelMetadataTabLocation(question),
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
     });
 
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
+        getModelQueryTabLocation(nativeModelQuestion),
+        getModelMetadataTabLocation(nativeModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {
@@ -281,19 +339,23 @@ describe("isNavigationAllowed", () => {
     const question = nativeModelQuestion;
 
     describe("allows navigating between model query & metadata tabs", () => {
-      it.each([modelQueryTabLocation, modelMetadataTabLocation])(
-        "to `$pathname`",
-        destination => {
-          expect(
-            isNavigationAllowed({ destination, question, isNewQuestion }),
-          ).toBe(true);
-        },
-      );
+      it.each([
+        getModelQueryTabLocation(question),
+        getModelMetadataTabLocation(question),
+      ])("to `$pathname`", destination => {
+        expect(
+          isNavigationAllowed({ destination, question, isNewQuestion }),
+        ).toBe(true);
+      });
     });
 
     describe("disallows all other navigation", () => {
       it.each([
         anyLocation,
+        getModelQueryTabLocation(notebookModelQuestion),
+        getModelMetadataTabLocation(notebookModelQuestion),
+        getQuestionLocation(notebookQuestion),
+        getQuestionNotebookLocation(notebookQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {

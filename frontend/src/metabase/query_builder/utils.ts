@@ -80,6 +80,10 @@ export const isNavigationAllowed = ({
 
   const { hash, pathname } = destination;
 
+  const validSlugs = [question.id(), question.slug()]
+    .filter(Boolean)
+    .map(String);
+
   if (question.isDataset()) {
     if (isNewQuestion) {
       const isQueryTab = pathname === "/model/query";
@@ -87,9 +91,12 @@ export const isNavigationAllowed = ({
       return isQueryTab || isMetadataTab;
     }
 
-    const isQueryTab = pathname.match(/^\/model\/.+\/query$/) !== null;
-    const isMetadataTab = pathname.match(/^\/model\/.+\/metadata$/) !== null;
-    return isQueryTab || isMetadataTab;
+    const modelPathnames = validSlugs.flatMap(slug => [
+      `/model/${slug}/query`,
+      `/model/${slug}/metadata`,
+    ]);
+
+    return modelPathnames.includes(pathname);
   }
 
   if (question.isNative()) {
@@ -97,8 +104,14 @@ export const isNavigationAllowed = ({
     return isRunningQuestion;
   }
 
-  if (question.isStructured()) {
-    return false;
+  if (!isNewQuestion && question.isStructured()) {
+    const isRunningQuestion = pathname === "/question" && hash.length > 0;
+    const questionPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}/notebook`,
+      `/question/${slug}`,
+    ]);
+
+    return isRunningQuestion || questionPathnames.includes(pathname);
   }
 
   return true;
