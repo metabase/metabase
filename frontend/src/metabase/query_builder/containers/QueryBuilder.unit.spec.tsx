@@ -390,6 +390,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -417,6 +418,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerMetadataChange();
+          await waitForSaveModelToBeEnabled();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -647,6 +649,7 @@ describe("QueryBuilder", () => {
 
           await waitForLoaderToBeRemoved();
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
 
           history.goBack();
 
@@ -663,7 +666,9 @@ describe("QueryBuilder", () => {
 
           await waitForLoaderToBeRemoved();
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
           await revertNotebookQueryChange();
+          await waitForSaveModelToBeDisabled();
 
           history.goBack();
 
@@ -679,6 +684,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -692,7 +698,10 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
+
           await revertNotebookQueryChange();
+          await waitForSaveModelToBeDisabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -708,6 +717,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
+          await waitForSaveModelToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -732,9 +742,10 @@ describe("QueryBuilder", () => {
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
-
           await waitForLoaderToBeRemoved();
+
           await triggerMetadataChange();
+          await waitForSaveModelToBeEnabled();
 
           history.goBack();
 
@@ -783,6 +794,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerMetadataChange();
+          await waitForSaveModelToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -804,6 +816,7 @@ describe("QueryBuilder", () => {
           userEvent.click(screen.getByText("Metadata"));
 
           await triggerMetadataChange();
+          await waitForSaveModelToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -827,6 +840,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
+        await waitForSaveModelToBeEnabled();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
@@ -835,6 +849,7 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
 
         await triggerMetadataChange();
+        await waitForSaveModelToBeEnabled();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
@@ -1207,10 +1222,6 @@ const triggerMetadataChange = async () => {
   userEvent.click(columnDisplayName);
   userEvent.type(columnDisplayName, "X");
   userEvent.tab();
-
-  await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
-  });
 };
 
 const triggerNotebookQueryChange = async () => {
@@ -1234,7 +1245,15 @@ const revertNotebookQueryChange = async () => {
   userEvent.click(rowLimitInput);
   userEvent.type(rowLimitInput, "{backspace}");
   userEvent.tab();
+};
 
+const waitForSaveModelToBeEnabled = async () => {
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+};
+
+const waitForSaveModelToBeDisabled = async () => {
   await waitFor(() => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
