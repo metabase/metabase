@@ -1,23 +1,24 @@
 (ns metabase.automagic-dashboards.interesting
   (:require
-   [clojure.math.combinatorics :as math.combo]
-   [clojure.string :as str]
-   [clojure.walk :as walk]
-   [java-time :as t]
-   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-   [metabase.automagic-dashboards.schema :as ads]
-   [metabase.automagic-dashboards.util :as magic.util]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :as field :refer [Field]]
-   [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
-   [metabase.models.table :refer [Table]]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+    [clojure.math.combinatorics :as math.combo]
+    [clojure.string :as str]
+    [clojure.walk :as walk]
+    [java-time :as t]
+    [malli.core :as mc]
+    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
+    [metabase.automagic-dashboards.schema :as ads]
+    [metabase.automagic-dashboards.util :as magic.util]
+    [metabase.mbql.normalize :as mbql.normalize]
+    [metabase.mbql.util :as mbql.u]
+    [metabase.models.field :as field :refer [Field]]
+    [metabase.models.interface :as mi]
+    [metabase.models.metric :refer [Metric]]
+    [metabase.models.table :refer [Table]]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.malli :as mu]
+    [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Global affinity definitions
@@ -131,10 +132,13 @@
         v))
     m))
 
-(defn ground-metric
+(mu/defn ground-metric :- [:sequential ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
-  [{metric-name :metric-name metric-score :score metric-definition :metric} ground-dimensions]
+  [{metric-name :metric-name
+    metric-score :score
+    metric-definition :metric} :- ads/normalized-metric-template
+   ground-dimensions :- ads/dim-name->matching-fields]
   (let [named-dimensions (dashboard-templates/collect-dimensions metric-definition)]
     (->> (map (comp :matches ground-dimensions) named-dimensions)
          (apply math.combo/cartesian-product)
@@ -149,11 +153,12 @@
                    :metric-definition      {:aggregation
                                             (transform-metric-aggregate metric-definition xform)}
                    :metric-field-types     (into #{} (map magic.util/field-type) constituent-fields)
-                   :grounded-metric-fields constituent-fields}))))))
+                   :grounded-metric-fields (vec constituent-fields)}))))))
 
-(defn grounded-metrics
+(mu/defn grounded-metrics :- [:sequential ads/grounded-metric]
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
-  [metric-templates ground-dimensions]
+  [metric-templates :- [:sequential ads/normalized-metric-template]
+   ground-dimensions :- ads/dim-name->matching-fields]
   (mapcat #(ground-metric % ground-dimensions) metric-templates))
 
 (defn normalize-metrics
@@ -311,7 +316,7 @@
   (let [scored-bindings (score-bindings candidate-binding-values)]
     (second (last (sort-by first scored-bindings)))))
 
-(mu/defn find-dimensions
+(mu/defn find-dimensions :- ads/dim-name->dim-defs+matches
   "Bind fields to dimensions from the dashboard template and resolve overloaded cases in which multiple fields match the
   dimension specification.
 
@@ -320,8 +325,7 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs                                  ;:- [:sequential ads/dimension-template]
-   ]
+  [context dimension-specs :- [:maybe [:sequential ads/dimension-template]]]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -414,13 +418,16 @@
       form))
 
 (mu/defn identify
+  :- [:map
+      [:dimensions ads/dim-name->matching-fields]
+      [:metrics [:sequential ads/grounded-metric]]]
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
   interesting metrics which are satisfied. Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
            metric-specs]} :- [:map
                               [:dimension-specs [:sequential ads/dimension-template]]
-                              [:metric-specs    [:sequential ads/metric-template]]]]
+                              [:metric-specs [:sequential ads/metric-template]]]]
   (let [dims      (find-dimensions context dimension-specs)
         metrics   (-> (normalize-metrics metric-specs)
                       (grounded-metrics dims))

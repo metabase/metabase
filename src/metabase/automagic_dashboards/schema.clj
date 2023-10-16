@@ -1,6 +1,8 @@
 (ns metabase.automagic-dashboards.schema
   (:require [malli.core :as mc]
-            [malli.generator :as mg]))
+            [malli.generator :as mg]
+            [malli.util :as mu]
+            [metabase.util.malli.schema :as ms]))
 
 ;; --
 (def context
@@ -33,15 +35,18 @@
   "A bunch of dashcards"
   (mc/schema [:maybe [:sequential dashcard]]))
 
+(def field-type
+  (mc/schema
+    [:or
+     [:tuple :keyword]
+     [:tuple :keyword :keyword]]))
+
 ;;
 (def dimension-value
   "A specification for the basic keys in the value of a dimension template."
   (mc/schema
     [:map
-     [:field_type
-      [:or
-       [:tuple :keyword]
-       [:tuple :keyword :keyword]]]
+     [:field_type field-type]
      [:score {:optional true} nat-int?]
      [:max_cardinality {:optional true} nat-int?]
      [:named {:optional true} [:string {:min 1}]]]))
@@ -98,7 +103,17 @@
                                                 [:aggregation {:optional true} string?]]])]]
      [:metrics {:optional true} [:vector string?]]
      [:filters {:optional true} [:vector string?]]
-     [:score {:optional true} nat-int?]]))
+     [:card-score {:optional true} nat-int?]]))
+
+;[:map
+; [:affinity-set [:set :keyword]]
+; [:card-name :string]
+; [:card-score :int]
+; [:dimensions {:optional true} [:sequential [:map-of string? map?]]]
+; [:group :string]
+; [:group-score :int]
+; [:metrics [:sequential :string]]
+; [:semantic-dimensions {:optional true} [:map-of :keyword map?]]]
 
 (def card-template
   "A specification for the basic keys in a card template."
@@ -143,9 +158,13 @@
    set of dimensions which, when satisfied, enable this affinity object."
   (mc/schema
     [:map
-     [:affinity-name string?]
-     [:score {:optional true} nat-int?]
-     [:affinity-set [:set keyword?]]]))
+     [:affinity-name :string]
+     [:affinity-set [:set :keyword]]
+     [:card-template card-value]
+     [:metric-constituent-names [:sequential :string]]
+     [:metric-field-types [:set :keyword]]
+     [:named-dimensions [:sequential :string]]
+     [:score {:optional true} nat-int?]]))
 
 (def affinities
   "A sequence of affinity objects."
@@ -185,12 +204,25 @@
      [:id {:optional true} nat-int?]
      [:name {:optional true} string?]]))
 
-(def dimension-bindings
-  "A map of named dimensions to a map containing a sequence of matching items satisfying this dimension"
+(def dim-name->dim-def
+  "A map of dimension name to dimension definition."
   (mc/schema
-    [:map-of
-     :string
-     [:map [:matches [:sequential item]]]]))
+    [:map-of :string dimension-value]))
+
+(def dim-name->matching-fields
+  "A map of named dimensions to a map containing the dimension data
+   and a sequence of matching items satisfying this dimension"
+  (mc/schema
+    [:map-of :string
+     [:map
+      [:matches [:sequential item]]]]))
+
+(def dim-name->dim-defs+matches
+  "The \"full\" grounded dimensions which matches dimension names
+  to the dimension definition combined with matching fields."
+  (mu/merge
+    dim-name->dim-def
+    dim-name->matching-fields))
 
 (def dimension-map
   "A map of dimension names to item satisfying that dimensions"
@@ -202,20 +234,49 @@
   (mc/schema
     [:sequential dimension-map]))
 
+(def normalized-metric-template
+  (mc/schema
+    [:map
+     [:metric-name :string]
+     [:score nat-int?]
+     [:metric vector?]]))
 
 (def grounded-metric
   (mc/schema
     [:map
      [:metric-name :string]
      [:metric-title :string]
+     [:metric-score nat-int?]
      [:metric-definition
       [:map
-       [:aggregation [:sequential some?]]]]
+       [:aggregation [:sequential any?]]]]
      [:grounded-metric-fields
-      [:vector
-       [:map
-        [:id :int]
-        [:name :string]]]]]))
+      [:sequential
+       (ms/InstanceOf :model/Field)]]
+     [:metric-field-types [:set :keyword]]]))
+
+(def combined-metric
+  (mu/merge
+    grounded-metric
+    (mc/schema
+      [:map
+       [:dimension-field-types [:set :keyword]]
+       [:dimension-name->field [:map-of :string (ms/InstanceOf :model/Field)]]
+       [:dimension-type->field [:map-of :keyword (ms/InstanceOf :model/Field)]]
+       [:metric-definition
+        [:map
+         [:aggregation [:sequential any?]]
+         [:breakout [:sequential any?]]]]])))
+
+(def metric-types->dimset->cards
+  (mc/schema
+    [:map-of [:or
+              [:set :keyword]
+              :keyword]
+     [:map-of [:set :keyword]
+      [:map
+       [:cards
+        [:sequential card-value]]]]]))
 
 (comment
   (require '[malli.generator :as mg])

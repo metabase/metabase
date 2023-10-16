@@ -59,14 +59,14 @@
     #{:type/Integer})
   )
 
-(mu/defn add-breakout-combinations
+(mu/defn add-breakout-combinations :- [:sequential ads/combined-metric]
   "From a grounded metric, produce additional metrics that have potential dimensions
    mixed in based on the provided ground dimensions and semantic affinity sets."
-  [ground-dimensions :- ads/dimension-bindings
-   {default-affinities :default :as semantic-affinity-sets} ;:- [:map-of ads/semantic-affinity-set sequential?]
+  [ground-dimensions :- ads/dim-name->matching-fields
+   {default-affinities :default :as semantic-affinity-sets} :- ads/metric-types->dimset->cards
    {metric-field-types     :metric-field-types
-    grounded-metric-fields :grounded-metric-fields :as metric}]
-  (let [grounded-field-ids (set (map :id grounded-metric-fields))
+    grounded-metric-fields :grounded-metric-fields :as grounded-metric} :- ads/grounded-metric]
+  (let [grounded-field-ids       (set (map :id grounded-metric-fields))
         ;; We won't add dimensions to a metric where the dimension is already
         ;; contributing to the fields already grounded in the metric definition itself.
         ;; Note that one potential issue here is rate metrics. Churn rate will need to
@@ -83,7 +83,7 @@
                                                (assoc matching-field :dimension dim))
                                              matches))))
                                (group-by (comp boolean grounded-field-ids :id)))
-        groundable-fields  (group-by magic.util/field-type available)
+        groundable-fields        (group-by magic.util/field-type available)
         potential-dimension-sets (or (->> metric-field-types
                                           (filter-to-matching-types (dissoc semantic-affinity-sets :default))
                                           vals
@@ -96,9 +96,9 @@
                         (apply math.combo/cartesian-product)
                         (map (partial zipmap dimensions-set)))))
          (map (fn [ground-dimension-fields]
-                (-> metric
+                (-> grounded-metric
                     (assoc
-                      :grounded-metric-fields grounded
+                      :grounded-metric-fields (vec grounded)
                       :dimension-type->field ground-dimension-fields
                       :dimension-name->field (into
                                                (zipmap
@@ -110,12 +110,12 @@
                       :dimension-field-types (set (keys ground-dimension-fields)))
                     (update :metric-definition add-breakouts (vals ground-dimension-fields))))))))
 
-(mu/defn interesting-combinations
+(mu/defn interesting-combinations :- [:sequential ads/combined-metric]
   "Expand simple ground metrics in to ground metrics with dimensions
    mixed in based on potential semantic affinity sets."
-  [ground-dimensions :- ads/dimension-bindings
-   semantic-affinity-sets                                   ;:- [:map-of ads/semantic-affinity-set sequential?]
-   grounded-metrics]
+  [ground-dimensions :- ads/dim-name->matching-fields
+   semantic-affinity-sets :- ads/metric-types->dimset->cards
+   grounded-metrics :- [:sequential ads/grounded-metric]]
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
 
