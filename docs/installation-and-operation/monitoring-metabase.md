@@ -109,7 +109,7 @@ When running into memory related issues, typically the first question
 we want to know is what is consuming extra memory? A heap dump will
 take a snapshot of everything in memory at that specific point of
 time. That memory snapshot can be analyzed later by tools like the
-[Eclipse Memory Analyzer Tool](https://www.eclipse.org/mat/). Create a
+Eclipse Memory Analyzer Tool. Create a
 heap dump from the "Monitor" tab:
 
 ![heapdump](images/HeapDump.png)
