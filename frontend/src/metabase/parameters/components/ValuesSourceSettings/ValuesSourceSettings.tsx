@@ -35,7 +35,8 @@ const ValuesSourceSettings = ({
     return getRadioOptions({
       queryType: queryType,
       onEditClick: () => setIsModalOpened(true),
-      isEditDisabled: isOnlyConnectedFieldSourceAllowed(parameter),
+      // linked filters only work with connected field sources (metabase#33892)
+      isEditDisabled: hasLinkedFilters(parameter),
     });
   }, [queryType, parameter]);
 
@@ -64,9 +65,8 @@ const ValuesSourceSettings = ({
   );
 };
 
-function isOnlyConnectedFieldSourceAllowed(parameter: Parameter) {
-  // linked filters only work with connected field sources (metabase#33892)
-  return !!parameter.filteringParameters?.length;
+function hasLinkedFilters({ filteringParameters }: Parameter) {
+  return filteringParameters != null && filteringParameters.length > 0;
 }
 
 interface RadioLabelProps {

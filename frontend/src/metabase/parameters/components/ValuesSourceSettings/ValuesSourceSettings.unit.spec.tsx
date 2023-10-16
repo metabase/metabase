@@ -49,7 +49,7 @@ describe("ValuesSourceSettings", () => {
     });
   });
 
-  it("Editing the values source should be disabled when the filter has linked filters", () => {
+  it("editing the values source should be disabled when the filter has linked filters", () => {
     setup({
       parameter: createMockParameter({
         filteringParameters: ["2"],
