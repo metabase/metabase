@@ -80,7 +80,7 @@ const RadioLabel = ({
   title,
   isSelected,
   onEditClick,
-  isEditDisabled,
+  isEditDisabled = false,
 }: RadioLabelProps): JSX.Element => {
   return (
     <RadioLabelRoot>
@@ -89,13 +89,13 @@ const RadioLabel = ({
         <Tooltip
           tooltip={t`You can’t customize selectable values for this filter because it is linked to another one.`}
           placement="top"
-          isEnabled={!!isEditDisabled}
+          isEnabled={isEditDisabled}
         >
           {/* This div is needed to make the tooltip work when the button is disabled */}
           <div data-testid="values-source-settings-edit-btn">
             <Button
               onClick={onEditClick}
-              disabled={!!isEditDisabled}
+              disabled={isEditDisabled}
               variant="subtle"
               p={0}
               compact={true}
