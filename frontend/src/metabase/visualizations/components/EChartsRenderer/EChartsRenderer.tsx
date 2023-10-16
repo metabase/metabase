@@ -10,8 +10,8 @@ import type {
 
 export interface EChartsRendererProps {
   option: EChartsOption;
-  eventHandlers: EChartsEventHandler[];
-  zrEventHandlers: ZREventHandler[];
+  eventHandlers?: EChartsEventHandler[];
+  zrEventHandlers?: ZREventHandler[];
   width: number | "auto";
   height: number | "auto";
   onInit?: (chart: EChartsType) => void;
@@ -48,7 +48,7 @@ export const EChartsRenderer = ({
   }, [width, height]);
 
   useEffect(() => {
-    eventHandlers.forEach(h => {
+    eventHandlers?.forEach(h => {
       if (h.query) {
         chartRef.current?.on(h.eventName, h.query, h.handler);
         return;
@@ -57,16 +57,18 @@ export const EChartsRenderer = ({
     });
 
     return () =>
-      eventHandlers.forEach(h => chartRef.current?.off(h.eventName, h.handler));
+      eventHandlers?.forEach(h =>
+        chartRef.current?.off(h.eventName, h.handler),
+      );
   }, [eventHandlers]);
 
   useEffect(() => {
-    zrEventHandlers.forEach(h => {
+    zrEventHandlers?.forEach(h => {
       chartRef.current?.getZr().on(h.eventName, h.handler);
     });
 
     return () =>
-      zrEventHandlers.forEach(h =>
+      zrEventHandlers?.forEach(h =>
         chartRef.current?.getZr().off(h.eventName, h.handler),
       );
   }, [zrEventHandlers]);
