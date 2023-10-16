@@ -1,114 +1,21 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import type { HTMLAttributes, MutableRefObject } from "react";
+import { PLUGIN_MODERATION } from "metabase/plugins";
+import type { BoxProps, TitleProps } from "metabase/ui";
+import { Box, Divider, Stack, Title as MantineTitle } from "metabase/ui";
 
-import type { HTMLAttributes } from "react";
-import { color, lighten } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
-import Link from "metabase/core/components/Link";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import type { BoxProps, TextProps } from "metabase/ui";
-import { Divider, Box, Text, Stack } from "metabase/ui";
+const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
-interface ResultStylesProps {
-  compact: boolean;
-  active: boolean;
-  isSelected: boolean;
-}
-
-export const TitleWrapper = styled.div`
-  display: flex;
-  grid-gap: 0.25rem;
-  align-items: center;
-`;
-
-export const Title = styled("h3")<{ active: boolean }>`
-  margin-bottom: 4px;
-  color: ${props => color(props.active ? "text-dark" : "text-medium")};
-`;
-
-export const ResultButton = styled.button<ResultStylesProps>`
-  ${props => resultStyles(props)}
-  padding-right: 0.5rem;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-
-  &:hover {
-    ${Title} {
-      color: ${color("brand")};
-    }
-  }
-`;
-
-export const ResultLink = styled(Link)<ResultStylesProps>`
-  ${props => resultStyles(props)}
-`;
-
-const resultStyles = ({ compact, active, isSelected }: ResultStylesProps) => `
-  display: block;
-  background-color: ${isSelected ? lighten("brand", 0.63) : "transparent"};
-  min-height: ${compact ? "36px" : "54px"};
-  padding-top: ${space(1)};
-  padding-bottom: ${space(1)};
-  padding-left: 14px;
-  padding-right: ${compact ? "20px" : space(3)};
-  cursor: ${active ? "pointer" : "default"};
-
-  &:hover {
-    background-color: ${active ? lighten("brand", 0.63) : ""};
-
-    h3 {
-      color: ${active || isSelected ? color("brand") : ""};
-    }
-  }
-
-  ${Link.Root} {
-    text-underline-position: under;
-    text-decoration: underline ${color("text-light")};
-    text-decoration-style: dashed;
-
-    &:hover {
-      color: ${active ? color("brand") : ""};
-      text-decoration-color: ${active ? color("brand") : ""};
-    }
-  }
-
-  ${Text} {
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: 13px;
-    line-height: 19px;
-  }
-
-  h3 {
-    font-size: ${compact ? "14px" : "16px"};
-    line-height: 1.2em;
-    overflow-wrap: anywhere;
-    margin-bottom: 0;
-    color: ${active && isSelected ? color("brand") : ""};
-  }
-
-  .Icon-info {
-    color: ${color("text-light")};
-  }
-`;
-
-export const ResultSpinner = styled(LoadingSpinner)`
-  display: flex;
-  flex-grow: 1;
-  align-self: center;
-  justify-content: flex-end;
-  margin-left: ${space(1)};
-  color: ${color("brand")};
-`;
-
-export const ResultTitle = styled(Text)<TextProps>``;
+export const ResultTitle = styled(MantineTitle)<TitleProps>``;
 
 export const SearchResultContainer = styled(Box)<
   BoxProps &
     HTMLAttributes<HTMLButtonElement> & {
-      isActive: boolean;
-      isSelected: boolean;
+      isActive?: boolean;
+      isSelected?: boolean;
+      component?: string;
+      ref: MutableRefObject<HTMLButtonElement | null> | undefined;
     }
 >`
   display: grid;
@@ -116,6 +23,7 @@ export const SearchResultContainer = styled(Box)<
   justify-content: center;
   align-items: center;
   gap: 0.5rem 0.75rem;
+  width: 100%;
 
   ${({ theme, isActive, isSelected }) =>
     isActive &&
@@ -137,6 +45,10 @@ export const SearchResultContainer = styled(Box)<
 
 export const ResultNameSection = styled(Stack)`
   overflow: hidden;
+`;
+
+export const ModerationIcon = styled(ModerationStatusIcon)`
+  overflow: unset;
 `;
 
 export const LoadingSection = styled(Box)<BoxProps>`

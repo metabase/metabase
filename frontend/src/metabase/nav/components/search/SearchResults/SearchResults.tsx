@@ -35,6 +35,15 @@ export type SearchResultsProps = {
     | null;
 };
 
+export const SearchLoadingSpinner = () => (
+  <Stack p="xl" align="center">
+    <Loader size="lg" data-testid="loading-spinner" />
+    <Text size="xl" color="text.0">
+      {t`Loading…`}
+    </Text>
+  </Stack>
+);
+
 export const SearchResults = ({
   onEntitySelect,
   forceEntitySelect = false,
@@ -92,14 +101,7 @@ export const SearchResults = ({
   const showFooter = hasResults && footerComponent && metadata;
 
   if (isLoading || isWaitingForDebounce) {
-    return (
-      <Stack p="xl" align="center">
-        <Loader size="lg" data-testid="loading-spinner" />
-        <Text size="xl" color="text.0">
-          {t`Loading…`}
-        </Text>
-      </Stack>
-    );
+    return <SearchLoadingSpinner />;
   }
 
   return (

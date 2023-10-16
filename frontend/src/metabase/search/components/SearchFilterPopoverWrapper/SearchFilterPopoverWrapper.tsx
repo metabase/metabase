@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import type { ReactNode } from "react";
+import type { StackProps } from "metabase/ui";
 import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
 import type {
   FilterTypeKeys,
@@ -14,7 +15,7 @@ type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
   children: ReactNode;
   onApply: (value: SearchFilterPropTypes[T]) => void;
   isLoading?: boolean;
-};
+} & StackProps;
 
 export const SearchFilterApplyButton = ({
   onApply,
@@ -26,6 +27,7 @@ export const SearchFilterPopoverWrapper = ({
   children,
   onApply,
   isLoading = false,
+  ...stackProps
 }: SearchFilterPopoverWrapperProps) => {
   if (isLoading) {
     return (
@@ -37,7 +39,7 @@ export const SearchFilterPopoverWrapper = ({
 
   return (
     <FocusTrap active>
-      <SearchPopoverContainer spacing={0}>
+      <SearchPopoverContainer spacing={0} {...stackProps}>
         {children}
         <DropdownApplyButtonDivider />
         <Group position="right" align="center" px="sm" pb="sm">

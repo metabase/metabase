@@ -7,5 +7,8 @@ export const EmptyStateContainer = styled.div`
 
 export const SearchResultsList = styled.ul`
   overflow-y: auto;
-  padding: ${({ theme }) => theme.spacing.xs};
+  display: flex;
+  flex-direction: column;
+  padding: ${({ theme }) => theme.spacing.sm};
+  gap: ${({ theme }) => theme.spacing.xs};
 `;

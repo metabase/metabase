@@ -31,4 +31,5 @@ export const IconWrapper = styled.div<{
   height: 32px;
   color: ${({ active, type }) => getColorForIconWrapper({ active, type })};
   flex-shrink: 0;
+  background: ${color("white")};
 `;

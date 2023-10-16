@@ -1,6 +1,10 @@
+import type { IconName } from "metabase/core/components/Icon";
+
 export type ModelType = "table" | "card" | "dataset" | "dashboard";
 
 export interface ModelObject {
+  display_name?: string;
+  moderated_status?: string;
   name: string;
 }
 
@@ -17,3 +21,8 @@ export interface PopularItem {
   model: ModelType;
   model_object: ModelObject;
 }
+
+export type WrappedRecentItem = RecentItem & {
+  getIcon: () => { name: IconName };
+  getUrl: () => string;
+};

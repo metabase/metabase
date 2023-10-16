@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import type { UserListResult } from "metabase-types/api";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
@@ -11,7 +12,6 @@ import { LastEditedInfo } from "./InfoText.styled";
 
 type InfoTextProps = {
   result: WrappedResult;
-  isCompact: boolean;
 } & (TextProps | AnchorProps);
 
 export const InfoTextAssetLink = ({
@@ -23,33 +23,27 @@ export const InfoTextAssetLink = ({
   const infoText: InfoTextData[] = useInfoText(result);
 
   const linkSeparator = (
-    <Box mx="xs" component="span" c="text.1">
+    <Box component="span" c="text.1">
       <Icon name="chevronright" size={8} />
     </Box>
   );
 
-  const linkItems = infoText.map(
-    ({ link, icon, label }: InfoTextData, index: number) => (
-      <SearchResultLink
-        key={label}
-        href={link}
-        leftIcon={icon}
-        {...resultTextProps}
-      >
-        {label}
-      </SearchResultLink>
-    ),
-  );
-
   return (
-    <Text truncate>
-      {linkItems.map((linkItem, index) => (
+    <>
+      {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <Fragment key={index}>
           {index > 0 && linkSeparator}
-          {linkItem}
+          <SearchResultLink
+            key={label}
+            href={link}
+            leftIcon={icon}
+            {...resultTextProps}
+          >
+            {label}
+          </SearchResultLink>
         </Fragment>
       ))}
-    </Text>
+    </>
   );
 };
 
@@ -70,7 +64,7 @@ export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
         userId: result.creator_id,
       };
 
-  const user = users.find(user => user.id === userId);
+  const user = users.find((user: UserListResult) => user.id === userId);
 
   return (
     <LastEditedInfo
@@ -88,7 +82,7 @@ export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
   );
 };
 
-export function InfoText({ result, isCompact, ...textProps }: InfoTextProps) {
+export function InfoText({ result, ...textProps }: InfoTextProps) {
   const resultTextProps = {
     ...textProps,
     size: "sm",

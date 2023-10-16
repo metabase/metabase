@@ -1,6 +1,8 @@
+import { useLayoutEffect, useRef, useState } from "react";
+import Tooltip from "metabase/core/components/Tooltip";
 import type { TextProps, AnchorProps } from "metabase/ui";
-import { Anchor, Text, Box } from "metabase/ui";
-import { ResultLink } from "./SearchResultLink.styled";
+import { Anchor, Text } from "metabase/ui";
+import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
 export const SearchResultLink = ({
   children,
@@ -11,8 +13,19 @@ export const SearchResultLink = ({
   children: JSX.Element | string | null;
   leftIcon?: JSX.Element | null;
   href?: string | null;
-  textProps?: TextProps | AnchorProps;
-}) => {
+} & (TextProps | AnchorProps)) => {
+  const collectionRef = useRef<HTMLHeadingElement>(null);
+
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    if (collectionRef.current) {
+      setIsOverflowing(
+        collectionRef.current.scrollWidth > collectionRef.current.clientWidth,
+      );
+    }
+  }, [children]);
+
   const componentProps = href
     ? {
         as: Anchor,
@@ -25,20 +38,21 @@ export const SearchResultLink = ({
       };
 
   return (
-    <ResultLink
-      {...componentProps}
-      span
-      c="text.1"
-      truncate
-      onClick={e => e.stopPropagation()}
-      {...textProps}
-    >
-      {leftIcon && (
-        <Box mr="xs" component="span">
-          {leftIcon}
-        </Box>
-      )}
-      {children}
-    </ResultLink>
+    <Tooltip isEnabled={isOverflowing} tooltip={children}>
+      <ResultLinkWrapper spacing={0}>
+        {leftIcon}
+        <ResultLink
+          {...componentProps}
+          span
+          c="text.1"
+          truncate
+          onClick={e => e.stopPropagation()}
+          ref={collectionRef}
+          {...textProps}
+        >
+          {children}
+        </ResultLink>
+      </ResultLinkWrapper>
+    </Tooltip>
   );
 };

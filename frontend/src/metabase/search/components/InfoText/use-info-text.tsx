@@ -1,5 +1,9 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_COLLECTIONS,
+} from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
 import type { Collection } from "metabase-types/api";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
@@ -9,19 +13,16 @@ import {
   collection as collectionUrl,
   tableRowsQuery,
 } from "metabase/lib/urls";
-import {
-  PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_COLLECTIONS,
-} from "metabase/plugins";
+
 import type TableType from "metabase-lib/metadata/Table";
+
+const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export type InfoTextData = {
   link?: string | null;
   icon?: JSX.Element | null;
   label: string | null;
 };
-
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export const useInfoText = (result: WrappedResult): InfoTextData[] => {
   let infoTextHook;

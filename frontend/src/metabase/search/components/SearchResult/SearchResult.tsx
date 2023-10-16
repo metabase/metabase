@@ -4,8 +4,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Group, Text, Loader, Title } from "metabase/ui";
+import { Group, Text, Loader } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
 
 import type { WrappedResult } from "metabase/search/types";
@@ -16,7 +15,9 @@ import {
   DescriptionDivider,
   DescriptionSection,
   LoadingSection,
+  ModerationIcon,
   ResultNameSection,
+  ResultTitle,
   SearchResultContainer,
 } from "./SearchResult.styled";
 
@@ -63,7 +64,6 @@ export function SearchResult({
 
   return (
     <SearchResultContainer
-      // as="button"
       component="button"
       onClick={handleClick}
       isActive={isActive}
@@ -71,17 +71,14 @@ export function SearchResult({
       p="sm"
     >
       <ItemIcon active={isActive} item={result} type={model} />
-      <ResultNameSection justify="center" spacing={0}>
-        <Group spacing="xs" align="center">
-          <Title order={4} truncate>
+      <ResultNameSection justify="center" spacing="xs">
+        <Group spacing="xs" align="center" noWrap>
+          <ResultTitle order={4} truncate>
             {name}
-          </Title>
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            status={moderated_status}
-            size={14}
-          />
+          </ResultTitle>
+          <ModerationIcon status={moderated_status} size={14} />
         </Group>
-        <InfoText isCompact={compact} result={result} />
+        <InfoText result={result} />
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
