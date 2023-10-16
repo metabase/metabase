@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.models.revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
@@ -424,3 +425,14 @@
                                                                         :unknown_key false}
                                                          :is_reversion false
                                                          :is_creation  false})))))))))
+
+(deftest revision-tracks-metabase-version
+  (testing "creating a new revision uses current metabase version"
+    (let [new-version "just a test"]
+      (t2.with-temp/with-temp [Card {card-id :id}]
+        (push-fake-revision! card-id, :name "one", :message "yay!")
+        (with-redefs [config/mb-version-string new-version]
+          (push-fake-revision! card-id, :name "two", :message "yay!"))
+        (is (=? [{:metabase_version new-version}
+                 {:metabase_version config/mb-version-string}]
+                (revision/revisions ::FakedCard card-id)))))))
