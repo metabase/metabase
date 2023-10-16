@@ -68,49 +68,23 @@ const newModelMetadataTabLocation = createMockLocation({
   pathname: "/model/metadata",
 });
 
-type UrlType = "id" | "slug";
-
 const getModelLocations = (model: Question) => [
-  getModelQueryTabLocation(model, "id"),
-  getModelQueryTabLocation(model, "slug"),
-  getModelMetadataTabLocation(model, "id"),
-  getModelMetadataTabLocation(model, "slug"),
+  createMockLocation({ pathname: `/model/${model.id()}/query` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/query` }),
+  createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
+  createMockLocation({ pathname: `/model/${model.slug()}/metadata` }),
 ];
-
-const getModelQueryTabLocation = (model: Question, urlType: UrlType) => {
-  const slug = urlType === "slug" ? model.slug() : model.id();
-  const pathname = `/model/${slug}/query`;
-  return createMockLocation({ pathname });
-};
-
-const getModelMetadataTabLocation = (model: Question, urlType: UrlType) => {
-  const slug = urlType === "slug" ? model.slug() : model.id();
-  const pathname = `/model/${slug}/metadata`;
-  return createMockLocation({ pathname });
-};
 
 const getNotebookQuestionLocations = (question: Question) => [
   ...getQuestionLocations(question),
-  getNotebookQuestionLocation(question, "slug"),
-  getNotebookQuestionLocation(question, "id"),
+  createMockLocation({ pathname: `/question/${question.id()}/notebook` }),
+  createMockLocation({ pathname: `/question/${question.slug()}/notebook` }),
 ];
 
 const getQuestionLocations = (question: Question) => [
-  getQuestionLocation(question, "slug"),
-  getQuestionLocation(question, "id"),
+  createMockLocation({ pathname: `/question/${question.id()}` }),
+  createMockLocation({ pathname: `/question/${question.slug()}` }),
 ];
-
-const getQuestionLocation = (question: Question, urlType: UrlType) => {
-  const slug = urlType === "slug" ? question.slug() : question.id();
-  const pathname = `/question/${slug}`;
-  return createMockLocation({ pathname });
-};
-
-const getNotebookQuestionLocation = (question: Question, urlType: UrlType) => {
-  const slug = urlType === "slug" ? question.slug() : question.id();
-  const pathname = `/question/${slug}/notebook`;
-  return createMockLocation({ pathname });
-};
 
 const runQuestionLocation = createMockLocation({
   pathname: "/question",
