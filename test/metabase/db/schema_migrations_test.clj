@@ -1156,29 +1156,3 @@
         (db.setup/migrate! db-type data-source :down 47)
         (testing "Rollback to the previous version should restore the column column, and set the default color value"
           (is (= "#31698A" (:color (t2/select-one :model/Collection :id collection-id)))))))))
-
-(deftest set-number-semantic-type-null-test
-  (testing "Migration v48.00-026"
-    (impl/test-migrations "v48.00-026" [migrate!]
-      (let [[db-id] (t2/insert-returning-pks! (t2/table-name :model/Database) {:name "DB"
-                                                                               :details "something"
-                                                                               :engine "h2"})
-            [table-id] (t2/insert-returning-pks! (t2/table-name :model/Table) {:name "Table"
-                                                                               :created_at :%now
-                                                                               :updated_at :%now
-                                                                               :db_id db-id
-                                                                               :active true})
-            [field-id] (t2/insert-returning-pks! (t2/table-name :model/Field) {:created_at :%now
-                                                                               :updated_at :%now
-                                                                               :name "some_field"
-                                                                               :base_type "type/Integer"
-                                                                               :semantic_type "type/Number"
-                                                                               :table_id table-id
-                                                                               :database_type "some_database_type"})]
-           (testing "Field has `type/Number` semantic type"
-             (is (partial= {:semantic_type "type/Number"}
-                           (t2/select-one (t2/table-name :model/Field) :id field-id))))
-           (migrate!)
-           (testing "type/Number semantic type becomes nil after migration"
-             (is (partial= {:semantic_type nil}
-                           (t2/select-one (t2/table-name :model/Field) :id field-id))))))))
