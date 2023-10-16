@@ -188,7 +188,9 @@
     2 (format "%s and %s" f s)
     (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
 
-(def dim-name (some-fn :display_name :name))
+(def dim-name
+  "Name of the dimension. Trying for `:display_name` and falling back to `:name`"
+  (some-fn :display_name :name))
 
 (defn ground-metric->card
   "Convert a grounded metric to a card. This includes adding any special breakout aggregations specified in the card
@@ -201,37 +203,42 @@
            (count semantic-dimensions))
     (let [dims (merge-with into dimension-type->field semantic-dimensions)
           card (visualization/expand-visualization
-                 card
-                 (vals dimension-name->field)
-                 nil)]
+                card
+                (vals dimension-name->field)
+                nil)
+          score-components (list* (:score card)
+                                  (:metric-score grounded-metric)
+                                  (map (comp :score :dimension) (vals dims)))]
       (-> grounded-metric
           (update :metric-definition add-breakouts (vals dims))
           (add-dataset-query base-context)
           (into card)
           (instantiate-metadata base-context {} dimension-name->field)
           (assoc
-            :id (gensym)
-            :title (if (pos? (count dimension-type->field))
-                     (format "%s by %s"
-                             metric-name
-                             (items->str (map dim-name (vals dimension-type->field))))
-                     metric-name))
+           :id (gensym)
+           :title (if (pos? (count dimension-type->field))
+                    (format "%s by %s"
+                            metric-name
+                            (items->str (map dim-name (vals dimension-type->field))))
+                    metric-name)
+           :total-score (long (/ (apply + score-components) (count score-components)))
+           :score-components score-components)
           (dissoc
-            :dimension-type->field
-            :metric-definition
-            :grounded-metric-fields
-            :dimension-name->field
-            :dimensions
-            ;:nominal-dimensions
-            :semantic-dimensions
-            :card-name
-            :metric-name
-            :metric-title
-            :metrics
-            ;:visualization
-            ;:score
-            ;:title
-            )))))
+           :dimension-type->field
+           :metric-definition
+           :grounded-metric-fields
+           :dimension-name->field
+           :dimensions
+           ;;:nominal-dimensions
+           :semantic-dimensions
+           :card-name
+           :metric-name
+           :metric-title
+           :metrics
+           ;;:visualization
+           ;;:score
+           ;;:title
+           )))))
 
 (defn ground-metric->cards
   "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
