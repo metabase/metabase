@@ -1022,12 +1022,10 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when saving edited question", async () => {
-        const { history } = await setup({
+        await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
-
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await triggerNativeQueryChange();
         await waitForSaveQuestionToBeEnabled();
@@ -1053,12 +1051,10 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when saving edited question as a new one", async () => {
-        const { history } = await setup({
+        await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
-
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await triggerNativeQueryChange();
         await waitForSaveQuestionToBeEnabled();
