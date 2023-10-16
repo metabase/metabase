@@ -161,9 +161,8 @@
 
 (deftest pivot-options-test
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
-    (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
-      (is (= {:pivot-rows [1 0] :pivot-cols [2]}
-           (qp.pivot/pivot-options (api.pivots/pivot-query false) (u/the-id card)))))))
+    (is (= {:pivot-rows [1 0] :pivot-cols [2]}
+         (qp.pivot/pivot-options (api.pivots/pivot-query false) (:visualization_settings (api.pivots/pivot-card)))))))
 
 (deftest dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"

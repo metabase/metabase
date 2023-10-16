@@ -217,18 +217,16 @@
 (defn pivot-options
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
-  [query card-id]
-  (when card-id
-    (let [card              (t2/select-one :model/Card :id card-id)
-          column-split      (-> card :visualization_settings :pivot_table.column_split)
-          breakout          (mapv qp.util/field-ref->key
-                                  (-> query :query :breakout))
-          index-in-breakout (fn [field-ref]
-                              (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref)))
-          pivot-rows        (mapv index-in-breakout (:rows column-split))
-          pivot-cols        (mapv index-in-breakout (:columns column-split))]
-      {:pivot-rows pivot-rows
-       :pivot-cols pivot-cols})))
+  [query viz-settings]
+  (let [column-split      (:pivot_table.column_split viz-settings)
+        breakout          (mapv qp.util/field-ref->key
+                                (-> query :query :breakout))
+        index-in-breakout (fn [field-ref]
+                            (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref)))
+        pivot-rows        (mapv index-in-breakout (:rows column-split))
+        pivot-cols        (mapv index-in-breakout (:columns column-split))]
+    {:pivot-rows pivot-rows
+     :pivot-cols pivot-cols}))
 
 (defn run-pivot-query
   "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
@@ -246,7 +244,7 @@
              query                   (mbql.normalize/normalize query)
              pivot-options           (or
                                       (not-empty (select-keys query [:pivot-rows :pivot-cols]))
-                                      (pivot-options query (get info :card-id)))
+                                      (pivot-options query (get info :visualization-settings)))
              main-breakout           (:breakout (:query query))
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp/query->expected-cols col-determination-query)
