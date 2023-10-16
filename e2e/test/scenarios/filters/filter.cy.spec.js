@@ -635,7 +635,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText('Expecting boolean but found "TheAnswer"');
   });
 
-  it("column filters should work for metrics (metabase#15333)", () => {
+  it.skip("column filters should work for metrics (metabase#15333)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",

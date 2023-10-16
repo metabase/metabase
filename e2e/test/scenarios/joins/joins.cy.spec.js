@@ -68,7 +68,7 @@ describe("scenarios > question > joined questions", () => {
     openNotebook();
     filter({ mode: "notebook" });
     popover().within(() => {
-      cy.findByText("Reviews - Product").click();
+      cy.findByText("Review").click();
       cy.findByText("Rating").click();
       cy.findByLabelText("2").click();
       cy.button("Add filter").click();
@@ -152,7 +152,7 @@ describe("scenarios > question > joined questions", () => {
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId} - PRODUCT_ID`).click();
+        cy.findByText(`Question ${joinedQuestionId}`).click();
         cy.findByText("CATEGORY").click();
         cy.findByPlaceholderText("Enter some text").type("Gadget");
         cy.button("Add filter").click();
@@ -246,7 +246,7 @@ describe("scenarios > question > joined questions", () => {
 
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId} - Product`).click();
+        cy.findByText(`Question ${joinedQuestionId}`).click();
         cy.findByText("ID").click();
         cy.findByPlaceholderText("Enter an ID").type("12");
         cy.button("Add filter").click();

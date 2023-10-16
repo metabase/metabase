@@ -35,7 +35,6 @@ describe("scenarios > question > saved", () => {
     addSummaryGroupingField({ field: "Total" });
 
     // Save the question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     queryBuilderHeader().button("Save").click();
     modal().button("Save").click();
     cy.wait("@cardCreate");
