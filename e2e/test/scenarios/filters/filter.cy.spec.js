@@ -49,7 +49,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
+    cy.findByDisplayValue("Is").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is not").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -57,7 +57,7 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Category is not Gizmo");
+    cy.contains('Products → Category does not equal "Gizmo"');
 
     visualize();
 
