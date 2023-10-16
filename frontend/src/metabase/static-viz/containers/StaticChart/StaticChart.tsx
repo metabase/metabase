@@ -1,4 +1,3 @@
-import { createColorGetter } from "metabase/static-viz/lib/colors";
 import RowChart from "metabase/static-viz/components/RowChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
@@ -7,6 +6,7 @@ import ProgressBar from "metabase/static-viz/components/ProgressBar";
 import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import type { ColorPalette } from "metabase/lib/colors/types";
+import { getIsomorhpicProps } from "./utils";
 
 export type StaticChartType =
   | "categorical/donut"
@@ -24,8 +24,11 @@ export interface StaticChartProps {
 }
 
 const StaticChart = ({ type, options }: StaticChartProps) => {
-  const getColor = createColorGetter(options.colors);
-  const chartProps = { ...options, getColor };
+  const isomorphicProps = getIsomorhpicProps(options);
+  const chartProps = {
+    ...options,
+    getColor: isomorphicProps.renderingContext.getColor,
+  };
 
   switch (type) {
     case "categorical/donut":

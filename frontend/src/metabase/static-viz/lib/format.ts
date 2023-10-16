@@ -42,7 +42,7 @@ const getRemappedValue = (
   return value;
 };
 
-type StaticFormattingOptions = {
+export type StaticFormattingOptions = {
   column: DatasetColumn;
   number_separators?: string;
   jsx?: boolean;
