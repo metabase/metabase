@@ -22,7 +22,7 @@ export function ColumnValuesWidget<T extends string | number>({
 
   const fields = useMemo(() => {
     const fieldId = Lib._fieldId(column);
-    if (fieldId) {
+    if (typeof fieldId === "number") {
       const field = metadata.field(fieldId);
       return field ? [field] : [];
     }
