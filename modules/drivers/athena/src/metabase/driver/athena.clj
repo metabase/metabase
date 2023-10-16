@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]

@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.collection :as collection]
@@ -106,7 +107,7 @@
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id])
+  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version])
 
 (defmethod revision/serialize-instance :model/Card
   ([instance]
@@ -410,6 +411,7 @@
 (t2/define-before-insert :model/Card
   [card]
   (-> card
+      (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
       populate-result-metadata
       pre-insert

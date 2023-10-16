@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.spec :as mdb.spec]
