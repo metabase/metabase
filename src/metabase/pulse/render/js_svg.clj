@@ -149,6 +149,15 @@
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
+(defn pie-chart
+  "Clojure entrypoint to render a pie chart."
+  [card data]
+  (let [svg-string (.asString (js/execute-fn-name (context) "pie_chart"
+                                                  (json/generate-string card)
+                                                  (json/generate-string data)
+                                                  (json/generate-string (public-settings/application-colors))))]
+    (svg-string->bytes svg-string)))
+
 (defn categorical-donut
   "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
   byte array of a png file"

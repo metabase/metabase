@@ -54,6 +54,14 @@ function funnel(data, settings) {
   });
 }
 
+function pie_chart(card, data, colors) {
+  return StaticViz.RenderChart("pie", {
+    card: JSON.parse(card),
+    data: JSON.parse(data),
+    colors: JSON.parse(colors),
+  });
+}
+
 function categorical_donut(rows, legendColors, settings) {
   return StaticViz.RenderChart("categorical/donut", {
     data: toJSArray(rows),
