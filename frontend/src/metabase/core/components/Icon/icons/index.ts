@@ -213,6 +213,8 @@ import moon_component from "./moon.svg?component";
 import moon_source from "./moon.svg?source";
 import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
+import move_card_component from "./move_card.svg?component";
+import move_card_source from "./move_card.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
@@ -780,6 +782,10 @@ export const Icons = {
   move: {
     component: move_component,
     source: move_source,
+  },
+  move_card: {
+    component: move_card_component,
+    source: move_card_source,
   },
   new_folder: {
     component: new_folder_component,

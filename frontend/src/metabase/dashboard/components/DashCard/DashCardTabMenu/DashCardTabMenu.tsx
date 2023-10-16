@@ -28,7 +28,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
       >
         <Menu.Target>
           <MoveDashCardActionContainer>
-            <DashCardActionButton.Icon name="move" />
+            <DashCardActionButton.Icon name="move_card" />
           </MoveDashCardActionContainer>
         </Menu.Target>
         <Menu.Dropdown>
