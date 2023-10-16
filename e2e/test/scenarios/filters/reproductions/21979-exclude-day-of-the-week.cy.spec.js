@@ -49,7 +49,7 @@ describe("issue 21979", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Thursday").should("be.visible");
+    cy.findByText("Created At excludes Thursdays").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Enormous Marble Wallet").should("be.visible");
   });
