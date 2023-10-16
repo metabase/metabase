@@ -991,12 +991,8 @@ describe("QueryBuilder", () => {
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
-
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
+        await waitForLoaderToBeRemoved();
+        await waitForNativeQueryEditoReady();
 
         history.goBack();
 
@@ -1113,6 +1109,22 @@ describe("QueryBuilder", () => {
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
+
+      it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_STRUCTURED_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+        await waitForLoaderToBeRemoved();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -1199,9 +1211,7 @@ const startNewNotebookModel = async () => {
 };
 
 const triggerNativeQueryChange = async () => {
-  await waitFor(() => {
-    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
-  });
+  await waitForNativeQueryEditoReady();
 
   const inputArea = within(
     screen.getByTestId("mock-native-query-editor"),
@@ -1267,4 +1277,10 @@ const waitForSaveQuestionToBeEnabled = async () => {
 
 const waitForSaveNewQuestionToBeEnabled = async () => {
   await waitForSaveQuestionToBeEnabled();
+};
+
+const waitForNativeQueryEditoReady = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+  });
 };
