@@ -3,13 +3,13 @@ import { useState, useMemo } from "react";
 
 import { Box, Button, Flex, NumberInput, Text, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import Field from "metabase-lib/metadata/Field";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
+import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -23,6 +23,7 @@ export function CoordinateFilterPicker({
   stageIndex,
   column,
   filter,
+  metadata,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -119,9 +120,10 @@ export function CoordinateFilterPicker({
       )}
       <CoordinateValueInput
         values={values}
-        onChange={setValues}
         valueCount={valueCount ?? 0}
         column={column}
+        metadata={metadata}
+        onChange={setValues}
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
         <Box />
@@ -133,35 +135,33 @@ export function CoordinateFilterPicker({
   );
 }
 
+interface CoordinateValueInputProps {
+  values: number[];
+  valueCount: number;
+  column: Lib.ColumnMetadata;
+  metadata: Metadata;
+  onChange: (values: number[]) => void;
+}
+
 function CoordinateValueInput({
   values,
   onChange,
   valueCount,
   column,
-}: {
-  values: number[];
-  onChange: (values: number[]) => void;
-  valueCount: number;
-  column: Lib.ColumnMetadata;
-}) {
+  metadata,
+}: CoordinateValueInputProps) {
   const placeholder = t`Enter a number`;
-  const fieldId = useMemo(() => Lib._fieldId(column), [column]);
 
   switch (valueCount) {
     case Infinity:
       return (
         <FlexWithScroll p="md" mah={300}>
-          <FieldValuesWidget
-            fields={[new Field({ id: fieldId })]} // TODO adapt for MLv2
-            className="input"
+          <ColumnValuesWidget
             value={values}
-            minWidth={"300px"}
+            column={column}
+            metadata={metadata}
+            canHaveManyValues
             onChange={onChange}
-            placeholder={placeholder}
-            disablePKRemappingForSearch
-            autoFocus
-            disableSearch
-            multi
           />
         </FlexWithScroll>
       );

@@ -3,21 +3,21 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
-interface FilterValuesWidgetProps {
-  value: string[];
+interface ColumnValuesWidgetProps<T> {
+  value: T[];
   column: Lib.ColumnMetadata;
   metadata: Metadata;
-  canHaveManyValues: boolean;
-  onChange: (value: string[]) => void;
+  canHaveManyValues?: boolean;
+  onChange: (value: T[]) => void;
 }
 
-export function FilterValuesWidget({
+export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
   metadata,
   canHaveManyValues,
   onChange,
-}: FilterValuesWidgetProps) {
+}: ColumnValuesWidgetProps<T>) {
   const fields = useMemo(() => {
     const fieldId = Lib._fieldId(column);
     const field = metadata.field(fieldId);

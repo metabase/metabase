@@ -7,7 +7,7 @@ import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
 import { BackButton } from "../BackButton";
 import { Header } from "../Header";
-import { FilterValuesWidget } from "../FilterValuesWidget";
+import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { Footer } from "../Footer";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -88,7 +88,7 @@ export function StringFilterPicker({
       </Header>
       {valueCount > 0 && (
         <FlexWithScroll p="md" mah={300}>
-          <FilterValuesWidget
+          <ColumnValuesWidget
             column={column}
             value={values}
             metadata={metadata}
