@@ -5,13 +5,14 @@ import {
   screen,
   fireEvent,
   getIcon,
-  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
+import registerVisualizations from "metabase/visualizations/register";
 
 import type {
   DashboardOrderedCard,
@@ -28,6 +29,8 @@ import {
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
+
+registerVisualizations();
 
 type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
   link: LinkCardSettings;
@@ -256,10 +259,7 @@ describe("LinkViz", () => {
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
-
-      await waitFor(() => {
-        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      });
+      await waitForLoaderToBeRemoved();
 
       userEvent.click(await screen.findByText("Question Uno"));
 

@@ -25,6 +25,7 @@
 /.lein-repl-history
 /.sqlite.db
 /backend-checksums.txt
+/backend-docs/uberdoc.html
 /build.xml
 /checkouts
 /classes
@@ -32,7 +33,6 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
-/docs/uberdoc.html
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /lein-plugins/*/target
@@ -89,3 +89,5 @@ dev/src/dev/nocommit/
 
 # malli + clj-kondo: ignore malli-types
 .clj-kondo/metosin/malli-types-clj
+
+.github/static-viz-sources.yaml

@@ -95,6 +95,7 @@ jobs:
           java-version: 11
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
@@ -108,6 +109,7 @@ jobs:
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
       - name: Upload Cypress Artifacts upon failure

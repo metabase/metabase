@@ -1,23 +1,80 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import registerVisualizations from "metabase/visualizations/register";
+
+registerVisualizations();
 
 const setup = (series, width) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
-const series = ({ rows, insights }) => {
+const series = ({ rows, insights, field }) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
     NumberColumn({ name: "Count" }),
+    NumberColumn({ name: "Sum" }),
   ];
-  return [{ card: { display: "smartscalar" }, data: { cols, rows, insights } }];
+  return [
+    {
+      card: {
+        display: "smartscalar",
+        visualization_settings: { "scalar.field": field },
+      },
+      data: { cols, rows, insights },
+    },
+  ];
 };
 
 describe("SmartScalar", () => {
+  describe("field selection", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 100, 200],
+      [("2019-11-01T00:00:00", 120, 220)],
+    ];
+    const insights = [
+      {
+        "last-value": 120,
+        "last-change": 0.2,
+        "previous-value": 100,
+        unit: "month",
+        col: "Count",
+      },
+      {
+        "last-value": 220,
+        "last-change": 0.1,
+        "previous-value": 200,
+        unit: "month",
+        col: "Sum",
+      },
+    ];
+    it("should use first non-date column (Count) by default", () => {
+      setup(series({ rows, insights }));
+      expect(screen.getByText("120")).toBeInTheDocument();
+      const previousValue = screen.getByText("20%");
+      expect(previousValue).toBeInTheDocument();
+      userEvent.hover(previousValue);
+      expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+    });
+    it("should use Count when selected", () => {
+      setup(series({ rows, insights, field: "Count" }));
+      expect(screen.getByText("120")).toBeInTheDocument();
+      const previousValue = screen.getByText("20%");
+      expect(previousValue).toBeInTheDocument();
+      userEvent.hover(previousValue);
+      expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+    });
+    it("should use Sum when selected", () => {
+      setup(series({ rows, insights, field: "Sum" }));
+      expect(screen.getByText("220")).toBeInTheDocument();
+      const previousValue = screen.getByText("10%");
+      expect(previousValue).toBeInTheDocument();
+      userEvent.hover(previousValue);
+      expect(screen.getByText("was 200 last month")).toBeInTheDocument();
+    });
+  });
   it("should show 20% increase", () => {
     const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 120)]];
     const insights = [

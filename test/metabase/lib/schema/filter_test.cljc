@@ -94,3 +94,17 @@
       [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
       ;; 1 is not a valid <string> arg
       [:contains "abc" 1])))
+
+(deftest ^:parallel mongo-types-test
+  (testing ":type/MongoBSONID"
+    (let [bson-field [:field {:base-type :type/MongoBSONID :effective-type :type/MongoBSONID} 1]]
+      (testing "is comparable"
+        (is (mc/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"]))))
+      (testing "is empty"
+        (is (mc/validate ::expression/boolean (ensure-uuids [:is-empty {} bson-field]))))
+      (testing "not empty"
+        (is (mc/validate ::expression/boolean (ensure-uuids [:not-empty {} bson-field]))))))
+  (testing ":type/Array"
+    (let [bson-field [:field {:base-type :type/Array :effective-type :type/Array} 1]]
+      (testing "is comparable"
+        (is (mc/validate ::expression/boolean (ensure-uuids [:= {} bson-field "abc"])))))))

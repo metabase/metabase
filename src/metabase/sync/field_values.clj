@@ -1,7 +1,7 @@
 (ns metabase.sync.field-values
   "Logic for updating FieldValues for fields in a database."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.field :refer [Field]]

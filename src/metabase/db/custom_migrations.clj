@@ -23,10 +23,22 @@
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
+   (liquibase Scope)
+   (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)))
+   (liquibase.exception ValidationErrors)
+   (liquibase.util BooleanUtil)))
 
 (set! *warn-on-reflection* true)
+
+(defn should-execute-change?
+  "Check if the change is supposed to be executed.
+  This is a work around. The rollback method is called twice: once
+  for generating MDC data and once for actually making the change.
+  The same problem has been fixed for forward changes in Liquibase
+  but for rollback it has not."
+  []
+  (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,
@@ -55,7 +67,8 @@
      CustomTaskRollback
      (rollback [_# database#]
        (t2/with-transaction [_conn#]
-         ~reverse-migration-body))))
+         (when (should-execute-change?)
+           ~reverse-migration-body)))))
 
 (defn no-op
   "No-op logging rollback function"

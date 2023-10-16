@@ -19,6 +19,9 @@ export interface FormNumericInputProps
   optional?: boolean;
 }
 
+/**
+ * @deprecated: use FormNumberInput from "metabase/forms"
+ */
 const FormNumericInput = forwardRef(function FormNumericInput(
   {
     name,

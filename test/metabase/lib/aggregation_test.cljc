@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.query :as lib.query]
@@ -766,3 +767,38 @@
               query))
       (is (=? [:field {:lib/uuid string?, :base-type :type/Float} "avg"]
               (lib/ref expr-metadata))))))
+
+(deftest ^:parallel aggregate-by-coalesce-test
+  (testing "Converted query returns same columns as built query (#33680)"
+    (let [built-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/expression "Zero" (lib/+ 0 0))
+                          (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
+          converted-query (lib/query meta/metadata-provider
+                            (lib.convert/->pMBQL
+                              {:database (meta/id)
+                               :type :query
+                               :query {:source-table (meta/id :orders) ,
+                                       :expressions {"Zero" [:+ 0 0]
+                                                     "Total of Zero" [:coalesce
+                                                                      [:field
+                                                                       (meta/id :orders :total) ,
+                                                                       nil],
+                                                                      0]}}}))]
+      (is (= (->> built-query
+                  lib/available-aggregation-operators
+                  (m/find-first #(= (:short %) :sum))
+                  lib/aggregation-operator-columns)
+             (->> converted-query
+                  lib/available-aggregation-operators
+                  (m/find-first #(= (:short %) :sum))
+                  lib/aggregation-operator-columns))))))
+
+(deftest ^:parallel aggregation-at-index-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/count)))]
+    (are [index expected] (=? expected
+                              (lib.aggregation/aggregation-at-index query -1 index))
+      0 [:count {}]
+      1 [:count {}]
+      2 nil)))

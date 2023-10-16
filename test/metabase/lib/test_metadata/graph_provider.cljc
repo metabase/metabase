@@ -2,7 +2,9 @@
   (:require
    [clojure.core.protocols]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   #?@(:clj
+       ([pretty.core :as pretty]))))
 
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))
@@ -65,4 +67,11 @@
 
   clojure.core.protocols/Datafiable
   (datafy [_this]
-    (list `->SimpleGraphMetadataProvider metadata-graph)))
+    (list `->SimpleGraphMetadataProvider metadata-graph))
+
+  #?@(:clj
+      [pretty/PrettyPrintable
+       (pretty [_this]
+         (if (identical? metadata-graph @(requiring-resolve 'metabase.lib.test-metadata/metadata))
+           'metabase.lib.test-metadata/metadata-provider
+           (list `->SimpleGraphMetadataProvider metadata-graph)))]))

@@ -110,8 +110,19 @@ describe("scenarios > collections > archive", () => {
 
     cy.findByTestId("toast-undo").should("not.exist");
 
-    cy.log("test bulk delete");
+    cy.log(
+      "Make sure we don't offer to delete archived collections (metabase#33996)",
+    );
     cy.findByTestId(`archive-item-${COLLECTION_NAME}`)
+      .as("archivedCollection")
+      .findByLabelText("unarchive icon")
+      .should("exist");
+    cy.get("@archivedCollection")
+      .findByLabelText("trash icon")
+      .should("not.exist");
+
+    cy.log("test bulk delete");
+    cy.get("@archivedCollection")
       .findByLabelText("archive-item-swapper")
       .realHover()
       .click();

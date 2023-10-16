@@ -8,6 +8,7 @@ const tableQuestion = {
   query: {
     "source-table": ORDERS_ID,
   },
+  limit: 5,
 };
 
 const tableQuestionWithJoin = {
@@ -26,6 +27,7 @@ const tableQuestionWithJoin = {
         alias: "Products",
       },
     ],
+    limit: 5,
   },
 };
 
@@ -45,6 +47,7 @@ const tableQuestionWithJoinOnQuestion = card => ({
         alias: `Question ${card.id}`,
       },
     ],
+    limit: 5,
   },
 });
 
@@ -65,6 +68,7 @@ const tableQuestionWithJoinAndFields = {
       },
     ],
   },
+  limit: 5,
 };
 
 const tableQuestionWithSelfJoinAndFields = {
@@ -90,6 +94,7 @@ const tableQuestionWithSelfJoinAndFields = {
         alias: "Orders",
       },
     ],
+    limit: 5,
   },
 };
 
@@ -100,6 +105,7 @@ const tableQuestionWithExpression = {
     expressions: {
       Math: ["+", 1, 1],
     },
+    limit: 5,
   },
 };
 
@@ -125,6 +131,7 @@ const tableWithAggregations = {
       ["count"],
       ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
     ],
+    limit: 5,
   },
 };
 
@@ -136,6 +143,7 @@ const multiStageQuestion = {
       breakout: [["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }]],
     },
     filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+    limit: 5,
   },
 };
 
@@ -144,6 +152,7 @@ const nativeQuestion = {
   native: {
     query: "SELECT * FROM ORDERS",
   },
+  limit: 5,
 };
 
 const nestedQuestion = card => ({
@@ -151,6 +160,7 @@ const nestedQuestion = card => ({
   query: {
     "source-table": `card__${card.id}`,
   },
+  limit: 5,
 });
 
 const nestedQuestionWithJoinOnTable = card => ({
@@ -169,6 +179,7 @@ const nestedQuestionWithJoinOnTable = card => ({
         alias: "Products",
       },
     ],
+    limit: 5,
   },
 });
 
@@ -188,6 +199,7 @@ const nestedQuestionWithJoinOnQuestion = card => ({
         alias: `Question ${card.id}`,
       },
     ],
+    limit: 5,
   },
 });
 
@@ -349,7 +361,6 @@ describe("scenarios > visualizations > table column settings", () => {
       disabledColumns().findByText("Orders → Tax").should("not.exist");
       disabledColumns().findByText("Tax").should("not.exist");
       additionalColumns().findByText("Tax").should("not.exist");
-      scrollVisualization();
       visualization().findByText("Orders → Tax").should("exist");
     });
 
@@ -579,7 +590,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
     // TODO: This is currently broken by some subtleties of `:lib/source` in MLv2.
     // This is still better than it used to be, so skip this test and fix it later. See #32373.
-    it.skip("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
+    it("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields).then(
         ({ body: card }) => {
           cy.createQuestion(nestedQuestion(card), { visitQuestion: true });
@@ -611,11 +622,14 @@ describe("scenarios > visualizations > table column settings", () => {
       cy.log("show an existing column");
       additionalColumns().within(() => showColumn("Products → Category"));
       cy.wait("@dataset");
-      visibleColumns().findByText("Products → Category").should("exist");
+      // TODO: Once #33972 is fixed in the QP, this test will start failing.
+      // The correct display name is "Products -> Category", but the QP is incorrectly marking this column as coming
+      // from the implicit join (so it's using PRODUCT_ID -> "Product", not the table name "Products").
+      visibleColumns().findByText("Product → Category").should("exist");
       visibleColumns().findByText("Product → Ean").should("exist");
-      additionalColumns().findByText("Products → Category").should("not.exist");
+      additionalColumns().findByText("Product → Category").should("not.exist");
       scrollVisualization();
-      visualization().findByText("Products → Category").should("exist");
+      visualization().findByText("Product → Category").should("exist");
       visualization().findByText("Product → Ean").should("exist");
     });
 

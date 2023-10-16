@@ -2,6 +2,8 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
@@ -13,7 +15,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
-   [metabase.models.setting :refer [defsetting]]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -23,10 +25,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as schema]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields]))
 
@@ -70,6 +69,16 @@
       {:password_salt salt
        :password      (u.password/hash-bcrypt (str salt password))})))
 
+(defn user-local-settings
+  "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
+  [user-or-user-id]
+  (when user-or-user-id
+    (or
+     (if (integer? user-or-user-id)
+       (:settings (t2/select-one [User :settings] :id user-or-user-id))
+       (:settings user-or-user-id))
+     {})))
+
 (t2/define-before-insert :model/User
   [{:keys [email password reset_token locale], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
@@ -93,6 +102,12 @@
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
+    (let [current-version (:tag config/mb-version-info)]
+      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      ;; Can't use mw.session/with-current-user due to circular require
+      (binding [api/*current-user-id*       user-id
+                setting/*user-local-values* (delay (atom (user-local-settings user)))]
+        (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
     (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
     (when superuser?
@@ -152,13 +167,17 @@
       email       (update :email u/lower-case-en))))
 
 (defn add-common-name
-  "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
+  "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
+  The key will only be added if `user` contains the required keys to derive it correctly."
   [{:keys [first_name last_name email], :as user}]
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
     (cond-> user
-      common-name (assoc :common_name common-name))))
+      (and (contains? user :first_name)
+           (contains? user :last_name)
+           common-name)
+      (assoc :common_name common-name))))
 
 (t2/define-after-select :model/User
   [user]
@@ -299,18 +318,6 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
-
-(def DefaultUser
-  "Standard form of a user (for consumption by the frontend and such)"
-  {:id           su/IntGreaterThanOrEqualToZero
-   :email        su/NonBlankString
-   :first_name   su/NonBlankString
-   :last_name    su/NonBlankString
-   :common_name  su/NonBlankString
-   :last_login   schema/Any
-   :date_joined  schema/Any
-   :is_qbnewb    schema/Bool
-   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

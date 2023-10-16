@@ -56,6 +56,13 @@
   [driver database table]
   (query driver database table {:select [:*]}))
 
+(defn- has-method? [driver multifn]
+  {:pre [(keyword? driver)]}
+  (when-let [driver-method (get-method multifn driver)]
+    (and driver-method
+         (not (identical? driver-method (get-method multifn :sql-jdbc)))
+         (not (identical? driver-method (get-method multifn :default))))))
+
 ;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
 (defmethod driver/database-supports? [:sql-jdbc :set-timezone]
   [driver _feature _db]
@@ -64,8 +71,8 @@
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
   ;; if the driver has a non-default implementation of [[sql-jdbc.sync/db-default-timezone]], use that.
-  (if-not (identical? (get-method sql-jdbc.sync/db-default-timezone driver)
-                      (get-method sql-jdbc.sync/db-default-timezone :sql-jdbc))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (if (has-method? driver sql-jdbc.sync/db-default-timezone)
     (sql-jdbc.sync/db-default-timezone driver (sql-jdbc.conn/db->pooled-connection-spec database))
     ;; otherwise fall back to the default implementation.
     ((get-method driver/db-default-timezone :metabase.driver/driver) driver database)))
@@ -113,7 +120,9 @@
 (defn- create-table-sql
   [driver table-name col->type]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [kv] (map keyword kv)) col->type)}
+                      :with-columns (map (fn [[name type-spec]]
+                                           (vec (cons name type-spec)))
+                                         col->type)}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 

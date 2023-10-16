@@ -8,7 +8,7 @@
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -700,6 +700,7 @@
   (try
     (do-with-connection-with-options
      driver
+     (lib.metadata/database (qp.store/metadata-provider))
      {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
      (fn [^Connection conn]
        (with-open [stmt (statement-or-prepared-statement driver conn sql params nil)]

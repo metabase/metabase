@@ -6,7 +6,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
     :as qp.middleware.audit]
@@ -93,7 +93,10 @@
   ;;
   ;; This is cached by db-type and the JDBC connection spec in case that gets changed/swapped out for one reason or
   ;; another
-  (let [timezone (memoize/ttl sql-jdbc.sync/db-default-timezone :ttl/threshold (u/hours->ms 1))]
+  (let [timezone (memoize/ttl
+                  #_{:clj-kondo/ignore [:deprecated-var]}
+                  sql-jdbc.sync/db-default-timezone
+                  :ttl/threshold (u/hours->ms 1))]
     (fn []
       (timezone (mdb/db-type) {:datasource mdb.connection/*application-db*}))))
 

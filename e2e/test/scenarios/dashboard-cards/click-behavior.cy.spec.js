@@ -10,6 +10,7 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -162,7 +163,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   it("should navigate to a target from a gauge card (metabase#23137)", () => {
-    const target_id = 1;
+    const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
       questionDetails: getQuestionDetails({ display: "gauge" }),
@@ -181,7 +182,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   it("should navigate to a target from a progress card (metabase#23137)", () => {
-    const target_id = 1;
+    const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
       questionDetails: getQuestionDetails({ display: "progress" }),

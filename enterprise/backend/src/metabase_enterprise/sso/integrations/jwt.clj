@@ -3,7 +3,7 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]

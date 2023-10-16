@@ -14,7 +14,8 @@
   (:import
    (java.io FileNotFoundException)
    (java.net URL)
-   (java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
+   (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException FileSystems
+                  LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
    (java.util Collections)))
 
@@ -108,7 +109,12 @@
     (str/includes? (.getFile url) ".jar!/")))
 
 (defn- jar-file-system-from-url ^FileSystem [^URL url]
-  (FileSystems/newFileSystem (.toURI url) Collections/EMPTY_MAP))
+  (let [uri (.toURI url)]
+    (try
+      (FileSystems/newFileSystem uri Collections/EMPTY_MAP)
+      (catch FileSystemAlreadyExistsException _
+        (log/info "File system at" uri "already exists")
+        (FileSystems/getFileSystem uri)))))
 
 (defn do-with-open-path-to-resource
   "Impl for `with-open-path-to-resource`."

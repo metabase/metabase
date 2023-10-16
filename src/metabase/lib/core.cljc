@@ -159,7 +159,8 @@
   upper
   lower]
  [lib.fe-util
-  filter-parts]
+  expression-clause
+  expression-parts]
  [lib.field
   add-field
   field-id
@@ -231,12 +232,11 @@
  [lib.metric
   available-metrics]
  [lib.native
-  #?@(:cljs [->TemplateTags
-             TemplateTags->])
   native-query
   raw-native-query
   with-native-query
   template-tags
+  engine
   with-template-tags
   required-native-extras
   native-extras
@@ -253,6 +253,7 @@
  [lib.normalize
   normalize]
  [lib.query
+  can-run
   query
   with-different-table]
  [lib.ref

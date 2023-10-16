@@ -124,7 +124,10 @@ class AutomaticDashboardAppInner extends Component {
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
-            <div className="bg-white border-bottom">
+            <div
+              className="bg-white border-bottom"
+              data-testid="automatic-dashboard-header"
+            >
               <div className="wrapper flex align-center py2">
                 <XrayIcon name="bolt" size={24} />
                 <div>

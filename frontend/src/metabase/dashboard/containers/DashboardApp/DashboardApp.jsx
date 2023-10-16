@@ -16,7 +16,8 @@ import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
-import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import { closeNavbar, setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -60,7 +61,7 @@ import {
   getSlowCards,
   getIsAutoApplyFilters,
   getSelectedTabId,
-  getisNavigatingBackToDashboard,
+  getIsNavigatingBackToDashboard,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
@@ -105,7 +106,7 @@ const mapStateToProps = state => {
     embedOptions: getEmbedOptions(state),
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
-    isNavigatingBackToDashboard: getisNavigatingBackToDashboard(state),
+    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
   };
 };
 

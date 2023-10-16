@@ -74,10 +74,10 @@
   (are [input error] (= error
                         (me/humanize (mc/explain ::temporal/timezone-id input)))
     "US/Pacific"  nil
-    "US/Specific" ["invalid timezone ID: \"US/Specific\""]
-    ""            ["should be at least 1 characters" "non-blank string" "invalid timezone ID: \"\""]
-    "  "          ["non-blank string" "invalid timezone ID: \"  \""]
-    nil           ["should be a string" "non-blank string" "invalid timezone ID: nil"]))
+    "US/Specific" ["invalid timezone ID: \"US/Specific\"" "timezone offset string literal"]
+    ""            ["should be at least 1 characters" "non-blank string" "invalid timezone ID: \"\"" "timezone offset string literal"]
+    "  "          ["non-blank string" "invalid timezone ID: \"  \"" "timezone offset string literal"]
+    nil           ["should be a string" "non-blank string" "invalid timezone ID: nil" "timezone offset string literal"]))
 
 (deftest ^:parallel convert-timezone-test
   (are [clause error] (= error
@@ -103,14 +103,14 @@
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
      "Asia/Seoul"
      nil]
-    [nil nil nil nil ["should be a string" "non-blank string" "invalid timezone ID: nil" "Valid :convert-timezone clause"]]
+    [nil nil nil nil ["should be a string" "non-blank string" "invalid timezone ID: nil" "timezone offset string literal" "Valid :convert-timezone clause"]]
 
     ;; invalid timezone ID
     [:convert-timezone
      {:lib/uuid "00000000-0000-0000-0000-000000000000"}
      [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
      "US/Specific"]
-    [nil nil nil ["invalid timezone ID: \"US/Specific\""]]))
+    [nil nil nil ["invalid timezone ID: \"US/Specific\"" "timezone offset string literal"]]))
 
 (deftest ^:parallel get-week-test
   (are [clause error] (= error

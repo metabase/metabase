@@ -2,6 +2,7 @@ import type { Drill } from "metabase/visualizations/types/click-actions";
 import type { DrillThruType } from "metabase-lib";
 import { FKFilterDrill } from "metabase/visualizations/click-actions/drills/mlv2/FKFilterDrill";
 import { SummarizeColumnByTimeDrill } from "metabase/visualizations/click-actions/drills/mlv2/SummarizeColumnByTimeDrill";
+import { SortDrill } from "metabase/visualizations/click-actions/drills/mlv2/SortDrill";
 
 export const MODE_TYPE_DEFAULT = "default";
 export const MODE_TYPE_NATIVE = "native";
@@ -33,8 +34,9 @@ export const DRILL_TYPE_TO_HANDLER_MAP: Record<
   "drill-thru/pivot": null,
   "drill-thru/fk-filter": FKFilterDrill,
   "drill-thru/distribution": null, // DistributionDrill,
-  "drill-thru/sort": null, // SortDrill,
+  "drill-thru/sort": SortDrill,
   "drill-thru/summarize-column": null, // SummarizeColumnDrill,
   "drill-thru/summarize-column-by-time": SummarizeColumnByTimeDrill,
   "drill-thru/underlying-records": null, // UnderlyingRecordsDrill,
+  "drill-thru/zoom-in.timeseries": null,
 };

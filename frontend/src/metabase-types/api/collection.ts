@@ -24,7 +24,6 @@ export interface Collection {
   name: string;
   description: string | null;
   can_write: boolean;
-  color?: string;
   archived: boolean;
   children?: Collection[];
   authority_level?: "official" | null;
@@ -43,7 +42,7 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-type CollectionItemModel =
+export type CollectionItemModel =
   | "card"
   | "dataset"
   | "dashboard"

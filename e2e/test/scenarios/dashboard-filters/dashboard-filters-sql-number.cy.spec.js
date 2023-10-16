@@ -20,6 +20,10 @@ import {
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -57,7 +61,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
         });
 
         clearFilterWidget(index);
-        cy.wait("@dashcardQuery2");
+        cy.wait("@dashcardQuery");
       },
     );
   });
