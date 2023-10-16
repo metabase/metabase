@@ -90,7 +90,7 @@
                  :model_id model-id
                  :user_id  user-id)
      ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-     (when-not (#{:card-read :dashboard-read :table-read :card-query} unqualified-topic)
+     (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
       (activity/record-activity!
        :topic      topic
        :object     object
