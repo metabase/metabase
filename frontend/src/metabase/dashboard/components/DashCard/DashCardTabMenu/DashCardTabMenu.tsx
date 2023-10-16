@@ -2,7 +2,10 @@ import { t } from "ttag";
 import type { DashCardId } from "metabase-types/api";
 import { Divider, Menu } from "metabase/ui";
 import DashCardActionButton from "../DashCardActionButtons/DashCardActionButton";
-import { ItemWithMaxWidth } from "./DashCardTabMenu.styled";
+import {
+  ItemWithMaxWidth,
+  MoveDashCardActionContainer,
+} from "./DashCardTabMenu.styled";
 import { useDashCardTabMenu } from "./use-dash-card-tab-menu";
 
 interface DashCardTabMenuProps {
@@ -24,9 +27,9 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
         withinPortal={false}
       >
         <Menu.Target>
-          <DashCardActionButton tooltip={t`Action Settings`}>
+          <MoveDashCardActionContainer>
             <DashCardActionButton.Icon name="move" />
-          </DashCardActionButton>
+          </MoveDashCardActionContainer>
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Move to tab`}</Menu.Label>
