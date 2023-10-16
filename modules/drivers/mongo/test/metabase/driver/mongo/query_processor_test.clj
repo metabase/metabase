@@ -251,14 +251,15 @@
               ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
               ;; see docstring on mongo.qp/remove-parent-fields for full details
               (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
-          (testing "Nested fields in join condition are transformed to use `_` instead of a `.` (#32182)"
+          (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
             (let [query (mt/mbql-query tips
                           {:joins [{:alias "Tips"
                                     :source-table $$tips
                                     :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
-                 (is (str/includes? let-lhs "source_categories")))))))))
+                 (is (and (not (str/includes? let-lhs "."))
+                          (str/includes? let-lhs "source_categories"))))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
