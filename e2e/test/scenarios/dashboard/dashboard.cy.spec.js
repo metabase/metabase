@@ -336,9 +336,7 @@ describe("scenarios > dashboard", () => {
         cy.log("Should revert the title change if editing is cancelled");
         cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
         cy.findByTestId("edit-bar").button("Cancel").click();
-        modal().within(() => {
-          cy.button("Leave anyway").click();
-        });
+        modal().button("Leave anyway").click();
         cy.findByTestId("edit-bar").should("not.exist");
         cy.get("@updateDashboardSpy").should("not.have.been.called");
         cy.findByDisplayValue(originalDashboardName);
