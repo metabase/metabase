@@ -67,39 +67,63 @@
 (defn- minus-ms [value]
   (t/minus value (t/millis 1)))
 
+(defn apply-offset
+  [value offset-n offset-unit]
+  (t/plus
+    value
+    (case offset-unit
+      :minute (t/minutes offset-n)
+      :hour (t/hours offset-n)
+      :day (t/days offset-n)
+      :week (t/weeks offset-n)
+      :month (t/months offset-n)
+      :year (t/years offset-n)
+      (t/minutes 0))))
+
 (defmethod common/to-range :default [value _]
   ;; Fallback: Just return a zero-width at the input time.
   ;; This mimics Moment.js behavior if you `m.startOf("unknown unit")` - it doesn't change anything.
   [value value])
 
-(defmethod common/to-range :minute [value _]
-  (let [start (t/truncate-to value :minutes)]
-    [start (minus-ms (t/plus start (t/minutes 1)))]))
+(defmethod common/to-range :minute [value {:keys [n offset-n offset-unit] :or {n 1}}]
+  (let [start (-> value
+                  (apply-offset offset-n offset-unit)
+                  (t/truncate-to :minutes))]
+    [start (minus-ms (t/plus start (t/minutes n)))]))
 
-(defmethod common/to-range :hour [value _]
-  (let [start (t/truncate-to value :hours)]
-    [start (minus-ms (t/plus start (t/hours 1)))]))
+(defmethod common/to-range :hour [value {:keys [n offset-n offset-unit] :or {n 1}}]
+  (let [start (-> value
+                  (apply-offset offset-n offset-unit)
+                  (t/truncate-to :hours))]
+    [start (minus-ms (t/plus start (t/hours n)))]))
 
-(defmethod common/to-range :day [value _]
-  (let [start (t/truncate-to value :days)]
-    [start (minus-ms (t/plus start (t/days 1)))]))
+(defmethod common/to-range :day [value {:keys [n offset-n offset-unit] :or {n 1}}]
+  (let [start (-> value
+                  (apply-offset offset-n offset-unit)
+                  (t/truncate-to :days))]
+    [start (minus-ms (t/plus start (t/days n)))]))
 
-(defmethod common/to-range :week [value _]
+(defmethod common/to-range :week [value {:keys [n offset-n offset-unit] :or {n 1}}]
   (let [first-day (first-day-of-week)
         start (-> value
+                  (apply-offset offset-n offset-unit)
                   (t/truncate-to :days)
                   (t/adjust :previous-or-same-day-of-week first-day))]
-    [start (minus-ms (t/plus start (t/weeks 1)))]))
+    [start (minus-ms (t/plus start (t/weeks n)))]))
 
-(defmethod common/to-range :month [value _]
-  (let [value (t/truncate-to value :days)]
-    [(t/adjust value :first-day-of-month)
-     (minus-ms (t/adjust value :first-day-of-next-month))]))
+(defmethod common/to-range :month [value {:keys [n offset-n offset-unit] :or {n 1}}]
+  (let [value (-> value
+                  (apply-offset offset-n offset-unit)
+                  (t/truncate-to :days)
+                  (t/adjust :first-day-of-month))]
+    [value (minus-ms (t/plus value (t/months n)))]))
 
-(defmethod common/to-range :year [value _]
-  (let [value (t/truncate-to value :days)]
-    [(t/adjust value :first-day-of-year)
-     (minus-ms (t/adjust value :first-day-of-next-year))]))
+(defmethod common/to-range :year [value {:keys [n offset-n offset-unit] :or {n 1}}]
+  (let [value (-> value
+                  (apply-offset offset-n offset-unit)
+                  (t/truncate-to :days)
+                  (t/adjust :first-day-of-year))]
+    [value (minus-ms (nth (iterate #(t/adjust % :first-day-of-next-year n) value) n))]))
 
 ;;; -------------------------------------------- string->timestamp ---------------------------------------------------
 (defmethod common/string->timestamp :default [value _]
@@ -303,3 +327,18 @@
 
       :else
       (default-format))))
+
+(defn format-relative-date-range
+  [n unit offset-n offset-unit {:keys [include-current]}]
+  (let [offset-now (cond-> (now)
+                     (neg? n) (apply-offset n unit)
+                     (and (pos? n) (not include-current)) (apply-offset 1 unit))
+        pos-n (cond-> (abs n)
+                include-current inc)
+        date-ranges (map (comp str (if (#{:hour :minute} :unit) t/local-date-time t/local-date))
+                          (common/to-range offset-now
+                                           {:unit unit
+                                            :n pos-n
+                                            :offset-n offset-n
+                                            :offset-unit offset-unit}))]
+    (apply format-diff date-ranges)))
