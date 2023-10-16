@@ -2030,7 +2030,7 @@
             (testing "A card spec that requires only a dimensionless metric will not bind to any dimensions."
               (let [card-def {:title   "A dimensionless quantity card"
                               :metrics ["Count"]
-                              :score   100}]
+                              :card-score   100}]
                 (is (=? [{:title         "A dimensionless quantity card"
                           :metrics       [{:metric ["count"] :op "count"}]
                           :dimensions    []
@@ -2048,7 +2048,7 @@
               (let [card-def {:title      "Some sort of card"
                               :metrics    ["Count"]
                               :dimensions [{"Lat" {}}]
-                              :score      100}]
+                              :card-score      100}]
                 (is (=? [{:title         "Some sort of card"
                           :metrics       [{:metric ["count"] :op "count"}]
                           :dimensions    ["LATITUDE"]

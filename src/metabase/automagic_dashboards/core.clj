@@ -551,7 +551,7 @@
   [context
    {card-dimensions :dimensions
     card-query      :query
-    card-score      :score
+    card-score      :card-score
     :keys           [limit]
     :as             card-template}
    {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}
@@ -588,7 +588,7 @@
         (assoc :dataset_query dashcard-query
                :metrics metrics
                :dimensions (map :name (vals bindings))
-               :score score))))
+               :card-score score))))
 
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
@@ -765,7 +765,7 @@
   ;;    visualization: bar
   (let [provider (base-dimension-provider dashboard-template)]
     (letfn [(card-deps [card]
-              (-> (select-keys card [:dimensions :filters :metrics :score])
+              (-> (select-keys card [:dimensions :filters :metrics :card-score])
                   (update :dimensions (partial mapv ffirst))))]
       (mapcat
         (fn [card-template]
@@ -810,7 +810,7 @@
                                 :width               6,
                                 :affinity-set        #{:type/CreationTimestamp}
                                 ,,,}]}"
-  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template
+  [{card-templates :cards card-groups :groups :as dashboard-template} :- ads/dashboard-template
    ground-dimensions]
   (let [combine-maps (fn [k]
                        (map (fn [m']
@@ -832,6 +832,7 @@
         (fn [card-template]
           (let [[card-name {card-dimensions :dimensions
                             card-metrics    :metrics
+                            card-group      :group
                             :as             template}] (first card-template) ;; {"card name" <template>}
                 named-dimensions          (mapv ffirst card-dimensions)
                 named-metric-constituents (distinct (mapcat (partial expand metric-defs) card-metrics))
@@ -842,14 +843,16 @@
               {:affinity-name            card-name
                :named-dimensions         named-dimensions
                :metric-constituent-names named-metric-constituents
-               :metric-field-types metric-constituent-types
+               :metric-field-types       metric-constituent-types
                :affinity-set             affinity-set
-               :card-template            (assoc template
-                                           :card-name card-name
-                                           :affinity-set affinity-set
-                                           :semantic-dimensions (->> card-dimensions
-                                                                     (mapv #(update-keys % dimension->type))
-                                                                     (apply merge)))})))
+               :card-template            (-> template
+                                             (assoc
+                                               :card-name card-name
+                                               :affinity-set affinity-set
+                                               :group-score (get-in card-groups [card-group :score] 0)
+                                               :semantic-dimensions (->> card-dimensions
+                                                                         (mapv #(update-keys % dimension->type))
+                                                                         (apply merge))))})))
         card-templates))))
 
 (defn metric->dim->cards [flat-affinities]
@@ -974,7 +977,7 @@
                                      (card-candidates context satisfied-bindings available-values)
                                      not-empty
                                      (hash-map (name affinity-name))))))
-           (apply merge-with (partial max-key (comp :score first)) {})
+           (apply merge-with (partial max-key (comp :card-score first)) {})
            vals
            (apply concat)))
 
@@ -1005,7 +1008,7 @@
                  [identifier (assoc definition :matches matches)])))
        (concat [["this" {:matches [field]
                          :name    (:display_name field)
-                         :score   dashboard-templates/max-score}]])
+                         :card-score   dashboard-templates/max-score}]])
        (into {})))
 
 (defn- add-field-self-reference [{{:keys [entity]} :root :as context} dimensions]
@@ -1085,8 +1088,7 @@
     template-filters    :filters
     template-cards      :cards
     :keys               [dashboard-template-name dashboard_filters]
-    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate
-   ]
+    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
   (let [available-dimensions   (->> (interesting/find-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))
@@ -1302,9 +1304,11 @@
     (or (when dashboard-template
           (apply-dashboard-template base-context (dashboard-templates/get-dashboard-template dashboard-template)))
         (some
-         (fn [dashboard-template]
-           (apply-dashboard-template base-context dashboard-template))
-         (matching-dashboard-templates (dashboard-templates/get-dashboard-templates dashboard-templates-prefix) root))
+          (fn [dashboard-template]
+            (apply-dashboard-template base-context dashboard-template))
+          (matching-dashboard-templates
+            (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
+            root))
         (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
                         (let [templates (->> (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
                                                  (dashboard-templates/get-dashboard-templates dashboard-templates-prefix))
@@ -1524,32 +1528,30 @@
     dashboard))
 
 (defn- query-based-analysis
-  [root opts {:keys [cell-query cell-url]}]
-  (letfn [(make-transient [{:keys [entity] :as root}]
-            (if (table-like? entity)
-              (let [root' (merge root
-                                 (when cell-query
-                                   {:url          cell-url
-                                    :entity       (:source root)
-                                    :dashboard-templates-prefix ["table"]})
-                                 opts)]
-                (automagic-dashboard root'))
-              (let [opts (assoc opts :show :all)
-                    root' (merge root
-                                 (when cell-query
-                                   {:url cell-url})
-                                 opts)
-                    base-dash (automagic-dashboard root')
-                    dash      (reduce populate/merge-dashboards
-                                      base-dash
-                                      (decompose-question root entity opts))]
-                (merge dash
-                       (when cell-query
-                         (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
-                           {:transient_name title
-                            :name           title}))))))]
-    (let [transient-dash (make-transient root)]
-      (maybe-enrich-joins (:entity root) transient-dash))))
+  [{:keys [entity] :as root} opts {:keys [cell-query cell-url]}]
+  (let [transient-dash (if (table-like? entity)
+                         (let [root' (merge root
+                                            (when cell-query
+                                              {:url                        cell-url
+                                               :entity                     (:source root)
+                                               :dashboard-templates-prefix ["table"]})
+                                            opts)]
+                           (automagic-dashboard root'))
+                         (let [opts      (assoc opts :show :all)
+                               root'     (merge root
+                                                (when cell-query
+                                                  {:url cell-url})
+                                                opts)
+                               base-dash (automagic-dashboard root')
+                               dash      (reduce populate/merge-dashboards
+                                                 base-dash
+                                                 (decompose-question root entity opts))]
+                           (merge dash
+                                  (when cell-query
+                                    (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                                      {:transient_name title
+                                       :name           title})))))]
+    (maybe-enrich-joins (:entity root) transient-dash)))
 
 (defmethod automagic-analysis Card
   [card {:keys [cell-query] :as opts}]

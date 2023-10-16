@@ -254,16 +254,16 @@
             cards)))
 
 (defn- shown-cards
-  "Pick up to `max-cards` with the highest `:score`.
+  "Pick up to `max-cards` with the highest `:card-score`.
    Keep groups together if possible by pulling all the cards within together and
-   using the same (highest) score for all.
-   Among cards with the same score those beloning to the largest group are
+   using the same (highest) card-score for all.
+   Among cards with the same card-score those beloning to the largest group are
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
   [max-cards cards]
   (->> cards
-       (sort-by :score >)
+       (sort-by :card-score >)
        (take max-cards)
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]

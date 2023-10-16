@@ -134,7 +134,7 @@
 (defn ground-metric
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
-  [{metric-name :metric-name metric-definition :metric} ground-dimensions]
+  [{metric-name :metric-name metric-score :score metric-definition :metric} ground-dimensions]
   (let [named-dimensions (dashboard-templates/collect-dimensions metric-definition)]
     (->> (map (comp :matches ground-dimensions) named-dimensions)
          (apply math.combo/cartesian-product)
@@ -145,6 +145,7 @@
                                                      [:field field-id nil]))]
                   {:metric-name            metric-name
                    :metric-title           metric-name
+                   :metric-score           metric-score
                    :metric-definition      {:aggregation
                                             (transform-metric-aggregate metric-definition xform)}
                    :metric-field-types     (into #{} (map magic.util/field-type) constituent-fields)

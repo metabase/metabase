@@ -23,7 +23,7 @@
      [:height pos-int?]
      [:metrics {:optional true} any?]
      [:position {:optional true} nat-int?]
-     [:score {:optional true} number?]
+     [:card-score {:optional true} number?]
      [:title {:optional true} string?]
      [:visualization {:optional true} any?]
      [:width pos-int?]

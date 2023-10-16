@@ -206,7 +206,7 @@
                 card
                 (vals dimension-name->field)
                 nil)
-          score-components (list* (:score card)
+          score-components (list* (:card-score card)
                                   (:metric-score grounded-metric)
                                   (map (comp :score :dimension) (vals dims)))]
       (-> grounded-metric
@@ -256,10 +256,6 @@
   [base-context affinity-set->cards ground-metrics]
   (->> (mapcat (partial ground-metric->cards base-context affinity-set->cards)
                ground-metrics)
-       ;; We really should order based on something like:
-       ;; 1 group
-       ;; 2 base metric score
-       ;; 3 metric group (keep them together)
        (map-indexed (fn [i card] (assoc card :position i)))
        ;; The next 3 lines deduplicate some cards. Specifically, a card
        ;; group for a particular dimension may have a default no-dimension
