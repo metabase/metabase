@@ -482,7 +482,6 @@ export function isCustomFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  // This is a hack, we should get a real API method for is_custom_filter
   return (
     !filterParts(query, stageIndex, filter) &&
     !isSegmentFilter(query, stageIndex, filter)
@@ -494,11 +493,8 @@ export function isSegmentFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  // This is a hack, we should get a real API method for is_segment
-  return (
-    !filterParts(query, stageIndex, filter) &&
-    displayInfo(query, stageIndex, filter)?.name !== "nil"
-  );
+  const { operator } = ML.expression_parts(query, stageIndex, filter);
+  return operator === "segment";
 }
 
 function findTemporalBucket(
