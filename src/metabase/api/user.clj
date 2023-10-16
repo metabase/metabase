@@ -3,7 +3,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]

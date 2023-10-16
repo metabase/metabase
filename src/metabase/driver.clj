@@ -9,7 +9,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -885,7 +885,12 @@
 (defmethod syncable-schemas ::driver [_ _] #{})
 
 (defmulti upload-type->database-type
-  "Returns the database type for a given `metabase.upload` type."
+  "Returns the database type for a given `metabase.upload` type as a HoneySQL spec. This will be a vector, which allows
+  for additional options. Sample values:
+
+  - [:bigint]
+  - [[:varchar 255]]
+  - [:generated-always :as :identity :primary-key]"
   {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
