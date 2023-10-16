@@ -253,16 +253,16 @@
     :arglists '([entity])}
   linked-metrics mi/model)
 
-(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition] :as metric}]
-  (let [field-ids (set (interesting/find-field-ids definition))
-        constituent-fields (t2/select :model/Field :id [:in field-ids])]
-    [{:metric-name            metric-name
-      :metric-title           metric-name
-      :metric-definition      definition
-      :metric-field-types (into #{} (map magic.util/field-type) constituent-fields)
-      :grounded-metric-fields constituent-fields}]))
+(defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
+  (when-some [field-ids (seq (set (interesting/find-field-ids definition)))]
+    (let [constituent-fields (t2/select :model/Field :id [:in field-ids])]
+      [{:metric-name            metric-name
+        :metric-title           metric-name
+        :metric-definition      definition
+        :metric-field-types     (into #{} (map magic.util/field-type) constituent-fields)
+        :grounded-metric-fields constituent-fields}])))
 
-(defmethod linked-metrics :model/Table [{table-id :id :keys [definition] :as table}]
+(defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
     linked-metrics
     (t2/select :model/Metric :table_id table-id)))
@@ -750,7 +750,8 @@
       ...
    ].
 "
-  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template]
+  [{card-templates :cards :as dashboard-template}           ;:- ads/dashboard-template
+   ]
   ;; todo: cards can specify native queries with dimension template tags. See
   ;; resources/automagic_dashboards/table/example.yaml
   ;; note that they can specify dimension dependencies and ALSO table dependencies:
@@ -824,9 +825,9 @@
                        (tree-seq vector? next)
                        (filter (every-pred vector? (comp #{"dimension"} first)))
                        (map second)))
-            (dimension->types [dimension]
+            (dimension->type [dimension-name]
               ;; look up in dimensions to get what it matched on eg [:entity/GenericTable :type/Latitude]
-              (-> dimension ground-dimensions (get :field_type [::not-found]) last))]
+              (-> dimension-name ground-dimensions (get :field_type [::not-found]) last))]
       (keep
         (fn [card-template]
           (let [[card-name {card-dimensions :dimensions
@@ -834,10 +835,8 @@
                             :as             template}] (first card-template) ;; {"card name" <template>}
                 named-dimensions          (mapv ffirst card-dimensions)
                 named-metric-constituents (distinct (mapcat (partial expand metric-defs) card-metrics))
-                name->type                (zipmap named-dimensions
-                                                  (map dimension->types named-dimensions))
-                affinity-set              (set (vals name->type))
-                metric-constituent-types  (into #{} (map dimension->types) named-metric-constituents)]
+                affinity-set              (into #{} (map dimension->type) named-dimensions)
+                metric-constituent-types  (into #{} (map dimension->type) named-metric-constituents)]
             (when-not (or (affinity-set ::not-found)
                           (metric-constituent-types ::not-found))
               {:affinity-name            card-name
@@ -849,7 +848,7 @@
                                            :card-name card-name
                                            :affinity-set affinity-set
                                            :semantic-dimensions (->> card-dimensions
-                                                                     (mapv #(update-keys % name->type))
+                                                                     (mapv #(update-keys % dimension->type))
                                                                      (apply merge)))})))
         card-templates))))
 
@@ -1086,7 +1085,8 @@
     template-filters    :filters
     template-cards      :cards
     :keys               [dashboard-template-name dashboard_filters]
-    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
+    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate
+   ]
   (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
   (let [available-dimensions   (->> (interesting/find-dimensions base-context template-dimensions)
                                     (add-field-self-reference base-context))

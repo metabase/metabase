@@ -319,7 +319,8 @@
    (see `most-specific-definition` for details).
 
   The context is passed in, but it only needs tables and fields in `candidate-bindings`. It is not extensively used."
-  [context dimension-specs :- [:sequential ads/dimension-template]]
+  [context dimension-specs                                  ;:- [:sequential ads/dimension-template]
+   ]
   (->> (candidate-bindings context dimension-specs)
        (map (comp most-specific-matched-dimension val))
        (apply merge-with (fn [a b]
@@ -360,8 +361,7 @@
                     (cond
                       link [:field id {:source-field link}]
                       fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                      ;; This is a hack for some bad queries with boolean base types
-                      id [:field id {:base-type base_type}]
+                      id [:field id nil]
                       :else [:field name {:base-type base_type}]))]
     (cond
       (isa? base_type :type/Temporal)

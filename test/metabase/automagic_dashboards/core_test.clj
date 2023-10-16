@@ -1026,7 +1026,8 @@
   (mt/with-temp [Database {db-id :id} {}
                  Table    {table-id :id} {:db_id db-id}
                  Field    _ {:table_id table-id}
-                 Field    _ {:table_id table-id}]
+                 Field    _ {:table_id table-id}
+                 Metric   _ {:table_id table-id}]
     (mt/with-test-user :rasta
       ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
       @api/*current-user-permissions-set*
@@ -1034,7 +1035,7 @@
         (let [database (t2/select-one Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
-            (is (= 4
+            (is (= 5
                    (call-count)))))))))
 
 (deftest empty-table-test
@@ -2245,29 +2246,37 @@
     (let [template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])]
       (testing "Even with no dimensions can match against dimensionless metrics"
         (is (=? [{:affinity-name "Rowcount"
-                  :affinity-set #{}}]
+                  :affinity-set  #{}}
+                 {:affinity-name "RowcountLast30Days"
+                  :affinity-set  #{}}]
                 (magic/dash-template->affinities template {}))))
       (testing "With dimensions can match stuff"
         (is (=? [{:affinity-name "Rowcount", :affinity-set #{}}
+                 {:affinity-name "RowcountLast30Days", :affinity-set #{}}
                  {:affinity-name "NumberDistribution", :affinity-set #{:type/Number}}]
                 (magic/dash-template->affinities template
                                                  {"GenericNumber"
                                                   {:field_type [:type/Number]}}))))
       (testing "With dimensions can match stuff"
-        (let [affinity-sets (magic/dash-template->affinities template
-                                                             {"GenericNumber"
-                                                              {:field_type [:type/Number]}
-                                                              "JoinTimestamp"
-                                                              {:field_type [:type/JoinTimestamp]}})]
-          (is (=? #{"HourOfDayJoinDate" "NumberOverJoinDate" "NumberDistribution" "DayOfWeekJoinDate"
-                    "MonthOfYearJoinDate" "CountByJoinDate" "DayOfMonthJoinDate"
-                    "Rowcount" "QuerterOfYearJoinDate"}
-                  (set (map :affinity-name affinity-sets))))
-          (is (=? #{#{:type/Number :type/JoinTimestamp}
-                    #{:type/Number}
-                    #{:type/JoinTimestamp}
-                    #{}}
-                  (set (map :affinity-set affinity-sets)))))))))
+        (let [affinity-sets (magic/dash-template->affinities
+                              template
+                              {"GenericNumber"
+                               {:field_type [:type/Number]}
+                               "JoinTimestamp"
+                               {:field_type [:type/JoinTimestamp]}})]
+          (is (= #{"HourOfDayJoinDate"
+                   "NumberOverJoinDate"
+                   "RowcountLast30Days"
+                   "NumberDistribution"
+                   "DayOfWeekJoinDate"
+                   "MonthOfYearJoinDate"
+                   "CountByJoinDate"
+                   "DayOfMonthJoinDate"
+                   "Rowcount"
+                   "QuerterOfYearJoinDate"}
+                 (set (map :affinity-name affinity-sets))))
+          (is (= #{#{:type/Number} #{:type/JoinTimestamp} #{}}
+                 (set (map :affinity-set affinity-sets)))))))))
 
 (deftest dash-template->affinities-old-test
   (testing "A trivial case: The TotalOrders metric is dimensionless"
