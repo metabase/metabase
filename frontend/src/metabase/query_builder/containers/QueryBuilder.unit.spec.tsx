@@ -1121,6 +1121,37 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
+
+      it("does not show custom warning modal when saving edited question", async () => {
+        await setup({
+          card: TEST_STRUCTURED_CARD,
+          initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+        });
+
+        await waitForLoaderToBeRemoved();
+
+        await triggerNotebookQueryChange();
+        await waitForSaveQuestionToBeEnabled();
+
+        userEvent.click(screen.getByText("Save"));
+
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 
