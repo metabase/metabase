@@ -191,7 +191,7 @@
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level]} result
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level collection_type]} result
         matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -205,12 +205,10 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level}
+                          :authority_level collection_authority_level
+                          :type            collection_type}
          :scores          all-scores)
-        (dissoc
-         :collection_id
-         :collection_name
-         :display_name))))
+        (dissoc :collection_id :collection_name :collection_type :display_name))))
 
 (defn weights-and-scores
   "Default weights and scores for a given result."
