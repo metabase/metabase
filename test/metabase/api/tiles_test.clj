@@ -13,7 +13,7 @@
   (= [\P \N \G]
      (drop 1 (take 4 s))))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (let [venues-query {:database (mt/id)
                       :type     :query
                       :query    {:source-table (mt/id :venues)
@@ -37,7 +37,7 @@
                             :type :native
                             :native native-query}))))))))
 
-(deftest query->tiles-query-test
+(deftest ^:parallel query->tiles-query-test
   (letfn [(clean [q]
             (-> q
                 (update-in [:query :filter] #(take 3 %))))]
@@ -105,7 +105,7 @@
                   [36.8311004 -95.0253779]]
                  (take 3 result))))))))
 
-(deftest failure-test
+(deftest ^:parallel failure-test
   (testing "if the query fails, don't attempt to generate a map without any points -- the endpoint should return a 400"
     (is (schema= {:status   (s/eq "failed")
                   s/Keyword s/Any}
@@ -115,7 +115,7 @@
                                           (mt/id :venues :longitude))
                   :query "{}")))))
 
-(deftest always-run-sync-test
+(deftest ^:parallel always-run-sync-test
   (testing "even if the original query was saved as `:async?` we shouldn't run the query as async"
     (is (png? (mt/user-http-request
                :rasta :get 200 (format "tiles/1/1/1/%d/%d"
@@ -127,7 +127,7 @@
                         :query    {:source-table (mt/id :venues)}
                         :async?   true}))))))
 
-(deftest field-ref-test
+(deftest ^:parallel field-ref-test
   (testing "Field refs can be constructed from strings representing integer field IDs or field names"
     (is (= [:field 1 nil]
            (@#'api.tiles/field-ref "1")))

@@ -323,7 +323,7 @@
         (with-setup! {:database {:details (:details (mt/db)), :engine "h2", :name db-name}}
           (is (t2/exists? Database :name db-name)))))))
 
-(deftest has-user-setup-setting-test
+(deftest ^:parallel has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
     (let [user-count (t2/count User)]
       (if (zero? user-count)
@@ -527,7 +527,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
 
-(deftest annotate-test
+(deftest ^:parallel annotate-test
   (testing "identifies next step"
     (is (partial= [{:group "first"
                     :tasks [{:title "t1", :is_next_step false}]}

@@ -13,14 +13,14 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest auth-tests
+(deftest ^:parallel auth-tests
   (testing "Authentication"
     (is (= (get mw.util/response-unauthentic :body)
            (client/client :get 401 "/timeline-event")))
     (is (= (get mw.util/response-unauthentic :body)
            (client/client :get 401 "/timeline-event/1")))))
 
-(deftest get-timeline-event-test
+(deftest ^:parallel get-timeline-event-test
   (testing "GET /api/timeline-event/:id"
     (mt/with-temp [Collection    collection {:name "Important Data"}
                    Timeline      timeline   {:name          "Important Events"
@@ -34,7 +34,7 @@
                (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
                     :name)))))))
 
-(deftest create-timeline-event-test
+(deftest ^:parallel create-timeline-event-test
   (testing "POST /api/timeline-event"
     (mt/with-temp [Collection    collection {:name "Important Data"}
                    Timeline      timeline   {:name          "Important Events"
@@ -50,7 +50,7 @@
       (is (= "Rasta Migrates to Florida for the Winter"
              (-> (t2/select-one TimelineEvent :timeline_id (u/the-id timeline)) :name))))))
 
-(deftest update-timeline-event-test
+(deftest ^:parallel update-timeline-event-test
   (testing "PUT /api/timeline-event/:id"
     (testing "Can archive the timeline event"
       (mt/with-temp [Collection    collection {:name "Important Data"}
@@ -67,7 +67,7 @@
                (->> (mt/user-http-request :rasta :put 200 (str "timeline-event/" (u/the-id event)) {:archived true})
                     :archived))))))))
 
-(deftest delete-timeline-event-test
+(deftest ^:parallel delete-timeline-event-test
   (testing "DELETE /api/timeline-event/:id"
     (mt/with-temp [Collection    {collection-id :id} {:name "Example Data"}
                    Timeline      {timeline-id :id}   {:name "Some Events"

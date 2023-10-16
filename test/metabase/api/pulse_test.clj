@@ -99,7 +99,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest authentication-test
+(deftest ^:parallel authentication-test
   (is (= (:body mw.util/response-unauthentic) (client/client :get 401 "pulse")))
   (is (= (:body mw.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
 
@@ -114,7 +114,7 @@
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
-(deftest create-pulse-validation-test
+(deftest ^:parallel create-pulse-validation-test
   (doseq [[input expected-error]
           {{}
            {:errors {:name "value must be a non-blank string."}
@@ -385,7 +385,7 @@
                 "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
                 "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
 
-(deftest update-pulse-validation-test
+(deftest ^:parallel update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
     (doseq [[input expected-error]
             {{:name 123}
@@ -487,7 +487,7 @@
                          pulse-response
                          (update :channels remove-extra-channels-fields)))))))))))
 
-(deftest update-collection-id-test
+(deftest ^:parallel update-collection-id-test
   (testing "Can we update *just* the Collection ID of a Pulse?"
     (mt/with-temp [Pulse      pulse {}
                    Collection collection] {}
@@ -704,7 +704,7 @@
                "c" 3
                "d" 4}}])
 
-(deftest move-pulse-test
+(deftest ^:parallel move-pulse-test
   (testing "PUT /api/pulse/:id"
     (doseq [{:keys [message action expected]} move-test-definitions
             :let                              [expected (if (map? expected) [expected] expected)]]
@@ -1022,7 +1022,7 @@
                                           :bcc?    true})
                      (mt/regex-email-bodies #"A Pulse"))))))))))
 
-(deftest pulse-card-query-results-test
+(deftest ^:parallel pulse-card-query-results-test
   (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
     (is (map? (#'api.pulse/pulse-card-query-results
                {:id            1
@@ -1103,7 +1103,7 @@
                             s/Keyword s/Any}
                      body)))))))))
 
-(deftest delete-subscription-test
+(deftest ^:parallel delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"
     (mt/with-temp [Pulse        {pulse-id :id}   {:name "Lodi Dodi" :creator_id (mt/user->id :crowberto)}
                    PulseChannel {channel-id :id} {:pulse_id      pulse-id

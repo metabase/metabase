@@ -143,7 +143,6 @@
    malli.core/explainer                               {:message "Use metabase.util.malli.registry/explainer instead of malli.core/explainer"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
-   metabase.test/with-temp*                           {:message "Use mt/with-temp instead of mt/with-temp*"}
    toucan2.tools.with-temp                            {:message "Use mt/with-temp instead of t2.with-temp/with-temp"}}
 
   :discouraged-namespace
@@ -526,10 +525,10 @@
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
-   metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
+   metabase.api.card-test/with-persistence-setup!                                                                            hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
-   metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.collection-test/with-french-user-and-personal-collection!                                                    hooks.common/with-two-top-level-bindings
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
@@ -537,7 +536,7 @@
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
-   metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
+   metabase.api.embed-test/with-chain-filter-fixtures!                                                                       hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-dashcard                                                                                hooks.common/let-one-with-optional-value
    metabase.api.persist-test/with-setup                                                                                      hooks.common/with-one-top-level-binding
@@ -603,37 +602,37 @@
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values}
 
   :macroexpand
-  {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
-   clojurewerkz.quartzite.schedule.cron/schedule                                macros.quartz/schedule
-   clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
-   clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
-   metabase-enterprise.sandbox.test-util/with-gtaps                             macros.metabase-enterprise.sandbox.test-util/with-gtaps
-   metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps                                          macros.metabase-enterprise.sandbox.test-util/with-gtaps
-   metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
-   metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
-   metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
-   metabase.api.common/define-routes                                            macros.metabase.api.common/define-routes
-   metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing
-   metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing
-   metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing      macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
-   metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing  macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
-   metabase.domain-entities.malli/define-getters-and-setters                    macros.metabase.domain-entities.malli/define-getters-and-setters
-   metabase.lib.filter/deffilter                                                macros.metabase.lib.filter/deffilter
-   metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
-   metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
-   metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
-   metabase.related-test/with-world                                             macros.metabase.related-test/with-world
-   metabase.shared.util.namespaces/import-fn                                    macros.metabase.shared.util.namespaces/import-fn
-   metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
-   metabase.test.util/with-temp-env-var-value                                   macros.metabase.test.util/with-temp-env-var-value
-   metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.test/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-persistence-enabled                                       macros.metabase.test.persistence/with-persistence-enabled
-   metabase.test/with-temp-env-var-value                                        macros.metabase.test.util/with-temp-env-var-value
-   metabase.test/with-temporary-raw-setting-values                              macros.metabase.test.util/with-temporary-raw-setting-values}}
+  {clojurewerkz.quartzite.jobs/build                                             macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.cron/schedule                                 macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule                               macros.quartz/simple-schedule
+   clojurewerkz.quartzite.triggers/build                                         macros.quartz/build-trigger
+   metabase-enterprise.sandbox.test-util/with-gtaps                              macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase-enterprise.serialization.test-util/with-world                        macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps                                           macros.metabase-enterprise.sandbox.test-util/with-gtaps
+   metabase.api.card-test/with-ordered-items                                     macros.metabase.api.card-test/with-ordered-items
+   metabase.api.collection-test/with-collection-hierarchy!                       macros.metabase.api.collection-test/with-collection-hierarchy!
+   metabase.api.collection-test/with-some-children-of-collection!                macros.metabase.api.collection-test/with-some-children-of-collection!
+   metabase.api.common/define-routes                                             macros.metabase.api.common/define-routes
+   metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
+   metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
+   metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing       macros.metabase.api.public-test/with-sharing-enabled-and-temp-card-referencing
+   metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing   macros.metabase.api.public-test/with-sharing-enabled-and-temp-dashcard-referencing
+   metabase.domain-entities.malli/define-getters-and-setters                     macros.metabase.domain-entities.malli/define-getters-and-setters
+   metabase.lib.filter/deffilter                                                 macros.metabase.lib.filter/deffilter
+   metabase.lib.common/defop                                                     macros.metabase.lib.common/defop
+   metabase.models.params.chain-filter-test/chain-filter                         macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.params.chain-filter-test/chain-filter-search                  macros.metabase.models.params.chain-filter-test/chain-filter
+   metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
+   metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
+   metabase.related-test/with-world                                              macros.metabase.related-test/with-world
+   metabase.shared.util.namespaces/import-fn                                     macros.metabase.shared.util.namespaces/import-fn
+   metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
+   metabase.test.util/with-temp-env-var-value                                    macros.metabase.test.util/with-temp-env-var-value
+   metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test/with-group-for-user                                             macros.metabase.test.data.users/with-group-for-user
+   metabase.test/with-persistence-enabled                                        macros.metabase.test.persistence/with-persistence-enabled
+   metabase.test/with-temp-env-var-value                                         macros.metabase.test.util/with-temp-env-var-value
+   metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -698,6 +697,7 @@
    {:inline-def                                    {:level :off}
     :missing-docstring                             {:level :off}
     :private-call                                  {:level :off}
+    :metabase/deftest-can-be-paralleled            {:level :warning}
     :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
 
   source-namespaces

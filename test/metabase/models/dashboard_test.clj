@@ -27,7 +27,7 @@
 
 ;; ## Dashboard Revisions
 
-(deftest serialize-dashboard-test
+(deftest ^:parallel serialize-dashboard-test
   (testing "without tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              Card                {card-id :id}     {}
@@ -67,7 +67,7 @@
                                :card_id (= card-id card_id)
                                :series  (= [series-id-1 series-id-2] series))])))))))
 
-(deftest serialize-dashboard-with-tabs-test
+(deftest ^:parallel serialize-dashboard-with-tabs-test
   (testing "with tabs"
     (t2.with-temp/with-temp [Dashboard           {dashboard-id :id :as dashboard} {:name "Test Dashboard"}
                              :model/DashboardTab {tab-id :id}                     {:dashboard_id dashboard-id :name "Test Tab" :position 0}
@@ -170,7 +170,7 @@
       {:cards [{:id 1} {:id 3}]}
       "modified the cards.")))
 
-(deftest diff-dashboards-str-update-collection-test
+(deftest ^:parallel diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
            (u/build-sentence
@@ -653,7 +653,7 @@
    :name "Category Name"
    :slug "category_name"})
 
-(deftest migrate-parameters-with-linked-filters-and-values-source-type-test
+(deftest ^:parallel migrate-parameters-with-linked-filters-and-values-source-type-test
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_source_type is not nil"
     (doseq [[values_source_type
              keep-filtering-parameters?] {"card"        false
@@ -670,7 +670,7 @@
                     (:filteringParameters parameter)))
              (is (not (contains? parameter :filteringParameters))))))))))
 
-(deftest migrate-parameters-empty-name-test
+(deftest ^:parallel migrate-parameters-empty-name-test
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
     (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
@@ -763,7 +763,7 @@
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dash-binding '_)]
       ~@body)))
 
-(deftest perms-test
+(deftest ^:parallel perms-test
   (with-dash-in-collection [db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
@@ -826,7 +826,7 @@
              #":parameters must be a sequence of maps with :id and :type keys"
              (t2/update! Dashboard id {:parameters [{:id 100}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
@@ -851,7 +851,7 @@
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))))
 
-(deftest should-add-default-values-source-test
+(deftest ^:parallel should-add-default-values-source-test
   (testing "shoudld add default if not exists"
     (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                          :slug   "category_name"
@@ -882,7 +882,7 @@
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters Dashboard :id dashboard-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
       (t2.with-temp/with-temp [Collection c1   {:name "top level" :location "/" :created_at now}

@@ -148,7 +148,7 @@
             (is (= "Not found."
                    (client/client :get 404 (str "public/card/" uuid))))))))))
 
-(deftest make-sure-param-values-get-returned-as-expected
+(deftest ^:parallel make-sure-param-values-get-returned-as-expected
   (let [category-name-id (mt/id :categories :name)]
     (t2.with-temp/with-temp [Card card {:dataset_query
                                         {:database (mt/id)
@@ -815,7 +815,7 @@
 
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
-(deftest double-check-that-the-field-has-fieldvalues
+(deftest ^:parallel double-check-that-the-field-has-fieldvalues
   (is (= [1 2 3 4]
          (t2/select-one-fn :values FieldValues :field_id (mt/id :venues :price)))))
 
@@ -895,17 +895,17 @@
 
 ;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
 
-(deftest card-referencing-nothing
+(deftest ^:parallel card-referencing-nothing
   (t2.with-temp/with-temp [Card card (mbql-card-referencing-nothing)]
     (is (= #{}
            (#'api.public/card->referenced-field-ids card)))))
 
-(deftest it-should-pick-up-on-fields-referenced-in-the-mbql-query-itself
+(deftest ^:parallel it-should-pick-up-on-fields-referenced-in-the-mbql-query-itself
   (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
     (is (= #{(mt/id :venues :name)}
            (#'api.public/card->referenced-field-ids card)))))
 
-(deftest ---as-well-as-template-tag--implict--params-for-sql-queries
+(deftest ^:parallel ---as-well-as-template-tag--implict--params-for-sql-queries
   (t2.with-temp/with-temp [Card card (sql-card-referencing-venue-name)]
     (is (= #{(mt/id :venues :name)}
            (#'api.public/card->referenced-field-ids card)))))
@@ -913,14 +913,14 @@
 ;;; --------------------------------------- check-field-is-referenced-by-card ----------------------------------------
 
 
-(deftest check-that-the-check-succeeds-when-field-is-referenced
+(deftest ^:parallel check-that-the-check-succeeds-when-field-is-referenced
   (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
     (#'api.public/check-field-is-referenced-by-card (mt/id :venues :name) (u/the-id card))))
 
-(deftest check-that-exception-is-thrown-if-the-field-isn-t-referenced
-  (is (thrown?
-       Exception
-       (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
+(deftest ^:parallel check-that-exception-is-thrown-if-the-field-isn-t-referenced
+  (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
+    (is (thrown?
+         Exception
          (#'api.public/check-field-is-referenced-by-card (mt/id :venues :category_id) (u/the-id card))))))
 
 
@@ -928,18 +928,18 @@
 
 ;; search field is allowed IF:
 ;; A) search-field is the same field as the other one
-(deftest search-field-allowed-if-same-field-as-other-one
+(deftest ^:parallel search-field-allowed-if-same-field-as-other-one
   (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :id))
   (is (thrown? Exception
                (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
 
 ;; B) there's a Dimension that lists search field as the human_readable_field for the other field
-(deftest search-field-allowed-with-dimension
+(deftest ^:parallel search-field-allowed-with-dimension
   (is (t2.with-temp/with-temp [Dimension _ {:field_id (mt/id :venues :id), :human_readable_field_id (mt/id :venues :category_id)}]
         (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :category_id)))))
 
 ;; C) search-field is a Name Field belonging to the same table as the other field, which is a PK
-(deftest search-field-allowed-with-name-field
+(deftest ^:parallel search-field-allowed-with-name-field
   (is (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))
 
 ;; not allowed if search field isn't a NAME
@@ -965,14 +965,14 @@
                          :target  [:dimension [:field (mt/id :venues :id) nil]]}]})
 
 
-(deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
+(deftest ^:parallel field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
   (is (mt/with-temp [Dashboard     dashboard {}
                      Card          card {}
                      DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
 
 
-(deftest field-not-found-on-dashcard
+(deftest ^:parallel field-not-found-on-dashcard
   (is (thrown? Exception
                (mt/with-temp [Dashboard     dashboard {}
                               Card          card {}
@@ -980,7 +980,7 @@
                  (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :name) (u/the-id dashboard))))))
 
 ;; ...*or* if it's a so-called "implicit" param (a Field Filter Template Tag (FFTT) in a SQL Card)
-(deftest implicit-param
+(deftest ^:parallel implicit-param
   (is (mt/with-temp [Dashboard     dashboard {}
                      Card          card (sql-card-referencing-venue-name)
                      DashboardCard _ {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}]
@@ -994,7 +994,7 @@
 
 ;;; ------------------------------------------- card-and-field-id->values --------------------------------------------
 
-(deftest we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
+(deftest ^:parallel we-should-be-able-to-get-values-for-a-field-referenced-by-a-card
   (t2.with-temp/with-temp [Card card (mbql-card-referencing :venues :name)]
     (is (= {:values          [["20th Century Cafe"]
                               ["25°"]
@@ -1006,7 +1006,7 @@
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
-(deftest sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
+(deftest ^:parallel sql-param-field-references-should-work-just-as-well-as-mbql-field-referenced
   (t2.with-temp/with-temp [Card card (sql-card-referencing-venue-name)]
     (is (= {:values          [["20th Century Cafe"]
                               ["25°"]
@@ -1018,7 +1018,7 @@
            (mt/derecordize (-> (api.public/card-and-field-id->values (u/the-id card) (mt/id :venues :name))
                                (update :values (partial take 5))))))))
 
-(deftest but-if-the-field-is-not-referenced-we-should-get-an-exception
+(deftest ^:parallel but-if-the-field-is-not-referenced-we-should-get-an-exception
   (t2.with-temp/with-temp [Card card (mbql-card-referencing :venues :price)]
     (is (thrown?
          Exception
@@ -1236,11 +1236,11 @@
 ;; `field-remapped-values` should return remappings in the expected format when the combination of Fields is allowed.
 ;; It should parse the value string (it comes back from the API as a string since it is a query param)
 
-(deftest should-parse-string
+(deftest ^:parallel should-parse-string
   (is (= [10 "Fred 62"]
          (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :name) "10"))))
 
-(deftest if-the-field-isn-t-allowed
+(deftest ^:parallel if-the-field-isn-t-allowed
   (is (thrown?
        Exception
        (#'api.public/field-remapped-values (mt/id :venues :id) (mt/id :venues :price) "10"))))

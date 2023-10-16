@@ -649,6 +649,7 @@
 
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
+  ;; TODO: use transaction for isolation ?
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
@@ -845,6 +846,7 @@
 
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
+  ;; TODO: we can probably tweak this to run in a transaction, then we could parallel this
   (try
     (do-with-discarded-collections-perms-changes
      collection

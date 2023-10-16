@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [metabase.util.log :as log]))
 
-(deftest password-check-test
+(deftest ^:parallel password-check-test
   (testing "POST /api/util/password_check"
     (testing "Test for required params"
       (is (=? {:errors {:password "password is too common."}}
@@ -29,7 +29,7 @@
           (is (some (comp #(re-find (re-pattern message) %) :msg) logs)
               "Recent message not found in `util/logs`"))))))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "/util/logs"
     (testing "Requires superuser"
       (is (= "You don't have permissions to do that."

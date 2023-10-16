@@ -79,7 +79,8 @@
   [expected-re sym]
   (hawk.approx/=?-diff expected-re (name sym)))
 
-(deftest parse-multi-values-param-test
+
+(deftest ^:parallel parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
     (is (= [1] (api/parse-multi-values-param "1" parse-long))))
 

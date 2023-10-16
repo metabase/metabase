@@ -1,6 +1,7 @@
 (ns hooks.clojure.test
-  (:require [clj-kondo.hooks-api :as hooks]
-            [clojure.string :as str]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [clojure.string :as str]))
 
 (def ^:private disallowed-parallel-forms
   "Things you should not be allowed to use inside parallel tests. Besides these, anything ending in `!` not whitelisted
@@ -20,8 +21,14 @@
      metabase.actions.test-util/with-actions-test-data
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
+     metabase.api.card-test/with-cards-in-readable-collection
+     metabase.api.card-test/with-cards-in-writeable-collection
      metabase.email-test/with-expected-messages
      metabase.email-test/with-fake-inbox
+     metabase.public-settings.premium-features-test/with-premium-features
+     metabase.public-settings.premium-features-test/with-additional-premium-features
+     metabase.models.params.chain-filter-test/with-human-readable-values-remapping
+     metabase.models.params.chain-filter-test/with-fk-field-to-field-remapping
      metabase.test.data.users/with-group
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
@@ -34,6 +41,7 @@
      metabase.test.util/with-discarded-collections-perms-changes
      metabase.test.util/with-env-keys-renamed-by
      metabase.test.util/with-locale
+     metabase.test.util/with-model-cleanup
      metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test.util/with-non-admin-groups-no-root-collection-perms
      metabase.test.util/with-temp-env-var-value
@@ -59,6 +67,7 @@
      metabase.test/with-locale
      metabase.test/with-log-level
      metabase.test/with-log-messages-for-level
+     metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled
@@ -91,6 +100,12 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     toucan2.core/update!
+     toucan2.core/update-returning-pks!
+     toucan2.core/delete!
+     toucan2.core/insert!
+     toucan2.core/insert-returning-instances!
+     toucan2.core/insert-returning-pks!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
@@ -127,6 +142,45 @@
               (walk child)))]
     (walk form)))
 
+(defn- form-can-be-paralleled?
+  [form]
+  (letfn [(can-be-paralleled? [form]
+            (let [qualified-symbol (node->qualified-symbol form)]
+              (cond
+               (or (not (hooks/token-node? form))
+                   (nil? qualified-symbol))
+               true
+
+               (contains? disallowed-parallel-forms qualified-symbol)
+               false
+
+               (and (not (allowed-parallel-forms qualified-symbol))
+                    (str/ends-with? (name qualified-symbol) "!"))
+               false
+
+               :else true)))
+          (walk [form]
+            (boolean (and (can-be-paralleled? form)
+                          (every? walk (:children form)))))]
+    (walk form)))
+
+(defn- deftest-can-be-paralleled?
+  [forms]
+  (boolean (every? form-can-be-paralleled? forms)))
+
+#_(try
+   (with-redefs [node->qualified-symbol (fn [& args]
+                                          (if (= (hooks/sexpr (first args)) 'metabase.test/with-group)
+                                            'metabase.test/with-group
+                                            nil))]
+     (deftest-check-parallel
+       (hooks/parse-string (str '(deftest user-list-authentication-test
+                                   (metabase.test/with-group
+                                     (testing "abc"
+                                       (+ 1 2 3))))))))
+   (catch Exception e
+     e))
+
 (defn- deftest-check-parallel
   "1. Check if test is marked ^:parallel / ^:synchronized correctly
    2. Make sure disallowed forms are not used in ^:parallel tests"
@@ -147,7 +201,7 @@
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
                                  :type :metabase/validate-deftest)))
-    ;; only when the custom `:metabase/deftest-not-marked-parallel` is enabled: complain if tests are not explicitly
+    ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are not explicitly
     ;; marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything `^:parallel` in
     ;; places like `metabase.lib` tests unless there is a really good reason not to.
     (when-not (or parallel? synchronized?)
@@ -157,7 +211,11 @@
               :type :metabase/deftest-not-marked-parallel-or-synchronized)))
     (when parallel?
       (doseq [form body]
-        (warn-about-disallowed-parallel-forms form)))))
+        (warn-about-disallowed-parallel-forms form)))
+    (when (and (not parallel?) (not synchronized?) (deftest-can-be-paralleled? body))
+      (hooks/reg-finding! (assoc (meta test-name)
+                                 :message "Test can be paralleled"
+                                 :type :metabase/deftest-can-be-paralleled)))))
 
 (def ^:private number-of-lines-for-a-test-to-be-considered-horrifically-long
   200)

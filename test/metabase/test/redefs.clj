@@ -26,7 +26,6 @@
   ((resolve 'metabase.test.initialize/initialize-if-needed!) :db)
   ;; so with-temp-defaults are loaded
   (classloader/require 'metabase.test.util)
-
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and *with-temp-use-transaction* (not *in-tx*))
     (binding [*in-tx* true]
