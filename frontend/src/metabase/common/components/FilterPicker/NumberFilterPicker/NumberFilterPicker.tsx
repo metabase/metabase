@@ -89,7 +89,11 @@ export function NumberFilterPicker({
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
         <Box />
-        <Button disabled={!isValid} onClick={handleFilterChange}>
+        <Button
+          variant="filled"
+          disabled={!isValid}
+          onClick={handleFilterChange}
+        >
           {filter ? t`Update filter` : t`Add filter`}
         </Button>
       </Footer>
