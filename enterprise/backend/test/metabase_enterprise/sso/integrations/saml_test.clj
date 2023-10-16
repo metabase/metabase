@@ -460,7 +460,10 @@
                           (map #(dissoc % :last_login)))))
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
-                       (saml-login-attributes "newuser@metabase.com")))))
+                       (saml-login-attributes "newuser@metabase.com"))))
+              (testing "User Invite Event is logged."
+                (is (= "newuser@metabase.com"
+                       (get-in (t2/select-one :model/AuditLog :topic :user-invited) [:details :email])))))
             (finally
               (t2/delete! User :%lower.email "newuser@metabase.com"))))))))
 

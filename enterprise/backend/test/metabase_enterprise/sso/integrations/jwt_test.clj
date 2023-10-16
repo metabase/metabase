@@ -202,6 +202,9 @@
                        :common_name  "New User"}]
                      (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
+            (testing "User Invite Event is logged."
+              (is (= "newuser@metabase.com"
+                     (get-in (t2/select-one :model/AuditLog :topic :user-invited) [:details :email]))))
             (testing "attributes"
               (is (= {"more" "stuff"
                       "for"  "the new user"}
