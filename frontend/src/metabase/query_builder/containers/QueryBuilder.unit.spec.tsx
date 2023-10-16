@@ -451,6 +451,7 @@ describe("QueryBuilder", () => {
 
         await waitForLoaderToBeRemoved();
         await triggerNativeQueryChange();
+        await waitForSaveNewQuestionToBeEnabled();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -857,6 +858,7 @@ describe("QueryBuilder", () => {
 
         await waitForLoaderToBeRemoved();
         await triggerNativeQueryChange();
+        await waitForSaveNewQuestionToBeEnabled();
 
         history.goBack();
 
@@ -922,6 +924,7 @@ describe("QueryBuilder", () => {
 
         await waitForLoaderToBeRemoved();
         await triggerNativeQueryChange();
+        await waitForSaveNewQuestionToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -959,6 +962,7 @@ describe("QueryBuilder", () => {
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await triggerNativeQueryChange();
+        await waitForSaveQuestionToBeEnabled();
 
         history.goBack();
 
@@ -993,6 +997,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNativeQueryChange();
+        await waitForSaveQuestionToBeEnabled();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -1014,6 +1019,7 @@ describe("QueryBuilder", () => {
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await triggerNativeQueryChange();
+        await waitForSaveQuestionToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1044,6 +1050,7 @@ describe("QueryBuilder", () => {
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
         await triggerNativeQueryChange();
+        await waitForSaveQuestionToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1191,7 +1198,11 @@ const triggerNativeQueryChange = async () => {
 };
 
 const triggerMetadataChange = async () => {
-  const columnDisplayName = await screen.findByTitle("Display name");
+  await waitFor(() => {
+    expect(screen.getByTitle("Display name")).toBeInTheDocument();
+  });
+
+  const columnDisplayName = screen.getByTitle("Display name");
 
   userEvent.click(columnDisplayName);
   userEvent.type(columnDisplayName, "X");
@@ -1210,10 +1221,6 @@ const triggerNotebookQueryChange = async () => {
   userEvent.click(rowLimitInput);
   userEvent.type(rowLimitInput, "0");
   userEvent.tab();
-
-  await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
-  });
 };
 
 /**
@@ -1237,4 +1244,8 @@ const waitForSaveQuestionToBeEnabled = async () => {
   await waitFor(() => {
     expect(screen.getByText("Save")).toBeEnabled();
   });
+};
+
+const waitForSaveNewQuestionToBeEnabled = async () => {
+  await waitForSaveQuestionToBeEnabled();
 };
