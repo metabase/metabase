@@ -34,7 +34,7 @@
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
   [user :- UserAttributes]
-  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
+  (u/prog1 (first (t2/insert-returning-instances! User (merge (dissoc user :groups) {:password (str (random-uuid))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; publish user-invited event for audit logging
     (let [details (-> (into {} <>)
@@ -53,8 +53,7 @@
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
   (when-let [{:keys [id] :as user} (t2/select-one User :%lower.email (u/lower-case-en email))]
-    (let [user-from-sso (dissoc user-from-sso :groups)
-          user-keys (keys user-from-sso)
+    (let [user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
       (if (= (select-keys user user-keys) user-data)
