@@ -1,12 +1,12 @@
 import { useMemo } from "react";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
-  metadata: Metadata;
   canHaveManyValues?: boolean;
   onChange: (value: T[]) => void;
 }
@@ -14,10 +14,11 @@ interface ColumnValuesWidgetProps<T> {
 export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
-  metadata,
   canHaveManyValues,
   onChange,
 }: ColumnValuesWidgetProps<T>) {
+  const metadata = useSelector(getMetadata);
+
   const fields = useMemo(() => {
     const fieldId = Lib._fieldId(column);
     const field = metadata.field(fieldId);

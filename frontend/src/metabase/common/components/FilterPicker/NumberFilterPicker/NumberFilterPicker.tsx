@@ -2,7 +2,6 @@ import { t } from "ttag";
 import { useState, useMemo } from "react";
 import { Box, Button, Flex, NumberInput, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
@@ -20,7 +19,6 @@ export function NumberFilterPicker({
   stageIndex,
   column,
   filter,
-  metadata,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -84,7 +82,6 @@ export function NumberFilterPicker({
         values={values}
         valueCount={valueCount}
         column={column}
-        metadata={metadata}
         onChange={setValues}
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
@@ -105,7 +102,6 @@ interface NumberValueInputProps {
   values: number[];
   valueCount: number;
   column: Lib.ColumnMetadata;
-  metadata: Metadata;
   onChange: (values: number[]) => void;
 }
 
@@ -113,7 +109,6 @@ function NumberValueInput({
   values,
   valueCount,
   column,
-  metadata,
   onChange,
 }: NumberValueInputProps) {
   const placeholder = t`Enter a number`;
@@ -125,7 +120,6 @@ function NumberValueInput({
           <ColumnValuesWidget
             value={values}
             column={column}
-            metadata={metadata}
             canHaveManyValues
             onChange={onChange}
           />

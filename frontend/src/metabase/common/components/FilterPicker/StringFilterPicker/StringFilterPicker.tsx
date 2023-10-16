@@ -21,7 +21,6 @@ export function StringFilterPicker({
   stageIndex,
   column,
   filter,
-  metadata,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -91,7 +90,6 @@ export function StringFilterPicker({
           <ColumnValuesWidget
             column={column}
             value={values}
-            metadata={metadata}
             canHaveManyValues={canHaveManyValues}
             onChange={setValues}
           />

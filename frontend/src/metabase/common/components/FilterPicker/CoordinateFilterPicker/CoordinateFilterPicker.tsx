@@ -3,7 +3,6 @@ import { useState, useMemo } from "react";
 
 import { Box, Button, Flex, NumberInput, Text, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 import type { FilterPickerWidgetProps } from "../types";
 import { getAvailableOperatorOptions } from "../utils";
@@ -23,7 +22,6 @@ export function CoordinateFilterPicker({
   stageIndex,
   column,
   filter,
-  metadata,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -122,7 +120,6 @@ export function CoordinateFilterPicker({
         values={values}
         valueCount={valueCount ?? 0}
         column={column}
-        metadata={metadata}
         onChange={setValues}
       />
       <Footer mt={valueCount === 0 ? -1 : undefined} /* to collapse borders */>
@@ -143,7 +140,6 @@ interface CoordinateValueInputProps {
   values: number[];
   valueCount: number;
   column: Lib.ColumnMetadata;
-  metadata: Metadata;
   onChange: (values: number[]) => void;
 }
 
@@ -152,7 +148,6 @@ function CoordinateValueInput({
   onChange,
   valueCount,
   column,
-  metadata,
 }: CoordinateValueInputProps) {
   const placeholder = t`Enter a number`;
 
@@ -163,7 +158,6 @@ function CoordinateValueInput({
           <ColumnValuesWidget
             value={values}
             column={column}
-            metadata={metadata}
             canHaveManyValues
             onChange={onChange}
           />
