@@ -20,5 +20,5 @@ export function FilterOperatorPicker({
     }));
   }, [options]);
 
-  return <Select data={data} {...props} withinPortal={false} />;
+  return <Select data={data} {...props} />;
 }
