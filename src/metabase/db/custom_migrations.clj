@@ -868,7 +868,7 @@
                         (into {})
                         json/generate-string)}))))
 
-(defn migrate-remove-admin-from-group-mapping-if-needed
+(defn- migrate-remove-admin-from-group-mapping-if-needed
   {:author "qnkhuat"
    :added  "0.43.0"
    :doc    "In the past we have a setting to disable group sync for admin group when using SSO or LDAP, but it's broken

@@ -1040,7 +1040,6 @@
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
 
-#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest fix-click-through-test
   (let [migrate (fn [card dash]
                   (:visualization_settings
@@ -1223,7 +1222,9 @@
                    "linkTextTemplate" "Rating {{RATING}}"}}}
                 "table.cell_column"  "PRICE"
                 "table.pivot_column" "CATEGORY"}
-               (migrate card dash))))))
+               (migrate card dash)))))))
+
+(deftest fix-click-through-general-test
   (testing "general case"
     (let [card-vis              {"column_settings"
                                  {"[\"ref\",[\"field-id\",2]]"
@@ -1281,6 +1282,7 @@
                     {:id                     1
                      :card_visualization     card-vis
                      :dashcard_visualization (:visualization_settings fixed)}))))))
+
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"
@@ -1392,7 +1394,7 @@
 
 (defn- get-json-setting
   [setting-k]
-  (json/parse-string (t2/select-one-fn :value setting/Setting :key (name setting-k))))
+  (json/parse-string (t2/select-one-fn :value :setting :key (name setting-k))))
 
 (defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values
@@ -1426,55 +1428,55 @@
         ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-      (impl/test-migrations ["v48.00-023"] [migrate!]
-        (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
-          (migrate!)
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+        (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
+
+    (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-enabled "false"
+           saml-enabled "false"
+           jwt-enabled  "false"]
+          (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
 
-    (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
-      (impl/test-migrations ["v48.00-023"] [migrate!]
-        (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
-          (mt/with-temporary-raw-setting-values
-            [ldap-enabled "false"
-             saml-enabled "false"
-             jwt-enabled  "false"]
-            (migrate!)
-            (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
-            (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
-            (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))))
-
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-      (impl/test-migrations ["v48.00-023"] [migrate!]
-        (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
-          (mt/with-temporary-raw-setting-values
-            [ldap-sync-admin-group "true"]
-            (migrate!)
-            (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings)))))))
-
-    (testing "Running the migration after a previous data-migration still works"
-      (impl/test-migrations ["v48.00-023"] [migrate!]
-        (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-sync-admin-group "true"]
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
-          (migrate!)
-          (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
-          (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
-          (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))))
-
+          (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
 
 (deftest check-data-migrations-rollback
-  (testing "that rollback causes data_migrations table to reappear with data"
-    (impl/test-migrations ["v48.00-024"] [_]
-      (let [{:keys [db-type ^javax.sql.DataSource
-                    data-source]} mdb.connection/*application-db*
-            ;; approach from schema-migrations-test/migrate-field-database-type-test
-            migrate!              (partial db.setup/migrate! db-type data-source)]
+  (impl/test-migrations ["v48.00-024"] [migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource
+                  data-source]} mdb.connection/*application-db*
+          ;; approach from schema-migrations-test/migrate-field-database-type-test
+          migrate-all!          (partial db.setup/migrate! db-type data-source)
+          throw-err             (fn [& _args]
+                                  (throw (ex-info "This shouldn't be called ever" {})))]
+
+      (testing "we can migrate even if data_migrations is empty"
         ;; 0 because we removed them and fresh db won't trigger any
         (is (<= 0 (t2/count :data_migrations)))
-        (migrate! :up)
+        (migrate!))
+
+      (testing "no data_migrations table after v.48.00-024"
         (is (thrown? ExceptionInfo
-                     (t2/count :data_migrations)))
-        (migrate! :down 47)
+                     (t2/count :data_migrations))))
+
+      (testing "rollback causes all known data_migrations to reappear"
+        (migrate-all! :down 47)
         ;; 2 because there were two data migrations left in release 0.47
-        (is (<= 34 (t2/count :data_migrations)))))))
+        (is (<= 34 (t2/count :data_migrations))))
+
+      (testing "when migrating up, migrations won't run since they are in data_migration because of rollback"
+        (is (nil?
+             (with-redefs [custom-migrations/migrate-click-through!                            throw-err
+                           custom-migrations/migrate-remove-admin-from-group-mapping-if-needed throw-err]
+               (migrate!))))))))

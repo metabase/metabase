@@ -15351,19 +15351,6 @@ databaseChangeLog:
                   remarks: 'Metabase version used to create the card.'
 
   - changeSet:
-      id: v48.00-025
-      author: piranha
-      comment: 'Revisions store Metabase version used to create them'
-      changes:
-        - addColumn:
-            tableName: revision
-            columns:
-              - column:
-                  name: metabase_version
-                  type: varchar(100)
-                  remarks: 'Metabase version used to create the revision.'
-
-  - changeSet:
       id: v48.00-022
       author: johnswanson
       comment: Migrate migrate-click-through to a custom migration
@@ -15448,6 +15435,19 @@ databaseChangeLog:
                   ('migrate-map-regions', current_timestamp),
                   ('migrate-click-through', current_timestamp),
                   ('migrate-remove-admin-from-group-mapping-if-needed', current_timestamp);
+
+  - changeSet:
+      id: v48.00-025
+      author: piranha
+      comment: 'Revisions store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the revision.'
 
   - changeSet:
       id: v48.00-026
