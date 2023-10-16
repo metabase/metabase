@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]

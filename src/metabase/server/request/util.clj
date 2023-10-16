@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]

@@ -1,6 +1,7 @@
 (ns metabase.api.revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -64,6 +65,7 @@
                :is_creation          true
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 nil
                :has_multiple_changes false
                :description          "created this."}]
@@ -112,6 +114,7 @@
                :is_creation          false
                :message              "because i wanted to"
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:name "something else"}
                                       :after  {:name name}}
                :description          "reverted to an earlier version."
@@ -120,6 +123,7 @@
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:name name}
                                       :after  {:name "something else"}}
                :description          (format "renamed this Card from \"%s\" to \"something else\"." name)
@@ -127,6 +131,7 @@
               {:is_reversion         false
                :is_creation          true
                :message              nil
+               :metabase_version     config/mb-version-string
                :user                 @rasta-revision-info
                :diff                 nil
                :description          "created this."
@@ -180,6 +185,7 @@
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:cards nil}
                                       :after  {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}}
                :has_multiple_changes false
@@ -188,6 +194,7 @@
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}
                                       :after  {:cards nil}}
                :has_multiple_changes false
@@ -196,6 +203,7 @@
                :is_creation          false
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:cards nil}
                                       :after  {:cards [(merge default-revision-card {:card_id card-id :dashboard_id id})]}}
                :has_multiple_changes false
@@ -204,6 +212,7 @@
                :is_creation          true
                :message              nil
                :user                 @rasta-revision-info
+               :metabase_version     config/mb-version-string
                :diff                 nil
                :has_multiple_changes false
                :description          "created this."}]

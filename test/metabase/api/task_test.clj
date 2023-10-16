@@ -1,7 +1,7 @@
 (ns metabase.api.task-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.task-history :refer [TaskHistory]]
    [metabase.test :as mt]
    [metabase.util :as u]

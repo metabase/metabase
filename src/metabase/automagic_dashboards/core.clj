@@ -89,8 +89,7 @@
     [clojure.walk :as walk]
     [clojure.zip :as zip]
     [flatland.ordered.map :refer [ordered-map]]
-    #_{:clj-kondo/ignore [:deprecated-namespace]}
-    [java-time :as t]
+    [java-time.api :as t]
     [kixi.stats.core :as stats]
     [kixi.stats.math :as math]
     [medley.core :as m]
