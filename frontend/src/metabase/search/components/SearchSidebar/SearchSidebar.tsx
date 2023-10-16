@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFilter";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
@@ -24,6 +25,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
+    [SearchFilterKeys.CreatedAt]: CreatedAtFilter,
     [SearchFilterKeys.LastEditedBy]: LastEditedByFilter,
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
@@ -78,6 +80,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
         {getFilter(SearchFilterKeys.CreatedBy)}
         {getFilter(SearchFilterKeys.LastEditedBy)}
       </Stack>
+      <Stack>{getFilter(SearchFilterKeys.CreatedAt)}</Stack>
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
     </Stack>

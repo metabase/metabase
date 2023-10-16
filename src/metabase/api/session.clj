@@ -2,7 +2,7 @@
   "/api/session endpoints"
   (:require
    [compojure.core :refer [DELETE GET POST]]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.ldap :as api.ldap]

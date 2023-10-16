@@ -399,12 +399,8 @@ class StructuredQuery extends AtomicQuery {
     }
   }
 
-  cleanJoins(): StructuredQuery {
-    let query = this;
-    this.joins().forEach((join, index) => {
-      query = query.updateJoin(index, join.clean());
-    });
-    return query._cleanClauseList("joins");
+  private cleanJoins(): StructuredQuery {
+    return this._cleanClauseList("joins");
   }
 
   cleanExpressions(): StructuredQuery {
@@ -506,8 +502,14 @@ class StructuredQuery extends AtomicQuery {
 
   hasAnyClauses() {
     // this list should be kept in sync with BE in `metabase.models.card/model-supports-implicit-actions?`
+
+    const query = this.getMLv2Query();
+    const stageIndex = this.getQueryStageIndex();
+
+    const hasJoins = ML.joins(query, stageIndex).length > 0;
+
     return (
-      this.hasJoins() ||
+      hasJoins ||
       this.hasExpressions() ||
       this.hasFilters() ||
       this.hasAggregations() ||
@@ -516,10 +518,6 @@ class StructuredQuery extends AtomicQuery {
       this.hasLimit() ||
       this.hasFields()
     );
-  }
-
-  hasJoins() {
-    return this.joins().length > 0;
   }
 
   hasExpressions() {
@@ -584,16 +582,16 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns alias for addJoin
+   * @deprecated use metabase-lib v2 to manage joins
    */
   join(join) {
-    return this.addJoin(join);
+    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
   }
 
   // JOINS
 
   /**
-   * @returns an array of MBQL @type {Join}s.
+   * @deprecated use metabase-lib v2 to manage joins
    */
   joins = _.once((): JoinWrapper[] => {
     return Q.getJoins(this.query()).map(
@@ -601,20 +599,18 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  addJoin(join) {
-    return this._updateQuery(Q.addJoin, [unwrapJoin(join)]);
-  }
-
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   updateJoin(index, join) {
     return this._updateQuery(Q.updateJoin, [index, unwrapJoin(join)]);
   }
 
+  /**
+   * @deprecated use metabase-lib v2 to manage joins
+   */
   removeJoin(index) {
     return this._updateQuery(Q.removeJoin, arguments);
-  }
-
-  clearJoins() {
-    return this._updateQuery(Q.clearJoins, arguments);
   }
 
   // AGGREGATIONS
@@ -1389,7 +1385,10 @@ class StructuredQuery extends AtomicQuery {
     );
   });
 
-  joinedDimensions = _.once((): Dimension[] => {
+  /**
+   * @deprecated use metabase-lib v2' to manage joins
+   */
+  private joinedDimensions = _.once((): Dimension[] => {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   });
 
@@ -1677,6 +1676,10 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return queries;
+  }
+
+  getQueryStageIndex() {
+    return this.queries().length - 1;
   }
 
   /**

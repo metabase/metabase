@@ -19,7 +19,7 @@
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.models.interface :as mi]

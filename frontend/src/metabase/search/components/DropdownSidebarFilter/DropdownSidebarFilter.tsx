@@ -139,19 +139,24 @@ export const DropdownSidebarFilter = ({
         ignoreTrigger
         autoWidth
         sizeToFit
+        pinInitialAttachment
+        horizontalAttachments={["right"]}
       >
-        {({ maxHeight }: { maxHeight: string }) => (
-          <SearchEventSandbox>
-            {popoverWidth && (
-              <Stack mah={maxHeight} w={popoverWidth ?? "100%"}>
-                <ContentComponent
-                  value={value}
-                  onChange={selected => onApplyFilter(selected)}
-                />
-              </Stack>
-            )}
-          </SearchEventSandbox>
-        )}
+        {({ maxHeight }: { maxHeight: number }) =>
+          popoverWidth && (
+            <SearchEventSandbox>
+              {popoverWidth && (
+                <Stack mah={maxHeight}>
+                  <ContentComponent
+                    value={value}
+                    onChange={selected => onApplyFilter(selected)}
+                    width={popoverWidth}
+                  />
+                </Stack>
+              )}
+            </SearchEventSandbox>
+          )
+        }
       </Popover>
     </Box>
   );

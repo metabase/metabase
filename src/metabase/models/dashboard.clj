@@ -131,10 +131,15 @@
     (or (= (:name p) "")
         (= (:slug p) ""))
     (assoc :name "unnamed" :slug "unnamed")
-    ;; We don't support linked filters for parameters with :values_source_type of anything except nil,
-    ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
-    ;; have linked filters. (metabase#33892)
-    (some? (:values_source_type p))
+    (or
+     ;; we don't support linked filters for parameters with :values_source_type of anything except nil,
+     ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
+     ;; have linked filters. (metabase#33892)
+     (some? (:values_source_type p))
+     (= (:values_query_type p) "none"))
+     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+     ;; (metabase#34657)
     (dissoc :filteringParameters)))
 
 (defn- migrate-parameters-list

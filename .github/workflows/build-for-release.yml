@@ -78,30 +78,29 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
-    - name: Ensure that the specified commit exists in the latest release branch
-      env:
-        COMMIT: ${{ inputs.commit }}
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Branch
+      uses: actions/github-script@v6
+      id: release_branch
+      with:
+        result_encoding: string
+        script: | # js
+          const { getReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = '${{ inputs.version }}';
+          const releaseBranch = getReleaseBranch(version);
+          return releaseBranch;
+    - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
       run: |
-        echo "Checking if the specified commit is in a release branch..."
-
-        git branch -a --contains $COMMIT > branches.txt
-        if [[ $(grep -c master branches.txt) =~ 1 ]]; then
-          echo "Found in master branch. ABORT!"
-          exit -1
-        fi
-        if [[ $(grep -c 'release-x' branches.txt) =~ 1 ]]; then
-          echo "Found the commit $COMMIT in:"
-          git branch -a --contains $COMMIT
-          echo "Proceeding to the next step..."
-          exit 0
-        else
-          echo "Commit $COMMIT is not found in a single release branch"
-          echo "ABORT!."
-          exit -1
-        fi
+        RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
+        git checkout $RELEASE_BRANCH
+        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
+          && echo "Commit found in correct release branch" \
+          || (echo "Commit not found in correct release branch" && exit 1)
 
   build-uberjar-for-release:
-    needs: check-version
+    needs: [check-version, check-commit]
     runs-on: ubuntu-22.04
     timeout-minutes: 50
     strategy:

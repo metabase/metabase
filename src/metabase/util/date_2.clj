@@ -4,7 +4,7 @@
   (:refer-clojure :exclude [format range])
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [java-time.core :as t.core]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
