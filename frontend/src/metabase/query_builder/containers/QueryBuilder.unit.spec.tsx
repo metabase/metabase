@@ -159,6 +159,7 @@ const TEST_STRUCTURED_CARD = createMockCard({
     database: SAMPLE_DB_ID,
     query: createMockStructuredQuery({
       "source-table": ORDERS_ID,
+      limit: 1,
     }),
   }),
 });
@@ -1072,6 +1073,25 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
       });
     });
+
+    describe("editing notebook questions", () => {
+      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_STRUCTURED_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
+        await waitForLoaderToBeRemoved();
+
+        await triggerNotebookQueryChange();
+        await waitForSaveQuestionToBeEnabled();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("downloading results", () => {
@@ -1210,5 +1230,11 @@ const revertNotebookQueryChange = async () => {
 
   await waitFor(() => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+};
+
+const waitForSaveQuestionToBeEnabled = async () => {
+  await waitFor(() => {
+    expect(screen.getByText("Save")).toBeEnabled();
   });
 };
