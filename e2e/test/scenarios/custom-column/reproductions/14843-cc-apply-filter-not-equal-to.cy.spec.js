@@ -1,4 +1,10 @@
-import { restore, popover, visualize, filter } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visualize,
+  filter,
+  openNotebook,
+} from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -26,22 +32,18 @@ describe("issue 14843", () => {
 
   it("should correctly filter custom column by 'Not equal to' (metabase#14843)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
-
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.wait("@schema");
 
     filter({ mode: "notebook" });
-
     popover().findByText(CC_NAME).click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Equal to").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Not equal to").click();
-
-    cy.findByPlaceholderText("Enter a number").type("3");
-    cy.button("Add filter").click();
+    popover().findByDisplayValue("Equal to").click();
+    cy.findByRole("listbox").findByText("Not equal to").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("3");
+      cy.button("Add filter").click();
+    });
 
     visualize();
 
