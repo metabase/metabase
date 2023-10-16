@@ -9,7 +9,7 @@ import {
 } from "./DashCardActionButton.styled";
 
 interface Props extends React.HTMLAttributes<HTMLAnchorElement> {
-  tooltip: string;
+  tooltip?: string;
   analyticsEvent?: string;
 }
 
