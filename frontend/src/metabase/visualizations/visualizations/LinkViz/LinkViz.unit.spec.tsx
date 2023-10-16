@@ -5,7 +5,7 @@ import {
   screen,
   fireEvent,
   getIcon,
-  waitFor,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupSearchEndpoints,
@@ -259,10 +259,7 @@ describe("LinkViz", () => {
       // "Loading..." appears and is then replaced by "Question Uno". On CI,
       // `findByText` was sometimes running while "Loading..." was still
       // visible, so the extra expectation ensures good timing
-
-      await waitFor(() => {
-        expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-      });
+      await waitForLoaderToBeRemoved();
 
       userEvent.click(await screen.findByText("Question Uno"));
 

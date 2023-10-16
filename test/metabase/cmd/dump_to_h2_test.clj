@@ -48,7 +48,7 @@
                 (io/delete-file file)))))))))
 
 (deftest cmd-dump-to-h2-returns-code-from-dump-test
-  (with-redefs [dump-to-h2/dump-to-h2! #(throw "err")
+  (with-redefs [dump-to-h2/dump-to-h2! #(throw (Exception. "err"))
                 cmd/system-exit! identity]
     (is (= 1 (cmd/dump-to-h2 "file1")))))
 

@@ -32,7 +32,7 @@ import type {
 import type { StructuredQuery as StructuredQueryApi } from "metabase-types/api/query";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
-import { columnFinder, SAMPLE_METADATA } from "./test-helpers";
+import { columnFinder, DEFAULT_QUERY, SAMPLE_METADATA } from "./test-helpers";
 import { availableDrillThrus, drillThru } from "./drills";
 
 type TestCaseQueryType = "unaggregated" | "aggregated";
@@ -78,13 +78,7 @@ type ApplyDrillTestCase = BaseTestCase & {
   expectedQuery: StructuredQueryApi;
 };
 
-const ORDERS_DATASET_QUERY: StructuredDatasetQuery = {
-  database: SAMPLE_DB_ID,
-  type: "query",
-  query: {
-    "source-table": ORDERS_ID,
-  },
-};
+const ORDERS_DATASET_QUERY = DEFAULT_QUERY as StructuredDatasetQuery;
 const ORDERS_QUESTION = Question.create({
   metadata: SAMPLE_METADATA,
   dataset_query: ORDERS_DATASET_QUERY,
@@ -680,6 +674,26 @@ describe("availableDrillThrus", () => {
     {
       drillType: "drill-thru/sort",
       clickType: "header",
+      queryType: "unaggregated",
+      columnName: "CREATED_AT",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
       queryType: "aggregated",
       columnName: "CREATED_AT",
       expectedParameters: {
@@ -711,10 +725,50 @@ describe("availableDrillThrus", () => {
       drillType: "drill-thru/sort",
       clickType: "header",
       queryType: "aggregated",
+      columnName: "count",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["asc", "desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
       columnName: "max",
       expectedParameters: {
         type: "drill-thru/sort",
         directions: ["asc", "desc"],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["asc", ["field", ORDERS.CREATED_AT, null]]],
+          },
+        },
+      }),
+      expectedParameters: {
+        type: "drill-thru/sort",
+        directions: ["desc"],
       },
     },
     // endregion
@@ -1305,10 +1359,10 @@ describe("availableDrillThrus", () => {
     const columns = {
       CustomColumn: createMockColumn({
         base_type: "type/Integer",
-        name: "Custom",
-        display_name: "Custom",
-        expression_name: "Custom",
-        field_ref: ["expression", "Custom"],
+        name: "CustomColumn",
+        display_name: "CustomColumn",
+        expression_name: "CustomColumn",
+        field_ref: ["expression", "CustomColumn"],
         source: "breakout",
         effective_type: "type/Integer",
       }),
@@ -1367,117 +1421,241 @@ describe("availableDrillThrus", () => {
 
 describe("drillThru", () => {
   it.each<ApplyDrillTestCase>([
-    // FIXME: sort drill returns wrong result query (metabase#34342)
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "ID",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.ID,
-    //           {
-    //             "base-type": "type/BigInteger",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "PRODUCT_ID",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["desc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "desc",
-    //         [
-    //           "field",
-    //           ORDERS.PRODUCT_ID,
-    //           {
-    //             "base-type": "type/Integer",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "SUBTOTAL",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.SUBTOTAL,
-    //           {
-    //             "base-type": "type/Float",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "DISCOUNT",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["desc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "desc",
-    //         [
-    //           "field",
-    //           ORDERS.DISCOUNT,
-    //           {
-    //             "base-type": "type/Float",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/sort",
-    //   clickType: "header",
-    //   columnName: "CREATED_AT",
-    //   queryType: "unaggregated",
-    //   drillArgs: ["asc"],
-    //   expectedQuery: {
-    //     "order-by": [
-    //       [
-    //         "asc",
-    //         [
-    //           "field",
-    //           ORDERS.CREATED_AT,
-    //           {
-    //             "base-type": "type/DateTime",
-    //           },
-    //         ],
-    //       ],
-    //     ],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "ID",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.ID,
+              {
+                "base-type": "type/BigInteger",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "PRODUCT_ID",
+      queryType: "unaggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "SUBTOTAL",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.SUBTOTAL,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "DISCOUNT",
+      queryType: "unaggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.DISCOUNT,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "CREATED_AT",
+      queryType: "unaggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "PRODUCT_ID",
+      queryType: "aggregated",
+      drillArgs: ["desc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "desc",
+            [
+              "field",
+              ORDERS.PRODUCT_ID,
+              {
+                "base-type": "type/Integer",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "CREATED_AT",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "sum",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [["asc", ["aggregation", 1]]],
+      },
+    },
+    {
+      // should support changing sorting to another direction for a column that already has sorting applied (metabase#34497)
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "max",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [["desc", ["aggregation", 2]]],
+          },
+        },
+      }),
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [["asc", ["aggregation", 2]]],
+      },
+    },
+    {
+      // should support adding extra sorting for a query that already has a sorted column
+      drillType: "drill-thru/sort",
+      clickType: "header",
+      columnName: "sum",
+      queryType: "aggregated",
+      drillArgs: ["asc"],
+      customQuestion: Question.create({
+        metadata: SAMPLE_METADATA,
+        dataset_query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY,
+          query: {
+            ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+            "order-by": [
+              [
+                "asc",
+                [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "base-type": "type/DateTime",
+                    "temporal-unit": "month",
+                  },
+                ],
+              ],
+            ],
+          },
+        },
+      }),
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        "order-by": [
+          [
+            "asc",
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+          ["asc", ["aggregation", 1]],
+        ],
+      },
+    },
 
     {
       drillType: "drill-thru/summarize-column",
@@ -1943,6 +2121,147 @@ describe("drillThru", () => {
       });
     },
   );
+
+  describe("with custom column", () => {
+    const ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery = {
+      ...AGGREGATED_ORDERS_DATASET_QUERY,
+      query: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        expressions: {
+          CustomColumn: ["+", 1, 1],
+          CustomTax: [
+            "+",
+            [
+              "field",
+              ORDERS.TAX,
+              {
+                "base-type": "type/Float",
+              },
+            ],
+            2,
+          ],
+        },
+        aggregation: [
+          ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
+          ["avg", ["expression", "CustomTax"]],
+        ],
+        breakout: [
+          ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
+          ["expression", "CustomColumn"],
+        ],
+      },
+    };
+
+    const ORDERS_WITH_CUSTOM_COLUMN_QUESTION = Question.create({
+      metadata: SAMPLE_METADATA,
+      dataset_query: ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+    });
+
+    const ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
+      ...AGGREGATED_ORDERS_COLUMNS,
+      CustomColumn: createMockColumn({
+        base_type: "type/Integer",
+        name: "CustomColumn",
+        display_name: "CustomColumn",
+        expression_name: "CustomColumn",
+        field_ref: ["expression", "CustomColumn"],
+        source: "breakout",
+        effective_type: "type/Integer",
+      }),
+      avg: createMockColumn({
+        base_type: "type/Float",
+        name: "avg",
+        display_name: "Average of CustomTax",
+        source: "aggregation",
+        field_ref: ["aggregation", 3],
+        effective_type: "type/Float",
+      }),
+    };
+    const ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
+      ...AGGREGATED_ORDERS_ROW_VALUES,
+      CustomColumn: 2,
+      avg: 13.2,
+    };
+
+    type ApplyDrillTestCaseWithCustomColumn = {
+      clickType: "cell" | "header";
+      customQuestion?: Question;
+      columnName: keyof typeof ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
+      drillType: Lib.DrillThruType;
+      drillArgs?: any[];
+      expectedQuery: StructuredQueryApi;
+    };
+
+    it.each<ApplyDrillTestCaseWithCustomColumn>([
+      {
+        // should support sorting for custom column
+        drillType: "drill-thru/sort",
+        clickType: "header",
+        columnName: "avg",
+        drillArgs: ["asc"],
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          "order-by": [["asc", ["aggregation", 3]]],
+        },
+      },
+      // FIXME: should support sorting for custom column without table relation (metabase#34499)
+      // {
+      //   // should support sorting for custom column without table relation
+      //   drillType: "drill-thru/sort",
+      //   clickType: "header",
+      //   columnName: "CustomColumn",
+      //   drillArgs: ["asc"],
+      //   expectedQuery: {
+      //     ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+      //     "order-by": [["asc", ["expression", "CustomColumn"]]],
+      //   },
+      // },
+    ])(
+      'should return correct result on "$drillType" drill apply to $columnName on $clickType in query with custom column',
+      ({ columnName, clickType, drillArgs, expectedQuery, drillType }) => {
+        const { query, stageIndex, column, cellValue, row } = setup({
+          question: ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+          clickedColumnName: columnName,
+          columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+          rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+          tableName: "ORDERS",
+        });
+
+        const { drills, drillsDisplayInfo } = setupDrillDisplayInfo({
+          clickType,
+          queryType: "aggregated",
+          columnName,
+          query,
+          stageIndex,
+          column,
+          cellValue,
+          row,
+        });
+
+        const drillIndex = drillsDisplayInfo.findIndex(
+          ({ type }) => type === drillType,
+        );
+        const drill = drills[drillIndex];
+
+        if (!drill) {
+          throw new TypeError(`Failed to find ${drillType} drill`);
+        }
+
+        const updatedQuery = drillThru(
+          query,
+          stageIndex,
+          drill,
+          ...(drillArgs || []),
+        );
+
+        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
+          database: SAMPLE_DB_ID,
+          query: expectedQuery,
+          type: "query",
+        });
+      },
+    );
+  });
 });
 
 const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {

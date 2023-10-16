@@ -7,7 +7,7 @@ import QuestionModerationIcon from "./components/QuestionModerationIcon";
 import QuestionModerationSection from "./components/QuestionModerationSection";
 import QuestionModerationButton from "./components/QuestionModerationButton";
 import ModerationReviewBanner from "./components/ModerationReviewBanner";
-import ModerationStatusIcon from "./components/ModerationStatusIcon";
+import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 
 import {
   MODERATION_STATUS,

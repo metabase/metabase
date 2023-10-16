@@ -36,8 +36,8 @@ jobs:
       uses: actions/github-script@v6
       id: canonical_version
       with:
-        script: |
-          const { isValidVersionString, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+        script: | # js
+          const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
 
@@ -45,13 +45,62 @@ jobs:
             throw new Error("The version format is invalid! It must start with either 'v0.' or 'v1.'.");
           }
 
-          return {
+          const versions = {
             ee: getCanonicalVersion(version, 'ee'),
             oss: getCanonicalVersion(version, 'oss'),
           };
 
+          const ossReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.oss,
+          });
+
+          const eeReleased = await hasBeenReleased({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.ee,
+          });
+
+          if (ossReleased || eeReleased) {
+            throw new Error("This version has already been released!", version);
+          }
+
+          return versions;
+
+  check-commit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - name: Check out the code to verify the release branch
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # IMPORTANT! to get all the branches
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Get Release Branch
+      uses: actions/github-script@v6
+      id: release_branch
+      with:
+        result_encoding: string
+        script: | # js
+          const { getReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const version = '${{ inputs.version }}';
+          const releaseBranch = getReleaseBranch(version);
+          return releaseBranch;
+    - name: Ensure that the specified commit exists in the ${{ steps.release_branch.outputs.result }} release branch
+      run: |
+        RELEASE_BRANCH=${{ steps.release_branch.outputs.result }}
+        git checkout $RELEASE_BRANCH
+        git branch --contains ${{ inputs.commit }} | grep -q $RELEASE_BRANCH \
+          && echo "Commit found in correct release branch" \
+          || (echo "Commit not found in correct release branch" && exit 1)
+
   build-uberjar-for-release:
-    needs: check-version
+    needs: [check-version, check-commit]
     runs-on: ubuntu-22.04
     timeout-minutes: 50
     strategy:

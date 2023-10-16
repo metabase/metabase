@@ -459,7 +459,7 @@ jobs:
               repo: '${{ secrets.DOCS_REPO }}',
               event_type: 'trigger-docs-update',
               client_payload: {
-                version: '${{ github.ref_name }}'
+                version: '${{ inputs.version }}'
               }
             });
 
@@ -571,3 +571,36 @@ jobs:
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
+
+  manage-issues:
+    permissions: write-all
+    runs-on: ubuntu-22.04
+    needs: [publish-version-info, draft-release-notes]
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Update milestones
+      uses: actions/github-script@v6
+      with:
+        script: | # js
+          const { closeMilestone, openNextMilestones } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          await closeMilestone({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          });
+
+          await openNextMilestones({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          });
