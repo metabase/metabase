@@ -77,6 +77,9 @@ function Content({
   if (parameter.values_source_type != null) {
     return <ParametersFromOtherSource />;
   }
+  if (parameter.values_query_type === "none") {
+    return <ParameterIsInputBoxType />;
+  }
   return (
     <UsableParameters
       parameter={parameter}
@@ -104,6 +107,14 @@ function NoUsableParameters({
         )}.`}
       </SectionMessage>
     </div>
+  );
+}
+
+function ParameterIsInputBoxType(): JSX.Element {
+  return (
+    <SectionMessage>
+      {t`This filter can't be limited by another dashboard filter because its widget type is an input box.`}
+    </SectionMessage>
   );
 }
 
