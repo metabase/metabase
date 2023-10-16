@@ -5,8 +5,10 @@ import fetchMock from "fetch-mock";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockColumn,
   createMockDataset,
+  createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
   createMockStructuredDatasetQuery,
@@ -32,6 +34,9 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupModelIndexEndpoints,
+  setupCardCreateEndpoint,
+  setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -43,6 +48,7 @@ import {
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import QueryBuilder from "./QueryBuilder";
 
 registerVisualizations();
@@ -197,23 +203,23 @@ const TestQueryBuilder = (
 
 const TestHome = () => <div />;
 
-function isSavedCard(card: Card | UnsavedCard): card is Card {
-  return "id" in card;
+function isSavedCard(card: Card | UnsavedCard | null): card is Card {
+  return card !== null && "id" in card;
 }
 
 interface SetupOpts {
-  card?: Card | UnsavedCard;
+  card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
 }
 
 const setup = async ({
-  card = TEST_CARD,
+  card,
   dataset = createMockDataset(),
   initialRoute = `/question${
     isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
   }`,
-}: SetupOpts = {}) => {
+}: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
@@ -226,12 +232,20 @@ const setup = async ({
     setupModelIndexEndpoints(card.id, []);
   }
 
+  // this workaround can be removed when metabase#34523 is fixed
+  if (card === null) {
+    fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
+  }
+
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const { history } = renderWithProviders(
     <Route>
-      <Route path="/home" component={TestHome} />
+      <Route path="/" component={TestHome} />
       <Route path="/model">
+        <Route path="new" component={NewModelOptions} />
+        <Route path="query" component={TestQueryBuilder} />
+        <Route path="metadata" component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
       </Route>
@@ -260,13 +274,14 @@ describe("QueryBuilder", () => {
   describe("rendering", () => {
     describe("renders structured queries", () => {
       it("renders a structured question in the simple mode", async () => {
-        await setup();
+        await setup({ card: TEST_CARD });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
       it("renders a structured question in the notebook mode", async () => {
         await setup({
+          card: TEST_CARD,
           initialRoute: `/question/${TEST_CARD.id}/notebook`,
         });
 
@@ -339,6 +354,22 @@ describe("QueryBuilder", () => {
   });
 
   describe("beforeunload events", () => {
+    describe("creating models", () => {
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+
+        await startNewNotebookModel();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      });
+    });
+
     describe("editing models", () => {
       describe("editing queries", () => {
         afterEach(() => {
@@ -404,7 +435,7 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("native queries", () => {
+    describe("editing native questions", () => {
       afterEach(() => {
         jest.restoreAllMocks();
       });
@@ -448,7 +479,7 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("structured queries", () => {
+    describe("editing notebook questions", () => {
       afterEach(() => {
         jest.restoreAllMocks();
       });
@@ -502,12 +533,77 @@ describe("QueryBuilder", () => {
   });
 
   describe("unsaved changes warning", () => {
+    describe("creating models", () => {
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        history.push("/model/new");
+        await waitForLoaderToBeRemoved();
+
+        await startNewNotebookModel();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("shows custom warning modal when leaving via Cancel button", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving new model", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+        setupCollectionByIdEndpoint({ collections: [createMockCollection()] });
+        setupCardCreateEndpoint();
+        setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
     describe("editing models", () => {
       describe("editing queries", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
@@ -523,7 +619,7 @@ describe("QueryBuilder", () => {
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
@@ -595,7 +691,7 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
@@ -612,7 +708,7 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
@@ -711,11 +807,11 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("native queries", () => {
+    describe("editing native questions", () => {
       it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -730,7 +826,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -770,7 +866,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal when saving edited question", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -800,7 +896,7 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal when saving edited question as a new one", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -904,6 +1000,20 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const startNewNotebookModel = async () => {
+  userEvent.click(screen.getByText("Use the notebook editor"));
+  await waitForLoaderToBeRemoved();
+
+  userEvent.click(screen.getByText("Pick your starting data"));
+  const popover = screen.getByTestId("popover");
+  userEvent.click(within(popover).getByText("Sample Database"));
+  await waitForLoaderToBeRemoved();
+  userEvent.click(within(popover).getByText("Orders"));
+  userEvent.click(within(screen.getByTestId("popover")).getByText("Orders"));
+
+  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
+};
 
 const triggerNativeQueryChange = async () => {
   await waitFor(() => {

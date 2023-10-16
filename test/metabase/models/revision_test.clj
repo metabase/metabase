@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.models.revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
@@ -112,12 +113,13 @@
       (push-fake-revision! card-id, :name "Tips Created by Day", :message "yay!")
       (is (= [(mi/instance
                Revision
-               {:model        "FakedCard"
-                :user_id      (mt/user->id :rasta)
-                :object       (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
-                :is_reversion false
-                :is_creation  false
-                :message      "yay!"})]
+               {:model            "FakedCard"
+                :user_id          (mt/user->id :rasta)
+                :object           (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
+                :is_reversion     false
+                :is_creation      false
+                :message          "yay!"
+                :metabase_version config/mb-version-string})]
              (for [revision (revision/revisions ::FakedCard card-id)]
                (dissoc revision :timestamp :id :model_id)))))))
 
@@ -129,20 +131,22 @@
       (testing `revision/revisions
         (is (= [(mi/instance
                  Revision
-                 {:model        "FakedCard"
-                  :user_id      (mt/user->id :rasta)
-                  :object       (mi/instance 'FakedCard {:name "Spots Created by Day", :serialized true})
-                  :is_reversion false
-                  :is_creation  false
-                  :message      nil})
+                 {:model            "FakedCard"
+                  :user_id          (mt/user->id :rasta)
+                  :object           (mi/instance 'FakedCard {:name "Spots Created by Day", :serialized true})
+                  :is_reversion     false
+                  :is_creation      false
+                  :message          nil
+                  :metabase_version config/mb-version-string})
                 (mi/instance
                  Revision
-                 {:model        "FakedCard"
-                  :user_id      (mt/user->id :rasta)
-                  :object       (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
-                  :is_reversion false
-                  :is_creation  false
-                  :message      nil})]
+                 {:model            "FakedCard"
+                  :user_id          (mt/user->id :rasta)
+                  :object           (mi/instance 'FakedCard {:name "Tips Created by Day", :serialized true})
+                  :is_reversion     false
+                  :is_creation      false
+                  :message          nil
+                  :metabase_version config/mb-version-string})]
                (->> (revision/revisions ::FakedCard card-id)
                     (map #(dissoc % :timestamp :id :model_id)))))))))
 
@@ -214,7 +218,8 @@
               :diff                 {:o1 {:name "Initial Name", :serialized true}
                                      :o2 {:name "Modified Name", :serialized true}}
               :has_multiple_changes false
-              :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."}
+              :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."
+              :metabase_version     config/mb-version-string}
              (let [revisions (revision/revisions ::FakedCard card-id)]
                (assert (= 2 (count revisions)))
                (-> (revision/add-revision-details ::FakedCard (first revisions) (last revisions))
@@ -242,7 +247,8 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          "modified this."})]
+                :description          "modified this."
+                :metabase_version     config/mb-version-string})]
              (->> (revision/revisions+details ::FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))
                   (map #(update % :description str))))))))
@@ -262,7 +268,8 @@
                                        :o2 {:name "Spots Created by Day", :serialized true}}
                 :has_multiple_changes false
                 :description          (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
-                                           "{:name \"Spots Created by Day\", :serialized true}.")})
+                                           "{:name \"Spots Created by Day\", :serialized true}.")
+                :metabase_version     config/mb-version-string})
               (mi/instance
                Revision
                {:is_reversion         false,
@@ -272,7 +279,8 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :description          "modified this."})]
+                :description          "modified this."
+                :metabase_version     config/mb-version-string})]
              (->> (revision/revisions+details ::FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))
                   (map #(update % :description str))))))))
@@ -385,3 +393,14 @@
                                                                         :unknown_key false}
                                                          :is_reversion false
                                                          :is_creation  false})))))))))
+
+(deftest revision-tracks-metabase-version
+  (testing "creating a new revision uses current metabase version"
+    (let [new-version "just a test"]
+      (t2.with-temp/with-temp [Card {card-id :id}]
+        (push-fake-revision! card-id, :name "one", :message "yay!")
+        (with-redefs [config/mb-version-string new-version]
+          (push-fake-revision! card-id, :name "two", :message "yay!"))
+        (is (=? [{:metabase_version new-version}
+                 {:metabase_version config/mb-version-string}]
+                (revision/revisions ::FakedCard card-id)))))))
