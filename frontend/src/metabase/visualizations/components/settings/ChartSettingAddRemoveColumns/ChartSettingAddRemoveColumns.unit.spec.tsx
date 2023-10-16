@@ -1,10 +1,7 @@
-import { renderWithProviders, screen } from "__support__/ui";
-import {
-  DEFAULT_QUERY,
-  SAMPLE_DATABASE,
-  SAMPLE_METADATA,
-} from "metabase-lib/test-helpers";
-import Question from "metabase-lib/Question";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen, within } from "__support__/ui";
+
 import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -12,12 +9,20 @@ import {
   PRODUCTS,
   createOrdersTableDatasetColumns,
 } from "metabase-types/api/mocks/presets";
-import { ChartSettingAddRemoveColumns } from "./ChartSettingAddRemoveColumns";
-import userEvent from "@testing-library/user-event";
+
 import type {
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+
+import {
+  DEFAULT_QUERY,
+  SAMPLE_DATABASE,
+  SAMPLE_METADATA,
+} from "metabase-lib/test-helpers";
+import Question from "metabase-lib/Question";
+
+import { ChartSettingAddRemoveColumns } from "./ChartSettingAddRemoveColumns";
 
 const COLUMN_SETTINGS = [
   createMockTableColumnOrderSetting({
@@ -69,9 +74,8 @@ const setup = ({
 };
 
 describe("AddRemoveColumns", () => {
-  it.only("should render and display columns present in column settings", () => {
+  it("should render and display columns present in column settings", () => {
     setup();
-    screen.logTestingPlaygroundURL();
     expect(screen.getByLabelText("Total")).toBeChecked();
     expect(screen.getByLabelText("Tax")).toBeChecked();
     expect(screen.getByLabelText("Discount")).not.toBeChecked();
@@ -164,7 +168,6 @@ describe("AddRemoveColumns", () => {
       ),
     });
 
-    screen.logTestingPlaygroundURL();
     expect(screen.getByLabelText("Count")).toBeDisabled();
     expect(screen.getByLabelText("Sum of Total")).toBeDisabled();
     expect(screen.getByLabelText("Product ID")).toBeDisabled();
@@ -193,7 +196,11 @@ describe("AddRemoveColumns", () => {
       expect(screen.getByLabelText("Quantity")).not.toBeChecked();
       expect(screen.getAllByLabelText("Add all")[0]).not.toBeChecked();
 
-      userEvent.click(screen.getAllByLabelText("Add all")[0]);
+      userEvent.click(
+        within(
+          screen.getByRole("list", { name: "orders-table-columns" }),
+        ).getByLabelText("Add all"),
+      );
 
       expect(onChange).toHaveBeenCalledWith(
         ordersTableColumnSettings,

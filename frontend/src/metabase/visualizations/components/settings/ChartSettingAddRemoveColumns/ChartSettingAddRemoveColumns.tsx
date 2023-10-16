@@ -60,15 +60,18 @@ export const ChartSettingAddRemoveColumns = ({
     });
   }, [query]);
 
+  const columnInQuery = (columnItem: ColumnMetadataItem) =>
+    findColumnSettingIndex(query, columnItem.column, columnSettings) !== -1;
+
   const areAllColumnsInQuery = (columns: ColumnMetadataItem[]) => {
-    return columns.every(({ selected }) => selected);
+    return columns.every(columnInQuery);
   };
 
   const addAllColumnsFromTable = (columns: ColumnMetadataItem[]) => {
     let newQuery = query;
     let newSettings = columnSettings;
     columns.forEach(columnItem => {
-      if (!columnItem.selected) {
+      if (!columnInQuery(columnItem)) {
         newSettings = addColumnInSettings(newQuery, newSettings, columnItem);
         newQuery = enableColumnInQuery(newQuery, {
           metadataColumn: columnItem.column,
@@ -84,7 +87,7 @@ export const ChartSettingAddRemoveColumns = ({
     let newSettings = columnSettings;
 
     columns.forEach(columnItem => {
-      if (columnItem.selected) {
+      if (columnInQuery(columnItem)) {
         const columnSettingIndex = findColumnSettingIndex(
           newQuery,
           columnItem.column,
@@ -104,7 +107,7 @@ export const ChartSettingAddRemoveColumns = ({
   };
 
   const toggleColumn = (columnItem: ColumnMetadataItem) => {
-    if (columnItem.selected) {
+    if (columnInQuery(columnItem)) {
       handleDisableColumn(columnItem);
     } else {
       handleEnableColumn(columnItem);
@@ -154,8 +157,6 @@ export const ChartSettingAddRemoveColumns = ({
     );
   };
 
-  console.log(metadataColumnGroups);
-
   return (
     <div>
       <Button variant="subtle" pl="0" onClick={() => onWidgetOverride(null)}>
@@ -185,6 +186,7 @@ export const ChartSettingAddRemoveColumns = ({
           <div
             role="list"
             aria-label={`${columnGroup.displayName.toLocaleLowerCase()}-table-columns`}
+            key={`column-group-${columnGroup.displayName}`}
           >
             <Text fz="lg" fw={700} mb="1rem">
               {columnGroup.displayName}
@@ -219,7 +221,7 @@ export const ChartSettingAddRemoveColumns = ({
                       </Text>
                     </Flex>
                   }
-                  checked={columnItem.selected}
+                  checked={columnInQuery(columnItem)}
                   onClick={() => toggleColumn(columnItem)}
                   disabled={columnItem.isBreakout || columnItem.isAggregation}
                 />

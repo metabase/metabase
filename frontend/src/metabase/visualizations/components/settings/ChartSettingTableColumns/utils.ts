@@ -1,4 +1,4 @@
-import {t} from "ttag"
+import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type { IconName } from "metabase/core/components/Icon";
 import type {
@@ -141,8 +141,6 @@ export const getColumnGroups = (
 ): ColumnGroupItem[] => {
   const groups = Lib.groupColumns(metadataColumns);
 
-  console.log(metadataColumns, groups)
-
   return groups.map(group => {
     const displayInfo = Lib.displayInfo(query, STAGE_INDEX, group);
     const columns = Lib.getColumnsFromColumnGroup(group);
@@ -151,7 +149,7 @@ export const getColumnGroups = (
         const columnDisplayInfo = Lib.displayInfo(query, STAGE_INDEX, column);
         return {
           column,
-          ...columnDisplayInfo
+          ...columnDisplayInfo,
         };
       }),
       displayName: getColumnGroupName(displayInfo) || t`Question`,
@@ -215,7 +213,7 @@ export const findColumnSettingIndex = (
     [column] as Lib.ColumnMetadata[] | DatasetColumn[],
     columnSettings.map(({ fieldRef }) => fieldRef),
   );
-  
+
   return columnIndexes.findIndex(index => index >= 0);
 };
 
