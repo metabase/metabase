@@ -11,6 +11,7 @@ import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import type { StaticFormattingOptions } from "metabase/static-viz/lib/format";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";
@@ -21,7 +22,7 @@ export type Formatter = (value: unknown, options?: OptionsType) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-  formatValue: Formatter;
+  formatValue: (value: unknown, options: StaticFormattingOptions) => string;
   measureText: TextWidthMeasurer;
   fontFamily: string;
 }
