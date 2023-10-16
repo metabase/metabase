@@ -66,12 +66,12 @@ function BreakoutStep({
       isLastOpened={isLastOpened}
       tetherOptions={breakoutTetherOptions}
       renderName={renderBreakoutName}
-      renderPopover={(breakout, breakoutIndex) => (
+      renderPopover={({ item: breakout, index }) => (
         <BreakoutPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
           breakout={breakout}
-          breakoutIndex={breakoutIndex}
+          breakoutIndex={index}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
         />

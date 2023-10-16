@@ -62,12 +62,12 @@ function SortStep({
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
         />
       )}
-      renderPopover={(orderBy, orderByIndex) => (
+      renderPopover={({ item: orderBy, index }) => (
         <SortPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
           orderBy={orderBy}
-          orderByIndex={orderByIndex}
+          orderByIndex={index}
           onAddOrderBy={handleAddOrderBy}
           onUpdateOrderByColumn={handleUpdateOrderByColumn}
         />

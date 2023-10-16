@@ -21,7 +21,7 @@ const ExpressionStep = ({
       items={items}
       renderName={({ name }) => name}
       readOnly={readOnly}
-      renderPopover={item => (
+      renderPopover={({ item }) => (
         <ExpressionWidget
           query={query}
           name={item?.name}

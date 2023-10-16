@@ -1,6 +1,5 @@
 import type Tether from "tether";
 import type { PopoverBaseProps } from "metabase/ui";
-import { Popover } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import {
@@ -8,6 +7,19 @@ import {
   NotebookCellAdd,
   NotebookCellItem,
 } from "../../NotebookCell";
+import { ClausePopover } from "./ClausePopover";
+
+type RenderItemOpts<T> = {
+  item: T;
+  index: number;
+  onOpen?: () => void;
+};
+
+type RenderPopoverOpts<T> = {
+  item?: T;
+  index?: number;
+  onClose?: () => void;
+};
 
 export interface ClauseStepProps<T> {
   color: string;
@@ -19,7 +31,7 @@ export interface ClauseStepProps<T> {
   readOnly?: boolean;
   withLegacyPopover?: boolean;
   renderName: (item: T, index: number) => JSX.Element | string;
-  renderPopover: (item?: T, index?: number) => JSX.Element | null;
+  renderPopover: (opts: RenderPopoverOpts<T>) => JSX.Element | null;
   canRemove?: (item: T) => boolean;
   onRemove?: ((item: T, index: number) => void) | null;
   "data-testid"?: string;
@@ -40,15 +52,16 @@ export const ClauseStep = <T,>({
   onRemove = null,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
-  const addItemElement = (
+  const renderNewItem = ({ onOpen }: { onOpen?: () => void }) => (
     <NotebookCellAdd
-      color={color}
       initialAddText={items.length === 0 && initialAddText}
+      color={color}
+      onClick={onOpen}
     />
   );
 
-  const renderItem = (item: T, index: number) => (
-    <NotebookCellItem color={color} readOnly={readOnly}>
+  const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
+    <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
       {renderName(item, index)}
       {!readOnly && onRemove && (!canRemove || canRemove(item)) && (
         <Icon
@@ -69,21 +82,21 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <PopoverWithTrigger
             key={index}
-            triggerElement={renderItem(item, index)}
+            triggerElement={renderItem({ item, index })}
             tetherOptions={tetherOptions}
             sizeToFit
           >
-            {renderPopover(item, index)}
+            {renderPopover({ item, index })}
           </PopoverWithTrigger>
         ))}
         {!readOnly && (
           <PopoverWithTrigger
             isInitiallyOpen={isLastOpened}
-            triggerElement={addItemElement}
+            triggerElement={renderNewItem({})}
             tetherOptions={tetherOptions}
             sizeToFit
           >
-            {renderPopover()}
+            {renderPopover({})}
           </PopoverWithTrigger>
         )}
       </NotebookCell>
@@ -93,16 +106,20 @@ export const ClauseStep = <T,>({
   return (
     <NotebookCell color={color} data-testid={props["data-testid"]}>
       {items.map((item, index) => (
-        <Popover key={index} trapFocus {...popoverProps}>
-          <Popover.Target>{renderItem(item, index)}</Popover.Target>
-          <Popover.Dropdown>{renderPopover(item, index)}</Popover.Dropdown>
-        </Popover>
+        <ClausePopover
+          {...popoverProps}
+          key={index}
+          renderItem={onOpen => renderItem({ item, index, onOpen })}
+          renderPopover={onClose => renderPopover({ item, index, onClose })}
+        />
       ))}
       {!readOnly && (
-        <Popover defaultOpened={isLastOpened} trapFocus {...popoverProps}>
-          <Popover.Target>{addItemElement}</Popover.Target>
-          <Popover.Dropdown>{renderPopover()}</Popover.Dropdown>
-        </Popover>
+        <ClausePopover
+          {...popoverProps}
+          isInitiallyOpen={isLastOpened}
+          renderItem={onOpen => renderNewItem({ onOpen })}
+          renderPopover={onClose => renderPopover({ onClose })}
+        />
       )}
     </NotebookCell>
   );

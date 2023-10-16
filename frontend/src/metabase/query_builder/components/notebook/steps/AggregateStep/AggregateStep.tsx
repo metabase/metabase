@@ -68,7 +68,7 @@ export function AggregateStep({
       isLastOpened={isLastOpened}
       tetherOptions={aggTetherOptions}
       renderName={renderAggregationName}
-      renderPopover={(aggregation, index) => (
+      renderPopover={({ item: aggregation, index }) => (
         <AggregationPopover
           query={topLevelQuery}
           stageIndex={stageIndex}

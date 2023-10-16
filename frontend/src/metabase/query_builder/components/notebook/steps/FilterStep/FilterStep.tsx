@@ -65,7 +65,7 @@ export function FilterStep({
         isLastOpened={isLastOpened}
         popoverProps={POPOVER_PROPS}
         renderName={renderFilterName}
-        renderPopover={(filter, index) => (
+        renderPopover={({ item: filter, index, onClose }) => (
           <FilterPopover
             query={topLevelQuery}
             stageIndex={stageIndex}
@@ -79,6 +79,7 @@ export function FilterStep({
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
             onLegacyQueryChange={updateQuery}
+            onClose={onClose}
           />
         )}
         onRemove={handleRemoveFilter}
