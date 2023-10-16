@@ -12,8 +12,12 @@ import { Header } from "../Header";
 import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-import { DEFAULT_VALUE, OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValuesForOperator, isFilterValid } from "./utils";
+import { OPERATOR_OPTIONS } from "./constants";
+import {
+  getDefaultValue,
+  getDefaultValuesForOperator,
+  isFilterValid,
+} from "./utils";
 
 export function TimeFilterPicker({
   query,
@@ -115,7 +119,7 @@ function ValuesInput({
   onChange: (values: Date[]) => void;
 }) {
   if (valueCount === 1) {
-    const [value = DEFAULT_VALUE] = values;
+    const [value = getDefaultValue()] = values;
     return (
       <TimeInput
         value={value}
@@ -126,7 +130,7 @@ function ValuesInput({
   }
 
   if (valueCount === 2) {
-    const [value1 = DEFAULT_VALUE, value2 = DEFAULT_VALUE] = values;
+    const [value1 = getDefaultValue(), value2 = getDefaultValue()] = values;
     return (
       <Flex direction="row" align="center" gap="sm" w="100%">
         <TimeInput
