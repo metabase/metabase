@@ -64,4 +64,6 @@ if (hasPremiumFeature("audit_app")) {
     CollectionInstanceAnalyticsIcon;
 
   PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
+
+  PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
 }

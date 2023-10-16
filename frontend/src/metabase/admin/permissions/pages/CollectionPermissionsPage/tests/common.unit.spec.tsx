@@ -1,124 +1,9 @@
-import { Route } from "react-router";
 import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { screen } from "__support__/ui";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
-
-import { createMockCollection } from "metabase-types/api/mocks";
-
-import {
-  setupCollectionPermissionsGraphEndpoint,
-  setupCollectionsEndpoints,
-  setupGroupsEndpoint,
-} from "__support__/server-mocks";
-
-import type { CollectionPermissionsGraph } from "metabase-types/api";
-import { CollectionPermissionsPage } from "./CollectionPermissionsPage";
-
-const personalCollection = createMockCollection({
-  id: "personal",
-  name: "Personal",
-  personal_owner_id: 1,
-});
-
-const nestedCollectionOne = createMockCollection({
-  id: 3,
-  name: "Nested One",
-  location: "/1/",
-  children: [],
-});
-const nestedCollectionTwo = createMockCollection({
-  id: 4,
-  name: "Nested Two",
-  location: "/2/",
-  children: [],
-});
-
-const collectionOne = createMockCollection({
-  id: 1,
-  name: "Collection One",
-  children: [nestedCollectionOne],
-});
-const collectionTwo = createMockCollection({
-  id: 2,
-  name: "Collection Two",
-  children: [nestedCollectionTwo],
-});
-
-const rootCollection = createMockCollection({
-  id: "root",
-  name: "Our analytics",
-  children: [collectionOne, collectionTwo],
-});
-
-const permissionGroups = [
-  { id: 1, name: "All Users", member_count: 40 },
-  { id: 2, name: "Administrators", member_count: 2 },
-  { id: 3, name: "Other Users", member_count: 33 },
-];
-
-const permissionsGraph: CollectionPermissionsGraph = {
-  revision: 23,
-  groups: {
-    1: {
-      // all users
-      1: "write", // one
-      2: "write", // two
-      3: "read", // nested one
-      4: "none", // nested two
-      root: "read",
-    },
-    2: {
-      // Administrators
-      1: "write", // one
-      2: "write", // two
-      3: "write", // nested one
-      4: "write", // nested two
-      root: "write",
-    },
-    3: {
-      // Other users
-      1: "read", // one
-      2: "read", // two
-      3: "none", // nested one
-      4: "none", // nested two
-      root: "read",
-    },
-  },
-};
-
-function setup() {
-  setupCollectionsEndpoints({
-    collections: [collectionOne, collectionTwo, personalCollection],
-    rootCollection: rootCollection,
-  });
-
-  setupCollectionPermissionsGraphEndpoint(permissionsGraph);
-
-  setupGroupsEndpoint(permissionGroups);
-
-  const initialState = createMockState();
-
-  renderWithProviders(
-    <>
-      <Route
-        path="/admin/permissions/collections/root"
-        component={CollectionPermissionsPage}
-      />
-      <Route
-        path="/admin/permissions/collections/:collectionId"
-        component={CollectionPermissionsPage}
-      />
-    </>,
-    {
-      storeInitialState: initialState,
-      withRouter: true,
-      initialRoute: "/admin/permissions/collections/root",
-    },
-  );
-}
+import { defaultPermissionsGraph, setup } from "./setup";
 
 describe("Admin > CollectionPermissionsPage", () => {
   describe("CollectionPermissionsPage", () => {
@@ -211,11 +96,11 @@ describe("Admin > CollectionPermissionsPage", () => {
         ?.request?.json();
 
       expect(lastRequest).toEqual({
-        ...permissionsGraph,
+        ...defaultPermissionsGraph,
         groups: {
-          ...permissionsGraph.groups,
+          ...defaultPermissionsGraph.groups,
           3: {
-            ...permissionsGraph.groups[3],
+            ...defaultPermissionsGraph.groups[3],
             3: "read",
           },
         },
@@ -267,11 +152,11 @@ describe("Admin > CollectionPermissionsPage", () => {
         ?.request?.json();
 
       expect(lastRequest).toEqual({
-        ...permissionsGraph,
+        ...defaultPermissionsGraph,
         groups: {
-          ...permissionsGraph.groups,
+          ...defaultPermissionsGraph.groups,
           3: {
-            ...permissionsGraph.groups[3],
+            ...defaultPermissionsGraph.groups[3],
             1: "write",
             3: "write",
           },
