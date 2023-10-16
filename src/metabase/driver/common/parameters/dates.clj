@@ -2,7 +2,7 @@
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
   (:require
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]

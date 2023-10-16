@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [flatland.ordered.map :refer [ordered-map]]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]

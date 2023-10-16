@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]))
 

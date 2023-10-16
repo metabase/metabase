@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.data :as data]
+   [metabase.config :as config]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-strings*]]
@@ -75,6 +76,7 @@
   [revision]
   (assoc revision
          :timestamp :%now
+         :metabase_version config/mb-version-string
          :most_recent true))
 
 (t2/define-before-update :model/Revision

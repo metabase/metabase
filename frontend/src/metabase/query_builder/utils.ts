@@ -73,28 +73,31 @@ export const isNavigationAllowed = ({
    * If there is no "question" there is no reason to prevent navigation.
    * If there is no "destination" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
-   *
-   * If it's a new question, we're going to deal with it later as part of the epic:
-   * https://github.com/metabase/metabase/issues/33749
    */
-  if (!question || !destination || isNewQuestion) {
+  if (!question || !destination) {
     return true;
   }
 
   const { hash, pathname } = destination;
 
   if (question.isDataset()) {
-    const isGoingToQueryTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/query");
-    const isGoingToMetadataTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/metadata");
+    if (isNewQuestion) {
+      const isQueryTab = pathname === "/model/query";
+      const isMetadataTab = pathname === "/model/metadata";
+      return isQueryTab || isMetadataTab;
+    }
 
-    return isGoingToQueryTab || isGoingToMetadataTab;
+    const isQueryTab = pathname.match(/^\/model\/.+\/query$/) !== null;
+    const isMetadataTab = pathname.match(/^\/model\/.+\/metadata$/) !== null;
+    return isQueryTab || isMetadataTab;
   }
 
-  if (question.isNative()) {
+  /**
+   * If it's a new question, we're going to deal with it later as part of the epic:
+   * https://github.com/metabase/metabase/issues/33749
+   */
+  if (!isNewQuestion && question.isNative()) {
     const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
     return isRunningQuestion;
   }
 

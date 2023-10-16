@@ -29,6 +29,12 @@
   (deferred-tru "The name you want to use for the sender of emails.")
   :visibility :settings-manager)
 
+(defsetting bcc-enabled?
+  (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
+  :visibility :settings-manager
+  :type       :boolean
+  :default    true)
+
 (def ^:private ReplyToAddresses
   [:maybe [:sequential ms/Email]])
 

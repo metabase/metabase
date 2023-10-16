@@ -28,7 +28,7 @@ describe("issue 17968", () => {
     popover().findByText("Count").click();
 
     getNotebookStep("join", { stage: 1 })
-      .findByTestId("parent-dimension")
+      .findByLabelText("Left column")
       .findByText("Previous results");
   });
 });

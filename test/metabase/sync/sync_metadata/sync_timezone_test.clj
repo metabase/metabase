@@ -3,7 +3,7 @@
    [clj-time.core :as time]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]

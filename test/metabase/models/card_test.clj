@@ -3,6 +3,7 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models
     :refer [Collection Dashboard DashboardCard ParameterCard NativeQuerySnippet Revision]]
    [metabase.models.card :as card]
@@ -756,7 +757,7 @@
                                before
                                changes)))))))))))
 
- ;; test tracking result_metdata for models
+ ;; test tracking result_metadata for models
  (let [card-info (mt/card-with-source-metadata-for-query
                    (mt/mbql-query venues))]
    (t2.with-temp/with-temp
@@ -775,3 +776,15 @@
                         Dashboard
                         before
                         changes)))))))))
+
+(deftest storing-metabase-version
+  (testing "Newly created Card should know a Metabase version used to create it"
+    (t2.with-temp/with-temp [:model/Card card {}]
+      (is (= config/mb-version-string (:metabase_version card)))
+
+      (with-redefs [config/mb-version-string "blablabla"]
+        (t2/update! :model/Card :id (:id card) {:description "test"}))
+
+      ;; we store version of metabase which created the card
+      (is (= config/mb-version-string
+             (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))

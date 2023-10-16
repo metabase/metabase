@@ -70,3 +70,28 @@
                                             {}
                                             [:aggregation {} string?]]]}]}
                   (lib/drill-thru query -1 drill :desc))))))))
+
+(deftest ^:parallel remove-existing-sort-test
+  (testing "Applying sort to already sorted column should REPLACE original sort (#34497)"
+    ;; technically this query doesn't make sense, how are you supposed to have a max aggregation and then also order
+    ;; by a different column, but MBQL doesn't enforce that,
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/order-by (meta/field-metadata :orders :user-id))
+                      (lib/order-by (meta/field-metadata :orders :id)))
+          context {:column (meta/field-metadata :orders :user-id)
+                   :value  nil}
+          drill   (lib.drill-thru.sort/sort-drill query -1 context)]
+      (is (=? {:stages
+               [{:order-by [[:asc {} [:field {} (meta/id :orders :user-id)]]
+                            [:asc {} [:field {} (meta/id :orders :id)]]]}]}
+              query))
+      (is (=? {:lib/type        :metabase.lib.drill-thru/drill-thru
+               :type            :drill-thru/sort
+               :column          {:name "USER_ID"}
+               :sort-directions [:desc]}
+              drill))
+      (testing "We should REPLACE the original sort, as opposed to removing it and appending a new one"
+        (is (=? {:stages
+                 [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]
+                              [:asc {} [:field {} (meta/id :orders :id)]]]}]}
+                (lib/drill-thru query -1 drill :desc)))))))

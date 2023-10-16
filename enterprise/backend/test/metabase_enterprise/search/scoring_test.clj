@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.scoring :as scoring]))
