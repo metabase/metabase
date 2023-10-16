@@ -2,8 +2,7 @@
   (:require
    [java-time :as t]
    [metabase.public-settings :as public-settings]
-   [metabase.shared.util.internal.time-common :as common]
-   [clojure.core.match :as m])
+   [metabase.shared.util.internal.time-common :as common])
   (:import
    java.util.Locale))
 
