@@ -208,18 +208,18 @@ function isSavedCard(card: Card | UnsavedCard | null): card is Card {
 }
 
 interface SetupOpts {
-  card?: Card | UnsavedCard | null;
+  card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
 }
 
 const setup = async ({
-  card = TEST_CARD,
+  card,
   dataset = createMockDataset(),
   initialRoute = `/question${
     isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
   }`,
-}: SetupOpts = {}) => {
+}: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
@@ -274,13 +274,14 @@ describe("QueryBuilder", () => {
   describe("rendering", () => {
     describe("renders structured queries", () => {
       it("renders a structured question in the simple mode", async () => {
-        await setup();
+        await setup({ card: TEST_CARD });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
       it("renders a structured question in the notebook mode", async () => {
         await setup({
+          card: TEST_CARD,
           initialRoute: `/question/${TEST_CARD.id}/notebook`,
         });
 
