@@ -461,10 +461,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:name "count"}
-                    :aggregations [:distinct :sum :avg]}]
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -479,10 +476,7 @@
                     :initial-op {:display-name-variant :equal-to
                                  :short :=}}
                    {:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:display-name "Max of Discount"}
-                    :aggregations [:distinct :sum :avg]}]
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
