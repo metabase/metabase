@@ -53,7 +53,8 @@
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
   (when-let [{:keys [id] :as user} (t2/select-one User :%lower.email (u/lower-case-en email))]
-    (let [user-keys (keys user-from-sso)
+    (let [user-from-sso (dissoc user-from-sso :groups)
+          user-keys (keys user-from-sso)
           ;; remove keys with `nil` values
           user-data (into {} (filter second user-from-sso))]
       (if (= (select-keys user user-keys) user-data)
