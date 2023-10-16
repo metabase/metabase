@@ -17,7 +17,6 @@ import type {
   MetricDatum,
   SeriesInfo,
 } from "metabase/visualizations/shared/types/data";
-import { sumMetric } from "metabase/visualizations/shared/utils/data";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import type {
   DataPoint,
@@ -25,6 +24,7 @@ import type {
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
+import { sumMetric } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { isMetric } from "metabase-lib/types/utils/isa";
 import type {
   ClickObject,
@@ -56,7 +56,7 @@ const getColumnData = (columns: ColumnDescriptor[], datum: GroupedDatum) => {
     .map(columnDescriptor => {
       const { column, index } = columnDescriptor;
 
-      let value = null;
+      let value;
 
       if (isMetric(column)) {
         const metricSum = datum.rawRows.reduce<number | null>(

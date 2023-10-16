@@ -1,9 +1,12 @@
 import { t } from "ttag";
-import _ from "underscore";
 import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import {
+  COLOR_SETTING_ID,
+  getSeriesColors,
+  SETTING_ID,
+} from "metabase/visualizations/shared/settings/series";
 import { getNameForCard } from "../series";
 import { nestedSettings } from "./nested";
 
@@ -13,9 +16,6 @@ export function keyForSingleSeries(single) {
 }
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
-
-export const SETTING_ID = "series_settings";
-export const COLOR_SETTING_ID = "series_settings.colors";
 
 export function seriesSetting({
   readDependencies = [],
@@ -48,13 +48,19 @@ export function seriesSetting({
       },
       getHidden: (single, settings, { series }) => {
         return (
-          !["line", "area", "bar", "combo"].includes(single.card.display) ||
-          settings["stackable.stack_type"] != null
+          // TODO: remove before merging
+          !["line", "area", "bar", "combo", "combo-echart"].includes(
+            single.card.display,
+          ) || settings["stackable.stack_type"] != null
         );
       },
 
       getDefault: (single, settings, { series }) => {
-        if (single.card.display === "combo") {
+        // TODO: remove before merging
+        if (
+          single.card.display === "combo" ||
+          single.card.display === "combo-echart"
+        ) {
           const index = series.indexOf(single);
           if (index === 0) {
             return "line";
@@ -183,23 +189,7 @@ export function seriesSetting({
     [COLOR_SETTING_ID]: {
       getValue(series, settings) {
         const keys = series.map(single => keyForSingleSeries(single));
-
-        const assignments = _.chain(keys)
-          .map(key => [key, getIn(settings, [SETTING_ID, key, "color"])])
-          .filter(([key, color]) => color != null)
-          .object()
-          .value();
-
-        const legacyColors = settings["graph.colors"];
-        if (legacyColors) {
-          for (const [index, key] of keys.entries()) {
-            if (!(key in assignments)) {
-              assignments[key] = legacyColors[index];
-            }
-          }
-        }
-
-        return getColorsForValues(keys, assignments);
+        return getSeriesColors(keys, settings);
       },
     },
   };

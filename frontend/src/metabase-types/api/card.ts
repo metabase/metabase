@@ -59,6 +59,7 @@ export type SeriesSettings = {
   title: string;
   color?: string;
   show_series_values?: boolean;
+  display?: string;
 };
 
 export type SeriesOrderSetting = {
@@ -101,7 +102,7 @@ export type VisualizationSettings = {
 
   // X-axis
   "graph.x_axis.title_text"?: string;
-  "graph.x_axis.scale"?: "ordinal";
+  "graph.x_axis.scale"?: "ordinal" | "timeseries" | "linear" | "histogram";
   "graph.x_axis.axis_enabled"?: "compact";
 
   // Y-axis

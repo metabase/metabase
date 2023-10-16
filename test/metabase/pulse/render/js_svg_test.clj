@@ -133,7 +133,7 @@
                      :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
+      (let [svg-bytes (js-svg/combo-chart-legacy series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
@@ -177,7 +177,7 @@
                      :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
+      (let [svg-bytes (js-svg/combo-chart-legacy series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
@@ -217,7 +217,7 @@
                      :visualization_settings {}}
         svg-string  (combo-chart-string series-seqs settings)]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
+      (let [svg-bytes (js-svg/combo-chart-legacy series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-hiccup (combo-chart-hiccup series-seqs settings)]
       (testing "it returns a valid svg string with no html"
@@ -315,7 +315,7 @@
                      :labels                 labels
                      :visualization_settings {}}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart series-seqs settings)]
+      (let [svg-bytes (js-svg/combo-chart-legacy series-seqs settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString (js/execute-fn-name context "combo_chart"
                                                     (json/generate-string series-seqs)
