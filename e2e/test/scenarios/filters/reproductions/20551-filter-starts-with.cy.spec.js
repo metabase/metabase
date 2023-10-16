@@ -14,7 +14,7 @@ describe("issue 20551", () => {
   it("should allow filtering with includes, rather than starts with (metabase#20551)", () => {
     openProductsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
     popover().within(() => {
       cy.findByText("Category").click();
       cy.focused()
