@@ -13,8 +13,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [schema.core :as s]))
 
 (set! *warn-on-reflection* true)
 
