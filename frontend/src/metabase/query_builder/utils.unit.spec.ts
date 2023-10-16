@@ -152,6 +152,7 @@ describe("isNavigationAllowed", () => {
       ...getModelLocations(notebookModelQuestion),
       ...getModelLocations(nativeModelQuestion),
       ...getNotebookQuestionLocations(notebookQuestion),
+      ...getQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runQuestionLocation,
@@ -175,6 +176,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(notebookModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runQuestionLocation,
@@ -204,6 +206,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(notebookModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -226,12 +229,15 @@ describe("isNavigationAllowed", () => {
       ).toBe(true);
     });
 
-    it("allows to open notebook editor", () => {
-      const destination = getNotebookQuestionLocation(question, "slug");
-
-      expect(
-        isNavigationAllowed({ destination, question, isNewQuestion }),
-      ).toBe(true);
+    describe("allows to open the question and the notebook editor", () => {
+      it.each(getNotebookQuestionLocations(question))(
+        "to `$pathname`",
+        destination => {
+          expect(
+            isNavigationAllowed({ destination, question, isNewQuestion }),
+          ).toBe(true);
+        },
+      );
     });
 
     describe("disallows all other navigation", () => {
@@ -239,7 +245,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(notebookModelQuestion),
         ...getModelLocations(nativeModelQuestion),
-        ...getNotebookQuestionLocations(nativeQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -268,6 +274,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(notebookModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -299,6 +306,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(notebookModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         runQuestionLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -325,6 +333,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(nativeModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {
@@ -352,6 +361,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(notebookModelQuestion),
         ...getNotebookQuestionLocations(notebookQuestion),
+        ...getQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {
