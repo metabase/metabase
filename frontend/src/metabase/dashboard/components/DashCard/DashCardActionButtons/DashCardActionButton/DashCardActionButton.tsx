@@ -1,4 +1,4 @@
-import type * as React from "react";
+import * as React from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
@@ -13,18 +13,18 @@ interface Props extends React.HTMLAttributes<HTMLAnchorElement> {
   analyticsEvent?: string;
 }
 
-function DashActionButton({
-  tooltip,
-  analyticsEvent,
-  children,
-  ...props
-}: Props) {
-  return (
-    <StyledAnchor {...props} data-metabase-event={analyticsEvent}>
-      <Tooltip tooltip={tooltip}>{children}</Tooltip>
-    </StyledAnchor>
-  );
-}
+const DashActionButton = React.forwardRef<HTMLAnchorElement, Props>(
+  function DashActionButton(
+    { tooltip, analyticsEvent, children, ...props },
+    ref,
+  ) {
+    return (
+      <StyledAnchor {...props} data-metabase-event={analyticsEvent} ref={ref}>
+        <Tooltip tooltip={tooltip}>{children}</Tooltip>
+      </StyledAnchor>
+    );
+  },
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DashActionButton, {
