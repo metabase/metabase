@@ -167,7 +167,6 @@ export function FilterPicker({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
-        metadata={legacyQuery.metadata()}
         onChange={handleChange}
         onBack={() => setColumn(undefined)}
       />

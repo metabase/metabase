@@ -4,14 +4,12 @@ import type {
   ExpressionClause,
   Query,
 } from "metabase-lib/types";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 export interface FilterPickerWidgetProps {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
   filter?: FilterClause;
-  metadata: Metadata;
   onChange: (filter: ExpressionClause) => void;
   onBack: () => void;
 }
