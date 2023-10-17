@@ -1,3 +1,4 @@
+# hej this is a test of running the CI with secrets for external PRs
 *.class
 *.iml
 *.jar
