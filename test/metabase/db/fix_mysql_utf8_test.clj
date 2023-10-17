@@ -11,7 +11,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-
 (defn- create-test-db! []
   (let [spec (sql-jdbc.conn/connection-details->spec
               :mysql

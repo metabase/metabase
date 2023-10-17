@@ -3313,6 +3313,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+  - changeSet:
+      id: v48.00-030
+      author: qnkhuat
+      comment: re-consolidate change log filename on downgrade
+      changes: []
+      rollback:
+        - sql:
+          dbms: h2,mysql,mariadb
+          sql: UPDATE DATABASECHANGELOG SET FILENAME = 'migrations/000_migrations.yaml'
+        - sql:
+          dbms: postgresql
+          sql: UPDATE databasechangelog SET FILENAME = 'migrations/000_migrations.yaml'
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

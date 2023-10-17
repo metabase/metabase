@@ -4,7 +4,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.liquibase :as liquibase]
-   [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
    [metabase.driver :as driver]
    [metabase.test :as mt]
@@ -36,7 +35,7 @@
 ;; - All migrations are executed in the order it's defined
 (deftest force-migration-test
   (mt/test-drivers #{:h2 :mysql :postgres}
-    (impl/with-temp-empty-app-db [conn driver/*driver*]
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
       (with-redefs [liquibase/changelog-file "force-migration.yaml"]
         (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
               database (->> (if (instance? java.sql.Connection conn)

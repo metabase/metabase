@@ -302,7 +302,6 @@
             (.setFailOnError change-set fail-on-error?)))))))
 
 
-;; TODO this should be a migration
 (s/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 

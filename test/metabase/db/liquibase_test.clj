@@ -18,7 +18,7 @@
   [^Liquibase liquibase]
   (let [writer (StringWriter.)]
     ;; run 0 updates, just to get the needed SQL to initiate liquibase like creating the DBchangelog table
-    (.update liquibase 100 ""  writer)
+    (.update liquibase 1 ""  writer)
     (.toString writer)))
 
 (defn- split-migrations-sqls
@@ -59,10 +59,3 @@
             (is (= true
                    (str/includes? line "ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
                 (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))
-
-(comment
- (toucan2.core/delete! :databasechangelog :id [:> "v48.00-019"])
- (def x(liquibase/with-liquibase [liquibase metabase.db.connection/*application-db*]
-         (doall (split-migrations-sqls (sql-for-init-liquibase liquibase)))))
-
- (spit "mysql.sql" (clojure.string/join "\n" x)))
