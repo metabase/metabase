@@ -89,10 +89,6 @@ export function isColumnRightAligned(column: Column) {
 }
 
 
-export function isStartWith(column) {
-
-  if (column && column.display_name && column.display_name.startsWith("__")) {
-    return true;
-  }
-  return false;
+export function isStartWithDoubleUnderscore(column) {
+    return column && column.display_name && column.display_name.startsWith("__") ? true : false;
 }
