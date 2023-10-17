@@ -929,7 +929,7 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when saving new question", async () => {
-        await setup({
+        const { history } = await setup({
           card: null,
           initialRoute: "/",
         });
@@ -964,6 +964,12 @@ describe("QueryBuilder", () => {
         await waitFor(() => {
           expect(saveQuestionModal).not.toBeInTheDocument();
         });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+
+        history.goBack();
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1025,7 +1031,7 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when saving edited question", async () => {
-        await setup({
+        const { history } = await setup({
           card: TEST_NATIVE_CARD,
           initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
@@ -1051,10 +1057,16 @@ describe("QueryBuilder", () => {
         expect(
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
       });
 
       it("does not show custom warning modal when saving edited question as a new one", async () => {
-        await setup({
+        const { history } = await setup({
           card: TEST_NATIVE_CARD,
           initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
@@ -1084,6 +1096,12 @@ describe("QueryBuilder", () => {
             screen.queryByTestId("save-question-modal"),
           ).not.toBeInTheDocument();
         });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+
+        history.goBack();
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1145,7 +1163,7 @@ describe("QueryBuilder", () => {
       });
 
       it("does not show custom warning modal when saving edited question", async () => {
-        await setup({
+        const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
           initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
         });
@@ -1171,10 +1189,16 @@ describe("QueryBuilder", () => {
         expect(
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
       });
 
       it("does not show custom warning modal when saving edited question as a new one", async () => {
-        await setup({
+        const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
           initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
         });
@@ -1204,6 +1228,12 @@ describe("QueryBuilder", () => {
             screen.queryByTestId("save-question-modal"),
           ).not.toBeInTheDocument();
         });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+
+        history.goBack();
 
         expect(
           screen.queryByTestId("leave-confirmation"),
