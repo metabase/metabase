@@ -262,6 +262,7 @@ const setup = async ({
         <Route path="metadata" component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
+        <Route path=":slug/notebook" component={TestQueryBuilder} />
       </Route>
       <Route path="/question">
         <IndexRoute component={TestQueryBuilder} />
@@ -645,6 +646,42 @@ describe("QueryBuilder", () => {
     });
 
     describe("editing models", () => {
+      describe("editing as notebook question", () => {
+        it("does not show custom warning modal after editing model-based question via notebook editor and saving it", async () => {
+          const { history } = await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/notebook`,
+          });
+
+          await triggerNotebookQueryChange();
+          await waitForSaveQuestionToBeEnabled();
+
+          userEvent.click(screen.getByText("Save"));
+          userEvent.click(
+            within(screen.getByTestId("save-question-modal")).getByRole(
+              "button",
+              { name: "Save" },
+            ),
+          );
+
+          await waitFor(() => {
+            expect(
+              screen.queryByTestId("save-question-modal"),
+            ).not.toBeInTheDocument();
+          });
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+
+          history.goBack();
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+        });
+      });
+
       describe("editing queries", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
           const { history } = await setup({
@@ -1374,12 +1411,14 @@ const triggerVizualizationQueryChange = async () => {
 };
 
 const triggerNotebookQueryChange = async () => {
+  userEvent.click(screen.getByText("Row limit"));
+
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),
   ).findByPlaceholderText("Enter a limit");
 
   userEvent.click(rowLimitInput);
-  userEvent.type(rowLimitInput, "0");
+  userEvent.type(rowLimitInput, "1");
   userEvent.tab();
 };
 
