@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
-import { setIsModifiedFromNotebook } from "metabase/query_builder/actions";
+import { setUIControls } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import * as Lib from "metabase-lib";
@@ -80,7 +80,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   }
 
   const handleUpdateQuestion = (question: Question): Promise<void> => {
-    dispatch(setIsModifiedFromNotebook(true));
+    dispatch(setUIControls({ isModifiedFromNotebook: true }));
     return updateQuestion(question);
   };
 
