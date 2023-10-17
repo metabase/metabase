@@ -28,7 +28,7 @@
 ;;              text
 ;;               |
 ;;               |
-;;          varchar_255┐
+;;          varchar-255┐
 ;;              / \    |
 ;;             /   \   └—————————┐
 ;;            /     \            |
@@ -47,18 +47,18 @@
 
 (def ^:private type->parent
   ;; listed in depth-first order
-  {::varchar_255              ::text
-   ::float                    ::varchar_255
+  {::varchar-255              ::text
+   ::float                    ::varchar-255
    ::int                      ::float
    ::int-pk                   ::int
    ::auto-incrementing-int-pk ::int-pk
    ::boolean                  ::int
-   ::datetime                 ::varchar_255
+   ::datetime                 ::varchar-255
    ::date                     ::datetime
-   ::string-pk                ::varchar_255})
+   ::string-pk                ::varchar-255})
 
 (def ^:private base-type->pk-type
-  {::varchar_255 ::string-pk
+  {::varchar-255 ::string-pk
    ::int         ::int-pk})
 
 (def ^:private types
@@ -130,7 +130,7 @@
     - ::boolean
     - ::int
     - ::float
-    - ::varchar_255
+    - ::varchar-255
     - ::text
     - ::date
     - ::datetime
@@ -149,7 +149,7 @@
       (date-string? value)                                    ::date
       (re-matches (int-regex number-separators) value)        ::int
       (re-matches (float-regex number-separators) value)      ::float
-      (re-matches #".{1,255}" value)                          ::varchar_255
+      (re-matches #".{1,255}" value)                          ::varchar-255
       :else                                                   ::text)))
 
 (defn- row->types
@@ -277,7 +277,7 @@
 
 (defn- upload-type->parser [upload-type]
   (case upload-type
-    ::varchar_255              identity
+    ::varchar-255              identity
     ::text                     identity
     ::int                      (partial parse-number (get-number-separators))
     ::float                    (partial parse-number (get-number-separators))

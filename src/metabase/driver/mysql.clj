@@ -608,7 +608,7 @@
 (defmethod driver/upload-type->database-type :mysql
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
