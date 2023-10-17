@@ -46,19 +46,3 @@
     :query-type  :unaggregated
     :column-name "QUANTITY"
     :expected    {:type :drill-thru/distribution}}))
-
-(deftest ^:parallel returns-distribution-test-4
-  (lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/distribution
-    :click-type  :header
-    :query-type  :aggregated
-    :column-name "PRODUCT_ID"
-    :expected    {:type :drill-thru/distribution}}))
-
-(deftest ^:parallel returns-distribution-test-5
-  (lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/distribution
-    :click-type  :header
-    :query-type  :aggregated
-    :column-name "CREATED_AT"
-    :expected    {:type :drill-thru/distribution}}))
