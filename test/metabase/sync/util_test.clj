@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]

@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]

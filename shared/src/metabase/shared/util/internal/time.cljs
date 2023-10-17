@@ -157,7 +157,7 @@
   (.diff after before "day"))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
@@ -167,16 +167,19 @@
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
-   If unit is nil, formats the full date/time"
+   If unit is nil, formats the full date/time.
+   Time input formatting is only defined with time units."
   [input unit]
   (if (string? input)
     (let [time? (matches-time? input)
           date? (matches-date? input)
           date-time? (matches-date-time? input)
           t (if time?
+              ;; Anchor to an arbitrary date since time inputs are only defined for
+              ;; :hour-of-day and :minute-of-hour.
               (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
               (moment/utc input moment/ISO_8601))]
-      (if t
+      (if (and t (.isValid t))
         (case unit
           :day-of-week (.format t "dddd")
           :month-of-year (.format t "MMM")
@@ -190,7 +193,7 @@
             time? (.format t "h:mm A")
             date? (.format t "MMM D, YYYY")
             date-time? (.format t "MMM D, YYYY, h:mm A")))
-        t))
+        input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))

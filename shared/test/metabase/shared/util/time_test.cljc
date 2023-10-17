@@ -4,7 +4,7 @@
    [metabase.shared.util.internal.time :as internal]
    [metabase.shared.util.time :as shared.ut]
    #?@(:cljs [["moment" :as moment]]
-       :clj  [[java-time :as t]]))
+       :clj  [[java-time.api :as t]]))
   #?(:clj (:import java.util.Locale)))
 
 (defn- from [time-str]
@@ -216,6 +216,7 @@
     "Q1" :quarter-of-year
     "Feb 8, 2023" nil)
 
+  (is (= "12:00 PM" (shared.ut/format-unit "12:00:00.000" nil)))
   (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
   (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
   (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))

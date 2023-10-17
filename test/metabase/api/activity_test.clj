@@ -2,7 +2,7 @@
   "Tests for /api/activity endpoints."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]

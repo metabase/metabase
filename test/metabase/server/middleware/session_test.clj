@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]

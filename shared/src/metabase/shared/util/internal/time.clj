@@ -1,6 +1,6 @@
 (ns metabase.shared.util.internal.time
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.public-settings :as public-settings]
    [metabase.shared.util.internal.time-common :as common])
   (:import
@@ -229,7 +229,7 @@
   (.toDays (t/duration before after)))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))

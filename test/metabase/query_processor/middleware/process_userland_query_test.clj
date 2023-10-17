@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
