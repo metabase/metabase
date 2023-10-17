@@ -15938,8 +15938,6 @@ databaseChangeLog:
                   updated_at,
                   size_x,
                   size_y,
-                  "row",
-                  col,
                   visualization_settings,
                   parameter_mappings
               from report_dashboardcard
