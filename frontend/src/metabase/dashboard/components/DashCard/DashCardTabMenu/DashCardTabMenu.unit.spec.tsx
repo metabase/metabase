@@ -57,38 +57,21 @@ describe("DashCardTabMenu", () => {
     it("should show the button to move to the second", () => {
       setup({ tabs: [TAB_1, TAB_2] });
 
-      expect(screen.getByText("Tab 2")).toBeInTheDocument();
-    });
-
-    it('should not show the "chevron" button', () => {
-      setup({ tabs: [TAB_1, TAB_2] });
-      expect(queryChevronButton()).not.toBeInTheDocument();
+      expect(getIconButton()).toBeInTheDocument();
     });
   });
 
   describe("when there are more than two tabs", () => {
-    it('should show the "chevron" button', () => {
+    it("should show the move card button", () => {
       setup({});
 
-      expect(getChevronButton()).toBeInTheDocument();
+      expect(getIconButton()).toBeInTheDocument();
     });
 
-    it("should not show tab 3 when the menu is closed", () => {
+    it("should show tabs other than the current one as options when hovering the button", async () => {
       setup({});
 
-      expect(screen.queryByText("Tab 3")).not.toBeInTheDocument();
-    });
-
-    it("should suggest moving to the second tab", () => {
-      setup({});
-
-      expect(screen.getByText("Tab 2")).toBeInTheDocument();
-    });
-
-    it("should show tabs 2 and 3 in the menu", async () => {
-      setup({});
-
-      userEvent.click(getChevronButton());
+      userEvent.hover(getIconButton());
 
       const menu = await waitFor(() => screen.findByRole("menu"));
 
@@ -96,11 +79,6 @@ describe("DashCardTabMenu", () => {
       expect(within(menu).getByText("Tab 3")).toBeInTheDocument();
     });
   });
-
-  // TODO: select tab behaviour
-
-  // TODO: permissions tests
 });
 
-const getChevronButton = () => screen.getByLabelText("chevrondown icon");
-const queryChevronButton = () => screen.queryByLabelText("chevrondown icon");
+const getIconButton = () => screen.getByLabelText("move_card icon");
