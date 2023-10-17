@@ -461,7 +461,7 @@ describe("availableDrillThrus", () => {
         },
         {
           type: "drill-thru/underlying-records",
-          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          rowCount: 77, // FIXME: (metabase#32108) this should return real count of rows
           tableName: "Orders",
         },
         {
@@ -482,7 +482,7 @@ describe("availableDrillThrus", () => {
         },
         {
           type: "drill-thru/underlying-records",
-          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          rowCount: 2,
           tableName: "Orders",
         },
         {
@@ -1084,7 +1084,7 @@ describe("availableDrillThrus", () => {
       columnName: "count",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 77,
         tableName: "Orders",
       },
     },
@@ -1095,7 +1095,7 @@ describe("availableDrillThrus", () => {
       columnName: "sum",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 1,
         tableName: "Orders",
       },
     },
@@ -1106,7 +1106,7 @@ describe("availableDrillThrus", () => {
       columnName: "max",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 2,
         tableName: "Orders",
       },
     },
