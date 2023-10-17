@@ -102,6 +102,10 @@ export const isNavigationAllowed = ({
     return isRunningQuestion;
   }
 
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   */
   if (!isNewQuestion && question.isStructured()) {
     const allowedPathnames = validSlugs.flatMap(slug => [
       `/question/${slug}`,
