@@ -87,3 +87,12 @@ export function isColumnRightAligned(column: Column) {
   }
   return isNumber(column) || isCoordinate(column);
 }
+
+
+export function isStartWith(column) {
+
+  if (column && column.display_name && column.display_name.startsWith("__")) {
+    return true;
+  }
+  return false;
+}

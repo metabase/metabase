@@ -17,6 +17,7 @@ import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   isColumnRightAligned,
+  isStartWith
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
@@ -177,6 +178,7 @@ export default class TableSimple extends Component {
                           "text-right": isColumnRightAligned(col),
                         },
                       )}
+                      style={{ display: isStartWith(col) ? 'none' : 'table-cell' }}
                       onClick={() => this.setSort(colIndex)}
                     >
                       <div className="relative">
@@ -233,6 +235,9 @@ export default class TableSimple extends Component {
                           })
                         );
 
+                        const isColumnHidden = isStartWith(column);
+
+
                       // $FlowFixMe: proper test for a React element?
                       const isLink = cellData && cellData.type === ExternalLink;
                       const isClickable =
@@ -250,6 +255,7 @@ export default class TableSimple extends Component {
                                 rowIndex,
                                 column.name,
                               ),
+                              display: isColumnHidden ? "none" : "table-cell",
                           }}
                           className={cx(
                             "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text",
