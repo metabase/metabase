@@ -577,4 +577,4 @@
   [{dataset? :dataset :as card} _event-type]
   (merge (select-keys card [:name :description :database_id :table_id])
           ;; Use `model` instead of `dataset` to mirror product terminology
-         {:model?      dataset?}))
+         {:model? dataset?}))
