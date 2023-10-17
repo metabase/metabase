@@ -157,7 +157,7 @@
   (.diff after before "day"))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
@@ -176,7 +176,7 @@
           t (if time?
               (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
               (moment/utc input moment/ISO_8601))]
-      (if t
+      (if (and t (.isValid t))
         (case unit
           :day-of-week (.format t "dddd")
           :month-of-year (.format t "MMM")
@@ -190,7 +190,7 @@
             time? (.format t "h:mm A")
             date? (.format t "MMM D, YYYY")
             date-time? (.format t "MMM D, YYYY, h:mm A")))
-        t))
+        input))
     (if (= unit :hour-of-day)
       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
       (str input))))
