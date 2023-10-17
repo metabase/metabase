@@ -1,5 +1,10 @@
+import moment from "moment";
 import type { TimeFilterOperatorName } from "metabase-lib";
-import { DEFAULT_VALUE, OPERATOR_OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
+
+export function getDefaultValue() {
+  return moment().startOf("day").toDate(); // 00:00:00
+}
 
 export function getDefaultValuesForOperator(
   operatorName: TimeFilterOperatorName,
@@ -10,7 +15,9 @@ export function getDefaultValuesForOperator(
   if (!option) {
     return [];
   }
-  return Array(option.valueCount).fill(DEFAULT_VALUE);
+  return Array(option.valueCount)
+    .fill(null)
+    .map(() => getDefaultValue());
 }
 
 export function isFilterValid(
