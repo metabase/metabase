@@ -7,7 +7,6 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isPersonalCollection,
   isRootCollection,
-  isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import type { Collection } from "metabase-types/api";
 
@@ -28,16 +27,9 @@ export const CollectionMenu = ({
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
-  const isInstanceAnalytics = isInstanceAnalyticsCollection(collection);
   const canWrite = collection.can_write;
 
-  if (
-    isAdmin &&
-    !isRoot &&
-    !isPersonal &&
-    !isPersonalCollectionChild &&
-    !isInstanceAnalytics
-  ) {
+  if (isAdmin && !isRoot && !isPersonal && !isPersonalCollectionChild) {
     items.push(
       ...PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems(
         collection,
