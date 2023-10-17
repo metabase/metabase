@@ -87,7 +87,7 @@
                    :details  (cond-> {:name        "My Cool Card"
                                       :description nil
                                       :table_id    nil
-                                      :database_id 8}
+                                      :database_id (mt/id)}
                                dataset? (assoc :model? true))}
                   (event "card-update" (:id card)))))))))))
 
