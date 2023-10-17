@@ -530,58 +530,51 @@ describe("availableDrillThrus", () => {
     //     },
     //   ],
     // },
-
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "PRODUCT_ID",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "CREATED_AT",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedDrills: [
+        {
+          initialOp: expect.objectContaining({ short: "=" }),
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "PRODUCT_ID",
+      expectedDrills: [
+        {
+          initialOp: expect.objectContaining({ short: "=" }),
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      expectedDrills: [
+        {
+          initialOp: null,
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
   ])(
     "should return correct drills for $columnName $clickType in $queryType query",
     ({
@@ -864,28 +857,26 @@ describe("availableDrillThrus", () => {
         initialOp: null,
       },
     },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
     // endregion
 
     // region --- drill-thru/summarize-column
@@ -965,24 +956,6 @@ describe("availableDrillThrus", () => {
       clickType: "header",
       queryType: "unaggregated",
       columnName: "QUANTITY",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "PRODUCT_ID",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "CREATED_AT",
       expectedParameters: {
         type: "drill-thru/distribution",
       },

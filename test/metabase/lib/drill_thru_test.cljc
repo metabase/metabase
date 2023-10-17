@@ -457,11 +457,12 @@
         (is (some? count-col))
         (let [context {:column count-col
                        :value  nil}]
-          (is (=? [{:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:name "count"}
-                    :aggregations [:distinct :sum :avg]}]
+          (is (=? [{:type :drill-thru/column-filter
+                    :column {:name "count"}
+                    :initial-op {:display-name-variant :equal-to
+                                 :short :=}}
+                   {:type   :drill-thru/sort
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -471,11 +472,12 @@
         (is (some? max-of-discount-col))
         (let [context {:column max-of-discount-col
                        :value  nil}]
-          (is (=? [{:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:display-name "Max of Discount"}
-                    :aggregations [:distinct :sum :avg]}]
+          (is (=? [{:type :drill-thru/column-filter,
+                    :column {:display-name "Max of Discount"}
+                    :initial-op {:display-name-variant :equal-to
+                                 :short :=}}
+                   {:type   :drill-thru/sort
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
