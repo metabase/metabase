@@ -66,6 +66,8 @@
   (internal/format-diff temporal-value-1 temporal-value-2))
 
 (defn format-relative-date-range
+  "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date."
   ([n unit]
    (format-relative-date-range n unit nil nil nil))
   ([n unit offset-n offset-unit]
