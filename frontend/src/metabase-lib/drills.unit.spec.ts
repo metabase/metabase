@@ -1152,6 +1152,7 @@ describe("availableDrillThrus", () => {
       queryType: "aggregated",
       columnName: "count",
       expectedParameters: {
+        displayName: "See this month by week",
         type: "drill-thru/zoom-in.timeseries",
       },
     },
@@ -1161,6 +1162,7 @@ describe("availableDrillThrus", () => {
       queryType: "aggregated",
       columnName: "max",
       expectedParameters: {
+        displayName: "See this month by week",
         type: "drill-thru/zoom-in.timeseries",
       },
     },
@@ -1170,6 +1172,7 @@ describe("availableDrillThrus", () => {
       queryType: "aggregated",
       columnName: "sum",
       expectedParameters: {
+        displayName: "See this month by week",
         type: "drill-thru/zoom-in.timeseries",
       },
     },
