@@ -543,7 +543,7 @@
        {:clause [:is-null fk], :name "User ID is empty"}
        {:clause [:not-null fk], :name "User ID is not empty"}])))
 
-(deftest ^:parallel -frontend-filter-display-names-test
+(deftest ^:parallel string-frontend-filter-display-names-test
   (let [nam (meta/field-metadata :venues :name)]
     (check-display-names
       [{:clause [:= nam "ABC"], :name "Name is ABC"}
