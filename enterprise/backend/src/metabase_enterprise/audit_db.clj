@@ -206,6 +206,8 @@
                     {:replace-existing true})
       (log/info "Copying complete."))))
 
+(require '[clojure.java.shell :as sh])
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Also forces an immediate sync on audit-db."
   :feature :none
@@ -225,6 +227,7 @@
              (adjust-audit-db-to-source! audit-db)
              (log/info "Loading Analytics Content...")
              (ia-content->plugins)
+             (:out (sh/sh "bb" "pg-add-views"))
              (log/info (str "Loading Analytics Content from: plugins/instance_analytics"))
              ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
              (let [report
