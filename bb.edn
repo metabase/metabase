@@ -1,0 +1,51 @@
+{:min-bb-version "1.3.185"
+ :tasks {:requires ([babashka.fs :as fs])
+         -clean-plugins (do (println "- Remove -rf: plugins/instance_analytics")
+                            (fs/delete-tree "plugins/instance_analytics"))
+         -clean-zip (do (println "- Removing if exists: plugins/instance_analytics.zip")
+                       (fs/delete-if-exists "plugins/instance_analytics.zip"))
+         -clean-target (do (println "- Remove -rf: target")
+                          (fs/delete-tree "target"))
+         -reset-pg (do
+                     (println "- Resetting postgres")
+                     (println " - Dropping db metabase")
+                     (shell "dropdb metabase")
+                     (println " - Creating db metabase")
+                     (shell "createdb metabase"))
+         -kill-ia (fs/delete-tree "resources/instance_analytics")
+
+         ;; audit_log.sql
+         ;; dashboardcard.sql
+         ;; group_members.sql
+         ;; h2-content.sql
+         ;; mysql-audit_log.sql
+         ;; mysql-content.sql
+         ;; postgres-content.sql
+         ;; subscriptions.sql
+         ;; users.sql
+
+         pg-add-views (do
+                        (defn go [title]
+                          (let [cmd (str "psql metabase -f resources/instance_analytics_views/" title)]
+                            (println "Running: \n" cmd "\n")
+                            (shell cmd)))
+                        (go "audit_log.sql")
+                        (go "dashboardcard.sql")
+                        (go "group_members.sql")
+                        (go "postgres-content.sql")
+                        (go "subscriptions.sql")
+                        (go "users.sql"))
+         ia-good {:depends [-kill-ia] :task
+                  (do (fs/copy-tree "resources/instance_analytics_good" "resources/instance_analytics")
+                      (println "ia is good"))}
+         ia-bad  {:depends [-kill-ia]
+                  :task (do (fs/copy-tree "resources/instance_analytics_bad" "resources/instance_analytics")
+                            (println "ia is bad"))}
+         clean {:doc "Deletes build artifacts"
+                :depends [-clean-target -clean-plugins -clean-zip -reset-pg]}
+         build {:depends [clean]
+                :doc "alias for ./bin/build.sh"
+                :task (shell "./bin/build.sh")}
+         runjar! {:depends [build]
+                  :doc "run metabase from a jar"
+                  :task (shell "java -jar target/uberjar/metabase.jar" {:MB_DB_CONNECTION ""})}}}
