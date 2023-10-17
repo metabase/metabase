@@ -2,7 +2,10 @@
 import { t } from "ttag";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
-import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
+import {
+  SearchUserPicker,
+  SearchUserPickerContainer,
+} from "metabase/search/components/SearchUserPicker";
 import {
   stringifyUserIdArray,
   parseUserIdArray,
@@ -15,8 +18,10 @@ export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   DisplayComponent: ({ value: userIdList }) => (
     <UserNameDisplay label={CreatedByFilter.label()} userIdList={userIdList} />
   ),
-  ContentComponent: ({ value, onChange }) => (
-    <SearchUserPicker value={value} onChange={onChange} />
+  ContentComponent: ({ value, onChange, width }) => (
+    <SearchUserPickerContainer w={width}>
+      <SearchUserPicker value={value} onChange={onChange} />
+    </SearchUserPickerContainer>
   ),
   fromUrl: parseUserIdArray,
   toUrl: stringifyUserIdArray,
