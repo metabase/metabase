@@ -11,6 +11,7 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -49,6 +50,7 @@ import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import QueryBuilder from "./QueryBuilder";
 
 registerVisualizations();
@@ -190,6 +192,10 @@ const TEST_MODEL_DATASET = createMockDataset({
   running_time: 35,
 });
 
+const TEST_COLLECTION = createMockCollection();
+
+const TEST_METADATA = createMockResultsMetadata();
+
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -201,7 +207,7 @@ const TestQueryBuilder = (
   );
 };
 
-const TestHome = () => <div />;
+const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
 function isSavedCard(card: Card | UnsavedCard | null): card is Card {
   return card !== null && "id" in card;
@@ -225,6 +231,7 @@ const setup = async ({
   setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
+  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
@@ -271,6 +278,10 @@ const setup = async ({
 };
 
 describe("QueryBuilder", () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe("rendering", () => {
     describe("renders structured queries", () => {
       it("renders a structured question in the simple mode", async () => {
@@ -364,7 +375,6 @@ describe("QueryBuilder", () => {
         await startNewNotebookModel();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
@@ -372,10 +382,6 @@ describe("QueryBuilder", () => {
 
     describe("editing models", () => {
       describe("editing queries", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
-        });
-
         it("should trigger beforeunload event when leaving edited query", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
@@ -385,7 +391,6 @@ describe("QueryBuilder", () => {
           await triggerNotebookQueryChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
           expect(mockEvent.preventDefault).toHaveBeenCalled();
           expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
         });
@@ -403,10 +408,6 @@ describe("QueryBuilder", () => {
       });
 
       describe("editing metadata", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
-        });
-
         it("should trigger beforeunload event when leaving edited metadata", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
@@ -435,11 +436,46 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("editing native questions", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
+    describe("creating native questions", () => {
+      it("should trigger beforeunload event when leaving new non-empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
+      it("should not trigger beforeunload event when leaving new empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(undefined);
+      });
+    });
+
+    describe("editing native questions", () => {
       it("should trigger beforeunload event when leaving edited question", async () => {
         const { mockEventListener } = await setup({
           card: TEST_NATIVE_CARD,
@@ -452,7 +488,7 @@ describe("QueryBuilder", () => {
         expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
-      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      it("should trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
         const { mockEventListener } = await setup({
           card: TEST_UNSAVED_NATIVE_CARD,
         });
@@ -460,10 +496,8 @@ describe("QueryBuilder", () => {
         await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -473,17 +507,11 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
 
     describe("editing notebook questions", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-      });
-
       it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
         const { mockEventListener } = await setup({
           card: TEST_STRUCTURED_CARD,
@@ -496,9 +524,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when user tries to leave an ad-hoc structured query", async () => {
@@ -513,9 +539,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -525,19 +549,13 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
   });
 
   describe("unsaved changes warning", () => {
     describe("creating models", () => {
-      afterEach(() => {
-        jest.clearAllMocks();
-      });
-
       it("shows custom warning modal when leaving via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
@@ -572,7 +590,6 @@ describe("QueryBuilder", () => {
           card: null,
           initialRoute: "/model/new",
         });
-        setupCollectionByIdEndpoint({ collections: [createMockCollection()] });
         setupCardCreateEndpoint();
         setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
@@ -595,6 +612,24 @@ describe("QueryBuilder", () => {
         expect(
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
+      });
+
+      it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
+        const { history } = await setup({
+          card: TEST_UNSAVED_NATIVE_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(
+          `/question#${serializeCardForUrl(TEST_UNSAVED_NATIVE_CARD)}`,
+        );
+        await waitForLoaderToBeRemoved();
+
+        await triggerNativeQueryChange();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
     });
 
@@ -800,6 +835,112 @@ describe("QueryBuilder", () => {
         await triggerMetadataChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("creating native questions", () => {
+      it("shows custom warning modal when leaving creating non-empty question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when leaving creating empty question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when running new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(
+          within(screen.getByTestId("query-builder-main")).getByRole("button", {
+            name: "Get Answer",
+          }),
+        );
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
+        });
+        fetchMock.post("path:/api/card", TEST_NATIVE_CARD);
+        fetchMock.get("path:/api/table/card__1/query_metadata", TEST_METADATA);
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        userEvent.click(screen.getByText("Save"));
+
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        userEvent.type(
+          within(saveQuestionModal).getByLabelText("Name"),
+          TEST_NATIVE_CARD.name,
+        );
+        await waitFor(() => {
+          expect(
+            within(saveQuestionModal).getByTestId("select-button"),
+          ).toHaveTextContent(TEST_COLLECTION.name);
+        });
+        userEvent.click(
+          within(saveQuestionModal).getByRole("button", { name: "Save" }),
+        );
+
+        await waitFor(() => {
+          expect(saveQuestionModal).not.toBeInTheDocument();
+        });
 
         expect(
           screen.queryByTestId("leave-confirmation"),
