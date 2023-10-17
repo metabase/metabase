@@ -811,16 +811,17 @@
 
 (defn- audit-setting-change!
   [name audit previous-value new-value]
-  (audit-log/record-event! :setting-update
-                                 (merge
-                                  {:key name}
-                                  (when (not= audit :no-value)
-                                    {:previous-value previous-value
-                                     :new-value      new-value}))
-                                 api/*current-user-id*
-                                 :model/Setting))
+  (audit-log/record-event!
+   :setting-update
+   (merge {:key name}
+          (when (not= audit :no-value)
+            {:previous-value previous-value
+             :new-value      new-value}))
+   api/*current-user-id*
+   :model/Setting))
 
 (defn- set-with-audit-logging!
+  "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
   [{:keys [name setter getter audit] :as setting} new-value]
   (if (= audit :never)
     (setter new-value)
@@ -830,7 +831,7 @@
                             :getter    (getter))
           previous-value (audit-value-fn)]
       (u/prog1 (setter new-value)
-       (audit-setting-change! name audit previous-value (audit-value-fn))))))
+        (audit-setting-change! name audit previous-value (audit-value-fn))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
