@@ -36,10 +36,6 @@ databaseChangeLog:
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
-##
-## Metabase 45
-##
-
 # Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
 # by Liquibase Auto Rollback. Most common changes are supported. See docs here:
 #
@@ -3315,7 +3311,34 @@ databaseChangeLog:
                   defaultValue: '#31698A'
 
   - changeSet:
-      id: v48.00-030
+      id: v48.00-021
+      author: piranha
+      comment: 'Cards store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the card.'
+
+  - changeSet:
+      id: v48.00-025
+      author: piranha
+      comment: 'Revisions store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the revision.'
+
+
+  - changeSet:
+      id: v48.00-027
       author: qnkhuat
       comment: re-consolidate change log filename on downgrade
       changes:

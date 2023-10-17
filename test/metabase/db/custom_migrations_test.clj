@@ -13,7 +13,7 @@
    [medley.core :as m]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models :refer [Card Database Revision User]]
+   [metabase.models :refer [Database User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
    [metabase.test.fixtures :as fixtures]
@@ -80,20 +80,21 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                            :engine     "h2"
-                                                            :created_at :%now
-                                                            :updated_at :%now
-                                                            :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :visualization_settings (json/generate-string visualization-settings)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -151,16 +152,17 @@
                                                             :created_at :%now
                                                             :updated_at :%now
                                                             :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :visualization_settings "{}"
-                                                        :result_metadata        (json/generate-string result_metadata)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (let [migrated-result-metadata (:result_metadata (t2/query-one {:select [:result_metadata]
                                                                         :from   [:report_card]
@@ -218,21 +220,22 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                            :engine     "h2"
-                                                            :created_at :%now
-                                                            :updated_at :%now
-                                                            :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :result_metadata        (json/generate-string result_metadata)
-                                                        :visualization_settings (json/generate-string visualization-settings)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
@@ -367,11 +370,12 @@
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
-          revision-id (first (t2/insert-returning-pks! 'Revision
-                                                        {:object   {:cards cards}
-                                                         :model    "Dashboard"
-                                                         :model_id 1
-                                                         :user_id  user-id}))]
+          revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                       {:object    (json/generate-string {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
 
       (migrate!)
       (testing "forward migration migrate correclty"
@@ -388,10 +392,13 @@
                 {:row 0  :col 0  :size_x 24 :size_y 2}
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                   :object (json/parse-string true) :cards))))
      (migrate! :down 46)
      (testing "downgrade works correctly"
-      (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+       (is (= cards
+              (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                  :object (json/parse-string true) :cards)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -406,11 +413,12 @@
                         {:id 3 :row nil :col nil :size_x nil :size_y nil}  ; contains nil fields
                         {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}  ; string values need to be skipped
                         {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]  ; include keys other than size
-          revision-id (first (t2/insert-returning-pks! 'Revision
-                                                       {:object   {:cards cards}
-                                                        :model    "Dashboard"
-                                                        :model_id 1
-                                                        :user_id  user-id}))]
+          revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                       {:object    (json/generate-string {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
 
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
@@ -419,16 +427,17 @@
                 {:id 3 :row 0 :col 0 :size_x 5 :size_y 4}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                   :object (json/parse-string true) :cards))))
       (migrate! :down 46)
-
       (testing "downgrade works correctly and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 4 :size_y 4}
                 {:id 2 :row 0 :col 0 :size_x 4 :size_y 4}
                 {:id 3 :size_y 4 :size_x 4 :col 0 :row 0}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                   :object (json/parse-string true) :cards)))))))
 
 (defn two-cards-overlap? [box1 box2]
   (let [{col1    :col
@@ -532,10 +541,12 @@
                                                         :password    "superstrong"
                                                         :date_joined :%now})
             card        {:visualization_settings visualization-settings}
-            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
-                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
-                                                            :user_id  user-id
-                                                            :object   (json/generate-string card)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -605,10 +616,12 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
-                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
-                                                            :user_id  user-id
-                                                            :object   (json/generate-string card)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
@@ -658,15 +671,16 @@
                                                                    :created_at :%now
                                                                    :updated_at :%now
                                                                    :details    "{}"})
-            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
-                                                               :created_at             :%now
-                                                               :updated_at             :%now
-                                                               :creator_id             user-id
-                                                               :display                "table"
-                                                               :dataset_query          "{}"
-                                                               :visualization_settings "{}"
-                                                               :database_id            database-id
-                                                               :collection_id          nil})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
             dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
                                                                      :creator_id          user-id
                                                                      :parameters          []})
@@ -736,26 +750,27 @@
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
+                                                               :last_name   "Hughes"
+                                                               :email       "howard@aircraft.com"
+                                                               :password    "superstrong"
+                                                               :date_joined :%now})
             database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
                                                                    :engine     "h2"
                                                                    :created_at :%now
                                                                    :updated_at :%now
                                                                    :details    "{}"})
-            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
-                                                               :created_at             :%now
-                                                               :updated_at             :%now
-                                                               :creator_id             user-id
-                                                               :display                "table"
-                                                               :dataset_query          "{}"
-                                                               :result_metadata        (json/generate-string result_metadata)
-                                                               :visualization_settings "{}"
-                                                               :database_id            database-id
-                                                               :collection_id          nil})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
             dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
                                                                      :creator_id          user-id
                                                                      :parameters          []})
@@ -802,16 +817,18 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
+            user-id     (t2/insert-returning-pks! :model/User {:first_name  "Howard"
+                                                               :last_name   "Hughes"
+                                                               :email       "howard@aircraft.com"
+                                                               :password    "superstrong"
+                                                               :date_joined :%now})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
-            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
-                                                                   :model_id 1
-                                                                   :user_id  user-id
-                                                                   :object   (json/generate-string dashboard)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string dashboard)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -866,18 +883,17 @@
                                                                    "join-alias" "Joined table"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                        {"column_title" "4"}}
                                    (update-keys json/generate-string))}
-            user-id            (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                               :last_name   "Hughes"
-                                                               :email       "howard@aircraft.com"
-                                                               :password    "superstrong"
-                                                               :date_joined :%now})
-            database-id        (t2/insert-returning-pks! Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
-            [card-id]          (t2/insert-returning-pks!
-                                :model/Card
+            user-id            (t2/insert-returning-pks! :model/User {:first_name  "Howard"
+                                                                      :last_name   "Hughes"
+                                                                      :email       "howard@aircraft.com"
+                                                                      :password    "superstrong"
+                                                                      :date_joined :%now})
+            database-id        (t2/insert-returning-pks! :model/Database {:name       "DB"
+                                                                          :engine     "h2"
+                                                                          :created_at :%now
+                                                                          :updated_at :%now
+                                                                          :details    "{}"})
+            [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
                                 {:name                   "My Saved Question"
                                  :created_at             :%now
                                  :updated_at             :%now
@@ -898,10 +914,12 @@
                                  :collection_id          nil})
             dashboard   {:cards [{:card_id                card-id
                                   :visualization_settings visualization-settings}]}
-            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
-                                                                   :model_id 1
-                                                                   :user_id  user-id
-                                                                   :object   (json/generate-string dashboard)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string dashboard)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
