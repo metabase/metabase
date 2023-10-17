@@ -8,6 +8,7 @@ import {
   createMockCollection,
   createMockColumn,
   createMockDataset,
+  createMockFieldValues,
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
@@ -38,6 +39,7 @@ import {
   setupCardCreateEndpoint,
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
+  setupFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -233,6 +235,10 @@ const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
+  setupFieldValuesEndpoints(
+    createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
+  );
+
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
@@ -1089,7 +1095,7 @@ describe("QueryBuilder", () => {
     });
 
     describe("editing notebook questions", () => {
-      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
+      it("shows custom warning modal when leaving notebook-edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
           initialRoute: "/",
@@ -1104,6 +1110,25 @@ describe("QueryBuilder", () => {
         history.goBack();
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when leaving visualization-edited question via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_STRUCTURED_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(`/question/${TEST_STRUCTURED_CARD.id}`);
+        await waitForLoaderToBeRemoved();
+
+        await triggerVizualizationQueryChange();
+        await waitForSaveQuestionToBeEnabled();
+
+        history.goBack();
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
       });
 
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
@@ -1306,6 +1331,18 @@ const triggerNotebookQueryChange = async () => {
   userEvent.click(rowLimitInput);
   userEvent.type(rowLimitInput, "0");
   userEvent.tab();
+};
+
+const triggerVizualizationQueryChange = async () => {
+  userEvent.click(screen.getByText("Filter"));
+
+  const modal = screen.getByRole("dialog");
+  const total = within(modal).getByTestId("filter-field-Total");
+  const maxInput = within(total).getByPlaceholderText("Max");
+  userEvent.type(maxInput, "1000");
+  userEvent.tab();
+
+  userEvent.click(screen.getByTestId("apply-filters"));
 };
 
 /**
