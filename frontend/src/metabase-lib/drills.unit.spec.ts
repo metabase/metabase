@@ -19,6 +19,8 @@ import {
   createProductsVendorDatasetColumn,
   ORDERS,
   ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -2029,31 +2031,31 @@ describe("drillThru", () => {
     //   },
     // },
 
-    // FIXME: fk-details doesn't create a query for fk target table (metabase#34383)
-    // {
-    //   drillType: "drill-thru/fk-details",
-    //   clickType: "cell",
-    //   columnName: "PRODUCT_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     filter: [
-    //       "=",
-    //       ["field", PRODUCTS.ID, null],
-    //       ORDERS_ROW_VALUES.PRODUCT_ID,
-    //     ],
-    //     "source-table": PRODUCTS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/fk-details",
-    //   clickType: "cell",
-    //   columnName: "USER_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     filter: ["=", ["field", PEOPLE.ID, null], ORDERS_ROW_VALUES.USER_ID],
-    //     "source-table": PEOPLE_ID,
-    //   },
-    // },
+    // fk-details should create a query for fk target table (metabase#34383)
+    {
+      drillType: "drill-thru/fk-details",
+      clickType: "cell",
+      columnName: "PRODUCT_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        filter: [
+          "=",
+          ["field", PRODUCTS.ID, null],
+          ORDERS_ROW_VALUES.PRODUCT_ID,
+        ],
+        "source-table": PRODUCTS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/fk-details",
+      clickType: "cell",
+      columnName: "USER_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        filter: ["=", ["field", PEOPLE.ID, null], ORDERS_ROW_VALUES.USER_ID],
+        "source-table": PEOPLE_ID,
+      },
+    },
   ])(
     'should return correct result on "$drillType" drill apply to $columnName on $clickType in $queryType query',
     ({
