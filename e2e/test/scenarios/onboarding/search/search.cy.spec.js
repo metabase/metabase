@@ -689,6 +689,95 @@ describe("scenarios > search", () => {
       });
     });
 
+    describe("last_edited_at filter", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        // We'll create a question as a normal user, then edit it as an admin user
+        cy.createQuestion(LAST_EDITED_BY_NORMAL_USER_QUESTION).then(
+          ({ body: { id: questionId } }) => {
+            cy.signOut();
+            cy.signInAsNormalUser();
+            cy.visit(`/question/${questionId}`);
+            summarize();
+            cy.findByTestId("sidebar-right").findByText("Done").click();
+            cy.findByTestId("qb-header-action-panel")
+              .findByText("Save")
+              .click();
+            modal().findByText("Save").click();
+            cy.signOut();
+            cy.signInAsAdmin();
+          },
+        );
+      });
+
+      TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
+        it(`should hydrate last_edited_at=${filter}`, () => {
+          cy.visit(`/search?q=orders&last_edited_at=${filter}`);
+
+          cy.wait("@search");
+
+          cy.findByTestId("last_edited_at-search-filter").within(() => {
+            cy.findByText(label).should("exist");
+            cy.findByLabelText("close icon").should("exist");
+          });
+
+          // TODO: Add more tests once the search result elements are redesigned to include 'last_edited_at' times.
+        });
+      });
+
+      // we can only test the 'today' filter since we currently
+      // can't edit the last_edited_at column of a question in our database
+      it(`should filter results by Today (last_edited_at=thisday)`, () => {
+        cy.visit(`/search?q=Reviews`);
+
+        expectSearchResultItemNameContent({
+          itemNames: [
+            REVIEWS_TABLE_NAME,
+            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+          ],
+        });
+
+        cy.findByTestId("last_edited_at-search-filter").click();
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+
+        expectSearchResultItemNameContent({
+          itemNames: [LAST_EDITED_BY_NORMAL_USER_QUESTION.name],
+        });
+      });
+
+      it("should remove last_edited_at filter when `X` is clicked on search filter", () => {
+        cy.visit(`/search?q=Reviews&last_edited_at=thisday`);
+        cy.wait("@search");
+
+        expectSearchResultItemNameContent({
+          itemNames: [LAST_EDITED_BY_NORMAL_USER_QUESTION.name],
+        });
+
+        cy.findByTestId("last_edited_at-search-filter").within(() => {
+          cy.findByText("Today").should("exist");
+
+          cy.findByLabelText("close icon").click();
+
+          cy.findByText("Today").should("not.exist");
+          cy.findByText("Last edit date").should("exist");
+        });
+
+        cy.url().should("not.contain", "last_edited_at");
+
+        expectSearchResultItemNameContent({
+          itemNames: [
+            REVIEWS_TABLE_NAME,
+            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+          ],
+        });
+
+        // TODO: Add more assertions for search results when we redesign the search result elements to include
+        // "last edited" times
+      });
+    });
+
     describeEE("verified filter", () => {
       beforeEach(() => {
         setTokenFeatures("all");
