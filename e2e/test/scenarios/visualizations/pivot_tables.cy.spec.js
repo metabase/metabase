@@ -9,6 +9,7 @@ import {
   dragField,
   leftSidebar,
   main,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -59,6 +60,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should be created from an ad-hoc question", () => {
@@ -1150,6 +1152,21 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
       },
     });
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
+
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    modal().button("Save").click();
+    cy.wait("@createCard");
+    cy.reload();
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
   });
 });
 
