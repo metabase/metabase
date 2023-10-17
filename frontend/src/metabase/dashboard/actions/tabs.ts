@@ -80,7 +80,6 @@ function _selectTab({
   state: Draft<DashboardState>;
   tabId: SelectedTabId;
 }) {
-  state.lastSelectedTabId = state.selectedTabId;
   state.selectedTabId = tabId;
 }
 

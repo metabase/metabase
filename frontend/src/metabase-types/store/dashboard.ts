@@ -45,7 +45,6 @@ export type TabDeletion = {
 export interface DashboardState {
   dashboardId: DashboardId | null;
   selectedTabId: SelectedTabId;
-  lastSelectedTabId: SelectedTabId;
   dashboards: Record<DashboardId, StoreDashboard>;
 
   dashcards: Record<DashCardId, StoreDashcard>;

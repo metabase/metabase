@@ -15,7 +15,6 @@ export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
 
 export const INITIAL_DASHBOARD_STATE: DashboardState = {
   dashboardId: null,
-  lastSelectedTabId: null,
   selectedTabId: null,
   isEditing: null,
   dashboards: {},
