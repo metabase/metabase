@@ -2184,18 +2184,23 @@ describe("drillThru", () => {
           "order-by": [["asc", ["aggregation", 3]]],
         },
       },
-      // FIXME: should support sorting for custom column without table relation (metabase#34499)
-      // {
-      //   // should support sorting for custom column without table relation
-      //   drillType: "drill-thru/sort",
-      //   clickType: "header",
-      //   columnName: "CustomColumn",
-      //   drillArgs: ["asc"],
-      //   expectedQuery: {
-      //     ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
-      //     "order-by": [["asc", ["expression", "CustomColumn"]]],
-      //   },
-      // },
+      // should support sorting for custom column without table relation (metabase#34499)
+      {
+        // should support sorting for custom column without table relation
+        drillType: "drill-thru/sort",
+        clickType: "header",
+        columnName: "CustomColumn",
+        drillArgs: ["asc"],
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          "order-by": [
+            [
+              "asc",
+              ["expression", "CustomColumn", { "base-type": "type/Integer" }],
+            ],
+          ],
+        },
+      },
     ])(
       'should return correct result on "$drillType" drill apply to $columnName on $clickType in query with custom column',
       ({ columnName, clickType, drillArgs, expectedQuery, drillType }) => {
