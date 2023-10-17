@@ -14,6 +14,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -663,7 +664,8 @@
                                                  :is_superuser false
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})})
+                                                 :email        "rasta@metabase.com"})
+                       :metabase_version       config/mb-version-string})
                      (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
@@ -1056,7 +1058,8 @@
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
                    :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                   :metabase_version       config/mb-version-string})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}

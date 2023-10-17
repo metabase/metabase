@@ -370,7 +370,7 @@
                                                                                         :visualization_settings {}
                                                                                         :result_metadata        nil})
                                                     :series                     []}]})
-                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "a dashboard that has link cards on it"
       (let [link-card-info-from-resp
@@ -402,12 +402,12 @@
                      :db_id nil   :collection_id     collection-id}
                     {:url "https://metabase.com"}]
                    (link-card-info-from-resp
-                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
+                    (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
 
-           (testing "should return restricted if user doesn't have permission to view the models"
-             (perms/revoke-data-perms! (perms-group/all-users) database-id)
-             (is (= #{{:restricted true} {:url "https://metabase.com"}}
-                    (set (link-card-info-from-resp
+            (testing "should return restricted if user doesn't have permission to view the models"
+              (perms/revoke-data-perms! (perms-group/all-users) database-id)
+              (is (= #{{:restricted true} {:url "https://metabase.com"}}
+                     (set (link-card-info-from-resp
                            (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
 
     (testing "fetch a dashboard with a param in it"
@@ -424,47 +424,48 @@
                                                                              :target       [:dimension [:field field-id nil]]}]}]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
-            (is (= (merge dashboard-defaults
-                          {:name                       "Test Dashboard"
-                           :creator_id                 (mt/user->id :rasta)
-                           :collection_id              true
-                           :collection_authority_level nil
-                           :can_write                  false
-                           :param_values               nil
-                           :param_fields               {field-id {:id               field-id
-                                                                  :table_id         table-id
-                                                                  :display_name     display-name
-                                                                  :base_type        "type/Text"
-                                                                  :semantic_type    nil
-                                                                  :has_field_values "search"
-                                                                  :name_field       nil
-                                                                  :dimensions       []}}
-                           :ordered_tabs               []
-                           :ordered_cards              [{:size_x                     4
-                                                         :size_y                     4
-                                                         :col                        0
-                                                         :row                        0
-                                                         :updated_at                 true
-                                                         :created_at                 true
-                                                         :entity_id                  (:entity_id dashcard)
-                                                         :collection_authority_level nil
-                                                         :parameter_mappings         [{:card_id      1
-                                                                                       :parameter_id "foo"
-                                                                                       :target       ["dimension" ["field" field-id nil]]}]
-                                                         :visualization_settings     {}
-                                                         :dashboard_tab_id           nil
-                                                         :card                       (merge api.card-test/card-defaults-no-hydrate
-                                                                                            {:name                   "Dashboard Test Card"
-                                                                                             :creator_id             (mt/user->id :rasta)
-                                                                                             :collection_id          true
-                                                                                             :collection             false
-                                                                                             :entity_id              (:entity_id card)
-                                                                                             :display                "table"
-                                                                                             :query_type             nil
-                                                                                             :visualization_settings {}
-                                                                                             :result_metadata        nil})
-                                                         :series                     []}]})
-                   (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
+            (is (=?
+                 (merge dashboard-defaults
+                        {:name                       "Test Dashboard"
+                         :creator_id                 (mt/user->id :rasta)
+                         :collection_id              true
+                         :collection_authority_level nil
+                         :can_write                  false
+                         :param_values               nil
+                         :param_fields               {field-id {:id               field-id
+                                                                :table_id         table-id
+                                                                :display_name     display-name
+                                                                :base_type        "type/Text"
+                                                                :semantic_type    nil
+                                                                :has_field_values "search"
+                                                                :name_field       nil
+                                                                :dimensions       []}}
+                         :ordered_tabs               []
+                         :ordered_cards              [{:size_x                     4
+                                                       :size_y                     4
+                                                       :col                        0
+                                                       :row                        0
+                                                       :updated_at                 true
+                                                       :created_at                 true
+                                                       :entity_id                  (:entity_id dashcard)
+                                                       :collection_authority_level nil
+                                                       :parameter_mappings         [{:card_id      1
+                                                                                     :parameter_id "foo"
+                                                                                     :target       ["dimension" ["field" field-id nil]]}]
+                                                       :visualization_settings     {}
+                                                       :dashboard_tab_id           nil
+                                                       :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                          {:name                   "Dashboard Test Card"
+                                                                                           :creator_id             (mt/user->id :rasta)
+                                                                                           :collection_id          true
+                                                                                           :collection             false
+                                                                                           :entity_id              (:entity_id card)
+                                                                                           :display                "table"
+                                                                                           :query_type             nil
+                                                                                           :visualization_settings {}
+                                                                                           :result_metadata        nil})
+                                                       :series                     []}]})
+                 (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
     (testing "fetch a dashboard from an official collection includes the collection type"
       (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      Card          {card-id :id}      {:name "Dashboard Test Card"}
@@ -2150,6 +2151,7 @@
                :message               "updated"
                :user                  (-> (user-details (mt/fetch-user :crowberto))
                                           (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :metabase_version      config/mb-version-string
                :diff                  {:before {:name        "b"
                                                 :description nil
                                                 :cards       [{:series nil, :size_y 4, :size_x 4}]}
@@ -2161,6 +2163,7 @@
               {:is_reversion         false
                :is_creation          true
                :message              nil
+               :metabase_version     config/mb-version-string
                :user                 (-> (user-details (mt/fetch-user :rasta))
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff                 nil
@@ -2200,6 +2203,7 @@
               :message              nil
               :user                 (-> (user-details (mt/fetch-user :crowberto))
                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+              :metabase_version     config/mb-version-string
               :diff                 {:before {:name "b"}
                                      :after  {:name "a"}}
               :has_multiple_changes false
@@ -2213,6 +2217,7 @@
                :message              nil
                :user                 (-> (user-details (mt/fetch-user :crowberto))
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :metabase_version     config/mb-version-string
                :diff                 {:before {:name "b"}
                                       :after  {:name "a"}}
                :has_multiple_changes false
@@ -2220,6 +2225,7 @@
               {:is_reversion         false
                :is_creation          false
                :message              "updated"
+               :metabase_version     config/mb-version-string
                :user                 (-> (user-details (mt/fetch-user :crowberto))
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff                 {:before {:name "a"}
@@ -2229,6 +2235,7 @@
               {:is_reversion         false
                :is_creation          true
                :message              nil
+               :metabase_version     config/mb-version-string
                :user                 (-> (user-details (mt/fetch-user :rasta))
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff                 nil

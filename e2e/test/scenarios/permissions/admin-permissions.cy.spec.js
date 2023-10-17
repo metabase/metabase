@@ -117,9 +117,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       // Switching to data permissions page again
       cy.get("label").contains("Data").click();
 
-      modal().within(() => {
-        cy.button("Leave anyway").click();
-      });
+      modal().button("Leave anyway").click();
 
       cy.url().should("include", "/admin/permissions/data/group");
     });
@@ -319,9 +317,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       // Switching to collection permissions page again
       cy.get("label").contains("Collection").click();
 
-      modal().within(() => {
-        cy.button("Leave anyway").click();
-      });
+      modal().button("Leave anyway").click();
 
       cy.url().should("include", "/admin/permissions/collections");
     });
