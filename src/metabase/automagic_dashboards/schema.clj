@@ -19,13 +19,23 @@
   ;; TODO - Beef these specs up, esp. the any?s
   (mc/schema
     [:map
-     [:dataset_query {:optional true} any?]
+     [:dataset_query {:optional true}
+      [:map
+       [:database {:optional true} [:maybe nat-int?]]
+       [:type :keyword]
+       [:query [:map
+                [:aggregation [:sequential any?]]
+                [:breakout {:optional true} [:sequential any?]]
+                [:source-table [:or :int :string]]]]]]
      [:dimensions {:optional true} [:sequential string?]]
      [:group {:optional true} string?]
      [:height pos-int?]
      [:metrics {:optional true} any?]
      [:position {:optional true} nat-int?]
      [:card-score {:optional true} number?]
+     [:total-score {:optional true} nat-int?]
+     [:metric-score {:optional true} nat-int?]
+     [:score-components {:optional true} [:sequential nat-int?]]
      [:title {:optional true} string?]
      [:visualization {:optional true} any?]
      [:width pos-int?]

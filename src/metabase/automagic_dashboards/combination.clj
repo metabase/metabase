@@ -240,7 +240,7 @@
            ;;:title
            )))))
 
-(defn ground-metric->cards
+(mu/defn ground-metric->cards
   "Convert a single ground metric to a seq of cards. Each potential card is defined in the templates contained within
   the affinity-set->cards map."
   [base-context affinity-set->cards {:keys [metric-field-types dimension-field-types] :as grounded-metric}]
@@ -250,10 +250,12 @@
        (map (partial ground-metric->card base-context grounded-metric))
        (filter identity)))
 
-(defn combinations->cards
+(mu/defn combinations->cards :- ads/dashcards
   "Convert a seq of metrics to a seq of cards. Each metric contains an affinity set, which is matched to a seq of card
   templates. This pairing is expanded to create a card seq."
-  [base-context affinity-set->cards ground-metrics]
+  [base-context
+   affinity-set->cards :- ads/metric-types->dimset->cards
+   ground-metrics :- [:sequential ads/combined-metric]]
   (->> (mapcat (partial ground-metric->cards base-context affinity-set->cards)
                ground-metrics)
        (map-indexed (fn [i card] (assoc card :position i)))
