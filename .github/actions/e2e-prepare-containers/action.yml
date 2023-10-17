@@ -9,19 +9,24 @@ inputs:
     required: true
   maildev:
     description: Maildev
-    required: false
+    required: true
+    default: 'false'
   openldap:
     description: Maildev
-    required: false
+    required: true
+    default: 'false'
   postgres:
     description: Maildev
-    required: false
+    required: true
+    default: 'false'
   mysql:
     description: Maildev
-    required: false
+    required: true
+    default: 'false'
   mongo:
     description: Maildev
-    required: false
+    required: true
+    default: 'false'
 
 
 runs:
