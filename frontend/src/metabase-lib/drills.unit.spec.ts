@@ -449,49 +449,48 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // FIXME: fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/quick-filter",
-    //       operators: ["<", ">", "=", "≠"],
-    //     },
-    //     {
-    //       type: "drill-thru/underlying-records",
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //     },
-    //     {
-    //       displayName: "See this month by week",
-    //       type: "drill-thru/zoom-in.timeseries",
-    //     },
-    //   ],
-    // },
-    // FIXME: fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/quick-filter",
-    //       operators: ["=", "≠"],
-    //     },
-    //     {
-    //       type: "drill-thru/underlying-records",
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //     },
-    //
-    //     {
-    //       type: "drill-thru/zoom-in.timeseries",
-    //       displayName: "See this month by week",
-    //     },
-    //   ],
-    // },
+    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedDrills: [
+        {
+          type: "drill-thru/quick-filter",
+          operators: ["<", ">", "=", "≠"],
+        },
+        {
+          type: "drill-thru/underlying-records",
+          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+        },
+        {
+          displayName: "See this month by week",
+          type: "drill-thru/zoom-in.timeseries",
+        },
+      ],
+    },
+    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedDrills: [
+        {
+          type: "drill-thru/quick-filter",
+          operators: ["=", "≠"],
+        },
+        {
+          type: "drill-thru/underlying-records",
+          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+        },
+        {
+          type: "drill-thru/zoom-in.timeseries",
+          displayName: "See this month by week",
+        },
+      ],
+    },
     // FIXME: quick-filter gets returned for non-metric column (metabase#34443)
     // {
     //   clickType: "cell",
