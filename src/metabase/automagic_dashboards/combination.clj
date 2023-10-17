@@ -119,6 +119,37 @@
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
 
+(mu/defn combinations-from-template
+  [cards metrics dimensions]
+  (let [available-dimensions (set (keys dimensions))
+        available-metrics    (into #{} (map :metric-name metrics))
+        card-def             (fn [card-map]
+                               (-> card-map first val))
+        satisfied-cards      (filter
+                              (every-pred
+                               (comp (partial every? available-metrics) :metrics card-def)
+                               (comp (partial every? (comp available-dimensions ffirst)) :dimensions card-def))
+                              cards)]
+    (reduce (fn [acc [metrics dim->bodies]]
+              (update acc metrics #(merge-with into % dim->bodies)))
+            {}
+            (for [card satisfied-cards
+                  :let [[_card-name body] (first card)
+                        metrics (:metrics body)
+                        dimensions (map ffirst (:dimensions body))]]
+              [(set metrics) {(set dimensions) [body]}]))))
+
+(mu/defn combinations-from-user-metrics
+  [user-metrics dimensions]
+  (into {}
+        (for [metric user-metrics]
+          (let [all-dimensions (into {}
+                                     (for [dim (keys dimensions)]
+                                       [#{dim} [{:type :xray/make-card
+                                                 :metrics [(:metric-name metric)]
+                                                 :dimensions [{dim {}}]}]]))]
+            [#{(:metric-name metric)} all-dimensions]))))
+
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)

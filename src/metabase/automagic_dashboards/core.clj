@@ -254,19 +254,14 @@
   linked-metrics mi/model)
 
 (defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
-  (when-some [field-ids (seq (set (interesting/find-field-ids definition)))]
-    (let [constituent-fields (t2/select :model/Field :id [:in field-ids])]
-      [{:metric-name            metric-name
-        :metric-title           metric-name
-        :metric-score           100
-        :metric-definition      definition
-        :metric-field-types     (into #{} (map magic.util/field-type) constituent-fields)
-        :grounded-metric-fields constituent-fields}])))
+  [{:metric-name       metric-name
+    :metric-title      metric-name
+    :metric-definition definition}])
 
 (defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
-    linked-metrics
-    (t2/select :model/Metric :table_id table-id)))
+   linked-metrics
+   (t2/select :model/Metric :table_id table-id)))
 
 (defmethod linked-metrics :default [_] [])
 
@@ -1054,14 +1049,14 @@
     :as                 template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics} (interesting/identify
-                                         base-context
-                                         {:dimension-specs template-dimensions
-                                          :metric-specs    template-metrics})
+                                        base-context
+                                        {:dimension-specs template-dimensions
+                                         :metric-specs    template-metrics})
         affinity-set->cards           (metric->dim->cards (dash-template->affinities template grounded-dimensions))
         metrics+interesting-breakouts (combination/interesting-combinations
-                                        grounded-dimensions
-                                        affinity-set->cards
-                                        grounded-metrics)
+                                       grounded-dimensions
+                                       affinity-set->cards
+                                       grounded-metrics)
         cards                         (combination/combinations->cards
                                         base-context
                                         affinity-set->cards
@@ -1072,11 +1067,43 @@
       :all)))
 
 (comment
+  (let [template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+        item (t2/select-one :model/Table :name "PRODUCTS" :db_id 1)
+        base-context (-> item ->root make-base-context)
+        {:keys [metrics dimensions]} (interesting/identify base-context
+                                                           {:dimension-specs (:dimensions template)
+                                                            :metric-specs (:metrics template)})
+        user-defined-metrics [{:metric-name "Custom average",
+                               :metric-title "Custom average",
+                               :metric-definition {:source-table 1,
+                                                   :aggregation [[:aggregation-options
+                                                                  [:/
+                                                                   [:sum [:field 59 nil]]
+                                                                   [:count]]
+                                                                  {:name "My average",
+                                                                   :display-name "My average"}]]},
+                               :metric-score 95}]
+        cards (:cards template)]
+
+    (let [m->d->cards (merge (combination/combinations-from-template cards metrics dimensions)
+                             (combination/combinations-from-user-metrics user-defined-metrics dimensions))]
+      {:affinities (update-vals m->d->cards keys)
+       :cards (into [] (comp (map vals) cat cat) (vals m->d->cards))}))
   (let [entity  (t2/select-one :model/Table :name "ACCOUNTS")
         context (make-base-context (->root entity))]
-    (generate-dashboard
-      context
-      (dashboard-templates/get-dashboard-template ["table" "GenericTable"])))
+    (-> (generate-dashboard
+         context
+         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+        :ordered_cards
+        count))
+
+  (let [entity  (t2/select-one :model/Table :id 1)
+        context (make-base-context (->root entity))]
+    (-> (generate-dashboard
+         context
+         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
+        :ordered_cards
+        count))
   )
 
 (s/defn ^:private apply-dashboard-template
