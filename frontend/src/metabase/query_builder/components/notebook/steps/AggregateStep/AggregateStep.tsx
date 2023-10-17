@@ -1,10 +1,8 @@
+import { useMemo } from "react";
 import { t } from "ttag";
-
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
-
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
 
@@ -31,11 +29,9 @@ export function AggregateStep({
 }: NotebookStepUiComponentProps) {
   const { stageIndex } = step;
 
-  const clauses = Lib.aggregations(topLevelQuery, stageIndex);
-  const operators = Lib.availableAggregationOperators(
-    topLevelQuery,
-    stageIndex,
-  );
+  const clauses = useMemo(() => {
+    return Lib.aggregations(topLevelQuery, stageIndex);
+  }, [topLevelQuery, stageIndex]);
 
   const handleAddAggregation = (aggregation: Lib.Aggregatable) => {
     const nextQuery = Lib.aggregate(topLevelQuery, stageIndex, aggregation);
@@ -76,7 +72,6 @@ export function AggregateStep({
         <AggregationPopover
           query={topLevelQuery}
           stageIndex={stageIndex}
-          operators={operators}
           clause={aggregation}
           clauseIndex={index}
           legacyQuery={legacyQuery}
@@ -94,7 +89,6 @@ export function AggregateStep({
 interface AggregationPopoverProps {
   query: Lib.Query;
   stageIndex: number;
-  operators: Lib.AggregationOperator[];
   clause?: Lib.AggregationClause;
   onUpdateAggregation: (
     currentClause: Lib.AggregationClause,
@@ -113,7 +107,6 @@ interface AggregationPopoverProps {
 function AggregationPopover({
   query,
   stageIndex,
-  operators: baseOperators,
   clause,
   clauseIndex,
   legacyQuery,
@@ -124,9 +117,12 @@ function AggregationPopover({
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
 
-  const operators = isUpdate
-    ? Lib.selectedAggregationOperators(baseOperators, clause)
-    : baseOperators;
+  const operators = useMemo(() => {
+    const baseOperators = Lib.availableAggregationOperators(query, stageIndex);
+    return isUpdate
+      ? Lib.selectedAggregationOperators(baseOperators, clause)
+      : baseOperators;
+  }, [query, clause, stageIndex, isUpdate]);
 
   const legacyClause = isUpdate
     ? legacyQuery.aggregations()[clauseIndex]

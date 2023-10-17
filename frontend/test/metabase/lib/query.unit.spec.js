@@ -1,4 +1,4 @@
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
 
@@ -57,7 +57,7 @@ describe("Legacy Q_DEPRECATED library", () => {
       });
 
       // We have to take a copy because the original object isn't extensible
-      const copiedDatasetQuery = Utils.copy(datasetQuery);
+      const copiedDatasetQuery = copy(datasetQuery);
       Q_DEPRECATED.cleanQuery(copiedDatasetQuery);
 
       expect(copiedDatasetQuery).toBeDefined();

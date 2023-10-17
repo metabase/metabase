@@ -25,7 +25,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept(
       "GET",
-      "/api/table/2/query_metadata?include_sensitive_fields=true&include_editable_data_model=true",
+      "/api/table/*/query_metadata?include_sensitive_fields=true&include_editable_data_model=true",
     ).as("tableMetadataFetch");
   });
 

@@ -3,7 +3,7 @@
   to queries ran internally e.g. as part of the sync process).
   These include things like saving QueryExecutions and adding query ViewLogs, storing exceptions and formatting the results."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.query :as query]
    [metabase.models.query-execution
@@ -92,11 +92,12 @@
       ([acc]
        ;; We don't actually have a guarantee that it's from a card just because it's userland
        (when (integer? (:card_id execution-info))
-         (events/publish-event! :card-query {:card_id      (:card_id execution-info)
-                                             :actor_id     (:executor_id execution-info)
-                                             :cached       (:cached acc)
-                                             :context      (:context execution-info)
-                                             :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
+         (events/publish-event! :event/card-query {:card_id      (:card_id execution-info)
+                                                   :actor_id     (:executor_id execution-info)
+                                                   :cached       (:cached acc)
+                                                   :context      (:context execution-info)
+                                                   :ignore_cache (get-in execution-info
+                                                                         [:json_query :middleware :ignore-cached-results?])}))
        (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)

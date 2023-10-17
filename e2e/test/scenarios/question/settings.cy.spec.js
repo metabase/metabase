@@ -5,6 +5,7 @@ import {
   openNavigationSidebar,
   visitQuestionAdhoc,
   popover,
+  modal,
   sidebar,
   moveColumnDown,
 } from "e2e/support/helpers";
@@ -128,14 +129,14 @@ describe("scenarios > question > settings", () => {
         .trigger("mousemove", 0, -350, { force: true })
         .trigger("mouseup", 0, -350, { force: true });
 
-      reloadResults();
+      refreshResultsInHeader();
 
       findColumnAtIndex("Products → Category", 5);
 
       // Remove "Total"
       hideColumn("Total");
 
-      reloadResults();
+      refreshResultsInOverlay();
 
       cy.findByTestId("query-builder-main")
         .findByText("117.03")
@@ -206,7 +207,7 @@ describe("scenarios > question > settings", () => {
       // Remove "Subtotal"
       hideColumn("Subtotal");
 
-      reloadResults();
+      refreshResultsInOverlay();
 
       // Remove "City"
       hideColumn("City");
@@ -427,6 +428,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
+      modal().button("Leave anyway").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
@@ -445,8 +447,12 @@ describe("scenarios > question > settings", () => {
   });
 });
 
-function reloadResults() {
-  cy.icon("play").last().click();
+function refreshResultsInHeader() {
+  cy.findByTestId("qb-header").button("Refresh").click();
+}
+
+function refreshResultsInOverlay() {
+  cy.findByTestId("query-builder-main").button("Get Answer").click();
 }
 
 function getSidebarColumns() {

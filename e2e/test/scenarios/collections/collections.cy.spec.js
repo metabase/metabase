@@ -20,6 +20,7 @@ import {
   FIRST_COLLECTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -40,7 +41,6 @@ describe("scenarios > collection defaults", () => {
       _.times(COLLECTIONS_COUNT, index => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
-          color: "#509EE3",
           parent_id: null,
         });
       });
@@ -136,7 +136,6 @@ describe("scenarios > collection defaults", () => {
           cy.request("POST", "/api/collection", {
             name: collection,
             parent_id: THIRD_COLLECTION_ID + index,
-            color: "#509ee3",
           });
         },
       );
@@ -309,13 +308,11 @@ describe("scenarios > collection defaults", () => {
         // Create Parent collection within `Our analytics`
         cy.request("POST", "/api/collection", {
           name: "Parent",
-          color: "#509EE3",
           parent_id: null,
         }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
           // Create Child collection within Parent collection
           cy.request("POST", "/api/collection", {
             name: "Child",
-            color: "#509EE3",
             parent_id: PARENT_COLLECTION_ID,
           }).then(({ body: { id: CHILD_COLLECTION_ID } }) => {
             // Fetch collection permission graph
@@ -380,7 +377,7 @@ describe("scenarios > collection defaults", () => {
       // Create Parent collection within admin's personal collection
       cy.createCollection({
         name: COLLECTION,
-        parent_id: 1,
+        parent_id: ADMIN_PERSONAL_COLLECTION_ID,
       });
 
       visitRootCollection();
@@ -467,7 +464,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("4 items selected");
+          cy.findByText(/\d+ items selected/);
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
@@ -479,7 +476,7 @@ describe("scenarios > collection defaults", () => {
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
           cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-            collection_id: 1,
+            collection_id: ADMIN_PERSONAL_COLLECTION_ID,
           });
           cy.visit("/collection/root");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -36,7 +36,8 @@
         (testing "emails"
           (is (= (et/email-to :rasta
                               {:subject "Alert: My Question Name has results",
-                               :body    {"My Question Name" true}})
+                               :body    {"My Question Name" true}
+                               :bcc?    true})
                  (et/regex-email-bodies #"My Question Name"))))
         (testing "exceptions"
           (is (= []

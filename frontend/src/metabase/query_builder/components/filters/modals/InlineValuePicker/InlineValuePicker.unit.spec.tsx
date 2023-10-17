@@ -8,6 +8,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -18,6 +19,9 @@ const PK_FIELD_ID = 1;
 const TEXT_FIELD_ID = 2;
 
 describe("InlineValuePicker", () => {
+  beforeEach(() => {
+    setupFieldValuesGeneralEndpoint();
+  });
   const metadata = createMockMetadata({
     fields: [
       createMockField({

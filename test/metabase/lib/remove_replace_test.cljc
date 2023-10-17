@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -26,19 +27,20 @@
                   (lib/order-bys))))))
 
 (deftest ^:parallel remove-clause-filters-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-                  (lib/filter (lib/= (meta/field-metadata :venues :name) "x")))
-        filters (lib/filters query)]
-    (is (= 2 (count filters)))
-    (is (= 1 (-> query
-                 (lib/remove-clause (first filters))
-                 (lib/filters)
-                 count)))
-    (is (nil? (-> query
-                  (lib/remove-clause (first filters))
-                  (lib/remove-clause (second filters))
-                  (lib/filters))))))
+  (lib.tu.macros/with-testing-against-standard-queries query
+    (let [query (-> query
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                    (lib/filter (lib/= (meta/field-metadata :venues :name) "x")))
+          filters (lib/filters query)]
+      (is (= 2 (count filters)))
+      (is (= 1 (-> query
+                   (lib/remove-clause (first filters))
+                   (lib/filters)
+                   count)))
+      (is (nil? (-> query
+                    (lib/remove-clause (first filters))
+                    (lib/remove-clause (second filters))
+                    (lib/filters)))))))
 
 (deftest ^:parallel remove-clause-join-conditions-test
   (let [query (-> lib.tu/venues-query
@@ -407,6 +409,28 @@
                    (first (lib/available-metrics query)))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
+(deftest ^:parallel replace-segment-test
+  (testing "replacing with segment should work"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                              meta/metadata-provider
+                              {:segments  [{:id          100
+                                            :name        "Price is 4"
+                                            :definition  {:filter
+                                                          [:= [:field (meta/id :venues :price) nil] 4]}
+                                            :table-id    (meta/id :venues)}
+                                           {:id          200
+                                            :name        "Price is 5"
+                                            :definition  {:filter
+                                                          [:= [:field (meta/id :venues :price) nil] 5]}
+                                            :table-id    (meta/id :venues)}]})
+          query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/segment 100)))]
+      (is (=? {:stages [{:filters [[:segment {:lib/uuid string?} 200]]}]}
+              (lib/replace-clause
+                query
+                (first (lib/filters query))
+                (second (lib/available-segments query))))))))
+
 (deftest ^:parallel replace-clause-expression-test
   (let [query (-> lib.tu/venues-query
                   (lib/expression "a" (meta/field-metadata :venues :id))
@@ -766,7 +790,7 @@
             (is (=? result
                     (lib/remove-clause query' 0 (second (lib/joins query' 0)))))))))))
 
-(deftest ^:parallel remove-dependent-join
+(deftest ^:parallel remove-dependent-join-test
   (let [first-join-clause (-> (lib/join-clause
                                (meta/table-metadata :checkins)
                                [(lib/= (meta/field-metadata :venues :id)
@@ -785,6 +809,32 @@
                                 (lib/with-join-fields :all)
                                 (lib/with-join-alias "Users"))))]
     (is (nil? (lib/joins (lib/remove-clause query 0 first-join-clause))))))
+
+(deftest ^:parallel remove-dependent-join-from-subsequent-stage-test
+  (testing "Join from previous stage used in join can be removed (#34404)"
+    (let [join-query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                         (lib/join (-> (lib/join-clause
+                                        (meta/table-metadata :checkins)
+                                        [(lib/= (meta/field-metadata :venues :id)
+                                                (-> (meta/field-metadata :checkins :venue-id)
+                                                    (lib/with-join-alias "Checkins")))])
+                                       (lib/with-join-fields :all)
+                                       (lib/with-join-alias "Checkins"))))
+          breakout-col (m/find-first (comp #{(meta/id :checkins :venue-id)} :id)
+                                     (lib/breakoutable-columns join-query))
+          breakout-query (-> join-query
+                             (lib/breakout breakout-col)
+                             (lib/aggregate (lib/count))
+                             (lib/append-stage))
+          query (-> breakout-query
+                    (lib/join (-> (lib/join-clause
+                                   (meta/table-metadata :checkins)
+                                   [(lib/= (first (lib/returned-columns breakout-query))
+                                           (-> (meta/field-metadata :checkins :venue-id)
+                                               (lib/with-join-alias "Checkins2")))])
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-alias "Checkins2"))))]
+      (is (nil? (lib/joins (lib/remove-clause query 0 (first (lib/joins query 0)))))))))
 
 (deftest ^:parallel replace-join-test
   (let [query             lib.tu/query-with-join

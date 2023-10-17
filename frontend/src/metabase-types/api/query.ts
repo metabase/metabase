@@ -199,7 +199,7 @@ export type FieldFilter =
 type NotFilter = ["not", Filter];
 
 type EqualityFilter = ["=" | "!=", ConcreteFieldReference, Value];
-type ComparisonFilter = [
+export type ComparisonFilter = [
   "<" | "<=" | ">=" | ">",
   ConcreteFieldReference,
   OrderableValue,
@@ -355,7 +355,8 @@ export type Expression =
       ExpressionOperand,
       ExpressionOperand,
       ExpressionOperand,
-    ];
+    ]
+  | ConcreteFieldReference;
 
 type ExpressionOperator = string;
 type ExpressionOperand =

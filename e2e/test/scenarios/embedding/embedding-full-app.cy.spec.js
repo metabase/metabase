@@ -214,7 +214,7 @@ describeEE("scenarios > embedding > full app", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Sample Database").click();
+        popover().findByText("Raw Data").click();
         popover().findByText("Orders").click();
       });
 
@@ -314,7 +314,7 @@ describeEE("scenarios > embedding > full app", () => {
 
     it("should preserve embedding options with click behavior (metabase#24756)", () => {
       addLinkClickBehavior({
-        dashboardId: 1,
+        dashboardId: ORDERS_DASHBOARD_ID,
         linkTemplate: "/question/" + ORDERS_QUESTION_ID,
       });
       visitDashboardUrl({

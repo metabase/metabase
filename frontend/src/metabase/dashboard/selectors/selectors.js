@@ -201,7 +201,7 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 
-export const getisNavigatingBackToDashboard = state =>
+export const getIsNavigatingBackToDashboard = state =>
   state.dashboard.isNavigatingBackToDashboard;
 
 export const getIsBookmarked = (state, props) =>
@@ -282,18 +282,6 @@ export const getParameterMappingOptions = createSelector(
   (metadata, parameter, card, dashcard) => {
     return _getParameterMappingOptions(metadata, parameter, card, dashcard);
   },
-);
-
-export const getDefaultParametersById = createSelector(
-  [getDashboard],
-  dashboard =>
-    ((dashboard && dashboard.parameters) || []).reduce((map, parameter) => {
-      if (parameter.default) {
-        map[parameter.id] = parameter.default;
-      }
-
-      return map;
-    }, {}),
 );
 
 export const getIsHeaderVisible = createSelector(

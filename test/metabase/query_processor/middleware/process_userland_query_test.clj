@@ -3,14 +3,15 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
     :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -103,12 +104,20 @@
              (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
-(deftest viewlog-call-test
+(def ^:private ^:dynamic *viewlog-call-count* nil)
+
+(derive :event/card-query ::event)
+
+(methodical/defmethod events/publish-event! ::event
+  [_topic _event]
+  (when *viewlog-call-count*
+    (swap! *viewlog-call-count* inc)))
+
+(deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
-    (let [call-count (atom 0)]
-      (with-redefs [events/publish-event! (fn [& _] (swap! call-count inc))]
-        (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
-        (is (= 0 @call-count))))))
+    (binding [*viewlog-call-count* (atom 0)]
+      (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+      (is (zero? @*viewlog-call-count*)))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]

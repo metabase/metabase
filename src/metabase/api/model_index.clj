@@ -3,8 +3,8 @@
    [compojure.core :refer [POST]]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
    [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
@@ -14,7 +14,7 @@
 (defn- ensure-type
   "Ensure that the ref exists and is of type required for indexing."
   [t ref metadata]
-  (if-let [field (some (fn [f] (when ((comp #{(mi/normalize-field-ref ref)} :field_ref) f)
+  (if-let [field (some (fn [f] (when ((comp #{(mbql.normalize/normalize-field-ref ref)} :field_ref) f)
                                  f))
                        metadata)]
     (let [type-slot (case t

@@ -1,10 +1,12 @@
 (ns metabase.lib.join-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
@@ -199,7 +201,7 @@
                          ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
         (is (=? "CATEGORIES__via__CATEGORY_ID"
-                (lib.join/current-join-alias (first metadata))))
+                (lib.join.util/current-join-alias (first metadata))))
         (is (=? [:field
                  {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                  (meta/id :categories :name)]
@@ -523,7 +525,7 @@
     (let [query  lib.tu/query-with-join
           [join] (lib/joins query)
           join   (lib/with-join-alias join nil)]
-      (is (nil? (lib.join/current-join-alias join)))
+      (is (nil? (lib.join.util/current-join-alias join)))
       (let [new-conditions [(lib/=
                              (meta/field-metadata :venues :id)
                              (meta/field-metadata :categories :id))]
@@ -879,6 +881,24 @@
                                             (lib/with-join-alias "Venues")))])
                                (lib/with-join-alias "Venues"))))
              (meta/table-metadata :categories))))))
+
+(deftest ^:parallel suggested-join-condition-fk-from-implicitly-joinable-test
+  (testing "DON'T suggest join conditions for a FK -> implicitly joinable PK relationship (#34526)"
+    (let [orders (meta/table-metadata :orders)
+          card-query (as-> (lib/query meta/metadata-provider orders) q
+                       (lib/breakout q (m/find-first #(= (:id %) (meta/id :orders :user-id))
+                                                     (lib/returned-columns q)))
+                       (lib/aggregate q (lib/count)))
+          metadata-provider (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             {:cards [{:id            1
+                                       :name          "Q1"
+                                       :database-id   (meta/id)
+                                       :dataset-query (lib/query meta/metadata-provider card-query)
+                                       :fields        (lib/returned-columns card-query)}]})
+          card (lib.metadata/card metadata-provider 1)
+          query (lib/query metadata-provider orders)]
+      (is (nil? (lib/suggested-join-condition query card))))))
 
 (deftest ^:parallel join-conditions-test
   (let [joins (lib/joins lib.tu/query-with-join)]

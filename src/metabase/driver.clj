@@ -9,7 +9,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -507,6 +507,9 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support storing table privileges in the application database for the current user?
+    :table-privileges
+
     ;; Does the driver support uploading files
     :uploads
 
@@ -723,37 +726,14 @@
   implements [[metabase.driver.sql-jdbc.sync/db-default-timezone]]; the `:h2` driver does not for example. Why is
   this? Who knows, but it's something you should keep in mind.
 
-  TODO FIXME (cam) -- I think we need to fix this for drivers that return `nil`."
-  {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
+  This method should return a [[String]], a [[java.time.ZoneId]], or a [[java.time.ZoneOffset]]."
+  {:added "0.34.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-;; TIMEZONE FIXME — remove this method entirely
-(defmulti current-db-time
-  "Return the current time and timezone from the perspective of `database`. You can use
-  [[metabase.driver.common/current-db-time]] to implement this. This should return a Joda-Time `DateTime`.
-
-  deprecated — the only thing this method is ultimately used for is to determine the db's system timezone.
-  [[db-default-timezone]] has been introduced as an intended replacement for this method; implement it instead. this
-  method will be removed in a future release."
-  {:added "0.34.0", :deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod current-db-time ::driver [_ _] nil)
 
 (defmethod db-default-timezone ::driver
-  [driver database]
-  (when-not (identical? (get-method current-db-time driver)
-                        (get-method current-db-time ::driver))
-    (log/warnf
-     (u/colorize :red (str "Warning: driver %s implements %s, which was deprecated in 0.34.0 and is scheduled for "
-                           "imminent removal without further notice. Please update the driver to implement %s instead."))
-     driver
-     `current-db-time
-     `db-default-timezone)
-    (when-let [current-joda-time (current-db-time driver database)]
-      (-> current-joda-time .getChronology .getZone .getID))))
+  [_driver _database]
+  nil)
 
 (defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
@@ -905,7 +885,12 @@
 (defmethod syncable-schemas ::driver [_ _] #{})
 
 (defmulti upload-type->database-type
-  "Returns the database type for a given `metabase.upload` type."
+  "Returns the database type for a given `metabase.upload` type as a HoneySQL spec. This will be a vector, which allows
+  for additional options. Sample values:
+
+  - [:bigint]
+  - [[:varchar 255]]
+  - [:generated-always :as :identity :primary-key]"
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

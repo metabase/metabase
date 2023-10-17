@@ -5,7 +5,7 @@ import type { LocationDescriptor } from "history";
 import { useMount } from "react-use";
 import type { IconProps } from "metabase/core/components/Icon";
 
-import Utils from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
 
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 
@@ -69,6 +69,7 @@ export interface DashCardProps {
   isMobile?: boolean;
   isNightMode?: boolean;
   isPublic?: boolean;
+  isXray?: boolean;
 
   headerIcon?: IconProps;
 
@@ -99,6 +100,7 @@ function DashCard({
   isFullscreen = false,
   isMobile = false,
   isPublic = false,
+  isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
   headerIcon,
@@ -162,7 +164,7 @@ function DashCard({
   );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = Utils.isJWT(dashcard.dashboard_id);
+  const isEmbed = isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -319,6 +321,7 @@ function DashCard({
           error={error}
           isAction={isAction}
           isEmbed={isEmbed}
+          isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}

@@ -41,20 +41,23 @@ describe("snapshots", () => {
         ensureTableIdsAreCorrect(SAMPLE_DATABASE);
         hideNewSampleTables(SAMPLE_DATABASE);
         createQuestionsAndDashboards(SAMPLE_DATABASE);
+        snapshot("without-models");
+        createModels(SAMPLE_DATABASE);
         cy.writeFile(
           "e2e/support/cypress_sample_database.json",
           SAMPLE_DATABASE,
         );
       });
 
-      const instanceData = getDefaultInstanceData();
+      snapshot("default");
 
+      // we need to do this after the snapshot because hitting the API populates the audit log
+      const instanceData = getDefaultInstanceData();
       cy.writeFile(
         "e2e/support/cypress_sample_instance_data.json",
         instanceData,
       );
 
-      snapshot("default");
       restore("blank");
     });
   });
@@ -157,7 +160,6 @@ describe("snapshots", () => {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
         name,
-        color: "#509ee3",
         description: `Collection ${name}`,
         parent_id,
       }).then(({ body }) => callback && callback(body));
@@ -204,6 +206,15 @@ describe("snapshots", () => {
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
       display: "line",
+    });
+  }
+
+  function createModels({ ORDERS_ID }) {
+    // Model 1
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": ORDERS_ID },
+      dataset: true,
     });
   }
 
@@ -288,8 +299,17 @@ function getDefaultInstanceData() {
     instanceData.questions = cards;
   });
 
-  cy.request("/api/dashboard").then(({ body: dashboards }) => {
-    instanceData.dashboards = dashboards;
+  cy.request("/api/dashboard").then(async ({ body: dashboards }) => {
+    instanceData.dashboards = [];
+    // we need to hydrate the dashcards on each dashboard
+    for (const dashboard of dashboards) {
+      // this doesn't work with Promise.all because cypress request has fake promises
+      cy.request(`/api/dashboard/${dashboard.id}`).then(
+        ({ body: fullDashboard }) => {
+          instanceData.dashboards.push(fullDashboard);
+        },
+      );
+    }
   });
 
   cy.request("/api/user").then(({ body: { data: users } }) => {

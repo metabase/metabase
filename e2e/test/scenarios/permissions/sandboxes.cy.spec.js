@@ -18,7 +18,10 @@ import {
   sendEmailAndAssert,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  NORMAL_USER_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -86,7 +89,7 @@ describeEE("formatting > sandboxes", () => {
       setTokenFeatures("all");
 
       // Add user attribute to existing ("normal" / id:2) user
-      cy.request("PUT", "/api/user/2", {
+      cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         login_attributes: { [USER_ATTRIBUTE]: ATTRIBUTE_VALUE },
       });
 

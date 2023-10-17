@@ -1,10 +1,11 @@
 (ns metabase.lib.util-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util :as lib.util]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -318,3 +319,21 @@
     "Customer"       "Customer ID"
     "Customer"       "Customer id"
     "some id number" "some id number"))
+
+(deftest ^:parallel original-isa?
+  (are [exp typ] (lib.util/original-isa? exp typ)
+    (lib/ref (meta/field-metadata :products :id))
+    :type/Number
+
+    (lib/ref (meta/field-metadata :products :created-at))
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        (lib/with-temporal-bucket :day-of-week)
+        lib/ref)
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        lib/ref
+        (lib/with-temporal-bucket :day-of-week))
+    :type/Temporal))

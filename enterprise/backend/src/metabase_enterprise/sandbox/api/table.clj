@@ -57,9 +57,9 @@
   information."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
   {id                          ms/PositiveInt
-   include_sensitive_fields    [:maybe ms/BooleanString]
-   include_hidden_fields       [:maybe ms/BooleanString]
-   include_editable_data_model [:maybe ms/BooleanString]}
+   include_sensitive_fields    [:maybe ms/BooleanValue]
+   include_hidden_fields       [:maybe ms/BooleanValue]
+   include_editable_data_model [:maybe ms/BooleanValue]}
   (let [table            (api/check-404 (t2/select-one Table :id id))
         sandboxed-perms? (only-sandboxed-perms? table)
         thunk            (fn []

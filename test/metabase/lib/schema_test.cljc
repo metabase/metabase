@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]))
 
 (deftest ^:parallel disallow-duplicate-uuids-test
@@ -201,8 +202,8 @@
 (deftest ^:parallel enforce-distinct-breakouts-and-fields-test
   (let [duplicate-refs [[:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 1]
                         [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]]
-    (testing #'lib.schema/distinct-refs?
-      (is (not (#'lib.schema/distinct-refs? duplicate-refs))))
+    (testing #'lib.schema.util/distinct-refs?
+      (is (not (#'lib.schema.util/distinct-refs? duplicate-refs))))
     (testing "breakouts/fields schemas"
       (are [schema error] (= error
                              (me/humanize (mc/explain schema duplicate-refs)))

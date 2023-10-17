@@ -2,7 +2,7 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.db.spec :as mdb.spec]
@@ -315,19 +315,16 @@
 
     message))
 
-(def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
-
-(defmethod driver.common/current-db-time-date-formatters :h2
-  [_]
-  (driver.common/create-db-time-formatters date-format-str))
-
-(defmethod driver.common/current-db-time-native-query :h2
-  [_]
-  (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
-
-(defmethod driver/current-db-time :h2
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :h2
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "select current_timestamp();")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (when-let [zoned-date-time (.getObject rset 1 java.time.ZonedDateTime)]
+           (t/zone-id zoned-date-time)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -576,13 +573,16 @@
 (defmethod driver/upload-type->database-type :h2
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255 "VARCHAR"
-    ::upload/text        "VARCHAR"
-    ::upload/int         "INTEGER"
-    ::upload/float       "DOUBLE PRECISION"
-    ::upload/boolean     "BOOLEAN"
-    ::upload/date        "DATE"
-    ::upload/datetime    "TIMESTAMP"))
+    ::upload/varchar_255              [:varchar]
+    ::upload/text                     [:varchar]
+    ::upload/int                      [:bigint]
+    ::upload/int-pk                   [:bigint :primary-key]
+    ::upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity :primary-key]
+    ::upload/string-pk                [:varchar :primary-key]
+    ::upload/float                    [(keyword "DOUBLE PRECISION")]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]))
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

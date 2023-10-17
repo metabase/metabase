@@ -7,6 +7,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -158,6 +159,13 @@
                     (lib/with-join-fields [(-> (meta/field-metadata :categories :name)
                                                (lib/with-join-alias "Cat"))])))))
 
+(def query-with-self-join
+  "A query against `ORDERS` joined to `ORDERS` by ID."
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/join (lib/join-clause (meta/table-metadata :orders)
+                                 [(lib/= (lib/ref (meta/field-metadata :orders :id))
+                                         (lib/ref (meta/field-metadata :orders :id)))]))))
+
 (def query-with-expression
   "A query with an expression."
   (-> venues-query
@@ -181,6 +189,21 @@
                                                     :base-type     :type/Integer
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
+
+(defn mock-card
+  "Given a `query`, returns a mock card with that query. Includes `:result-metadata` from calling
+  [[metabase.lib.metadata.calculation/returned-columns]]."
+  ([query] (mock-card query 1 "Mock card"))
+  ([query id title]
+   {:lib/type        :metadata/card
+    :id              id
+    :name            title
+    :database-id     (:id (lib.metadata/database query))
+    :dataset-query   (lib.convert/->legacy-MBQL query)
+    :result-metadata (->> query
+                          lib.metadata.calculation/returned-columns
+                          (sort-by :id)
+                          (mapv #(dissoc % :id :table-id)))}))
 
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
@@ -214,6 +237,12 @@
                                        (sort-by :id)
                                        (mapv #(dissoc % :id :table-id)))}))])))
         (meta/tables)))
+
+(defn metadata-provider-with-mock-card [card]
+  (lib/composed-metadata-provider
+    meta/metadata-provider
+    (mock-metadata-provider
+      {:cards [card]})))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."

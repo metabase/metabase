@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
@@ -25,8 +25,8 @@ export default class QueryVisualization extends Component {
 
   _getStateFromProps(props) {
     return {
-      lastRunDatasetQuery: Utils.copy(props.question.query().datasetQuery()),
-      lastRunParameterValues: Utils.copy(props.parameterValues),
+      lastRunDatasetQuery: copy(props.question.query().datasetQuery()),
+      lastRunParameterValues: copy(props.parameterValues),
     };
   }
 

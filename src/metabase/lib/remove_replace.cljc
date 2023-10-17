@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
@@ -209,7 +210,7 @@
 (defn- field-clause-with-join-alias?
   [field-clause join-alias]
   (and (lib.util/field-clause? field-clause)
-       (= (lib.join/current-join-alias field-clause) join-alias)))
+       (= (lib.join.util/current-join-alias field-clause) join-alias)))
 
 (defn- replace-join-alias
   [a-join old-name new-name]
@@ -337,9 +338,17 @@
   ([query        :- :metabase.lib.schema/query
     stage-number :- :int
     join-spec    :- [:or :metabase.lib.schema.join/join :string :int]]
-   (update-joins query stage-number join-spec (fn [joins join-alias]
-                                                (not-empty (filterv #(not (dependent-join? % join-alias))
-                                                                    joins))))))
+   (try
+     (update-joins query stage-number join-spec (fn [joins join-alias]
+                                                  (not-empty (filterv #(not (dependent-join? % join-alias))
+                                                                      joins))))
+     (catch #?(:clj Exception :cljs :default) e
+       (let [{:keys [error stage join]} (ex-data e)]
+         (if (= error ::lib.util/cannot-remove-final-join-condition)
+           (-> query
+               (remove-join (u/index-of #{stage} (:stages query)) join)
+               (remove-join stage-number join-spec))
+           (throw e)))))))
 
 (mu/defn replace-join :- :metabase.lib.schema/query
   "Replace the join specified by `join-spec` in `query` at `stage-number` with `new-join`.

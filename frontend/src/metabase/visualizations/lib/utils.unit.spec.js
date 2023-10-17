@@ -7,6 +7,7 @@ import {
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
+  computeSplit,
 } from "metabase/visualizations/lib/utils";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
@@ -337,6 +338,27 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         preserveExistingColumnsOrder(["a", "b"], ["c", "d"]),
       ).toStrictEqual(["c", "d"]);
+    });
+  });
+
+  describe("computeSplit", () => {
+    const extents = [
+      [6, 8],
+      [9, 13],
+      [6, 7],
+      [1, 1],
+      [10, 13],
+      [15, 19],
+      [5, 6],
+      [5, 10],
+      [9, 13],
+      [2, 6],
+      [12, 15],
+      [1, 1],
+    ];
+
+    it("should return the same number of series as given", () => {
+      expect(computeSplit(extents).flat()).toHaveLength(extents.length);
     });
   });
 });

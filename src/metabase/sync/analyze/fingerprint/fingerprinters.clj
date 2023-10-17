@@ -2,7 +2,7 @@
   "Non-identifying fingerprinters for various field types."
   (:require
    [bigml.histogram.core :as hist]
-   [java-time :as t]
+   [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]

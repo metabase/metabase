@@ -13,7 +13,7 @@ import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
-type ColumnListItem = Lib.ColumnDisplayInfo & {
+export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
 };
 
@@ -24,6 +24,7 @@ export interface QueryColumnPickerProps {
   columnGroups: Lib.ColumnGroup[];
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
+  withDefaultBucketing?: boolean;
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
@@ -37,13 +38,14 @@ type Sections = {
   icon?: IconName;
 };
 
-function QueryColumnPicker({
+export function QueryColumnPicker({
   className,
   query,
   stageIndex,
   columnGroups,
   hasBinning = false,
   hasTemporalBucketing = false,
+  withDefaultBucketing = true,
   maxHeight = DEFAULT_MAX_HEIGHT,
   color = "brand",
   checkIsColumnSelected,
@@ -86,6 +88,11 @@ function QueryColumnPicker({
         return;
       }
 
+      if (!withDefaultBucketing) {
+        handleSelect(item.column);
+        return;
+      }
+
       const isBinnable = Lib.isBinnable(query, stageIndex, item.column);
       if (hasBinning && isBinnable) {
         handleSelect(Lib.withDefaultBinning(query, stageIndex, item.column));
@@ -111,6 +118,7 @@ function QueryColumnPicker({
       stageIndex,
       hasBinning,
       hasTemporalBucketing,
+      withDefaultBucketing,
       checkIsColumnSelected,
       handleSelect,
       onClose,
@@ -192,6 +200,3 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   }
   return;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QueryColumnPicker;

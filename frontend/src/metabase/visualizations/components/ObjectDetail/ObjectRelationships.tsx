@@ -12,7 +12,7 @@ import type { ForeignKeyReferences } from "./types";
 import {
   ObjectRelationContent,
   ObjectRelationships,
-} from "./ObjectDetailView.styled";
+} from "./ObjectRelationships.styled";
 
 export interface RelationshipsProps {
   objectName: string;

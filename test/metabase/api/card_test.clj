@@ -9,11 +9,12 @@
    [clojure.tools.macro :as tools.macro]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -663,7 +664,8 @@
                                                  :is_superuser false
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})})
+                                                 :email        "rasta@metabase.com"})
+                       :metabase_version       config/mb-version-string})
                      (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
@@ -809,13 +811,14 @@
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type     :type/Integer
-                       :display_name  "Count"
-                       :name          "count"
-                       :semantic_type :type/Quantity
-                       :source        :aggregation
-                       :field_ref     [:aggregation 0]}]
-                     (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
+              (is (=? [{:base_type         :type/Integer
+                        :display_name      "Count"
+                        :name              "count"
+                        :semantic_type     :type/Quantity
+                        :source            :aggregation
+                        :field_ref         [:aggregation 0]
+                        :aggregation_index 0}]
+                      (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
 
 (defn- updating-card-updates-metadata-query []
   (mt/mbql-query venues {:fields [$id $name]}))
@@ -1055,7 +1058,8 @@
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
                    :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                   :metabase_version       config/mb-version-string})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}
@@ -2873,19 +2877,20 @@
    (upload-example-csv! collection-id true))
   ([collection-id grant-permission?]
    (mt/with-current-user (mt/user->id :rasta)
-     (let [file              (upload-test/csv-file-with
+     (let [;; Make the file-name unique so the table names don't collide
+           csv-file-name     (str "example csv file " (random-uuid) ".csv")
+           file              (upload-test/csv-file-with
                               ["id, name"
                                "1, Luke Skywalker"
                                "2, Darth Vader"]
-                              "example_csv_file")
+                              csv-file-name)
            group-id          (u/the-id (perms-group/all-users))
            can-already-read? (mi/can-read? (mt/db))
            grant?            (and (not can-already-read?)
                                   grant-permission?)]
        (when grant?
          (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-       (u/prog1
-         (api.card/upload-csv! collection-id "example_csv_file.csv" file)
+       (u/prog1 (api.card/upload-csv! collection-id csv-file-name file)
          (when grant?
            (perms/revoke-data-perms! group-id (mt/id))))))))
 
@@ -2920,7 +2925,7 @@
                                               :query    {:source-table (:id new-table)}
                                               :type     :query}
                            :creator_id       (mt/user->id :rasta)
-                           :name             "Example Csv File"
+                           :name             #"(?i)example csv file(.*)"
                            :collection_id    nil} new-model)
                       "A new model is created")
                   (is (=? {:name      #"(?i)example(.*)"
@@ -2955,7 +2960,8 @@
             (if (= driver/*driver* :mysql)
               (let [new-model (upload-example-csv! nil)
                     new-table (t2/select-one Table :db_id db-id)]
-                (is (= "Example Csv File" (:name new-model)))
+                (is (=? {:name #"(?i)example csv file(.*)"}
+                        new-model))
                 (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
                         new-table))
                 (if (= driver/*driver* :mysql)

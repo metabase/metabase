@@ -1,8 +1,3 @@
-import {
-  screen,
-  waitForElementToBeRemoved,
-  within,
-} from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import userEvent from "@testing-library/user-event";
@@ -13,7 +8,12 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { renderWithProviders } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import type { WritebackAction } from "metabase-types/api";
 import {
@@ -273,7 +273,7 @@ function setup(
   );
 }
 
-describe("Object Detail", () => {
+describe("ObjectDetailView", () => {
   it("renders an object detail component", () => {
     setup({ question: mockQuestion });
 
@@ -468,9 +468,9 @@ describe("Object Detail", () => {
     expect(
       screen.queryByText("Choose a record to update"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();

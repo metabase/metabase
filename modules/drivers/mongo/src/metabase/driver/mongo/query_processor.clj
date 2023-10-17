@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.util :as driver.u]
@@ -908,8 +908,9 @@
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                            ;; ~ in let aliases provokes a parse error in Mongo
-                                            (str/replace "~" "_")
+                                            ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
+                                            ;; aliases should also contain no . characters (#32182).
+                                            (str/replace #"~|\." "_")
                                             gensym
                                             name)]
                               {:field f, :rvalue (->rvalue f), :alias alias}))

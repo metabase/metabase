@@ -12,7 +12,7 @@ import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
-import { runDirtyQuestionQuery } from "./querying";
+import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
@@ -51,7 +51,13 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
   await dispatch(loadMetadataForQueries([], [dataset.dependentMetadata()]));
 
-  dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
+  await dispatch({ type: API_UPDATE_QUESTION, payload: dataset.card() });
+
+  await dispatch(
+    runQuestionQuery({
+      shouldUpdateUrl: true,
+    }),
+  );
 
   dispatch(
     addUndo({
