@@ -167,13 +167,16 @@
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
-   If unit is nil, formats the full date/time"
+   If unit is nil, formats the full date/time.
+   Time input formatting is only defined with time units."
   [input unit]
   (if (string? input)
     (let [time? (matches-time? input)
           date? (matches-date? input)
           date-time? (matches-date-time? input)
           t (if time?
+              ;; Anchor to an arbitrary date since time inputs are only defined for
+              ;; :hour-of-day and :minute-of-hour.
               (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
               (moment/utc input moment/ISO_8601))]
       (if (and t (.isValid t))
