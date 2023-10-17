@@ -456,6 +456,7 @@
                             (map t2.realize/realize)
                             (map to-toucan-instance)
                             (filter check-permissions-for-model)
+                            (map #(assoc % :can_write (mi/can-write? %)))
                             ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
                             ;; needed
                             (map #(update % :bookmark api/bit->boolean))
