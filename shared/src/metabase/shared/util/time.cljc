@@ -67,7 +67,8 @@
 
 (defn format-relative-date-range
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
-   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date."
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
   ([n unit]
    (format-relative-date-range n unit nil nil nil))
   ([n unit offset-n offset-unit]
