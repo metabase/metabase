@@ -166,6 +166,15 @@
        (map (fn [[metric-name metric-definition]]
               (assoc metric-definition :metric-name metric-name)))))
 
+(defn normalize-seq-of-maps
+  "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
+  [typename metrics]
+  (let [kw (keyword (format "%s-name" (name typename)))]
+    (->> metrics
+         (map first)
+         (map (fn [[name value]]
+                (assoc value kw name))))))
+
 ;;; dimensions
 
 (defn- fieldspec-matcher

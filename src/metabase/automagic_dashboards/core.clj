@@ -256,7 +256,8 @@
 (defmethod linked-metrics :model/Metric [{metric-name :name :keys [definition]}]
   [{:metric-name       metric-name
     :metric-title      metric-name
-    :metric-definition definition}])
+    :metric-definition definition
+    :metric-score      100}])
 
 (defmethod linked-metrics :model/Table [{table-id :id}]
   (mapcat
@@ -1041,29 +1042,90 @@
                               distinct-affinity-sets)]
     (zipmap distinct-affinity-sets satisfied-combos)))
 
+;; We have two types of card templates:
+;; 1 - Those from the template
+;; 2 - Others that are appropriate for user-defined metrics.
+;; NOTE (THIS IS IMPORTANT) - THE FOLLOWING MULTIMETHOD IS _A_ WAY TO CREATE CARD TEMPLATES FOR USER-DEFINED METRICS
+;; BUT IS NOT _THE_ WAY. THE KEY THING IS WE NEED A SEQ OF CARD TEMPLATES FOR USER DEFINED METRICS.
+(defmulti user-defined-metric->card-templates :metric-name)
+
+(defmethod user-defined-metric->card-templates "Churn" [{:keys [metric-name]}]
+  [{:card-score    100
+    :metrics       [metric-name]
+    :visualization ["scalar" {}]
+    :title         (format "Total %s" metric-name)
+    :width         6
+    :height        4
+    :group         "Overview"
+    :card-name     (format "Count[%s]" metric-name)}
+   {:card-score    95
+    :group         "ByTime"
+    :dimensions    [{"JoinTimestamp" {}}]
+    :title         (format "%s over time" metric-name)
+    :visualization ["line" {}]
+    :metrics       [metric-name]
+    :width         6
+    :height        4
+    :card-name     (format "CountByTime[%s]" metric-name)}
+   {:card-score    80
+    :group         "Geographical"
+    :card-name     (format "CountByCoords[%s]" metric-name)
+    :width         6
+    :dimensions    [{"Long" {}} {"Lat" {}}]
+    :title         (format "%s by coordinates" metric-name)
+    :visualization ["map" {}]
+    :metrics       [metric-name]
+    :height        6}])
+
+(defmethod user-defined-metric->card-templates :default [{:keys [metric-name]}]
+  ;; The default set of cards for user-defined metrics
+  [{:card-score    100
+    :metrics       [metric-name]
+    :visualization ["scalar" {}]
+    :width         6
+    :title         (format "Total %s" metric-name)
+    :height        4
+    :group         "Overview"
+    :card-name     (format "Count[%s]" metric-name)}])
+
+(defn user-defined-metrics->card-templates
+  [user-defined-metrics]
+  (mapcat user-defined-metric->card-templates user-defined-metrics))
+
+
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
-  [{root :root :as base-context}
+  [{{:keys [linked-metrics] :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
+    template-cards      :cards
     :as                 template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics} (interesting/identify
-                                        base-context
-                                        {:dimension-specs template-dimensions
-                                         :metric-specs    template-metrics})
-        affinity-set->cards           (metric->dim->cards (dash-template->affinities template grounded-dimensions))
-        metrics+interesting-breakouts (combination/interesting-combinations
-                                       grounded-dimensions
-                                       affinity-set->cards
-                                       grounded-metrics)
-        cards                         (combination/combinations->cards
-                                        base-context
-                                        affinity-set->cards
-                                        metrics+interesting-breakouts)
-        empty-dashboard               (make-dashboard root template)]
+                                         base-context
+                                         {:dimension-specs template-dimensions
+                                          :metric-specs    template-metrics})
+        ;; From the template
+        card-templates              (interesting/normalize-seq-of-maps :card template-cards)
+        user-defined-card-templates (user-defined-metrics->card-templates linked-metrics)
+        all-cards                   (into card-templates user-defined-card-templates)
+        dashcards                   (combination/metrics+breakouts
+                                      base-context
+                                      grounded-dimensions
+                                      all-cards
+                                      grounded-metrics)
+        ;affinity-set->cards           (metric->dim->cards (dash-template->affinities template grounded-dimensions))
+        ;metrics+interesting-breakouts (combination/interesting-combinations
+        ;                               grounded-dimensions
+        ;                               affinity-set->cards
+        ;                               grounded-metrics)
+        ;cards                         (combination/combinations->cards
+        ;                                base-context
+        ;                                affinity-set->cards
+        ;                                metrics+interesting-breakouts)
+        empty-dashboard             (make-dashboard root template)]
     (populate/create-dashboard
-      (assoc empty-dashboard :cards cards)
+      (assoc empty-dashboard :cards dashcards)
       :all)))
 
 (comment

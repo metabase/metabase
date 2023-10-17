@@ -115,16 +115,6 @@
      [:filters {:optional true} [:vector string?]]
      [:card-score {:optional true} nat-int?]]))
 
-;[:map
-; [:affinity-set [:set :keyword]]
-; [:card-name :string]
-; [:card-score :int]
-; [:dimensions {:optional true} [:sequential [:map-of string? map?]]]
-; [:group :string]
-; [:group-score :int]
-; [:metrics [:sequential :string]]
-; [:semantic-dimensions {:optional true} [:map-of :keyword map?]]]
-
 (def card-template
   "A specification for the basic keys in a card template."
   (mc/schema
@@ -259,20 +249,13 @@
      [:metric-score nat-int?]
      [:metric-definition
       [:map
-       [:aggregation [:sequential any?]]]]
-     [:grounded-metric-fields
-      [:sequential
-       (ms/InstanceOf :model/Field)]]
-     [:metric-field-types [:set :keyword]]]))
+       [:aggregation [:sequential any?]]]]]))
 
 (def combined-metric
   (mu/merge
     grounded-metric
     (mc/schema
       [:map
-       [:dimension-field-types [:set :keyword]]
-       [:dimension-name->field [:map-of :string (ms/InstanceOf :model/Field)]]
-       [:dimension-type->field [:map-of :keyword (ms/InstanceOf :model/Field)]]
        [:metric-definition
         [:map
          [:aggregation [:sequential any?]]

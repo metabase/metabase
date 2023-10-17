@@ -120,35 +120,100 @@
           grounded-metrics))
 
 (mu/defn combinations-from-template
-  [cards metrics dimensions]
-  (let [available-dimensions (set (keys dimensions))
-        available-metrics    (into #{} (map :metric-name metrics))
+  [template-cards
+   grounded-metrics :- [:sequential ads/grounded-metric]
+   dimension-names->matches :- ads/dim-name->matching-fields]
+  (let [available-dimensions (set (keys dimension-names->matches))
+        available-metrics    (into #{} (map :metric-name grounded-metrics))
         card-def             (fn [card-map]
                                (-> card-map first val))
         satisfied-cards      (filter
-                              (every-pred
-                               (comp (partial every? available-metrics) :metrics card-def)
-                               (comp (partial every? (comp available-dimensions ffirst)) :dimensions card-def))
-                              cards)]
+                               (every-pred
+                                 (comp (partial every? available-metrics) :metrics card-def)
+                                 (comp (partial every? (comp available-dimensions ffirst)) :dimensions card-def))
+                               template-cards)]
     (reduce (fn [acc [metrics dim->bodies]]
               (update acc metrics #(merge-with into % dim->bodies)))
             {}
             (for [card satisfied-cards
                   :let [[_card-name body] (first card)
-                        metrics (:metrics body)
+                        metrics    (:metrics body)
                         dimensions (map ffirst (:dimensions body))]]
               [(set metrics) {(set dimensions) [body]}]))))
 
 (mu/defn combinations-from-user-metrics
-  [user-metrics dimensions]
+  [user-metrics :- [:sequential ads/grounded-metric]
+   ground-dimensions :- ads/dim-name->matching-fields]
   (into {}
         (for [metric user-metrics]
           (let [all-dimensions (into {}
-                                     (for [dim (keys dimensions)]
-                                       [#{dim} [{:type :xray/make-card
-                                                 :metrics [(:metric-name metric)]
+                                     (for [dim (keys ground-dimensions)]
+                                       [#{dim} [{:type       :xray/make-card
+                                                 :metrics    [(:metric-name metric)]
                                                  :dimensions [{dim {}}]}]]))]
             [#{(:metric-name metric)} all-dimensions]))))
+
+(defn add-dataset-query
+  "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
+  and the database and table ids (from the source object)."
+  [{:keys [metric-definition] :as ground-metric-with-dimensions}
+   {{:keys [database]} :root :keys [source]}]
+  (assoc ground-metric-with-dimensions
+    :dataset_query {:database database
+                    :type     :query
+                    :query    (assoc metric-definition
+                                :source-table (if (->> source (mi/instance-of? :model/Table))
+                                                (-> source u/the-id)
+                                                (->> source u/the-id (str "card__"))))}))
+
+(mu/defn metrics+breakouts :- [:sequential ads/combined-metric]
+  [base-context
+   ground-dimensions :- ads/dim-name->matching-fields
+   card-templates
+   grounded-metrics :- [:sequential ads/grounded-metric]]
+  (let [metric-name->metric (zipmap
+                              (map :metric-name grounded-metrics)
+                              (map-indexed
+                                (fn [idx grounded-metric] (assoc grounded-metric :position idx))
+                                grounded-metrics))]
+    (for [{card-name       :card-name
+           card-metrics    :metrics
+           card-score      :card-score
+           card-dimensions :dimensions :as card-template} card-templates
+          :let [dim-names (map ffirst card-dimensions)]
+          :when (every? ground-dimensions dim-names)
+          :let [dim-score (map (comp :score ground-dimensions) dim-names)]
+          dimension-name->field (->> (map (comp :matches ground-dimensions) dim-names)
+                                     (apply math.combo/cartesian-product)
+                                     (map (partial zipmap dim-names)))
+          :let [merged-dims
+                (reduce (fn [acc [d v]]
+                          (cond-> acc
+                            (acc d)
+                            (update d into v)))
+                        dimension-name->field
+                        (map first card-dimensions))]
+          card-metric-name      card-metrics
+          :let [grounded-metric (metric-name->metric card-metric-name)]
+          :when grounded-metric
+          :let [card (visualization/expand-visualization
+                       card-template
+                       (vals dimension-name->field)
+                       nil)
+                score-components (list* (:card-score card)
+                                        (:metric-score grounded-metric)
+                                        dim-score)]]
+      (merge
+        card
+        (-> grounded-metric
+            (assoc
+              :id (gensym)
+              :affinity-name card-name
+              :card-score card-score
+              :total-score (long (/ (apply + score-components) (count score-components)))
+              :score-components score-components)
+            (update :metric-definition add-breakouts (vals merged-dims))
+            (add-dataset-query base-context))))))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -195,19 +260,6 @@
             form))
         x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
-
-(defn add-dataset-query
-  "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
-  and the database and table ids (from the source object)."
-  [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database]} :root :keys [source]}]
-  (assoc ground-metric-with-dimensions
-    :dataset_query {:database database
-                    :type     :query
-                    :query    (assoc metric-definition
-                                :source-table (if (->> source (mi/instance-of? :model/Table))
-                                                (-> source u/the-id)
-                                                (->> source u/the-id (str "card__"))))}))
 
 (defn items->str
   "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
