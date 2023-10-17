@@ -982,16 +982,16 @@ describe("availableDrillThrus", () => {
         type: "drill-thru/fk-filter",
       },
     },
-    // FIXME: `fk-filter` doesn't get returned for fk column that was used as breakout (metabase#34440)
-    // {
-    //   drillType: "drill-thru/fk-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "PRODUCT_ID",
-    //   expectedParameters: {
-    //     type: "drill-thru/fk-filter",
-    //   },
-    // },
+    // `fk-filter` doesn't get returned for fk column that was used as breakout (metabase#34440)
+    {
+      drillType: "drill-thru/fk-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "PRODUCT_ID",
+      expectedParameters: {
+        type: "drill-thru/fk-filter",
+      },
+    },
     // endregion
 
     // region --- drill-thru/quick-filter
@@ -2040,7 +2040,7 @@ describe("drillThru", () => {
       expectedQuery: {
         filter: [
           "=",
-          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
           ORDERS_ROW_VALUES.PRODUCT_ID,
         ],
         "source-table": PRODUCTS_ID,
@@ -2052,7 +2052,11 @@ describe("drillThru", () => {
       columnName: "USER_ID",
       queryType: "unaggregated",
       expectedQuery: {
-        filter: ["=", ["field", PEOPLE.ID, null], ORDERS_ROW_VALUES.USER_ID],
+        filter: [
+          "=",
+          ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+          ORDERS_ROW_VALUES.USER_ID,
+        ],
         "source-table": PEOPLE_ID,
       },
     },
