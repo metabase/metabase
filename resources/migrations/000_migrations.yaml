@@ -15938,7 +15938,7 @@ databaseChangeLog:
                   updated_at,
                   size_x,
                   size_y,
-                  row,
+                  "row",
                   col,
                   visualization_settings,
                   parameter_mappings
