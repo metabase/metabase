@@ -23,7 +23,7 @@
     (is (= (str "Venues,"
                 " Sum of Price,"
                 " Grouped by Category ID,"
-                " Filtered by Name equals \"Toucannery\","
+                " Filtered by Name is Toucannery,"
                 " Sorted by ID ascending,"
                 " 100 rows")
            (lib/display-name query)
