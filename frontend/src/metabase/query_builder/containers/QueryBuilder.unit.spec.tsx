@@ -456,8 +456,8 @@ describe("QueryBuilder", () => {
         userEvent.click(
           within(screen.getByTestId("popover")).getByText("SQL query"),
         );
-
         await waitForLoaderToBeRemoved();
+
         await triggerNativeQueryChange();
         await waitForSaveNewQuestionToBeEnabled();
 
@@ -652,8 +652,8 @@ describe("QueryBuilder", () => {
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
           await waitForLoaderToBeRemoved();
+
           await triggerNotebookQueryChange();
           await waitForSaveModelToBeEnabled();
 
@@ -669,10 +669,11 @@ describe("QueryBuilder", () => {
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-
           await waitForLoaderToBeRemoved();
+
           await triggerNotebookQueryChange();
           await waitForSaveModelToBeEnabled();
+
           await revertNotebookQueryChange();
           await waitForSaveModelToBeDisabled();
 
@@ -766,7 +767,6 @@ describe("QueryBuilder", () => {
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
-
           await waitForLoaderToBeRemoved();
 
           history.goBack();
@@ -876,8 +876,8 @@ describe("QueryBuilder", () => {
         userEvent.click(
           within(screen.getByTestId("popover")).getByText("SQL query"),
         );
-
         await waitForLoaderToBeRemoved();
+
         await triggerNativeQueryChange();
         await waitForSaveNewQuestionToBeEnabled();
 
@@ -896,7 +896,6 @@ describe("QueryBuilder", () => {
         userEvent.click(
           within(screen.getByTestId("popover")).getByText("SQL query"),
         );
-
         await waitForLoaderToBeRemoved();
 
         history.goBack();
@@ -916,7 +915,6 @@ describe("QueryBuilder", () => {
         userEvent.click(
           within(screen.getByTestId("popover")).getByText("SQL query"),
         );
-
         await waitForLoaderToBeRemoved();
 
         userEvent.click(
@@ -942,8 +940,8 @@ describe("QueryBuilder", () => {
         userEvent.click(
           within(screen.getByTestId("popover")).getByText("SQL query"),
         );
-
         await waitForLoaderToBeRemoved();
+
         await triggerNativeQueryChange();
         await waitForSaveNewQuestionToBeEnabled();
 
@@ -981,7 +979,6 @@ describe("QueryBuilder", () => {
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
-
         await triggerNativeQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
@@ -1153,8 +1150,6 @@ describe("QueryBuilder", () => {
           initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
         });
 
-        await waitForLoaderToBeRemoved();
-
         await triggerNotebookQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
@@ -1323,16 +1318,6 @@ const triggerMetadataChange = async () => {
   userEvent.tab();
 };
 
-const triggerNotebookQueryChange = async () => {
-  const rowLimitInput = await within(
-    screen.getByTestId("step-limit-0-0"),
-  ).findByPlaceholderText("Enter a limit");
-
-  userEvent.click(rowLimitInput);
-  userEvent.type(rowLimitInput, "0");
-  userEvent.tab();
-};
-
 const triggerVizualizationQueryChange = async () => {
   userEvent.click(screen.getByText("Filter"));
 
@@ -1345,16 +1330,27 @@ const triggerVizualizationQueryChange = async () => {
   userEvent.click(screen.getByTestId("apply-filters"));
 };
 
-/**
- * Reverts triggerNotebookQueryChange call
- */
-const revertNotebookQueryChange = async () => {
+const triggerNotebookQueryChange = async () => {
   const rowLimitInput = await within(
     screen.getByTestId("step-limit-0-0"),
   ).findByPlaceholderText("Enter a limit");
 
   userEvent.click(rowLimitInput);
-  userEvent.type(rowLimitInput, "{backspace}");
+  userEvent.type(rowLimitInput, "0");
+  userEvent.tab();
+};
+
+/**
+ * Reverts triggerNotebookQueryChange call
+ */
+const revertNotebookQueryChange = async () => {
+  const limitStep = screen.getByTestId("step-limit-0-0");
+  const limitInput = await within(limitStep).findByPlaceholderText(
+    "Enter a limit",
+  );
+
+  userEvent.click(limitInput);
+  userEvent.type(limitInput, "{backspace}");
   userEvent.tab();
 };
 
