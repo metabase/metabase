@@ -60,7 +60,7 @@
    [:query-type      [:enum :aggregated :unaggregated]]
    [:column-name     :string]
    ;; defaults to "ORDERS"
-   [:query-table  {:optional true} [:enum "ORDERS" #_"PRODUCTS"]]
+   [:query-table  {:optional true} [:enum "ORDERS" "PRODUCTS"]]
    [:custom-query {:optional true} ::lib.schema/query]])
 
 (def ^:private Row

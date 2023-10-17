@@ -38,7 +38,7 @@
           context             (lib.drill-thru.tu/test-case-context query row test-case)]
       (testing (str "\nQuery = \n"   (u/pprint-to-str query)
                     "\nContext =\n" (u/pprint-to-str context))
-        (let [drills       (lib/available-drill-thrus query context)]
+        (let [drills (lib/available-drill-thrus query context)]
           (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
             (is (= 1
                    (count (filter #(= (:type %) :drill-thru/underlying-records)

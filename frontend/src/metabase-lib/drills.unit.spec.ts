@@ -1145,34 +1145,34 @@ describe("availableDrillThrus", () => {
     // endregion
 
     // region --- drill-thru/zoom-in.timeseries
-    // FIXME: "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "sum",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
+    // "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "sum",
+      expectedParameters: {
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
     // endregion
 
     // region --- drill-thru/zoom
