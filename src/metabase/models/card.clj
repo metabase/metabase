@@ -7,10 +7,13 @@
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card
+    :as parameter-card
+    :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -19,7 +22,9 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -27,8 +32,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]
-   [metabase.models.audit-log :as audit-log]))
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
