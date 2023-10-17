@@ -470,7 +470,7 @@
 
 (deftest user-invited-event-test
   (testing :event/user-invited
-    (mt/with-model-cleanup [Activity]
+    (mt/with-model-cleanup [:model/AuditLog]
       (let [event {:user-id (mt/user->id :rasta)
                    :details {}}]
         (is (= event (events/publish-event! :event/user-invited event))))
@@ -483,7 +483,7 @@
 
 (deftest user-update-event-test
   (testing :event/user-update
-    (mt/with-model-cleanup [Activity]
+    (mt/with-model-cleanup [:model/AuditLog]
       (let [event {:user-id (mt/user->id :rasta)
                    :details {:id        (mt/user->id :lucky)
                              :last_name "Charms"}}]
@@ -498,7 +498,7 @@
 
 (deftest user-deactivated-event-test
  (testing :event/user-deactivated
-  (mt/with-model-cleanup [Activity]
+  (mt/with-model-cleanup [:model/AuditLog]
     (let [event {:user-id (mt/user->id :rasta)
                  :details {:id         (mt/user->id :lucky)
                            :first_name "Lucky"
@@ -516,7 +516,7 @@
 
 (deftest user-reactivated-event-test
  (testing :event/user-reactivated
-  (mt/with-model-cleanup [Activity]
+  (mt/with-model-cleanup [:model/AuditLog]
     (let [event {:user-id (mt/user->id :rasta)
                  :details {:id         (mt/user->id :lucky)
                            :first_name "Lucky"
