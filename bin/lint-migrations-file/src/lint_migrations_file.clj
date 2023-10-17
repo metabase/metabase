@@ -74,7 +74,7 @@
             x)
         x)
 
-      true ; some other kind of change; continue walking
+      :else ; some other kind of change; continue walking
       x)
     x))
 
@@ -107,7 +107,7 @@
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
 
-(defn- validate-migrations [migrations]
+(defn validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
