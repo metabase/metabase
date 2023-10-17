@@ -461,7 +461,7 @@ describe("availableDrillThrus", () => {
         },
         {
           type: "drill-thru/underlying-records",
-          rowCount: 77, // FIXME: (metabase#32108) this should return real count of rows
+          rowCount: 77,
           tableName: "Orders",
         },
         {
