@@ -7,18 +7,18 @@ import type {
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 
-export const buildCartesianChartOption = (
+export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption => {
-  const series = buildOptionMultipleSeries(
+  const echartsSeries = buildOptionMultipleSeries(
     chartModel.flatMap(cardModel => cardModel.series),
     settings,
     renderingContext,
   );
 
-  const dataset = chartModel.map(cardModel => {
+  const echartsDataset = chartModel.map(cardModel => {
     const dimensions = [
       cardModel.series.dimension.dataKey,
       ...cardModel.series.metrics.map(s => s.dataKey),
@@ -30,8 +30,8 @@ export const buildCartesianChartOption = (
   const mainCard = chartModel[0];
 
   return {
-    dataset,
-    series,
+    dataset: echartsDataset,
+    series: echartsSeries,
     ...buildAxes(mainCard.series, settings, renderingContext),
   } as EChartsOption;
 };

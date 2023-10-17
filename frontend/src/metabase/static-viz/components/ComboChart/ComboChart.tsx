@@ -1,7 +1,7 @@
 import { init } from "echarts";
 import type { IsomorphicChartProps } from "metabase/static-viz/containers/StaticChart/types";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { buildCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { computeStaticComboChartSettings } from "./settings";
 
@@ -29,7 +29,7 @@ export const ComboChart = ({
     computedVisualizationSettings,
   );
 
-  const option = buildCartesianChartOption(
+  const option = getCartesianChartOption(
     chartModel,
     computedVisualizationSettings,
     renderingContext,
