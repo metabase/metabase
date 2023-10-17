@@ -1,15 +1,12 @@
 import { t } from "ttag";
 
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
-import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 
 function FilterStep({
   query,
-  topLevelQuery,
-  step: { stageIndex },
   color,
   isLastOpened,
   readOnly,
@@ -20,13 +17,7 @@ function FilterStep({
       color={color}
       initialAddText={t`Add filters to narrow your answer`}
       items={query.filters()}
-      renderName={(item, index) => {
-        const v2Filter = Lib.filters(topLevelQuery, stageIndex)[index];
-        if (!v2Filter) {
-          return "UNKNOWN";
-        }
-        return Lib.displayInfo(topLevelQuery, stageIndex, v2Filter).displayName;
-      }}
+      renderName={item => item.displayName()}
       readOnly={readOnly}
       renderPopover={filter => (
         <FilterPopover

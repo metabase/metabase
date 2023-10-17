@@ -68,10 +68,9 @@
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
-    (if-let [expr-typ (and (clause? expression)
-                           (:metabase.lib.field/original-effective-type (second expression)))]
-      expr-typ
-      (lib.schema.expression/type-of expression))
+    (or (and (clause? expression)
+             (:metabase.lib.field/original-effective-type (second expression)))
+        (lib.schema.expression/type-of expression))
     typ))
 
 (defn expression-name

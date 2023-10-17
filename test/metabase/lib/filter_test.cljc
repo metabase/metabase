@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -544,7 +543,7 @@
        {:clause [:is-null fk], :name "User ID is empty"}
        {:clause [:not-null fk], :name "User ID is not empty"}])))
 
-(deftest ^:parallel -frontend-filter-display-names-test
+(deftest ^:parallel string-frontend-filter-display-names-test
   (let [nam (meta/field-metadata :venues :name)]
     (check-display-names
       [{:clause [:= nam "ABC"], :name "Name is ABC"}
