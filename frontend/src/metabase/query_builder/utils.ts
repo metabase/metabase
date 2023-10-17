@@ -90,12 +90,12 @@ export const isNavigationAllowed = ({
       return newModelPathnames.includes(pathname);
     }
 
-    const modelPathnames = validSlugs.flatMap(slug => [
+    const allowedPathnames = validSlugs.flatMap(slug => [
       `/model/${slug}/query`,
       `/model/${slug}/metadata`,
     ]);
 
-    return modelPathnames.includes(pathname);
+    return allowedPathnames.includes(pathname);
   }
 
   if (question.isNative()) {
@@ -103,12 +103,12 @@ export const isNavigationAllowed = ({
   }
 
   if (!isNewQuestion && question.isStructured()) {
-    const questionPathnames = validSlugs.flatMap(slug => [
-      `/question/${slug}/notebook`,
+    const allowedPathnames = validSlugs.flatMap(slug => [
       `/question/${slug}`,
+      `/question/${slug}/notebook`,
     ]);
 
-    return isRunningQuestion || questionPathnames.includes(pathname);
+    return isRunningQuestion || allowedPathnames.includes(pathname);
   }
 
   return true;
