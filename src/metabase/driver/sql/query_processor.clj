@@ -754,7 +754,21 @@
       (throw (ex-info "Summing intervals is not supported" {:args args})))
     (apply hx/call :+ (map (partial ->honeysql driver) args))))
 
-(defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hx/call :- (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :-]
+  [driver [_ & [first-arg & other-args :as args]]]
+  (assert (not (interval? first-arg))
+          "Interval as first argrument to subtraction is not allowed.")
+  (if (interval? (first other-args))
+    (do
+      (assert (every? interval? other-args)
+              "All but first argument to subtraction must contain an interval.")
+      (reduce (fn [hsql-form [_ amount unit]]
+                ;; We are adding negative amount. Inspired by `->honeysql [:sql :datetime-subtract]`.
+                (add-interval-honeysql-form driver hsql-form (- amount) unit))
+              (->honeysql driver first-arg)
+              other-args))
+    (apply hx/call :- (map (partial ->honeysql driver) args))))
+
 (defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hx/call :* (map (partial ->honeysql driver) args)))
 
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
