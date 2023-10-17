@@ -87,3 +87,8 @@ export function isColumnRightAligned(column: Column) {
   }
   return isNumber(column) || isCoordinate(column);
 }
+
+
+export function isStartWithDoubleUnderscore(column) {
+    return column && column.display_name && column.display_name.startsWith("__") ? true : false;
+}
