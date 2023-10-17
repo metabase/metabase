@@ -1,10 +1,9 @@
 (ns metabase.lib.drill-thru.underlying-records-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
-   [metabase.util :as u]
-   [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
-   [metabase.lib.core :as lib]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -12,7 +11,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :column-name "count"
-    :expected    {:type :drill-thru/underlying-records, :row-count 3, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 77, :table-name "Orders"}}))
 
 (deftest ^:parallel returns-underlying-records-test-2
   (lib.drill-thru.tu/test-returns-drill
@@ -20,7 +19,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :column-name "sum"
-    :expected    {:type :drill-thru/underlying-records, :row-count 3, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 1, :table-name "Orders"}}))
 
 (deftest ^:parallel returns-underlying-records-test-3
   (lib.drill-thru.tu/test-returns-drill
@@ -28,7 +27,7 @@
     :click-type  :cell
     :query-type  :aggregated
     :column-name "max"
-    :expected    {:type :drill-thru/underlying-records, :row-count 3, :table-name "Orders"}}))
+    :expected    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}}))
 
 (deftest ^:parallel do-not-return-fk-filter-for-non-fk-column-test
   (testing "underlying-records should only get shown once for aggregated query (#34439)"
