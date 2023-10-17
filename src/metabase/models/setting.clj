@@ -313,7 +313,8 @@
    :enabled?    (s/maybe clojure.lang.IFn)
 
    ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
-   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. (default: `:no-value`)
+   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited.
+   ;; (default: `:no-value`)
    :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
@@ -382,11 +383,6 @@
 (defn- user-local-only? [setting]
   (= (:user-local (resolve-setting setting)) :only))
 
-(defn- allows-site-wide-values? [setting]
-  (and
-   (not (database-local-only? setting))
-   (not (user-local-only? setting))))
-
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
 
@@ -397,6 +393,16 @@
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
+
+(defn- allows-site-wide-values? [setting]
+  (and
+   (not (database-local-only? setting))
+   (not (user-local-only? setting))))
+
+(defn- site-wide-only? [setting]
+  (and
+   (not (allows-database-local-values? setting))
+   (not (allows-user-local-values? setting))))
 
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
@@ -820,18 +826,24 @@
    api/*current-user-id*
    :model/Setting))
 
+(defn- should-audit?
+  "Returns true if the setting change should be written to the `audit_log`."
+  [setting]
+  (and (not= (:audit setting) :never)
+       (site-wide-only? setting)))
+
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
   [{:keys [name setter getter audit] :as setting} new-value]
-  (if (= audit :never)
-    (setter new-value)
+  (if (should-audit? setting)
     (let [audit-value-fn #(condp = audit
                             :no-value  nil
                             :raw-value (get-raw-value setting)
                             :getter    (getter))
           previous-value (audit-value-fn)]
       (u/prog1 (setter new-value)
-        (audit-setting-change! name audit previous-value (audit-value-fn))))))
+        (audit-setting-change! name audit previous-value (audit-value-fn))))
+    (setter new-value)))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -887,7 +899,8 @@
                  :user-local     :never
                  :deprecated     nil
                  :enabled?       nil
-                 :audit          :no-value}
+                 ;; Disable auditing by default for user- or database-local settings
+                 :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
