@@ -331,6 +331,14 @@
   (let [operators (lib.filter.operator/filter-operators column)]
     (m/assoc-some column :operators (clojure.core/not-empty operators))))
 
+(defn- leading-ref
+  "Returns the first argument of `a-filter` if it is a reference clause, nil otherwise."
+  [a-filter]
+  (when-let [leading-arg (clojure.core/and (lib.util/clause? a-filter)
+                                           (get a-filter 2))]
+    (when (lib.util/ref-clause? leading-arg)
+      leading-arg)))
+
 (mu/defn filterable-columns :- [:sequential ColumnWithOperators]
   "Get column metadata for all the columns that can be filtered in
   the stage number `stage-number` of the query `query`
@@ -351,12 +359,35 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [stage (lib.util/query-stage query stage-number)]
-     (clojure.core/not-empty
-      (into []
-            (comp (map add-column-operators)
-                  (clojure.core/filter :operators))
-            (lib.metadata.calculation/visible-columns query stage-number stage))))))
+   (let [stage (lib.util/query-stage query stage-number)
+         columns (sequence
+                  (comp (map add-column-operators)
+                        (clojure.core/filter :operators))
+                  (lib.metadata.calculation/visible-columns query stage-number stage))
+         existing-filters (filters query stage-number)]
+     (cond
+       (empty? columns)
+       nil
+
+       (empty? existing-filters)
+       (vec columns)
+
+       :else
+       (let [matching (transduce
+                       (keep-indexed (fn [index a-filter]
+                                       (when-let [a-ref (leading-ref a-filter)]
+                                         (when-let [col (lib.equality/find-matching-column
+                                                         query stage-number a-ref columns)]
+                                           [col index]))))
+                       (completing
+                        (fn [m [col index]]
+                          (update m col (fnil conj []) index)))
+                       {}
+                       existing-filters)]
+         (mapv #(let [positions (matching %)]
+                  (cond-> %
+                    positions (assoc :filter-positions positions)))
+               columns))))))
 
 (mu/defn filter-clause :- ::lib.schema.expression/boolean
   "Returns a standalone filter clause for a `filter-operator`,
