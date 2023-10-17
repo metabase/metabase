@@ -272,6 +272,31 @@
   {:arglists '([ingested])}
   ingested-model)
 
+(def im->model
+  "Given an ingested-model, returns its model. kooky name: uningest-model"
+  ;; TODO add more than Collections
+  {"Collection" :model/Collection})
+
+(defn model-field-cover
+  "Returns exhaustive list of fields for an ingested-model. Fields that aren't in this list will produce errors if
+  they get inserted."
+  [ingested-model]
+  (some->> ingested-model im->model t2/select-one (into {}) keys set))
+
+(defn drop-extra-keys
+  "Given an ingested entity, removes keys that will not 'fit' into the current schema.
+
+  This can happen when serialization dumps generated on an earlier version of our schema are loaded into a later
+  version of the schema, e.g. when a column gets removed. (At the time of writing I am seeing this happen with
+  color on collections)."
+  [ingested]
+  (cond
+    (= "Collection" (ingested-model ingested))
+    (select-keys ingested (model-field-cover (ingested-model ingested)))
+
+    ;; more to come
+    :else ingested))
+
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
   - Drop :serdes/meta
@@ -280,7 +305,11 @@
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (dissoc ingested :serdes/meta))
+  ;; (def ingested ingested)
+  ;; (log/info (pr-str ["INGESTED in load-xform-basics:" ingested]))
+  (-> ingested
+      drop-extra-keys
+      (dissoc :serdes/meta)))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
