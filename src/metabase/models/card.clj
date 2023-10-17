@@ -27,7 +27,8 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.tools.hydrate :as t2.hydrate]
+   [metabase.models.audit-log :as audit-log]))
 
 (set! *warn-on-reflection* true)
 
@@ -564,3 +565,12 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Card
+  [{dataset? :dataset :as card} _event-type]
+  (merge (select-keys card [:name :description :database_id :table_id])
+          ;; Use `model` instead of `dataset` to mirror product terminology
+         {:model?      dataset?}))

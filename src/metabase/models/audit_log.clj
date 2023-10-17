@@ -30,16 +30,6 @@
   [_entity _event-type]
   {})
 
-;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
-;; `metabase.query-processor`
-(defmethod model-details :model/Card
-  [{dataset? :dataset, database-id :database-id, table-id :table-id, :as card} _event-type]
-  (merge (select-keys card [:name :description])
-         {:database_id database-id
-          :table_id    table-id
-          ;; Use `model` instead of `dataset` to mirror product terminology
-          :model?      dataset?}))
-
 (defn model-name
   "Given a keyword identifier for a model, returns the name to store in the database"
   [model]
