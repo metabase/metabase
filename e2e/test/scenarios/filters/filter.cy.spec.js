@@ -566,7 +566,7 @@ describe("scenarios > question > filter", () => {
 
     // Switch to custom expression
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is in the previous 30 days").click();
+    cy.findByText("Created At Previous 30 Days").click();
 
     popover().within(() => {
       cy.icon("chevronleft").click();
@@ -577,7 +577,7 @@ describe("scenarios > question > filter", () => {
 
     // Back to GUI and "Include today" should be still checked
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is in the previous 30 days").click();
+    cy.findByText("Created At Previous 30 Days").click();
     popover().within(() => {
       cy.icon("ellipsis").click();
     });
@@ -688,7 +688,7 @@ describe("scenarios > question > filter", () => {
 
     cy.button("Done").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total is less than Subtotal");
+    cy.findByText("Total < Subtotal");
   });
 
   it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {

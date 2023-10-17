@@ -26,7 +26,7 @@ describe("issue 21979", () => {
 
     cy.log("Make sure the filter references correct day in the UI");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Mondays").should("be.visible");
+    cy.findByText("Created At excludes Monday").should("be.visible");
 
     cy.button("Visualize").click();
     cy.wait("@dataset");
@@ -38,7 +38,7 @@ describe("issue 21979", () => {
 
     cy.log("Make sure we can re-enable the excluded filter");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Mondays").click();
+    cy.findByText("Created At excludes Monday").click();
 
     popover().within(() => {
       cy.findByText("Monday").click();
@@ -49,7 +49,7 @@ describe("issue 21979", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At excludes Thursdays").should("be.visible");
+    cy.findByText("Created At excludes Thursday").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Enormous Marble Wallet").should("be.visible");
   });
