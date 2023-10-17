@@ -1,6 +1,6 @@
 (ns metabase.shared.util.internal.time
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.public-settings :as public-settings]
    [metabase.shared.util.internal.time-common :as common])
   (:import

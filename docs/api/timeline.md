@@ -55,7 +55,7 @@ Create a new [[Timeline]].
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`icon`** value may be nil, or if non-nil, value must be one of: `balloons`, `bell`, `cloud`, `mail`, `star`, `warning`.
+*  **`icon`** value may be nil, or if non-nil, value must be one of: `cake`, `bell`, `cloud`, `mail`, `star`, `warning`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
@@ -76,7 +76,7 @@ Update the [[Timeline]] with `id`. Returns the timeline without events. Archivin
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`icon`** value may be nil, or if non-nil, value must be one of: `balloons`, `bell`, `cloud`, `mail`, `star`, `warning`.
+*  **`icon`** value may be nil, or if non-nil, value must be one of: `cake`, `bell`, `cloud`, `mail`, `star`, `warning`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 

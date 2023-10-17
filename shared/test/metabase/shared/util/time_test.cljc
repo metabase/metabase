@@ -4,7 +4,7 @@
    [metabase.shared.util.internal.time :as internal]
    [metabase.shared.util.time :as shared.ut]
    #?@(:cljs [["moment" :as moment]]
-       :clj  [[java-time :as t]]))
+       :clj  [[java-time.api :as t]]))
   #?(:clj (:import java.util.Locale)))
 
 (defn- from [time-str]

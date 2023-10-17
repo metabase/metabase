@@ -34,7 +34,6 @@ import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 import {
-  AnimatableContent,
   MainFormContainer,
   SecondaryFormContainer,
   FormTabsContainer,
@@ -157,13 +156,10 @@ function DatasetFieldMetadataSidebar({
   modelIndexes,
 }) {
   const displayNameInputRef = useRef();
-  const [shouldAnimateFieldChange, setShouldAnimateFieldChange] =
-    useState(false);
   const previousField = usePrevious(field);
 
   useEffect(() => {
     if (!isSameField(field.field_ref, previousField?.field_ref)) {
-      setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
         if (_.isFunction(displayNameInputRef.current?.select)) {
@@ -241,10 +237,6 @@ function DatasetFieldMetadataSidebar({
     [isLastField, handleFirstFieldFocus],
   );
 
-  const onFieldChangeAnimationEnd = useCallback(() => {
-    setShouldAnimateFieldChange(false);
-  }, []);
-
   const onFieldMetadataChangeDebounced = useMemo(
     () => _.debounce(onFieldMetadataChange, 500),
     [onFieldMetadataChange],
@@ -318,85 +310,80 @@ function DatasetFieldMetadataSidebar({
 
   return (
     <SidebarContent>
-      <AnimatableContent
-        animated={shouldAnimateFieldChange}
-        onAnimationEnd={onFieldChangeAnimationEnd}
+      <RootForm
+        form={form}
+        initialValues={initialValues}
+        overwriteOnInitialValuesChange
       >
-        <RootForm
-          form={form}
-          initialValues={initialValues}
-          overwriteOnInitialValuesChange
-        >
-          {({ Form, FormField }) => (
-            <Form>
-              <MainFormContainer>
+        {({ Form, FormField }) => (
+          <Form>
+            <MainFormContainer>
+              <FormField
+                name="display_name"
+                onChange={onDisplayNameChange}
+                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                ref={displayNameInputRef}
+              />
+              <FormField
+                name="description"
+                onChange={onDescriptionChange}
+                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+              />
+              {dataset.isNative() && (
                 <FormField
-                  name="display_name"
-                  onChange={onDisplayNameChange}
+                  name="id"
+                  tableId={field.table_id}
+                  onChange={onMappedDatabaseColumnChange}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                  ref={displayNameInputRef}
                 />
-                <FormField
-                  name="description"
-                  onChange={onDescriptionChange}
-                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                />
-                {dataset.isNative() && (
-                  <FormField
-                    name="id"
-                    tableId={field.table_id}
-                    onChange={onMappedDatabaseColumnChange}
-                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                  />
-                )}
-                <FormField
-                  name="semantic_type"
-                  onChange={onSemanticTypeChange}
-                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                  onKeyDown={onLastEssentialFieldKeyDown}
-                />
-                <FormField
-                  name="fk_target_field_id"
-                  onChange={onFKTargetFieldChange}
-                />
-              </MainFormContainer>
-              {hasColumnFormattingOptions && (
-                <FormTabsContainer>
-                  <Radio
-                    value={tab}
-                    options={TAB_OPTIONS}
-                    onChange={setTab}
-                    variant="underlined"
-                  />
-                </FormTabsContainer>
               )}
-              <Divider />
-              <SecondaryFormContainer>
-                {tab === TAB.SETTINGS ? (
-                  <Fragment>
-                    <FormField
-                      name="visibility_type"
-                      onChange={onVisibilityTypeChange}
-                    />
-                    <ViewAsFieldContainer>
-                      <ColumnSettings
-                        {...columnSettingsProps}
-                        allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
-                      />
-                    </ViewAsFieldContainer>
-                  </Fragment>
-                ) : (
-                  <ColumnSettings
-                    {...columnSettingsProps}
-                    denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+              <FormField
+                name="semantic_type"
+                onChange={onSemanticTypeChange}
+                tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                onKeyDown={onLastEssentialFieldKeyDown}
+              />
+              <FormField
+                name="fk_target_field_id"
+                onChange={onFKTargetFieldChange}
+              />
+            </MainFormContainer>
+            {hasColumnFormattingOptions && (
+              <FormTabsContainer>
+                <Radio
+                  value={tab}
+                  options={TAB_OPTIONS}
+                  onChange={setTab}
+                  variant="underlined"
+                />
+              </FormTabsContainer>
+            )}
+            <Divider />
+            <SecondaryFormContainer>
+              {tab === TAB.SETTINGS ? (
+                <Fragment>
+                  <FormField
+                    name="visibility_type"
+                    onChange={onVisibilityTypeChange}
                   />
-                )}
-                <FormField name="should_index" onChange={onIndexChange} />
-              </SecondaryFormContainer>
-            </Form>
-          )}
-        </RootForm>
-      </AnimatableContent>
+                  <ViewAsFieldContainer>
+                    <ColumnSettings
+                      {...columnSettingsProps}
+                      allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
+                    />
+                  </ViewAsFieldContainer>
+                </Fragment>
+              ) : (
+                <ColumnSettings
+                  {...columnSettingsProps}
+                  denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                />
+              )}
+              <FormField name="should_index" onChange={onIndexChange} />
+            </SecondaryFormContainer>
+          </Form>
+        )}
+      </RootForm>
     </SidebarContent>
   );
 }

@@ -113,7 +113,7 @@ interface DataFieldsPickerProps {
   updateQuery: (query: Lib.Query) => Promise<void>;
 }
 
-const DataFieldsPicker = ({
+export const DataFieldsPicker = ({
   query,
   stageIndex,
   updateQuery,
@@ -123,35 +123,20 @@ const DataFieldsPicker = ({
     [query, stageIndex],
   );
 
-  const columnsInfo = useMemo(
-    () => columns.map(column => Lib.displayInfo(query, stageIndex, column)),
-    [query, stageIndex, columns],
-  );
-
-  const isAll = useMemo(
-    () => columnsInfo.every(columnInfo => columnInfo.selected),
-    [columnsInfo],
-  );
-
-  const isNone = useMemo(
-    () => columnsInfo.every(columnInfo => !columnInfo.selected),
-    [columnsInfo],
-  );
-
-  const isDisabledDeselection = useMemo(
-    () => columnsInfo.filter(columnInfo => columnInfo.selected).length <= 1,
-    [columnsInfo],
-  );
-
   const handleToggle = (changedIndex: number, isSelected: boolean) => {
-    const nextColumns = columns.filter((_, currentIndex) =>
-      currentIndex === changedIndex
-        ? isSelected
-        : columnsInfo[currentIndex].selected,
-    );
+    const nextColumns = columns.filter((_, currentIndex) => {
+      if (currentIndex === changedIndex) {
+        return isSelected;
+      }
+      const column = columns[currentIndex];
+      return Lib.displayInfo(query, stageIndex, column).selected;
+    });
     const nextQuery = Lib.withFields(query, stageIndex, nextColumns);
     updateQuery(nextQuery);
   };
+
+  const checkColumnSelected = (column: Lib.ColumnMetadata) =>
+    !!Lib.displayInfo(query, stageIndex, column).selected;
 
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
@@ -169,10 +154,10 @@ const DataFieldsPicker = ({
       triggerElement={FieldsPickerIcon}
     >
       <FieldPicker
-        columnsInfo={columnsInfo}
-        isAll={isAll}
-        isNone={isNone}
-        isDisabledDeselection={isDisabledDeselection}
+        query={query}
+        stageIndex={stageIndex}
+        columns={columns}
+        isColumnSelected={checkColumnSelected}
         onToggle={handleToggle}
         onSelectAll={handleSelectAll}
         onSelectNone={handleSelectNone}

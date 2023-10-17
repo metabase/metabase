@@ -602,10 +602,10 @@
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
-  (mt/with-temp [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
-                 Table       {table-id :id}  {:db_id db-id}
-                 Field       {field-id :id}  {:table_id table-id}
-                 FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
+  (mt/with-temp! [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
+                  Table       {table-id :id}  {:db_id db-id}
+                  Field       {field-id :id}  {:table_id table-id}
+                  FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
     (with-redefs [api.database/*rescan-values-async* false]
       (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
         (with-all-users-data-perms {db-id {:details :yes}}
