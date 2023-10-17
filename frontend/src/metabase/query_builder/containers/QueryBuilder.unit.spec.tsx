@@ -604,6 +604,7 @@ describe("QueryBuilder", () => {
         setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
         await startNewNotebookModel();
+        await waitForSaveQuestionToBeEnabled();
 
         userEvent.click(screen.getByRole("button", { name: "Save" }));
         userEvent.click(
@@ -737,6 +738,12 @@ describe("QueryBuilder", () => {
           expect(
             screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
+
+          history.goBack();
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
         });
       });
 
@@ -831,6 +838,12 @@ describe("QueryBuilder", () => {
               `/model/${TEST_MODEL_CARD_SLUG}`,
             );
           });
+
+          expect(
+            screen.queryByTestId("leave-confirmation"),
+          ).not.toBeInTheDocument();
+
+          history.goBack();
 
           expect(
             screen.queryByTestId("leave-confirmation"),
