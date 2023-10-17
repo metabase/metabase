@@ -42,9 +42,9 @@ Ask Metabot to generate a SQL query given a prompt about a given model.
 
 ### PARAMS:
 
-*  **`model-id`** value must be an integer greater than zero.
+*  **`model-id`** 
 
-*  **`question`** value must be a non-blank string.
+*  **`question`**
 
 ---
 
