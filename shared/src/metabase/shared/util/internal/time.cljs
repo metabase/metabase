@@ -70,7 +70,7 @@
     [(.startOf c1 (name unit))
      (cond-> c2
        (> n 1) (.add (dec n) (name unit))
-       :always (.endOf (name unit)))]))
+       :always ^moment/Moment (.endOf (name unit)))]))
 
 ;; NB: Only the :default for to-range is needed in CLJS, since Moment's startOf and endOf methods are doing the work.
 
@@ -276,7 +276,7 @@
                      (and offset-n offset-unit) (apply-offset offset-n offset-unit))
         pos-n (cond-> (abs n)
                 include-current inc)
-        date-ranges (map #(.format % (if (#{:hour :minut} unit) "YYYY-MM-DDTHH:mm" "YYYY-MM-DD"))
+        date-ranges (map #(.format % (if (#{:hour :minute} unit) "YYYY-MM-DDTHH:mm" "YYYY-MM-DD"))
                          (common/to-range offset-now
                                           {:unit unit
                                            :n pos-n

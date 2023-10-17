@@ -287,4 +287,14 @@
       "Dec 14, 2022, 12:00 PM – 12:59 PM" -1 :hour false
       "Dec 14, 2022, 12:00 PM – 1:59 PM" -1 :hour true
       "Dec 14, 2022, 9:00 AM – 12:59 PM" -4 :hour false
-      "Dec 14, 2022, 9:00 AM – 1:59 PM" -4 :hour true)))
+      "Dec 14, 2022, 9:00 AM – 1:59 PM" -4 :hour true
+
+      "Dec 14, 2022, 1:19 PM" 1 :minute false
+      "Dec 14, 2022, 1:18 PM – 1:19 PM" 1 :minute true
+      "Dec 14, 2022, 1:19 PM – 1:22 PM" 4 :minute false
+      "Dec 14, 2022, 1:18 PM – 1:22 PM" 4 :minute true
+
+      "Dec 14, 2022, 1:17 PM" -1 :minute false
+      "Dec 14, 2022, 1:17 PM – 1:18 PM" -1 :minute true
+      "Dec 14, 2022, 1:14 PM – 1:17 PM" -4 :minute false
+      "Dec 14, 2022, 1:14 PM – 1:18 PM" -4 :minute true)))
