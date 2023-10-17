@@ -326,8 +326,6 @@ export const tabsReducer = createReducer<DashboardState>(
 
         dashCard.dashboard_tab_id = destTabId;
         dashCard.isDirty = true;
-
-        // _selectTab({ state, tabId: destTabId }); // TODO @Nicolo please replace all usages of `state.selectedTabId =` with this
       },
     );
 
