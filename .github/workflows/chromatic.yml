@@ -34,7 +34,7 @@ jobs:
         uses: dorny/paths-filter@v2.11.1
         id: changes
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           filters: .github/file-paths.yaml
 
   fe-chromatic:
