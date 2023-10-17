@@ -205,7 +205,7 @@
   (.toDays (t/duration before after)))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d\d\d?)?)?" input))
+  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+?)?)?" input))
 
 (defn- matches-date? [input]
   (re-matches #"\d\d\d\d-\d\d-\d\d" input))
