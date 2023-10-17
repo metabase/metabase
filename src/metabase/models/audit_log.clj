@@ -4,14 +4,9 @@
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [metabase.api.common :as api]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity]
-   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
@@ -37,19 +32,13 @@
 
 ;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
 ;; `metabase.query-processor`
-(defmethod model-details Card
-  [{query :dataset_query, dataset? :dataset :as card} _event-type]
-  (let [query (when (seq query)
-                (try (qp/preprocess query)
-                     (catch Throwable e
-                       (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
-    (merge (select-keys card [:name :description])
-           {:database_id database-id
-            :table_id    table-id
-            ;; Use `model` instead of `dataset` to mirror product terminology
-            :model?      dataset?})))
+(defmethod model-details :model/Card
+  [{dataset? :dataset, database-id :database-id, table-id :table-id, :as card} _event-type]
+  (merge (select-keys card [:name :description])
+         {:database_id database-id
+          :table_id    table-id
+          ;; Use `model` instead of `dataset` to mirror product terminology
+          :model?      dataset?}))
 
 (defn model-name
   "Given a keyword identifier for a model, returns the name to store in the database"

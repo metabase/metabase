@@ -1091,3 +1091,57 @@
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
                           (:cause (Throwable->map e)))))))))
+
+(defsetting test-setting-audit-never
+ "Test setting with no auditing"
+  :audit :never)
+
+(defsetting test-setting-audit-raw-value
+  "Test setting with auditing raw values"
+  :type  :integer
+  :audit :raw-value)
+
+(defsetting test-setting-audit-getter
+  "Test setting with auditing values returned from getter"
+  :type :string
+  :getter (constantly "GETTER VALUE")
+  :audit :getter)
+
+(deftest setting-audit-test
+  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                                            :topic :setting-update
+                                            {:order-by [[:id :desc]]})]
+    (testing "Settings are audited by default without their value included"
+      (test-setting-1! "DON'T INCLUDE THIS VALUE")
+      (is (= {:topic   :setting-update
+              :user_id  nil
+              :model   "Setting"
+              :details {:key "test-setting-1"}}
+             (last-audit-event-fn))))
+
+    (testing "Auditing can be disabled with `:audit :never`"
+      (test-setting-audit-never! "DON'T AUDIT")
+      (is (not= "DON'T AUDIT"
+                (-> (last-audit-event-fn) :details :key))))
+
+    (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
+      (mt/with-temporary-setting-values [test-setting-audit-raw-value 99]
+       (test-setting-audit-raw-value! 100)
+       (is (= {:topic   :setting-update
+               :user_id  nil
+               :model   "Setting"
+               :details {:key            "test-setting-audit-raw-value"
+                         :previous-value "99"
+                         :new-value      "100"}}
+              (last-audit-event-fn)))))
+
+    (testing "Values returned from the setting's getter can be logged with `:audit :getter`"
+      (mt/with-temporary-setting-values [test-setting-audit-getter "PREVIOUS VALUE"]
+       (test-setting-audit-getter! "NEW RAW VALUE")
+       (is (= {:topic   :setting-update
+               :user_id  nil
+               :model   "Setting"
+               :details {:key            "test-setting-audit-getter"
+                         :previous-value "GETTER VALUE"
+                         :new-value      "GETTER VALUE"}}
+              (last-audit-event-fn)))))))

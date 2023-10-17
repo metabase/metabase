@@ -819,17 +819,18 @@
                                      :new-value      new-value}))
                                  api/*current-user-id*
                                  :model/Setting))
+
 (defn- set-with-audit-logging!
   [{:keys [name setter getter audit] :as setting} new-value]
   (if (= audit :never)
     (setter new-value)
-    (let [value-fn       #(condp = audit
+    (let [audit-value-fn #(condp = audit
                             :no-value  nil
                             :raw-value (get-raw-value setting)
                             :getter    (getter))
-          previous-value (value-fn)]
-      (setter new-value)
-      (audit-setting-change! name audit previous-value (value-fn)))))
+          previous-value (audit-value-fn)]
+      (u/prog1 (setter new-value)
+       (audit-setting-change! name audit previous-value (audit-value-fn))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -885,7 +886,7 @@
                  :user-local     :never
                  :deprecated     nil
                  :enabled?       nil
-                 :audit          :never}
+                 :audit          :no-value}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
