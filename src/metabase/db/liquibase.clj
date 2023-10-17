@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.connection :as t2.conn])
   (:import
    (java.io StringWriter)
@@ -119,10 +120,10 @@
    (ClassLoaderResourceAccessor. (classloader/the-classloader))
    database))
 
-(s/defn do-with-liquibase
+(mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
-  [conn-or-data-source :- (s/cond-pre java.sql.Connection javax.sql.DataSource)
-   f]
+  [conn-or-data-source :- [:or (ms/InstanceOfClass java.sql.Connection) (ms/InstanceOfClass javax.sql.DataSource)]
+   f                   :- fn?]
   ;; Custom migrations use toucan2, so we need to make sure it uses the same connection with liquibase
   (binding [t2.conn/*current-connectable* conn-or-data-source]
     (if (instance? java.sql.Connection conn-or-data-source)
@@ -259,7 +260,7 @@
       liquibase
       #(.run ^ChangeLogIterator log-iterator update-visitor runtime-env)))))
 
-(s/defn force-migrate-up-if-needed!
+(mu/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
   1.  This will force release the locks before start running
@@ -267,7 +268,7 @@
 
   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in
   #3295."
-  [liquibase :- Liquibase]
+  [^Liquibase liquibase :- (ms/InstanceOfClass Liquibase)]
   ;; have to do this before clear the checksums else it will wait for locks to be released
   (release-lock-if-needed! liquibase)
   (.clearCheckSums liquibase)
@@ -302,7 +303,7 @@
             (.setFailOnError change-set fail-on-error?)))))))
 
 
-(s/defn consolidate-liquibase-changesets!
+(mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
   Previously migrations where stored in many small files which added seconds per file to the startup time because
@@ -310,7 +311,7 @@
   reflect that these migrations where moved to a single file.
 
   see https://github.com/metabase/metabase/issues/3715"
-  [conn :- java.sql.Connection]
+  [conn :- (ms/InstanceOfClass java.sql.Connection)]
   (let [liquibase-table-name (changelog-table-name conn)
         statement            (format "UPDATE %s SET FILENAME = CASE WHEN ID < ? THEN ? ELSE ? END" liquibase-table-name)]
     (when-not (fresh-install? conn)

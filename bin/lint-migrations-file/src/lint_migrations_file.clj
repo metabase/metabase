@@ -1,7 +1,6 @@
 (ns lint-migrations-file
   (:require
    [change-set.strict]
-   [change-set.unstrict]
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
@@ -9,8 +8,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]))
 
-(comment change-set.strict/keep-me
-         change-set.unstrict/keep-me)
+(comment change-set.strict/keep-me)
 
 ;; just print ordered maps like normal maps.
 (defmethod print-method flatland.ordered.map.OrderedMap
@@ -20,25 +18,17 @@
 (s/def ::migrations
   (s/keys :req-un [::databaseChangeLog]))
 
-;; some change set IDs are integers, and some are strings!!!!!
-
-(defn- maybe-parse-to-int [x]
-  (if (and (string? x)
-           (re-matches #"^\d+$" x))
-    (Integer/parseInt x)
-    x))
-
 (defn- change-set-ids
   "Get the sequence of all change set IDs. String IDs that can be parsed as integers will be returned as integers;
   everything else will be returned as a String."
   [change-log]
   (for [{{id :id} :changeSet} change-log
         :when id]
-    (maybe-parse-to-int id)))
+    id))
 
 (defn distinct-change-set-ids? [change-log]
   ;; there are actually two migration 32s, so that's the only exception we're allowing.
-  (let [ids (remove (partial = 32) (change-set-ids change-log))]
+  (let [ids (change-set-ids change-log)]
     ;; can't apply distinct? with so many IDs
     (= (count ids) (count (set ids)))))
 
@@ -50,7 +40,7 @@
     (compare x y)
     (compare (str x) (str y))))
 
-(defn change-set-ids-in-order? [change-log]
+(defn- change-set-ids-in-order? [change-log]
   (let [ids (change-set-ids change-log)]
     (= ids (sort-by identity compare-ids ids))))
 
@@ -101,11 +91,13 @@
       [id change-set])
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
-                                                      ;; only enforced in 42+ with new-style migration IDs.
                                                       (string? id)
                                                       (str/starts-with? id "v"))]
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
+
+(s/def ::changeSet
+  (s/spec :change-set.strict/change-set))
 
 (s/def ::databaseChangeLog
   (s/and distinct-change-set-ids?
@@ -115,32 +107,7 @@
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
 
-(def strict-change-set-cutoff
-  "All change sets with an ID >= this number will be validated with the strict spec."
-  172)
-
-(defn change-set-validation-level [{id :id}]
-  (or (when-let [id (maybe-parse-to-int id)]
-        (when (and (int? id)
-                   (< id strict-change-set-cutoff))
-          :unstrict))
-      :strict))
-
-(defmulti change-set
-  change-set-validation-level)
-
-(defmethod change-set :strict
-  [_]
-  :change-set.strict/change-set)
-
-(defmethod change-set :unstrict
-  [_]
-  :change-set.unstrict/change-set)
-
-(s/def ::changeSet
-  (s/multi-spec change-set change-set-validation-level))
-
-(defn validate-migrations [migrations]
+(defn- validate-migrations [migrations]
   (when (= (s/conform ::migrations migrations) ::s/invalid)
     (let [data (s/explain-data ::migrations migrations)]
       (throw (ex-info (str "Validation failed:\n" (with-out-str (pprint/pprint (mapv #(dissoc % :val)
@@ -149,7 +116,7 @@
   :ok)
 
 (def filename
-  "../../resources/migrations/000_migrations.yaml")
+  "../../resources/migrations/001_update_migrations.yaml")
 
 (defn migrations []
   (let [file (io/file filename)]

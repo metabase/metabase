@@ -1,3 +1,10 @@
+#
+# *** IMPORTANT: new migrations should be placed in 001_update_migrations.yml ***
+#
+# This file contains the legacy migrations that used to bootstrap metabase, now this file should be
+# replaced with the SQL file in resources/initialization.
+# In order to keep instances running metabase < 45 able to upgrade to the latest, we need to keep this file here.
+
 databaseChangeLog:
   - property:
       name: timestamp_type
@@ -12058,41 +12065,3 @@ databaseChangeLog:
         - dropColumn:
             tableName: native_query_snippet
             columnName: template_tags
-
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
-########################################################################################################################
-#
-# ADVICE:
-#
-# 1) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
-#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
-#    this check but it's nicer to know now instead of waiting for CI.
-#
-#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
-#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
-#       automatically and the migrations linter will check for the presence of rollback where required as
-#       much as possible.
-#
-# 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
-#    migration so someone else doesn't steal your ID number
-#
-# 3) Migrations IDs should follow the format
-#
-#    vMM.mm-NNN
-#
-#    where
-#
-#    M = major version
-#    m = minor version
-#    N = migration number relative to that major+minor version
-#
-#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
-#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
-#
-#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
-#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
-#
-# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
-#
-########################################################################################################################

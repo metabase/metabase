@@ -3313,11 +3313,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValue: '#31698A'
+
   - changeSet:
       id: v48.00-030
       author: qnkhuat
       comment: re-consolidate change log filename on downgrade
-      changes: []
+      changes:
+        - sql:
+          sql: select 1;
       rollback:
         - sql:
           dbms: h2,mysql,mariadb
