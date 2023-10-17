@@ -48,8 +48,8 @@ export const getXAxisType = (settings: ComputedVisualizationSettings) => {
 
 export const buildDimensionAxis = (
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
   column: RemappingHydratedDatasetColumn,
+  renderingContext: RenderingContext,
 ): CartesianAxisOption => {
   const { getColor } = renderingContext;
   const axisType = getXAxisType(settings);
@@ -99,8 +99,8 @@ export const buildDimensionAxis = (
 
 const buildMetricsAxes = (
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
   column: RemappingHydratedDatasetColumn,
+  renderingContext: RenderingContext,
 ): CartesianAxisOption[] => {
   const { getColor } = renderingContext;
   const formatter = (value: unknown) => {
@@ -111,7 +111,6 @@ const buildMetricsAxes = (
   };
 
   // TODO: support Y-axis split
-
   return [
     {
       ...getAxisNameDefaultOption(
@@ -127,9 +126,7 @@ const buildMetricsAxes = (
       },
       axisLabel: {
         ...getTicksDefaultOption(renderingContext),
-        // TODO: figure out EChart types
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
+        // @ts-expect-error TODO: figure out EChart types
         formatter: (value: string) => {
           return formatter(value);
         },
@@ -146,13 +143,13 @@ export const buildAxes = (
   return {
     xAxis: buildDimensionAxis(
       settings,
-      renderingContext,
       cardSeriesModel.dimension.column,
+      renderingContext,
     ),
     yAxis: buildMetricsAxes(
       settings,
-      renderingContext,
       cardSeriesModel.metrics[0].column,
+      renderingContext,
     ),
   };
 };

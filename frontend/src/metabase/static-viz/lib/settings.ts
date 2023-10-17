@@ -29,7 +29,7 @@ const getColumnSettings = (
 export const getCommonStaticVizSettings = (
   rawSeries: RawSeries,
   dashcardSettings: VisualizationSettings,
-) => {
+): ComputedVisualizationSettings => {
   const [{ card }] = rawSeries;
 
   const settings: ComputedVisualizationSettings = {

@@ -34,6 +34,8 @@ export const groupDataset = (
 
   for (const row of rows) {
     const dimensionValue = row[dimensionIndex];
+
+    // Get the existing datum by the dimension value if exists
     const datum = groupedData.get(dimensionValue) ?? {
       [dimensionColumn.name]: dimensionValue,
     };
@@ -46,9 +48,11 @@ export const groupDataset = (
       const rowValue = row[columnIndex];
       const seriesKey = getDatasetSeriesKey(column);
 
+      // Aggregate values of metric columns, simply, ones with summable numbers
       if (isMetric(column)) {
         datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
 
+        // If breakout is defined, create an additional series key for each breakout
         if (breakoutIndex != null) {
           const breakoutSeriesKey = getDatasetSeriesKey(
             column,

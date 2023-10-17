@@ -17,7 +17,7 @@ import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
 import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
 import { EChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { buildCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 
 Object.assign(ComboChartPlayground, {
   uiName: "Combo EChart",
@@ -81,7 +81,7 @@ export function ComboChartPlayground({
 
   const option = useMemo(
     () =>
-      buildCartesianChartOption(chartModel, settings, renderingContext as any),
+      getCartesianChartOption(chartModel, settings, renderingContext as any),
     [chartModel, settings, renderingContext],
   );
 
