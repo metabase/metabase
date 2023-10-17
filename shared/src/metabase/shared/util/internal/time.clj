@@ -290,7 +290,7 @@
             hour-matches? (= (t/format "H" lhs) (t/format "H" rhs))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches? day-matches? hour-matches?)
-                                ["MMM d, yyyy, h:mm a" " h:mm a"]
+                                ["MMM d, yyyy, h:mm a " " h:mm a"]
 
                                 (and year-matches? month-matches? day-matches?)
                                 ["MMM d, yyyy, h:mm a " " h:mm a"]
@@ -331,7 +331,7 @@
                      (and offset-n offset-unit) (apply-offset offset-n offset-unit))
         pos-n (cond-> (abs n)
                 include-current inc)
-        date-ranges (map (comp str (if (#{:hour :minute} :unit) t/local-date-time t/local-date))
+        date-ranges (map (comp str (if (#{:hour :minute} unit) t/local-date-time t/local-date))
                          (common/to-range offset-now
                                           {:unit unit
                                            :n pos-n
