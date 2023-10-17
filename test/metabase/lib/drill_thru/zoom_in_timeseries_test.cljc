@@ -3,8 +3,7 @@
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.drill-thru.zoom-in-timeseries
-    :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -79,3 +78,30 @@
                                               [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
                                               "2022-04-01T00:00:00"]]}]}
                     query''))))))))
+
+;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
+(deftest ^:parallel returns-zoom-in-timeseries-test-1
+  #_(lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :header
+      :query-type  :aggregated
+      :column-name "count"
+      :expected    {:type :drill-thru/zoom-in.timeseries}}))
+
+;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
+(deftest ^:parallel returns-zoom-in-timeseries-test-2
+  #_(lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/zoom-in.timeseries
+    :click-type  :header
+    :query-type  :aggregated
+    :column-name "max"
+    :expected    {:type :drill-thru/zoom-in.timeseries}}))
+
+;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
+(deftest ^:parallel returns-zoom-in-timeseries-test-3
+  #_(lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :header
+      :query-type  :aggregated
+      :column-name "sum"
+      :expected    {:type :drill-thru/zoom-in.timeseries}}))

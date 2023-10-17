@@ -410,7 +410,10 @@
            (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
   (testing "multiple defaults for the same key"
     (is (= {:x nil, :y 1, :z 2}
-           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4))))
+  (testing "preserves metadata"
+    (is (= {:m true}
+           (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
 (deftest ^:parallel classify-changes-test
   (testing "classify correctly"
