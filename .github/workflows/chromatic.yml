@@ -39,7 +39,7 @@ jobs:
 
   fe-chromatic:
     needs: [authorize, files-changed]
-    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    if: contains(github.event.pull_request_target.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
