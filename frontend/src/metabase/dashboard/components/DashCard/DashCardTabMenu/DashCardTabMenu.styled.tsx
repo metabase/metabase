@@ -1,18 +1,5 @@
 import styled from "@emotion/styled";
-import type { HTMLAttributes } from "react";
-import { Menu } from "metabase/ui";
 import DashCardActionButton from "../DashCardActionButtons/DashCardActionButton";
-
-export const ItemWithMaxWidth = styled(Menu.Item)<
-  HTMLAttributes<HTMLButtonElement>
->`
-  max-width: 75ch;
-  & div {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-`;
 
 /**
  * This is a button with a bigger "hover area" to make it easier
