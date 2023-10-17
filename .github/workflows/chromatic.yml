@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "master"
-  pull_request:
+  pull_request_target:
     types: [synchronize, labeled, unlabeled]
 
 concurrency:
@@ -12,8 +12,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  authorize:
+    environment:
+      ${{ github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      'external' || 'internal' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - run: echo "true"
+
   files-changed:
     name: Check which files changed
+    needs: [authorize]
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
@@ -29,7 +39,7 @@ jobs:
           filters: .github/file-paths.yaml
 
   fe-chromatic:
-    needs: files-changed
+    needs: [authorize, files-changed]
     if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
     runs-on: ubuntu-22.04
     steps:
