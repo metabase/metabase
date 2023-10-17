@@ -43,22 +43,21 @@
 (deftest rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
     ;; using test-migrations to excercise all drivers
-    (impl/test-migrations ["v45.00-001"] [_]
-      (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            migrate!    (partial db.setup/migrate! db-type data-source)
+    (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
+      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
             get-last-id (fn []
                           (-> {:connection (.getConnection data-source)}
                               (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
-        (migrate! :up)
+        (migrate!)
         (let [latest-id (get-last-id)]
           ;; This is an unusual usage of db.setup/migrate! with an explicit version, which is not currently
           ;; available via the CLI, but is used here to rollback to the lowest version we support.
           (migrate! :down 45)
-            ;; will always be the last v44 migration
+          ;; will always be the last v44 migration
           (is (= "v45.00-057" (get-last-id)))
-          (migrate! :up)
+          (migrate!)
           (is (= latest-id (get-last-id))))))))
 
 (defn- create-raw-user!
