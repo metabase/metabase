@@ -156,9 +156,7 @@
    (fn [_] {:creator_id  (rasta-id)
             :definition  {}
             :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"
-            :table_id    (try (data/id :checkins)
-                              (catch Exception _))})
+            :name        "Toucans in the rainforest"})
 
    :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)

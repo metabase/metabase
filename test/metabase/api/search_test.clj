@@ -142,7 +142,8 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :dataset true)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Metric      metric         (data-map "metric %s metric")
+                   Metric      metric         (assoc (data-map "metric %s metric")
+                                                     :table_id (mt/id :checkins))
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -532,7 +533,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
-                     Metric      _ (archived {:name "metric test metric 2"})
+                     Metric      _ (archived {:name     "metric test metric 2"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test"))))))
@@ -552,7 +554,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name "metric test metric"})
+                     Metric      _ (archived {:name     "metric test metric"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
@@ -568,7 +571,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name "metric test metric"})
+                     Metric      _ (archived {:name     "metric test metric"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
