@@ -1,3 +1,41 @@
+;; # API Endpoints at Metabase
+;;
+;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
+;;
+;; <pre><code>
+;; (ns metabase.api.dashboard ...)
+;;
+;; (api/defendpoint GET "/"
+;;  "Get `Dashboards`. With filter option `f`..."
+;;  [f]
+;;  {f [:maybe [:enum "all" "mine" "archived"]]}
+;;  (let ...))
+;;
+;;  ; ...
+;;
+;; (api/define-routes)
+;; </code></pre>
+;;
+;; As you can see, the arguments are:
+;;
+;; * **The HTTP verb.**  (`GET`, `PUT`, `POST`, etc)
+;; * **The route.** This will automatically have `api` and the namespace prefixed to it, so in this case `"/"` is defining
+;;   the route for `/api/dashboard/`.
+;; * **A docstring.** Apart from being helpful to us, this is used for API documentation for third-party devs, so please
+;;   be thorough!
+;; * **A schema.** This uses [Malli's vector syntax](https://github.com/metosin/malli#vector-syntax). This is documented
+;;   on Malli's page, of course, but we also have some of our own schemas defined. Start by looking in
+;;   [`metabase.util.malli.schema`](#metabase.util.malli.schema)
+;; * **The parameters.** This uses Compojure's
+;;   [destructuring syntax](https://github.com/weavejester/compojure/wiki/Destructuring-Syntax) (a superset of Clojure's
+;;   normal destructuring syntax).
+;; * **The actual code for the endpoint.** The returned value could be one of several types. The Right Thing (such as
+;;   converting to JSON or setting an appropriate status code) usually happens by default. Consult
+;;   [Compojure's documentation](https://github.com/weavejester/compojure/blob/master/src/compojure/response.clj),
+;;   but it may be more instructive to look at examples in our codebase.
+;;
+;;  <hr />
+
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
@@ -272,7 +310,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
@@ -331,9 +369,9 @@
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
-  (for [[symb varr] (ns-publics nmspace)
+  (for [[_symb varr] (ns-publics nmspace)
         :when       (:is-endpoint? (meta varr))]
-    symb))
+    varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str

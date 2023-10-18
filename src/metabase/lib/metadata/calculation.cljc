@@ -359,7 +359,7 @@
         :is-implicitly-joinable (= source :source/implicitly-joinable)})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (select-keys x-metadata [:breakout-position :order-by-position]))))
+     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]

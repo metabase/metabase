@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 
@@ -16,7 +16,7 @@ import {
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockQueryAction,
   createMockCard,
   createMockParameter,
@@ -67,7 +67,7 @@ const actions2 = [
 
 const implicitActions = createMockImplicitCUDActions(models[1].id, 123);
 
-const dashcard = createMockDashboardOrderedCard();
+const dashcard = createMockDashboardCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
 const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
@@ -75,7 +75,7 @@ const actionDashcardWithAction = createMockActionDashboardCard({
 });
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
   parameters: [dashboardParameter],
 });
 
@@ -470,7 +470,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
       dashcard: actionDashcardWithAction,
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
     const implicitAction = screen.getByTestId(

@@ -24,10 +24,12 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
+             (not= (:lib/source column) :source/aggregations)
              (not (lib.types.isa/primary-key? column))
              (not (lib.types.isa/structured?  column))
              (not (lib.types.isa/comment?     column))
-             (not (lib.types.isa/description? column)))
+             (not (lib.types.isa/description? column))
+             (not (lib.breakout/breakout-column? query stage-number column)))
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/distribution
      :column    column}))

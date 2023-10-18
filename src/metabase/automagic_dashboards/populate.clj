@@ -144,7 +144,7 @@
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
-    (update dashboard :ordered_cards conj
+    (update dashboard :dashcards conj
             (merge (card-defaults)
              {:col                    y
               :row                    x
@@ -157,7 +157,7 @@
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard {:keys [text width height visualization-settings]} [x y]]
-  (update dashboard :ordered_cards conj
+  (update dashboard :dashcards conj
           (merge (card-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
@@ -317,14 +317,14 @@
 (defn- merge-filters
   [ds]
   (when (->> ds
-             (mapcat :ordered_cards)
+             (mapcat :dashcards)
              (keep (comp :table_id :card))
              distinct
              count
              (= 1))
    [(->> ds (mapcat :parameters) distinct)
     (->> ds
-         (mapcat :ordered_cards)
+         (mapcat :dashcards)
          (mapcat :parameter_mappings)
          (map #(dissoc % :card_id))
          distinct)]))
@@ -335,13 +335,13 @@
   ([target dashboard {:keys [skip-titles?]}]
    (let [[parameters parameter-mappings] (merge-filters [target dashboard])
          offset                         (->> target
-                                             :ordered_cards
+                                             :dashcards
                                              (map #(+ (:row %) (:size_y %)))
                                              (apply max -1) ; -1 so it neturalizes +1 for spacing
                                                             ; if the target dashboard is empty.
                                              inc)
          cards                        (->> dashboard
-                                           :ordered_cards
+                                           :dashcards
                                            (map #(-> %
                                                      (update :row + offset (if skip-titles?
                                                                              0
@@ -362,4 +362,4 @@
                            :visualization-settings {:dashcard.background false
                                                     :text.align_vertical :bottom}}
                           [offset 0]))
-         (update :ordered_cards concat cards)))))
+         (update :dashcards concat cards)))))

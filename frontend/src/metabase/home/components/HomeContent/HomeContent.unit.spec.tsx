@@ -17,7 +17,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   setupDatabaseCandidatesEndpoint,
@@ -56,7 +56,7 @@ const setup = async ({
 
   renderWithProviders(<HomeContent />, { storeInitialState: state });
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 };
 
 describe("HomeContent", () => {

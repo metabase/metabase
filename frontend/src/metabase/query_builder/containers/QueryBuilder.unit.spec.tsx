@@ -5,10 +5,13 @@ import fetchMock from "fetch-mock";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockColumn,
   createMockDataset,
+  createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
+  createMockResultsMetadata,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
@@ -32,17 +35,22 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
   setupModelIndexEndpoints,
+  setupCardCreateEndpoint,
+  setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import { serializeCardForUrl } from "metabase/lib/card";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import QueryBuilder from "./QueryBuilder";
 
 registerVisualizations();
@@ -184,6 +192,10 @@ const TEST_MODEL_DATASET = createMockDataset({
   running_time: 35,
 });
 
+const TEST_COLLECTION = createMockCollection();
+
+const TEST_METADATA = createMockResultsMetadata();
+
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -195,30 +207,31 @@ const TestQueryBuilder = (
   );
 };
 
-const TestHome = () => <div />;
+const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
-function isSavedCard(card: Card | UnsavedCard): card is Card {
-  return "id" in card;
+function isSavedCard(card: Card | UnsavedCard | null): card is Card {
+  return card !== null && "id" in card;
 }
 
 interface SetupOpts {
-  card?: Card | UnsavedCard;
+  card: Card | UnsavedCard | null;
   dataset?: Dataset;
   initialRoute?: string;
 }
 
 const setup = async ({
-  card = TEST_CARD,
+  card,
   dataset = createMockDataset(),
   initialRoute = `/question${
     isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
   }`,
-}: SetupOpts = {}) => {
+}: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset(dataset);
   setupSearchEndpoints([]);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
+  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
   if (isSavedCard(card)) {
     setupCardsEndpoints([card]);
     setupCardQueryEndpoints(card, dataset);
@@ -226,12 +239,20 @@ const setup = async ({
     setupModelIndexEndpoints(card.id, []);
   }
 
+  // this workaround can be removed when metabase#34523 is fixed
+  if (card === null) {
+    fetchMock.get("path:/api/model-index", [createMockModelIndex()]);
+  }
+
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const { history } = renderWithProviders(
     <Route>
-      <Route path="/home" component={TestHome} />
+      <Route path="/" component={TestHome} />
       <Route path="/model">
+        <Route path="new" component={NewModelOptions} />
+        <Route path="query" component={TestQueryBuilder} />
+        <Route path="metadata" component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
       </Route>
@@ -248,9 +269,7 @@ const setup = async ({
     },
   );
 
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-  });
+  await waitForLoaderToBeRemoved();
 
   return {
     history: checkNotNull(history),
@@ -259,16 +278,21 @@ const setup = async ({
 };
 
 describe("QueryBuilder", () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe("rendering", () => {
     describe("renders structured queries", () => {
       it("renders a structured question in the simple mode", async () => {
-        await setup();
+        await setup({ card: TEST_CARD });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
       it("renders a structured question in the notebook mode", async () => {
         await setup({
+          card: TEST_CARD,
           initialRoute: `/question/${TEST_CARD.id}/notebook`,
         });
 
@@ -341,33 +365,32 @@ describe("QueryBuilder", () => {
   });
 
   describe("beforeunload events", () => {
-    describe("editing models", () => {
-      describe("editing queries", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
+    describe("creating models", () => {
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/model/new",
         });
 
+        await startNewNotebookModel();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      });
+    });
+
+    describe("editing models", () => {
+      describe("editing queries", () => {
         it("should trigger beforeunload event when leaving edited query", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await triggerNotebookQueryChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
           expect(mockEvent.preventDefault).toHaveBeenCalled();
           expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
         });
@@ -385,10 +408,6 @@ describe("QueryBuilder", () => {
       });
 
       describe("editing metadata", () => {
-        afterEach(() => {
-          jest.resetAllMocks();
-        });
-
         it("should trigger beforeunload event when leaving edited metadata", async () => {
           const { mockEventListener } = await setup({
             card: TEST_MODEL_CARD,
@@ -396,24 +415,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -434,52 +436,68 @@ describe("QueryBuilder", () => {
       });
     });
 
-    describe("native queries", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
+    describe("creating native questions", () => {
+      it("should trigger beforeunload event when leaving new non-empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
+      it("should not trigger beforeunload event when leaving new empty native question", async () => {
+        const { mockEventListener } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+
+        const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.returnValue).toBe(undefined);
+      });
+    });
+
+    describe("editing native questions", () => {
       it("should trigger beforeunload event when leaving edited question", async () => {
         const { mockEventListener } = await setup({
           card: TEST_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
-
-        // default native query is `SELECT 1`
-        expect(inputArea).toHaveValue("SELECT 10");
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
         expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
-      it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
+      it("should trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
         const { mockEventListener } = await setup({
           card: TEST_UNSAVED_NATIVE_CARD,
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+        expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -489,17 +507,11 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
 
-    describe("structured queries", () => {
-      afterEach(() => {
-        jest.restoreAllMocks();
-      });
-
+    describe("editing notebook questions", () => {
       it("should not trigger beforeunload event when leaving edited question which will turn the question ad-hoc", async () => {
         const { mockEventListener } = await setup({
           card: TEST_STRUCTURED_CARD,
@@ -512,9 +524,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when user tries to leave an ad-hoc structured query", async () => {
@@ -529,9 +539,7 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
 
       it("should not trigger beforeunload event when query is unedited", async () => {
@@ -541,90 +549,153 @@ describe("QueryBuilder", () => {
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
-        expect(mockEvent.returnValue).not.toEqual(
-          BEFORE_UNLOAD_UNSAVED_MESSAGE,
-        );
+        expect(mockEvent.returnValue).toEqual(undefined);
       });
     });
   });
 
   describe("unsaved changes warning", () => {
+    describe("creating models", () => {
+      it("shows custom warning modal when leaving via SPA navigation", async () => {
+        const { history } = await setup({
+          card: null,
+          initialRoute: "/",
+        });
+
+        history.push("/model/new");
+        await waitForLoaderToBeRemoved();
+
+        await startNewNotebookModel();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("shows custom warning modal when leaving via Cancel button", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving new model", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/model/new",
+        });
+        setupCardCreateEndpoint();
+        setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
+
+        await startNewNotebookModel();
+
+        userEvent.click(screen.getByRole("button", { name: "Save" }));
+        userEvent.click(
+          within(screen.getByTestId("save-question-modal")).getByRole(
+            "button",
+            { name: "Save" },
+          ),
+        );
+
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
+        const { history } = await setup({
+          card: TEST_UNSAVED_NATIVE_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(
+          `/question#${serializeCardForUrl(TEST_UNSAVED_NATIVE_CARD)}`,
+        );
+        await waitForLoaderToBeRemoved();
+
+        await triggerNativeQueryChange();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+    });
+
     describe("editing models", () => {
       describe("editing queries", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
+          await waitForLoaderToBeRemoved();
+          await triggerNotebookQueryChange();
 
           history.goBack();
 
-          expect(
-            screen.getByText("Changes were not saved"),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/query`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-          userEvent.tab();
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "{backspace}");
-          userEvent.tab();
+          await waitForLoaderToBeRemoved();
+          await triggerNotebookQueryChange();
+          await revertNotebookQueryChange();
 
           history.goBack();
 
           expect(
-            screen.queryByText("Changes were not saved"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
+        });
+
+        it("shows custom warning modal when leaving edited query via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          });
+
+          await triggerNotebookQueryChange();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+        });
+
+        it("does not show custom warning modal when leaving unedited query via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
+          });
+
+          await triggerNotebookQueryChange();
+          await revertNotebookQueryChange();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
           expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
 
@@ -634,24 +705,7 @@ describe("QueryBuilder", () => {
             initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
 
-          const rowLimitInput = await within(
-            screen.getByTestId("step-limit-0-0"),
-          ).findByPlaceholderText("Enter a limit");
-
-          userEvent.click(rowLimitInput);
-          userEvent.type(rowLimitInput, "0");
-
-          await waitFor(() => {
-            expect(rowLimitInput).toHaveValue(10);
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerNotebookQueryChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -662,12 +716,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -677,103 +726,65 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await waitForLoaderToBeRemoved();
+          await triggerMetadataChange();
 
           history.goBack();
 
-          expect(
-            screen.getByText("Changes were not saved"),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
-          ).toBeInTheDocument();
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when leaving unedited metadata via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/home",
+            initialRoute: "/",
           });
 
           history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
 
-          await waitFor(() => {
-            expect(
-              screen.queryByTestId("loading-spinner"),
-            ).not.toBeInTheDocument();
-          });
-
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "{backspace}");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              TEST_MODEL_DATASET_COLUMN.display_name,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeDisabled();
-          });
+          await waitForLoaderToBeRemoved();
 
           history.goBack();
 
           expect(
-            screen.queryByText("Changes were not saved"),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
+        });
+
+        it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          await waitForLoaderToBeRemoved();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
           expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
+        });
+
+        it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
+          await setup({
+            card: TEST_MODEL_CARD,
+            dataset: TEST_MODEL_DATASET,
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          });
+
+          await triggerMetadataChange();
+
+          userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+          expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
 
         it("does not show custom warning modal when saving edited metadata", async () => {
@@ -790,24 +801,7 @@ describe("QueryBuilder", () => {
            */
           userEvent.click(screen.getByText("Metadata"));
 
-          const columnDisplayName = await screen.findByTitle("Display name");
-
-          userEvent.click(columnDisplayName);
-          userEvent.type(columnDisplayName, "X");
-
-          await waitFor(() => {
-            expect(columnDisplayName).toHaveValue(
-              `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-            );
-          });
-
-          userEvent.tab();
-
-          await waitFor(() => {
-            expect(
-              screen.getByRole("button", { name: "Save changes" }),
-            ).toBeEnabled();
-          });
+          await triggerMetadataChange();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -818,12 +812,7 @@ describe("QueryBuilder", () => {
           });
 
           expect(
-            screen.queryByText("Changes were not saved"),
-          ).not.toBeInTheDocument();
-          expect(
-            screen.queryByText(
-              "Navigating away from here will cause you to lose any changes you have made.",
-            ),
+            screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
         });
       });
@@ -835,136 +824,76 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
         });
 
-        const rowLimitInput = await within(
-          screen.getByTestId("step-limit-0-0"),
-        ).findByPlaceholderText("Enter a limit");
-
-        userEvent.click(rowLimitInput);
-        userEvent.type(rowLimitInput, "0");
-
-        await waitFor(() => {
-          expect(rowLimitInput).toHaveValue(10);
-        });
-
-        userEvent.tab();
+        await triggerNotebookQueryChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        const columnDisplayName = await screen.findByTitle("Display name");
-
-        userEvent.click(columnDisplayName);
-        userEvent.type(columnDisplayName, "X");
-
-        await waitFor(() => {
-          expect(columnDisplayName).toHaveValue(
-            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
-          );
-        });
-
-        userEvent.tab();
+        await triggerMetadataChange();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });
 
-    describe("native queries", () => {
-      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
+    describe("creating native questions", () => {
+      it("shows custom warning modal when leaving creating non-empty question via SPA navigation", async () => {
         const { history } = await setup({
-          card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          card: null,
+          initialRoute: "/",
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
 
         history.goBack();
 
-        expect(screen.getByText("Changes were not saved")).toBeInTheDocument();
-        expect(
-          screen.getByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
 
-      it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
+      it("does not show custom warning modal when leaving creating empty question via SPA navigation", async () => {
         const { history } = await setup({
-          card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          card: null,
+          initialRoute: "/",
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
+        await waitForLoaderToBeRemoved();
 
         history.goBack();
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
-      it("does not show custom warning modal when running edited question", async () => {
-        const { history } = await setup({
-          card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+      it("does not show custom warning modal when running new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await waitForLoaderToBeRemoved();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -973,19 +902,72 @@ describe("QueryBuilder", () => {
         );
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
-      it("does not show custom warning modal when saving edited question", async () => {
+      it("does not show custom warning modal when saving new question", async () => {
+        await setup({
+          card: null,
+          initialRoute: "/",
+        });
+        fetchMock.post("path:/api/card", TEST_NATIVE_CARD);
+        fetchMock.get("path:/api/table/card__1/query_metadata", TEST_METADATA);
+
+        userEvent.click(screen.getByText("New"));
+        userEvent.click(
+          within(screen.getByTestId("popover")).getByText("SQL query"),
+        );
+
+        await waitForLoaderToBeRemoved();
+        await triggerNativeQueryChange();
+
+        userEvent.click(screen.getByText("Save"));
+
+        const saveQuestionModal = screen.getByTestId("save-question-modal");
+        userEvent.type(
+          within(saveQuestionModal).getByLabelText("Name"),
+          TEST_NATIVE_CARD.name,
+        );
+        await waitFor(() => {
+          expect(
+            within(saveQuestionModal).getByTestId("select-button"),
+          ).toHaveTextContent(TEST_COLLECTION.name);
+        });
+        userEvent.click(
+          within(saveQuestionModal).getByRole("button", { name: "Save" }),
+        );
+
+        await waitFor(() => {
+          expect(saveQuestionModal).not.toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("editing native questions", () => {
+      it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await triggerNativeQueryChange();
+
+        history.goBack();
+
+        expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
@@ -996,13 +978,41 @@ describe("QueryBuilder", () => {
           ).toBeInTheDocument();
         });
 
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
+        history.goBack();
 
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when running edited question", async () => {
+        await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
+        });
+
+        await triggerNativeQueryChange();
+
+        userEvent.click(
+          within(screen.getByTestId("query-builder-main")).getByRole("button", {
+            name: "Get Answer",
+          }),
+        );
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when saving edited question", async () => {
+        const { history } = await setup({
+          card: TEST_NATIVE_CARD,
+          initialRoute: "/",
+        });
+
+        history.push(`/question/${TEST_NATIVE_CARD.id}`);
+
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1013,41 +1023,26 @@ describe("QueryBuilder", () => {
           ),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
 
       it("does not show custom warning modal when saving edited question as a new one", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/home",
+          initialRoute: "/",
         });
 
         history.push(`/question/${TEST_NATIVE_CARD.id}`);
 
-        await waitFor(() => {
-          expect(
-            screen.getByTestId("mock-native-query-editor"),
-          ).toBeInTheDocument();
-        });
-
-        const inputArea = within(
-          screen.getByTestId("mock-native-query-editor"),
-        ).getByRole("textbox");
-
-        userEvent.click(inputArea);
-        userEvent.type(inputArea, "0");
-        userEvent.tab();
+        await triggerNativeQueryChange();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1066,17 +1061,14 @@ describe("QueryBuilder", () => {
           within(saveQuestionModal).getByRole("button", { name: "Save" }),
         );
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("save-question-modal"),
-        );
+        await waitFor(() => {
+          expect(
+            screen.queryByTestId("save-question-modal"),
+          ).not.toBeInTheDocument();
+        });
 
         expect(
-          screen.queryByText("Changes were not saved"),
-        ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText(
-            "Navigating away from here will cause you to lose any changes you have made.",
-          ),
+          screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
       });
     });
@@ -1149,3 +1141,74 @@ describe("QueryBuilder", () => {
     });
   });
 });
+
+const startNewNotebookModel = async () => {
+  userEvent.click(screen.getByText("Use the notebook editor"));
+  await waitForLoaderToBeRemoved();
+
+  userEvent.click(screen.getByText("Pick your starting data"));
+  const popover = screen.getByTestId("popover");
+  userEvent.click(within(popover).getByText("Sample Database"));
+  await waitForLoaderToBeRemoved();
+  userEvent.click(within(popover).getByText("Orders"));
+  userEvent.click(within(screen.getByTestId("popover")).getByText("Orders"));
+
+  expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();
+};
+
+const triggerNativeQueryChange = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+  });
+
+  const inputArea = within(
+    screen.getByTestId("mock-native-query-editor"),
+  ).getByRole("textbox");
+
+  userEvent.click(inputArea);
+  userEvent.type(inputArea, "0");
+  userEvent.tab();
+};
+
+const triggerMetadataChange = async () => {
+  const columnDisplayName = await screen.findByTitle("Display name");
+
+  userEvent.click(columnDisplayName);
+  userEvent.type(columnDisplayName, "X");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+};
+
+const triggerNotebookQueryChange = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "0");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+  });
+};
+
+/**
+ * Reverts triggerNotebookQueryChange call
+ */
+const revertNotebookQueryChange = async () => {
+  const rowLimitInput = await within(
+    screen.getByTestId("step-limit-0-0"),
+  ).findByPlaceholderText("Enter a limit");
+
+  userEvent.click(rowLimitInput);
+  userEvent.type(rowLimitInput, "{backspace}");
+  userEvent.tab();
+
+  await waitFor(() => {
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+};

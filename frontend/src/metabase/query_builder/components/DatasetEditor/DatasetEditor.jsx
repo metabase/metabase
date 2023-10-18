@@ -9,7 +9,8 @@ import { usePrevious } from "react-use";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Confirm from "metabase/components/Confirm";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -200,6 +201,8 @@ function DatasetEditor(props) {
     modelIndexes = [],
   } = props;
 
+  const isDirty = isModelQueryDirty || isMetadataDirty;
+  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
     [dataset, resultsMetadata],
@@ -299,14 +302,27 @@ function DatasetEditor(props) {
     [initialEditorHeight, setDatasetEditorTab],
   );
 
-  const handleCancelCreate = useCallback(() => {
-    onCancelCreateNewModel();
-  }, [onCancelCreateNewModel]);
-
-  const handleCancelEdit = useCallback(() => {
+  const handleCancelEdit = () => {
+    setShowCancelEditWarning(false);
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
-  }, [setQueryBuilderMode, onCancelDatasetChanges]);
+  };
+
+  const handleCancelEditWarningClose = () => {
+    setShowCancelEditWarning(false);
+  };
+
+  const handleCancelClick = () => {
+    if (dataset.isSaved()) {
+      if (isDirty) {
+        setShowCancelEditWarning(true);
+      } else {
+        handleCancelEdit();
+      }
+    } else {
+      onCancelCreateNewModel();
+    }
+  };
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(dataset);
@@ -392,11 +408,9 @@ function DatasetEditor(props) {
     if (dataset.query().isEmpty()) {
       return false;
     }
-    const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return (
-      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
-    );
-  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
+    const everyFieldHasDisplayName = fields.every(field => field.display_name);
+    return everyFieldHasDisplayName && isDirty;
+  }, [dataset, fields, isDirty]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -431,23 +445,11 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          dataset.isSaved() ? (
-            <Button
-              key="cancel"
-              small
-              onClick={handleCancelEdit}
-            >{t`Cancel`}</Button>
-          ) : (
-            <Confirm
-              key="cancel"
-              action={handleCancelCreate}
-              title={t`Discard changes?`}
-              message={t`Your model won't be created.`}
-              confirmButtonText={t`Discard`}
-            >
-              <Button small>{t`Cancel`}</Button>
-            </Confirm>
-          ),
+          <Button
+            key="cancel"
+            small
+            onClick={handleCancelClick}
+          >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
             disabled={!canSaveChanges}
@@ -505,6 +507,13 @@ function DatasetEditor(props) {
           {sidebar}
         </ViewSidebar>
       </Root>
+
+      <Modal isOpen={showCancelEditWarning}>
+        <LeaveConfirmationModalContent
+          onAction={handleCancelEdit}
+          onClose={handleCancelEditWarningClose}
+        />
+      </Modal>
     </>
   );
 }

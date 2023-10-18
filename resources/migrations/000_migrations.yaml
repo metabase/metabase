@@ -15337,6 +15337,46 @@ databaseChangeLog:
                     nullable: false
                   defaultValue: '#31698A'
 
+  - changeSet:
+      id: v48.00-021
+      author: piranha
+      comment: 'Cards store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the card.'
+
+  - changeSet:
+      id: v48.00-025
+      author: piranha
+      comment: 'Revisions store Metabase version used to create them'
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(100)
+                  remarks: 'Metabase version used to create the revision.'
+
+  - changeSet:
+      id: v48.00-026
+      author: lbrdnk
+      comment: Set semantic_type with value type/Number to null (#18754)
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: semantic_type = 'type/Number'
+      rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

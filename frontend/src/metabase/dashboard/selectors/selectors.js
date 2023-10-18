@@ -120,7 +120,7 @@ export const getDashboardComplete = createSelector(
       return null;
     }
 
-    const ordered_cards = dashboard.ordered_cards
+    const orderedDashcards = dashboard.dashcards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved)
       .sort((a, b) => {
@@ -138,7 +138,7 @@ export const getDashboardComplete = createSelector(
     return (
       dashboard && {
         ...dashboard,
-        ordered_cards,
+        dashcards: orderedDashcards,
       }
     );
   },
@@ -201,7 +201,7 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 
-export const getisNavigatingBackToDashboard = state =>
+export const getIsNavigatingBackToDashboard = state =>
   state.dashboard.isNavigatingBackToDashboard;
 
 export const getIsBookmarked = (state, props) =>
@@ -217,7 +217,7 @@ export const getIsDirty = createSelector(
       dashboard &&
       (dashboard.isDirty ||
         _.some(
-          dashboard.ordered_cards,
+          dashboard.dashcards,
           id =>
             !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
             (dashcards[id].isDirty ||

@@ -8,7 +8,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config :as config]

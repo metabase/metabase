@@ -99,3 +99,64 @@ export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
 
   return compareVersions(String(coerce(thisVersion.replace(/(v1|v0)\./, ''))), lastVersion) > -1;
 };
+
+const versionRequirements: Record<number, { java: number, node: number }> = {
+  43: { java: 8, node: 14 },
+  44: { java: 11, node: 14 },
+  45: { java: 11, node: 14 },
+  46: { java: 11, node: 16 },
+  47: { java: 11, node: 18 },
+};
+
+export const getBuildRequirements = (version: string) => {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+  const majorVersion = Number(getMajorVersion(version));
+
+  if (majorVersion in versionRequirements) {
+    return versionRequirements[majorVersion];
+  }
+
+  const lastKey = Object.keys(versionRequirements)[Object.keys(versionRequirements).length - 1];
+  console.warn(`No build requirements found for version ${version}, using latest: v${lastKey}`);
+  return versionRequirements[Number(lastKey)];
+}
+
+export const getNextVersions = (versionString: string): string[] => {
+  if (!isValidVersionString(versionString)) {
+    throw new Error(`Invalid version string: ${versionString}`);
+  }
+
+  const versionType = getVersionType(versionString);
+
+  if (versionType === 'rc' || versionType === 'patch') {
+    return [];
+  }
+
+  const editionString = isEnterpriseVersion(versionString)
+    ? 'v1.'
+    : 'v0.';
+
+  // minor releases -> next minor release
+  const [major, minor] = versionString
+    .replace(/(v1|v0)\./, '')
+    .replace(/.0$/, "")
+    .split('.')
+    .map(Number);
+
+  if (versionType === 'minor') {
+    return [editionString + [major, minor + 1].join('.')];
+  }
+
+
+  // major releases -> x.1 minor release AND next .0 major release
+  if (versionType === 'major') {
+    return [
+      editionString + [major, 1].join('.'),
+      editionString + [major + 1, 0].join('.'),
+    ];
+  }
+
+  return [];
+};

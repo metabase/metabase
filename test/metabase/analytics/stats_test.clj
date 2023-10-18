@@ -1,7 +1,7 @@
 (ns metabase.analytics.stats-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]

@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "@testing-library/react";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupTableEndpoints,
@@ -10,7 +9,12 @@ import {
   createMockTable,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import { getIcon, renderWithProviders, queryIcon } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  queryIcon,
+  screen,
+} from "__support__/ui";
 
 import type { InitialSyncStatus } from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
@@ -38,7 +42,7 @@ describe("SearchResult", () => {
       getIcon: () => ({ name: "table" }),
     });
 
-    render(<SearchResult result={result} />);
+    renderWithProviders(<SearchResult result={result} />);
 
     expect(screen.getByText(result.name)).toBeInTheDocument();
     expect(screen.getByText(result.description as string)).toBeInTheDocument();
@@ -56,7 +60,7 @@ describe("SearchResult", () => {
       },
     });
 
-    render(<SearchResult result={result} />);
+    renderWithProviders(<SearchResult result={result} />);
 
     expect(screen.getByText(result.name)).toBeInTheDocument();
     expect(screen.getByText("Collection")).toBeInTheDocument();
@@ -141,7 +145,7 @@ describe("SearchResult > Collections", () => {
 
   describe("OSS", () => {
     it("renders regular collection correctly", () => {
-      render(<SearchResult result={resultInRegularCollection} />);
+      renderWithProviders(<SearchResult result={resultInRegularCollection} />);
       expect(
         screen.getByText(resultInRegularCollection.name),
       ).toBeInTheDocument();
@@ -151,7 +155,7 @@ describe("SearchResult > Collections", () => {
     });
 
     it("renders official collections as regular", () => {
-      render(<SearchResult result={resultInOfficalCollection} />);
+      renderWithProviders(<SearchResult result={resultInOfficalCollection} />);
       expect(
         screen.getByText(resultInOfficalCollection.name),
       ).toBeInTheDocument();
@@ -172,7 +176,7 @@ describe("SearchResult > Collections", () => {
     });
 
     it("renders regular collection correctly", () => {
-      render(<SearchResult result={resultInRegularCollection} />);
+      renderWithProviders(<SearchResult result={resultInRegularCollection} />);
       expect(
         screen.getByText(resultInRegularCollection.name),
       ).toBeInTheDocument();
@@ -182,7 +186,9 @@ describe("SearchResult > Collections", () => {
     });
 
     it("renders official collections correctly", () => {
-      render(<SearchResult result={resultInOfficalCollectionEE} />);
+      renderWithProviders(
+        <SearchResult result={resultInOfficalCollectionEE} />,
+      );
       expect(
         screen.getByText(resultInOfficalCollectionEE.name),
       ).toBeInTheDocument();

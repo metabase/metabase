@@ -1,4 +1,5 @@
 import {
+  modal,
   restore,
   rightSidebar,
   visualize,
@@ -81,6 +82,7 @@ describe("scenarios > models metadata", () => {
       setColumnType("No special type", "Cost");
 
       cy.button("Cancel").click();
+      modal().button("Leave anyway").click();
 
       cy.findByTestId("TableInteractive-root").findByText("Subtotal");
     });

@@ -38,7 +38,9 @@ describe("ActionCreator > Query Actions", () => {
       userEvent.click(getIcon("reference"));
 
       expect(screen.getAllByText("Data Reference")).toHaveLength(2);
-      expect(screen.getByText("Database")).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("sidebar-content")).getByText("Database"),
+      ).toBeInTheDocument();
     });
 
     it("should show action settings button", async () => {
