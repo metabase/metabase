@@ -33,13 +33,28 @@
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:regex                                  false
-                              :percentile-aggregations                true
                               :case-sensitivity-string-filter-options false
                               :now                                    true
                               :datetime-diff                          true
                               :convert-timezone                       true
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
+
+(defn- dbms-major-version
+  [db]
+  ;;;; Using try-catch as either destructuring can throw, or returned could be a non number. Happened previously with
+  ;;;; mongo. See issue #29678.
+  (try
+    (let [{[major-version] :semantic-version} (driver/dbms-version :sqlserver db)]
+      (assert (integer? major-version))
+      major-version)
+    (catch Throwable _
+      (log/warn (trs "Unable to determine sqlserver dbms major version. Fallback to 0."))
+      0)))
+
+(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db]
+  (>= (dbms-major-version db) 16))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
