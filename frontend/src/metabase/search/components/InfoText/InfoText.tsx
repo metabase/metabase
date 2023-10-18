@@ -1,10 +1,10 @@
 import { Fragment } from "react";
+import { isNotNull } from "metabase/core/utils/types";
 import type { UserListResult } from "metabase-types/api";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
-import type { AnchorProps, TextProps } from "metabase/ui";
 import { Group, Box, Text } from "metabase/ui";
 import { useInfoText } from "./use-info-text";
 import type { InfoTextData } from "./use-info-text";
@@ -12,14 +12,9 @@ import { LastEditedInfo } from "./InfoText.styled";
 
 type InfoTextProps = {
   result: WrappedResult;
-} & (TextProps | AnchorProps);
+};
 
-export const InfoTextAssetLink = ({
-  result,
-  ...resultTextProps
-}: {
-  result: WrappedResult;
-}) => {
+export const InfoTextAssetLink = ({ result }: { result: WrappedResult }) => {
   const infoText: InfoTextData[] = useInfoText(result);
 
   const linkSeparator = (
@@ -33,12 +28,7 @@ export const InfoTextAssetLink = ({
       {infoText.map(({ link, icon, label }: InfoTextData, index: number) => (
         <Fragment key={index}>
           {index > 0 && linkSeparator}
-          <SearchResultLink
-            key={label}
-            href={link}
-            leftIcon={icon}
-            {...resultTextProps}
-          >
+          <SearchResultLink key={label} href={link} leftIcon={icon}>
             {label}
           </SearchResultLink>
         </Fragment>
@@ -50,7 +40,8 @@ export const InfoTextAssetLink = ({
 export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
   const { data: users = [] } = useUserListQuery();
 
-  const isUpdated = result.updated_at !== result.created_at;
+  const isUpdated =
+    isNotNull(result.updated_at) && result.updated_at !== result.created_at;
 
   const { prefix, timestamp, userId } = isUpdated
     ? {
@@ -82,23 +73,12 @@ export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
   );
 };
 
-export function InfoText({ result, ...textProps }: InfoTextProps) {
-  const resultTextProps = {
-    ...textProps,
-    size: "sm",
-  };
-
-  const separator = (
-    <Text {...resultTextProps} span mx="xs" c="text.1">
+export const InfoText = ({ result }: InfoTextProps) => (
+  <Group noWrap spacing="xs">
+    <InfoTextAssetLink result={result} />
+    <Text span size="sm" mx="xs" c="text.1">
       •
     </Text>
-  );
-
-  return (
-    <Group noWrap spacing="xs">
-      <InfoTextAssetLink result={result} {...resultTextProps} />
-      {separator}
-      <InfoTextEditedInfo result={result} {...resultTextProps} />
-    </Group>
-  );
-}
+    <InfoTextEditedInfo result={result} />
+  </Group>
+);

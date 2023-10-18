@@ -161,7 +161,9 @@ export const PLUGIN_COLLECTIONS = {
 };
 
 type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+  }
 >;
 
 type FormCollectionAuthorityLevelPicker = ComponentType<

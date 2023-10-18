@@ -115,7 +115,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
                       </ResultTitle>
                       <ModerationIcon status={moderated_status} size={14} />
                     </Group>
-                    <SearchResultLink size="sm" c="text.1">
+                    <SearchResultLink>
                       {getTranslatedEntityName(item.model)}
                     </SearchResultLink>
                   </ResultNameSection>
@@ -134,45 +134,30 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   );
 };
 
-const getItemKey = ({
-  model,
-  model_id,
-}: Pick<RecentItem, "model_id" | "model">) => {
+const getItemKey = ({ model, model_id }: RecentItem) => {
   return `${model}:${model_id}`;
 };
 
-const getItemName = ({ model_object }: Pick<RecentItem, "model_object">) => {
+const getItemName = ({ model_object }: RecentItem) => {
   return model_object.display_name || model_object.name;
 };
 
-const getModeratedStatus = ({
-  model_object,
-}: Pick<RecentItem, "model_object">) => {
+const getModeratedStatus = ({ model_object }: RecentItem) => {
   return model_object.moderated_status;
 };
 
-const isItemActive = ({
-  model,
-  model_object,
-}: Pick<RecentItem, "model_object" | "model">) => {
-  switch (model) {
-    case "table":
-      return isSyncCompleted(model_object);
-    default:
-      return true;
+const isItemActive = ({ model, model_object }: RecentItem) => {
+  if (model !== "table") {
+    return true;
   }
+  return isSyncCompleted(model_object);
 };
 
-const isItemLoading = ({
-  model,
-  model_object,
-}: Pick<RecentItem, "model_object" | "model">) => {
-  switch (model) {
-    case "table":
-      return !isSyncCompleted(model_object);
-    default:
-      return false;
+const isItemLoading = ({ model, model_object }: RecentItem) => {
+  if (model !== "table") {
+    return false;
   }
+  return !isSyncCompleted(model_object);
 };
 
 const getItemUrl = (item: RecentItem) =>

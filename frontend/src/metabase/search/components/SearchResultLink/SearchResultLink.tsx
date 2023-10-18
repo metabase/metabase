@@ -1,7 +1,6 @@
 import type { Ref } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
-import type { TextProps, AnchorProps } from "metabase/ui";
 import { Anchor, Text } from "metabase/ui";
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
@@ -9,12 +8,11 @@ export const SearchResultLink = ({
   children,
   leftIcon = null,
   href = null,
-  ...textProps
 }: {
   children: JSX.Element | string | null;
   leftIcon?: JSX.Element | null;
   href?: string | null;
-} & (TextProps | AnchorProps)) => {
+}) => {
   const collectionRef: Ref<HTMLAnchorElement> = useRef(null);
 
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -46,10 +44,10 @@ export const SearchResultLink = ({
           {...componentProps}
           span
           c="text.1"
+          size="sm"
           truncate
           onClick={e => e.stopPropagation()}
           ref={collectionRef}
-          {...textProps}
         >
           {children}
         </ResultLink>

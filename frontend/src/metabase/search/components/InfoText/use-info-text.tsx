@@ -88,6 +88,7 @@ const useCollectionInfoText = (result: WrappedResult): InfoTextData[] => {
     },
   ];
 };
+
 const useTablePath = (result: WrappedResult): InfoTextData[] => {
   const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
     id: result.database_id,
