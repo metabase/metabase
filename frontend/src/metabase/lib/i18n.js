@@ -1,6 +1,8 @@
 import { addLocale, useLocale } from "ttag";
-import dayjs from "dayjs";
 import moment from "moment-timezone";
+import dayjs from "dayjs";
+import localeDataPlugin from "dayjs/plugin/localeData";
+import updateLocalePlugin from "dayjs/plugin/updateLocale";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
@@ -72,21 +74,27 @@ function setLocalization(translationsObject) {
 
   setLanguage(translationsObject);
 
+  addDayjsPlugins();
   updateMomentAndDayjsLocale(locale);
   updateMomentAndDayjsStartOfWeek();
+}
+
+function addDayjsPlugins() {
+  dayjs.extend(localeDataPlugin);
+  dayjs.extend(updateLocalePlugin);
 }
 
 function updateMomentAndDayjsLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
   try {
     if (momentLocale !== "en") {
-      require(`moment/locale/${momentLocale}`);
-      require(`dayjs/locale/${momentLocale}`);
+      require(`moment/locale/${momentLocale}.js`);
+      require(`dayjs/locale/${momentLocale}.js`);
     }
     moment.locale(momentLocale);
     dayjs.locale(momentLocale);
   } catch (e) {
-    console.warn(`Could not set moment locale to ${momentLocale}`);
+    console.warn(`Could not set moment or dayjs locale to ${momentLocale}`, e);
     moment.locale("en");
     dayjs.locale("en");
   }
