@@ -15384,22 +15384,12 @@ databaseChangeLog:
         - dropTable:
             tableName: data_migrations
       rollback:
-        - createTable:
-            tableName: data_migrations
-            columns:
-              - column:
-                  name: id
-                  type: varchar(254)
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: timestamp
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
         - sql:
             sql: >-
+              CREATE TABLE data_migrations (
+                id varchar(254) primary key,
+                timestamp ${timestamp_type} not null
+              );
               INSERT INTO data_migrations VALUES
                   ('set-card-database-and-table-ids', current_timestamp),
                   ('set-mongodb-databases-ssl-false', current_timestamp),
