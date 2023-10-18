@@ -104,10 +104,10 @@ export function DateOffsetIntervalPicker({
         />
       </PickerGrid>
       <Divider />
-      <Group px="md" py="sm" position="apart">
-        <Group c="text.2">
+      <Group px="md" py="sm" spacing="sm" position="apart">
+        <Group c="text.1">
           <Icon name="calendar" />
-          <Text>{dateRangeText}</Text>
+          <Text c="inherit">{dateRangeText}</Text>
         </Group>
         <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
