@@ -229,7 +229,7 @@
                        :ordered_tabs  []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
-    {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+    {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
      :dashcards (add-source-model-link
                      model
                      [{:row                    0
