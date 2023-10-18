@@ -42,7 +42,7 @@ export const DEFAULT_SETTINGS = {
   "pie.metric": "count",
   "pie.show_legend": true,
   "pie.show_total": true,
-  "pie.percent_visibility": "legend",
+  "pie.percent_visibility": "legend" as const,
   "pie.slice_threshold": 2.5,
   "pie.colors": {
     Doohickey: "#88BF4D",
