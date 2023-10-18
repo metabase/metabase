@@ -114,10 +114,7 @@ const dashboards = handleActions(
       ...state,
       [dashcard.dashboard_id]: {
         ...state[dashcard.dashboard_id],
-        ordered_cards: [
-          ...state[dashcard.dashboard_id].ordered_cards,
-          dashcard.id,
-        ],
+        dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
       },
     }),
     [CREATE_PUBLIC_LINK]: {

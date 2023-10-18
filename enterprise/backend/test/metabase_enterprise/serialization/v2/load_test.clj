@@ -506,7 +506,7 @@
                                                      :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                                                                       {:source-field ["my-db" nil "orders" "invoice"]}]])}]
                                s/Keyword s/Any}]
-                       (:ordered_cards dash))))
+                       (:dashcards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -529,7 +529,7 @@
                   (is (= expected
                          (:visualization_settings card)))
                   (is (= expected
-                         (-> dash :ordered_cards first :visualization_settings))))))))
+                         (-> dash :dashcards first :visualization_settings))))))))
 
 
         (testing "deserializing adjusts the IDs properly"

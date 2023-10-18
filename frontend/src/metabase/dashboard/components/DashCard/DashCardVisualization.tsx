@@ -17,7 +17,7 @@ import {
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   Dataset,
   Series,
@@ -47,7 +47,7 @@ import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   series: Series;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   parameterValuesBySlug: Record<string, ParameterValueOrArray>;

@@ -58,7 +58,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
         last_name: "",
         timestamp: "",
       },
-      ordered_cards: [1, 2],
+      dashcards: [1, 2],
       ordered_tabs: [
         getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
         getDefaultTab({ tabId: 2, dashId: 1, name: "Tab 2" }),

@@ -19,6 +19,8 @@ import {
   createProductsVendorDatasetColumn,
   ORDERS,
   ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -449,49 +451,48 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // FIXME: fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/quick-filter",
-    //       operators: ["<", ">", "=", "≠"],
-    //     },
-    //     {
-    //       type: "drill-thru/underlying-records",
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //     },
-    //     {
-    //       displayName: "See this month by week",
-    //       type: "drill-thru/zoom-in.timeseries",
-    //     },
-    //   ],
-    // },
-    // FIXME: fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/quick-filter",
-    //       operators: ["=", "≠"],
-    //     },
-    //     {
-    //       type: "drill-thru/underlying-records",
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //     },
-    //
-    //     {
-    //       type: "drill-thru/zoom-in.timeseries",
-    //       displayName: "See this month by week",
-    //     },
-    //   ],
-    // },
+    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedDrills: [
+        {
+          type: "drill-thru/quick-filter",
+          operators: ["<", ">", "=", "≠"],
+        },
+        {
+          type: "drill-thru/underlying-records",
+          rowCount: 77, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+        },
+        {
+          displayName: "See this month by week",
+          type: "drill-thru/zoom-in.timeseries",
+        },
+      ],
+    },
+    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedDrills: [
+        {
+          type: "drill-thru/quick-filter",
+          operators: ["=", "≠"],
+        },
+        {
+          type: "drill-thru/underlying-records",
+          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+        },
+        {
+          type: "drill-thru/zoom-in.timeseries",
+          displayName: "See this month by week",
+        },
+      ],
+    },
     // FIXME: quick-filter gets returned for non-metric column (metabase#34443)
     // {
     //   clickType: "cell",
@@ -530,58 +531,51 @@ describe("availableDrillThrus", () => {
     //     },
     //   ],
     // },
-
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "PRODUCT_ID",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
-    // FIXME for some reason the results for aggregated query are not correct (metabase#34223, metabase#34341)
-    // We expect column-filter and sort drills, but get distribution and summarize-column
-    // {
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "CREATED_AT",
-    //   expectedDrills: [
-    //     {
-    //       initialOp: expect.objectContaining({ short: "=" }),
-    //       type: "drill-thru/column-filter",
-    //     },
-    //     {
-    //       directions: ["asc", "desc"],
-    //       type: "drill-thru/sort",
-    //     },
-    //   ],
-    // },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedDrills: [
+        {
+          initialOp: expect.objectContaining({ short: "=" }),
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "PRODUCT_ID",
+      expectedDrills: [
+        {
+          initialOp: expect.objectContaining({ short: "=" }),
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
+    {
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      expectedDrills: [
+        {
+          initialOp: null,
+          type: "drill-thru/column-filter",
+        },
+        {
+          directions: ["asc", "desc"],
+          type: "drill-thru/sort",
+        },
+      ],
+    },
   ])(
     "should return correct drills for $columnName $clickType in $queryType query",
     ({
@@ -864,28 +858,26 @@ describe("availableDrillThrus", () => {
         initialOp: null,
       },
     },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
-    // FIXME "column-filter" should be available for aggregated query metric column (metabase#34223)
-    // {
-    //   drillType: "drill-thru/column-filter",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/column-filter",
-    //     initialOp: expect.objectContaining({ short: "=" }),
-    //   },
-    // },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
+    {
+      drillType: "drill-thru/column-filter",
+      clickType: "header",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/column-filter",
+        initialOp: expect.objectContaining({ short: "=" }),
+      },
+    },
     // endregion
 
     // region --- drill-thru/summarize-column
@@ -969,24 +961,6 @@ describe("availableDrillThrus", () => {
         type: "drill-thru/distribution",
       },
     },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "PRODUCT_ID",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
-    {
-      drillType: "drill-thru/distribution",
-      clickType: "header",
-      queryType: "aggregated",
-      columnName: "CREATED_AT",
-      expectedParameters: {
-        type: "drill-thru/distribution",
-      },
-    },
     // endregion
 
     // region --- drill-thru/fk-filter
@@ -1008,16 +982,16 @@ describe("availableDrillThrus", () => {
         type: "drill-thru/fk-filter",
       },
     },
-    // FIXME: `fk-filter` doesn't get returned for fk column that was used as breakout (metabase#34440)
-    // {
-    //   drillType: "drill-thru/fk-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "PRODUCT_ID",
-    //   expectedParameters: {
-    //     type: "drill-thru/fk-filter",
-    //   },
-    // },
+    // `fk-filter` doesn't get returned for fk column that was used as breakout (metabase#34440)
+    {
+      drillType: "drill-thru/fk-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "PRODUCT_ID",
+      expectedParameters: {
+        type: "drill-thru/fk-filter",
+      },
+    },
     // endregion
 
     // region --- drill-thru/quick-filter
@@ -1092,18 +1066,17 @@ describe("availableDrillThrus", () => {
         operators: ["<", ">", "=", "≠"],
       },
     },
-    // FIXME: quick-filter returns extra "<", ">" operators for cell with no value (metabase#34445)
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/quick-filter",
-    //     operators: ["=", "≠"],
-    //   },
-    // },
-    // endregion
+    // quick-filter returns extra "<", ">" operators for cell with no value (metabase#34445)
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        type: "drill-thru/quick-filter",
+        operators: ["=", "≠"],
+      },
+    },
 
     // region --- drill-thru/underlying-records
     {
@@ -1113,7 +1086,7 @@ describe("availableDrillThrus", () => {
       columnName: "count",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 77, // FIXME: (metabase#32108) this should return real count of rows
         tableName: "Orders",
       },
     },
@@ -1124,7 +1097,7 @@ describe("availableDrillThrus", () => {
       columnName: "sum",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 1, // FIXME: (metabase#32108) this should return real count of rows
         tableName: "Orders",
       },
     },
@@ -1135,7 +1108,7 @@ describe("availableDrillThrus", () => {
       columnName: "max",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
         tableName: "Orders",
       },
     },
@@ -1172,34 +1145,37 @@ describe("availableDrillThrus", () => {
     // endregion
 
     // region --- drill-thru/zoom-in.timeseries
-    // FIXME: "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "count",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "max",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/zoom-in.timeseries",
-    //   clickType: "header",
-    //   queryType: "aggregated",
-    //   columnName: "sum",
-    //   expectedParameters: {
-    //     type: "drill-thru/zoom-in.timeseries",
-    //   },
-    // },
+    // "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "count",
+      expectedParameters: {
+        displayName: "See this month by week",
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "max",
+      expectedParameters: {
+        displayName: "See this month by week",
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
+    {
+      drillType: "drill-thru/zoom-in.timeseries",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "sum",
+      expectedParameters: {
+        displayName: "See this month by week",
+        type: "drill-thru/zoom-in.timeseries",
+      },
+    },
     // endregion
 
     // region --- drill-thru/zoom
@@ -2058,31 +2034,35 @@ describe("drillThru", () => {
     //   },
     // },
 
-    // FIXME: fk-details doesn't create a query for fk target table (metabase#34383)
-    // {
-    //   drillType: "drill-thru/fk-details",
-    //   clickType: "cell",
-    //   columnName: "PRODUCT_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     filter: [
-    //       "=",
-    //       ["field", PRODUCTS.ID, null],
-    //       ORDERS_ROW_VALUES.PRODUCT_ID,
-    //     ],
-    //     "source-table": PRODUCTS_ID,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/fk-details",
-    //   clickType: "cell",
-    //   columnName: "USER_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     filter: ["=", ["field", PEOPLE.ID, null], ORDERS_ROW_VALUES.USER_ID],
-    //     "source-table": PEOPLE_ID,
-    //   },
-    // },
+    // fk-details should create a query for fk target table (metabase#34383)
+    {
+      drillType: "drill-thru/fk-details",
+      clickType: "cell",
+      columnName: "PRODUCT_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        filter: [
+          "=",
+          ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+          ORDERS_ROW_VALUES.PRODUCT_ID,
+        ],
+        "source-table": PRODUCTS_ID,
+      },
+    },
+    {
+      drillType: "drill-thru/fk-details",
+      clickType: "cell",
+      columnName: "USER_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        filter: [
+          "=",
+          ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+          ORDERS_ROW_VALUES.USER_ID,
+        ],
+        "source-table": PEOPLE_ID,
+      },
+    },
   ])(
     'should return correct result on "$drillType" drill apply to $columnName on $clickType in $queryType query',
     ({
@@ -2204,18 +2184,23 @@ describe("drillThru", () => {
           "order-by": [["asc", ["aggregation", 3]]],
         },
       },
-      // FIXME: should support sorting for custom column without table relation (metabase#34499)
-      // {
-      //   // should support sorting for custom column without table relation
-      //   drillType: "drill-thru/sort",
-      //   clickType: "header",
-      //   columnName: "CustomColumn",
-      //   drillArgs: ["asc"],
-      //   expectedQuery: {
-      //     ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
-      //     "order-by": [["asc", ["expression", "CustomColumn"]]],
-      //   },
-      // },
+      // should support sorting for custom column without table relation (metabase#34499)
+      {
+        // should support sorting for custom column without table relation
+        drillType: "drill-thru/sort",
+        clickType: "header",
+        columnName: "CustomColumn",
+        drillArgs: ["asc"],
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          "order-by": [
+            [
+              "asc",
+              ["expression", "CustomColumn", { "base-type": "type/Integer" }],
+            ],
+          ],
+        },
+      },
     ])(
       'should return correct result on "$drillType" drill apply to $columnName on $clickType in query with custom column',
       ({ columnName, clickType, drillArgs, expectedQuery, drillType }) => {
