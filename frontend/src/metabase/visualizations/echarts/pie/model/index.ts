@@ -7,25 +7,10 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { findWithIndex } from "metabase/core/utils/arrays";
 
 import { OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
 import type { PieColumnDescriptors, PieChartModel, PieSlice } from "./types";
-
-export const findWithIndex = <T>(
-  arr: T[],
-  predicate: (value: T, index: number, arr: T[]) => boolean,
-) => {
-  for (let i = 0; i < arr.length; i++) {
-    const item = arr[i];
-    if (predicate(item, i, arr)) {
-      return { item, index: i };
-    }
-  }
-  return {
-    index: -1,
-    item: undefined,
-  };
-};
 
 function getColDescs(
   rawSeries: RawSeries,
