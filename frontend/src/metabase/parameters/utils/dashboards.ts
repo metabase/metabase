@@ -68,8 +68,8 @@ export function getIsMultiSelect(parameter: Parameter): boolean {
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
-  return dashboard.dashcards.some(ordered_card => {
-    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
+  return dashboard.dashcards.some(dashcard => {
+    return dashcard?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
