@@ -287,6 +287,12 @@
                :env_name "MB_TEST_USER_LOCAL_ALLOWED_SETTING",
                :description "test Setting",
                :default nil}
+              {:key "test-user-local-only-audited-setting",
+               :value nil,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ONLY_AUDITED_SETTING",
+               :description "Audited user-local setting",
+               :default nil}
               {:key "test-user-local-only-setting",
                :value "ABC" ,
                :is_env_setting false,
@@ -364,6 +370,12 @@
                :is_env_setting false,
                :env_name "MB_TEST_USER_LOCAL_ALLOWED_SETTING",
                :description "test Setting",
+               :default nil}
+              {:key "test-user-local-only-audited-setting",
+               :value nil,
+               :is_env_setting false,
+               :env_name "MB_TEST_USER_LOCAL_ONLY_AUDITED_SETTING",
+               :description "Audited user-local setting",
                :default nil}
               {:key "test-user-local-only-setting",
                :value "ABC" ,
