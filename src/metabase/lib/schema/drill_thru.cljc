@@ -64,8 +64,11 @@
 
 (mr/def ::drill-thru.quick-filter.operator
   [:map
-   [:name   ::lib.schema.common/non-blank-string]
-   [:filter [:ref ::lib.schema.expression/boolean]]])
+   [:name       ::lib.schema.common/non-blank-string]
+   [:filter     [:ref ::lib.schema.expression/boolean]]
+   ;; whether applying this drill thru should introduce a new stage to the query. Filters on aggregate columns should
+   ;; introduce a new stage.
+   [:new-stage? :boolean]])
 
 (mr/def ::drill-thru.quick-filter
   [:merge
