@@ -1796,7 +1796,7 @@ describe("drillThru", () => {
       queryType: "unaggregated",
       expectedQuery: {
         aggregation: [["count"]],
-        breakout: [["field", ORDERS.USER_ID, null]],
+        breakout: [["field", ORDERS.USER_ID, { "base-type": "type/Integer" }]],
         "source-table": ORDERS_ID,
       },
     },
