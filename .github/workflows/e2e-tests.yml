@@ -161,9 +161,6 @@ jobs:
             ./COMMIT-ID
             ./SHA256.sum
 
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-
   e2e-tests:
     needs: [build, files-changed, test-run-id, download_uberjar, e2e-matrix-builder]
     if: |
