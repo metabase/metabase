@@ -19,7 +19,6 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   Revision,
-  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -162,9 +161,7 @@ export const PLUGIN_COLLECTIONS = {
 };
 
 type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & {
-    collection: SearchResult["collection"];
-  }
+  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
 >;
 
 type FormCollectionAuthorityLevelPicker = ComponentType<
