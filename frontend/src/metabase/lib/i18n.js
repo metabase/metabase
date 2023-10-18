@@ -1,4 +1,5 @@
 import { addLocale, useLocale } from "ttag";
+import dayjs from "dayjs";
 import moment from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -26,8 +27,8 @@ export async function loadLocalization(locale) {
   setLocalization(translationsObject);
 }
 
-// Tell Moment.js to use the value of the start-of-week Setting for its current locale
-export function updateMomentStartOfWeek() {
+// Tell moment and dayjs to use the value of the start-of-week Setting for its current locale
+export function updateMomentAndDayjsStartOfWeek() {
   const startOfWeekDayName = MetabaseSettings.get("start-of-week");
   if (!startOfWeekDayName) {
     return;
@@ -46,10 +47,15 @@ export function updateMomentStartOfWeek() {
       dow: startOfWeekDayNumber,
     },
   });
+  dayjs.updateLocale(dayjs.locale(), {
+    week: {
+      dow: startOfWeekDayNumber,
+    },
+  });
 }
 
 // if the start of week Setting is updated, update the moment start of week
-MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
+MetabaseSettings.on("start-of-week", updateMomentAndDayjsStartOfWeek);
 
 function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
@@ -66,20 +72,23 @@ function setLocalization(translationsObject) {
 
   setLanguage(translationsObject);
 
-  updateMomentLocale(locale);
-  updateMomentStartOfWeek(locale);
+  updateMomentAndDayjsLocale(locale);
+  updateMomentAndDayjsStartOfWeek();
 }
 
-function updateMomentLocale(locale) {
+function updateMomentAndDayjsLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
   try {
     if (momentLocale !== "en") {
-      require("moment/locale/" + momentLocale);
+      require(`moment/locale/${momentLocale}`);
+      require(`dayjs/locale/${momentLocale}`);
     }
     moment.locale(momentLocale);
+    dayjs.locale(momentLocale);
   } catch (e) {
     console.warn(`Could not set moment locale to ${momentLocale}`);
     moment.locale("en");
+    dayjs.locale("en");
   }
 }
 
