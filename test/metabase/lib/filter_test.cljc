@@ -215,7 +215,7 @@
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
              "t"]))) ))
 
-(deftest ^:parallel filterable-columns
+(deftest ^:parallel filterable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
                                                  [(lib/=
@@ -670,3 +670,42 @@
         :name "Created At is Sep 1, 2022 – Oct 3, 2023"}
        {:clause [:between created-at "2022-09-01T13:00:00" "2023-10-03T01:00:00"],
         :name "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}])))
+
+(deftest ^:parallel filter-positions-test
+  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                 (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
+        base-cols (lib/breakoutable-columns base)
+        base-col (fn [col-name] (m/find-first #(= (:name %) col-name) base-cols))
+        query (-> base
+                  (lib/breakout (base-col "ID"))
+                  (lib/breakout (base-col "expr"))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/max (base-col "USER_ID")))
+                  lib/append-stage)
+        query-cols (lib/filterable-columns query)
+        query-col (fn [col-name] (m/find-first #(= (:name %) col-name) query-cols))
+        filtered-query (-> query
+                           (lib/filter (lib/not-null (query-col "expr")))
+                           (lib/filter (lib/>= (query-col "max") 7))
+                           (lib/filter (lib/!= (query-col "ID") 42))
+                           (lib/filter (lib/< (query-col "max") 17)))
+        filtered-query-cols (lib/filterable-columns filtered-query)
+        signature-fn (juxt :display-name :filter-positions)]
+    (testing "no filters"
+      (is (= [["ID" nil]
+              ["expr" nil]
+              ["Count" nil]
+              ["Max of User ID" nil]]
+             (map signature-fn query-cols))))
+    (testing "with existing filter"
+      (let [expected-signatures [["ID" [2]]
+                                 ["expr" [0]]
+                                 ["Count" nil]
+                                 ["Max of User ID" [1 3]]]]
+        (is (= expected-signatures
+               (map signature-fn filtered-query-cols)))
+        (testing "display-info"
+          (is (= expected-signatures
+                 (map (comp signature-fn
+                            #(lib/display-info filtered-query %))
+                      filtered-query-cols))))))))
