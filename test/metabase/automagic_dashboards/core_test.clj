@@ -239,7 +239,7 @@
     (automagic-dashboards.test/with-dashboard-cleanup
       (is (= 1
              (->> (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {:show 1})
-                  :ordered_cards
+                  :dashcards
                   (filter :card)
                   count))))))
 
@@ -259,7 +259,7 @@
                                :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
                                :visibility_type "normal"
                                {:order-by [[:id :asc]]})]
-        (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))
+        (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
   (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)
@@ -278,7 +278,7 @@
               actual-targets (into #{}
                                    (comp (mapcat :parameter_mappings)
                                          (map :target))
-                                   (:ordered_cards dashboard))]
+                                   (:dashcards dashboard))]
           (is (= expected-targets actual-targets))))
     (testing "native queries have parameter mappings with field ids"
       (let [query (mt/native-query {:query "select * from products"})]
@@ -292,7 +292,7 @@
                 actual-targets (into #{}
                                      (comp (mapcat :parameter_mappings)
                                            (map :target))
-                                     (:ordered_cards dashboard))]
+                                     (:dashcards dashboard))]
             (is (= expected-targets actual-targets))))))))
 
 (deftest complicated-card-test
@@ -627,7 +627,7 @@
 
 (defn- ensure-dashboard-sourcing [source-card dashboard]
   (doseq [magic-card (->> dashboard
-                          :ordered_cards
+                          :dashcards
                           (filter :card)
                           (map :card))]
     (ensure-card-sourcing source-card magic-card)))
@@ -672,12 +672,12 @@
               ;; Distributions:
               ;; - Binned price
               ;; - Binned by category
-              (is (= 3 (->> dashboard :ordered_cards (filter :card) count)))
+              (is (= 3 (->> dashboard :dashcards (filter :card) count)))
               (ensure-dashboard-sourcing card dashboard)
               ;; This ensures we get a card that does binning on price
               (is (= binned-field-id
                      (first
-                      (for [card (:ordered_cards dashboard)
+                      (for [card (:dashcards dashboard)
                             :let [fields (get-in card [:card :dataset_query :query :breakout])]
                             [_ field-id m] fields
                             :when (:binning m)]
@@ -708,7 +708,7 @@
                                                                  source-query))
                                              :dataset         true}]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                  temporal-field-ids (for [card (:ordered_cards dashboard)
+                  temporal-field-ids (for [card (:dashcards dashboard)
                                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
                                            [_ field-id m] fields
                                            :when (:temporal-unit m)]
@@ -740,14 +740,14 @@
                                                                 (result-metadata-for-query
                                                                  source-query))
                                              :dataset         true}]
-            (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
+            (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
               (ensure-dashboard-sourcing card dashboard)
               ;; We should generate two cards - locations and total values
               (is (= #{(format "%s by coordinates" (:name card))
                        (format "Total %s" (:name card))}
                      (set
-                      (for [{:keys [card]} ordered_cards
+                      (for [{:keys [card]} dashcards
                             :let [{:keys [name]} card]
                             :when name]
                         name)))))))))))
@@ -853,8 +853,8 @@
                                                                                               "People - User → State" "State Where Placed"
                                                                                               "Products → Price"      "Ordered Item Price"}))))
                                   :dataset         true}]
-          (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                card-names (set (filter identity (map (comp :name :card) ordered_cards)))
+          (let [{:keys [dashcards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                card-names (set (filter identity (map (comp :name :card) dashcards)))
                 expected-oip-labels #{"Ordered Item Price over time"
                                       (format "%s by Ordered Item Price" (:name card))}
                 expected-time-labels (set
@@ -862,7 +862,7 @@
                                        #(format "%s when %s were added" % (:name card))
                                        ["Quarters" "Months" "Days" "Hours" "Weekdays"]))
                 expected-geo-labels #{(format "%s per state" (:name card))}]
-            (is (= 11 (->> dashboard :ordered_cards (filter :card) count)))
+            (is (= 11 (->> dashboard :dashcards (filter :card) count)))
             ;; Note that this is only true because we currently only pick up the table referenced by the :table_id field
             ;; in the Card and don't use the :result_metadata :(
             (ensure-dashboard-sourcing card dashboard)
@@ -988,7 +988,7 @@
                                             :type :query
                                             :database (mt/id)})
             res         (magic/automagic-analysis q {})
-            cards       (vec (:ordered_cards res))
+            cards       (vec (:dashcards res))
             join-member (get-in cards [2 :card :dataset_query :query :joins])]
         (is (= join-vec join-member))))))
 

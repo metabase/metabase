@@ -1,15 +1,12 @@
 import { t } from "ttag";
 
-import type {
-  DashboardOrderedCard,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DashboardCard, VisualizationSettings } from "metabase-types/api";
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
 import DashCardActionButton from "./DashCardActionButton";
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   onUpdateVisualizationSettings: (
     settings: Partial<VisualizationSettings>,
   ) => void;
