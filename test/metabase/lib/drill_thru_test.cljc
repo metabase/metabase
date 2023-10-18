@@ -379,7 +379,7 @@
                                                                 {:name "≠"}]}
                                :underlying-records {:lib/type   :metabase.lib.drill-thru/drill-thru
                                                     :type       :drill-thru/underlying-records
-                                                    :row-count  2
+                                                    :row-count  457
                                                     :table-name "Orders"}
                                :zoom-in.timeseries {:lib/type     :metabase.lib.drill-thru/drill-thru
                                                     :display-name "See this month by week"
@@ -618,35 +618,37 @@
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
-;; FIXME: fk-filter gets returned for non-fk column (#34440), fk-details gets returned for non-fk
-;; column (#34441), underlying-records drill gets shown two times for aggregated query (#34439)
 (deftest ^:parallel available-drill-thrus-test-9
-  #_(lib.drill-thru.tu/test-available-drill-thrus
-     {:click-type  :cell
-      :query-type  :aggregated
-      :column-name "count"
-      :expected    [{:type      :drill-thru/quick-filter
-                     :operators [{:name "<"}
-                                 {:name ">"}
-                                 {:name "="}
-                                 {:name "≠"}]}
-                    {:type       :drill-thru/underlying-records
-                     :row-count  2
-                     :table-name "Orders"}
-                    {:display-name "See this month by week"
-                     :type         :drill-thru/zoom-in.timeseries}]}))
+  (testing (str "fk-filter should not get returned for non-fk column (#34440) "
+                "fk-details should not get returned for non-fk column (#34441) "
+                "underlying-records should only get shown once for aggregated query (#34439)"))
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :cell
+    :query-type  :aggregated
+    :column-name "count"
+    :expected    [{:type      :drill-thru/quick-filter
+                   :operators [{:name "<"}
+                               {:name ">"}
+                               {:name "="}
+                               {:name "≠"}]}
+                  {:type       :drill-thru/underlying-records
+                   :row-count  77
+                   :table-name "Orders"}
+                  {:display-name "See this month by week"
+                   :type         :drill-thru/zoom-in.timeseries}]}))
 
-;; FIXME: fk-filter gets returned for non-fk column (#34440), fk-details gets returned for non-fk
-;; column (#34441), underlying-records drill gets shown two times for aggregated query (#34439)
 (deftest ^:parallel available-drill-thrus-test-10
-  #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing (str "fk-filter should not get returned for non-fk column (#34440) "
+                "fk-details should not get returned for non-fk column (#34441) "
+                "underlying-records should only get shown once for aggregated query (#34439)")
+    (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "max"
       :expected    [{:type :drill-thru/quick-filter, :operators [{:name "="}
                                                                  {:name "≠"}]}
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
-                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]}))
+                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
 
 ;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-11

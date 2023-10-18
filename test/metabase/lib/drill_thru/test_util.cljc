@@ -60,22 +60,22 @@
    [:query-type      [:enum :aggregated :unaggregated]]
    [:column-name     :string]
    ;; defaults to "ORDERS"
-   [:query-table  {:optional true} [:enum "ORDERS" #_"PRODUCTS"]]
+   [:query-table  {:optional true} [:enum "ORDERS" "PRODUCTS"]]
    [:custom-query {:optional true} ::lib.schema/query]])
 
 (def ^:private Row
   [:map-of :string :any])
 
-(mu/defn ^:private query-and-row-for-test-case :- [:map
-                                                   [:query ::lib.schema/query]
-                                                   [:row   Row]]
+(mu/defn query-and-row-for-test-case :- [:map
+                                         [:query ::lib.schema/query]
+                                         [:row   Row]]
   [{:keys [query-table query-type]
     :or   {query-table "ORDERS"}
     :as   test-case} :- TestCase]
   (or (get-in test-queries [query-table query-type])
       (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case}))))
 
-(mu/defn ^:private test-case-context :- ::lib.schema.drill-thru/context
+(mu/defn test-case-context :- ::lib.schema.drill-thru/context
   [query     :- ::lib.schema/query
    row       :- Row
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]

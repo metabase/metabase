@@ -201,3 +201,31 @@
                    (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
                    (lib/order-by (meta/field-metadata :orders :created-at) :asc))
     :expected     {:type :drill-thru/sort, :sort-directions [:desc]}}))
+
+(deftest ^:parallel custom-column-test
+  (testing "should support sorting for custom column without table relation (metabase#34499)"
+    (let [{:keys [query row]} (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated])
+          query               (as-> query query
+                                (lib/expression query "CustomColumn" (lib/+ 1 1))
+                                (lib/expression query "CustomTax" (lib/+ (meta/field-metadata :orders :tax) 2))
+                                (lib/aggregate query (lib/avg (lib/expression-ref query "CustomTax")))
+                                (lib/breakout query (lib/expression-ref query "CustomColumn")))
+
+          row     (merge row
+                         {"CustomColumn" 2
+                          "avg"          13.2})
+          context (lib.drill-thru.tu/test-case-context query
+                                                       row
+                                                       {:column-name "CustomColumn"
+                                                        :click-type  :header
+                                                        :query-type  :aggregated})
+          drill   (m/find-first
+                   #(= (:type %) :drill-thru/sort)
+                   (lib/available-drill-thrus query -1 context))]
+      (is (=? {:type            :drill-thru/sort
+               :column          {:name "CustomColumn"}
+               :sort-directions [:asc :desc]}
+              drill))
+      (let [query' (lib/drill-thru query drill)]
+        (is (=? [[:asc {} [:expression {} "CustomColumn"]]]
+                (lib/order-bys query')))))))
