@@ -1,35 +1,35 @@
-import { rem } from "@mantine/core";
+import { getStylesRef, rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
 export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
   Day: {
     styles: theme => ({
       day: {
-        width: rem(24),
-        height: rem(24),
+        width: rem(40),
+        height: rem(40),
         color: theme.colors.text[2],
-        fontSize: theme.fontSizes.sm,
-        lineHeight: theme.lineHeight,
+        fontSize: theme.fontSizes.md,
+        lineHeight: rem(24),
         borderRadius: theme.radius.xs,
 
         "&:hover": {
           backgroundColor: theme.colors.bg[0],
         },
         "&[data-disabled]": {
-          color: theme.colors.text[0],
+          color: theme.colors.bg[2],
         },
         "&[data-weekend]": {
-          color: theme.colors.error[0],
+          color: theme.colors.text[2],
         },
         "&[data-outside]": {
-          color: theme.colors.text[0],
+          color: theme.colors.bg[2],
         },
         "&[data-in-range]": {
-          color: theme.white,
+          color: theme.colors.text[1],
           borderRadius: 0,
-          backgroundColor: theme.colors.focus[0],
+          backgroundColor: theme.colors.brand[0],
           "&:hover": {
-            backgroundColor: theme.colors.focus[0],
+            backgroundColor: theme.colors.brand[0],
           },
         },
         "&[data-first-in-range]": {
@@ -50,36 +50,62 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
   },
+  Month: {
+    styles: () => ({
+      monthCell: {
+        ref: getStylesRef("monthCell"),
+
+        "&[data-with-spacing]": {
+          padding: 0,
+
+          "&:not(:first-of-type)": {
+            paddingLeft: rem(1),
+          },
+          "&:not(:last-of-type)": {
+            paddingRight: rem(1),
+          },
+        },
+      },
+      monthRow: {
+        [`&:not(:first-of-type) .${getStylesRef("monthCell")}`]: {
+          paddingTop: rem(1),
+        },
+        [`&:not(:last-of-type) .${getStylesRef("monthCell")}`]: {
+          paddingBottom: rem(1),
+        },
+      },
+    }),
+  },
   WeekdaysRow: {
     styles: theme => ({
       weekday: {
-        width: rem(24),
-        height: rem(28),
+        width: rem(40),
+        height: rem(40),
         color: theme.colors.text[0],
-        fontSize: theme.fontSizes.xs,
-        lineHeight: theme.lineHeight,
+        fontSize: theme.fontSizes.md,
+        lineHeight: rem(24),
         textAlign: "center",
-        paddingBottom: theme.spacing.xs,
+        paddingBottom: 0,
       },
     }),
   },
   CalendarHeader: {
     styles: theme => ({
       calendarHeader: {
-        marginBottom: rem(8),
+        marginBottom: theme.spacing.xs,
       },
       calendarHeaderLevel: {
         height: rem(32),
         color: theme.colors.text[2],
-        fontSize: theme.fontSizes.sm,
+        fontSize: theme.fontSizes.md,
         fontWeight: "bold",
-        lineHeight: theme.lineHeight,
+        lineHeight: rem(24),
       },
       calendarHeaderControl: {
         width: rem(32),
         height: rem(32),
-        borderRadius: theme.radius.sm,
-        color: theme.colors.text[2],
+        borderRadius: theme.radius.xs,
+        color: theme.colors.bg[2],
         "&:hover": {
           backgroundColor: theme.colors.bg[0],
         },

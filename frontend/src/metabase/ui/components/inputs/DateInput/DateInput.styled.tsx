@@ -5,6 +5,7 @@ export const getDateInputOverrides =
     DateInput: {
       defaultProps: {
         size: "md",
+        maxLevel: "month",
       },
       styles: theme => ({
         wrapper: {
