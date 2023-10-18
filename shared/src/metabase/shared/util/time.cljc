@@ -52,3 +52,15 @@
     (string? value) (-> value common/drop-trailing-time-zone internal/parse-time-string)
     :else           (throw (ex-info "Unknown input to coerce-to-time; expecting a string"
                                     {:value value}))))
+
+(defn format-unit
+  "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
+   If unit is nil, formats the full date/time"
+  [temporal-value unit]
+  (internal/format-unit temporal-value unit))
+
+(defn format-diff
+  "Formats a time difference between two temporal values.
+   Drops redundant information."
+  [temporal-value-1 temporal-value-2]
+  (internal/format-diff temporal-value-1 temporal-value-2))

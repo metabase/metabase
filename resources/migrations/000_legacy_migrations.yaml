@@ -12065,3 +12065,5 @@ databaseChangeLog:
         - dropColumn:
             tableName: native_query_snippet
             columnName: template_tags
+
+# >>>>>>>>>> NEW MIGRATIONS SHOULD BE PUT IN 001_update_migrations.yaml <<<<<<<<<<

@@ -14,12 +14,11 @@
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  ;; Note: original code uses an addition `clicked.column.field_ref != null` condition.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
-             (not (lib.types.isa/structured? column))
-             ;; Must be a real field in the DB. Note: original code uses `clicked.column.field_ref != null` for this.
-             (some? (:id column)))
+             (not (lib.types.isa/structured? column)))
     (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
                        (-> (lib.filter.operator/filter-operators column)
                            first

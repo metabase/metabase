@@ -205,3 +205,32 @@
     (is (thrown-with-msg? #?(:clj Exception :cljs js/Error)
                           #"Unknown input to coerce-to-time; expecting a string"
                           (shared.ut/coerce-to-time 12)))))
+
+(deftest format-string-test
+  (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u))
+    "Wednesday" :day-of-week
+    "Feb" :month-of-year
+    "8" :day-of-month
+    "39" :day-of-year
+    "6" :week-of-year
+    "Q1" :quarter-of-year
+    "Feb 8, 2023" nil)
+
+  (is (= "12:00 PM" (shared.ut/format-unit "12:00:00.000" nil)))
+  (is (= "Oct 3, 2023, 1:30 PM" (shared.ut/format-unit "2023-10-03T13:30:00" nil)))
+  (is (= "30" (shared.ut/format-unit "2023-10-03T13:30:00" :minute-of-hour)))
+  (is (= "1 PM" (shared.ut/format-unit "2023-10-03T13:30:00" :hour-of-day)))
+  (is (= "30" (shared.ut/format-unit 30 :minute-of-hour)))
+  (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
+  (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
+
+(deftest format-diff-test
+  (are [exp a b] (= exp (shared.ut/format-diff a b))
+    "Oct 3–5, 2023" "2023-10-03" "2023-10-05"
+    "Sep 3 – Oct 5, 2023" "2023-09-03" "2023-10-05"
+    "Oct 3, 2023, 10:20 AM – 4:30 PM" "2023-10-03T10:20" "2023-10-03T16:30"
+    "Oct 3, 2023, 10:20–30 AM" "2023-10-03T10:20" "2023-10-03T10:30"
+    "Oct 3, 2022, 10:20 AM – Oct 3, 2023, 10:30 AM" "2022-10-03T10:20" "2023-10-03T10:30"
+    "Jan 1, 2022 – Dec 31, 2023" "2022-01-01" "2023-12-31"
+    ;; I guess?
+    "Oct 5, 2023" "2023-10-05" "2023-10-05"))
