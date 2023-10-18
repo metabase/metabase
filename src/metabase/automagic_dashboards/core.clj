@@ -1042,36 +1042,32 @@
                               distinct-affinity-sets)]
     (zipmap distinct-affinity-sets satisfied-combos)))
 
-(defn user-defined-metrics->card-templates [template-cards ground-dimensions user-defined-metrics]
-  (let [card->dimensions (fn [card]
-                           (->> card first val
-                                :dimensions
-                                (mapcat keys)
-                                set))
-        satisfied?       (fn [dim-set]
-                           (every? ground-dimensions dim-set))]
-    (for [[dimension-affinities viz-types] (reduce (partial merge-with set/union)
-                                                   {}
-                                                   (for [card template-cards
-                                                         :let [dim-set (card->dimensions card)]
-                                                         :when (satisfied? dim-set)]
-                                                     {dim-set #{(-> card first val :visualization)}}))
-          viz viz-types
-          {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
-          :let [metric-title (if (seq dimension-affinities)
-                               (format "%s by %s" metric-name (combination/items->str (vec dimension-affinities)))
-                               metric-name)]]
-      {:card-score    100
-       :metrics       [metric-name]
-       :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
-       :visualization viz
-       :width         6
-       :title         metric-title
-       :height        4
-       :group         metric-name
-       :card-name     (format "Card[%s][%s]" metric-title (first viz))})))
+(defn affinties->viz-types [normalized-card-templates ground-dimensions]
+  (reduce (partial merge-with set/union)
+          {}
+          (for [{:keys [dimensions visualization]} normalized-card-templates
+                :let [dim-set (into #{} (map ffirst) dimensions)]
+                :when (every? ground-dimensions dim-set)]
+            {dim-set #{visualization}})))
 
-;; For each user-defined metric, for each dimension, create a scalar card
+(defn user-defined-metrics->card-templates [affinties->viz-types user-defined-metrics]
+  (for [[dimension-affinities viz-types] affinties->viz-types
+        viz viz-types
+        {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
+        :let [metric-title (if (seq dimension-affinities)
+                             (format "%s by %s" metric-name
+                                     (combination/items->str
+                                       (map (fn [s] (format "[[%s]]" s)) (vec dimension-affinities))))
+                             metric-name)]]
+    {:card-score    100
+     :metrics       [metric-name]
+     :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
+     :visualization viz
+     :width         6
+     :title         (i18n/->UserLocalizedString metric-title nil {})
+     :height        4
+     :group         metric-name
+     :card-name     (format "Card[%s][%s]" metric-title (first viz))}))
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
@@ -1088,8 +1084,7 @@
         ;; From the template
         card-templates              (interesting/normalize-seq-of-maps :card template-cards)
         user-defined-card-templates (user-defined-metrics->card-templates
-                                      template-cards
-                                      grounded-dimensions
+                                      (affinties->viz-types card-templates grounded-dimensions)
                                       linked-metrics)
         user-defined-groups         (zipmap (map :metric-name linked-metrics)
                                             (map (fn [{:keys [metric-name]}]
@@ -1101,15 +1096,6 @@
                                       grounded-dimensions
                                       all-cards
                                       grounded-metrics)
-        ;affinity-set->cards           (metric->dim->cards (dash-template->affinities template grounded-dimensions))
-        ;metrics+interesting-breakouts (combination/interesting-combinations
-        ;                               grounded-dimensions
-        ;                               affinity-set->cards
-        ;                               grounded-metrics)
-        ;cards                         (combination/combinations->cards
-        ;                                base-context
-        ;                                affinity-set->cards
-        ;                                metrics+interesting-breakouts)
         empty-dashboard             (make-dashboard root (update template :groups into user-defined-groups))]
     (populate/create-dashboard
       (assoc empty-dashboard :cards dashcards)
