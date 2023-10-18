@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -7,7 +8,7 @@ import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navi
 import * as Urls from "metabase/lib/urls";
 import { SearchLoadingSpinner } from "metabase/nav/components/search/SearchResults/SearchResults";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
-import type { RecentItem } from "metabase-types/api";
+import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
 import { useRecentItemListQuery } from "metabase/common/hooks";
 import RecentItems from "metabase/entities/recent-items";
 import { useDispatch } from "metabase/lib/redux";
@@ -23,6 +24,7 @@ import {
 import { Group, Loader, Stack, Title, Paper } from "metabase/ui";
 
 type RecentsListProps = {
+  onClick?: (elem: UnrestrictedLinkEntity) => void;
   className?: string;
 };
 
@@ -36,7 +38,7 @@ interface WrappedRecentItem extends RecentItem {
   };
 }
 
-export const RecentsList = ({ className }: RecentsListProps) => {
+export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
     {
       reload: true,
@@ -65,6 +67,19 @@ export const RecentsList = ({ className }: RecentsListProps) => {
     }
   };
 
+  const onContainerClick = (item: RecentItem) => {
+    if (onClick) {
+      onClick({
+        ...item.model_object,
+        model: item.model,
+        name: item.model_object.display_name ?? item.model_object.name,
+        id: item.model_id,
+      });
+    } else {
+      onChangeLocation(item);
+    }
+  };
+
   return (
     <Paper withBorder className={className}>
       {isRecentsListLoading ? (
@@ -80,13 +95,14 @@ export const RecentsList = ({ className }: RecentsListProps) => {
               const moderated_status = getModeratedStatus(item);
               const result = item;
               const isSelected = cursorIndex === index;
+              const ref: Ref<HTMLButtonElement> = getRef(item) ?? null;
 
               return (
                 <SearchResultContainer
-                  ref={getRef(item)}
+                  ref={ref}
                   key={getItemKey(item)}
                   component="button"
-                  onClick={() => onChangeLocation(item)}
+                  onClick={() => onContainerClick(item)}
                   isActive={isActive}
                   isSelected={isSelected}
                   p="sm"

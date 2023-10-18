@@ -1,6 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes, MutableRefObject } from "react";
+import type { HTMLAttributes, RefObject } from "react";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { BoxProps, TitleProps } from "metabase/ui";
 import { Box, Divider, Stack, Title as MantineTitle } from "metabase/ui";
@@ -15,7 +15,7 @@ export const SearchResultContainer = styled(Box)<
       isActive?: boolean;
       isSelected?: boolean;
       component?: string;
-      ref: MutableRefObject<HTMLButtonElement | null> | undefined;
+      ref?: RefObject<HTMLButtonElement> | null;
     }
 >`
   display: grid;
@@ -23,7 +23,6 @@ export const SearchResultContainer = styled(Box)<
   justify-content: center;
   align-items: center;
   gap: 0.5rem 0.75rem;
-  width: 100%;
 
   ${({ theme, isActive, isSelected }) =>
     isActive &&

@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import moment from "moment-timezone";
 
 import { getUser } from "metabase/selectors/user";
@@ -42,7 +42,7 @@ function formatEditorName(lastEditInfo) {
 function LastEditInfoLabel({
   item,
   user,
-  prefix = "Edited",
+  prefix = t`Edited`,
   onClick,
   className,
 }) {
@@ -50,14 +50,14 @@ function LastEditInfoLabel({
   const { id: editorId, timestamp } = lastEditInfo;
 
   const momentTimestamp = moment(timestamp);
-  const time = momentTimestamp.isValid() ? ` ${momentTimestamp.fromNow()}` : "";
+  const timeLabel = momentTimestamp.isValid()
+    ? momentTimestamp.fromNow()
+    : null;
 
-  let editorLabel = "";
-  if (editorId) {
-    const editor =
-      editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
-    editorLabel = editor ? ` by ${editor}` : "";
-  }
+  const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
+  const editorLabel = editor ? jt`by ${editor}` : null;
+
+  const label = [prefix, timeLabel, editorLabel].filter(Boolean).join("");
 
   return (
     <Tooltip tooltip={<DateTime value={timestamp} />}>
@@ -66,7 +66,9 @@ function LastEditInfoLabel({
         className={className}
         onClick={onClick}
         data-testid="revision-history-button"
-      >{t`${prefix}${time}${editorLabel}`}</TextButton>
+      >
+        {label}
+      </TextButton>
     </Tooltip>
   );
 }

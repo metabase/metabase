@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import type { TextProps, AnchorProps } from "metabase/ui";
@@ -14,7 +15,7 @@ export const SearchResultLink = ({
   leftIcon?: JSX.Element | null;
   href?: string | null;
 } & (TextProps | AnchorProps)) => {
-  const collectionRef = useRef<HTMLHeadingElement>(null);
+  const collectionRef: Ref<HTMLAnchorElement> = useRef(null);
 
   const [isOverflowing, setIsOverflowing] = useState(false);
 

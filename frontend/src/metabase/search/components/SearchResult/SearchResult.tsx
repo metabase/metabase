@@ -69,6 +69,7 @@ export function SearchResult({
       isActive={isActive}
       isSelected={isSelected}
       p="sm"
+      w="100%"
     >
       <ItemIcon active={isActive} item={result} type={model} />
       <ResultNameSection justify="center" spacing="xs">
