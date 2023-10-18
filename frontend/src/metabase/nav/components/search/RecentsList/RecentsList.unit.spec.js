@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
-import RecentsList from "./RecentsList";
+import { RecentsList } from "./RecentsList";
 
 const recentsData = [
   {
