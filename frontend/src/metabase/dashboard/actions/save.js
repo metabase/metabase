@@ -94,33 +94,32 @@ export const updateDashboardAndCards = createThunkAction(
       );
 
       const dashcardsToUpdate = dashboard.dashcards.filter(dc => !dc.isRemoved);
-      const updateCardsAndTabs = () =>
-        DashboardApi.updateCardsAndTabs({
-          dashId: dashboard.id,
-          cards: dashcardsToUpdate.map(dc => ({
-            id: dc.id,
-            card_id: dc.card_id,
-            dashboard_tab_id: dc.dashboard_tab_id,
-            action_id: dc.action_id,
-            row: dc.row,
-            col: dc.col,
-            size_x: dc.size_x,
-            size_y: dc.size_y,
-            series: dc.series,
-            visualization_settings: dc.visualization_settings,
-            parameter_mappings: dc.parameter_mappings,
+      const updateCardsAndTabs = DashboardApi.updateCardsAndTabs({
+        dashId: dashboard.id,
+        cards: dashcardsToUpdate.map(dc => ({
+          id: dc.id,
+          card_id: dc.card_id,
+          dashboard_tab_id: dc.dashboard_tab_id,
+          action_id: dc.action_id,
+          row: dc.row,
+          col: dc.col,
+          size_x: dc.size_x,
+          size_y: dc.size_y,
+          series: dc.series,
+          visualization_settings: dc.visualization_settings,
+          parameter_mappings: dc.parameter_mappings,
+        })),
+        ordered_tabs: (dashboard.ordered_tabs ?? [])
+          .filter(tab => !tab.isRemoved)
+          .map(({ id, name }) => ({
+            id,
+            name,
           })),
-          ordered_tabs: (dashboard.ordered_tabs ?? [])
-            .filter(tab => !tab.isRemoved)
-            .map(({ id, name }) => ({
-              id,
-              name,
-            })),
-        });
+      });
 
       // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
       const [updatedCardsAndTabs, _updateDashboardAction] = await Promise.all([
-        updateCardsAndTabs(),
+        updateCardsAndTabs,
         dispatch(Dashboards.actions.update(dashboard)),
       ]);
       dispatch(saveCardsAndTabs(updatedCardsAndTabs));
