@@ -1934,10 +1934,16 @@
                                               (magic/affinities->viz-types card-templates ground-dimensions)
                                               user-defined-metrics)
                 all-cards                   (into card-templates user-defined-card-templates)
-                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)]
+                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)
+                {total-orders-group         "Total Orders"
+                 avg-quantity-ordered-group "Average Quantity Ordered"} (group-by :group dashcards)]
             (is (= 57 (count dashcards)))
-            ;(map :metric dashcards)
-            ))))))
+            (is (= 15 (count total-orders-group)))
+            (is (= #{"map" "bar" "scalar" "line" "row"}
+                   (set (map (comp first :visualization) total-orders-group))))
+            (is (= 15 (count avg-quantity-ordered-group)))
+            (is (= #{"map" "bar" "scalar" "line" "row"}
+                   (set (map (comp first :visualization) avg-quantity-ordered-group))))))))))
 
 (deftest generate-dashboard-pipeline-test
   (testing "Example new pipeline dashboard generation test"
