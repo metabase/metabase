@@ -3,13 +3,11 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.ref :as ref]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -29,7 +27,7 @@
     stage-number :- :int
     expression-clause :- ::lib.schema.expression/expression]
    (let [[op options & args] expression-clause
-         ->maybe-col #(when (lib.hierarchy/isa? (first %) ::ref/ref)
+         ->maybe-col #(when (lib.util/ref-clause? %)
                         (lib.filter/add-column-operators
                           (lib.field/extend-column-metadata-from-ref
                             query stage-number

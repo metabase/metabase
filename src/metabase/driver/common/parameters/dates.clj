@@ -240,6 +240,10 @@
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))
 
+(defn- ->iso-8601-date-time [t]
+  (t/format :iso-local-date-time t))
+
+
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field-clause]
@@ -318,11 +322,19 @@
               (let [iso8601date (->iso-8601-date date)]
                 [:= (with-temporal-unit-if-field field-clause :day) iso8601date]))}
    ;; day range
-   {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
+   {:parser (regex->parser #"([0-9-T]+)~([0-9-T]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
               {:start date-1 :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
               [:between (with-temporal-unit-if-field field-clause :day) (->iso-8601-date date-1) (->iso-8601-date date-2)])}
+   ;; datetime range
+   {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
+    :range  (fn [{:keys [date-1 date-2]} _]
+              {:start date-1, :end date-2})
+    :filter (fn [{:keys [date-1 date-2]} field-clause]
+              [:between (with-temporal-unit-if-field field-clause :default)
+               (->iso-8601-date-time date-1)
+               (->iso-8601-date-time date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
