@@ -125,7 +125,6 @@
     [metabase.util.malli :as mu]
     #_{:clj-kondo/ignore [:deprecated-namespace]}
     [metabase.util.malli.schema :as ms]
-    [metabase.util.schema :as su]
     [potemkin :as p]
     [ring.util.codec :as codec]
     [schema.core :as s]
