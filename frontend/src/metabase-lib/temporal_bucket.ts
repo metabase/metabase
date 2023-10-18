@@ -6,7 +6,6 @@ import type {
   Clause,
   Query,
   BucketName,
-  IntervalAmount,
 } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
@@ -47,6 +46,8 @@ export function withDefaultTemporalBucket(
   );
   return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
 }
+
+type IntervalAmount = number | "current" | "next" | "last";
 
 export function describeTemporalInterval(
   n: IntervalAmount,

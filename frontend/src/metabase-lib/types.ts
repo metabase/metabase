@@ -103,8 +103,6 @@ export type BucketName =
   | "quarter-of-year"
   | "hour-of-day";
 
-export type IntervalAmount = number | "current" | "next" | "last";
-
 export type BucketDisplayInfo = {
   shortName: BucketName;
   displayName: string;
