@@ -4,9 +4,11 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.email-test :as et]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient User]]
+    :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient
+            User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -878,3 +880,19 @@
                                                     #"now getting alerts about .*Foo")
                   :emails  (et/regex-email-bodies #"https://metabase.com/testmb"
                                                   #"now getting alerts about .*Foo")))))))))
+
+(deftest alert-unsubscribe-event-test
+  (testing "Alert has two recipients, and non-admin unsubscribes"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (mt/with-temp [Card                  card  (basic-alert-query)
+                     Pulse                 alert (basic-alert)
+                     PulseCard             _     (pulse-card alert card)
+                     PulseChannel          pc    (pulse-channel alert)
+                     PulseChannelRecipient _     (recipient pc :rasta)]
+        (api:unsubscribe! :rasta 204 alert)
+        (is (= {:topic    :alert-unsubscribe
+                :user_id  (mt/user->id :rasta)
+                :model    "Pulse"
+                :model_id nil
+                :details  {:email "rasta@metabase.com"}}
+               (audit-log-test/event :alert-unsubscribe)))))))
