@@ -3,7 +3,7 @@
    :exclude
    [filter and or not = < <= > >= not-empty case])
   (:require
-   [clojure.string :as str]
+   [inflections.core :as inflections]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
@@ -20,9 +20,13 @@
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (doseq [tag [:and :or]]
@@ -59,45 +63,162 @@
      (lib.metadata.calculation/display-name query stage-number clause style))))
 
 (defmethod lib.metadata.calculation/display-name-method ::varargs
-  [query stage-number [tag _opts & exprs] style]
-  (let [display-names (map #(lib.metadata.calculation/display-name query stage-number % style)
-                           exprs)]
-    (if (clojure.core/= (count exprs) 2)
-      (let [[x y] display-names]
-        (clojure.core/case tag
-          :=  (i18n/tru "{0} equals {1}"         x y)
-          :!= (i18n/tru "{0} does not equal {1}" x y)))
-      ;; with > 2 args, `:=` works like SQL `IN`.
-      ;;
-      ;; with > 2 args, `:!=` works like SQL `NOT IN`.
-      (let [expr   (first display-names)
-            values (lib.util/join-strings-with-conjunction
-                    (i18n/tru "or")
-                    (rest display-names))]
-        (clojure.core/case tag
-          :=  (i18n/tru "{0} equals any of {1}"         expr values)
-          :!= (i18n/tru "{0} does not equal any of {1}" expr values))))))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name lib.temporal-bucket/describe-temporal-pair
+        numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
+                                    (lib.util/clause? %)
+                                    (-> (lib.metadata.calculation/metadata query stage-number %)
+                                        lib.types.isa/id?
+                                        clojure.core/not))
+        temporal? #(lib.util/original-isa? % :type/Temporal)
+        unit-is (fn [unit]
+                  (fn [a]
+                    (clojure.core/and
+                      (temporal? a)
+                      (lib.util/clause? a)
+                      (clojure.core/= unit (:temporal-unit (second a))))))
+        ->unbucketed-display-name #(-> %
+                                       (update 1 dissoc :temporal-unit)
+                                       ->display-name)
+        ->bucket-name #(-> %
+                           second
+                           :temporal-unit
+                           lib.temporal-bucket/describe-temporal-unit
+                           u/lower-case-en)]
+    (mbql.u/match-one expr
+      [:= _ (a :guard numeric?) b]
+      (i18n/tru "{0} is equal to {1}" (->display-name a) (->display-name b))
+
+      [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard numeric?) b]
+      (i18n/tru "{0} is not equal to {1}" (->display-name a) (->display-name b))
+
+      [:!= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (inflections/plural (->temporal-name a b)))
+
+      [:!= _ (a :guard (unit-is :month-of-year)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes each {1}" (->unbucketed-display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard (unit-is :quarter-of-year)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1} each year" (->unbucketed-display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard (unit-is :hour-of-day)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes the hour of {1}" (->unbucketed-display-name a) (->temporal-name a b))
+
+      [:!= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} excludes {1}" (->display-name a) (->temporal-name a b))
+
+      [:= _ a (b :guard string?)]
+      (i18n/tru "{0} is {1}" (->display-name a) b)
+
+      [:= _ a b]
+      (i18n/tru "{0} is {1}" (->display-name a) (->display-name b))
+
+      [:!= _ a (b :guard string?)]
+      (i18n/tru "{0} is not {1}" (->display-name a) b)
+
+      [:!= _ a b]
+      (i18n/tru "{0} is not {1}" (->display-name a) (->display-name b))
+
+      [:= _ (a :guard numeric?) & args]
+      (i18n/tru "{0} is equal to {1} selections" (->display-name a) (count args))
+
+      [:!= _ (a :guard numeric?) & args]
+      (i18n/tru "{0} is not equal to {1} selections" (->display-name a) (count args))
+
+      [:!= _ (a :guard temporal?) & args]
+      (i18n/tru "{0} excludes {1} {2} selections" (->unbucketed-display-name a) (count args) (->bucket-name a))
+
+      [:= _ a & args]
+      (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
+
+      [:!= _ a & args]
+      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args)))))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
-  [query stage-number [tag _opts x y] style]
-  (let [x (lib.metadata.calculation/display-name query stage-number x style)
-        y (lib.metadata.calculation/display-name query stage-number y style)]
-    (clojure.core/case tag
-      :<                (i18n/tru "{0} is less than {1}"                x y)
-      :<=               (i18n/tru "{0} is less than or equal to {1}"    x y)
-      :>                (i18n/tru "{0} is greater than {1}"             x y)
-      :>=               (i18n/tru "{0} is greater than or equal to {1}" x y)
-      :starts-with      (i18n/tru "{0} starts with {1}"                 x y)
-      :ends-with        (i18n/tru "{0} ends with {1}"                   x y)
-      :contains         (i18n/tru "{0} contains {1}"                    x y)
-      :does-not-contain (i18n/tru "{0} does not contain {1}"            x y))))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        ->temporal-name #(shared.ut/format-unit % nil)
+        temporal? #(lib.util/original-isa? % :type/Temporal)]
+    (mbql.u/match-one expr
+      [:< _ (x :guard temporal?) (y :guard string?)]
+      (i18n/tru "{0} is before {1}"                   (->display-name x) (->temporal-name y))
+
+      [:< _ x y]
+      (i18n/tru "{0} is less than {1}"                (->display-name x) (->display-name y))
+
+      [:<= _ x y]
+      (i18n/tru "{0} is less than or equal to {1}"    (->display-name x) (->display-name y))
+
+      [:> _ (x :guard temporal?) (y :guard string?)]
+      (i18n/tru "{0} is after {1}"                    (->display-name x) (->temporal-name y))
+
+      [:> _ x y]
+      (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
+
+      [:>= _ x y]
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
+
+      [:starts-with _ x (y :guard string?)]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
+
+      [:starts-with _ x y]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
+
+      [:ends-with _ x (y :guard string?)]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
+
+      [:ends-with _ x y]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
+
+      [:contains _ x (y :guard string?)]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
+
+      [:contains _ x y]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
+
+      [:does-not-contain _ x (y :guard string?)]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
+
+      [:does-not-contain _ x y]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y)))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
-  [query stage-number [_tag _opts expr x y] style]
-  (i18n/tru "{0} is between {1} and {2}"
-            (lib.metadata.calculation/display-name query stage-number expr style)
-            (lib.metadata.calculation/display-name query stage-number x    style)
-            (lib.metadata.calculation/display-name query stage-number y    style)))
+  [query stage-number expr style]
+  (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
+        temporal? #(lib.util/original-isa? % :type/Temporal)]
+    (mbql.u/match-one expr
+      [:between _ (x :guard temporal?) (y :guard string?) (z :guard string?)]
+      (i18n/tru "{0} is {1}"
+                (->display-name x)
+                (shared.ut/format-diff y z))
+
+      [:between _
+       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:relative-datetime _ n2 unit2]
+       [:relative-datetime _ 0 _]]
+      (i18n/tru "{0} is in the {1}, starting {2} ago"
+                (->display-name x)
+                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+                (inflections/pluralize n (name unit)))
+
+      [:between _
+       [:+ _ (x :guard temporal?) [:interval _ n unit]]
+       [:relative-datetime _ 0 _]
+       [:relative-datetime _ n2 unit2]]
+      (i18n/tru "{0} is in the {1}, starting {2} from now"
+                (->display-name x)
+                (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n2 unit2))
+                (inflections/pluralize (abs n) (name unit)))
+
+      [:between _ x y z]
+      (i18n/tru "{0} is between {1} and {2}"
+                (->display-name x)
+                (->display-name y)
+                (->display-name z)))))
 
 (defmethod lib.metadata.calculation/display-name-method :inside
   [query stage-number [_tag opts lat-expr lon-expr lat-max lon-min lat-min lon-max] style]
@@ -122,13 +243,25 @@
 
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
-  (i18n/tru "{0} is within {1}"
-            (lib.metadata.calculation/display-name query stage-number expr style)
-            ;; this should legitimately be lowercasing in the user locale. I know system locale isn't necessarily the
-            ;; same thing, but it might be. This will have to do until we have some sort of user-locale lower-case
-            ;; functionality
-            #_ {:clj-kondo/ignore [:discouraged-var]}
-            (str/lower-case (lib.temporal-bucket/describe-temporal-interval n unit))))
+  (if (clojure.core/or
+        (clojure.core/= n :current)
+        (clojure.core/and
+          (clojure.core/= (abs n) 1)
+          (clojure.core/= unit :day)))
+    (i18n/tru "{0} is {1}"
+              (lib.metadata.calculation/display-name query stage-number expr style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))
+    (i18n/tru "{0} is in the {1}"
+              (lib.metadata.calculation/display-name query stage-number expr style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
+
+(defmethod lib.metadata.calculation/display-name-method :relative-datetime
+  [_query _stage-number [_tag _opts n unit] _style]
+  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
+
+(defmethod lib.metadata.calculation/display-name-method :interval
+  [_query _stage-number [_tag _opts n unit] _style]
+  (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
 
 (lib.common/defop and [x y & more])
 (lib.common/defop or [x y & more])
