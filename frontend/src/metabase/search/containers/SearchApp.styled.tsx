@@ -32,5 +32,5 @@ export const SearchControls = styled(Stack)`
 `;
 
 export const SearchResultContainer = styled.div`
-  flex: 1 1 auto;
+  flex: 1;
 `;
