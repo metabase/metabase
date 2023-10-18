@@ -253,11 +253,11 @@ describe("scenarios > dashboard card resizing", () => {
       editDashboard();
 
       cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-        const orderedCards = body.dashcards;
-        orderedCards.forEach(({ card }) => {
-          const dashCard = cy.contains(".DashCard", card.name);
+        const dashcards = body.dashcards;
+        dashcards.forEach(({ card }) => {
+          const dashcard = cy.contains(".DashCard", card.name);
           resizeDashboardCard({
-            card: dashCard,
+            card: dashcard,
             x: getDefaultSize(card.display).width * 100,
             y: getDefaultSize(card.display).height * 100,
           });
@@ -266,11 +266,11 @@ describe("scenarios > dashboard card resizing", () => {
         saveDashboard();
         editDashboard();
 
-        orderedCards.forEach(({ card }) => {
-          const dashCard = cy.contains(".DashCard", card.name);
-          dashCard.within(() => {
+        dashcards.forEach(({ card }) => {
+          const dashcard = cy.contains(".DashCard", card.name);
+          dashcard.within(() => {
             resizeDashboardCard({
-              card: dashCard,
+              card: dashcard,
               x: -getDefaultSize(card.display).width * 200,
               y: -getDefaultSize(card.display).height * 200,
             });
