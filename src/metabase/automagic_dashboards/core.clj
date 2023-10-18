@@ -1042,56 +1042,28 @@
                               distinct-affinity-sets)]
     (zipmap distinct-affinity-sets satisfied-combos)))
 
-;; We have two types of card templates:
-;; 1 - Those from the template
-;; 2 - Others that are appropriate for user-defined metrics.
-;; NOTE (THIS IS IMPORTANT) - THE FOLLOWING MULTIMETHOD IS _A_ WAY TO CREATE CARD TEMPLATES FOR USER-DEFINED METRICS
-;; BUT IS NOT _THE_ WAY. THE KEY THING IS WE NEED A SEQ OF CARD TEMPLATES FOR USER DEFINED METRICS.
-(defmulti user-defined-metric->card-templates :metric-name)
+(defn user-defined-metrics->card-templates [template-cards ground-dimensions user-defined-metrics]
+  (for [dimension-affinities (into #{} (comp (map (comp val first))
+                                             (map :dimensions)
+                                             (map #(mapcat keys %))
+                                             (map set))
+                                   template-cards)
+        :when (every? ground-dimensions dimension-affinities)
+        {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
+        :let [metric-title (if (seq dimension-affinities)
+                             (format "%s by %s" metric-name (combination/items->str (vec dimension-affinities)))
+                             metric-name)]]
+    {:card-score    100
+     :metrics       [metric-name]
+     :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
+     :visualization ["scalar" {}]
+     :width         6
+     :title         metric-title
+     :height        4
+     :group         metric-name
+     :card-name     (format "Card[%s]" metric-title)}))
 
-(defmethod user-defined-metric->card-templates "Churn" [{:keys [metric-name]}]
-  [{:card-score    100
-    :metrics       [metric-name]
-    :visualization ["scalar" {}]
-    :title         (format "Total %s" metric-name)
-    :width         6
-    :height        4
-    :group         "Overview"
-    :card-name     (format "Count[%s]" metric-name)}
-   {:card-score    95
-    :group         "ByTime"
-    :dimensions    [{"JoinTimestamp" {}}]
-    :title         (format "%s over time" metric-name)
-    :visualization ["line" {}]
-    :metrics       [metric-name]
-    :width         6
-    :height        4
-    :card-name     (format "CountByTime[%s]" metric-name)}
-   {:card-score    80
-    :group         "Geographical"
-    :card-name     (format "CountByCoords[%s]" metric-name)
-    :width         6
-    :dimensions    [{"Long" {}} {"Lat" {}}]
-    :title         (format "%s by coordinates" metric-name)
-    :visualization ["map" {}]
-    :metrics       [metric-name]
-    :height        6}])
-
-(defmethod user-defined-metric->card-templates :default [{:keys [metric-name]}]
-  ;; The default set of cards for user-defined metrics
-  [{:card-score    100
-    :metrics       [metric-name]
-    :visualization ["scalar" {}]
-    :width         6
-    :title         (format "Total %s" metric-name)
-    :height        4
-    :group         "Overview"
-    :card-name     (format "Count[%s]" metric-name)}])
-
-(defn user-defined-metrics->card-templates
-  [user-defined-metrics]
-  (mapcat user-defined-metric->card-templates user-defined-metrics))
-
+;; For each user-defined metric, for each dimension, create a scalar card
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
@@ -1107,7 +1079,14 @@
                                           :metric-specs    template-metrics})
         ;; From the template
         card-templates              (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates (user-defined-metrics->card-templates linked-metrics)
+        user-defined-card-templates (new-user-defined-metrics->card-templates
+                                      template-cards
+                                      grounded-dimensions
+                                      linked-metrics)
+        user-defined-groups         (zipmap (map :metric-name linked-metrics)
+                                            (map (fn [{:keys [metric-name]}]
+                                                   {:title (format "Your %s Metric" metric-name)
+                                                    :score 0}) linked-metrics))
         all-cards                   (into card-templates user-defined-card-templates)
         dashcards                   (combination/metrics+breakouts
                                       base-context
@@ -1123,29 +1102,29 @@
         ;                                base-context
         ;                                affinity-set->cards
         ;                                metrics+interesting-breakouts)
-        empty-dashboard             (make-dashboard root template)]
+        empty-dashboard             (make-dashboard root (update template :groups into user-defined-groups))]
     (populate/create-dashboard
       (assoc empty-dashboard :cards dashcards)
       :all)))
 
 (comment
-  (let [template (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        item (t2/select-one :model/Table :name "PRODUCTS" :db_id 1)
-        base-context (-> item ->root make-base-context)
+  (let [template             (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+        item                 (t2/select-one :model/Table :name "PRODUCTS" :db_id 1)
+        base-context         (-> item ->root make-base-context)
         {:keys [metrics dimensions]} (interesting/identify base-context
                                                            {:dimension-specs (:dimensions template)
-                                                            :metric-specs (:metrics template)})
-        user-defined-metrics [{:metric-name "Custom average",
-                               :metric-title "Custom average",
+                                                            :metric-specs    (:metrics template)})
+        user-defined-metrics [{:metric-name       "Custom average",
+                               :metric-title      "Custom average",
                                :metric-definition {:source-table 1,
-                                                   :aggregation [[:aggregation-options
-                                                                  [:/
-                                                                   [:sum [:field 59 nil]]
-                                                                   [:count]]
-                                                                  {:name "My average",
-                                                                   :display-name "My average"}]]},
-                               :metric-score 95}]
-        cards (:cards template)]
+                                                   :aggregation  [[:aggregation-options
+                                                                   [:/
+                                                                    [:sum [:field 59 nil]]
+                                                                    [:count]]
+                                                                   {:name         "My average",
+                                                                    :display-name "My average"}]]},
+                               :metric-score      95}]
+        cards                (:cards template)]
 
     (let [m->d->cards (merge (combination/combinations-from-template cards metrics dimensions)
                              (combination/combinations-from-user-metrics user-defined-metrics dimensions))]
