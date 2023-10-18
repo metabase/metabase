@@ -32,6 +32,7 @@ interface DispatchProps {
 type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  // When navigating programatically, use replace so that the browser back button works
   onSelectSchema: (databaseId, schemaId, { useReplace = false } = {}) => {
     dispatch(
       useReplace

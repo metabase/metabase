@@ -31,6 +31,7 @@ interface DispatchProps {
 }
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  // When navigating programatically, use replace so that the browser back button works
   onSelectDatabase: (databaseId, { useReplace = false } = {}) =>
     dispatch(
       useReplace
