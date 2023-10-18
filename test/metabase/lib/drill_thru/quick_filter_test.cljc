@@ -45,9 +45,9 @@
                                                               {:name "="}
                                                               {:name "≠"}]}}))
 
-;;; FIXME quick-filter doesn't get returned for CREATED_AT column in aggregated query (#34443)
 (deftest ^:parallel returns-quick-filter-test-5
-  #_(lib.drill-thru.tu/test-returns-drill
+  (testing "quick-filter should get returned for CREATED_AT column in aggregated query (#34443)"
+    (lib.drill-thru.tu/test-returns-drill
      {:drill-type  :drill-thru/quick-filter
       :click-type  :cell
       :query-type  :aggregated
@@ -55,7 +55,7 @@
       :expected    {:type :drill-thru/quick-filter, :operators [{:name "<"}
                                                                 {:name ">"}
                                                                 {:name "="}
-                                                                {:name "≠"}]}}))
+                                                                {:name "≠"}]}})))
 
 (deftest ^:parallel returns-quick-filter-test-6
   (lib.drill-thru.tu/test-returns-drill

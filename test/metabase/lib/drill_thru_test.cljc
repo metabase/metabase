@@ -650,19 +650,19 @@
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
                     {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
 
-;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-11
-  #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing "quick-filter should not get returned for non-metric (huh?) FK columns in aggregated queries (#34443)"
+    (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "PRODUCT_ID"
       :expected    [{:type :drill-thru/fk-filter}
                     {:type :drill-thru/fk-details, :object-id 3, :many-pks? false}
-                    {:row-count 2, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:row-count 2, :table-name "Orders", :type :drill-thru/underlying-records}]})))
 
-;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-12
-  #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing "quick-filter should get returned for CREATED_AT column in aggregated query (#34443)"
+    (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "CREATED_AT"
@@ -670,7 +670,7 @@
                                                                  {:name ">"}
                                                                  {:name "="}
                                                                  {:name "≠"}]}
-                    {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]})))
 
 ;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-13

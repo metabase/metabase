@@ -493,44 +493,44 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // FIXME: quick-filter gets returned for non-metric column (metabase#34443)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "PRODUCT_ID",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/fk-filter",
-    //     },
-    //     {
-    //       type: "drill-thru/fk-details",
-    //       objectId: AGGREGATED_ORDERS_ROW_VALUES.PRODUCT_ID as number,
-    //       "manyPks?": false,
-    //     },
-    //     {
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //       type: "drill-thru/underlying-records",
-    //     },
-    //   ],
-    // },
-    // FIXME: quick-filter gets returned for non-metric column (metabase#34443)
-    // {
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "CREATED_AT",
-    //   expectedDrills: [
-    //     {
-    //       type: "drill-thru/quick-filter",
-    //       operators: ["<", ">", "=", "≠"],
-    //     },
-    //     {
-    //       rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
-    //       tableName: "Orders",
-    //       type: "drill-thru/underlying-records",
-    //     },
-    //   ],
-    // },
+    // quick-filter gets returned for non-metric column (metabase#34443)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "PRODUCT_ID",
+      expectedDrills: [
+        {
+          type: "drill-thru/fk-filter",
+        },
+        {
+          type: "drill-thru/fk-details",
+          objectId: AGGREGATED_ORDERS_ROW_VALUES.PRODUCT_ID as number,
+          "manyPks?": false,
+        },
+        {
+          rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+          type: "drill-thru/underlying-records",
+        },
+      ],
+    },
+    // quick-filter gets returned for non-metric column (metabase#34443)
+    {
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      expectedDrills: [
+        {
+          type: "drill-thru/quick-filter",
+          operators: ["<", ">", "=", "≠"],
+        },
+        {
+          rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+          tableName: "Orders",
+          type: "drill-thru/underlying-records",
+        },
+      ],
+    },
     {
       clickType: "header",
       queryType: "aggregated",
@@ -1035,17 +1035,17 @@ describe("availableDrillThrus", () => {
         operators: ["<", ">", "=", "≠"],
       },
     },
-    // FIXME: quick-filter doesn't get returned for CREATED_AT column in aggregated query (metabase#34443)
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "CREATED_AT",
-    //   expectedParameters: {
-    //     type: "drill-thru/quick-filter",
-    //     operators: ["<", ">", "=", "≠"],
-    //   },
-    // },
+    // quick-filter doesn't get returned for CREATED_AT column in aggregated query (metabase#34443)
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      expectedParameters: {
+        type: "drill-thru/quick-filter",
+        operators: ["<", ">", "=", "≠"],
+      },
+    },
     {
       drillType: "drill-thru/quick-filter",
       clickType: "cell",
