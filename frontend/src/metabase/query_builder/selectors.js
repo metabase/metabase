@@ -634,7 +634,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isDirty || isMetadataDirty;
     }
 
-    if (question && question.isNative()) {
+    if (question?.isNative()) {
       const isNewQuestion = !originalQuestion;
 
       if (isNewQuestion) {
@@ -644,7 +644,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       return isSavedQuestionChanged;
     }
 
-    if (originalQuestion && originalQuestion.isStructured()) {
+    if (originalQuestion?.isStructured()) {
       return uiControls.isModifiedFromNotebook;
     }
 
