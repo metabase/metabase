@@ -8,14 +8,20 @@ export const SearchResultSection = ({
   totalResults,
 }: {
   items: WrappedResult[];
-  totalResults: number;
+  totalResults: number | undefined;
 }) => {
-  const resultsLabel = totalResults === 1 ? t`result` : t`results`;
+  const getLabel = () => {
+    if (!totalResults) {
+      return null;
+    }
+    return totalResults === 1 ? t`1 result` : t`${totalResults} results`;
+  };
+
   return (
     <Paper px="sm" py="md">
       <Stack spacing="sm">
         <Text tt="uppercase" fw={700} ml="sm" mb="sm">
-          {totalResults} {resultsLabel}
+          {getLabel()}
         </Text>
         {items.map(item => {
           return (

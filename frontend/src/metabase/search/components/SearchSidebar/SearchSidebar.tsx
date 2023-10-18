@@ -20,9 +20,14 @@ import { CreatedAtFilter } from "metabase/search/components/filters/CreatedAtFil
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;
   onChange: (value: URLSearchFilterQueryParams) => void;
+  className?: string;
 };
 
-export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+export const SearchSidebar = ({
+  value,
+  onChange,
+  className,
+}: SearchSidebarProps) => {
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
@@ -76,7 +81,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
   };
 
   return (
-    <Stack spacing="lg">
+    <Stack spacing="lg" className={className}>
       {getFilter(SearchFilterKeys.Type)}
       <Stack spacing="sm">
         {getFilter(SearchFilterKeys.CreatedBy)}

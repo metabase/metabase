@@ -27,3 +27,10 @@ export function getFiltersFromLocation(
   }
   return {};
 }
+
+export function useLocationSearchElements(location: SearchAwareLocation) {
+  return {
+    searchText: getSearchTextFromLocation(location),
+    searchFilters: getFiltersFromLocation(location),
+  };
+}
