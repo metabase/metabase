@@ -166,55 +166,6 @@
                                                 (-> source u/the-id)
                                                 (->> source u/the-id (str "card__"))))}))
 
-(mu/defn metrics+breakouts :- [:sequential ads/combined-metric]
-  [base-context
-   ground-dimensions :- ads/dim-name->matching-fields
-   card-templates
-   grounded-metrics :- [:sequential ads/grounded-metric]]
-  (let [metric-name->metric (zipmap
-                              (map :metric-name grounded-metrics)
-                              (map-indexed
-                                (fn [idx grounded-metric] (assoc grounded-metric :position idx))
-                                grounded-metrics))]
-    (for [{card-name       :card-name
-           card-metrics    :metrics
-           card-score      :card-score
-           card-dimensions :dimensions :as card-template} card-templates
-          :let [dim-names (map ffirst card-dimensions)]
-          :when (every? ground-dimensions dim-names)
-          :let [dim-score (map (comp :score ground-dimensions) dim-names)]
-          dimension-name->field (->> (map (comp :matches ground-dimensions) dim-names)
-                                     (apply math.combo/cartesian-product)
-                                     (map (partial zipmap dim-names)))
-          :let [merged-dims
-                (reduce (fn [acc [d v]]
-                          (cond-> acc
-                            (acc d)
-                            (update d into v)))
-                        dimension-name->field
-                        (map first card-dimensions))]
-          card-metric-name      card-metrics
-          :let [grounded-metric (metric-name->metric card-metric-name)]
-          :when grounded-metric
-          :let [card (visualization/expand-visualization
-                       card-template
-                       (vals dimension-name->field)
-                       nil)
-                score-components (list* (:card-score card)
-                                        (:metric-score grounded-metric)
-                                        dim-score)]]
-      (merge
-        card
-        (-> grounded-metric
-            (assoc
-              :id (gensym)
-              :affinity-name card-name
-              :card-score card-score
-              :total-score (long (/ (apply + score-components) (count score-components)))
-              :score-components score-components)
-            (update :metric-definition add-breakouts (vals merged-dims))
-            (add-dataset-query base-context))))))
-
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
@@ -260,6 +211,56 @@
             form))
         x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
+
+(mu/defn metrics+breakouts :- [:sequential ads/combined-metric]
+  [base-context
+   ground-dimensions :- ads/dim-name->matching-fields
+   card-templates
+   grounded-metrics :- [:sequential ads/grounded-metric]]
+  (let [metric-name->metric (zipmap
+                              (map :metric-name grounded-metrics)
+                              (map-indexed
+                                (fn [idx grounded-metric] (assoc grounded-metric :position idx))
+                                grounded-metrics))]
+    (for [{card-name       :card-name
+           card-metrics    :metrics
+           card-score      :card-score
+           card-dimensions :dimensions :as card-template} card-templates
+          :let [dim-names (map ffirst card-dimensions)]
+          :when (every? ground-dimensions dim-names)
+          :let [dim-score (map (comp :score ground-dimensions) dim-names)]
+          dimension-name->field (->> (map (comp :matches ground-dimensions) dim-names)
+                                     (apply math.combo/cartesian-product)
+                                     (map (partial zipmap dim-names)))
+          :let [merged-dims
+                (reduce (fn [acc [d v]]
+                          (cond-> acc
+                            (acc d)
+                            (update d into v)))
+                        dimension-name->field
+                        (map first card-dimensions))]
+          card-metric-name      card-metrics
+          :let [grounded-metric (metric-name->metric card-metric-name)]
+          :when grounded-metric
+          :let [card             (-> card-template
+                                     (visualization/expand-visualization
+                                       (vals dimension-name->field)
+                                       nil)
+                                     (instantiate-metadata base-context {} dimension-name->field))
+                score-components (list* (:card-score card)
+                                        (:metric-score grounded-metric)
+                                        dim-score)]]
+      (merge
+        card
+        (-> grounded-metric
+            (assoc
+              :id (gensym)
+              :affinity-name card-name
+              :card-score card-score
+              :total-score (long (/ (apply + score-components) (count score-components)))
+              :score-components score-components)
+            (update :metric-definition add-breakouts (vals merged-dims))
+            (add-dataset-query base-context))))))
 
 (defn items->str
   "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
