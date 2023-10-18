@@ -10,11 +10,16 @@ export function setUnit(
 }
 
 export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
-  return { ...value, offsetValue: 1, offsetUnit: value.unit, options: {} };
+  return {
+    ...value,
+    offsetValue: Math.sign(value.value),
+    offsetUnit: value.unit,
+    options: {},
+  };
 }
 
 export function getIncludeCurrent(value: DateIntervalValue): boolean {
-  return value.options?.["include-current"] ?? false;
+  return value.options?.includeCurrent ?? false;
 }
 
 export function getIncludeCurrentLabel(unit: DatePickerTruncationUnit): string {
@@ -25,5 +30,5 @@ export function setIncludeCurrent(
   value: DateIntervalValue,
   includeCurrent: boolean,
 ): DateIntervalValue {
-  return { ...value, options: { "include-current": includeCurrent } };
+  return { ...value, options: { includeCurrent } };
 }

@@ -314,7 +314,9 @@ export function relativeDateFilterClause({
   options,
 }: RelativeDateFilterParts): ExpressionClause {
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause("time-interval", [column, value, bucket], options);
+    return expressionClause("time-interval", [column, value, bucket], {
+      "include-current": options.includeCurrent,
+    });
   }
 
   return expressionClause("between", [
@@ -662,14 +664,16 @@ function relativeDateFilterPartsWithoutOffset(
     bucket,
     offsetValue: null,
     offsetBucket: null,
-    options,
+    options: {
+      includeCurrent: options["include-current"],
+    },
   };
 }
 
 function relativeDateFilterPartsWithOffset(
   query: Query,
   stageIndex: number,
-  { operator, args, options }: ExpressionParts,
+  { operator, args }: ExpressionParts,
 ): RelativeDateFilterParts | null {
   if (operator !== "between" || args.length !== 3) {
     return null;
@@ -729,7 +733,7 @@ function relativeDateFilterPartsWithOffset(
     bucket: startBucket,
     offsetValue,
     offsetBucket,
-    options,
+    options: {},
   };
 }
 
