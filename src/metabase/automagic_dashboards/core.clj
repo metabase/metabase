@@ -1069,7 +1069,7 @@
        :title         metric-title
        :height        4
        :group         metric-name
-       :card-name     (format "Card[%s]" metric-title)})))
+       :card-name     (format "Card[%s][%s]" metric-title (first viz))})))
 
 ;; For each user-defined metric, for each dimension, create a scalar card
 
@@ -1087,7 +1087,7 @@
                                           :metric-specs    template-metrics})
         ;; From the template
         card-templates              (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates (new-user-defined-metrics->card-templates
+        user-defined-card-templates (user-defined-metrics->card-templates
                                       template-cards
                                       grounded-dimensions
                                       linked-metrics)
