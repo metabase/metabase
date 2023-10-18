@@ -50,32 +50,6 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
   },
-  Month: {
-    styles: () => ({
-      monthCell: {
-        ref: getStylesRef("monthCell"),
-
-        "&[data-with-spacing]": {
-          padding: 0,
-
-          "&:not(:first-of-type)": {
-            paddingLeft: rem(1),
-          },
-          "&:not(:last-of-type)": {
-            paddingRight: rem(1),
-          },
-        },
-      },
-      monthRow: {
-        [`&:not(:first-of-type) .${getStylesRef("monthCell")}`]: {
-          paddingTop: rem(1),
-        },
-        [`&:not(:last-of-type) .${getStylesRef("monthCell")}`]: {
-          paddingBottom: rem(1),
-        },
-      },
-    }),
-  },
   WeekdaysRow: {
     styles: theme => ({
       weekday: {
@@ -122,6 +96,33 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
   },
+  Month: {
+    styles: () =>
+      getListStyles({
+        rowClass: "monthRow",
+        cellClass: "monthCell",
+        horizontalPadding: rem(1),
+        verticalPadding: rem(1),
+      }),
+  },
+  MonthsList: {
+    styles: theme =>
+      getListStyles({
+        rowClass: "monthsListRow",
+        cellClass: "monthsListCell",
+        horizontalPadding: theme.spacing.sm,
+        verticalPadding: theme.spacing.xs,
+      }),
+  },
+  YearsList: {
+    styles: theme =>
+      getListStyles({
+        rowClass: "yearsListRow",
+        cellClass: "yearsListCell",
+        horizontalPadding: theme.spacing.sm,
+        verticalPadding: theme.spacing.xs,
+      }),
+  },
   CalendarHeader: {
     styles: theme => ({
       calendarHeader: {
@@ -148,5 +149,42 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         },
       },
     }),
+  },
+});
+
+interface ListStylesParams {
+  rowClass: string;
+  cellClass: string;
+  horizontalPadding: string;
+  verticalPadding: string;
+}
+
+const getListStyles = ({
+  rowClass,
+  cellClass,
+  horizontalPadding,
+  verticalPadding,
+}: ListStylesParams) => ({
+  [cellClass]: {
+    ref: getStylesRef(cellClass),
+
+    "&[data-with-spacing]": {
+      padding: 0,
+
+      "&:not(:first-of-type)": {
+        paddingLeft: horizontalPadding,
+      },
+      "&:not(:last-of-type)": {
+        paddingRight: horizontalPadding,
+      },
+    },
+  },
+  [rowClass]: {
+    [`&:not(:first-of-type) .${getStylesRef(cellClass)}`]: {
+      paddingTop: verticalPadding,
+    },
+    [`&:not(:last-of-type) .${getStylesRef("monthCell")}`]: {
+      paddingBottom: verticalPadding,
+    },
   },
 });
