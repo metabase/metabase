@@ -135,3 +135,12 @@
   [topic _event]
   (when-not (t2/exists? :model/AuditLog :topic "install")
     (audit-log/record-event! topic {})))
+
+(derive ::database-event ::event)
+(derive :event/database-create ::database-event)
+(derive :event/database-update ::database-event)
+(derive :event/database-delete ::database-event)
+
+(methodical/defmethod events/publish-event! ::database-event
+  [topic database]
+  (audit-log/record-event! topic database))

@@ -5,6 +5,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.activity :as activity]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as m]
@@ -29,6 +31,27 @@
 (defmethod model-details :default
   [_entity _event-type]
   {})
+
+;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
+;; `metabase.query-processor`
+(defmethod model-details Card
+  [{query :dataset_query, dataset? :dataset :as card} _event-type]
+  (let [query (when (seq query)
+                (try (qp/preprocess query)
+                     (catch Throwable e
+                       (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/the-id)
+        table-id    (mbql.u/query->source-table-id query)]
+    (merge (select-keys card [:name :description])
+           {:database_id database-id
+            :table_id    table-id
+            ;; Use `model` instead of `dataset` to mirror product terminology
+            :model?      dataset?})))
+
+;; This is in this namespace instead of `metabase.models.database` to avoid circular dependencies with
+;; `/metabase/driver/sql_jdbc/connection`
+(defmethod model-details Database [database _event-type]
+  (select-keys database [:id :name :engine]))
 
 (defn model-name
   "Given a keyword identifier for a model, returns the name to store in the database"
