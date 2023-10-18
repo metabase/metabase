@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import moment from "moment-timezone";
 
 import { getUser } from "metabase/selectors/user";
@@ -55,12 +55,12 @@ function LastEditInfoLabel({
     : null;
 
   const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
-  const editorLabel = editor ? jt`by ${editor}` : null;
+  const editorLabel = editor ? t`by ${editor}` : null;
 
-  const label = [prefix, timeLabel, editorLabel].filter(Boolean).join("");
+  const label = [prefix, timeLabel, editorLabel].filter(Boolean).join(" ");
 
   return (
-    <Tooltip tooltip={<DateTime value={timestamp} />}>
+    <Tooltip tooltip={<DateTime value={timestamp} />} isEnabled={!!timeLabel}>
       <TextButton
         size="small"
         className={className}
