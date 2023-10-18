@@ -10,5 +10,3 @@ export const PIE_CHART_DEFAULT_OPTIONS = {
     cronut: "#DDECFA",
   },
 };
-
-export const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage

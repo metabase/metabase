@@ -10,10 +10,9 @@ import type {
 } from "metabase-types/api";
 import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-
-import { SLICE_THRESHOLD } from "./constants";
 
 // TODO move this to base branch in shared location
 const getColumnSettings = (
