@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from "react";
+import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Button } from "metabase/ui";
 import type { ButtonProps } from "metabase/ui";
@@ -12,6 +13,7 @@ export function BackButton(props: BackButtonProps) {
       fz="1rem"
       variant="subtle"
       leftIcon={<Icon name="chevronleft" />}
+      aria-label={t`Back`}
       {...props}
     />
   );

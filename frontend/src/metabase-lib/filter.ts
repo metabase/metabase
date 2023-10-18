@@ -42,6 +42,7 @@ import type {
   Query,
   RelativeDateBucketName,
   RelativeDateFilterParts,
+  SegmentMetadata,
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterOperatorName,
@@ -66,7 +67,7 @@ export function filterableColumnOperators(
 export function filter(
   query: Query,
   stageIndex: number,
-  filterClause: FilterClause | ExpressionClause,
+  filterClause: FilterClause | ExpressionClause | SegmentMetadata,
 ): Query {
   return ML.filter(query, stageIndex, filterClause);
 }
@@ -481,7 +482,19 @@ export function isCustomFilter(
   stageIndex: number,
   filter: FilterClause,
 ) {
-  return !filterParts(query, stageIndex, filter);
+  return (
+    !filterParts(query, stageIndex, filter) &&
+    !isSegmentFilter(query, stageIndex, filter)
+  );
+}
+
+export function isSegmentFilter(
+  query: Query,
+  stageIndex: number,
+  filter: FilterClause,
+) {
+  const { operator } = ML.expression_parts(query, stageIndex, filter);
+  return operator === "segment";
 }
 
 function findTemporalBucket(

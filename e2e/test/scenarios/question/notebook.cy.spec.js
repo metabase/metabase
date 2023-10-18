@@ -73,7 +73,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
     popover().within(() => {
       cy.icon("int").click();
-      cy.get("input").type("46");
+      cy.findByPlaceholderText("Enter a number").type("46");
       cy.contains("Add filter").click();
     });
 

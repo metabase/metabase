@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Button } from "metabase/ui";
 
@@ -14,6 +15,7 @@ export function BackButton({ children, onClick }: BackButtonProps) {
       display="block"
       variant="subtle"
       leftIcon={<Icon name="chevronleft" />}
+      aria-label={t`Back`}
       onClick={onClick}
     >
       {children}

@@ -27,6 +27,6 @@ export const EXCLUDE_OPERATOR_OPTIONS: ExcludeOperatorOption[] = [
   },
   {
     operator: "is-null",
-    label: t`Not empty`,
+    label: t`Is not empty`,
   },
 ];

@@ -29,14 +29,16 @@ export function FilterStep({
     [topLevelQuery, stageIndex],
   );
 
-  const handleAddFilter = (filter: Lib.ExpressionClause) => {
+  const handleAddFilter = (
+    filter: Lib.ExpressionClause | Lib.SegmentMetadata,
+  ) => {
     const nextQuery = Lib.filter(topLevelQuery, stageIndex, filter);
     updateQuery(nextQuery);
   };
 
   const handleUpdateFilter = (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause,
+    nextFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(
       topLevelQuery,
@@ -94,10 +96,10 @@ interface FilterPopoverProps {
   filter?: Lib.FilterClause;
   legacyQuery: LegacyQuery;
   legacyFilter?: LegacyFilter;
-  onAddFilter: (filter: Lib.ExpressionClause) => void;
+  onAddFilter: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
   onUpdateFilter: (
     targetFilter: Lib.FilterClause,
-    nextFilter: Lib.ExpressionClause,
+    nextFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
   ) => void;
   onLegacyQueryChange: (query: LegacyQuery) => void;
   onClose?: () => void;

@@ -31,10 +31,11 @@ describe("scenarios > question > custom column > data type", () => {
 
     filter({ mode: "notebook" });
 
-    popover().findByText("CategoryTitle").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-    cy.findByPlaceholderText("Enter some text");
+    popover().within(() => {
+      cy.findByText("CategoryTitle").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text").should("be.visible");
+    });
   });
 
   it("should understand date functions", () => {
@@ -78,16 +79,13 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("DoB").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Past").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days");
+    popover().within(() => {
+      cy.findByText("DoB").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 
   it("should handle CASE (metabase#13122)", () => {
@@ -100,16 +98,14 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("MiscDate").click();
+    popover().within(() => {
+      cy.findByText("MiscDate").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Past").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 
   it("should handle COALESCE", () => {
@@ -122,16 +118,13 @@ describe("scenarios > question > custom column > data type", () => {
     cy.button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().findByText("MiscDate").click();
-
-    cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Past").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days");
+    popover().within(() => {
+      cy.findByText("MiscDate").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
   });
 });
 

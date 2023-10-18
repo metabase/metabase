@@ -100,6 +100,7 @@ export function DateOffsetIntervalPicker({
         <Button
           variant="subtle"
           leftIcon={<Icon name="close" />}
+          aria-label={t`Remove offset`}
           onClick={handleOffsetRemove}
         />
       </PickerGrid>

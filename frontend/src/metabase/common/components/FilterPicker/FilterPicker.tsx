@@ -1,16 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
+import { useCallback, useState } from "react";
 
 import { Box } from "metabase/ui";
-import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import { Icon } from "metabase/core/components/Icon";
-import type { IconName } from "metabase/core/components/Icon";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
@@ -27,7 +19,7 @@ import { NumberFilterPicker } from "./NumberFilterPicker";
 import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
 import { StringFilterPicker } from "./StringFilterPicker";
 import { TimeFilterPicker } from "./TimeFilterPicker";
-import { StyledAccordionList } from "./FilterPicker.styled";
+import { FilterColumnPicker } from "./FilterColumnPicker";
 
 export interface FilterPickerProps {
   query: Lib.Query;
@@ -38,26 +30,12 @@ export interface FilterPickerProps {
   legacyFilter?: LegacyFilter;
   onSelectLegacy: (legacyFilter: LegacyFilter) => void;
 
-  onSelect: (filter: Lib.ExpressionClause) => void;
+  onSelect: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
   onClose?: () => void;
 }
 
-type Section = {
-  key?: string;
-  name: string;
-  items: Lib.ColumnMetadata[];
-  icon?: IconName;
-};
-
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
-
-const CUSTOM_EXPRESSION_SECTION: Section = {
-  key: "custom-expression",
-  name: t`Custom Expression`,
-  items: [],
-  icon: "filter",
-};
 
 export function FilterPicker({
   query,
@@ -78,43 +56,10 @@ export function FilterPicker({
     getInitialColumn(query, stageIndex, filter),
   );
 
-  const renderItemName = useCallback(
-    (column: Lib.ColumnMetadata) =>
-      Lib.displayInfo(query, stageIndex, column).displayName,
-    [query, stageIndex],
-  );
-
-  const sections = useMemo(() => {
-    const columns = Lib.filterableColumns(query, stageIndex);
-    const columnGroups = Lib.groupColumns(columns);
-
-    const sections = columnGroups.map(group => {
-      const groupInfo = Lib.displayInfo(query, stageIndex, group);
-      return {
-        name: getColumnGroupName(groupInfo),
-        icon: getColumnGroupIcon(groupInfo),
-        items: Lib.getColumnsFromColumnGroup(group),
-      };
-    });
-
-    return [...sections, CUSTOM_EXPRESSION_SECTION];
-  }, [query, stageIndex]);
-
-  const checkColumnSelected = () => false;
-
-  const handleChange = (filter: Lib.ExpressionClause) => {
+  const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
     onClose?.();
   };
-
-  const handleSectionChange = useCallback(
-    (section: Section) => {
-      if (section.key === "custom-expression") {
-        openExpressionEditor();
-      }
-    },
-    [openExpressionEditor],
-  );
 
   const handleExpressionChange = useCallback(
     (name: string, expression: LegacyExpressionClause) => {
@@ -142,26 +87,24 @@ export function FilterPicker({
     );
   }
 
-  const renderContent = () => {
-    if (!column) {
-      return (
-        <StyledAccordionList
-          sections={sections}
-          onChange={setColumn}
-          onChangeSection={handleSectionChange}
-          itemIsSelected={checkColumnSelected}
-          renderItemName={renderItemName}
-          renderItemDescription={omitItemDescription}
-          renderItemIcon={renderItemIcon}
-          // Compat with E2E tests around MLv1-based components
-          // Prefer using a11y role selectors
-          itemTestId="dimension-list-item"
-        />
-      );
-    }
-
-    const FilterWidget = getFilterWidget(column);
+  if (!column) {
     return (
+      <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
+        <FilterColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          onColumnSelect={setColumn}
+          onSegmentSelect={handleChange}
+          onExpressionSelect={openExpressionEditor}
+        />
+      </Box>
+    );
+  }
+
+  const FilterWidget = getFilterWidget(column);
+
+  return (
+    <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
       <FilterWidget
         query={query}
         stageIndex={stageIndex}
@@ -170,12 +113,6 @@ export function FilterPicker({
         onChange={handleChange}
         onBack={() => setColumn(undefined)}
       />
-    );
-  };
-
-  return (
-    <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
-      {renderContent()}
     </Box>
   );
 }
@@ -188,14 +125,6 @@ function getInitialColumn(
   return filter
     ? Lib.filterParts(query, stageIndex, filter)?.column
     : undefined;
-}
-
-function omitItemDescription() {
-  return null;
-}
-
-function renderItemIcon(column: Lib.ColumnMetadata) {
-  return <Icon name={getColumnIcon(column)} size={18} />;
 }
 
 const NotImplementedPicker = () => <div />;
