@@ -11,12 +11,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-describe("issue 34626", () => {
+describe("issue 31766", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
-  it("should not corrupt dashboard data (metabase#34626)", () => {
+  it("should not corrupt dashboard data (metabase#31766)", () => {
     const questionDetails = {
       name: "Orders",
       query: { "source-table": ORDERS_ID, limit: 5 },
