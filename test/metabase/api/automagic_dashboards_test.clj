@@ -481,3 +481,28 @@
                                                 :model-index       model-index
                                                 :model-index-value model-index-value})]
               (cards-have-filters? (:dashcards dash) pk-filters))))))))
+
+;;; ------------------- V2 Endpoints -------------------
+
+(deftest model-xray-v2-test
+  (testing "Ensure the V2 versions of our automagic dashboard endpoints exist endpoints exist."
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (t2.with-temp/with-temp [Metric {total-orders-id :id} {:name       "Total Orders"
+                                                               :table_id   (mt/id :orders)
+                                                               :definition {:aggregation [[:count]]}}
+                                 Metric {avg-quantity-ordered-id :id} {:name       "Average Quantity Ordered"
+                                                                       :table_id   (mt/id :orders)
+                                                                       :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}
+                                 Card {card-id :id} {:table_id      (mt/id :orders)
+                                                     :dataset       true
+                                                     :dataset_query (mt/mbql-query orders
+                                                                      {:filter [:> $total 10]})}]
+          (testing "GET /api/automagic-dashboards/model/:id/V2"
+            (is (some? (api-call "model/%s/V2" [card-id]))))
+          (testing "GET /api/automagic-dashboards/table/:id/V2"
+            (is (some? (api-call "table/%s/V2" [(mt/id :orders)]))))
+          (testing "GET /api/automagic-dashboards/metric/:id/V2"
+            (is (some? (api-call "metric/%s/V2" [total-orders-id]))))
+          (testing "GET /api/automagic-dashboards/metric/:id/V2"
+            (is (some? (api-call "metric/%s/V2" [avg-quantity-ordered-id])))))))))
