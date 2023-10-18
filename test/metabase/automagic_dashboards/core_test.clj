@@ -1841,7 +1841,6 @@
                                                           {:name "LONGITUDE"}]}}]
              (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions))))))
 
-
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
     (mt/dataset sample-dataset
@@ -1876,68 +1875,6 @@
                       (let [entity (t2/select-one :model/Table (mt/id :people))
                             {{:keys [linked-metrics]} :root} (#'magic/make-base-context (magic/->root entity))]
                         (seq linked-metrics))))))))))
-
-(deftest normalize-seq-of-maps-test
-  (testing "Convert a seq of size-1 nested maps to a seq of maps."
-    (let [{:keys [froobs nurnies]} {:froobs  [{"Foo" {}} {"Bar" {}} {"Fern" {}} {"Doc" {}}]
-                                    :nurnies [{"Baz" {:size 100}}]}]
-      (is (= [{:froobs-name "Foo"} {:froobs-name "Bar"} {:froobs-name "Fern"} {:froobs-name "Doc"}]
-             (interesting/normalize-seq-of-maps :froobs froobs)))
-      (is (= [{:nurnies-name "Baz" :size 100}]
-             (interesting/normalize-seq-of-maps :nurnies nurnies))))))
-
-(deftest interesting-grounded-metrics-test
-  (mt/dataset sample-dataset
-    (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}
-                        {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
-                        {:metric ["/"
-                                  ["dimension" "Discount"]
-                                  ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
-                        {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
-                        {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
-          {total-id :id :as total-field} {:id 1 :name "TOTAL"}
-          {discount-id :id :as discount-field} {:id 2 :name "DISCOUNT"}
-          {income-id :id :as income-field} {:id 3 :name "INCOME"}]
-      (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
-        (is (= [{:metric-name       "Count"
-                 :metric-title      "Count"
-                 :metric-score      100
-                 :metric-definition {:aggregation ["count"]}}]
-               (interesting/grounded-metrics
-                 test-metrics
-                 {"Count" {:matches []}}))))
-      (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
-        (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
-                 {:metric-name       "Avg"
-                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
-                (interesting/grounded-metrics
-                  ;; Drop Count
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}}))))
-      (testing "The addition of Discount doesn't add more matches as we need
-                 Income as well to add the metric that uses Discount"
-        (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
-                 {:metric-name       "Avg"
-                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
-                (interesting/grounded-metrics
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}
-                   "Discount"      {:matches [discount-field]}}))))
-      (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
-        (is (=? [{:metric-name "AvgDiscount",
-                  :metric-definition {:aggregation ["/" [:field discount-id nil] [:field income-id nil]]}}
-                 {:metric-name "Sum"}
-                 {:metric-name "Avg"}]
-                (interesting/grounded-metrics
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}
-                   "Discount"      {:matches [discount-field]}
-                   "Income"        {:matches [income-field]}})))))))
 
 (deftest affinities->viz-types-test
   (testing "Conversion of normalized card templates and ground dimensions to a map of dimension affinities to viz types"
