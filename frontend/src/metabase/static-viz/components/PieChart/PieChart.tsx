@@ -2,6 +2,7 @@ import { init } from "echarts";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 
+import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { computeStaticPieChartSettings } from "./setttings";
 
 const WIDTH = 540;
@@ -16,8 +17,13 @@ export function PieChart({
     rawSeries,
     dashcardSettings,
   );
+  const model = getPieChartModel(
+    rawSeries,
+    computedVizSettings,
+    renderingContext,
+  );
   //eslint-disable-next-line no-console
-  console.log("computedVizSettings", JSON.stringify(computedVizSettings));
+  console.log("model", JSON.stringify(model));
 
   const chart = init(null, null, {
     renderer: "svg",
