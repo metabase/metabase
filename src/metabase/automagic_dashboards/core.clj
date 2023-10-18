@@ -1043,25 +1043,33 @@
     (zipmap distinct-affinity-sets satisfied-combos)))
 
 (defn user-defined-metrics->card-templates [template-cards ground-dimensions user-defined-metrics]
-  (for [dimension-affinities (into #{} (comp (map (comp val first))
-                                             (map :dimensions)
-                                             (map #(mapcat keys %))
-                                             (map set))
-                                   template-cards)
-        :when (every? ground-dimensions dimension-affinities)
-        {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
-        :let [metric-title (if (seq dimension-affinities)
-                             (format "%s by %s" metric-name (combination/items->str (vec dimension-affinities)))
-                             metric-name)]]
-    {:card-score    100
-     :metrics       [metric-name]
-     :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
-     :visualization ["scalar" {}]
-     :width         6
-     :title         metric-title
-     :height        4
-     :group         metric-name
-     :card-name     (format "Card[%s]" metric-title)}))
+  (let [card->dimensions (fn [card]
+                           (->> card first val
+                                :dimensions
+                                (mapcat keys)
+                                set))
+        satisfied?       (fn [dim-set]
+                           (every? ground-dimensions dim-set))]
+    (for [[dimension-affinities viz-types] (reduce (partial merge-with set/union)
+                                                   {}
+                                                   (for [card template-cards
+                                                         :let [dim-set (card->dimensions card)]
+                                                         :when (satisfied? dim-set)]
+                                                     {dim-set #{(-> card first val :visualization)}}))
+          viz viz-types
+          {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
+          :let [metric-title (if (seq dimension-affinities)
+                               (format "%s by %s" metric-name (combination/items->str (vec dimension-affinities)))
+                               metric-name)]]
+      {:card-score    100
+       :metrics       [metric-name]
+       :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
+       :visualization viz
+       :width         6
+       :title         metric-title
+       :height        4
+       :group         metric-name
+       :card-name     (format "Card[%s]" metric-title)})))
 
 ;; For each user-defined metric, for each dimension, create a scalar card
 
