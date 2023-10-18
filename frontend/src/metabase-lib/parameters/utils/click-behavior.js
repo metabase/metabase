@@ -269,11 +269,11 @@ export function formatSourceForTarget(
     } else {
       // If the target is a dimension or variable, we serialize as a date to remove the timestamp
 
-      if (["default", "day"].includes(datum.column.unit)) {
-        return formatDateForParameterType(datum.value, "date/single");
+      if (["week", "month", "quarter", "year"].includes(datum.column.unit)) {
+        return formatDateToRangeForParameter(datum.value, datum.column.unit);
       }
 
-      return formatDateToRangeForParameter(datum.value, datum.column.unit);
+      return formatDateForParameterType(datum.value, "date/single");
     }
   }
 
