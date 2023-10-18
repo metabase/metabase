@@ -212,7 +212,7 @@
         x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
-(mu/defn metrics+breakouts :- [:sequential ads/combined-metric]
+(mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
   [base-context
    ground-dimensions :- ads/dim-name->matching-fields
    card-templates

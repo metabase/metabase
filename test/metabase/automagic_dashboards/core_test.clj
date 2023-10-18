@@ -8,9 +8,11 @@
     [flatland.ordered.map :refer [ordered-map]]
     [java-time :as t]
     [metabase.api.common :as api]
+    [metabase.automagic-dashboards.combination :as combination]
     [metabase.automagic-dashboards.core :as magic]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.interesting :as interesting]
+    [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.lib.schema.id :as lib.schema.id]
     [metabase.models
@@ -2351,3 +2353,200 @@
                                          "Lon" {:matches [{:name "Longitude"}
                                                           {:name "LONGITUDE"}]}}]
              (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions))))))
+
+
+(deftest linked-metrics-test
+  (testing "Testing the ability to return linked metrics based on a provided entity."
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp [Metric total-orders {:name       "Total Orders"
+                                                    :table_id   (mt/id :orders)
+                                                    :definition {:aggregation [[:count]]}}
+                               Metric avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                            :table_id   (mt/id :orders)
+                                                            :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+        (testing "A metric links to a seq of a normalized version of itself"
+          (is (=? [{:metric-definition (:definition total-orders)
+                    :metric-score      100}]
+                  (magic/linked-metrics total-orders)))
+          (is (=? [{:metric-definition (:definition avg-quantity-ordered)
+                    :metric-score      100}]
+                  (magic/linked-metrics avg-quantity-ordered))))
+        (testing "A table with linked metrics returns a seq of normalized linked queries"
+          (is (=? [{:metric-definition (:definition avg-quantity-ordered)}
+                   {:metric-definition (:definition total-orders)}]
+                  (sort-by
+                    :metric-name
+                    (magic/linked-metrics (t2/select-one :model/Table (mt/id :orders)))))))
+        (testing "A table context with linked metrics returns a seq of normalized linked queries"
+          (is (=? [{:metric-definition (:definition avg-quantity-ordered)}
+                   {:metric-definition (:definition total-orders)}]
+                  (mt/with-test-user :rasta
+                    (let [entity (t2/select-one :model/Table (mt/id :orders))
+                          {{:keys [linked-metrics]} :root} (#'magic/make-base-context (magic/->root entity))]
+                      (sort-by :metric-name linked-metrics))))))
+        (testing "When no linked metrics are present, return nothing"
+          (is (nil? (mt/with-test-user :rasta
+                      (let [entity (t2/select-one :model/Table (mt/id :people))
+                            {{:keys [linked-metrics]} :root} (#'magic/make-base-context (magic/->root entity))]
+                        (seq linked-metrics))))))))))
+
+(deftest normalize-seq-of-maps-test
+  (testing "Convert a seq of size-1 nested maps to a seq of maps."
+    (let [{:keys [froobs nurnies]} {:froobs  [{"Foo" {}} {"Bar" {}} {"Fern" {}} {"Doc" {}}]
+                                    :nurnies [{"Baz" {:size 100}}]}]
+      (is (= [{:froobs-name "Foo"} {:froobs-name "Bar"} {:froobs-name "Fern"} {:froobs-name "Doc"}]
+             (interesting/normalize-seq-of-maps :froobs froobs)))
+      (is (= [{:nurnies-name "Baz" :size 100}]
+             (interesting/normalize-seq-of-maps :nurnies nurnies))))))
+
+(deftest interesting-grounded-metrics-test
+  (mt/dataset sample-dataset
+    (let [test-metrics [{:metric ["count"], :score 100, :metric-name "Count"}
+                        {:metric ["distinct" ["dimension" "FK"]], :score 100, :metric-name "CountDistinctFKs"}
+                        {:metric ["/"
+                                  ["dimension" "Discount"]
+                                  ["dimension" "Income"]], :score 100, :metric-name "AvgDiscount"}
+                        {:metric ["sum" ["dimension" "GenericNumber"]], :score 100, :metric-name "Sum"}
+                        {:metric ["avg" ["dimension" "GenericNumber"]], :score 100, :metric-name "Avg"}]
+          {total-id :id :as total-field} {:id 1 :name "TOTAL"}
+          {discount-id :id :as discount-field} {:id 2 :name "DISCOUNT"}
+          {income-id :id :as income-field} {:id 3 :name "INCOME"}]
+      (testing "When no dimensions are provided, we produce grounded dimensionless metrics"
+        (is (= [{:metric-name       "Count"
+                 :metric-title      "Count"
+                 :metric-score      100
+                 :metric-definition {:aggregation ["count"]}}]
+               (interesting/grounded-metrics
+                 test-metrics
+                 {"Count" {:matches []}}))))
+      (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
+        (is (=? [{:metric-name       "Sum"
+                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
+                 {:metric-name       "Avg"
+                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
+                (interesting/grounded-metrics
+                  ;; Drop Count
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}}))))
+      (testing "The addition of Discount doesn't add more matches as we need
+                 Income as well to add the metric that uses Discount"
+        (is (=? [{:metric-name       "Sum"
+                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
+                 {:metric-name       "Avg"
+                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
+                (interesting/grounded-metrics
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}
+                   "Discount"      {:matches [discount-field]}}))))
+      (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
+        (is (=? [{:metric-name "AvgDiscount",
+                  :metric-definition {:aggregation ["/" [:field discount-id nil] [:field income-id nil]]}}
+                 {:metric-name "Sum"}
+                 {:metric-name "Avg"}]
+                (interesting/grounded-metrics
+                  (rest test-metrics)
+                  {"Count"         {:matches []}
+                   "GenericNumber" {:matches [total-field]}
+                   "Discount"      {:matches [discount-field]}
+                   "Income"        {:matches [income-field]}})))))))
+
+(deftest affinities->viz-types-test
+  (testing "Conversion of normalized card templates and ground dimensions to a map of dimension affinities to viz types"
+    (let [normalized-card-templates [{:dimensions [{"DIM0" nil}] :visualization ["bar"]}
+                                     {:dimensions [{"DIM0" nil}] :visualization ["line"]}
+                                     {:dimensions [{"LON" nil} {"LAT" nil}] :visualization ["map"]}]]
+      (testing "A single dimension can produce multiple viz types"
+        (is (= {#{"DIM0"} #{["bar"] ["line"]}}
+               (magic/affinities->viz-types normalized-card-templates {"DIM0" {}}))))
+      (testing "The addition of a dimension that is part of an affinity, bot not the whole thing, doesn't add anything."
+        (is (= {#{"DIM0"} #{["bar"] ["line"]}}
+               (magic/affinities->viz-types normalized-card-templates {"DIM0" {} "LON" {}}))))
+      (testing "Dimension affinities such as longitude and latitude match to their viz as defined in the normalized cards."
+        (is (= {#{"LON" "LAT"} #{["map"]}}
+               (magic/affinities->viz-types normalized-card-templates {"LON" {} "LAT" {}}))))
+      (testing "A case in which all of the card templates are satisfied."
+        (is (= {#{"LON" "LAT"} #{["map"]}
+                #{"DIM0"}      #{["bar"] ["line"]}}
+               (magic/affinities->viz-types normalized-card-templates {"DIM0" {} "LON" {} "LAT" {}})))))))
+
+(deftest user-defined-groups-test
+  (testing "Example of group generation from user metrics (based on a seq of maps with `:metric-name`)."
+    (= {"METRIC0" {:title "Your METRIC0 Metric" :score 0}
+        "METRIC1" {:title "Your METRIC1 Metric" :score 0}}
+       (magic/user-defined-groups
+         [{:metric-name "METRIC0"}
+          {:metric-name "METRIC0"}
+          {:metric-name "METRIC1"}]))))
+
+(deftest combination-grounded-metrics->dashcards-test
+  (testing "Dashcard creation example test"
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+                                                     :table_id   (mt/id :orders)
+                                                     :definition {:aggregation [[:count]]}}
+                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                             :table_id   (mt/id :orders)
+                                                             :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+        (mt/with-test-user :rasta
+          (let [entity                      (t2/select-one :model/Table (mt/id :orders))
+                {template-dimensions :dimensions
+                 template-metrics    :metrics
+                 template-cards      :cards
+                 :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+                metric-templates            (interesting/normalize-seq-of-maps :metric template-metrics)
+                {{user-defined-metrics :linked-metrics :as root} :root
+                 :as                                             base-context} (#'magic/make-base-context (magic/->root entity))
+                ;; A mapping of dimension (by name) to dimension definition + matches (a seq of matching fields)
+                ground-dimensions           (interesting/find-dimensions base-context template-dimensions)
+                ;; Grounded metrics come in two flavors -- those satisfiable by the template, and user-defined metrics.
+                grounded-metrics            (concat
+                                              (interesting/grounded-metrics metric-templates ground-dimensions)
+                                              user-defined-metrics)
+                ;; Card templates come in two flavors -- generic templates from the dashboard template and user-defined
+                card-templates              (interesting/normalize-seq-of-maps :card template-cards)
+                user-defined-card-templates (magic/user-defined-metrics->card-templates
+                                              (magic/affinities->viz-types card-templates ground-dimensions)
+                                              user-defined-metrics)
+                all-cards                   (into card-templates user-defined-card-templates)
+                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)]
+            (is (= 57 (count dashcards)))
+            ;(map :metric dashcards)
+            ))))))
+
+(deftest generate-dashboard-pipeline-test
+  (testing "Example new pipeline dashboard generation test"
+    (mt/dataset sample-dataset
+      (t2.with-temp/with-temp [Metric _total-orders {:name       "Total Orders"
+                                                     :table_id   (mt/id :orders)
+                                                     :definition {:aggregation [[:count]]}}
+                               Metric _avg-quantity-ordered {:name       "Average Quantity Ordered"
+                                                             :table_id   (mt/id :orders)
+                                                             :definition {:aggregation [[:avg (mt/id :orders :quantity)]]}}]
+        (mt/with-test-user :rasta
+          (let [entity                      (t2/select-one :model/Table (mt/id :orders))
+                {template-dimensions :dimensions
+                 template-metrics    :metrics
+                 template-cards      :cards
+                 :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+                metric-templates            (interesting/normalize-seq-of-maps :metric template-metrics)
+                {{user-defined-metrics :linked-metrics :as root} :root
+                 :as                                             base-context} (#'magic/make-base-context (magic/->root entity))
+                ;; A mapping of dimension (by name) to dimension definition + matches (a seq of matching fields)
+                ground-dimensions           (interesting/find-dimensions base-context template-dimensions)
+                ;; Grounded metrics come in two flavors -- those satisfiable by the template, and user-defined metrics.
+                grounded-metrics            (concat
+                                              (interesting/grounded-metrics metric-templates ground-dimensions)
+                                              user-defined-metrics)
+                ;; Card templates come in two flavors -- generic templates from the dashboard template and user-defined
+                card-templates              (interesting/normalize-seq-of-maps :card template-cards)
+                user-defined-card-templates (magic/user-defined-metrics->card-templates
+                                              (magic/affinities->viz-types card-templates ground-dimensions)
+                                              user-defined-metrics)
+                all-cards                   (into card-templates user-defined-card-templates)
+                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)
+                template-with-user-groups   (update template :groups into (#'magic/user-defined-groups user-defined-metrics))
+                empty-dashboard             (#'magic/make-dashboard root template-with-user-groups)]
+            (is (= (count (:ordered_cards (populate/create-dashboard (assoc empty-dashboard :cards dashcards) :all)))
+                   (count (:ordered_cards (#'magic/generate-dashboard base-context template)))))))))))

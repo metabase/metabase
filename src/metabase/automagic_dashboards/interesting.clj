@@ -158,19 +158,11 @@
    ground-dimensions :- ads/dim-name->matching-fields]
   (mapcat #(ground-metric % ground-dimensions) metric-templates))
 
-(defn normalize-metrics
-  "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
-  [metrics]
-  (->> metrics
-       (map first)
-       (map (fn [[metric-name metric-definition]]
-              (assoc metric-definition :metric-name metric-name)))))
-
 (defn normalize-seq-of-maps
-  "Utility function to convert a dashboard template into a sequence of metric templates that are easier to work with."
-  [typename metrics]
+  "Utility function to convert a seq of maps of one string key to another map into a simpler seq of maps."
+  [typename items]
   (let [kw (keyword (format "%s-name" (name typename)))]
-    (->> metrics
+    (->> items
          (map first)
          (map (fn [[name value]]
                 (assoc value kw name))))))
@@ -435,7 +427,7 @@
                               [:dimension-specs [:sequential ads/dimension-template]]
                               [:metric-specs [:sequential ads/metric-template]]]]
   (let [dims      (find-dimensions context dimension-specs)
-        metrics   (-> (normalize-metrics metric-specs)
+        metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]

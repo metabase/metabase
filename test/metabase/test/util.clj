@@ -157,7 +157,8 @@
             :definition  {}
             :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"
-            :table_id    (data/id :checkins)})
+            :table_id    (try (data/id :checkins)
+                              (catch Exception _))})
 
    :model/NativeQuerySnippet
    (fn [_] {:creator_id (user-id :crowberto)

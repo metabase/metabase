@@ -14,6 +14,22 @@
      [:tables {:optional true} any?]
      [:query-filter {:optional true} any?]]))
 
+#_
+(def dashcard-template
+  (mc/schema
+    [:map
+     [:card-name]
+     [:card-score]
+     [:dimensions]
+     [:filters]
+     [:group]
+     [:height]
+     [:metrics]
+     [:title]
+     [:visualization]
+     [:width]
+     [:x_label]]))
+
 (def dashcard
   "The base unit thing we are trying to produce in x-rays"
   ;; TODO - Beef these specs up, esp. the any?s

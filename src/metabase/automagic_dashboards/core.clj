@@ -1042,7 +1042,10 @@
                               distinct-affinity-sets)]
     (zipmap distinct-affinity-sets satisfied-combos)))
 
-(defn affinties->viz-types [normalized-card-templates ground-dimensions]
+(defn affinities->viz-types
+  "Generate a map of satisfiable affinity sets (sets of dimensions that belong together)
+  to visualization types that would be appropriate for each affinity set."
+  [normalized-card-templates ground-dimensions]
   (reduce (partial merge-with set/union)
           {}
           (for [{:keys [dimensions visualization]} normalized-card-templates
@@ -1050,8 +1053,20 @@
                 :when (every? ground-dimensions dim-set)]
             {dim-set #{visualization}})))
 
-(defn user-defined-metrics->card-templates [affinties->viz-types user-defined-metrics]
-  (for [[dimension-affinities viz-types] affinties->viz-types
+(defn user-defined-groups
+  "Create a dashboard group for each user-defined metric."
+  [linked-metrics]
+  (zipmap (map :metric-name linked-metrics)
+          (map (fn [{:keys [metric-name]}]
+                 {:title (format "Your %s Metric" metric-name)
+                  :score 0}) linked-metrics)))
+
+(defn user-defined-metrics->card-templates
+  "Produce card templates for user-defined metrics. The basic algorithm is to generate the
+  cross product of all user defined metrics to all provided dimension affinities to all
+  potential visualization options for these affinities."
+  [affinities->viz-types user-defined-metrics]
+  (for [[dimension-affinities viz-types] affinities->viz-types
         viz viz-types
         {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
         :let [metric-title (if (seq dimension-affinities)
@@ -1071,7 +1086,7 @@
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{:keys [linked-metrics] :as root} :root :as base-context}
+  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
@@ -1084,19 +1099,16 @@
         ;; From the template
         card-templates              (interesting/normalize-seq-of-maps :card template-cards)
         user-defined-card-templates (user-defined-metrics->card-templates
-                                      (affinties->viz-types card-templates grounded-dimensions)
-                                      linked-metrics)
-        user-defined-groups         (zipmap (map :metric-name linked-metrics)
-                                            (map (fn [{:keys [metric-name]}]
-                                                   {:title (format "Your %s Metric" metric-name)
-                                                    :score 0}) linked-metrics))
+                                      (affinities->viz-types card-templates grounded-dimensions)
+                                      user-defined-metrics)
         all-cards                   (into card-templates user-defined-card-templates)
-        dashcards                   (combination/metrics+breakouts
+        dashcards                   (combination/grounded-metrics->dashcards
                                       base-context
                                       grounded-dimensions
                                       all-cards
                                       grounded-metrics)
-        empty-dashboard             (make-dashboard root (update template :groups into user-defined-groups))]
+        template-with-user-groups   (update template :groups into (user-defined-groups user-defined-metrics))
+        empty-dashboard             (make-dashboard root template-with-user-groups)]
     (populate/create-dashboard
       (assoc empty-dashboard :cards dashcards)
       :all)))
