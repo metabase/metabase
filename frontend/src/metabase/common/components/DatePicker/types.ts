@@ -40,7 +40,7 @@ export interface RelativeDatePickerValue {
 }
 
 export interface RelativeDatePickerOptions {
-  includeCurrent?: boolean;
+  "include-current"?: boolean;
 }
 
 export interface ExcludeDatePickerValue {

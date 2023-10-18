@@ -304,7 +304,7 @@ export type RelativeDateFilterParts = {
 };
 
 export type RelativeDateFilterOptions = {
-  includeCurrent?: boolean;
+  "include-current"?: boolean;
 };
 
 /*
