@@ -140,6 +140,9 @@
 (derive :event/database-create ::database-event)
 (derive :event/database-update ::database-event)
 (derive :event/database-delete ::database-event)
+(derive :event/database-manual-sync ::database-event)
+(derive :event/database-manual-scan ::database-event)
+(derive :event/database-discard-field-values ::database-event)
 
 (methodical/defmethod events/publish-event! ::database-event
   [topic database]
