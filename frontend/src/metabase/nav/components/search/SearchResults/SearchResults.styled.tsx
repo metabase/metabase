@@ -8,8 +8,4 @@ export const EmptyStateContainer = styled.div`
 export const SearchResultsList = styled.ul`
   overflow-y: auto;
   padding: 0.5rem;
-  // display: flex;
-  // flex-direction: column;
-  // padding: ${({ theme }) => theme.spacing.sm};
-  // gap: ${({ theme }) => theme.spacing.xs};
 `;
