@@ -28,7 +28,7 @@
   (let [[_ field-id {:keys [join-alias]}] field-clause
         matches-by-id (filter #(= (:id %) field-id) columns)]
     (or (nil? (next matches-by-id))
-        (= (count (filter #(= (get-in % [:field-ref 2 :join-alias]) join-alias) matches-by-id)) 1))))
+        (->> matches-by-id (filter #(= (get-in % [:field-ref 2 :join-alias]) join-alias)) count (= 1)))))
 
 (defn- fix-clause [{:keys [source-aliases field-name->field]} [_ field-name options :as field-clause]]
   ;; attempt to find a corresponding Field ref from the source metadata.

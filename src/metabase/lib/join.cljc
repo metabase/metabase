@@ -775,7 +775,7 @@
       (if (some #(= (:id %) (:id primary)) (rest candidates))
         (when (not-any? #(= (:lib/desired-column-alias %) (:lib/desired-column-alias primary)) (rest candidates))
           ;; there are multiple candidates but :lib/desired-column-alias disambiguates them,
-          ;; sp reference by name
+          ;; so reference by name
           (dissoc primary :id))
         primary))))
 
