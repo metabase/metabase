@@ -118,7 +118,7 @@ export const updateDashboardAndCards = createThunkAction(
       });
 
       // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
-      const [updatedCardsAndTabs, _updateDashboardAction] = await Promise.all([
+      const [updatedCardsAndTabs] = await Promise.all([
         updateCardsAndTabs,
         dispatch(Dashboards.actions.update(dashboard)),
       ]);
