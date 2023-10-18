@@ -829,8 +829,7 @@
 (defn- should-audit?
   "Returns true if the setting change should be written to the `audit_log`."
   [setting]
-  (and (not= (:audit setting) :never)
-       (site-wide-only? setting)))
+  (not= (:audit setting) :never))
 
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."

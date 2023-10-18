@@ -1121,7 +1121,7 @@
 
     (testing "Auditing can be disabled with `:audit :never`"
       (test-setting-audit-never! "DON'T AUDIT")
-      (is (not= "DON'T AUDIT"
+      (is (not= "test-setting-audit-never"
                 (-> (last-audit-event-fn) :details :key))))
 
     (testing "Raw values (as stored in the DB) can be logged with `:audit :raw-value`"
@@ -1145,3 +1145,31 @@
                          :previous-value "GETTER VALUE"
                          :new-value      "GETTER VALUE"}}
               (last-audit-event-fn)))))))
+
+(defsetting test-user-local-only-audited-setting
+  (deferred-tru  "Audited user-local setting")
+  :visibility :authenticated
+  :user-local :only
+  :audit      :raw-value)
+
+(deftest user-local-settings-audit-test
+  (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
+                                            :topic :setting-update
+                                            {:order-by [[:id :desc]]})]
+    (testing "User-local settings are not audited by default"
+      (mt/with-test-user :rasta
+        (test-user-local-only-setting! "DON'T AUDIT"))
+      (is (not= "test-user-local-only-setting"
+                (-> (last-audit-event-fn) :details :key))))
+
+    (testing "User-local settings can be audited"
+      (mt/with-test-user :rasta
+        (mt/with-temporary-setting-values [test-user-local-only-audited-setting nil]
+          (test-user-local-only-audited-setting! "AUDIT ME")
+          (is (= {:topic   :setting-update
+                  :user_id  (mt/user->id :rasta)
+                  :model   "Setting"
+                  :details {:key            "test-user-local-only-audited-setting"
+                            :previous-value nil
+                            :new-value      "AUDIT ME"}}
+                 (last-audit-event-fn))))))))
