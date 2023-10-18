@@ -1,17 +1,16 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Box, Button, Grid, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Grid, Tooltip } from "metabase/ui";
 
 export const args = {
+  label: "Tooltip",
   position: "bottom",
-  multiline: false,
-};
-
-export const sampleArgs = {
-  text: "Button with tooltip",
 };
 
 export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
   position: {
     options: [
       "bottom",
@@ -28,9 +27,6 @@ export const argTypes = {
       "top-start",
     ],
     control: { type: "select" },
-  },
-  multiline: {
-    control: { type: "boolean" },
   },
 };
 
@@ -52,7 +48,11 @@ Our themed wrapper around [Mantine Tooltip](https://v6.mantine.dev/core/tooltip/
 ## Examples
 
 export const DefaultTemplate = args => (
-  <Tooltip {...args}><Button>{sampleArgs.text}</Button></Text>
+  <Flex justify="center">
+    <Tooltip {...args}>
+      <Button variant="filled">Toggle tooltip</Button>
+    </Tooltip>
+  </Flex>
 );
 
 export const Default = DefaultTemplate.bind({});
