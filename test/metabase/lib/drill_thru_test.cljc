@@ -5,6 +5,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
@@ -456,11 +457,12 @@
         (is (some? count-col))
         (let [context {:column count-col
                        :value  nil}]
-          (is (=? [{:type   :drill-thru/sort
-                    :column {:name "count"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:name "count"}
-                    :aggregations [:distinct :sum :avg]}]
+          (is (=? [{:type :drill-thru/column-filter
+                    :column {:name "count"}
+                    :initial-op {:display-name-variant :equal-to
+                                 :short :=}}
+                   {:type   :drill-thru/sort
+                    :column {:name "count"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -470,11 +472,12 @@
         (is (some? max-of-discount-col))
         (let [context {:column max-of-discount-col
                        :value  nil}]
-          (is (=? [{:type   :drill-thru/sort
-                    :column {:display-name "Max of Discount"}}
-                   {:type         :drill-thru/summarize-column
-                    :column       {:display-name "Max of Discount"}
-                    :aggregations [:distinct :sum :avg]}]
+          (is (=? [{:type :drill-thru/column-filter,
+                    :column {:display-name "Max of Discount"}
+                    :initial-op {:display-name-variant :equal-to
+                                 :short :=}}
+                   {:type   :drill-thru/sort
+                    :column {:display-name "Max of Discount"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))))
 
@@ -522,3 +525,179 @@
                                                      :value      87
                                                      :row        row
                                                      :dimensions [{:column-name "STATE" :value "WI"}]})))))))
+
+
+
+
+;;;
+;;; The tests below are adapted from frontend/src/metabase-lib/drills.unit.spec.ts
+;;;
+
+(deftest ^:parallel available-drill-thrus-test-1
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :cell
+    :query-type  :unaggregated
+    :column-name "ID"
+    :expected    [{:type      :drill-thru/zoom
+                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                   :many-pks? false}]}))
+
+(deftest ^:parallel available-drill-thrus-test-2
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :cell
+    :query-type  :unaggregated
+    :column-name "USER_ID"
+    :expected    [{:type :drill-thru/fk-filter}
+                  {:type      :drill-thru/fk-details
+                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "USER_ID"])
+                   :many-pks? false}]}))
+
+(deftest ^:parallel available-drill-thrus-test-3
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :cell
+    :query-type  :unaggregated
+    :column-name "SUBTOTAL"
+    :expected    [{:type      :drill-thru/zoom
+                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                   :many-pks? false}
+                  {:type :drill-thru/quick-filter, :operators [{:name "<"}
+                                                               {:name ">"}
+                                                               {:name "="}
+                                                               {:name "≠"}]}]}))
+
+(deftest ^:parallel available-drill-thrus-test-4
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :cell
+    :query-type  :unaggregated
+    :column-name "CREATED_AT"
+    :expected    [{:type      :drill-thru/zoom
+                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                   :many-pks? false}
+                  {:type :drill-thru/quick-filter, :operators [{:name "<"}
+                                                               {:name ">"}
+                                                               {:name "="}
+                                                               {:name "≠"}]}]}))
+
+(deftest ^:parallel available-drill-thrus-test-5
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :header
+    :query-type  :unaggregated
+    :column-name "ID"
+    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+                  {:type :drill-thru/sort, :sort-directions [:asc :desc]}
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+
+(deftest ^:parallel available-drill-thrus-test-6
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :header
+    :query-type  :unaggregated
+    :column-name "PRODUCT_ID"
+    :expected    [{:type :drill-thru/distribution}
+                  {:type :drill-thru/column-filter, :initial-op {:short :=}}
+                  {:type :drill-thru/sort, :sort-directions [:asc :desc]}
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+
+(deftest ^:parallel available-drill-thrus-test-7
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :header
+    :query-type  :unaggregated
+    :column-name "SUBTOTAL"
+    :expected    [{:type :drill-thru/distribution}
+                  {:type :drill-thru/column-filter, :initial-op {:short :=}}
+                  {:type :drill-thru/sort, :sort-directions [:asc :desc]}
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}
+                  {:type :drill-thru/summarize-column-by-time}]}))
+
+(deftest ^:parallel available-drill-thrus-test-8
+  (lib.drill-thru.tu/test-available-drill-thrus
+   {:click-type  :header
+    :query-type  :unaggregated
+    :column-name "CREATED_AT"
+    :expected    [{:type :drill-thru/distribution}
+                  {:type :drill-thru/column-filter, :initial-op nil}
+                  {:type :drill-thru/sort, :sort-directions [:asc :desc]}
+                  {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
+
+;; FIXME: fk-filter gets returned for non-fk column (#34440), fk-details gets returned for non-fk
+;; column (#34441), underlying-records drill gets shown two times for aggregated query (#34439)
+(deftest ^:parallel available-drill-thrus-test-9
+  #_(lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "count"
+      :expected    [{:type      :drill-thru/quick-filter
+                     :operators [{:name "<"}
+                                 {:name ">"}
+                                 {:name "="}
+                                 {:name "≠"}]}
+                    {:type       :drill-thru/underlying-records
+                     :row-count  2
+                     :table-name "Orders"}
+                    {:display-name "See this month by week"
+                     :type         :drill-thru/zoom-in.timeseries}]}))
+
+;; FIXME: fk-filter gets returned for non-fk column (#34440), fk-details gets returned for non-fk
+;; column (#34441), underlying-records drill gets shown two times for aggregated query (#34439)
+(deftest ^:parallel available-drill-thrus-test-10
+  #_(lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"
+      :expected    [{:type :drill-thru/quick-filter, :operators [{:name "="}
+                                                                 {:name "≠"}]}
+                    {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
+                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]}))
+
+;; FIXME: quick-filter gets returned for non-metric column (#34443)
+(deftest ^:parallel available-drill-thrus-test-11
+  #_(lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "PRODUCT_ID"
+      :expected    [{:type :drill-thru/fk-filter}
+                    {:type :drill-thru/fk-details, :object-id 3, :many-pks? false}
+                    {:row-count 2, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+
+;; FIXME: quick-filter gets returned for non-metric column (#34443)
+(deftest ^:parallel available-drill-thrus-test-12
+  #_(lib.drill-thru.tu/test-available-drill-thrus
+     {:click-type  :cell
+      :query-type  :aggregated
+      :column-name "CREATED_AT"
+      :expected    [{:type :drill-thru/quick-filter, :operators [{:name "<"}
+                                                                 {:name ">"}
+                                                                 {:name "="}
+                                                                 {:name "≠"}]}
+                    {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+
+;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
+(deftest ^:parallel available-drill-thrus-test-13
+  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
+    #_(lib.drill-thru.tu/test-available-drill-thrus
+       {:click-type  :header
+        :query-type  :aggregated
+        :column-name "count"
+        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
+                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+
+;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
+(deftest ^:parallel available-drill-thrus-test-14
+  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
+    #_(lib.drill-thru.tu/test-available-drill-thrus
+       {:click-type  :header
+        :query-type  :aggregated
+        :column-name "PRODUCT_ID"
+        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
+                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+
+;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
+(deftest ^:parallel available-drill-thrus-test-15
+  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
+    #_(lib.drill-thru.tu/test-available-drill-thrus
+       {:click-type  :header
+        :query-type  :aggregated
+        :column-name "CREATED_AT"
+        :expected    [{:type       :drill-thru/column-filter
+                       :initial-op {:short :=}}
+                      {:type            :drill-thru/sort
+                       :sort-directions [:asc :desc]}]})))

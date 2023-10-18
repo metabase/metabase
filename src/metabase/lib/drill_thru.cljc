@@ -63,24 +63,29 @@
 
 ;;; TODO: Missing drills: automatic insights, format.
 (def ^:private available-drill-thru-fns
-  [#'lib.drill-thru.distribution/distribution-drill
-   #'lib.drill-thru.column-filter/column-filter-drill
-   #'lib.drill-thru.foreign-key/foreign-key-drill
-   #'lib.drill-thru.object-details/object-detail-drill
-   #'lib.drill-thru.pivot/pivot-drill
-   #'lib.drill-thru.quick-filter/quick-filter-drill
-   #'lib.drill-thru.sort/sort-drill
-   #'lib.drill-thru.summarize-column/summarize-column-drill
-   #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill
-   #'lib.drill-thru.underlying-records/underlying-records-drill
-   #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill])
+  "Some drill thru functions are expected to return drills for just the specified `:column`; others are expected to
+  ignore that column and return drills for all of the columns specified in `:dimensions`.
+  `:return-drills-for-dimensions?` specifies which type we have."
+  [{:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.foreign-key/foreign-key-drill,                           :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
+   {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? true}])
 
-(mu/defn ^:private all-contexts :- [:sequential {:min 1} ::lib.schema.drill-thru/context]
+(mu/defn ^:private dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
+  "Create new context maps (with updated `:column` and `:value` keys) for each of the `:dimensions` passed in. Some
+  drill thru functions are expected to return drills for each of these columns, while others are expected to ignore
+  them. Why? Who knows."
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
-  (if (empty? dimensions)
-    [context]
+  (when (seq dimensions)
     (let [stage            (lib.util/query-stage query stage-number)
           returned-columns (lib.metadata.calculation/returned-columns query stage-number stage)]
       (for [{:keys [column-name value]} dimensions
@@ -94,8 +99,9 @@
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.
 
   Note that if `:value nil` in the `context`, that implies the value is *missing*, ie. that this was a column click.
-  For a value of `NULL` from the database, use the sentinel `:null`. Most of this file only cares whether the value was
-  provided or not, but some things (eg. quick filters) treat `NULL` values differently."
+  For a value of `NULL` from the database, use the sentinel `:null`. Most of this file only cares whether the value
+  was provided or not, but some things (eg. quick filters) treat `NULL` values differently.
+  See [[metabase.lib.js/available-drill-thrus]]."
   ([query context]
    (available-drill-thrus query -1 context))
 
@@ -103,12 +109,16 @@
     stage-number :- :int
     context      :- ::lib.schema.drill-thru/context]
    (try
-     (into []
-           (mapcat (fn [context]
-                     (let [context (icky-hack-add-source-uuid-to-aggregation-column-metadata query stage-number context)]
-                       (keep #(% query stage-number context)
-                             available-drill-thru-fns))))
-           (all-contexts query stage-number context))
+     (let [primary-context (icky-hack-add-source-uuid-to-aggregation-column-metadata query stage-number context)
+           dim-contexts    (dimension-contexts query stage-number primary-context)]
+       (into []
+             (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
+                   context                                   (if (and return-drills-for-dimensions? (seq dim-contexts))
+                                                               dim-contexts
+                                                               [primary-context])
+                   :let                                      [drill (f query stage-number context)]
+                   :when                                     drill]
+               drill)))
      (catch #?(:clj Throwable :cljs :default) e
        (throw (ex-info (str "Error getting available drill thrus for query: " (ex-message e))
                        {:query        query
