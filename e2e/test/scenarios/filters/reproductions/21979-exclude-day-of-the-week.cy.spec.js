@@ -28,7 +28,7 @@ describe("issue 21979", () => {
     });
 
     getNotebookStep("filter")
-      .findByText("Created At excludes Monday")
+      .findByText("Created At excludes Mondays")
       .should("be.visible");
 
     visualize();

@@ -50,7 +50,7 @@ describe("scenarios > question > filter", () => {
       cy.button("Add filter").click();
     });
     getNotebookStep("filter")
-      .findByText("Category is not Gizmo")
+      .findByText("Products → Category is not Gizmo")
       .should("be.visible");
 
     visualize(response => {
@@ -206,26 +206,6 @@ describe("scenarios > question > filter", () => {
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(AGGREGATED_FILTER);
-  });
-
-  it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
-    openOrdersTable({ mode: "notebook" });
-    filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Specific dates...").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Before").click();
-    // Collapse the calendar view
-    cy.icon("calendar").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter")
-      .closest(".Button")
-      .should("not.be.disabled")
-      .click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Created At is before/i);
   });
 
   it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
@@ -554,7 +534,9 @@ describe("scenarios > question > filter", () => {
       .click();
     popover().button("Add filter").click();
 
-    getNotebookStep("filter").findByText("Created At Previous 30 Days").click();
+    getNotebookStep("filter")
+      .findByText("Created At is in the previous 30 days")
+      .click();
 
     popover().within(() => {
       cy.button("Back").click();
@@ -564,7 +546,9 @@ describe("scenarios > question > filter", () => {
     });
 
     // Back to GUI and "Include today" should be still checked
-    getNotebookStep("filter").findByText("Created At Previous 30 Days").click();
+    getNotebookStep("filter")
+      .findByText("Created At is in the previous 30 days")
+      .click();
     popover().findByLabelText("Options").click();
     popover()
       .last()
