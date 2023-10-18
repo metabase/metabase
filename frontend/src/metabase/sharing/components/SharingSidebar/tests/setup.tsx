@@ -9,7 +9,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockUser,
   createMockCard,
   createMockTokenFeatures,
@@ -19,7 +19,7 @@ import type { DashboardState } from "metabase-types/store";
 
 import SharingSidebar from "../SharingSidebar";
 
-export const dashcard = createMockDashboardOrderedCard();
+export const dashcard = createMockDashboardCard();
 
 const actionDashcard = createMockActionDashboardCard({
   id: 2,

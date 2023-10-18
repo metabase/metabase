@@ -6,7 +6,7 @@ import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
-  DashboardOrderedCard,
+  DashboardCard,
   Parameter,
   ParameterMappingOptions,
 } from "metabase-types/api";
@@ -91,7 +91,7 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(dashcards: DashboardOrderedCard[]): ExtendedMapping[] {
+function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
   return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
@@ -115,7 +115,7 @@ export function getDashboardUiParameters(
   metadata: Metadata,
 ): UiParameter[] {
   const { parameters, dashcards } = dashboard;
-  const mappings = getMappings(dashcards as DashboardOrderedCard[]);
+  const mappings = getMappings(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -173,7 +173,7 @@ function buildFieldFilterUiParameter(
 
 export function getParametersMappedToDashcard(
   dashboard: Dashboard,
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
@@ -212,7 +212,7 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.dashcards as DashboardOrderedCard[]);
+  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );

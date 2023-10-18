@@ -3,7 +3,7 @@ import { getIcon } from "__support__/ui";
 
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockActionDashboardCard,
   createMockHeadingDashboardCard,
   createMockTextDashboardCard,
@@ -32,7 +32,7 @@ const setup = options => {
   render(
     <DashCardCardParameterMapper
       card={createMockCard()}
-      dashcard={createMockDashboardOrderedCard()}
+      dashcard={createMockDashboardCard()}
       editingParameter={{}}
       target={null}
       mappingOptions={[]}
@@ -67,7 +67,7 @@ describe("DashCardParameterMapper", () => {
     const linkCard = createMockCard({ dataset_query: {}, display: "link" });
     setup({
       card: linkCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         visualization_settings: {
           virtual_card: linkCard,
         },
@@ -112,7 +112,7 @@ describe("DashCardParameterMapper", () => {
     const textCard = createMockCard({ dataset_query: {}, display: "text" });
     setup({
       card: textCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: textCard,
         size_y: 3,
         visualization_settings: {
@@ -135,7 +135,7 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card,
       }),
       mappingOptions: [["dimension", ["field", 1]]],
@@ -152,7 +152,7 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card: numberCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: numberCard,
         size_y: 3,
       }),
@@ -168,7 +168,7 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card: numberCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: numberCard,
         size_y: 2,
       }),
@@ -185,7 +185,7 @@ describe("DashCardParameterMapper", () => {
       });
       setup({
         card: numberCard,
-        dashcard: createMockDashboardOrderedCard({
+        dashcard: createMockDashboardCard({
           card: numberCard,
           size_y: 2,
         }),
@@ -199,7 +199,7 @@ describe("DashCardParameterMapper", () => {
       const textCard = createMockCard({ dataset_query: {}, display: "text" });
       setup({
         card: textCard,
-        dashcard: createMockDashboardOrderedCard({
+        dashcard: createMockDashboardCard({
           card: textCard,
           size_y: 3,
           visualization_settings: {

@@ -1,7 +1,7 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
@@ -27,7 +27,7 @@ export type StoreDashboard = Omit<Dashboard, "dashcards" | "ordered_tabs"> & {
   ordered_tabs?: StoreDashboardTab[];
 };
 
-export type StoreDashcard = DashboardOrderedCard & {
+export type StoreDashcard = DashboardCard & {
   isDirty?: boolean;
   isRemoved?: boolean;
 };

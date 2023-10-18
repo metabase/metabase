@@ -14,10 +14,7 @@ import {
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
 
-import type {
-  DashboardOrderedCard,
-  LinkCardSettings,
-} from "metabase-types/api";
+import type { DashboardCard, LinkCardSettings } from "metabase-types/api";
 import {
   createMockDashboardCardWithVirtualCard,
   createMockCollectionItem,
@@ -32,7 +29,7 @@ import { LinkViz } from "./LinkViz";
 
 registerVisualizations();
 
-type LinkCardVizSettings = DashboardOrderedCard["visualization_settings"] & {
+type LinkCardVizSettings = DashboardCard["visualization_settings"] & {
   link: LinkCardSettings;
 };
 
