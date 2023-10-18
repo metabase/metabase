@@ -9,6 +9,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { getDefaultTab } from "metabase/dashboard/actions";
+import {
+  getDashCardById,
+  getSelectedTabId,
+} from "metabase/dashboard/selectors";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { DashCardTabMenu } from "./DashCardTabMenu";
 
@@ -93,9 +97,9 @@ describe("DashCardTabMenu", () => {
 
       await clickOnTabMenuItem(TAB_3.name);
 
-      expect(
-        store.getState().dashboard.dashcards[DASHCARD.id].dashboard_tab_id,
-      ).toBe(TAB_3.id);
+      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
+
+      expect(storeDashcard.dashboard_tab_id).toBe(TAB_3.id);
     });
 
     it("should stay on the current tab", async () => {
@@ -103,7 +107,7 @@ describe("DashCardTabMenu", () => {
 
       clickOnTabMenuItem(TAB_3.name);
 
-      expect(store.getState().dashboard.selectedTabId).toBe(TAB_1.id);
+      expect(getSelectedTabId(store.getState())).toBe(TAB_1.id);
     });
 
     it("should keep the query of the card the same", async () => {
@@ -111,9 +115,11 @@ describe("DashCardTabMenu", () => {
 
       await clickOnTabMenuItem(TAB_3.name);
 
-      expect(
-        store.getState().dashboard.dashcards[DASHCARD.id].card.dataset_query,
-      ).toBe(DASHCARD.card.dataset_query);
+      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
+
+      expect(storeDashcard.card.dataset_query).toBe(
+        DASHCARD.card.dataset_query,
+      );
     });
 
     it("should keep the size of the card the same", async () => {
@@ -121,12 +127,10 @@ describe("DashCardTabMenu", () => {
 
       await clickOnTabMenuItem(TAB_3.name);
 
-      expect(store.getState().dashboard.dashcards[DASHCARD.id].size_x).toBe(
-        DASHCARD.size_x,
-      );
-      expect(store.getState().dashboard.dashcards[DASHCARD.id].size_y).toBe(
-        DASHCARD.size_y,
-      );
+      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
+
+      expect(storeDashcard.size_x).toBe(DASHCARD.size_x);
+      expect(storeDashcard.size_y).toBe(DASHCARD.size_y);
     });
   });
 });
