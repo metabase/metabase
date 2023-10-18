@@ -12,13 +12,6 @@
 
 ;;; ------------------- `->reference` -------------------
 
-(defn report-test-fn-and-throw []
-  (require 'clojure.test)
-  (let [test-stuff (meta (first clojure.test/*testing-vars*))
-        ns-name (:ns test-stuff)
-        test-name (:name test-stuff)]
-    (with-open [to (clojure.java.io/writer "test-usages" :append true)]
-      (.write to (str ns-name "/" test-name)))))
 (deftest ^:parallel ->reference-test
   (is (= [:field 1 nil]
          (->> (assoc (mi/instance Field) :id 1)
@@ -27,12 +20,6 @@
   (is (= [:field 2 {:source-field 1}]
          (->> (assoc (mi/instance Field) :id 1 :fk_target_field_id 2)
               (#'interesting/->reference :mbql))))
-  (testing "stuff"
-    (testing "other stuff"
-      (report-test-fn-and-throw)
-      (tap> {:testing *testing-vars*
-             :meta (meta (first *testing-vars*))})))
-
   (is (= 42
          (->> 42
               (#'interesting/->reference :mbql)))))
