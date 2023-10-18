@@ -160,14 +160,13 @@ describeEE("formatting > sandboxes", () => {
         filter({ mode: "notebook" });
         popover().within(() => {
           cy.findByText("Total").click({ force: true });
+          cy.findByDisplayValue("Equal to").click();
         });
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Equal to").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Greater than").click();
-        cy.findByPlaceholderText("Enter a number").type("100");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Add filter").click();
+        cy.findByRole("listbox").findByText("Greater than").click();
+        popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("100");
+          cy.button("Add filter").click();
+        });
 
         visualize();
 

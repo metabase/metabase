@@ -80,6 +80,7 @@ export function DateIntervalPicker({
               c="text.2"
               variant="subtle"
               leftIcon={<Icon name="ellipsis" />}
+              aria-label={t`Options`}
             />
           </Menu.Target>
           <Menu.Dropdown>
@@ -94,6 +95,7 @@ export function DateIntervalPicker({
             <Menu.Item
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
+              aria-selected={includeCurrent}
             >
               {t`Include ${getIncludeCurrentLabel(value.unit)}`}
             </Menu.Item>
