@@ -293,9 +293,14 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         // 1. Replace temporary with real dashcard ids
-        const prevCards = prevDash.ordered_cards.filter(
-          id => !state.dashcards[id].isRemoved,
-        );
+        const prevCards = prevDash.ordered_cards.filter(id => {
+          const dashcard = state.dashcards[id];
+          const isNotRemoved = !dashcard.isRemoved;
+          const isQuestionCard = dashcard.card_id != null;
+
+          return isNotRemoved && isQuestionCard;
+        });
+
         prevCards.forEach((oldId, index) => {
           state.dashcardData[newCards[index].id] = state.dashcardData[oldId];
         });
