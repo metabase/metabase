@@ -4,6 +4,7 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [honeysql.format :as hformat]
    [honeysql.helpers :as hh]
    [java-time.api :as t]
    [metabase.config :as config]
@@ -32,7 +33,7 @@
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:regex                                  false
-                              :percentile-aggregations                false
+                              :percentile-aggregations                true
                               :case-sensitivity-string-filter-options false
                               :now                                    true
                               :datetime-diff                          true
@@ -471,6 +472,14 @@
 (defmethod sql.qp/->honeysql [:sqlserver :power]
   [driver [_ arg power]]
   (hx/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :percentile]
+  [driver [_ arg val]]
+  (hx/raw (apply format "APPROX_PERCENTILE_CONT (%s) WITHIN GROUP (ORDER BY %s)"
+                 (map (comp first
+                            hformat/format
+                            (partial sql.qp/->honeysql driver))
+                      [val arg]))))
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
