@@ -41,11 +41,16 @@ export function setDirection(
   if (direction === "current") {
     return { type: "relative", value: "current", unit: "hour" };
   }
-  if (!isIntervalValue(value)) {
-    return DEFAULT_VALUE;
-  }
 
   const sign = direction === "last" ? -1 : 1;
+
+  if (!isIntervalValue(value)) {
+    return {
+      ...DEFAULT_VALUE,
+      value: Math.abs(DEFAULT_VALUE.value) * sign,
+    };
+  }
+
   return {
     ...value,
     value: Math.abs(value.value) * sign,
