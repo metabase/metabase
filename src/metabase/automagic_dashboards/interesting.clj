@@ -4,9 +4,7 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [java-time :as t]
-    [malli.core :as mc]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.mbql.normalize :as mbql.normalize]
@@ -87,37 +85,6 @@
       (assoc affinity-spec
         :metric metric
         :dimensions dimensions))))
-
-
-(comment
-
-  (let [{table-id :id :as table} (t2/select-one :model/Table :name "ORDERS")]
-    (map (juxt :id :name :semantic_type) (t2/select :model/Field :table_id table-id)))
-
-  (map (juxt :name :id) (t2/select :model/Metric))
-  ;(["Churn" 785] ["gmail" 909] ["Weird Thing" 910] ["Multitable Metric" 920])
-  (->> (t2/select :model/Metric)
-       (map (fn [{:keys [name id] :as metric}]
-              [name id (keys (semantic-groups metric))])))
-
-  (semantic-groups
-    (t2/select-one :model/Metric :name "Churn"))
-
-  (let [{metric-name :name :as metric} (t2/select-one :model/Metric :name "Churn")]
-    (->> metric
-         instantiate-affinities
-         (dash-gen/create-dashboard {:dashboard-name metric-name})))
-
-  (->> (t2/select-one :model/Metric :name "Churn")
-       instantiate-affinities
-       (mapv (fn [affinity]
-               (-> affinity
-                   (update :dimensions #(mapv :name %))
-                   (update :metric :name)))))
-
-  (->> (t2/select-one :model/Metric :name "Weird Thing")
-       instantiate-affinities)
-  )
 
 (defn transform-metric-aggregate
   "Map a metric aggregate definition from nominal types to semantic types."

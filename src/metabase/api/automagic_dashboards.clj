@@ -8,8 +8,6 @@
    [metabase.automagic-dashboards.core :as magic
     :refer [automagic-analysis candidate-tables]]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-   [metabase.automagic-dashboards.foo-dashboard-generator :as dash-gen]
-   [metabase.automagic-dashboards.interesting :as interesting]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.database :refer [Database]]
@@ -157,7 +155,6 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (api/defendpoint GET "/:entity/:entity-id-or-query/V2"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query]
@@ -169,7 +166,6 @@
     (magic/generate-dashboard
       (#'magic/make-base-context (magic/->root entity))
       (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."

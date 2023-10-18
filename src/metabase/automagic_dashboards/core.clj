@@ -1111,46 +1111,6 @@
       (assoc empty-dashboard :cards dashcards)
       :all)))
 
-(comment
-  (let [template             (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        item                 (t2/select-one :model/Table :name "PRODUCTS" :db_id 1)
-        base-context         (-> item ->root make-base-context)
-        {:keys [metrics dimensions]} (interesting/identify base-context
-                                                           {:dimension-specs (:dimensions template)
-                                                            :metric-specs    (:metrics template)})
-        user-defined-metrics [{:metric-name       "Custom average",
-                               :metric-title      "Custom average",
-                               :metric-definition {:source-table 1,
-                                                   :aggregation  [[:aggregation-options
-                                                                   [:/
-                                                                    [:sum [:field 59 nil]]
-                                                                    [:count]]
-                                                                   {:name         "My average",
-                                                                    :display-name "My average"}]]},
-                               :metric-score      95}]
-        cards                (:cards template)]
-
-    (let [m->d->cards (merge (combination/combinations-from-template cards metrics dimensions)
-                             (combination/combinations-from-user-metrics user-defined-metrics dimensions))]
-      {:affinities (update-vals m->d->cards keys)
-       :cards (into [] (comp (map vals) cat cat) (vals m->d->cards))}))
-  (let [entity  (t2/select-one :model/Table :name "ACCOUNTS")
-        context (make-base-context (->root entity))]
-    (-> (generate-dashboard
-         context
-         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-        :ordered_cards
-        count))
-
-  (let [entity  (t2/select-one :model/Table :id 1)
-        context (make-base-context (->root entity))]
-    (-> (generate-dashboard
-         context
-         (dashboard-templates/get-dashboard-template ["table" "GenericTable"]))
-        :ordered_cards
-        count))
-  )
-
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).

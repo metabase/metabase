@@ -39,11 +39,6 @@
             true))
         (math.combo/permutations parent-types)))))
 
-(comment
-  (true? (matching-types? #{:type/Number} #{:type/Integer}))
-  (false? (matching-types? #{} #{:type/Integer}))
-  )
-
 (defn filter-to-matching-types
   "Take a map with keys as sets of types and collection of types and return the map with only
   the type set keys that satisfy the types."
@@ -118,40 +113,6 @@
    grounded-metrics :- [:sequential ads/grounded-metric]]
   (mapcat (partial add-breakout-combinations ground-dimensions semantic-affinity-sets)
           grounded-metrics))
-
-(mu/defn combinations-from-template
-  [template-cards
-   grounded-metrics :- [:sequential ads/grounded-metric]
-   dimension-names->matches :- ads/dim-name->matching-fields]
-  (let [available-dimensions (set (keys dimension-names->matches))
-        available-metrics    (into #{} (map :metric-name grounded-metrics))
-        card-def             (fn [card-map]
-                               (-> card-map first val))
-        satisfied-cards      (filter
-                               (every-pred
-                                 (comp (partial every? available-metrics) :metrics card-def)
-                                 (comp (partial every? (comp available-dimensions ffirst)) :dimensions card-def))
-                               template-cards)]
-    (reduce (fn [acc [metrics dim->bodies]]
-              (update acc metrics #(merge-with into % dim->bodies)))
-            {}
-            (for [card satisfied-cards
-                  :let [[_card-name body] (first card)
-                        metrics    (:metrics body)
-                        dimensions (map ffirst (:dimensions body))]]
-              [(set metrics) {(set dimensions) [body]}]))))
-
-(mu/defn combinations-from-user-metrics
-  [user-metrics :- [:sequential ads/grounded-metric]
-   ground-dimensions :- ads/dim-name->matching-fields]
-  (into {}
-        (for [metric user-metrics]
-          (let [all-dimensions (into {}
-                                     (for [dim (keys ground-dimensions)]
-                                       [#{dim} [{:type       :xray/make-card
-                                                 :metrics    [(:metric-name metric)]
-                                                 :dimensions [{dim {}}]}]]))]
-            [#{(:metric-name metric)} all-dimensions]))))
 
 (defn add-dataset-query
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)

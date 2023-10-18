@@ -166,10 +166,9 @@
             :timestamp          (t/zoned-date-time)})
 
    :model/Metric
-   (fn [_] (default-timestamped
-             {:creator_id  (rasta-id)
-              :definition  {}
-              :description "Lookin' for a blueberry"
+   (fn [_] {:creator_id  (rasta-id)
+            :definition  {}
+            :description "Lookin' for a blueberry"
             :name        "Toucans in the rainforest"})
 
    :model/NativeQuerySnippet
