@@ -82,10 +82,16 @@
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
 (derive :event/pulse-delete ::pulse-event)
+(derive :event/subscription-unsubscribe ::pulse-event)
+(derive :event/subscription-unsubscribe-undo ::pulse-event)
+(derive :event/alert-unsubscribe ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [name id]}]
-  (audit-log/record-event! topic {:name name} api/*current-user-id* :model/Pulse id))
+  [topic {:keys [id name details]}]
+  (let [details-map (if (some? name)
+                      {:name name}
+                      details)]
+    (audit-log/record-event! topic details-map api/*current-user-id* :model/Pulse id)))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)

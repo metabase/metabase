@@ -19,7 +19,7 @@
 
 (comment events.audit-log/keep-me)
 
-(defn- event
+(defn event
   ([topic]
    (event topic nil))
 
@@ -356,6 +356,42 @@
                  :model_id    (:id pulse)
                  :details     {:name (:name pulse)}}
                 (event "pulse-delete" (:id pulse)))))))))
+
+(deftest subscription-unsubscribe-event-test
+  (testing :subscription-unsubscribe
+    (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-test-user :rasta
+          (events/publish-event! :event/subscription-unsubscribe {:details {:email "test"}}))
+          (is (= {:topic       :subscription-unsubscribe
+                  :user_id     (mt/user->id :rasta)
+                  :model       "Pulse"
+                  :model_id    nil
+                  :details     {:email "test"}}
+                 (event "subscription-unsubscribe"))))))
+
+(deftest subscription-unsubscribe-undo-event-test
+  (testing :subscription-unsubscribe-undo
+    (mt/with-model-cleanup [:model/AuditLog]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/subscription-unsubscribe-undo {:details {:email "test"}}))
+      (is (= {:topic       :subscription-unsubscribe-undo
+              :user_id     (mt/user->id :rasta)
+              :model       "Pulse"
+              :model_id    nil
+              :details     {:email "test"}}
+             (event "subscription-unsubscribe-undo"))))))
+
+(deftest alert-unsubscribe-event-test
+  (testing :alert-unsubscribe
+    (mt/with-model-cleanup [:model/AuditLog]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/alert-unsubscribe {:details {:email "test"}}))
+      (is (= {:topic       :alert-unsubscribe
+              :user_id     (mt/user->id :rasta)
+              :model       "Pulse"
+              :model_id    nil
+              :details     {:email "test"}}
+             (event "alert-unsubscribe"))))))
 
 (deftest segment-create-event-test
   (testing :segment-create
