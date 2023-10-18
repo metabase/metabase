@@ -1,0 +1,62 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Button, Grid, Tooltip } from "metabase/ui";
+
+export const args = {
+  position: "bottom",
+  multiline: false,
+};
+
+export const sampleArgs = {
+  text: "Button with tooltip",
+};
+
+export const argTypes = {
+  position: {
+    options: [
+      "bottom",
+      "left",
+      "right",
+      "top",
+      "bottom-end",
+      "bottom-start",
+      "left-end",
+      "left-start",
+      "right-end",
+      "right-start",
+      "top-end",
+      "top-start",
+    ],
+    control: { type: "select" },
+  },
+  multiline: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Overlays/Tooltip"
+  component={Tooltip}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Tooltip
+
+Our themed wrapper around [Mantine Tooltip](https://v6.mantine.dev/core/tooltip/).
+
+## Docs
+
+- [Mantine Tooltip Docs](https://v6.mantine.dev/core/tooltip/)
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Tooltip {...args}><Button>{sampleArgs.text}</Button></Text>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
