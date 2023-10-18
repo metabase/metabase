@@ -89,6 +89,39 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
   },
+  PickerControl: {
+    styles: theme => ({
+      pickerControl: {
+        color: theme.colors.text[2],
+        fontSize: theme.fontSizes.md,
+        lineHeight: rem(24),
+        width: rem(80),
+        height: rem(32),
+        borderRadius: theme.radius.sm,
+
+        "&:hover": {
+          backgroundColor: theme.colors.bg[0],
+        },
+        "&[data-disabled]": {
+          color: theme.colors.bg[2],
+        },
+        "&[data-weekend]": {
+          color: theme.colors.text[2],
+        },
+        "&[data-outside]": {
+          color: theme.colors.bg[2],
+        },
+        "&[data-in-range]": {
+          color: theme.colors.text[1],
+          borderRadius: 0,
+          backgroundColor: theme.colors.brand[0],
+          "&:hover": {
+            backgroundColor: theme.colors.brand[0],
+          },
+        },
+      },
+    }),
+  },
   CalendarHeader: {
     styles: theme => ({
       calendarHeader: {
@@ -100,6 +133,10 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
         lineHeight: rem(24),
+
+        "&:hover": {
+          backgroundColor: theme.colors.bg[0],
+        },
       },
       calendarHeaderControl: {
         width: rem(32),

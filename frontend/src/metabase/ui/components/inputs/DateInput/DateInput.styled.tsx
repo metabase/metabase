@@ -5,11 +5,12 @@ export const getDateInputOverrides =
     DateInput: {
       defaultProps: {
         size: "md",
-        maxLevel: "month",
       },
       styles: theme => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
         },
       }),
     },
