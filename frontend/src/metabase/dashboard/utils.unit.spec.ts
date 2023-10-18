@@ -294,7 +294,7 @@ describe("Dashboard utils", () => {
         dashboard_tab_id: undefined,
       });
       const dashboard = createMockDashboard({
-        ordered_cards: [dashcard],
+        dashcards: [dashcard],
       });
 
       expect(
@@ -317,7 +317,7 @@ describe("Dashboard utils", () => {
       });
 
       const dashboard = createMockDashboard({
-        ordered_cards: [visibleDashcard, hiddenDashcard],
+        dashcards: [visibleDashcard, hiddenDashcard],
       });
 
       expect(

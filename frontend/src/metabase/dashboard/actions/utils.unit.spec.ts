@@ -55,7 +55,7 @@ describe("dashboard > actions > utils", () => {
       const oldDash = createMockDashboard({
         id: 1,
         name: "old name",
-        ordered_cards: [createMockDashboardOrderedCard()],
+        dashcards: [createMockDashboardOrderedCard()],
       });
       const newDash = createMockDashboard({ id: 1, name: "old name" });
 
@@ -66,12 +66,12 @@ describe("dashboard > actions > utils", () => {
       const oldDash = createMockDashboard({
         id: 1,
         name: "old name",
-        ordered_cards: [createMockDashboardOrderedCard({ id: 1 })],
+        dashcards: [createMockDashboardOrderedCard({ id: 1 })],
       });
       const newDash = createMockDashboard({
         id: 1,
         name: "old name",
-        ordered_cards: [createMockDashboardOrderedCard({ id: 2 })],
+        dashcards: [createMockDashboardOrderedCard({ id: 2 })],
       });
 
       expect(hasDashboardChanged(newDash, oldDash)).toBe(false);

@@ -90,7 +90,7 @@
                              (update :collection_id boolean)
                              (update :collection boolean)))))
 
-(defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
+(defn- dashboard-response [{:keys [creator dashcards created_at updated_at] :as dashboard}]
   ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
@@ -109,7 +109,7 @@
                                     (update :id boolean)
                                     (update :timestamp boolean))))
       creator       (update :creator #(into {} %))
-      ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
+      dashcards (update :dashcards #(mapv dashcard-response %)))))
 
 (defn- do-with-dashboards-in-a-collection [grant-collection-perms-fn! dashboards-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -350,7 +350,7 @@
                       :param_values               nil
                       :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                       :ordered_tabs               [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
-                      :ordered_cards              [{:size_x                     4
+                      :dashcards              [{:size_x                     4
                                                     :size_y                     4
                                                     :col                        0
                                                     :row                        0
@@ -376,7 +376,7 @@
       (let [link-card-info-from-resp
             (fn [resp]
               (->> resp
-                   :ordered_cards
+                   :dashcards
                    (map (fn [dashcard] (or (get-in dashcard [:visualization_settings :link :entity])
                                            ;; get for link card
                                            (get-in dashcard [:visualization_settings :link]))))))]
@@ -441,7 +441,7 @@
                                                                 :name_field       nil
                                                                 :dimensions       []}}
                          :ordered_tabs               []
-                         :ordered_cards              [{:size_x                     4
+                         :dashcards              [{:size_x                     4
                                                        :size_y                     4
                                                        :col                        0
                                                        :row                        0
@@ -1829,7 +1829,7 @@
                                                                            :action_id              action-id
                                                                            :visualization_settings {:label "Update"}}]
                                                            :ordered_tabs []}))))
-              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+              (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
                                                                :type (name action-type)
                                                                :parameters [{:id "id"}]
                                                                :database_enabled_actions true}
@@ -1848,7 +1848,7 @@
               (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
                 (mt/with-temp [Dashboard     {dashboard-id :id} {}
                                DashboardCard _ {:action_id action-id, :dashboard_id dashboard-id}]
-                  (is (partial= {:ordered_cards [{:action {:database_enabled_actions enable-actions?}}]}
+                  (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
@@ -3617,7 +3617,7 @@
                                                           :action_id action-id
                                                           :card_id card-id}]
             (testing "Dashcard should only have id and name params"
-              (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+              (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Prefetch should limit to id and name"
@@ -3647,7 +3647,7 @@
                                                           :action_id action-id
                                                           :card_id card-id}]
             (testing "Dashcard should only have id and name params"
-              (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+              (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Prefetch should only return non-hidden fields"

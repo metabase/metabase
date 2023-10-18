@@ -40,7 +40,7 @@ const actionsDatabase = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
 });
 
 const setup = (

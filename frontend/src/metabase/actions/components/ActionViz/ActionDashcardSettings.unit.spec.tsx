@@ -75,7 +75,7 @@ const actionDashcardWithAction = createMockActionDashboardCard({
 });
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
   parameters: [dashboardParameter],
 });
 

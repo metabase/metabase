@@ -58,10 +58,10 @@ export function ActionSidebarFn({
 
   const dashcard = useMemo(
     () =>
-      dashboard.ordered_cards.find(
+      dashboard.dashcards.find(
         dc => dc?.id === dashcardId && isActionDashCard(dc),
       ) as ActionDashboardCard | undefined,
-    [dashboard.ordered_cards, dashcardId],
+    [dashboard.dashcards, dashcardId],
   );
 
   if (!dashcard) {

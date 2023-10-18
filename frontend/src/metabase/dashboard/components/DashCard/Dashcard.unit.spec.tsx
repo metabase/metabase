@@ -101,7 +101,7 @@ describe("DashCard", () => {
     const textCard = createMockTextDashboardCard({ text: "Hello, world!" });
     const board = {
       ...dashboard,
-      ordered_cards: [textCard],
+      dashcards: [textCard],
     };
     setup({
       dashboard: board,
@@ -117,7 +117,7 @@ describe("DashCard", () => {
     });
     const board = {
       ...dashboard,
-      ordered_cards: [textCard],
+      dashcards: [textCard],
     };
     setup({
       dashboard: board,
@@ -133,7 +133,7 @@ describe("DashCard", () => {
     });
     const board = {
       ...dashboard,
-      ordered_cards: [linkCard],
+      dashcards: [linkCard],
     };
     setup({
       dashboard: board,
@@ -149,7 +149,7 @@ describe("DashCard", () => {
     });
     const board = {
       ...dashboard,
-      ordered_cards: [linkCard],
+      dashcards: [linkCard],
     };
     setup({
       dashboard: board,

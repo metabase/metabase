@@ -114,7 +114,7 @@
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
   [dashboard]
-  (update dashboard :ordered_cards (fn [dashcards]
+  (update dashboard :dashcards (fn [dashcards]
                                      (vec (for [dashcard dashcards]
                                             (-> dashcard
                                                 (update :card hide-unreadable-card)
@@ -202,7 +202,7 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
+  (update dashboard :dashcards add-query-average-duration-to-dashcards))
 
 (defn- get-dashboard
   "Get Dashboard with ID."
@@ -212,7 +212,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (t2/hydrate [:ordered_cards
+      (t2/hydrate [:dashcards
                    [:card [:moderation_reviews :moderator_details]]
                    :series
                    :dashcard/action
@@ -263,7 +263,7 @@
   {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
   [dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
-        {:keys [copy discard]} (cards-to-copy (:ordered_cards dashboard))]
+        {:keys [copy discard]} (cards-to-copy (:dashcards dashboard))]
     (reduce (fn [m [id card]]
               (assoc-in m
                         [:copied id]
@@ -368,7 +368,7 @@
                                                (duplicate-tabs dash existing-tabs))]
                           (reset! new-cards (vals id->new-card))
                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
-                                                                           (:ordered_cards existing-dashboard)
+                                                                           (:dashcards existing-dashboard)
                                                                            is_deep_copy
                                                                            id->new-card
                                                                            id->new-tab-id))]
@@ -651,7 +651,7 @@
    ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
-                      (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
+                      (t2/hydrate [:dashcards :series :card] :ordered_tabs))
         new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs)]
     (when (and (seq (:ordered_tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
@@ -664,7 +664,7 @@
                         deleted-tab-ids]
                  :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
                 deleted-tab-ids          (set deleted-tab-ids)
-                current-cards            (cond->> (:ordered_cards dashboard)
+                current-cards            (cond->> (:dashcards dashboard)
                                            (seq deleted-tab-ids)
                                            (remove (fn [card]
                                                      (contains? deleted-tab-ids (:dashboard_tab_id card)))))

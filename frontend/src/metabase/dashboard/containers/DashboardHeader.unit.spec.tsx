@@ -21,7 +21,7 @@ console.error = jest.fn();
 const DASHCARD = createMockDashboardOrderedCard();
 
 const TEST_DASHBOARD = createMockDashboard({
-  ordered_cards: [DASHCARD],
+  dashcards: [DASHCARD],
 });
 
 const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
@@ -128,7 +128,7 @@ const setup = async ({
         dashboards: {
           [dashboard.id]: {
             ...dashboard,
-            ordered_cards: dashboard.ordered_cards.map(c => c.id),
+            dashcards: dashboard.dashcards.map(c => c.id),
           },
         },
         dashcards: {

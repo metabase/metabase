@@ -139,7 +139,7 @@
   make these parameters visible at all to the frontend."
   [dashboard token-params]
   (let [params             (:parameters dashboard)
-        ordered-cards      (:ordered_cards dashboard)
+        ordered-cards      (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
                              (if-let [value (get token-params (keyword (:slug param)))]
@@ -148,7 +148,7 @@
                             []
                             params)]
     (assoc dashboard
-           :ordered_cards
+           :dashcards
            (map
             (fn [card]
               (if (-> card :visualization_settings :virtual_card)

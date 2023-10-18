@@ -18,7 +18,7 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
-  ordered_cards: (DashboardOrderedCard | ActionDashboardCard)[];
+  dashcards: (DashboardOrderedCard | ActionDashboardCard)[];
   ordered_tabs?: DashboardOrderedTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;

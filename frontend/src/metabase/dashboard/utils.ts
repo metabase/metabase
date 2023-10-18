@@ -54,7 +54,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
     name: "",
     parameters: [],
     ...dashboard,
-    ordered_cards: dashboard.ordered_cards?.map(dashcard => ({
+    dashcards: dashboard.dashcards?.map(dashcard => ({
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
@@ -120,7 +120,7 @@ export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   if (dashboard) {
-    for (const dashcard of dashboard.ordered_cards) {
+    for (const dashcard of dashboard.dashcards) {
       const cards = [dashcard.card].concat((dashcard as any).series || []);
       results.push(...cards.map(card => ({ card, dashcard })));
     }

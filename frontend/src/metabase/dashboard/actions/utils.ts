@@ -7,10 +7,10 @@ export function hasDashboardChanged(
   dashboardBeforeEditing: Dashboard,
 ) {
   return !_.isEqual(
-    { ...dashboard, ordered_cards: dashboard.ordered_cards.length },
+    { ...dashboard, dashcards: dashboard.dashcards.length },
     {
       ...dashboardBeforeEditing,
-      ordered_cards: dashboardBeforeEditing.ordered_cards.length,
+      dashcards: dashboardBeforeEditing.dashcards.length,
     },
   );
 }
