@@ -93,6 +93,7 @@ export const isNavigationAllowed = ({
     }
 
     const allowedPathnames = validSlugs.flatMap(slug => [
+      `/model/${slug}`,
       `/model/${slug}/query`,
       `/model/${slug}/metadata`,
     ]);
