@@ -373,17 +373,11 @@
        (vec columns)
 
        :else
-       (let [matching (transduce
-                       (keep-indexed (fn [index a-filter]
-                                       (when-let [a-ref (leading-ref a-filter)]
-                                         (when-let [col (lib.equality/find-matching-column
-                                                         query stage-number a-ref columns)]
-                                           [col index]))))
-                       (completing
-                        (fn [m [col index]]
-                          (update m col (fnil conj []) index)))
-                       {}
-                       existing-filters)]
+       (let [matching (group-by
+                       (fn [filter-pos]
+                         (when-let [a-ref (leading-ref (get existing-filters filter-pos))]
+                           (lib.equality/find-matching-column query stage-number a-ref columns)))
+                       (range (count existing-filters)))]
          (mapv #(let [positions (matching %)]
                   (cond-> %
                     positions (assoc :filter-positions positions)))
