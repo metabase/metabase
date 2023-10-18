@@ -10,17 +10,17 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
-   [metabase.public-settings :as public-settings]
    [metabase.search.util :as search.util]
+   [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]])
   (:import
-   (java.io File)
-   (java.text NumberFormat)
-   (java.util Locale)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
+
+;;;; <pre><code>
 ;;;; +------------------+
 ;;;; | Schema detection |
 ;;;; +------------------+
@@ -29,10 +29,10 @@
 ;;               |
 ;;               |
 ;;          varchar-255┐
-;;              / \    |
-;;             /   \   └—————————┐
-;;            /     \            |
-;;         float   datetime  string-pk
+;;              / \    │
+;;             /   \   └──────────┬───────────┐
+;;            /     \             │           │
+;;         float   datetime  zoned-datetime  string-pk
 ;;           |       |
 ;;           |       |
 ;;          int     date
@@ -44,6 +44,7 @@
 ;;   auto-
 ;; incrementing-
 ;;  int-pk
+;; </code></pre>
 
 (def ^:private type->parent
   ;; listed in depth-first order
@@ -55,6 +56,7 @@
    ::boolean                  ::int
    ::datetime                 ::varchar-255
    ::date                     ::datetime
+   ::zoned-datetime           ::varchar-255
    ::string-pk                ::varchar-255})
 
 (def ^:private base-type->pk-type
@@ -88,7 +90,11 @@
        (catch Exception _
          false)))
 
-(def ^:private currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
+(defn- zoned-datetime-string? [s]
+  (try (t/offset-date-time s)
+       true
+       (catch Exception _
+         false)))
 
 (defn- with-parens
   "Returns a regex that matches the argument, with or without surrounding parentheses."
@@ -99,13 +105,10 @@
   "Returns a regex that matches a positive or negative number, including currency symbols"
   [number-regex]
   ;; currency signs can be all over: $2, -$2, $-2, 2€
-  (re-pattern (str currency-regex "?\\s*-?"
-                   currency-regex "?"
+  (re-pattern (str upload-parsing/currency-regex "?\\s*-?"
+                   upload-parsing/currency-regex "?"
                    number-regex
-                   "\\s*" currency-regex "?")))
-
-(defn- get-number-separators []
-  (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+                   "\\s*" upload-parsing/currency-regex "?")))
 
 (defn- int-regex [number-separators]
   (with-parens
@@ -127,24 +130,26 @@
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
-    - ::boolean
-    - ::int
-    - ::float
-    - ::varchar-255
-    - ::text
-    - ::date
-    - ::datetime
-    - nil, in which case other functions are expected to replace it with ::text as the catch-all type
+
+    - `::boolean`
+    - `::int`
+    - `::float`
+    - `::varchar-255`
+    - `::date`
+    - `::datetime`
+    - `::zoned-datetime`
+    - `::text` (the catch-all type)
 
   NB: There are currently the following gotchas:
     1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
        application settings
     2. 0 and 1 are assumed to be booleans, not ints."
   [value]
-  (let [number-separators (get-number-separators)]
+  (let [number-separators (upload-parsing/get-number-separators)]
     (cond
       (str/blank? value)                                      nil
       (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
+      (zoned-datetime-string? value)                          ::zoned-datetime
       (datetime-string? value)                                ::datetime
       (date-string? value)                                    ::date
       (re-matches (int-regex number-separators) value)        ::int
@@ -222,79 +227,15 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-(defn- parse-bool
-  [s]
-  (cond
-    (re-matches #"(?i)true|t|yes|y|1" s) true
-    (re-matches #"(?i)false|f|no|n|0" s) false
-    :else                                (throw (IllegalArgumentException.
-                                                 (tru "{0} is not a recognizable boolean" s)))))
 
-(defn- parse-date
-  [s]
-  (t/local-date s))
-
-(defn- parse-datetime
-  [s]
-  (cond
-    (date-string? s)     (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
-    (datetime-string? s) (t/local-date-time s)
-    :else                (throw (IllegalArgumentException.
-                                 (tru "{0} is not a recognizable datetime" s)))))
-
-(defn- remove-currency-signs
-  [s]
-  (str/replace s currency-regex ""))
-
-(let [us (NumberFormat/getInstance (Locale. "en" "US"))
-      de (NumberFormat/getInstance (Locale. "de" "DE"))
-      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
-      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
-  (defn- parse-plain-number [number-separators s]
-    (let [has-parens?       (re-matches #"\(.*\)" s)
-          deparenthesized-s (str/replace s #"[()]" "")
-          parsed-number     (case number-separators
-                              ("." ".,") (. us parse deparenthesized-s)
-                              ",."       (. de parse deparenthesized-s)
-                              ", "       (. fr parse (str/replace deparenthesized-s \space \u00A0)) ; \u00A0 is a non-breaking space
-                              ".’"       (. ch parse deparenthesized-s))]
-      (if has-parens?
-        (- parsed-number)
-        parsed-number))))
-
-(defn- parse-number
-  [number-separators s]
-  (try
-    (->> s
-         (str/trim)
-         (remove-currency-signs)
-         (parse-plain-number number-separators))
-    (catch Throwable e
-      (throw (ex-info
-              (tru "{0} is not a recognizable number" s)
-              {}
-              e)))))
-
-(defn- upload-type->parser [upload-type]
-  (case upload-type
-    ::varchar-255              identity
-    ::text                     identity
-    ::int                      (partial parse-number (get-number-separators))
-    ::float                    (partial parse-number (get-number-separators))
-    ::int-pk                   (partial parse-number (get-number-separators))
-    ::auto-incrementing-int-pk (partial parse-number (get-number-separators))
-    ::string-pk                identity
-    ::boolean                  #(parse-bool (str/trim %))
-    ::date                     #(parse-date (str/trim %))
-    ::datetime                 #(parse-datetime (str/trim %))))
 
 (defn- parsed-rows
   "Returns a lazy seq of parsed rows from the `reader`.
    Replaces empty strings with nil."
-  [col->upload-type reader]
+  [driver col->upload-type reader]
   (let [[header & rows] (csv/read-csv reader)
         column-count    (count header)
-        parsers         (map upload-type->parser (vals col->upload-type))]
+        parsers         (map (partial driver/upload-type->parser driver) (vals col->upload-type))]
     (for [row rows]
       (for [[value parser] (map vector (pad column-count row) parsers)]
         (when (not (str/blank? value))
@@ -353,7 +294,7 @@
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+        (let [rows (parsed-rows driver col-to-insert->upload-type reader)]
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
            :num-columns       (count csv-col-names)

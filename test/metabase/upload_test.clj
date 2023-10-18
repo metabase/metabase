@@ -20,16 +20,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type         ::upload/boolean)
-(def ^:private int-type          ::upload/int)
-(def ^:private float-type        ::upload/float)
-(def ^:private vchar-type        ::upload/varchar-255)
-(def ^:private date-type         ::upload/date)
-(def ^:private datetime-type     ::upload/datetime)
-(def ^:private text-type         ::upload/text)
-(def ^:private int-pk-type       ::upload/int-pk)
-(def ^:private ai-int-pk-type    ::upload/auto-incrementing-int-pk)
-(def ^:private string-pk-type    ::upload/string-pk)
+(def ^:private bool-type      ::upload/boolean)
+(def ^:private int-type       ::upload/int)
+(def ^:private float-type     ::upload/float)
+(def ^:private vchar-type     ::upload/varchar-255)
+(def ^:private date-type      ::upload/date)
+(def ^:private datetime-type  ::upload/datetime)
+(def ^:private zoned-dt-type  ::upload/zoned-datetime)
+(def ^:private text-type      ::upload/text)
+(def ^:private int-pk-type    ::upload/int-pk)
+(def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
+(def ^:private string-pk-type ::upload/string-pk)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -118,13 +119,14 @@
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
-           ["2022-01-01"                    #t "2022-01-01"       date-type]
-           ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
-           ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
-           ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
+           ["2022-01-01"                    #t "2022-01-01"             date-type]
+           ["2022-01-01T01:00:00"           #t "2022-01-01T01:00"       datetime-type]
+           ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00"       datetime-type]
+           ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00"       datetime-type]
+           ["2022-01-01T01:00:00.00-07:00"  #t "2022-01-01T01:00-07:00" zoned-dt-type]]]
     (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
       (let [type   (upload/value->type string-value)
-            parser (#'upload/upload-type->parser type)]
+            parser (#'driver/upload-type->parser :h2 type)]
         (testing (format "\"%s\" is a %s" string-value type)
           (is (= expected-type
                  type)))
@@ -153,7 +155,9 @@
                                     [date-type     vchar-type    vchar-type]
                                     [date-type     text-type     text-type]
                                     [datetime-type vchar-type    vchar-type]
+                                    [zoned-dt-type vchar-type    vchar-type]
                                     [datetime-type text-type     text-type]
+                                    [zoned-dt-type text-type     text-type]
                                     [vchar-type    text-type     text-type]]]
     (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
@@ -323,6 +327,17 @@
               (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
                               "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                               "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
+
+(deftest ^:parallel detect-schema-zoned-datetimes-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Dates"
+      (is (= (with-ai-id {:zoned_datetime zoned-dt-type
+                          :not_datetime   vchar-type})
+             (upload/detect-schema
+              (csv-file-with ["Zoned Datetime,Not Datetime"
+                              "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
+                              "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"])))))))
+
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
@@ -421,6 +436,29 @@
                       ;; db position is 1; 0 is for the auto-inserted ID
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
             (is (some? table))))))))
+
+(deftest load-from-csv-zoned-datetime-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-mysql-local-infile-activated
+          (upload/load-from-csv!
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["zoned_datetime"
+                           "2022-01-01T01:00:00-07:00"])))
+        (testing "Fields exists after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the zoned datetime column the correct base_type"
+              (is (=? {:name      #"(?i)zoned_datetime"
+                       :base_type :type/DateTimeWithLocalTZ}
+                      ;; db position is 1; 0 is for the auto-inserted ID
+                      (t2/select-one Field :database_position 1 :table_id (:id table)))))
+            (is (= "2022-01-01T08:00:00Z"
+                   (second (first (rows-for-table table)))))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"

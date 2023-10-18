@@ -2,6 +2,7 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -13,6 +14,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
+   [metabase.upload.parsing :as upload-parsing]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx])
   (:import
@@ -174,3 +176,56 @@
   (let [sql (driver.sql/set-role-statement driver role)]
     (with-open [stmt (.createStatement ^Connection conn)]
       (.execute stmt sql))))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/varchar-255]
+  [_ _]
+  identity)
+
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/text]
+  [_ _]
+  identity)
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/int]
+  [_ _]
+  (partial upload-parsing/parse-number (upload-parsing/get-number-separators)))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/float]
+  [_ _]
+  (partial upload-parsing/parse-number (upload-parsing/get-number-separators)))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/int-pk]
+  [_ _]
+  (partial upload-parsing/parse-number (upload-parsing/get-number-separators)))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/auto-incrementing-int-pk]
+  [_ _]
+  (partial upload-parsing/parse-number (upload-parsing/get-number-separators)))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/string-pk]
+  [_ _]
+  identity)
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/boolean]
+  [_ _]
+  (comp
+   upload-parsing/parse-bool
+   str/trim))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/date]
+  [_ _]
+  (comp
+   upload-parsing/parse-date
+   str/trim))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/datetime]
+  [_ _]
+  (comp
+   upload-parsing/parse-datetime
+   str/trim))
+
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/zoned-datetime]
+  [_ _]
+  (comp
+   upload-parsing/parse-zoned-datetime
+   str/trim))
