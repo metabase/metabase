@@ -70,6 +70,7 @@ const newModelMetadataTabLocation = createMockLocation({
 
 const getModelLocations = (model: Question) => [
   createMockLocation({ pathname: `/model/${model.id()}` }),
+  createMockLocation({ pathname: `/model/${model.slug()}` }),
   createMockLocation({ pathname: `/model/${model.id()}/query` }),
   createMockLocation({ pathname: `/model/${model.slug()}/query` }),
   createMockLocation({ pathname: `/model/${model.id()}/metadata` }),
