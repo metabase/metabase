@@ -1221,6 +1221,12 @@ class Question {
       );
     }
 
+    // Helpers for working with the current query from CLJS REPLs.
+    if (process.env.NODE_ENV === "development") {
+      window.__MLv2_metadata = metadata;
+      window.__MLv2_query = this.__mlv2Query;
+    }
+
     return this.__mlv2Query;
   }
 
