@@ -628,9 +628,9 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     originalQuestion,
     uiControls,
   ) => {
-    const isModel = queryBuilderMode === "dataset";
+    const isEditingModel = queryBuilderMode === "dataset";
 
-    if (isModel) {
+    if (isEditingModel) {
       return isDirty || isMetadataDirty;
     }
 
