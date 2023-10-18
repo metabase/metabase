@@ -3,7 +3,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { renderWithProviders, fireEvent, screen } from "__support__/ui";
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
@@ -144,7 +144,7 @@ describe("ChartSettings", () => {
     });
 
     setup({
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: createMockCard({ visualization_settings: originalVizSettings }),
       }),
       settings: modifiedSettings,

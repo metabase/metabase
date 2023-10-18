@@ -17,9 +17,16 @@
 (mr/def ::pivot-types
   [:enum :category :location :time])
 
+(mr/def ::drill-thru.type
+  [:fn
+   {:error/message "valid drill-thru :type keyword"}
+   (fn [k]
+     (and (qualified-keyword? k)
+          (= (namespace k) "drill-thru")))])
+
 (mr/def ::drill-thru.common
   [:map
-   [:type     keyword?]
+   [:type     ::drill-thru.type]
    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
 
 (mr/def ::drill-thru.object-details

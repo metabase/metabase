@@ -34,7 +34,6 @@
                                         (str \v version)
                                         version)
                               :hash   (git-hash)
-                              :branch (git-branch)
                               :date   (git-last-commit-date)}]
                    (str (name k) \= v))))
 

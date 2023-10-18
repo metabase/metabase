@@ -9,7 +9,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockUser,
   createMockCard,
   createMockTokenFeatures,
@@ -19,7 +19,7 @@ import type { DashboardState } from "metabase-types/store";
 
 import SharingSidebar from "../SharingSidebar";
 
-export const dashcard = createMockDashboardOrderedCard();
+export const dashcard = createMockDashboardCard();
 
 const actionDashcard = createMockActionDashboardCard({
   id: 2,
@@ -32,7 +32,7 @@ const linkDashcard = createMockActionDashboardCard({
 export const user = createMockUser();
 
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, linkDashcard],
+  dashcards: [dashcard, actionDashcard, linkDashcard],
   parameters: [
     {
       name: "ID",
@@ -140,7 +140,7 @@ export function setup(
           dashboards: {
             [dashboard.id]: {
               ...dashboard,
-              ordered_cards: [dashcard.id, actionDashcard.id, linkDashcard.id],
+              dashcards: [dashcard.id, actionDashcard.id, linkDashcard.id],
             },
           },
         } as DashboardState,

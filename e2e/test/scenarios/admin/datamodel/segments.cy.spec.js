@@ -141,9 +141,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         "Questions about this segment will appear here as they're added",
       ).should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        `Orders, Filtered by ${SEGMENT_NAME} and Product ID equals 14`,
-      );
+      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`);
     });
 
     it("should update that segment", () => {
