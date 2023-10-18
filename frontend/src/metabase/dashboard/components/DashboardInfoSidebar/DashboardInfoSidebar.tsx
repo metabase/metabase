@@ -17,8 +17,6 @@ import {
   toggleAutoApplyFilters,
 } from "metabase/dashboard/actions";
 
-import Toggle from "metabase/core/components/Toggle";
-import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
@@ -27,6 +25,7 @@ import {
   HistoryHeader,
   ContentSection,
   DescriptionHeader,
+  SpaceBetweenSwitch,
 } from "./DashboardInfoSidebar.styled";
 
 type DashboardAttributeType = string | number | null | boolean;
@@ -93,18 +92,15 @@ export function DashboardInfoSidebar({
       </ContentSection>
 
       <ContentSection>
-        <FormField
-          title={t`Auto-apply filters`}
-          orientation="horizontal"
-          htmlFor={autoApplyFilterToggleId}
-        >
-          <Toggle
-            disabled={!canWrite}
-            id={autoApplyFilterToggleId}
-            value={dashboard.auto_apply_filters}
-            onChange={handleToggleAutoApplyFilters}
-          />
-        </FormField>
+        <SpaceBetweenSwitch
+          disabled={!canWrite}
+          label={t`Auto-apply filters`}
+          labelPosition="left"
+          size="sm"
+          id={autoApplyFilterToggleId}
+          checked={dashboard.auto_apply_filters}
+          onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+        />
       </ContentSection>
       {showCaching && (
         <ContentSection>

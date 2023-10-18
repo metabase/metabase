@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { Switch } from "metabase/ui";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 import { color } from "metabase/lib/colors";
@@ -58,4 +59,12 @@ export const ContentSection = styled.div`
 
 export const DescriptionHeader = styled.h3`
   margin-bottom: 0.5rem;
+`;
+
+export const SpaceBetweenSwitch = styled(Switch)`
+  > div {
+    // target the inner div one level down only
+    display: flex;
+    justify-content: space-between;
+  }
 `;
