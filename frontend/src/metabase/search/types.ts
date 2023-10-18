@@ -24,6 +24,7 @@ export type TypeFilterProps = EnabledSearchModelType[];
 export type CreatedByFilterProps = UserId[];
 export type CreatedAtFilterProps = string | null;
 export type LastEditedByProps = UserId[];
+export type LastEditedAtFilterProps = string | null;
 export type VerifiedFilterProps = true | null;
 export type NativeQueryFilterProps = true | null;
 
@@ -33,6 +34,7 @@ export type SearchFilterPropTypes = {
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
   [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
+  [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
   [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
 };
 
