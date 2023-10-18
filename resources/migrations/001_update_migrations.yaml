@@ -3345,12 +3345,12 @@ databaseChangeLog:
         - sql:
           sql: select 1;
       rollback:
-        - sql:
-          dbms: h2,mysql,mariadb
-          sql: UPDATE DATABASECHANGELOG SET FILENAME = 'migrations/000_migrations.yaml'
-        - sql:
-          dbms: postgresql
-          sql: UPDATE databasechangelog SET FILENAME = 'migrations/000_migrations.yaml'
+        - update:
+            tableName: ${databasechangelog.name}
+            columns:
+              - column:
+                  name: filename
+                  value: migrations/000_migrations.yaml
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
