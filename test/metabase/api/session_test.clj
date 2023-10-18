@@ -7,6 +7,7 @@
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.email.messages :as messages]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
@@ -569,6 +570,24 @@
                                                                    :email    email
                                                                    :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
 
+(deftest unsubscribe-event-test
+  (reset-throttlers!)
+  (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+    (testing "Valid hash and email returns event."
+      (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
+                               PulseChannel _              {:pulse_id     pulse-id
+                                                            :channel_type "email"
+                                                            :details      {:emails ["test@metabase.com"]}}]
+        (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                          :email    "test@metabase.com"
+                                                          :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
+        (is (= {:topic    :subscription-unsubscribe
+                :user_id  nil
+                :model    "Pulse"
+                :model_id nil
+                :details  {:email "test@metabase.com"}}
+               (audit-log-test/event :subscription-unsubscribe)))))))
+
 (deftest unsubscribe-undo-test
   (reset-throttlers!)
   (testing "POST /pulse/unsubscribe/undo"
@@ -596,3 +615,19 @@
                  (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
                                                                         :email    email
                                                                         :hash     (messages/generate-pulse-unsubscribe-hash pulse-id email)}))))))))
+
+(deftest unsubscribe-undo-event-test
+  (reset-throttlers!)
+  (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+    (testing "Undoing valid hash and email returns event"
+      (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
+                               PulseChannel _              {:pulse_id pulse-id}]
+        (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                               :email    "test@metabase.com"
+                                                               :hash     (messages/generate-pulse-unsubscribe-hash pulse-id "test@metabase.com")})
+        (is (= {:topic    :subscription-unsubscribe-undo
+                :user_id  nil
+                :model    "Pulse"
+                :model_id nil
+                :details  {:email "test@metabase.com"}}
+               (audit-log-test/event :subscription-unsubscribe-undo)))))))
