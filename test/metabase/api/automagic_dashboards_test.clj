@@ -25,7 +25,7 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
 
-(defn- ordered-cards-schema-check
+(defn- dashcards-schema-check
   [dashcards]
   (testing "check if all cards in dashcards contain the required fields"
     (doseq [card dashcards]
@@ -51,7 +51,7 @@
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
              resp         (mt/user-http-request :rasta :get 200 api-endpoint)
-             _            (ordered-cards-schema-check (:dashcards resp))
+             _            (dashcards-schema-check (:dashcards resp))
              result       (validation-fn resp)]
          (when (and result
                     (try

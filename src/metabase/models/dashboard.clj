@@ -165,7 +165,7 @@
   [dashboard-or-id]
   (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
-(mi/define-simple-hydration-method ordered-cards
+(mi/define-simple-hydration-method dashcards
   :dashcards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
@@ -217,7 +217,7 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-      (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
+      (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
                            (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
       (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (ordered-tabs dashboard)))))

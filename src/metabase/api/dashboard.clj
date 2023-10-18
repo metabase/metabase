@@ -232,7 +232,7 @@
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
   card. The `:discard` key is a vector of cards which were not copied due to permissions."
-  [ordered-cards]
+  [dashcards]
   (letfn [(split-cards [{:keys [card series] :as db-card}]
             (cond
               (nil? (:card_id db-card)) ; text card
@@ -256,7 +256,7 @@
                     (update :discard concat discard))))
             {:copy {}
              :discard []}
-            ordered-cards)))
+            dashcards)))
 
 (defn- duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
@@ -289,22 +289,22 @@
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn update-cards-for-copy
-  "Update ordered-cards in a dashboard for copying.
-  If the dashboard has tabs, fix up the tab ids in ordered-cards to point to the new tabs.
+  "Update dashcards in a dashboard for copying.
+  If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted. Dashboard-id is only needed for useful errors."
-  [dashboard-id ordered-cards deep? id->new-card id->new-tab-id]
+  [dashboard-id dashcards deep? id->new-card id->new-tab-id]
   (when (and deep? (nil? id->new-card))
     (throw (ex-info (tru "No copied card information found")
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
-  (let [ordered-cards (if (seq id->new-tab-id)
+  (let [dashcards (if (seq id->new-tab-id)
                         (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             ordered-cards)
-                        ordered-cards)]
+                             dashcards)
+                        dashcards)]
     (if-not deep?
-      ordered-cards
+      dashcards
       (keep (fn [dashboard-card]
               (cond
                 ;; text cards need no manipulation
@@ -332,7 +332,7 @@
                                                    (when-let [id' (new-id (:id card))]
                                                      (assoc card :id id')))
                                                  series)))))))
-            ordered-cards))))
+            dashcards))))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
@@ -683,7 +683,7 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
-   {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
+   {:cards        (t2/hydrate (dashboard/dashcards id) :series)
     :ordered_tabs (dashboard/ordered-tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"

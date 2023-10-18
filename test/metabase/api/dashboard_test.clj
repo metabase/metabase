@@ -1161,10 +1161,10 @@
                      (set (map :name cards-in-coll)))
                   "Cards should have \"- Duplicate\" appended"))))))))
 
-(defn- ordered-cards-by-position
-  "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/ordered-cards]] does."
+(defn- dashcards-by-position
+  "Returns dashcards for a dashboard ordered by their position instead of creation like [[dashboard/dashcards]] does."
   [dashboard-or-id]
-  (sort dashboard-card/dashcard-comparator (dashboard/ordered-cards dashboard-or-id)))
+  (sort dashboard-card/dashcard-comparator (dashboard/dashcards dashboard-or-id)))
 
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1183,9 +1183,9 @@
               new->old-tab-id   (zipmap (map :id new-tabs) (map :id original-tabs))]
          (testing "Cards are located correctly between tabs"
            (is (= (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (ordered-cards-by-position dashboard-id))
+                       (dashcards-by-position dashboard-id))
                   (map #(select-keys % [:dashboard_tab_id :card_id :row :col :size_x :size_y :dashboard_tab_id])
-                       (for [card (ordered-cards-by-position new-dash-id)]
+                       (for [card (dashcards-by-position new-dash-id)]
                          (assoc card :dashboard_tab_id (new->old-tab-id (:dashboard_tab_id card))))))))
 
          (testing "new tabs should have the same name and position"
@@ -1213,35 +1213,35 @@
 
 (deftest cards-to-copy-test
   (testing "Identifies all cards to be copied"
-    (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                          {:card_id 3 :card (card-model{:id 3})}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :discard []}
-               (#'api.dashboard/cards-to-copy ordered-cards))))))
+               (#'api.dashboard/cards-to-copy dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
-      (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+      (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                            {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :discard [{:id 2}]}
-                 (#'api.dashboard/cards-to-copy ordered-cards))))))
+                 (#'api.dashboard/cards-to-copy dashcards))))))
     (testing "When the base of a series lacks permissions"
-      (let [ordered-cards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+      (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                            {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
                   :discard [{:id 1} {:id 2}]}
-                 (#'api.dashboard/cards-to-copy ordered-cards))))))))
+                 (#'api.dashboard/cards-to-copy dashcards))))))))
 
 (deftest update-cards-for-copy-test
-  (testing "When copy style is shallow returns original ordered-cards"
-    (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
+  (testing "When copy style is shallow returns original dashcards"
+    (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
-      (is (= ordered-cards
+      (is (= dashcards
              (api.dashboard/update-cards-for-copy 1
-                                                  ordered-cards
+                                                  dashcards
                                                   false
                                                   nil
                                                   nil))))
@@ -1256,21 +1256,21 @@
                                                   {1 10
                                                    2 20})))))
   (testing "When copy style is deep"
-    (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
+    (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
                (api.dashboard/update-cards-for-copy 1
-                                                    ordered-cards
+                                                    dashcards
                                                     true
                                                     {1 {:id 5}
                                                      2 {:id 6}}
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
-      (let [ordered-cards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
+      (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                            {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
                (api.dashboard/update-cards-for-copy 1
-                                                    ordered-cards
+                                                    dashcards
                                                     true
                                                     {1 {:id 7}
                                                      2 {:id 8}
@@ -1280,7 +1280,7 @@
                                                      6 {:id 11}}
                                                     nil)))))
     (testing "Updates parameter mappings to new card ids"
-      (let [ordered-cards [{:card_id            1
+      (let [dashcards [{:card_id            1
                             :card               {:id 1}
                             :parameter_mappings [{:parameter_id "72d27de6"
                                                   :card_id      1
@@ -1293,7 +1293,7 @@
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
                (api.dashboard/update-cards-for-copy 1
-                                                    ordered-cards
+                                                    dashcards
                                                     true
                                                     {1 {:id 2}}
                                                     nil)))))
@@ -1399,7 +1399,7 @@
   "Returns the current ordered cards of a dashboard."
   [dashboard-id]
   (-> dashboard-id
-      dashboard/ordered-cards
+      dashboard/dashcards
       (t2/hydrate :series)))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
