@@ -308,8 +308,7 @@
      ;; We use :id here as it might not be a concrete field but rather one from a nested query which
      ;; does not have an ID.
      :url                        (format "%smetric/%s" public-endpoint (:id metric))
-     :dashboard-templates-prefix ["metric"]
-     :linked-metrics             (linked-metrics metric)}))
+     :dashboard-templates-prefix ["metric"]}))
 
 (defmethod ->root Field
   [field]

@@ -386,7 +386,14 @@
         set-score (fn [score metrics]
                     (map #(assoc % :metric-score score) metrics))]
     {:dimensions dims
-     :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics))}))
+     :metrics    (concat (set-score 50 metrics) (set-score 95 linked-metrics)
+                         (let [entity (-> context :root :entity)]
+                           ;; metric x-rays talk about "this" in the template
+                           (when (mi/instance-of? :model/Metric entity)
+                             [{:metric-name       "this"
+                               :metric-title      (:name entity)
+                               :metric-definition (-> entity :definition)
+                               :metric-score      dashboard-templates/max-score}])))}))
 
 (defn card->dashcard
   "Convert a card to a dashboard card."
