@@ -23,7 +23,8 @@
          "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
   :visibility :settings-manager
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting slack-app-token
   (deferred-tru
@@ -36,7 +37,8 @@
          "Set to 'false' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defn process-files-channel-name
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
@@ -47,8 +49,9 @@
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
   :visibility :internal
-  :type :json
-  :doc  false)
+  :type       :json
+  :doc        false
+  :audit      :never)
 
 (def ^:private zoned-time-epoch (t/zoned-date-time 1970 1 1 0))
 
@@ -58,12 +61,14 @@
   :cache?     false
   :type       :timestamp
   :default    zoned-time-epoch
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
   :visibility :settings-manager
+  :audit      :getter
   :setter (fn [channel-name]
             (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
 

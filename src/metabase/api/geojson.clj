@@ -23,7 +23,8 @@
   :visibility :admin
   :type       :boolean
   :setter     :none
-  :default    true)
+  :default    true
+  :audit      :getter)
 
 (def ^:private CustomGeoJSON
   [:map-of :keyword [:map {:closed true}
@@ -106,7 +107,8 @@
                (when new-value
                  (validate-geojson new-value))
                (setting/set-value-of-type! :json :custom-geojson new-value)))
-  :visibility :public)
+  :visibility :public
+  :audit      :raw-value)
 
 (def ^:private connection-timeout-ms 8000)
 

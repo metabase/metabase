@@ -14,7 +14,8 @@
   (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
   :visibility     :authenticated
   :type           :integer
-  :database-local :allowed)
+  :database-local :allowed
+  :audit          :getter)
 
 (def ^:private max-results
   "General maximum number of rows to return from an API query."

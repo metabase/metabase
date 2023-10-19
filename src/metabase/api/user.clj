@@ -31,19 +31,20 @@
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
-(defsetting user-visibility
-  (deferred-tru "Note: Sandboxed users will never see suggestions.")
-  :visibility   :authenticated
-  :feature      :email-restrict-recipients
-  :type         :keyword
-  :default      :all)
-
 (set! *warn-on-reflection* true)
 
 (when config/ee-available?
   (classloader/require 'metabase-enterprise.sandbox.api.util
                        'metabase-enterprise.advanced-permissions.common
                        'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
+
+(defsetting user-visibility
+  (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  :visibility   :authenticated
+  :feature      :email-restrict-recipients
+  :type         :keyword
+  :default      :all
+  :audit        :raw-value)
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."

@@ -12,7 +12,8 @@
                 (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :authenticated)
+  :visibility :authenticated
+  :audit      :getter)
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
