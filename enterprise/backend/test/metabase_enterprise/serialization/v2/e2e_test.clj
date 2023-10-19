@@ -528,7 +528,7 @@
                                        :link         {:entity {:id    id
                                                                :model model}}})
               dashboard->link-cards (fn [dashboard]
-                                      (map #(get-in % [:visualization_settings :link :entity]) (:ordered_cards dashboard)))]
+                                      (map #(get-in % [:visualization_settings :link :entity]) (:dashcards dashboard)))]
           (t2.with-temp/with-temp
             [Collection    {coll-id   :id
                             coll-name :name
@@ -628,7 +628,7 @@
                             {:id new-card-id  :model "card"}
                             {:id new-model-id :model "dataset"}]
                            (-> (t2/select-one Dashboard :name dashboard-name)
-                               (t2/hydrate :ordered_cards)
+                               (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
 
 (deftest dashboard-with-tabs-test
@@ -670,7 +670,7 @@
                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :ordered_tabs :ordered_cards))
+                                       (t2/hydrate :ordered_tabs :dashcards))
                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
@@ -697,7 +697,7 @@
                           {:card_id          new-card-id-2
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-2}]
-                         (:ordered_cards new-dashboard))))))))))))
+                         (:dashcards new-dashboard))))))))))))
 
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"

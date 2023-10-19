@@ -20,6 +20,7 @@ import {
   getTextareaOverrides,
   getTextInputOverrides,
   getTextOverrides,
+  getTimeInputOverrides,
   getTitleOverrides,
   getTooltipOverrides,
 } from "./components";
@@ -124,6 +125,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getTextareaOverrides(),
     ...getTextInputOverrides(),
     ...getTextOverrides(),
+    ...getTimeInputOverrides(),
     ...getTitleOverrides(),
     ...getTooltipOverrides(),
   },

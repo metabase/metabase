@@ -1,8 +1,9 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
@@ -79,29 +80,29 @@
                                               "2022-04-01T00:00:00"]]}]}
                     query''))))))))
 
-;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
 (deftest ^:parallel returns-zoom-in-timeseries-test-1
-  #_(lib.drill-thru.tu/test-returns-drill
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
      {:drill-type  :drill-thru/zoom-in.timeseries
-      :click-type  :header
+      :click-type  :cell
       :query-type  :aggregated
       :column-name "count"
-      :expected    {:type :drill-thru/zoom-in.timeseries}}))
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))
 
-;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
 (deftest ^:parallel returns-zoom-in-timeseries-test-2
-  #_(lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/zoom-in.timeseries
-    :click-type  :header
-    :query-type  :aggregated
-    :column-name "max"
-    :expected    {:type :drill-thru/zoom-in.timeseries}}))
-
-;;; FIXME zoom-in.timeseries should be returned for aggregated query metric click (#33811)
-(deftest ^:parallel returns-zoom-in-timeseries-test-3
-  #_(lib.drill-thru.tu/test-returns-drill
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
      {:drill-type  :drill-thru/zoom-in.timeseries
-      :click-type  :header
+      :click-type  :cell
+      :query-type  :aggregated
+      :column-name "max"
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))
+
+(deftest ^:parallel returns-zoom-in-timeseries-test-3
+  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom-in.timeseries
+      :click-type  :cell
       :query-type  :aggregated
       :column-name "sum"
-      :expected    {:type :drill-thru/zoom-in.timeseries}}))
+      :expected    {:type :drill-thru/zoom-in.timeseries}})))

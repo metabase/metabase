@@ -159,7 +159,7 @@ describe("dashboard actions", () => {
         id: 1,
         name: "Foo",
         parameters: [],
-        ordered_cards: [
+        dashcards: [
           { id: 1, name: "Foo", card_id: 1 },
           { id: 2, name: "Bar", card_id: 2 },
         ],
@@ -172,12 +172,12 @@ describe("dashboard actions", () => {
           dashboards: {
             1: {
               ...dashboard,
-              ordered_cards: [1, 2],
+              dashcards: [1, 2],
             },
           },
           dashcards: {
-            1: dashboard.ordered_cards[0],
-            2: dashboard.ordered_cards[1],
+            1: dashboard.dashcards[0],
+            2: dashboard.dashcards[1],
           },
         },
       });

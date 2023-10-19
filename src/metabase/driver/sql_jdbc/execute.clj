@@ -118,7 +118,7 @@
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
   set it with a different intended JDBC type as needed."
-  {:arglists '([driver prepared-statement i object])}
+  {:added "0.34.0" :arglists '([driver prepared-statement i object])}
   (fn [driver _ _ object]
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
@@ -131,7 +131,8 @@
   "Create a PreparedStatement with `sql` query, and set any `params`. You shouldn't need to override the default
   implementation for this method; if you do, take care to set options to maximize result set read performance (e.g.
   `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
-  {:added "0.35.0", :arglists '(^java.sql.PreparedStatement [driver ^java.sql.Connection connection ^String sql params])}
+  {:added "0.35.0",
+   :arglists '(^java.sql.PreparedStatement [driver ^java.sql.Connection connection ^String sql params])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

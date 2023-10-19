@@ -9,6 +9,7 @@ import {
   dragField,
   leftSidebar,
   main,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -22,6 +23,8 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
+  ANALYTIC_EVENTS,
+  ANALYTIC_EVENTS_ID,
 } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
@@ -57,6 +60,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should be created from an ad-hoc question", () => {
@@ -1097,6 +1101,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().findByText("Address").click();
 
     main().findByText("User → Address").should("be.visible");
+  });
+
+  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
+    const query = {
+      type: "query",
+      query: {
+        "source-table": ANALYTIC_EVENTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ANALYTIC_EVENTS.BUTTON_LABEL, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+          [
+            "field",
+            ANALYTIC_EVENTS.TIMESTAMP,
+            { "base-type": "type/DateTime", "temporal-unit": "day" },
+          ],
+          ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    visitQuestionAdhoc({
+      dataset_query: query,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.BUTTON_LABEL,
+              { "base-type": "type/Text" },
+            ],
+            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.TIMESTAMP,
+              { "base-type": "type/DateTime", "temporal-unit": "day" },
+            ],
+            ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+          ],
+          columns: [
+            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ],
+          values: [["aggregation", 0]],
+        },
+      },
+    });
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
+
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    modal().button("Save").click();
+    cy.wait("@createCard");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery");
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
   });
 });
 
