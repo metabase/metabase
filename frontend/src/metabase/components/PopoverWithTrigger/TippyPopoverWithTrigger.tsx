@@ -15,6 +15,9 @@ export type TippyPopoverWithTriggerProps = {
   onClose?: () => void;
 } & Omit<ControlledPopoverWithTriggerProps, "visible" | "onClose" | "onOpen">;
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 function UncontrolledPopoverWithTrigger({
   isInitiallyVisible,
   popoverRef,
