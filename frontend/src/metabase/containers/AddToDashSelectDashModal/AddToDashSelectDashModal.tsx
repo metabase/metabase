@@ -34,7 +34,7 @@ interface AddToDashSelectDashModalProps {
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
 
-export const AddToDashSelectDashModal = ({
+const AddToDashSelectDashModal = ({
   card,
   dashboards,
   onClose,
