@@ -1281,6 +1281,15 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
+(grounded-filters
+  [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
+   {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
+   {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
+   {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
+   {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
+   {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]
+  {})
+
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
   [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
@@ -1370,6 +1379,34 @@
                                 (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
                                 root)))]
     (generate-dashboard base-context template)))
+
+(defn automagic-dashboard-old
+  "Create dashboards for table `root` using the best matching heuristics."
+  [{:keys [show full-name query-filter url] :as root}]
+  (let [[{:keys [cards] :as dashboard}
+         {:keys [dashboard-template-name] :as dashboard-template}
+         {:keys [available-dimensions
+                 available-metrics
+                 available-filters]
+          :as available-values}] (find-first-match-dashboard-template root)
+        show (or show max-cards)]
+    (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
+    (log/debug (trs "Dimensions bindings:\n{0}"
+                    (->> available-dimensions
+                         (m/map-vals #(update % :matches (partial map :name)))
+                         u/pprint-to-str)))
+    (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                    (->> available-metrics (m/map-vals :metric) u/pprint-to-str)
+                    (-> available-filters u/pprint-to-str)))
+    (-> dashboard
+        (populate/create-dashboard show)
+        (assoc :related (related root available-values dashboard-template)
+               :more (when (and (not= show :all)
+                                (-> dashboard :cards count (> show)))
+                       (format "%s#show=all" url))
+               :transient_filters query-filter
+               :param_fields (filter-referenced-fields root query-filter)
+               :auto_apply_filters true))))
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."

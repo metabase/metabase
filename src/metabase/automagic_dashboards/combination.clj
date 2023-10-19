@@ -147,7 +147,8 @@
            card-dimensions :dimensions
            card-filters    :filters :as card-template} card-templates
           :let [dim-names (map ffirst card-dimensions)]
-          :when (every? ground-dimensions dim-names)
+          :when (and (every? ground-dimensions dim-names)
+                     (every? simple-grounded-filters card-filters))
           :let [dim-score (map (comp :score ground-dimensions) dim-names)]
           dimension-name->field (->> (map (comp :matches ground-dimensions) dim-names)
                                      (apply math.combo/cartesian-product)
