@@ -52,7 +52,7 @@ runs:
             }
           }
 
-          const currentCommit = "${{ github.sha }}";
+          const currentCommit = "${{ github.event.pull_request.head.sha || github.sha }}";
           const { id } = await getArtifact(currentCommit);
 
           const download = await github.rest.actions.downloadArtifact({

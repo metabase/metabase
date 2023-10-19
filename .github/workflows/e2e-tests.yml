@@ -86,7 +86,7 @@ jobs:
       - name: Upload JARs as artifact
         uses: actions/upload-artifact@v3
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
           path: |
             ./target/uberjar/metabase.jar
             ./COMMIT-ID
