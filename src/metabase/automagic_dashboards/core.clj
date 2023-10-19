@@ -1288,6 +1288,7 @@
     template-metrics    :metrics
     template-cards      :cards
     template-filters    :filters
+    :keys [dashboard_filters]
     :as                 dashboard-template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics} (interesting/identify
@@ -1309,7 +1310,13 @@
         template-with-user-groups   (update dashboard-template
                                             :groups into (user-defined-groups user-defined-metrics))
         empty-dashboard             (make-dashboard root template-with-user-groups)]
-    (-> (assoc empty-dashboard :cards dashcards)
+    (-> (assoc empty-dashboard
+          ;; Adds the filters that show at the top of the dashboard
+          ;; Why do we need (or do we) the last remove form?
+          :filters (->> dashboard_filters
+                        (mapcat (comp :matches grounded-dimensions))
+                        (remove (comp (singular-cell-dimensions root) id-or-name)))
+          :cards dashcards)
         (populate/create-dashboard :all)
         (assoc
           :related (related
