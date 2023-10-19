@@ -72,6 +72,7 @@ import {
 
 const DEFAULT_UI_CONTROLS = {
   dataReferenceStack: null,
+  isModifiedFromNotebook: false,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,

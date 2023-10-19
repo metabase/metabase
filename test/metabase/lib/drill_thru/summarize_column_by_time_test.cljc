@@ -3,7 +3,9 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.drill-thru.summarize-column-by-time :as lib.drill-thru.summarize-column-by-time]
+   [metabase.lib.drill-thru.summarize-column-by-time
+    :as lib.drill-thru.summarize-column-by-time]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -21,3 +23,27 @@
                      :value  nil}]
       (is (some? count-col))
       (is (nil? (lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill query -1 context))))))
+
+(deftest ^:parallel returns-summarize-column-by-time-test-1
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/summarize-column-by-time
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "SUBTOTAL"
+    :expected    {:type :drill-thru/summarize-column-by-time}}))
+
+(deftest ^:parallel returns-summarize-column-by-time-test-2
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/summarize-column-by-time
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "DISCOUNT"
+    :expected    {:type :drill-thru/summarize-column-by-time}}))
+
+(deftest ^:parallel returns-summarize-column-by-time-test-3
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/summarize-column-by-time
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "QUANTITY"
+    :expected    {:type :drill-thru/summarize-column-by-time}}))

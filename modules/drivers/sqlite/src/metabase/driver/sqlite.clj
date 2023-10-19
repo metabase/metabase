@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]

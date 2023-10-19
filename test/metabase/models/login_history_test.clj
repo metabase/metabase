@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models :refer [LoginHistory User]]
    [metabase.models.login-history :as login-history]
    [metabase.public-settings :as public-settings]

@@ -6,7 +6,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import type {
   DashCardId,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   DashboardOrderedTab,
   DashboardTabId,
 } from "metabase-types/api";
@@ -30,7 +30,7 @@ type MoveTabPayload = {
 };
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
-  cards: DashboardOrderedCard[];
+  cards: DashboardCard[];
   ordered_tabs: DashboardOrderedTab[];
 };
 type InitTabsPayload = { slug: string | undefined };
@@ -163,7 +163,7 @@ export const tabsReducer = createReducer<DashboardState>(
         state.selectedTabId = secondTabId;
 
         // 3. Assign existing dashcards to first tab
-        prevDash.ordered_cards.forEach(id => {
+        prevDash.dashcards.forEach(id => {
           state.dashcards[id] = {
             ...state.dashcards[id],
             isDirty: true,
@@ -201,7 +201,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
         // 3. Mark dashcards on removed tab as removed
         const removedDashCardIds: DashCardId[] = [];
-        prevDash.ordered_cards.forEach(id => {
+        prevDash.dashcards.forEach(id => {
           if (state.dashcards[id].dashboard_tab_id === tabToRemove.id) {
             state.dashcards[id].isRemoved = true;
             removedDashCardIds.push(id);
@@ -293,11 +293,16 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         // 1. Replace temporary with real dashcard ids
-        const prevCards = prevDash.ordered_cards.filter(
+        const prevCards = prevDash.dashcards.filter(
           id => !state.dashcards[id].isRemoved,
         );
+
         prevCards.forEach((oldId, index) => {
-          state.dashcardData[newCards[index].id] = state.dashcardData[oldId];
+          const prevDashcardData = state.dashcardData[oldId];
+
+          if (prevDashcardData) {
+            state.dashcardData[newCards[index].id] = prevDashcardData;
+          }
         });
 
         // 2. Re-select the currently selected tab with its real id

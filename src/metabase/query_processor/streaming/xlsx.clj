@@ -3,7 +3,7 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.public-settings :as public-settings]

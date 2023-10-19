@@ -146,8 +146,20 @@ jobs:
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Mark with the commit hash
+        run: echo ${{ github.sha }} > COMMIT-ID
+        shell: bash
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+        shell: bash
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
 
   e2e-tests:
     needs: [build, files-changed, test-run-id, download_uberjar, e2e-matrix-builder]
@@ -165,6 +177,8 @@ jobs:
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      # Record runs using Deploysentinel except for the release branch
+      CYPRESS_DEPLOYSENTINEL_KEY: ${{ !(startsWith(github.event.pull_request.base.ref, 'release')) && secrets.CYPRESS_DEPLOYSENTINEL_KEY ||  '' }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
@@ -172,44 +186,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      openldap:
-        image: bitnami/openldap:2.6.4
-        ports:
-          - 389:389
-        env:
-          LDAP_ADMIN_PASSWORD: adminpass
-          LDAP_USERS: user01@example.org,user02@example.org
-          LDAP_PASSWORDS: 123456,123465
-          LDAP_ROOT: dc=example,dc=org
-          LDAP_PORT_NUMBER: 389
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      postgres-sample:
-        image: metabase/qa-databases:postgres-sample-12
-        ports:
-          - "5404:5432"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mysql-sample:
-        image: metabase/qa-databases:mysql-sample-8
-        ports:
-          - 3304:3306
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     steps:
       - uses: actions/checkout@v3
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: ${{ startsWith(matrix.name, 'admin') }}
+          postgres: ${{ matrix.name != 'mongo'}}
+          mysql: ${{ matrix.name != 'mongo'}}
+          mongo: ${{ matrix.name == 'mongo'}}
+
       - name: Download Metabase uberjar from a previously stored artifact
         if: needs.download_uberjar.result == 'success'
         run: |
@@ -236,26 +227,13 @@ jobs:
         if: needs.build.result == 'success'
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
 
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Install Chrome v111
-        uses: browser-actions/setup-chrome@v1
-        with:
-          # https://chromium.cypress.io/linux/stable/111.0.5563.146
-          chrome-version: 1097615
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
-      - name: Record runs using Deploysentinel except for the release branch
-        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
-        run: |
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -264,7 +242,10 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+        with:
+          is-replay-browser: ${{ github.event_name == 'schedule' }}
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
@@ -274,7 +255,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -284,7 +265,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
@@ -294,25 +275,17 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           TERM: xterm
 
-      # Mongo
-      - name: Start Mongo server
-        if: matrix.name == 'mongo'
-        run: docker run -d -p 27004:27017 --name e2e-mongo metabase/qa-databases:mongo-sample-4.4
-      - name: Wait until the port 27004 is ready
-        if: matrix.name == 'mongo'
-        run: while ! nc -z localhost 27004; do sleep 1; done
-        timeout-minutes: 3
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
         run: |
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           CYPRESS_QA_DB_MONGO: true
 
@@ -338,7 +311,7 @@ jobs:
         if: matrix.context == 'folder' && github.event_name == 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true \
+          --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true" \
           --folder ${{ matrix.name }} \
           --browser "replay-chromium"
         env:
@@ -392,17 +365,15 @@ jobs:
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
 
       - name: Download Metabase uberjar from a previously stored artifact
         if: needs.download_uberjar.result == 'success'
@@ -426,27 +397,14 @@ jobs:
         if: needs.build.result == 'success'
         name: Retrieve uberjar artifact for ee
         with:
-          name: metabase-ee-uberjar
+          name: metabase-ee-${{ github.sha }}-uberjar
 
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
 
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
 
-      - name: Install Chrome v111
-        uses: browser-actions/setup-chrome@v1
-        with:
-          # https://chromium.cypress.io/linux/stable/111.0.5563.146
-          chrome-version: 1097615
-        id: setup-chrome
-      - run: |
-          echo Installed chromium version: ${{ steps.setup-chrome.outputs.chrome-version }}
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -456,9 +414,10 @@ jobs:
           java-version: 11
           distribution: 'temurin'
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run --browser ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
+          PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}

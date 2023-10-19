@@ -19,12 +19,14 @@ import {
   getPaperOverrides,
   getPopoverOverrides,
   getSelectOverrides,
+  getSwitchOverrides,
   getTabsOverrides,
   getTextareaOverrides,
-  getSwitchOverrides,
   getTextInputOverrides,
   getTextOverrides,
+  getTimeInputOverrides,
   getTitleOverrides,
+  getTooltipOverrides,
 } from "./components";
 
 type ThemeColors = MantineTheme["colors"]["brand"];
@@ -126,11 +128,13 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...getPaperOverrides(),
     ...getPopoverOverrides(),
     ...getSelectOverrides(),
+    ...getSwitchOverrides(),
     ...getTabsOverrides(),
     ...getTextareaOverrides(),
-    ...getSwitchOverrides(),
     ...getTextInputOverrides(),
     ...getTextOverrides(),
+    ...getTimeInputOverrides(),
     ...getTitleOverrides(),
+    ...getTooltipOverrides(),
   },
 });

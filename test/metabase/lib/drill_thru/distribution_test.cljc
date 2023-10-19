@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
@@ -21,3 +22,27 @@
                      :value  nil}]
       (is (some? count-col))
       (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))
+
+(deftest ^:parallel returns-distribution-test-1
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/distribution
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "USER_ID"
+    :expected    {:type :drill-thru/distribution}}))
+
+(deftest ^:parallel returns-distribution-test-2
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/distribution
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "TAX"
+    :expected    {:type :drill-thru/distribution}}))
+
+(deftest ^:parallel returns-distribution-test-3
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/distribution
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "QUANTITY"
+    :expected    {:type :drill-thru/distribution}}))

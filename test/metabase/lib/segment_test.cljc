@@ -40,7 +40,7 @@
   (lib.metadata/segment query-with-segment segment-id))
 
 (deftest ^:parallel query-suggested-name-test
-  (is (= "Venues, Filtered by ID equals 5 and PriceID-BBQ"
+  (is (= "Venues, Filtered by ID is 5 and PriceID-BBQ"
          (lib.metadata.calculation/suggested-name query-with-segment))))
 
 (deftest ^:parallel display-info-test

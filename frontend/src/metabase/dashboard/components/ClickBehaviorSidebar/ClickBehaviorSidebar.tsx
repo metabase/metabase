@@ -7,7 +7,7 @@ import Sidebar from "metabase/dashboard/components/Sidebar";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   CardId,
   ClickBehavior,
@@ -21,7 +21,7 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { getClickBehaviorForColumn } from "./utils";
 import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
-import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
+import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
@@ -31,7 +31,7 @@ type VizSettings = Record<string, unknown>;
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;

@@ -71,10 +71,16 @@
   (when-not (seq source-metadata)
     (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
                     {:join join})))
-  (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-    (if field-id
-      [:field field-id   {:join-alias alias}]
-      [:field field-name {:base-type base-type, :join-alias alias}])))
+  (let [duplicate-ids (into #{}
+                            (keep (fn [[item freq]]
+                                    (when (> freq 1)
+                                      item)))
+                            (frequencies (map :id source-metadata)))]
+    (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
+      (if (and field-id (not (contains? duplicate-ids field-id)))
+        ;; field-id is a unique reference, use it
+        [:field field-id   {:join-alias alias}]
+        [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn ^:private handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
@@ -83,9 +89,9 @@
    join
    (when (= fields :all)
      {:fields (if source-query
-               (source-metadata->fields join source-metadata)
-               (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 [:field id-or-name (assoc opts :join-alias alias)]))})))
+                (source-metadata->fields join source-metadata)
+                (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                  [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (mu/defn ^:private resolve-references :- Joins
   [joins :- Joins]

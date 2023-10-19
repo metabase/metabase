@@ -6,7 +6,7 @@ import { ChartSettingsWithState } from "metabase/visualizations/components/Chart
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -16,7 +16,7 @@ import DashCardActionButton from "./DashCardActionButton";
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
