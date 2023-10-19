@@ -102,6 +102,9 @@ function ItemPicker<TId>({
   const isPickingNotCollection = models.some(model => model !== "collection");
 
   const openCollection = collectionsById[openCollectionId];
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const hideItems =
+    showOnlyPersonalCollections && !isOpenCollectionInPersonalCollection;
 
   useEffect(() => {
     onOpenCollectionChange?.(openCollectionId);
@@ -253,8 +256,10 @@ function ItemPicker<TId>({
         checkHasWritePermissionForItem={checkHasWritePermissionForItem}
         getCollectionIcon={getCollectionIcon}
         style={style}
-        // personal is a fake collection for admins that contains all other user's collections
-        allowFetch={openCollectionId !== "personal"}
+        allowFetch={
+          // "personal" is a fake collection for admins that contains all other user's collections
+          openCollectionId !== "personal" && !hideItems
+        }
       >
         {children}
       </ItemPickerView>
