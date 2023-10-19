@@ -10,7 +10,12 @@ export function setUnit(
 }
 
 export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
-  return { ...value, offsetValue: 1, offsetUnit: value.unit, options: {} };
+  return {
+    ...value,
+    offsetValue: Math.sign(value.value),
+    offsetUnit: value.unit,
+    options: {},
+  };
 }
 
 export function getIncludeCurrent(value: DateIntervalValue): boolean {

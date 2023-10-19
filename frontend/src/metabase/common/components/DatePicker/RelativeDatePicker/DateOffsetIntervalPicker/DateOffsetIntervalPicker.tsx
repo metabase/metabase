@@ -2,7 +2,12 @@ import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
-import { getInterval, getUnitOptions, setInterval } from "../utils";
+import {
+  formatDateRange,
+  getInterval,
+  getUnitOptions,
+  setInterval,
+} from "../utils";
 import {
   getDirectionText,
   getOffsetInterval,
@@ -32,6 +37,7 @@ export function DateOffsetIntervalPicker({
   const offsetInterval = getOffsetInterval(value);
   const offsetUnitOptions = getOffsetUnitOptions(value);
   const directionText = getDirectionText(value);
+  const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
     if (inputValue !== "") {
@@ -99,7 +105,11 @@ export function DateOffsetIntervalPicker({
         />
       </PickerGrid>
       <Divider />
-      <Group p="sm" position="right">
+      <Group px="md" py="sm" spacing="sm" position="apart">
+        <Group c="text.1">
+          <Icon name="calendar" />
+          <Text c="inherit">{dateRangeText}</Text>
+        </Group>
         <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>

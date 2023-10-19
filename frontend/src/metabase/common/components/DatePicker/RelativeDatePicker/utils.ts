@@ -85,3 +85,19 @@ export function getUnitOptions(value: DateIntervalValue) {
     label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
   }));
 }
+
+export function formatDateRange({
+  value,
+  unit,
+  offsetValue,
+  offsetUnit,
+  options,
+}: RelativeDatePickerValue): string {
+  return Lib.formatRelativeDateRange({
+    value,
+    unit,
+    offsetValue,
+    offsetUnit,
+    includeCurrent: options?.["include-current"],
+  });
+}

@@ -8,9 +8,15 @@ import {
   Menu,
   NumberInput,
   Select,
+  Text,
 } from "metabase/ui";
 import type { DateIntervalValue } from "../types";
-import { getInterval, setInterval, getUnitOptions } from "../utils";
+import {
+  formatDateRange,
+  getInterval,
+  setInterval,
+  getUnitOptions,
+} from "../utils";
 import {
   getIncludeCurrentLabel,
   getIncludeCurrent,
@@ -37,6 +43,7 @@ export function DateIntervalPicker({
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value);
   const includeCurrent = getIncludeCurrent(value);
+  const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
     if (inputValue !== "") {
@@ -103,7 +110,11 @@ export function DateIntervalPicker({
         </Menu>
       </Flex>
       <Divider />
-      <Group p="sm" position="right">
+      <Group px="md" py="sm" position="apart">
+        <Group c="text.1" spacing="sm">
+          <Icon name="calendar" />
+          <Text c="inherit">{dateRangeText}</Text>
+        </Group>
         <Button variant="filled" onClick={onSubmit}>
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
