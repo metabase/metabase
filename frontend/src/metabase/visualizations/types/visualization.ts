@@ -18,6 +18,8 @@ import type { RemappingHydratedDatasetColumn } from "./columns";
 
 export type ColorGetter = (colorName: string) => string;
 
+export type Formatter = (value: unknown) => string;
+
 export interface RenderingContext {
   getColor: ColorGetter;
   formatValue: (value: unknown, options: StaticFormattingOptions) => string;

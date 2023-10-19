@@ -16,4 +16,5 @@ export interface PieSlice {
 export interface PieChartModel {
   slices: PieSlice[];
   total: number;
+  colDescs: PieColumnDescriptors;
 }

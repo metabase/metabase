@@ -105,7 +105,7 @@ export function getPieChartModel(
   // Only add "other" slice if there are slices below threshold with non-zero total
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal === 0) {
-    return { slices, total };
+    return { slices, total, colDescs };
   }
 
   const otherSlice: PieSlice = {
@@ -123,5 +123,6 @@ export function getPieChartModel(
   return {
     slices: [...slices, otherSlice],
     total,
+    colDescs,
   };
 }
