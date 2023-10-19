@@ -1,8 +1,7 @@
 (ns metabase.automagic-dashboards.schema
   (:require [malli.core :as mc]
             [malli.generator :as mg]
-            [malli.util :as mu]
-            [metabase.util.malli.schema :as ms]))
+            [malli.util :as mut]))
 
 ;; --
 (def context
@@ -236,7 +235,7 @@
 (def dim-name->dim-defs+matches
   "The \"full\" grounded dimensions which matches dimension names
   to the dimension definition combined with matching fields."
-  (mu/merge
+  (mut/merge
     dim-name->dim-def
     dim-name->matching-fields))
 
@@ -251,6 +250,8 @@
     [:sequential dimension-map]))
 
 (def normalized-metric-template
+  "A \"normalized\" metric template is a map containing the metric name as a key
+   rather than a map of metric name to the map."
   (mc/schema
     [:map
      [:metric-name :string]
@@ -258,6 +259,7 @@
      [:metric vector?]]))
 
 (def grounded-metric
+  "A metric containing a definition with actual field references/ids rather than dimension references."
   (mc/schema
     [:map
      [:metric-name :string]
@@ -268,7 +270,8 @@
        [:aggregation [:sequential any?]]]]]))
 
 (def combined-metric
-  (mu/merge
+  "A grounded metric in which the metric has been augmented with breakouts."
+  (mut/merge
     grounded-metric
     (mc/schema
       [:map
@@ -278,6 +281,8 @@
          [:breakout [:sequential any?]]]]])))
 
 (def metric-types->dimset->cards
+  "A map of sets of dimension names contained in metric definitions
+   to dimension names in the breakouts to card templates."
   (mc/schema
     [:map-of [:or
               [:set :keyword]
