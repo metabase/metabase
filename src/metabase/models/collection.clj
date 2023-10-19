@@ -1150,7 +1150,7 @@
   (is-personal-collection-or-descendant-of-one? collection))
 
 (mi/define-batched-hydration-method collectiions-is-root
-  :is_personal
+  :collections_is_personal
   "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
   `true` means the collection is or nested in a personal collection."
   [collections]
