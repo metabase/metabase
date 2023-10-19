@@ -4,16 +4,11 @@ import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 import { color } from "metabase/lib/colors";
 import ViewPill from "./ViewPill";
 
-import {
-  HeaderButton,
-  FilterHeaderContainer,
-  FilterHeaderButton,
-} from "./ViewHeader.styled";
+import { FilterHeaderContainer, FilterHeaderButton } from "./ViewHeader.styled";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
@@ -149,23 +144,6 @@ export function FilterHeader({ question, expanded, onQueryChange }) {
   );
 }
 
-export function QuestionFilterWidget({ onOpenModal, className }) {
-  return (
-    <HeaderButton
-      large
-      labelBreakpoint="sm"
-      className={className}
-      color={color("filter")}
-      onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
-      aria-label={t`Show more filters`}
-      data-metabase-event="View Mode; Open Filter Modal"
-      data-testid="question-filter-header"
-    >
-      {t`Filter`}
-    </HeaderButton>
-  );
-}
-
 QuestionFilters.shouldRender = ({
   question,
   queryBuilderMode,
@@ -176,15 +154,3 @@ QuestionFilters.shouldRender = ({
   question.query().isEditable() &&
   question.query().topLevelFilters().length > 0 &&
   !isObjectDetail;
-
-QuestionFilterWidget.shouldRender = ({
-  question,
-  queryBuilderMode,
-  isObjectDetail,
-  isActionListVisible,
-}) =>
-  queryBuilderMode === "view" &&
-  question.isStructured() &&
-  question.query().isEditable() &&
-  !isObjectDetail &&
-  isActionListVisible;

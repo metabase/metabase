@@ -19,6 +19,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import * as ML_Urls from "metabase-lib/urls";
 import QuestionActions from "../QuestionActions";
+import { FilterHeaderButton } from "./FilterHeaderButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
@@ -27,7 +28,6 @@ import ConvertQueryButton from "./ConvertQueryButton";
 import QuestionFilters, {
   FilterHeaderToggle,
   FilterHeader,
-  QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
@@ -466,8 +466,8 @@ function ViewTitleHeaderRightSide(props) {
           onQueryChange={onQueryChange}
         />
       )}
-      {QuestionFilterWidget.shouldRender(props) && (
-        <QuestionFilterWidget
+      {FilterHeaderButton.shouldRender(props) && (
+        <FilterHeaderButton
           className="hide sm-show"
           onOpenModal={onOpenModal}
         />
