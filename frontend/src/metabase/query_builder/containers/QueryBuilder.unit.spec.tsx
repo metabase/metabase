@@ -1186,7 +1186,7 @@ describe("QueryBuilder", () => {
         history.push(`/question/${TEST_STRUCTURED_CARD.id}`);
         await waitForLoaderToBeRemoved();
 
-        await triggerVizualizationQueryChange();
+        await triggerVisualizationQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
         history.goBack();
@@ -1398,7 +1398,7 @@ const triggerMetadataChange = async () => {
   userEvent.tab();
 };
 
-const triggerVizualizationQueryChange = async () => {
+const triggerVisualizationQueryChange = async () => {
   userEvent.click(screen.getByText("Filter"));
 
   const modal = screen.getByRole("dialog");
