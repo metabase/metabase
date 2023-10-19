@@ -10,7 +10,8 @@ import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 const POPOVER_PROPS: PopoverBaseProps = {
-  offset: { crossAxis: 32, mainAxis: 4 },
+  position: "bottom-start",
+  offset: { mainAxis: 4 },
 };
 
 export function FilterStep({
