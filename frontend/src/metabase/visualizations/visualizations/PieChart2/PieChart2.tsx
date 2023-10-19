@@ -9,6 +9,7 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { color } from "metabase/lib/colors";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
+import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import PieChart from "../PieChart/PieChart";
 
 Object.assign(PieChart2, {
@@ -34,8 +35,14 @@ export function PieChart2(props: VisualizationProps) {
     props.settings,
     renderingContext,
   );
+  const formatters = getPieChartFormatters(
+    chartModel,
+    props.settings,
+    renderingContext,
+  );
   const option = getPieChartOption(
     chartModel,
+    formatters,
     props.settings,
     renderingContext,
   );
