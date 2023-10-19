@@ -93,7 +93,7 @@ export function DateRangePicker({
         <DatePicker
           type="range"
           value={[startDate, hasEndDate ? endDate : null]}
-          defaultDate={endDate}
+          defaultDate={startDate}
           numberOfColumns={2}
           allowSingleDateInRange
           onChange={handleRangeChange}
