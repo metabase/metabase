@@ -10,10 +10,13 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models :refer [Database]]
+   [metabase.public-settings :as public-settings]
    [metabase.search.util :as search.util]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2])
   (:import
    (java.io File)))
 
@@ -281,6 +284,11 @@
   (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
+
+(defn current-database
+  "Returns the current uploads database (defined as a setting)."
+  []
+  (t2/select-one Database :id (public-settings/uploads-database-id)))
 
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.

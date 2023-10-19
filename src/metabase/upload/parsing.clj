@@ -6,7 +6,6 @@
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.text NumberFormat)
-   (java.time.format DateTimeParseException)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)

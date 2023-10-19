@@ -37,8 +37,7 @@
   (:import
    (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.time.format DateTimeParseException)))
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -624,12 +623,12 @@
     ::upload/zoned-datetime           [:timestamp]))
 
 (defn- offset-date-time->local-date-time
-  "Remove the offset from a string datetime, returning a LocalDateTime. This is necessary s ince MySQL doesn't support
-  timezone offsets and so we need to calculate one by hand. This is used for the upload parser before, which got messy
-  with error-handling."
-  [s]
+  "Remove the offset from a string datetime, returning a LocalDateTime in whatever timezone the `database` is configured
+  to use. This is necessary since MySQL doesn't support timezone offsets and so we need to calculate one by hand. This
+  is used for the upload parser before, which got messy with error-handling."
+  [s database]
   (let [offset-time (t/offset-date-time (str/trim s))
-        zone-id     (t/zone-id (qp.timezone/results-timezone-id))]
+        zone-id     (t/zone-id (qp.timezone/results-timezone-id database))]
     (t/local-date-time offset-time zone-id )))
 
 (defmethod driver/upload-type->parser [:mysql :metabase.upload/zoned-datetime]
@@ -639,7 +638,7 @@
      (try (t/local-date s)
           (catch Exception _
             (try
-              (offset-date-time->local-date-time s)
+              (offset-date-time->local-date-time s (upload/current-database))
               (catch Exception _
                 (throw (IllegalArgumentException.
                         (tru "{0} is not a recognizable offset datetime" s))))))))
