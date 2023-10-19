@@ -1,4 +1,5 @@
 import {
+  assertQueryBuilderRowCount,
   popover,
   restore,
   visitQuestionAdhoc,
@@ -139,16 +140,18 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Product").click();
-
       filterField("Category").findByText("Gadget").click();
     });
 
     applyFilters();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Gadget").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing first 2,000 rows").should("be.visible");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Product → Category is Gadget")
+      .should("be.visible");
+
+    cy.findByTestId("view-footer")
+      .findByText("Showing first 2,000 rows")
+      .should("be.visible");
   });
 
   it("should update an existing filter", () => {
@@ -339,29 +342,22 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("can add a date shortcut filter", () => {
-      modal().within(() => {
-        cy.findByText("Today").click();
-      });
+      modal().findByText("Today").click();
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
-        .findByText("Created At Today")
+        .findByText("Created At is today")
         .should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
       filterField("Created At").findByLabelText("more options").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Last 3 Months").click();
-
-      modal().within(() => {
-        cy.findByText("Previous 3 Months");
-      });
+      popover().findByText("Last 3 Months").click();
+      modal().findByText("Previous 3 Months").should("be.visible");
       applyFilters();
 
       cy.findByTestId("qb-filters-panel")
-        .findByText("Created At Previous 3 Months")
+        .findByText("Created At is in the previous 3 months")
         .should("be.visible");
     });
 
@@ -539,10 +535,11 @@ describe("scenarios > filters > bulk filtering", () => {
 
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Price between 50 80").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 72 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Price is between 50 and 80")
+        .should("be.visible");
+
+      assertQueryBuilderRowCount(72);
     });
 
     it("applies a greater than filter", () => {
