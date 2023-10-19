@@ -63,31 +63,21 @@ export function DateRangePicker({
         <Group align="center">
           <FlexDateInput
             value={startDate}
-            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleStartDateChange}
           />
           <Text c="text.0">{t`and`}</Text>
           <FlexDateInput
             value={endDate}
-            size="xs"
             popoverProps={{ opened: false }}
             onChange={handleEndDateChange}
           />
         </Group>
         {hasTime && (
           <Group align="center">
-            <FlexTimeInput
-              value={startDate}
-              size="xs"
-              onChange={handleStartTimeChange}
-            />
+            <FlexTimeInput value={startDate} onChange={handleStartTimeChange} />
             <Text c="text.0">{t`and`}</Text>
-            <FlexTimeInput
-              value={endDate}
-              size="xs"
-              onChange={handleEndTimeChange}
-            />
+            <FlexTimeInput value={endDate} onChange={handleEndTimeChange} />
           </Group>
         )}
         <DatePicker

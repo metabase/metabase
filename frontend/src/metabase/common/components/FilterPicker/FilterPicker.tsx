@@ -35,7 +35,6 @@ export interface FilterPickerProps {
 }
 
 const MIN_WIDTH = 300;
-const MAX_WIDTH = 410;
 
 export function FilterPicker({
   query,
@@ -89,7 +88,7 @@ export function FilterPicker({
 
   if (!column) {
     return (
-      <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
+      <Box miw={MIN_WIDTH}>
         <FilterColumnPicker
           query={query}
           stageIndex={stageIndex}
@@ -104,7 +103,7 @@ export function FilterPicker({
   const FilterWidget = getFilterWidget(column);
 
   return (
-    <Box miw={MIN_WIDTH} maw={MAX_WIDTH}>
+    <Box miw={MIN_WIDTH}>
       <FilterWidget
         query={query}
         stageIndex={stageIndex}

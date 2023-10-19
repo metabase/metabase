@@ -53,14 +53,11 @@ export function SingleDatePicker({
         <DateInput
           value={value}
           date={date}
-          size="xs"
           popoverProps={{ opened: false }}
           onChange={handleDateChange}
           onDateChange={setDate}
         />
-        {hasTime && (
-          <TimeInput value={value} size="xs" onChange={handleTimeChange} />
-        )}
+        {hasTime && <TimeInput value={value} onChange={handleTimeChange} />}
         <Stack align="center">
           <DatePicker
             value={value}
