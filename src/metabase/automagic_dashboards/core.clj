@@ -1035,12 +1035,42 @@
      :group         metric-name
      :card-name     (format "Card[%s][%s]" metric-title (first viz))}))
 
+(defn grounded-filters
+  "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
+  filter name to grounded versions of the filter."
+  [filter-templates ground-dimensions]
+  (->> filter-templates
+       (keep (fn [fltr]
+               (let [[fname {:keys [filter] :as v}] (first fltr)
+                     dims (dashboard-templates/collect-dimensions v)
+                     opts (->> (map (comp
+                                      (partial map (partial interesting/->reference :mbql))
+                                      :matches
+                                      ground-dimensions) dims)
+                               (apply math.combo/cartesian-product)
+                               (map (partial zipmap dims)))]
+                 (seq (for [opt opts
+                            :let [f
+                                  (walk/prewalk
+                                    (fn [x]
+                                      (if (and (vector? x))
+                                        (let [[ds dim-name] x]
+                                          (if (and (= "dimension" ds)
+                                                   (string? dim-name))
+                                            (opt dim-name)
+                                            x))
+                                        x))
+                                    filter)]]
+                        (assoc v :filter f :filter-name fname))))))
+       flatten))
+
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
   [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
+    template-filters    :filters
     :as                 template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics} (interesting/identify
@@ -1056,6 +1086,7 @@
         dashcards                   (combination/grounded-metrics->dashcards
                                       base-context
                                       grounded-dimensions
+                                      (grounded-filters template-filters grounded-dimensions)
                                       all-cards
                                       grounded-metrics)
         template-with-user-groups   (update template :groups into (user-defined-groups user-defined-metrics))

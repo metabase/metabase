@@ -73,19 +73,6 @@
            (group-by :semantic_type))
       set)))
 
-(defn instantiate-affinities
-  "For a given metric, determine adjacent fields and return a map of them by
-  semantic type grouping."
-  [metric]
-  (let [semantic-groups (semantic-groups metric)]
-    (for [{:keys [affinity-set] :as affinity-spec} affinity-specs
-          :when (every? semantic-groups affinity-set)
-          :let [bindings (map semantic-groups affinity-set)]
-          dimensions (apply math.combo/cartesian-product bindings)]
-      (assoc affinity-spec
-        :metric metric
-        :dimensions dimensions))))
-
 (defn transform-metric-aggregate
   "Map a metric aggregate definition from nominal types to semantic types."
   [m decoder]
