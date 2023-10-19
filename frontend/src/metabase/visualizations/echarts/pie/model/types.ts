@@ -11,7 +11,7 @@ export interface PieLegendItem {
 }
 
 export interface PieSlice {
-  key: string | number | boolean;
+  key: string;
   value: number;
   normalizedPercentage: number;
   rowIndex?: number;
