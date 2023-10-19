@@ -11,6 +11,9 @@ import "number-to-locale-string";
 // Should be imported before any other metabase import
 import "ee-overrides"; // eslint-disable-line import/no-duplicates
 
+// enable dayjs plugins before i18n changes
+import "metabase/lib/dayjs";
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
@@ -39,7 +42,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
-import { DatesProvider, ThemeProvider } from "metabase/ui";
+import { ThemeProvider } from "metabase/ui";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { initializeEmbedding } from "metabase/lib/embed";
 import api from "metabase/lib/api";
@@ -76,10 +79,8 @@ function _init(reducers, getRoutes, callback) {
       <EmotionCacheProvider>
         <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
           <ThemeProvider>
-            <DatesProvider>
-              <GlobalStyles />
-              <Router history={history}>{routes}</Router>
-            </DatesProvider>
+            <GlobalStyles />
+            <Router history={history}>{routes}</Router>
           </ThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
