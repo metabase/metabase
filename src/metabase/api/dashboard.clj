@@ -801,21 +801,25 @@
              :when field-id]
          field-id)))
 
-(defn- param-key->field-ids
+(defn- param-key->param
   "Get Field ID(s) associated with a parameter in a Dashboard.
 
-    (param-key->field-ids (t2/select-one Dashboard :id 62) \"ee876336\")
+    (param-key->param (t2/select-one Dashboard :id 62) \"ee876336\")
     ;; -> #{276}"
   [dashboard param-key]
   {:pre [(string? param-key)]}
-  (let [{:keys [resolved-params]} (t2/hydrate dashboard :resolved-params)
-        param                     (get resolved-params param-key)]
-    (mappings->field-ids (:mappings param))))
+  (let [{:keys [resolved-params]} (t2/hydrate dashboard :resolved-params)]
+    (get resolved-params param-key)))
 
 (defn- chain-filter-constraints [dashboard constraint-param-key->value]
   (into {} (for [[param-key value] constraint-param-key->value
-                 field-id          (param-key->field-ids dashboard param-key)]
-             [field-id value])))
+                 :let              [param      (param-key->param dashboard param-key)
+                                    param-type (:type param)
+                                    op         (keyword (name param-type))]
+                 field-id          (mappings->field-ids (:mappings param))]
+             [field-id (if (sequential? value)
+                         (into [op] value)
+                         [op value])])))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
@@ -829,7 +833,8 @@
     constraint-param-key->value :- ms/Map
     query                       :- [:maybe ms/NonBlankString]]
    (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-         field-ids   (param-key->field-ids dashboard param-key)]
+         param       (param-key->param dashboard param-key)
+         field-ids   (mappings->field-ids (:mappings param))]
      (when (empty? field-ids)
        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                        {:param       (get (:resolved-params dashboard) param-key)

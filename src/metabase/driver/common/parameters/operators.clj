@@ -62,7 +62,7 @@
   [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
   (let [field' (params/wrap-field-id-if-needed field)]
-    (condp = (operator-arity param-type)
+    (case (operator-arity param-type)
       :binary
       (cond-> [(keyword (name param-type)) field' a b]
         (boolean options) (conj options))

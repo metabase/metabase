@@ -115,7 +115,7 @@
 
 (defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
-  [source-table-id field-id value]
+  [source-table-id field-id value options]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (when-not (= this-field-table-id source-table-id)
                                           {:join-alias (joined-table-alias this-field-table-id)})])]
@@ -154,18 +154,19 @@
 
 (defn- add-filters [query source-table-id joined-table-ids constraints]
   (reduce
-   (fn [query [field-id value]]
+   (fn [query [field-id value options]]
      ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
      ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
      ;; it.
      (let [field-table-id (field/field-id->table-id field-id)]
        (if (or (= field-table-id source-table-id)
                (contains? joined-table-ids field-table-id))
-         (let [filter-clause (filter-clause source-table-id field-id value)]
-           (log/tracef "Added filter clause for %s %s"
+         (let [clause (filter-clause source-table-id field-id value options)]
+           (log/tracef "Added filter clause for %s %s: %s"
                        (name-for-logging Table field-table-id)
-                       (name-for-logging Field field-id))
-           (update query :filter mbql.u/combine-filter-clauses filter-clause))
+                       (name-for-logging Field field-id)
+                       clause)
+           (update query :filter mbql.u/combine-filter-clauses clause))
          (do
            (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
                        (name-for-logging Table field-table-id)
@@ -517,9 +518,10 @@
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
-  (let [{:keys [values has_more_values]} (if (empty? constraints)
-                                           (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id field-id))
-                                           (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id field-id) constraints))]
+  (let [{:keys [values has_more_values]}
+        (if (empty? constraints)
+          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one Field :id field-id))
+          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one Field :id field-id) constraints))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit

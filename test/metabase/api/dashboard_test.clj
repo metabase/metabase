@@ -2543,7 +2543,11 @@
                                                     :name                 "CATEGORY"
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id     source-card-id
-                                                                           :value_field (mt/$ids $categories.name)}}]}
+                                                                           :value_field (mt/$ids $categories.name)}}
+                                                   {:name "Not Category Name"
+                                                    :slug "not_category_name"
+                                                    :id   "_NOT_CATEGORY_NAME_"
+                                                    :type "string/!="}]}
                                      dashboard-values)
       Card          card {:database_id   (mt/id)
                           :table_id      (mt/id :venues)
@@ -2569,6 +2573,9 @@
                                                     :card_id      (:id card)
                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                                    {:parameter_id "_STATIC_CATEGORY_LABEL_"
+                                                    :card_id      (:id card)
+                                                    :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                   {:parameter_id "_NOT_CATEGORY_NAME_"
                                                     :card_id      (:id card)
                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]
      (f {:dashboard  dashboard
@@ -2943,6 +2950,16 @@
             (is (= {:values          [["Good"]]
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest chain-filter-constraints-test
+  (testing "Chain filter should return correct results when :string/!= type is used"
+    (with-chain-filter-fixtures [{:keys [dashboard]}]
+      (is (= "ood"
+             (-> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})
+                 first second)))
+      (is (= [:!= "ood"]
+             (-> (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"})
+                 first second))))))
 
 (defn- card-fields-from-table-metadata
   [card-id]
