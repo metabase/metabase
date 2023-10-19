@@ -850,53 +850,6 @@
                                                                             (apply merge))))})))
         card-templates))))
 
-(mu/defn metric->dim->cards :- ads/metric-types->dimset->cards
-  [flat-affinities :- [:sequential ads/affinity]]
-  (let [mdc     (as-> flat-affinities affinities
-                      (group-by :metric-field-types affinities)
-                      (update-vals
-                        affinities
-                        (fn [vs]
-                          (update-vals
-                            (group-by :affinity-set vs)
-                            (fn [vs]
-                              ;; *At the moment* we are only using metric and dimension types to match cards.
-                              ;; This logic should deduplicate cards that are identical except for filters.
-                              ;; Once we add filters back into the mix, this will go away and just be
-                              ;; `(mapv :card-template vs)`
-                              (let [deduplicated-cards (->> (mapv :card-template vs)
-                                                            (group-by (juxt :metrics :dimensions :visualization))
-                                                            vals
-                                                            (mapv first))]
-                                {:cards deduplicated-cards}))))))
-        default (apply
-                  merge-with
-                  (fn [{a :cards} {b :cards}]
-                    {:cards (distinct (into a b))})
-                  (vals mdc))]
-    (assoc mdc :default default)))
-
-(comment
-  (let [template   (dashboard-templates/get-dashboard-template ["table" "TransactionTable"])
-        context    (make-base-context (->root (t2/select-one :model/Table :id 2)))
-        dimensions (interesting/find-dimensions context (:dimensions template))]
-    (dash-template->affinities template dimensions))
-
-  (let [template   (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        context    (make-base-context (->root (t2/select-one :model/Table :name "PEOPLE")))
-        dimensions (interesting/find-dimensions context (:dimensions template))]
-    (dash-template->affinities template dimensions)
-    ;(dimensions "JoinDate")
-    ;(dimensions "Long")
-    )
-
-  (let [template   (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
-        context    (make-base-context (->root (t2/select-one :model/Table :id 1)))
-        dimensions (interesting/find-dimensions context (:dimensions template))]
-    (->> (dash-template->affinities template dimensions)
-         (group-by :metric-constituent-types)))
-  )
-
 (mu/defn match-affinities :- ads/affinity-matches
   "Return an ordered map of affinity names to the set of dimensions they depend on."
   [affinities :- ads/affinities-old

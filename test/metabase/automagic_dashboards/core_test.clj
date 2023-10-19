@@ -8,8 +8,11 @@
    [flatland.ordered.map :refer [ordered-map]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.interesting :as interesting]
+   [metabase.automagic-dashboards.populate :as populate]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field Metric Segment Table]]
@@ -377,8 +380,6 @@
   (or (t2/select-one Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
                       {:table table :column column}))))
-
-
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -1234,31 +1235,31 @@
                         "
                 (testing "Latitude is very specific so binds to Lat"
                   (is (=?
-                       (-> (peek dimensions)
+                        (-> (peek dimensions)
                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :latitude)}]))))
-                       (-> (mt/id :people :latitude)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
+                        (-> (mt/id :people :latitude)
+                            candidate-bindings
+                            (#'interesting/most-specific-matched-dimension)))))
                 (testing "Longitude binds to GenericNumber since there is no more specific Lon dimension definition."
                   (is (=?
-                       (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
+                        (-> {"GenericNumber" {:field_type [:entity/UserTable :type/Number], :score 85}}
                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :longitude)}]))))
-                       (-> (mt/id :people :longitude)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
+                        (-> (mt/id :people :longitude)
+                            candidate-bindings
+                            (#'interesting/most-specific-matched-dimension)))))
                 (testing "City and State both have semantic types that descend from type/Location"
                   (is (=?
-                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                        (-> {"Loc" {:field_type [:type/Location], :score 60}}
                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :city)}]))))
-                       (-> (mt/id :people :city)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension))))
+                        (-> (mt/id :people :city)
+                            candidate-bindings
+                            (#'interesting/most-specific-matched-dimension))))
                   (is (=?
-                       (-> {"Loc" {:field_type [:type/Location], :score 60}}
+                        (-> {"Loc" {:field_type [:type/Location], :score 60}}
                            (update-vals (fn [v] (assoc v :matches [{:id (mt/id :people :state)}]))))
-                       (-> (mt/id :people :state)
-                           candidate-bindings
-                           (#'interesting/most-specific-matched-dimension)))))
+                        (-> (mt/id :people :state)
+                            candidate-bindings
+                            (#'interesting/most-specific-matched-dimension)))))
                 (testing "Although type/ZipCode exists, in this table that classification wasn't made, so Zip doesn't
                           bind to anything since there isn't a more generic dimension definition to bind to."
                   (is (nil? (-> (mt/id :people :zip)

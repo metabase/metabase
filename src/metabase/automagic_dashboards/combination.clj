@@ -30,11 +30,7 @@
              (count child-types))
       (some
         (fn [parent-types-permutation]
-          (when (->> (map
-                       (fn [child-type parent-type]
-                         (isa? child-type parent-type))
-                       child-types
-                       parent-types-permutation)
+          (when (->> (map isa? child-types parent-types-permutation)
                      (every? true?))
             true))
         (math.combo/permutations parent-types)))))
@@ -174,6 +170,8 @@
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
+  "Generate dashcards from ground dimensions, using the base context, ground dimensions,
+  card templates, and grounded metrics as input."
   [base-context
    ground-dimensions :- ads/dim-name->matching-fields
    card-templates
