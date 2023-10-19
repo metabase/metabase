@@ -27,6 +27,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockColumn } from "metabase-types/api/mocks";
 import type {
+  ComparisonFilter,
   DatasetColumn,
   RowValue,
   StructuredDatasetQuery,
