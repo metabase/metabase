@@ -5,7 +5,7 @@ import type { FormState } from "../../contexts";
 import type { FormError } from "./types";
 
 export interface UseFormSubmitProps<T> {
-  onSubmit: (values: T, helpers: FormikHelpers<T>) => void;
+  onSubmit: (values: T, helpers: FormikHelpers<T>) => void | Promise<any>;
 }
 
 export interface UseFormSubmitResult<T> {
