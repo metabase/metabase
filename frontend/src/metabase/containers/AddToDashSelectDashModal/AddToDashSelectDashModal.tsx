@@ -63,6 +63,8 @@ export const AddToDashSelectDashModal = ({
     getCollection(state, { collectionId: openCollectionId }),
   );
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const hideCreateNewDashboardOption =
+    isQuestionInPersonalCollection && !isOpenCollectionInPersonalCollection;
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -116,15 +118,14 @@ export const AddToDashSelectDashModal = ({
         collectionId={collectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}
       />
-      {!isQuestionInPersonalCollection ||
-        (isOpenCollectionInPersonalCollection && (
-          <Link onClick={() => setShouldCreateDashboard(true)} to="">
-            <LinkContent>
-              <Icon name="add" className="mx1" />
-              <h4>{t`Create a new dashboard`}</h4>
-            </LinkContent>
-          </Link>
-        ))}
+      {!hideCreateNewDashboardOption && (
+        <Link onClick={() => setShouldCreateDashboard(true)} to="">
+          <LinkContent>
+            <Icon name="add" className="mx1" />
+            <h4>{t`Create a new dashboard`}</h4>
+          </LinkContent>
+        </Link>
+      )}
     </ModalContent>
   );
 };
