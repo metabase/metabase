@@ -1,16 +1,27 @@
 import { t } from "ttag";
+import { useMemo } from "react";
 import type { DashCardId } from "metabase-types/api";
 import { Divider, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
+import { moveDashCardToTab } from "metabase/dashboard/actions";
 import DashCardActionButton from "../DashCardActionButtons/DashCardActionButton";
 import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
-import { useDashCardTabMenu } from "./use-dash-card-tab-menu";
 
 interface DashCardTabMenuProps {
   dashCardId: DashCardId;
 }
 
 export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
-  const { showMenu, tabs, moveToTab } = useDashCardTabMenu(dashCardId);
+  const dispatch = useDispatch();
+  const tabs = useSelector(getTabs);
+  const selectedTabId = useSelector(getSelectedTabId);
+
+  const showMenu = tabs.length > 1;
+
+  const tabsToShow = useMemo(() => {
+    return tabs.filter(t => t.id !== selectedTabId);
+  }, [selectedTabId, tabs]);
 
   if (!showMenu) {
     return null;
@@ -30,12 +41,14 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Move to tab`}</Menu.Label>
-          {tabs.map(tab => {
+          {tabsToShow.map(tab => {
             return (
               <Menu.Item
                 maw={300}
                 key={tab.id}
-                onClick={() => moveToTab(tab.id)}
+                onClick={() =>
+                  dispatch(moveDashCardToTab({ dashCardId, destTabId: tab.id }))
+                }
               >
                 {tab.name}
               </Menu.Item>
