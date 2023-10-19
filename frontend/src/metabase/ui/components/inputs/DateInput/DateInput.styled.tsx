@@ -12,6 +12,9 @@ export const getDateInputOverrides =
             marginTop: theme.spacing.xs,
           },
         },
+        calendar: {
+          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+        },
       }),
     },
   });
