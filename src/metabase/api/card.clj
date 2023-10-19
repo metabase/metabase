@@ -552,7 +552,7 @@ saved later when it is ready."
                               :can_write
                               :average_query_time
                               :last_query_start
-                              :collection
+                              [:collection :is_personal]
                               [:moderation_reviews :moderator_details])
                   (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
        (when timed-out?
