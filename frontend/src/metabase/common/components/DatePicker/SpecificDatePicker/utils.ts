@@ -14,12 +14,13 @@ export function getTabs(
 }
 
 export function getDefaultValue(): SpecificDatePickerValue {
-  const today = moment().startOf("date").toDate();
+  const today = moment().startOf("date");
+  const past30Days = today.subtract(30, "day");
 
   return {
     type: "specific",
     operator: "between",
-    values: [today, today],
+    values: [past30Days.toDate(), today.toDate()],
   };
 }
 
