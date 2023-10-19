@@ -7,7 +7,7 @@ import type {
   DashCardId,
   DashboardId,
   DashboardCard,
-  DashboardOrderedTab,
+  DashboardTab,
   DashboardTabId,
 } from "metabase-types/api";
 import type { DashboardState, TabDeletionId } from "metabase-types/store";
@@ -31,7 +31,7 @@ type MoveTabPayload = {
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
   cards: DashboardCard[];
-  tabs: DashboardOrderedTab[];
+  tabs: DashboardTab[];
 };
 type InitTabsPayload = { slug: string | undefined };
 
