@@ -5,8 +5,6 @@ export const getDatePickerOverrides =
     DatePicker: {
       defaultProps: {
         size: "md",
-        maxLevel: "month",
-        hideOutsideDates: true,
       },
     },
   });

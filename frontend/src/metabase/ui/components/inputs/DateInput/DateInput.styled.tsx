@@ -8,7 +8,12 @@ export const getDateInputOverrides =
       },
       styles: theme => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
+        },
+        calendar: {
+          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
         },
       }),
     },
