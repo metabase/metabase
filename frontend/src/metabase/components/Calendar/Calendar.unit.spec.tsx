@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { updateMomentAndDayjsStartOfWeek } from "metabase/lib/i18n";
+import { updateMomentStartOfWeek } from "metabase/lib/i18n";
 import type { CalendarProps } from "./Calendar";
 import Calendar from "./Calendar";
 
@@ -59,12 +59,12 @@ describe("Calendar", () => {
       jest.setSystemTime(new Date("2023-03-23T08:00:00"));
 
       MetabaseSettings.set("start-of-week", "wednesday");
-      updateMomentAndDayjsStartOfWeek();
+      updateMomentStartOfWeek();
     });
 
     afterEach(() => {
       MetabaseSettings.set("start-of-week", "sunday"); // rollback to default
-      updateMomentAndDayjsStartOfWeek();
+      updateMomentStartOfWeek();
 
       jest.useRealTimers();
     });

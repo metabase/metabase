@@ -28,7 +28,7 @@ export async function loadLocalization(locale) {
 }
 
 // Tell moment.js and day.js to use the value of the start-of-week Setting for its current locale
-export function updateMomentAndDayjsStartOfWeek() {
+export function updateMomentStartOfWeek() {
   const startOfWeekDayName = MetabaseSettings.get("start-of-week");
   if (!startOfWeekDayName) {
     return;
@@ -55,7 +55,7 @@ export function updateMomentAndDayjsStartOfWeek() {
 }
 
 // if the start of week Setting is updated, update the moment start of week
-MetabaseSettings.on("start-of-week", updateMomentAndDayjsStartOfWeek);
+MetabaseSettings.on("start-of-week", updateMomentStartOfWeek);
 
 function setLanguage(translationsObject) {
   const locale = translationsObject.headers.language;
@@ -72,11 +72,11 @@ function setLocalization(translationsObject) {
 
   setLanguage(translationsObject);
 
-  updateMomentAndDayjsLocale(locale);
-  updateMomentAndDayjsStartOfWeek();
+  updateMomentLocale(locale);
+  updateMomentStartOfWeek();
 }
 
-function updateMomentAndDayjsLocale(locale) {
+function updateMomentLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
   try {
     if (momentLocale !== "en") {
