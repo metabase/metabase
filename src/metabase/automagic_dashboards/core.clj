@@ -1017,23 +1017,30 @@
   cross product of all user defined metrics to all provided dimension affinities to all
   potential visualization options for these affinities."
   [affinities->viz-types user-defined-metrics]
-  (for [[dimension-affinities viz-types] affinities->viz-types
-        viz viz-types
-        {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
-        :let [metric-title (if (seq dimension-affinities)
-                             (format "%s by %s" metric-name
-                                     (combination/items->str
-                                       (map (fn [s] (format "[[%s]]" s)) (vec dimension-affinities))))
+  (let [found-summary? (volatile! false)
+        summary-viz-types #{["scalar" {}] ["smartscalar" {}]}]
+    (for [[dimension-affinities viz-types] affinities->viz-types
+          viz viz-types
+          {:keys [metric-name] :as _user-defined-metric} user-defined-metrics
+          :let [metric-title (if (seq dimension-affinities)
+                               (format "%s by %s" metric-name
+                                       (combination/items->str
+                                        (map (fn [s] (format "[[%s]]" s)) (vec dimension-affinities))))
+                               metric-name)
+                group-name (if (and (not @found-summary?)
+                                    (summary-viz-types viz))
+                             (do (vreset! found-summary? true)
+                                 "Overview")
                              metric-name)]]
-    {:card-score    100
-     :metrics       [metric-name]
-     :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
-     :visualization viz
-     :width         6
-     :title         (i18n/->UserLocalizedString metric-title nil {})
-     :height        4
-     :group         metric-name
-     :card-name     (format "Card[%s][%s]" metric-title (first viz))}))
+      {:card-score    100
+       :metrics       [metric-name]
+       :dimensions    (mapv (fn [dim] {dim {}}) dimension-affinities)
+       :visualization viz
+       :width         6
+       :title         (i18n/->UserLocalizedString metric-title nil {})
+       :height        4
+       :group         group-name
+       :card-name     (format "Card[%s][%s]" metric-title (first viz))})))
 
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
