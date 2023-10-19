@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
+import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { Group, Text, Loader } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -25,13 +26,13 @@ export function SearchResult({
   result,
   compact = false,
   showDescription = true,
-  onClick = null,
   isSelected = false,
+  onClick,
 }: {
   result: WrappedResult;
   compact?: boolean;
   showDescription?: boolean;
-  onClick?: ((result: WrappedResult) => void) | null;
+  onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
@@ -71,7 +72,7 @@ export function SearchResult({
       isSelected={isSelected}
       p="sm"
       w="100%"
-      aria-label={`${name} ${model}`}
+      aria-label={t`${name} ${model}`}
     >
       <ItemIcon active={isActive} item={result} type={model} />
       <ResultNameSection justify="center" spacing="xs">
@@ -96,7 +97,13 @@ export function SearchResult({
               color="focus.0"
               orientation="vertical"
             />
-            <Text color="text.1" align="left" size="sm" lineClamp={3}>
+            <Text
+              data-testid="result-description"
+              color="text.1"
+              align="left"
+              size="sm"
+              lineClamp={3}
+            >
               {description}
             </Text>
           </Group>

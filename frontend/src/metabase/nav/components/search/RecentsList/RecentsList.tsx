@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -28,7 +27,7 @@ type RecentsListProps = {
   className?: string;
 };
 
-interface WrappedRecentItem extends RecentItem {
+export interface WrappedRecentItem extends RecentItem {
   getUrl: () => string;
   getIcon: () => {
     name: IconName;
@@ -39,11 +38,8 @@ interface WrappedRecentItem extends RecentItem {
 }
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
-  const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
-    {
-      reload: true,
-    },
-  );
+  const { data = [], isLoading: isRecentsListLoading } =
+    useRecentItemListQuery();
 
   const wrappedResults: WrappedRecentItem[] = useMemo(
     () => data.map(item => RecentItems.wrapEntity(item)),
@@ -72,7 +68,7 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
       onClick({
         ...item.model_object,
         model: item.model,
-        name: item.model_object.display_name ?? item.model_object.name,
+        name: getItemName(item),
         id: item.model_id,
       });
     } else {
@@ -90,30 +86,27 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
           <Stack spacing={0}>
             {wrappedResults.map((item, index) => {
               const isActive = isItemActive(item);
-              const model = item.model;
-              const name = getItemName(item);
-              const moderated_status = getModeratedStatus(item);
-              const result = item;
-              const isSelected = cursorIndex === index;
-              const ref: Ref<HTMLButtonElement> = getRef(item) ?? null;
 
               return (
                 <SearchResultContainer
-                  ref={ref}
+                  ref={getRef(item)}
                   key={getItemKey(item)}
                   component="button"
                   onClick={() => onContainerClick(item)}
                   isActive={isActive}
-                  isSelected={isSelected}
+                  isSelected={cursorIndex === index}
                   p="sm"
                 >
-                  <ItemIcon active={isActive} item={result} type={model} />
+                  <ItemIcon active={isActive} item={item} type={item.model} />
                   <ResultNameSection justify="center" spacing="xs">
                     <Group spacing="xs" align="center" noWrap>
                       <ResultTitle order={4} truncate>
-                        {name}
+                        {getItemName(item)}
                       </ResultTitle>
-                      <ModerationIcon status={moderated_status} size={14} />
+                      <ModerationIcon
+                        status={getModeratedStatus(item)}
+                        size={14}
+                      />
                     </Group>
                     <SearchResultLink>
                       {getTranslatedEntityName(item.model)}

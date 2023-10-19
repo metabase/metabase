@@ -1,7 +1,6 @@
-import type { Ref } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Anchor, Text } from "metabase/ui";
+import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
 export const SearchResultLink = ({
@@ -13,17 +12,7 @@ export const SearchResultLink = ({
   leftIcon?: JSX.Element | null;
   href?: string | null;
 }) => {
-  const collectionRef: Ref<HTMLAnchorElement> = useRef(null);
-
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useLayoutEffect(() => {
-    if (collectionRef.current) {
-      setIsOverflowing(
-        collectionRef.current.scrollWidth > collectionRef.current.clientWidth,
-      );
-    }
-  }, [children]);
+  const { isTruncated, ref: truncatedRef } = useIsTruncated();
 
   const componentProps = href
     ? {
@@ -37,8 +26,8 @@ export const SearchResultLink = ({
       };
 
   return (
-    <Tooltip isEnabled={isOverflowing} tooltip={children}>
-      <ResultLinkWrapper spacing="xs" noWrap>
+    <Tooltip isEnabled={isTruncated} tooltip={children}>
+      <ResultLinkWrapper data-testid="result-link-wrapper" spacing="xs" noWrap>
         {leftIcon}
         <ResultLink
           {...componentProps}
@@ -47,7 +36,7 @@ export const SearchResultLink = ({
           size="sm"
           truncate
           onClick={e => e.stopPropagation()}
-          ref={collectionRef}
+          ref={truncatedRef}
         >
           {children}
         </ResultLink>

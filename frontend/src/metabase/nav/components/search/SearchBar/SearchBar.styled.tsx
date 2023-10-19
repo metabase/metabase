@@ -38,15 +38,14 @@ export const SearchInputContainer = styled.div<{
       return css`
         background-color: ${color("bg-medium")};
       `;
-    } else {
-      return css`
-        background-color: ${color("white")};
-
-        &:hover {
-          background-color: ${color("bg-light")};
-        }
-      `;
     }
+    return css`
+      background-color: ${color("white")};
+
+      &:hover {
+        background-color: ${color("bg-light")};
+      }
+    `;
   }}
 
   border: 1px solid ${color("border")};

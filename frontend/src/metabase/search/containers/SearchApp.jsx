@@ -101,7 +101,7 @@ function SearchApp({ location }) {
                 <Box>
                   <SearchResultSection
                     totalResults={metadata.total}
-                    items={list}
+                    results={list}
                   />
                   <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls

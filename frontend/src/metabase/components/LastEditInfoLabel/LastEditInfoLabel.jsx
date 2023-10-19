@@ -50,14 +50,16 @@ function LastEditInfoLabel({
   const { id: editorId, timestamp } = lastEditInfo;
 
   const momentTimestamp = moment(timestamp);
-  const timeLabel = momentTimestamp.isValid()
-    ? momentTimestamp.fromNow()
-    : null;
+  const timeLabel =
+    timestamp && momentTimestamp.isValid() ? momentTimestamp.fromNow() : null;
 
   const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
   const editorLabel = editor ? t`by ${editor}` : null;
 
-  const label = [prefix, timeLabel, editorLabel].filter(Boolean).join(" ");
+  const label =
+    timeLabel || editorLabel
+      ? [timeLabel, editorLabel].filter(Boolean).join(" ")
+      : null;
 
   return (
     <Tooltip tooltip={<DateTime value={timestamp} />} isEnabled={!!timeLabel}>
@@ -67,7 +69,7 @@ function LastEditInfoLabel({
         onClick={onClick}
         data-testid="revision-history-button"
       >
-        {label}
+        {t`${prefix} ${label}`}
       </TextButton>
     </Tooltip>
   );
