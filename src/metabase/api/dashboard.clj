@@ -684,7 +684,7 @@
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
    {:cards        (t2/hydrate (dashboard/dashcards id) :series)
-    :ordered_tabs (dashboard/ordered-tabs id)}))
+    :ordered_tabs (dashboard/tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."

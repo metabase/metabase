@@ -159,7 +159,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method ordered-tabs
+(mi/define-simple-hydration-method tabs
   :ordered_tabs
   "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
   [dashboard-or-id]
@@ -220,7 +220,7 @@
       (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
                            (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (ordered-tabs dashboard)))))
+      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (tabs dashboard)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]

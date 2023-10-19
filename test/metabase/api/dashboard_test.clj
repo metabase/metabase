@@ -1683,7 +1683,7 @@
                                                        :size_y  4
                                                        :col     1
                                                        :row     1})
-                                      :ordered_tabs (dashboard/ordered-tabs dashboard-id)})))))))
+                                      :ordered_tabs (dashboard/tabs dashboard-id)})))))))
 
 (deftest update-tabs-track-snowplow-test
   (t2.with-temp/with-temp
@@ -1718,7 +1718,7 @@
     (testing "send nothing if tabs are unchanged"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                              {:ordered_tabs  (dashboard/ordered-tabs dashboard-id)
+                              {:ordered_tabs  (dashboard/tabs dashboard-id)
                                :cards         []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 
