@@ -1362,6 +1362,19 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
+  [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
+  (let [base-context (make-base-context root)]
+    ;; Note that once we verify this works, we can maybe just feed this template into generate-dashboard
+    (if dashboard-template
+      (apply-dashboard-template base-context (dashboard-templates/get-dashboard-template dashboard-template))
+      (let [template (first (matching-dashboard-templates
+                              (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
+                              root))]
+        (generate-dashboard base-context template)))))
+
+#_
+(defn- automagic-dashboard
+  "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [show full-name query-filter url] :as root}]
   (let [[dashboard
          {:keys [dashboard-template-name] :as dashboard-template}
