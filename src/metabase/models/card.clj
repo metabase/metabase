@@ -8,10 +8,13 @@
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
+   [metabase.models.parameter-card
+    :as parameter-card
+    :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.query :as query]
@@ -20,7 +23,9 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -566,3 +571,12 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details :model/Card
+  [{dataset? :dataset :as card} _event-type]
+  (merge (select-keys card [:name :description :database_id :table_id])
+          ;; Use `model` instead of `dataset` to mirror product terminology
+         {:model? dataset?}))

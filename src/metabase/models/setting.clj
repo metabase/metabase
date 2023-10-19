@@ -82,6 +82,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -309,7 +310,12 @@
 
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
-   :enabled?    (s/maybe clojure.lang.IFn)})
+   :enabled?    (s/maybe clojure.lang.IFn)
+
+   ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
+   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited.
+   ;; (default: `:no-value`)
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -377,11 +383,6 @@
 (defn- user-local-only? [setting]
   (= (:user-local (resolve-setting setting)) :only))
 
-(defn- allows-site-wide-values? [setting]
-  (and
-   (not (database-local-only? setting))
-   (not (user-local-only? setting))))
-
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
 
@@ -392,6 +393,16 @@
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
+
+(defn- allows-site-wide-values? [setting]
+  (and
+   (not (database-local-only? setting))
+   (not (user-local-only? setting))))
+
+(defn- site-wide-only? [setting]
+  (and
+   (not (allows-database-local-values? setting))
+   (not (allows-user-local-values? setting))))
 
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
@@ -804,6 +815,35 @@
 (defn- default-setter-for-type [setting-type]
   (partial set-value-of-type! (keyword setting-type)))
 
+(defn- audit-setting-change!
+  [name audit previous-value new-value]
+  (audit-log/record-event!
+   :setting-update
+   (merge {:key name}
+          (when (not= audit :no-value)
+            {:previous-value previous-value
+             :new-value      new-value}))
+   api/*current-user-id*
+   :model/Setting))
+
+(defn- should-audit?
+  "Returns true if the setting change should be written to the `audit_log`."
+  [setting]
+  (not= (:audit setting) :never))
+
+(defn- set-with-audit-logging!
+  "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
+  [{:keys [name setter getter audit] :as setting} new-value]
+  (if (should-audit? setting)
+    (let [audit-value-fn #(condp = audit
+                            :no-value  nil
+                            :raw-value (get-raw-value setting)
+                            :getter    (getter))
+          previous-value (audit-value-fn)]
+      (u/prog1 (setter new-value)
+        (audit-setting-change! name audit previous-value (audit-value-fn))))
+    (setter new-value)))
+
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
   just updates the Settings cache and writes its value to the DB.
@@ -815,7 +855,7 @@
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
-        name                                                  (setting-name setting)]
+        name                                                 (setting-name setting)]
     (when (and feature (not (has-feature? feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
     (when (and enabled? (not (enabled?)))
@@ -825,7 +865,7 @@
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
-      (setter new-value))))
+      (set-with-audit-logging! setting new-value))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -857,7 +897,9 @@
                  :database-local :never
                  :user-local     :never
                  :deprecated     nil
-                 :enabled?       nil}
+                 :enabled?       nil
+                 ;; Disable auditing by default for user- or database-local settings
+                 :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -1065,7 +1107,12 @@
 
   ###### `enabled?`
   Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
-  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled."
+  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
+
+  ###### `audit`
+  Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
+  `:never`, `:no-value`, `:raw-value`, and `:getter` (logs the value from the custom getter, if applicable).
+  (Default: `:no-value`)"
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)
