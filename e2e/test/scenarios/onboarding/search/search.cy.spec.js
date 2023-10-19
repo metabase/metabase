@@ -98,6 +98,8 @@ describe("scenarios > search", () => {
       cy.visit("/");
       getSearchBar().as("searchBox").type("product").blur();
 
+      cy.wait("@search");
+
       expectSearchResultContent({
         expectedSearchResults: [
           {
@@ -1114,7 +1116,8 @@ function expectSearchResultItemNameContent(
 }
 
 /**
- * Expect and assert the content of search result items based on the provided searchResults array.
+ * Checks the search results against expectedSearchValues, including descriptions,
+ * collection names, and timestamps, depending on the given data.
  *
  * @param {Object} options - Options for the test.
  * @param {Object[]} options.expectedSearchResults - An array of search result items to compare against.
@@ -1123,22 +1126,11 @@ function expectSearchResultItemNameContent(
  * @param {string} options.expectedSearchResults[].collection - The collection label of the search result item.
  * @param {string} options.expectedSearchResults[].timestamp - The timestamp label of the search result item .
  * @param {boolean} [strict=true] - Whether to check if the contents AND length of search results are the same
- *
- * @example
- * // Usage example with optional collection and timestamp:
- * const expectedSearchResults = [
- *   {
- *     name: "Item 2",
- *     collection: "Collection B",
- *     timestamp: "2023-10-20",
- *   },
- * ];
- *
- * // Usage with strict set to false
- * expectSearchResultContent({ expectedSearchResults, strict: false });
  */
 function expectSearchResultContent({ expectedSearchResults, strict = true }) {
-  const searchResultItems = cy.findAllByTestId("search-result-item");
+  const searchResultItemSelector = "[data-testid=search-result-item]";
+
+  const searchResultItems = cy.get(searchResultItemSelector);
 
   searchResultItems.then($results => {
     if (strict) {
@@ -1147,40 +1139,33 @@ function expectSearchResultContent({ expectedSearchResults, strict = true }) {
     }
   });
 
-  for (const {
-    name,
-    description,
-    collection,
-    timestamp,
-  } of expectedSearchResults) {
-    searchResultItems.each($result => {
-      cy.wrap($result).within(() => {
-        cy.findByTestId("search-result-item-name").then($nameElement => {
-          const resultName = $nameElement.text();
+  for (const expectedSearchResult of expectedSearchResults) {
+    cy.contains(searchResultItemSelector, expectedSearchResult.name).within(
+      () => {
+        cy.findByTestId("search-result-item-name").should(
+          "have.text",
+          expectedSearchResult.name,
+        );
 
-          if (resultName === name) {
-            if (description) {
-              cy.findByTestId("result-description").should(
-                "have.text",
-                description,
-              );
-            }
+        if (expectedSearchResult.description) {
+          cy.findByTestId("result-description").should(
+            "have.text",
+            expectedSearchResult.description,
+          );
+        }
 
-            if (collection) {
-              cy.findAllByTestId("result-link-wrapper").first(() => {
-                cy.findByText(collection).should("exist");
-              });
-            }
-
-            if (timestamp) {
-              cy.findByTestId("info-text-edited-info").should(
-                "have.text",
-                timestamp,
-              );
-            }
-          }
-        });
-      });
-    });
+        if (expectedSearchResult.collection) {
+          cy.findAllByTestId("result-link-wrapper").first(() => {
+            cy.findByText(expectedSearchResult.collection).should("exist");
+          });
+        }
+        if (expectedSearchResult.timestamp) {
+          cy.findByTestId("info-text-edited-info").should(
+            "have.text",
+            expectedSearchResult.timestamp,
+          );
+        }
+      },
+    );
   }
 }
