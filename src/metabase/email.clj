@@ -63,8 +63,6 @@
   :sensitive? true
   :audit      :getter)
 
-(email-smtp-password! "hi there")
-
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
   :type       :integer
