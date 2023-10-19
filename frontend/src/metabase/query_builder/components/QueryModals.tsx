@@ -64,8 +64,11 @@ interface QueryModalsProps {
   originalQuestion: Question;
   questionWithParameters: Question;
   card: Card;
-  onCreate: (question: Question) => void;
-  onSave: (question: Question, config?: { rerunQuery: boolean }) => void;
+  onCreate: (question: Question) => Promise<void>;
+  onSave: (
+    question: Question,
+    config?: { rerunQuery: boolean },
+  ) => Promise<void>;
   onCloseModal: () => void;
   onOpenModal: (modal: ModalType) => void;
   onChangeLocation: (location: string) => void;
