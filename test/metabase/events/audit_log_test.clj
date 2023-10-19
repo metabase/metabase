@@ -41,7 +41,7 @@
                 :user_id  (mt/user->id :rasta)
                 :model    "Card"
                 :model_id (:id card)
-                :details  {:name "My Cool Card", :description nil, :database_id nil, :table_id nil}}
+                :details  {:name "My Cool Card", :description nil, :database_id (mt/id) :table_id nil}}
                (event "card-create" (:id card)))))))))
 
 (deftest card-create-nested-query-test
@@ -87,7 +87,7 @@
                    :details  (cond-> {:name        "My Cool Card"
                                       :description nil
                                       :table_id    nil
-                                      :database_id nil}
+                                      :database_id (mt/id)}
                                dataset? (assoc :model? true))}
                   (event "card-update" (:id card)))))))))))
 
