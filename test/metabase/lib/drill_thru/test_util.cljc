@@ -54,28 +54,33 @@
              "RATING"     4
              "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}}}})
 
+(def ^:private Row
+  [:map-of :string :any])
+
 (def ^:private TestCase
   [:map
    [:click-type      [:enum :cell :header]]
    [:query-type      [:enum :aggregated :unaggregated]]
    [:column-name     :string]
    ;; defaults to "ORDERS"
-   [:query-table  {:optional true} [:enum "ORDERS" #_"PRODUCTS"]]
-   [:custom-query {:optional true} ::lib.schema/query]])
+   [:query-table  {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
+   [:custom-query {:optional true} [:maybe ::lib.schema/query]]
+   [:custom-row   {:optional true} [:maybe Row]]])
 
-(def ^:private Row
-  [:map-of :string :any])
-
-(mu/defn ^:private query-and-row-for-test-case :- [:map
-                                                   [:query ::lib.schema/query]
-                                                   [:row   Row]]
-  [{:keys [query-table query-type]
+(mu/defn query-and-row-for-test-case :- [:map
+                                         [:query ::lib.schema/query]
+                                         [:row   Row]]
+  [{:keys [query-table query-type custom-query custom-row]
     :or   {query-table "ORDERS"}
     :as   test-case} :- TestCase]
-  (or (get-in test-queries [query-table query-type])
-      (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case}))))
+  {:query (or custom-query
+              (get-in test-queries [query-table query-type :query])
+              (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))
+   :row   (or custom-row
+              (get-in test-queries [query-table query-type :row])
+              (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))})
 
-(mu/defn ^:private test-case-context :- ::lib.schema.drill-thru/context
+(mu/defn test-case-context :- ::lib.schema.drill-thru/context
   [query     :- ::lib.schema/query
    row       :- Row
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
@@ -123,33 +128,81 @@
         (is (=? expected
                 (lib/available-drill-thrus query -1 context)))))))
 
-(def ^:private ReturnsDrillTestCase
+(def ^:private TestCaseWithDrillType
   [:merge
    TestCase
    [:map
-    [:drill-type ::lib.schema.drill-thru/drill-thru.type]
-    [:expected   [:map
-                  [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
+    [:drill-type ::lib.schema.drill-thru/drill-thru.type]]])
 
-(mu/defn test-returns-drill
-  "Test that a certain drill gets returned."
-  [{:keys [drill-type query-table column-name click-type query-type custom-query expected]
+(def ^:private ReturnsDrillTestCase
+  [:merge
+   TestCaseWithDrillType
+   [:map
+    [:expected [:map
+                [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
+
+(mu/defn test-returns-drill :- ::lib.schema.drill-thru/drill-thru
+  "Test that a certain drill gets returned. Returns the drill."
+  [{:keys [drill-type query-table column-name click-type query-type expected]
     :or   {query-table "ORDERS"}
     :as   test-case} :- ReturnsDrillTestCase]
-  (testing (lib.util/format "should return %s drill config for %s.%s %s in %s query"
-                            drill-type
-                            query-table
-                            column-name
-                            (name click-type)
-                            (name query-type))
-    (let [{:keys [query row]} (query-and-row-for-test-case test-case)
-          query               (or custom-query query)
-          context             (test-case-context query row test-case)]
-      (testing (str "\nQuery =\n"   (u/pprint-to-str query)
-                    "\nContext =\n" (u/pprint-to-str context))
-        (let [drills (lib/available-drill-thrus query -1 context)]
-          (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
+  (let [{:keys [query row]} (query-and-row-for-test-case test-case)
+        context             (test-case-context query row test-case)]
+    (testing (str (lib.util/format "should return %s drill for %s.%s %s in %s query"
+                                   drill-type
+                                   query-table
+                                   column-name
+                                   (name click-type)
+                                   (name query-type))
+                  "\nQuery =\n"   (u/pprint-to-str query)
+                  "\nContext =\n" (u/pprint-to-str context))
+      (let [drills (lib/available-drill-thrus query -1 context)]
+        (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
+          (let [drill (m/find-first (fn [drill]
+                                      (= (:type drill) drill-type))
+                                    drills)]
             (is (=? expected
-                    (m/find-first (fn [drill]
-                                    (= (:type drill) drill-type))
-                                  drills)))))))))
+                    drill))
+            drill))))))
+
+(mu/defn test-drill-not-returned
+  "Test that a drill is NOT returned in a certain situation."
+  [{:keys [drill-type query-table column-name click-type query-type]
+    :or   {query-table "ORDERS"}
+    :as   test-case} :- TestCaseWithDrillType]
+  (let [{:keys [query row]} (query-and-row-for-test-case test-case)
+        context             (test-case-context query row test-case)]
+    (testing (str (lib.util/format "should NOT return %s drill for %s.%s %s in %s query"
+                                   drill-type
+                                   query-table
+                                   column-name
+                                   (name click-type)
+                                   (name query-type))
+                  "\nQuery = \n"  (u/pprint-to-str query)
+                  "\nRow = \n"    (u/pprint-to-str row)
+                  "\nContext =\n" (u/pprint-to-str context))
+      (let [drills (into #{}
+                         (map :type)
+                         (lib/available-drill-thrus query context))]
+        (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
+          (is (not (contains? drills drill-type))))))))
+
+(def ^:private DrillApplicationTestCase
+  [:merge
+   ReturnsDrillTestCase
+   [:map
+    [:expected-query :map]
+    [:drill-args {:optional true} [:maybe [:sequential :any]]]]])
+
+(mu/defn test-drill-application
+  "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
+  [{:keys [expected-query drill-args], :as test-case} :- DrillApplicationTestCase]
+  (let [{:keys [query]} (query-and-row-for-test-case test-case)
+        drill           (test-returns-drill test-case)]
+
+    (testing (str "Should return expected query when applying the drill"
+                  "\nQuery = \n" (u/pprint-to-str query)
+                  "\nDrill = \n" (u/pprint-to-str drill))
+      (let [query' (apply lib/drill-thru query -1 drill drill-args)]
+        (is (=? expected-query
+                query'))))))

@@ -28,7 +28,7 @@
 (defn- dashboard->cards
   [dashboard]
   (->> dashboard
-       :ordered_cards
+       :dashcards
        (map (fn [{:keys [size_y card col row series] :as dashcard}]
               (assoc card
                 :text     (-> dashcard :visualization_settings :text)
@@ -94,7 +94,7 @@
               series (-> card-right
                          (update :name #(format "%s (%s)" % (comparison-name right)))
                          vector)]
-          (update dashboard :ordered_cards conj (merge (populate/card-defaults)
+          (update dashboard :dashcards conj (merge (populate/card-defaults)
                                                        {:col                    0
                                                         :row                    row
                                                         :size_x                 populate/grid-width
@@ -114,7 +114,7 @@
                              (not (multiseries? card-right))
                              (assoc-in [:visualization_settings :graph.colors] [color-right]))]
           (-> dashboard
-              (update :ordered_cards conj (merge (populate/card-defaults)
+              (update :dashcards conj (merge (populate/card-defaults)
                                                  {:col                    0
                                                   :row                    row
                                                   :size_x                 width
@@ -123,7 +123,7 @@
                                                   :card_id                (:id card-left)
                                                   :series                 series-left
                                                   :visualization_settings {}}))
-              (update :ordered_cards conj (merge (populate/card-defaults)
+              (update :dashcards conj (merge (populate/card-defaults)
                                                  {:col                    width
                                                    :row                    row
                                                    :size_x                 width
