@@ -222,7 +222,7 @@
                   :can_write
                   :param_fields
                   :param_values
-                  :collection)
+                  [:collection :is_personal])
       collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
@@ -300,9 +300,9 @@
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
   (let [dashcards (if (seq id->new-tab-id)
-                        (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             dashcards)
-                        dashcards)]
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
     (if-not deep?
       dashcards
       (keep (fn [dashboard-card]

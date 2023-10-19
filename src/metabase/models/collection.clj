@@ -1143,6 +1143,27 @@
         (assoc user :personal_collection_id (or (user-id->collection-id (u/the-id user))
                                                 (user->personal-collection-id (u/the-id user))))))))
 
+(mi/define-simple-hydration-method ^:private collection-is-root
+  :is_personal
+  "Whether the current collection is or nested in a personal collection."
+  [collection]
+  (is-personal-collection-or-descendant-of-one? collection))
+
+(mi/define-batched-hydration-method collectiions-is-root
+  :is_personal
+  "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
+  `true` means the collection is or nested in a personal collection."
+  [collections]
+  (let [personal-collection-ids (t2/select-pks-set :model/collection :personal_owner_id [:not= nil])
+        location-is-personal    (fn [location]
+                                  (boolean
+                                   (and (string? location)
+                                        (some #(str/starts-with? location (format "/%d" %)) personal-collection-ids))))]
+    (map (fn [{:keys [location personal_owner_id] :as coll}]
+           (assoc coll :is_personal (or (some? personal_owner_id)
+                                        (location-is-personal location))))
+         collections)))
+
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
