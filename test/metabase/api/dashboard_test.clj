@@ -349,7 +349,7 @@
                       :param_fields               nil
                       :param_values               nil
                       :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                      :ordered_tabs               [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
+                      :tabs               [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
                       :dashcards              [{:size_x                     4
                                                 :size_y                     4
                                                 :col                        0
@@ -440,7 +440,7 @@
                                                                 :has_field_values "search"
                                                                 :name_field       nil
                                                                 :dimensions       []}}
-                         :ordered_tabs               []
+                         :tabs               []
                          :dashcards              [{:size_x                     4
                                                    :size_y                     4
                                                    :col                        0
@@ -1388,7 +1388,7 @@
                                                             :size_x             4
                                                             :size_y             4
                                                             :parameter_mappings mappings}]
-                                                   :ordered_tabs []}))
+                                                   :tabs []}))
             :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
 
 (defn- dashcard-like-response
@@ -1422,12 +1422,12 @@
                                        (mt/user-http-request :rasta :put expected-status-code
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [(assoc dashcard-info :parameter_mappings new-mappings)]
-                                                              :ordered_tabs []}))
+                                                              :tabs []}))
              :update-size!           (fn []
                                        (mt/user-http-request :rasta :put 200
                                                              (format "dashboard/%d/cards" dashboard-id)
                                                              {:cards        [new-dashcard-info]
-                                                              :ordered_tabs []}))}))))))
+                                                              :tabs []}))}))))))
 
 (deftest e2e-update-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
@@ -1443,7 +1443,7 @@
          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:ordered_tabs  [{:id   dashtab-id-1
+                                         {:tabs  [{:id   dashtab-id-1
                                                            :name "Tab 1 edited"}
                                                           {:id   dashtab-id-2
                                                            :name "Tab 2"}
@@ -1485,7 +1485,7 @@
                       :dashboard_id dashboard-id
                       :name         "New tab"
                       :position     2}]
-                    (:ordered_tabs resp)))
+                    (:tabs resp)))
             (testing "dashtab 3 got deleted"
               (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-3)))))
 
@@ -1551,7 +1551,7 @@
                                                           :row    3
                                                           :card_id card-id-2
                                                           :series  [{:id series-id-1}]}]
-                                                 :ordered_tabs []}))
+                                                 :tabs []}))
             updated-card-1 {:id           dashcard-id-1
                             :card_id      card-id-1
                             :dashboard_id dashboard-id
@@ -1591,8 +1591,8 @@
       (with-dashboards-in-writeable-collection [dashboard-id]
         ;; send a request that update and create and delete some cards at the same time
         (is (some? (t2/select-one :model/DashboardTab :id dashtab-id-2)))
-        (let [tabs (:ordered_tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                        {:ordered_tabs [{:name     "Tab new"
+        (let [tabs (:tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                        {:tabs [{:name     "Tab new"
                                                                          :id       -1}
                                                                         {:name     "Tab 1 moved to second position"
                                                                          :id       dashtab-id-1}]
@@ -1621,7 +1621,7 @@
       ;; create 2 tabs, assign the existing dashcard to the 1st tab
       ;; create 2 new dashcards, 1 for each tab
       (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                  {:ordered_tabs  [{:id       -1
+                                  {:tabs  [{:id       -1
                                                     :name     "New Tab 1"}
                                                    {:id       -2
                                                     :name     "New Tab 2"}]
@@ -1660,7 +1660,7 @@
                           :card_id          card-id-2
                           :dashboard_id     dashboard-id
                           :dashboard_tab_id tab-2-id}]
-                 :ordered_tabs [{:id           tab-1-id
+                 :tabs [{:id           tab-1-id
                                  :dashboard_id dashboard-id
                                  :name         "New Tab 1"
                                  :position     0}
@@ -1683,7 +1683,7 @@
                                                        :size_y  4
                                                        :col     1
                                                        :row     1})
-                                      :ordered_tabs (dashboard/tabs dashboard-id)})))))))
+                                      :tabs (dashboard/tabs dashboard-id)})))))))
 
 (deftest update-tabs-track-snowplow-test
   (t2.with-temp/with-temp
@@ -1694,7 +1694,7 @@
     (testing "create and delete tabs events are tracked"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                              {:ordered_tabs  [{:id   dashtab-id-1
+                              {:tabs  [{:id   dashtab-id-1
                                                 :name "Tab 1 edited"}
                                                {:id   dashtab-id-2
                                                 :name "Tab 2"}
@@ -1718,7 +1718,7 @@
     (testing "send nothing if tabs are unchanged"
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                              {:ordered_tabs  (dashboard/tabs dashboard-id)
+                              {:tabs  (dashboard/tabs dashboard-id)
                                :cards         []})
         (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
 
@@ -1741,7 +1741,7 @@
                                                                                             :hash "abc"
                                                                                             :target "foo"}]
                                                                   :visualization_settings {}}]
-                                                  :ordered_tabs []}))]
+                                                  :tabs []}))]
           ;; extra sure here because the dashcard we given has a negative id
           (testing "the inserted dashcards has ids auto-generated"
             (is (pos-int? (:id (first resp)))))
@@ -1785,7 +1785,7 @@
                                                                              :size_x  4
                                                                              :size_y  4
                                                                              :series [{:id series-id-1}]}]
-                                                             :ordered_tabs []}))]
+                                                             :tabs []}))]
           (is (=? [{:row                    4
                     :col                    4
                     :size_x                 4
@@ -1828,7 +1828,7 @@
                                                                            :card_id                nil
                                                                            :action_id              action-id
                                                                            :visualization_settings {:label "Update"}}]
-                                                           :ordered_tabs []}))))
+                                                           :tabs []}))))
               (is (partial= {:dashcards [{:action (cond-> {:visualization_settings {:hello true}
                                                            :type (name action-type)
                                                            :parameters [{:id "id"}]
@@ -1901,7 +1901,7 @@
                                                                                      :hash "abc"
                                                                                      :target "foo"}]
                                                            :visualization_settings {}}]
-                                            :ordered_tabs []}))))))
+                                            :tabs []}))))))
 
 ;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
@@ -1947,7 +1947,7 @@
                                                :size_y 1
                                                :col    1
                                                :row    3}]
-                               :ordered_tabs []})
+                               :tabs []})
         (is (= {:size_x                 4
                 :size_y                 2
                 :col                    0
@@ -2011,7 +2011,7 @@
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                        {:cards [(assoc action-card :card_id model-id-2)
                                                 (assoc question-card :card_id model-id-2)]
-                                        :ordered_tabs []})
+                                        :tabs []})
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
@@ -2024,8 +2024,8 @@
                 :name     "Tab 2"}
                {:id       dashtab-id-1
                 :name     "Tab 1 edited"}]
-              (:ordered_tabs (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                   {:ordered_tabs [{:id   dashtab-id-2
+              (:tabs (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                   {:tabs [{:id   dashtab-id-2
                                                                     :name "Tab 2"}
                                                                    {:id   dashtab-id-1
                                                                     :name "Tab 1 edited"}]
@@ -2052,10 +2052,10 @@
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:cards [{:id     dashcard-id-3
                             :series [{:id series-id-1}]}]
-                   :ordered_tabs  []}
+                   :tabs  []}
                   (mt/user-http-request :rasta :put 200
                                         (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]
-                                                                                    :ordered_tabs []})))
+                                                                                    :tabs []})))
           (is (= 1
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
     (testing "prune"
@@ -2066,10 +2066,10 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= 2
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
-          (is (=? {:ordered_tabs []
+          (is (=? {:tabs []
                    :cards        []}
                   (mt/user-http-request :rasta :put 200
-                                        (format "dashboard/%d/cards" dashboard-id) {:cards [] :ordered_tabs []})))
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards [] :tabs []})))
           (is (= 0
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
 
@@ -2082,10 +2082,10 @@
                  (t2/count DashboardCard, :dashboard_id dashboard-id)))
           (is (= 2
                  (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
-        (is (=? {:ordered_tabs [{:id dashtab-id-1}]}
+        (is (=? {:tabs [{:id dashtab-id-1}]}
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d/cards" dashboard-id)
-                                      {:ordered_tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
+                                      {:tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
                                        :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
         (testing "deteted 1 tab, we should have"
           (testing "1 card left"
@@ -2101,11 +2101,11 @@
                  (t2/count DashboardCard, :dashboard_id dashboard-id)))
           (is (= 2
                  (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
-        (is (=? {:ordered_tabs  []
+        (is (=? {:tabs  []
                  :cards []}
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d/cards" dashboard-id)
-                                      {:ordered_tabs []
+                                      {:tabs []
                                        :cards        []})))
         (testing "dashboard should be empty"
           (testing "0 card left"

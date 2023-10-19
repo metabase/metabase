@@ -19,7 +19,7 @@ export interface Dashboard {
   description: string | null;
   model?: string;
   dashcards: (DashboardCard | ActionDashboardCard)[];
-  ordered_tabs?: DashboardOrderedTab[];
+  tabs?: DashboardOrderedTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;

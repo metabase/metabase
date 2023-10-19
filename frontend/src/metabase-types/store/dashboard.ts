@@ -22,9 +22,9 @@ export type StoreDashboardTab = DashboardOrderedTab & {
   isRemoved?: boolean;
 };
 
-export type StoreDashboard = Omit<Dashboard, "dashcards" | "ordered_tabs"> & {
+export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   dashcards: DashCardId[];
-  ordered_tabs?: StoreDashboardTab[];
+  tabs?: StoreDashboardTab[];
 };
 
 export type StoreDashcard = DashboardCard & {

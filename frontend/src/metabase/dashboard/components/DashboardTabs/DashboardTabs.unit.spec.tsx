@@ -29,7 +29,7 @@ function setup({
     dashboards: {
       1: {
         ...TEST_DASHBOARD_STATE.dashboards[1],
-        ordered_tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].ordered_tabs,
+        tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
       },
     },
   };
