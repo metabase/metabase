@@ -1,6 +1,4 @@
-export const PROGRESS_BAR_TYPE = "progress";
-
-export const PROGRESS_BAR_DEFAULT_DATA_1 = {
+export const ZERO = {
   data: {
     value: 0,
     goal: 100000,
@@ -16,7 +14,7 @@ export const PROGRESS_BAR_DEFAULT_DATA_1 = {
   },
 };
 
-export const PROGRESS_BAR_DEFAULT_DATA_2 = {
+export const BELOW_GOAL = {
   data: {
     value: 30000,
     goal: 100000,
@@ -32,7 +30,7 @@ export const PROGRESS_BAR_DEFAULT_DATA_2 = {
   },
 };
 
-export const PROGRESS_BAR_DEFAULT_DATA_3 = {
+export const REACHED_GOAL = {
   data: {
     value: 100000,
     goal: 100000,
@@ -48,7 +46,7 @@ export const PROGRESS_BAR_DEFAULT_DATA_3 = {
   },
 };
 
-export const PROGRESS_BAR_DEFAULT_DATA_4 = {
+export const EXCEEDS_GOAL = {
   data: {
     value: 135000,
     goal: 100000,
