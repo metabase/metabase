@@ -1297,17 +1297,17 @@
         ;; From the template
         card-templates                 (interesting/normalize-seq-of-maps :card template-cards)
         user-defined-card-templates    (user-defined-metrics->card-templates
-                                     (affinities->viz-types card-templates grounded-dimensions)
-                                     user-defined-metrics)
+                                        (affinities->viz-types card-templates grounded-dimensions)
+                                        user-defined-metrics)
         all-cards                      (into card-templates user-defined-card-templates)
         dashcards                      (combination/grounded-metrics->dashcards
-                                     base-context
-                                     grounded-dimensions
-                                     (grounded-filters template-filters grounded-dimensions)
-                                     all-cards
-                                     grounded-metrics)
+                                        base-context
+                                        grounded-dimensions
+                                        (grounded-filters template-filters grounded-dimensions)
+                                        all-cards
+                                        grounded-metrics)
         template-with-user-groups      (update dashboard-template
-                                            :groups into (user-defined-groups user-defined-metrics))
+                                               :groups into (user-defined-groups user-defined-metrics))
         empty-dashboard                (make-dashboard root template-with-user-groups)]
     (-> (assoc empty-dashboard
                ;; Adds the filters that show at the top of the dashboard
