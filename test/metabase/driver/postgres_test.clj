@@ -12,6 +12,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -1112,3 +1113,18 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+
+(deftest set-role-statement-test
+  (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
+    ;; No special characters
+    (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
+    (is (= "SET ROLE ROLE123;"        (driver.sql/set-role-statement :postgres "ROLE123")))
+    (is (= "SET ROLE lowercase_role;" (driver.sql/set-role-statement :postgres "lowercase_role")))
+
+    ;; None (special role in Postgres to revert back to login role; should not be quoted)
+    (is (= "SET ROLE none;"      (driver.sql/set-role-statement :postgres "none")))
+    (is (= "SET ROLE NONE;"      (driver.sql/set-role-statement :postgres "NONE")))
+
+    ;; Special characters
+    (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
+    (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))

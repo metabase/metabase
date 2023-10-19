@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
@@ -286,3 +287,14 @@
                                                       :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
+
+(deftest set-role-statement-test
+  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
+    ;; No special characters
+    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
+    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
+    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
+
+    ;; Special characters
+    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
+    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
