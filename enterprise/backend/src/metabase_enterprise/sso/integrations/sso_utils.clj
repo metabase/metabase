@@ -26,7 +26,6 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
-   [:groups {:optional true} [:maybe seqable?]]
    [:login_attributes [:maybe :map]]])
 
 (mu/defn create-new-sso-user!
@@ -34,16 +33,10 @@
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it"
   [user :- UserAttributes]
-  (u/prog1 (first (t2/insert-returning-instances! User (merge (dissoc user :groups) {:password (str (random-uuid))})))
+  (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; publish user-invited event for audit logging
-    (let [details (-> (into {} <>)
-                      (dissoc :last_login :is_qbnewb :is_superuser :date_joined :common_name :invitor)
-                      (merge {:invitor       nil
-                              :invite_method "sso"
-                              :groups (:groups user)}))]
-      (events/publish-event! :event/user-invited {:user-id api/*current-user-id*
-                                                  :details details}))
+    (events/publish-event! :event/user-invited (assoc <> :sso_source (:sso_source user)))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))

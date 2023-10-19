@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -341,6 +342,9 @@
   [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
+    (events/publish-event! :event/user-invited (assoc <>
+                                                      :invite_method "email"
+                                                      :sso_source (:sso_source new-user)))
     (send-welcome-email! <> invitor setup?)))
 
 (mu/defn create-new-google-auth-user!
