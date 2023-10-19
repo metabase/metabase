@@ -25,11 +25,7 @@ import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import { QuestionNotebookButton } from "./QuestionNotebookButton";
 import ConvertQueryButton from "./ConvertQueryButton";
-import {
-  FilterHeaderToggle,
-  FilterHeader,
-  QuestionFilters,
-} from "./QuestionFilters";
+import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
   AdHocViewHeading,
@@ -151,7 +147,7 @@ export function ViewTitleHeader(props) {
           onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeader.shouldRender(props) && (
         <FilterHeader
           {...props}
           expanded={areFiltersExpanded}
@@ -457,7 +453,7 @@ function ViewTitleHeaderRightSide(props) {
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
           question={question}

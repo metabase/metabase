@@ -15,69 +15,6 @@ import {
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
-export function QuestionFilters({
-  className,
-  question,
-  expanded,
-  onExpand,
-  onCollapse,
-  onQueryChange,
-}) {
-  const query = question.query();
-  const filters = query.topLevelFilters();
-  if (filters.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className={className}>
-      <div className="flex flex-wrap align-center mbn1 mrn1">
-        <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
-          <FilterPill
-            invert
-            icon="filter"
-            className="text-small mr1 mb1 cursor-pointer"
-            onClick={expanded ? onCollapse : onExpand}
-            data-metabase-event={
-              expanded
-                ? `View Mode; Header Filters Collapse Click`
-                : `View Mode; Header Filters Expand Click`
-            }
-            data-testid="filters-visibility-control"
-          >
-            {expanded ? null : filters.length}
-          </FilterPill>
-        </Tooltip>
-        {expanded &&
-          filters.map((filter, index) => (
-            <PopoverWithTrigger
-              key={index}
-              triggerElement={
-                <FilterPill
-                  onRemove={() => onQueryChange(filter.remove().rootQuery())}
-                >
-                  {filter.displayName()}
-                </FilterPill>
-              }
-              triggerClasses="flex flex-no-shrink align-center mr1 mb1"
-              sizeToFit
-            >
-              <FilterPopover
-                isTopLevel
-                query={query}
-                filter={filter}
-                onChangeFilter={newFilter =>
-                  onQueryChange(newFilter.replace().rootQuery())
-                }
-                className="scroll-y"
-              />
-            </PopoverWithTrigger>
-          ))}
-      </div>
-    </div>
-  );
-}
-
 export function FilterHeaderToggle({
   className,
   question,
@@ -100,6 +37,11 @@ export function FilterHeaderToggle({
           icon="filter"
           onClick={expanded ? onCollapse : onExpand}
           active={expanded}
+          data-metabase-event={
+            expanded
+              ? `View Mode; Header Filters Collapse Click`
+              : `View Mode; Header Filters Expand Click`
+          }
           data-testid="filters-visibility-control"
         >
           <span>{filters.length}</span>
@@ -147,13 +89,12 @@ export function FilterHeader({ question, expanded, onQueryChange }) {
   );
 }
 
-QuestionFilters.shouldRender = ({
-  question,
-  queryBuilderMode,
-  isObjectDetail,
-}) =>
+const shouldRender = ({ question, queryBuilderMode, isObjectDetail }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
   question.query().topLevelFilters().length > 0 &&
   !isObjectDetail;
+
+FilterHeader.shouldRender = shouldRender;
+FilterHeaderToggle.shouldRender = shouldRender;
