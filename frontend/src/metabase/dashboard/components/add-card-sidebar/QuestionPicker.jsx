@@ -16,6 +16,8 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import SelectList from "metabase/components/SelectList";
+import { getDashboard } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { QuestionList } from "./QuestionList";
 
 import {
@@ -28,15 +30,11 @@ QuestionPicker.propTypes = {
   onSelect: PropTypes.func.isRequired,
   collectionsById: PropTypes.object,
   getCollectionIcon: PropTypes.func,
-  initialCollection: PropTypes.number,
 };
 
-function QuestionPicker({
-  onSelect,
-  collectionsById,
-  getCollectionIcon,
-  initialCollection,
-}) {
+function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
+  const dashboard = useSelector(getDashboard);
+  const initialCollection = dashboard.collection_id;
   const [currentCollectionId, setCurrentCollectionId] = useState(
     initialCollection || ROOT_COLLECTION.id,
   );
