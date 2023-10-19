@@ -1,5 +1,4 @@
 import type { EChartsOption } from "echarts";
-import { t } from "ttag";
 
 import type {
   ComputedVisualizationSettings,
@@ -8,47 +7,25 @@ import type {
 } from "metabase/visualizations/types";
 
 import type { PieChartModel } from "../model/types";
-import { SUNBURST_SERIES_OPTIONS } from "./constants";
+import { SUNBURST_SERIES_OPTION, TOTAL_GRAPHIC_OPTION } from "./constants";
 
-export function getTotalGraphic(
+function getTotalGraphic(
   total: number,
   formatMetric: Formatter,
   renderingContext: RenderingContext,
 ) {
-  const formattedTotal = formatMetric(Math.round(total));
+  const graphic = { ...TOTAL_GRAPHIC_OPTION };
 
-  return {
-    type: "group",
-    top: "center",
-    left: "center",
-    children: [
-      {
-        type: "text",
-        cursor: "text",
-        style: {
-          fill: renderingContext.getColor("text-dark"),
-          fontSize: "22px",
-          fontFamily: "Lato, sans-serif",
-          fontWeight: "700",
-          textAlign: "center",
-          text: formattedTotal,
-        },
-      },
-      {
-        type: "text",
-        cursor: "text",
-        top: 25, // TODO confirm this and other style values later
-        style: {
-          fill: renderingContext.getColor("text-light"),
-          fontSize: "14px",
-          fontFamily: renderingContext.fontFamily,
-          fontWeight: "700",
-          textAlign: "center",
-          text: t`Total`.toUpperCase(),
-        },
-      },
-    ],
-  };
+  graphic.children.forEach(child => {
+    child.style.fontFamily = renderingContext.fontFamily;
+  });
+
+  graphic.children[0].style.text = formatMetric(Math.round(total));
+  graphic.children[0].style.fill = renderingContext.getColor("text-dark");
+
+  graphic.children[1].style.fill = renderingContext.getColor("text-light");
+
+  return graphic;
 }
 
 export function getPieChartOption(
@@ -74,7 +51,7 @@ export function getPieChartOption(
       ? getTotalGraphic(chartModel.total, formatMetric, renderingContext)
       : undefined,
     series: {
-      ...SUNBURST_SERIES_OPTIONS,
+      ...SUNBURST_SERIES_OPTION,
       data: chartModel.slices.map(s => ({
         value: s.value,
         name: s.key,
