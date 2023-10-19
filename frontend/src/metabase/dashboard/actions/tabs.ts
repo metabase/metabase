@@ -315,8 +315,6 @@ export const tabsReducer = createReducer<DashboardState>(
         const dashCard = state.dashcards[dashCardId];
 
         const { row, col } = getPositionForNewDashCard(
-          // @ts-expect-error: "Type instantiation is excessively deep and possibly infinite."
-          // Unfortunate problem that comes with using rtk draft state.
           getExistingDashCards(state, dashId, destTabId),
           dashCard.size_x,
           dashCard.size_y,
