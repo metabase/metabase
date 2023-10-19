@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { Switch } from "metabase/ui";
 
 import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
@@ -25,7 +26,6 @@ import {
   HistoryHeader,
   ContentSection,
   DescriptionHeader,
-  SpaceBetweenSwitch,
 } from "./DashboardInfoSidebar.styled";
 
 type DashboardAttributeType = string | number | null | boolean;
@@ -92,10 +92,11 @@ export function DashboardInfoSidebar({
       </ContentSection>
 
       <ContentSection>
-        <SpaceBetweenSwitch
+        <Switch
           disabled={!canWrite}
           label={t`Auto-apply filters`}
           labelPosition="left"
+          variant="stretch"
           size="sm"
           id={autoApplyFilterToggleId}
           checked={dashboard.auto_apply_filters}
