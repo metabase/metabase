@@ -57,11 +57,20 @@
   {})
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
-(defmethod common/to-range :default [^moment/Moment value {:keys [unit]}]
+(defn- apply-offset
+    [^moment/Moment value offset-n offset-unit]
+      (.add
+            (moment value)
+                offset-n
+                    (name offset-unit)))
+
+(defmethod common/to-range :default [^moment/Moment value {:keys [n unit]}]
   (let [^moment/Moment c1 (.clone value)
         ^moment/Moment c2 (.clone value)]
     [(.startOf c1 (name unit))
-     (.endOf   c2 (name unit))]))
+     (cond-> c2
+       (> n 1) (.add (dec n) (name unit))
+       :always ^moment/Moment (.endOf (name unit)))]))
 
 ;; NB: Only the :default for to-range is needed in CLJS, since Moment's startOf and endOf methods are doing the work.
 
@@ -223,10 +232,10 @@
             year-matches? (= (.format lhs "YYYY") (.format rhs "YYYY"))
             month-matches? (= (.format lhs "MMM") (.format rhs "MMM"))
             day-matches? (= (.format lhs "D") (.format rhs "D"))
-            hour-matches? (= (.format lhs "H") (.format rhs "H"))
+            hour-matches? (= (.format lhs "HH") (.format rhs "HH"))
             [lhs-fmt rhs-fmt] (cond
                                 (and year-matches? month-matches? day-matches? hour-matches?)
-                                ["MMM D, YYYY, h:mm" "mm A"]
+                                ["MMM D, YYYY, h:mm A " " h:mm A"]
 
                                 (and year-matches? month-matches? day-matches?)
                                 ["MMM D, YYYY, h:mm A " " h:mm A"]
@@ -256,3 +265,22 @@
 
       :else
       (default-format))))
+
+(defn format-relative-date-range
+  "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
+  [n unit offset-n offset-unit {:keys [include-current]}]
+  (let [offset-now (cond-> (now)
+                     (neg? n) (apply-offset n unit)
+                     (and (pos? n) (not include-current)) (apply-offset 1 unit)
+                     (and offset-n offset-unit) (apply-offset offset-n offset-unit))
+        pos-n (cond-> (abs n)
+                include-current inc)
+        date-ranges (map #(.format % (if (#{:hour :minute} unit) "YYYY-MM-DDTHH:mm" "YYYY-MM-DD"))
+                         (common/to-range offset-now
+                                          {:unit unit
+                                           :n pos-n
+                                           :offset-n offset-n
+                                           :offset-unit offset-unit}))]
+    (apply format-diff date-ranges)))

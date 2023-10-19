@@ -646,7 +646,7 @@
 
 (defmulti datetime-diff
   "Helper function for ->rvalue for `datetime-diff` clauses."
-  {:arglists '([x y unit])}
+  {:added "0.46.0" :arglists '([x y unit])}
   (fn [_ _ unit] unit))
 
 (defmethod datetime-diff :year
@@ -705,7 +705,7 @@
 (defmulti compile-filter
   "Compile an mbql filter clause to datastructures suitable to query mongo. Note this is not the whole query but just
   compiling the \"where\" clause equivalent."
-  {:arglists '([clause])}
+  {:added "0.39.0" :arglists '([clause])}
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between

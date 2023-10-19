@@ -31,7 +31,7 @@
   This is actually ultimately used to format any name that comes back
   from [[metabase.test.data.sql/qualified-name-components]] -- so if you include the Database name there, it will get
   formatted by this as well."
-  {:arglists '([driver table-or-field-name])}
+  {:changelog-test/ignore true :added "0.44.0" :arglists '([driver table-or-field-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -47,7 +47,7 @@
   - [false :persist.check/create-table]
   - [false :persist.check/read-table]
   - [false :persist.check/delete-table]"
-  {:arglists '([database])}
+  {:changelog-test/ignore true :added "0.44.0" :arglists '([database])}
   (fn [database] (driver/dispatch-on-initialized-driver (:engine database)))
   :hierarchy #'driver/hierarchy)
 
@@ -90,12 +90,12 @@
   database. Assumes that the destination schema is populated and permissions are correct. This should all be true
   if `(driver/database-supports engine :persisted-models database)` returns true. Returns a map with :state that
   is :success or :error. If :state is :error, includes a key :error with a string message."
-  {:arglists '([driver database definition dataset-query])}
+  {:changelog-test/ignore true :added "0.44.0" :arglists '([driver database definition dataset-query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti unpersist!
   "Unpersist a persisted model. Responsible for removing the persisted table."
-  {:arglists '([driver database persisted-info])}
+  {:changelog-test/ignore true :added "0.44.0" :arglists '([driver database persisted-info])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

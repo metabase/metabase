@@ -209,7 +209,7 @@
                                        :transient_filters))]
       (if (second child-dashboards)
         (->> child-dashboards
-             (map-indexed (fn [idx {tab-name :name tab-cards :ordered_cards}]
+             (map-indexed (fn [idx {tab-name :name tab-cards :dashcards}]
                             ;; id starts at 0. want our temporary ids to start at -1, -2, ...
                             (let [tab-id (dec (- idx))]
                               {:tab {:id       tab-id
@@ -221,16 +221,16 @@
                                     (add-source-model-link model tab-cards))})))
              (reduce (fn [dashboard {:keys [tab dash-cards]}]
                        (-> dashboard
-                           (update :ordered_cards into dash-cards)
+                           (update :dashcards into dash-cards)
                            (update :ordered_tabs conj tab)))
                      (merge
                       seed-dashboard
-                      {:ordered_cards []
+                      {:dashcards []
                        :ordered_tabs  []})))
         (update seed-dashboard
-                :ordered_cards (fn [cards] (add-source-model-link model cards)))))
-    {:name          (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
-     :ordered_cards (add-source-model-link
+                :dashcards (fn [cards] (add-source-model-link model cards)))))
+    {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)
+     :dashcards (add-source-model-link
                      model
                      [{:row                    0
                        :col                    0

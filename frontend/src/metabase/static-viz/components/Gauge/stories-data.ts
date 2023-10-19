@@ -1,4 +1,6 @@
-export const GAUGE_CHART_DEFAULT_OPTIONS = {
+import type { GaugeContainerProps } from "metabase/static-viz/components/Gauge/GaugeContainer";
+
+export const DEFAULT: Omit<GaugeContainerProps, "getColor"> = {
   card: {
     visualization_settings: {
       "gauge.segments": [
@@ -28,7 +30,7 @@ export const GAUGE_CHART_DEFAULT_OPTIONS = {
   },
 };
 
-export const GAUGE_CHART_WITH_COLUMN_SETTINGS_OPTIONS = {
+export const WITH_FORMATTING: Omit<GaugeContainerProps, "getColor"> = {
   card: {
     visualization_settings: {
       "gauge.segments": [

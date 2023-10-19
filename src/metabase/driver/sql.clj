@@ -72,7 +72,7 @@
 
 (defmulti set-role-statement
   "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
-  {:arglists '([driver role])}
+  {:added "0.47.0" :arglists '([driver role])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -83,7 +83,7 @@
 (defmulti default-database-role
   "The name of the default role for a given database, used for queries that do not have custom user
   impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
-  {:arglists '(^String [driver database])}
+  {:added "0.47.0" :arglists '(^String [driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

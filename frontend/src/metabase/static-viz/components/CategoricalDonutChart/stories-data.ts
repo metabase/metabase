@@ -1,6 +1,4 @@
-export const CATEGORICAL_DONUT_CHART_TYPE = "categorical/donut";
-
-export const CATEGORICAL_DONUT_CHART_DEFAULT_OPTIONS = {
+export const DEFAULT = {
   data: [
     ["donut", 2000],
     ["cronut", 3100],

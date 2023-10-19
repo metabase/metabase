@@ -2,6 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Questions from "metabase/entities/questions";
+import { setUIControls } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
@@ -33,17 +35,18 @@ interface EntityLoaderProps {
 
 type NotebookProps = NotebookOwnProps & EntityLoaderProps;
 
-const Notebook = ({ className, ...props }: NotebookProps) => {
+const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   const {
     question,
     isDirty,
     isRunnable,
     isResultDirty,
     hasVisualizeButton = true,
-    updateQuestion,
     runQuestionQuery,
     setQueryBuilderMode,
   } = props;
+
+  const dispatch = useDispatch();
 
   async function cleanupQuestion() {
     // Converting a query to MLv2 and back performs a clean-up
@@ -76,9 +79,14 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     }
   }
 
+  const handleUpdateQuestion = (question: Question): Promise<void> => {
+    dispatch(setUIControls({ isModifiedFromNotebook: true }));
+    return updateQuestion(question);
+  };
+
   return (
     <NotebookRoot className={className}>
-      <NotebookSteps {...props} />
+      <NotebookSteps updateQuestion={handleUpdateQuestion} {...props} />
       {hasVisualizeButton && isRunnable && (
         <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}

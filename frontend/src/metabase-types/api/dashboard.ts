@@ -18,7 +18,7 @@ export interface Dashboard {
   name: string;
   description: string | null;
   model?: string;
-  ordered_cards: (DashboardOrderedCard | ActionDashboardCard)[];
+  dashcards: (DashboardCard | ActionDashboardCard)[];
   ordered_tabs?: DashboardOrderedTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
@@ -36,7 +36,7 @@ export interface Dashboard {
 
 export type DashCardId = number;
 
-export type BaseDashboardOrderedCard = {
+export type BaseDashboardCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id?: DashboardTabId;
@@ -61,7 +61,7 @@ export type VirtualCard = Partial<Card> & {
   display: VirtualCardDisplay;
 };
 
-export type DashboardOrderedCard = BaseDashboardOrderedCard & {
+export type DashboardCard = BaseDashboardCard & {
   card_id: CardId | null;
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
