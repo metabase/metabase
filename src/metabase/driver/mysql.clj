@@ -625,7 +625,7 @@
 (defn- offset-date-time->local-date-time
   "Remove the offset from a string datetime, returning a LocalDateTime in whatever timezone the `database` is configured
   to use. This is necessary since MySQL doesn't support timezone offsets and so we need to calculate one by hand. This
-  is used for the upload parser before, which got messy with error-handling."
+  is used for the upload parser below, which was looking messy with error-handling so it made sense to extract the logic."
   [s database]
   (let [offset-time (t/offset-date-time (str/trim s))
         zone-id     (t/zone-id (qp.timezone/results-timezone-id database))]
