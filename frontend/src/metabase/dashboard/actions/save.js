@@ -117,12 +117,16 @@ export const updateDashboardAndCards = createThunkAction(
           })),
       });
 
+      updateCardsAndTabs.then(updatedCardsAndTabs => {
+        dispatch(saveCardsAndTabs(updatedCardsAndTabs));
+      });
+
       // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
-      const [updatedCardsAndTabs] = await Promise.all([
+      await Promise.all([
         updateCardsAndTabs,
         dispatch(Dashboards.actions.update(dashboard)),
       ]);
-      dispatch(saveCardsAndTabs(updatedCardsAndTabs));
+
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
         fetchDashboard(dashboard.id, null, { preserveParameters: false }),
