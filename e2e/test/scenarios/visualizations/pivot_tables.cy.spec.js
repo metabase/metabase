@@ -1152,7 +1152,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
       },
     });
-    cy.wait("@pivotDataset");
 
     cy.findByTestId("question-row-count").should(
       "have.text",
@@ -1162,7 +1161,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.findByTestId("qb-header-action-panel").findByText("Save").click();
     modal().button("Save").click();
     cy.wait("@createCard");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
     cy.reload();
+    cy.wait("@cardPivotQuery");
 
     cy.findByTestId("question-row-count").should(
       "have.text",
