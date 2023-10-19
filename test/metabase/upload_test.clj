@@ -26,7 +26,7 @@
 (def ^:private vchar-type     ::upload/varchar-255)
 (def ^:private date-type      ::upload/date)
 (def ^:private datetime-type  ::upload/datetime)
-(def ^:private zoned-dt-type  ::upload/zoned-datetime)
+(def ^:private offset-dt-type ::upload/offset-datetime)
 (def ^:private text-type      ::upload/text)
 (def ^:private int-pk-type    ::upload/int-pk)
 (def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
@@ -59,6 +59,7 @@
 
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
+          ;; Number-related
           [["0.0"        0              float-type "."]
            ["0.0"        0              float-type ".,"]
            ["0,0"        0              float-type ",."]
@@ -115,15 +116,17 @@
            ["₿42.243646" 42.243646      float-type ".,"]
            ["-99.99¢"    -99.99         float-type ".,"]
            ["."          "."            vchar-type]
+           ;; String-related
            [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
-           ["2022-01-01"                    #t "2022-01-01"             date-type]
-           ["2022-01-01T01:00:00"           #t "2022-01-01T01:00"       datetime-type]
-           ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00"       datetime-type]
-           ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00"       datetime-type]
-           ["2022-01-01T01:00:00.00-07:00"  #t "2022-01-01T01:00-07:00" zoned-dt-type]]]
+           ;; Date-related
+           [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-01-01T01:00:00 "           #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.00 "        #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.000000000 " #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]]]
     (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
       (let [type   (upload/value->type string-value)
             parser (#'driver/upload-type->parser :h2 type)]
@@ -135,30 +138,31 @@
                  (parser string-value))))))))
 
 (deftest ^:parallel type-coalescing-test
-  (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
-                                    [bool-type     int-type      int-type]
-                                    [bool-type     date-type     vchar-type]
-                                    [bool-type     datetime-type vchar-type]
-                                    [bool-type     vchar-type    vchar-type]
-                                    [bool-type     text-type     text-type]
-                                    [int-type      bool-type     int-type]
-                                    [int-type      float-type    float-type]
-                                    [int-type      date-type     vchar-type]
-                                    [int-type      datetime-type vchar-type]
-                                    [int-type      vchar-type    vchar-type]
-                                    [int-type      text-type     text-type]
-                                    [float-type    vchar-type    vchar-type]
-                                    [float-type    text-type     text-type]
-                                    [float-type    date-type     vchar-type]
-                                    [float-type    datetime-type vchar-type]
-                                    [date-type     datetime-type datetime-type]
-                                    [date-type     vchar-type    vchar-type]
-                                    [date-type     text-type     text-type]
-                                    [datetime-type vchar-type    vchar-type]
-                                    [zoned-dt-type vchar-type    vchar-type]
-                                    [datetime-type text-type     text-type]
-                                    [zoned-dt-type text-type     text-type]
-                                    [vchar-type    text-type     text-type]]]
+  (doseq [[type-a          type-b        expected]
+          [[bool-type      bool-type     bool-type]
+           [bool-type      int-type      int-type]
+           [bool-type      date-type     vchar-type]
+           [bool-type      datetime-type vchar-type]
+           [bool-type      vchar-type    vchar-type]
+           [bool-type      text-type     text-type]
+           [int-type       bool-type     int-type]
+           [int-type       float-type    float-type]
+           [int-type       date-type     vchar-type]
+           [int-type       datetime-type vchar-type]
+           [int-type       vchar-type    vchar-type]
+           [int-type       text-type     text-type]
+           [float-type     vchar-type    vchar-type]
+           [float-type     text-type     text-type]
+           [float-type     date-type     vchar-type]
+           [float-type     datetime-type vchar-type]
+           [date-type      datetime-type datetime-type]
+           [date-type      vchar-type    vchar-type]
+           [date-type      text-type     text-type]
+           [datetime-type  vchar-type    vchar-type]
+           [offset-dt-type vchar-type    vchar-type]
+           [datetime-type  text-type     text-type]
+           [offset-dt-type text-type     text-type]
+           [vchar-type     text-type     text-type]]]
     (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
@@ -328,13 +332,13 @@
                               "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                               "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
 
-(deftest ^:parallel detect-schema-zoned-datetimes-test
+(deftest ^:parallel detect-schema-offset-datetimes-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
-      (is (= (with-ai-id {:zoned_datetime zoned-dt-type
+      (is (= (with-ai-id {:offset_datetime offset-dt-type
                           :not_datetime   vchar-type})
              (upload/detect-schema
-              (csv-file-with ["Zoned Datetime,Not Datetime"
+              (csv-file-with ["Offset Datetime,Not Datetime"
                               "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
                               "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"])))))))
 
@@ -437,7 +441,7 @@
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
             (is (some? table))))))))
 
-(deftest load-from-csv-zoned-datetime-test
+(deftest load-from-csv-offset-datetime-test
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
@@ -446,14 +450,14 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["zoned_datetime"
+           (csv-file-with ["offset_datetime"
                            "2022-01-01T01:00:00-07:00"])))
         (testing "Fields exists after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
-            (testing "Check the zoned datetime column the correct base_type"
-              (is (=? {:name      #"(?i)zoned_datetime"
+            (testing "Check the offset datetime column the correct base_type"
+              (is (=? {:name      #"(?i)offset_datetime"
                        :base_type :type/DateTimeWithLocalTZ}
                       ;; db position is 1; 0 is for the auto-inserted ID
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))

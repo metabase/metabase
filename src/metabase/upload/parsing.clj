@@ -43,7 +43,7 @@
           (throw (IllegalArgumentException.
                   (tru "{0} is not a recognizable datetime" s))))))))
 
-(defn parse-zoned-datetime
+(defn parse-offset-datetime
   "Parses a datetime (with offset)."
   [s]
   (try

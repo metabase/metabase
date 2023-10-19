@@ -583,7 +583,7 @@
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
-    ::upload/zoned-datetime           [:timestamp-with-time-zone]))
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

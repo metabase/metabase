@@ -24,6 +24,7 @@
 
 
 ;;;; <pre><code>
+;;;;
 ;;;; +------------------+
 ;;;; | Schema detection |
 ;;;; +------------------+
@@ -33,20 +34,21 @@
 ;;               |
 ;;          varchar-255┐
 ;;              / \    │
-;;             /   \   └──────────┬───────────┐
-;;            /     \             │           │
-;;         float   datetime  zoned-datetime  string-pk
-;;           |       |
-;;           |       |
+;;             /   \   └──────────┬─────────────┐
+;;            /     \             │             │
+;;         float   datetime  offset-datetime  string-pk
+;;           │       │
+;;           │       │
 ;;          int     date
 ;;         /   \
 ;;        /     \
 ;;  int-pk     boolean
-;;     |
-;;     |
+;;     │
+;;     │
 ;;   auto-
 ;; incrementing-
 ;;  int-pk
+;;
 ;; </code></pre>
 
 (def ^:private type->parent
@@ -59,7 +61,7 @@
    ::boolean                  ::int
    ::datetime                 ::varchar-255
    ::date                     ::datetime
-   ::zoned-datetime           ::varchar-255
+   ::offset-datetime          ::varchar-255
    ::string-pk                ::varchar-255})
 
 (def ^:private base-type->pk-type
@@ -93,7 +95,7 @@
        (catch Exception _
          false)))
 
-(defn- zoned-datetime-string? [s]
+(defn- offset-datetime-string? [s]
   (try (t/offset-date-time s)
        true
        (catch Exception _
@@ -140,7 +142,7 @@
     - `::varchar-255`
     - `::date`
     - `::datetime`
-    - `::zoned-datetime`
+    - `::offset-datetime`
     - `::text` (the catch-all type)
 
   NB: There are currently the following gotchas:
@@ -152,7 +154,7 @@
     (cond
       (str/blank? value)                                      nil
       (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-      (zoned-datetime-string? value)                          ::zoned-datetime
+      (offset-datetime-string? value)                         ::offset-datetime
       (datetime-string? value)                                ::datetime
       (date-string? value)                                    ::date
       (re-matches (int-regex number-separators) value)        ::int

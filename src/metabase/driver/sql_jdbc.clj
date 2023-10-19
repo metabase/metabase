@@ -181,7 +181,6 @@
   [_ _]
   identity)
 
-
 (defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/text]
   [_ _]
   identity)
@@ -224,8 +223,8 @@
    upload-parsing/parse-datetime
    str/trim))
 
-(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/zoned-datetime]
+(defmethod driver/upload-type->parser [:sql-jdbc :metabase.upload/offset-datetime]
   [_ _]
   (comp
-   upload-parsing/parse-zoned-datetime
+   upload-parsing/parse-offset-datetime
    str/trim))

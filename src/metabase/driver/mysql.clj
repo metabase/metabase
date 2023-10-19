@@ -532,7 +532,7 @@
 ;;
 ;; TIMEZONE FIXME — not 100% sure this behavior makes sense
 ;;
-;; NOTE: this `zone-id` logic is also used below in [[driver/upload-type->parser]] for zoned datetimes
+;; NOTE: this `zone-id` logic is also used below in [[driver/upload-type->parser]] for offset datetimes
 (defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
   [driver ^java.sql.PreparedStatement ps ^Integer i t]
   (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
@@ -620,7 +620,7 @@
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
-    ::upload/zoned-datetime           [:timestamp]))
+    ::upload/offset-datetime          [:timestamp]))
 
 (defn- offset-date-time->local-date-time
   "Remove the offset from a string datetime, returning a LocalDateTime in whatever timezone the `database` is configured
@@ -631,7 +631,7 @@
         zone-id     (t/zone-id (qp.timezone/results-timezone-id database))]
     (t/local-date-time offset-time zone-id )))
 
-(defmethod driver/upload-type->parser [:mysql :metabase.upload/zoned-datetime]
+(defmethod driver/upload-type->parser [:mysql ::upload/offset-datetime]
   [_ _]
   (comp
    (fn [s]
