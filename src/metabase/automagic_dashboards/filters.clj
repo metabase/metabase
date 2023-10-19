@@ -137,7 +137,7 @@
         (add-filters dashboard max-filters)))
   ([dashboard dimensions max-filters]
    (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
-                                                        (:ordered_cards dashboard))))]
+                                                        (:dashcards dashboard))))]
                (->> (t2/select Field :fk_target_field_id [:not= nil]
                                :table_id [:in table-ids])
                     field/with-targets))]
@@ -149,12 +149,12 @@
            (fn [dashboard candidate]
              (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
                    candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
-                   dashcards     (:ordered_cards dashboard)
+                   dashcards     (:dashcards dashboard)
                    dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
                ;; Only add filters that apply to all cards.
                (if (= (count dashcards) (count dashcards-new))
                  (-> dashboard
-                     (assoc :ordered_cards dashcards-new)
+                     (assoc :dashcards dashcards-new)
                      (update :parameters conj {:id   filter-id
                                                :type (filter-type candidate)
                                                :name (:display_name candidate)

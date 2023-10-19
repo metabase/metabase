@@ -1,6 +1,6 @@
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   ClickBehavior,
 } from "metabase-types/api";
 
@@ -18,7 +18,7 @@ import {
 interface ClickBehaviorOptionsProps {
   clickBehavior: ClickBehavior;
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
@@ -56,7 +56,7 @@ function ClickBehaviorOptions({
 interface ClickBehaviorSidebarMainViewProps {
   clickBehavior: ClickBehavior;
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   handleShowTypeSelector: () => void;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
