@@ -296,8 +296,13 @@ export const tabsReducer = createReducer<DashboardState>(
         const prevCards = prevDash.ordered_cards.filter(
           id => !state.dashcards[id].isRemoved,
         );
+
         prevCards.forEach((oldId, index) => {
-          state.dashcardData[newCards[index].id] = state.dashcardData[oldId];
+          const prevDashcardData = state.dashcardData[oldId];
+
+          if (prevDashcardData) {
+            state.dashcardData[newCards[index].id] = prevDashcardData;
+          }
         });
 
         // 2. Re-select the currently selected tab with its real id
