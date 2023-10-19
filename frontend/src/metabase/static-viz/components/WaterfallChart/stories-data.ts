@@ -1,6 +1,7 @@
-export const WATERFALL_CHART_TYPE = "waterfall";
+import { color } from "metabase/lib/colors";
 
-export const TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS = {
+export const TIMESERIES = {
+  getColor: color,
   data: [
     ["2020-10-20", 20],
     ["2020-10-21", 20],
@@ -22,7 +23,8 @@ export const TIME_SERIES_WATERFALL_CHART_DEFAULT_OPTIONS = {
   type: "timeseries",
 };
 
-export const CATEGORICAL_WATERFALL_CHART_DEFAULT_OPTIONS = {
+export const CATEGORICAL = {
+  getColor: color,
   data: [
     ["Stage 1", 800],
     ["Stage 2", 400],

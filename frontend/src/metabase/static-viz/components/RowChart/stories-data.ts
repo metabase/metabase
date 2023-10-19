@@ -1,6 +1,6 @@
-export const ROW_CHART_TYPE = "row";
+import type { StaticRowChartProps } from "metabase/static-viz/components/RowChart/RowChart";
 
-export const ROW_CHART_DEFAULT_OPTIONS = {
+export const MULTIPLE_SERIES: StaticRowChartProps = {
   settings: {
     "graph.dimensions": ["CREATED_AT", "CATEGORY"],
     column_settings: {
@@ -173,4 +173,4 @@ export const ROW_CHART_DEFAULT_OPTIONS = {
     },
     insights: null,
   },
-};
+} as any;
