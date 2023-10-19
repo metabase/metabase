@@ -4,6 +4,7 @@ import {
   restore,
   saveDashboard,
   showDashboardCardActions,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
@@ -114,7 +115,9 @@ function setupDashcardAndDrillToQuestion({
       cy.findByText("Created At").click();
     });
 
-    cy.findByText("Done").click();
+    sidebar().within(() => {
+      cy.findByText("Done").click();
+    });
 
     saveDashboard();
 
