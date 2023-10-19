@@ -11,7 +11,7 @@ import ViewPill from "../ViewPill";
 import {
   FilterHeaderContainer,
   FilterHeaderButton,
-} from "../ViewHeader.styled";
+} from "./QuestionFilters.styled";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
