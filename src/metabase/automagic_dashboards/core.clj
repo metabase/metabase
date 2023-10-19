@@ -1035,66 +1035,6 @@
      :group         metric-name
      :card-name     (format "Card[%s][%s]" metric-title (first viz))}))
 
-(defn grounded-filters
-  "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
-  filter name to grounded versions of the filter."
-  [filter-templates ground-dimensions]
-  (->> filter-templates
-       (keep (fn [fltr]
-               (let [[fname {:keys [filter] :as v}] (first fltr)
-                     dims (dashboard-templates/collect-dimensions v)
-                     opts (->> (map (comp
-                                      (partial map (partial interesting/->reference :mbql))
-                                      :matches
-                                      ground-dimensions) dims)
-                               (apply math.combo/cartesian-product)
-                               (map (partial zipmap dims)))]
-                 (seq (for [opt opts
-                            :let [f
-                                  (walk/prewalk
-                                    (fn [x]
-                                      (if (and (vector? x))
-                                        (let [[ds dim-name] x]
-                                          (if (and (= "dimension" ds)
-                                                   (string? dim-name))
-                                            (opt dim-name)
-                                            x))
-                                        x))
-                                    filter)]]
-                        (assoc v :filter f :filter-name fname))))))
-       flatten))
-
-(defn generate-dashboard
-  "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
-   {template-dimensions :dimensions
-    template-metrics    :metrics
-    template-cards      :cards
-    template-filters    :filters
-    :as                 template}]
-  (let [{grounded-dimensions :dimensions
-         grounded-metrics    :metrics} (interesting/identify
-                                         base-context
-                                         {:dimension-specs template-dimensions
-                                          :metric-specs    template-metrics})
-        ;; From the template
-        card-templates              (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates (user-defined-metrics->card-templates
-                                      (affinities->viz-types card-templates grounded-dimensions)
-                                      user-defined-metrics)
-        all-cards                   (into card-templates user-defined-card-templates)
-        dashcards                   (combination/grounded-metrics->dashcards
-                                      base-context
-                                      grounded-dimensions
-                                      (grounded-filters template-filters grounded-dimensions)
-                                      all-cards
-                                      grounded-metrics)
-        template-with-user-groups   (update template :groups into (user-defined-groups user-defined-metrics))
-        empty-dashboard             (make-dashboard root template-with-user-groups)]
-    (populate/create-dashboard
-      (assoc empty-dashboard :cards dashcards)
-      :all)))
-
 (s/defn ^:private apply-dashboard-template
   "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
   (including filters and cards).
@@ -1119,6 +1059,7 @@
         available-values       {:available-dimensions available-dimensions
                                 :available-metrics    available-metrics
                                 :available-filters    available-filters}
+        _ (tap> available-values)
         ;; for now we construct affinities from cards
         affinities             (dash-template->affinities-old dashboard-template)
         ;; get the suitable matches for them
@@ -1304,6 +1245,81 @@
               (related-entities root)
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
+
+(defn grounded-filters
+  "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
+  filter name to grounded versions of the filter."
+  [filter-templates ground-dimensions]
+  (->> filter-templates
+       (keep (fn [fltr]
+               (let [[fname {:keys [filter] :as v}] (first fltr)
+                     dims (dashboard-templates/collect-dimensions v)
+                     opts (->> (map (comp
+                                      (partial map (partial interesting/->reference :mbql))
+                                      :matches
+                                      ground-dimensions) dims)
+                               (apply math.combo/cartesian-product)
+                               (map (partial zipmap dims)))]
+                 (seq (for [opt opts
+                            :let [f
+                                  (walk/prewalk
+                                    (fn [x]
+                                      (if (and (vector? x))
+                                        (let [[ds dim-name] x]
+                                          (if (and (= "dimension" ds)
+                                                   (string? dim-name))
+                                            (opt dim-name)
+                                            x))
+                                        x))
+                                    filter)]]
+                        (assoc v :filter f :filter-name fname))))))
+       flatten))
+
+(defn generate-dashboard
+  "Produce a dashboard from the base context for an item and a dashboad template."
+  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
+   {template-dimensions :dimensions
+    template-metrics    :metrics
+    template-cards      :cards
+    template-filters    :filters
+    :as                 dashboard-template}]
+  (let [{grounded-dimensions :dimensions
+         grounded-metrics    :metrics} (interesting/identify
+                                         base-context
+                                         {:dimension-specs template-dimensions
+                                          :metric-specs    template-metrics})
+        ;; From the template
+        card-templates              (interesting/normalize-seq-of-maps :card template-cards)
+        user-defined-card-templates (user-defined-metrics->card-templates
+                                      (affinities->viz-types card-templates grounded-dimensions)
+                                      user-defined-metrics)
+        all-cards                   (into card-templates user-defined-card-templates)
+        dashcards                   (combination/grounded-metrics->dashcards
+                                      base-context
+                                      grounded-dimensions
+                                      (grounded-filters template-filters grounded-dimensions)
+                                      all-cards
+                                      grounded-metrics)
+        template-with-user-groups   (update dashboard-template
+                                            :groups into (user-defined-groups user-defined-metrics))
+        empty-dashboard             (make-dashboard root template-with-user-groups)]
+    (-> (assoc empty-dashboard :cards dashcards)
+        (populate/create-dashboard :all)
+        (assoc
+          :related (related
+                     root {:available-dimensions grounded-dimensions
+                           ;; A map of named metrics to satisfiable metrics
+                           :available-metrics {}
+
+                           :available-filters {}}
+                     dashboard-template)
+          ;     :more (when (and (not= show :all)
+          ;                      (-> dashboard :cards count (> show)))
+          ;             (format "%s#show=all" url))
+          ;     :transient_filters query-filter
+          ;     :param_fields (filter-referenced-fields root query-filter)
+          :auto_apply_filters true
+          ))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."
