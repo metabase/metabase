@@ -12,7 +12,8 @@ export const SearchResultLink = ({
   leftIcon?: JSX.Element | null;
   href?: string | null;
 }) => {
-  const { isTruncated, ref: truncatedRef } = useIsTruncated();
+  const { isTruncated, ref: truncatedRef } =
+    useIsTruncated<HTMLAnchorElement>();
 
   const componentProps = href
     ? {

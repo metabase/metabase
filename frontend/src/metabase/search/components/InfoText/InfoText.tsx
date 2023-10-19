@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
@@ -22,7 +23,7 @@ import {
   LastEditedInfoTooltip,
 } from "./InfoText.styled";
 
-type InfoTextProps = {
+export type InfoTextProps = {
   result: WrappedResult;
   isCompact?: boolean;
 };
@@ -116,7 +117,7 @@ export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
 };
 
 export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
-  const { data: users = [] } = useUserListQuery();
+  const { data: users = [], isLoading } = useUserListQuery();
 
   const isUpdated =
     isNotNull(result.updated_at) && result.updated_at !== result.created_at;
@@ -149,6 +150,10 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
     },
     prefix,
   };
+
+  if (isLoading) {
+    return <Text color="text-1" data-testid="loading-text">{t`Loading…`}</Text>;
+  }
 
   return isCompact ? (
     <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>

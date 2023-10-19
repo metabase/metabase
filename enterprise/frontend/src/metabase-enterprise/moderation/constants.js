@@ -4,6 +4,10 @@ export const MODERATION_STATUS = {
 
 export const MODERATION_STATUS_ICONS = {
   verified: {
+    name: "verified",
+    color: "brand",
+  },
+  verified_filled: {
     name: "verified_filled",
     color: "brand",
   },

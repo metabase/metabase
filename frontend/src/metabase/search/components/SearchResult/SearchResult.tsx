@@ -80,7 +80,7 @@ export function SearchResult({
           <ResultTitle data-testid="search-result-item-name" order={4} truncate>
             {name}
           </ResultTitle>
-          <ModerationIcon status={moderated_status} size={14} />
+          <ModerationIcon status={moderated_status} filled size={14} />
         </Group>
         <InfoText result={result} isCompact={compact} />
       </ResultNameSection>

@@ -61,7 +61,7 @@ function LastEditInfoLabel({
       ? [timeLabel, editorLabel].filter(Boolean).join(" ")
       : null;
 
-  return (
+  return label ? (
     <Tooltip tooltip={<DateTime value={timestamp} />} isEnabled={!!timeLabel}>
       <TextButton
         size="small"
@@ -72,7 +72,7 @@ function LastEditInfoLabel({
         {t`${prefix} ${label}`}
       </TextButton>
     </Tooltip>
-  );
+  ) : null;
 }
 
 export default connect(mapStateToProps)(LastEditInfoLabel);

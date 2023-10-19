@@ -12,15 +12,17 @@ import { useRecentItemListQuery } from "metabase/common/hooks";
 import RecentItems from "metabase/entities/recent-items";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { ItemIcon } from "metabase/search/components/SearchResult";
 import {
   LoadingSection,
   ModerationIcon,
   ResultNameSection,
   ResultTitle,
   SearchResultContainer,
-} from "metabase/search/components/SearchResult/SearchResult.styled";
+  ItemIcon,
+} from "metabase/search/components/SearchResult";
 import { Group, Loader, Stack, Title, Paper } from "metabase/ui";
+import EmptyState from "metabase/components/EmptyState";
+import { EmptyStateContainer } from "../SearchResults/SearchResults.styled";
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
@@ -76,53 +78,70 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     }
   };
 
-  return (
-    <Paper withBorder className={className}>
-      {isRecentsListLoading ? (
-        <SearchLoadingSpinner />
-      ) : (
+  const getDisplayComponent = () => {
+    if (isRecentsListLoading) {
+      return <SearchLoadingSpinner />;
+    }
+
+    if (data.length === 0) {
+      return (
         <Stack spacing="md" px="sm" py="md">
           <Title order={4} px="sm">{t`Recently viewed`}</Title>
-          <Stack spacing={0}>
-            {wrappedResults.map((item, index) => {
-              const isActive = isItemActive(item);
-
-              return (
-                <SearchResultContainer
-                  ref={getRef(item)}
-                  key={getItemKey(item)}
-                  component="button"
-                  onClick={() => onContainerClick(item)}
-                  isActive={isActive}
-                  isSelected={cursorIndex === index}
-                  p="sm"
-                >
-                  <ItemIcon active={isActive} item={item} type={item.model} />
-                  <ResultNameSection justify="center" spacing="xs">
-                    <Group spacing="xs" align="center" noWrap>
-                      <ResultTitle order={4} truncate>
-                        {getItemName(item)}
-                      </ResultTitle>
-                      <ModerationIcon
-                        status={getModeratedStatus(item)}
-                        size={14}
-                      />
-                    </Group>
-                    <SearchResultLink>
-                      {getTranslatedEntityName(item.model)}
-                    </SearchResultLink>
-                  </ResultNameSection>
-                  {isItemLoading(item) && (
-                    <LoadingSection px="xs">
-                      <Loader />
-                    </LoadingSection>
-                  )}
-                </SearchResultContainer>
-              );
-            })}
-          </Stack>
+          <EmptyStateContainer>
+            <EmptyState message={t`Nothing here`} icon="folder" />
+          </EmptyStateContainer>
         </Stack>
-      )}
+      );
+    }
+
+    return (
+      <Stack spacing="md" px="sm" py="md">
+        <Title order={4} px="sm">{t`Recently viewed`}</Title>
+        <Stack spacing={0}>
+          {wrappedResults.map((item, index) => {
+            const isActive = isItemActive(item);
+
+            return (
+              <SearchResultContainer
+                ref={getRef(item)}
+                key={getItemKey(item)}
+                component="button"
+                onClick={() => onContainerClick(item)}
+                isActive={isActive}
+                isSelected={cursorIndex === index}
+                p="sm"
+              >
+                <ItemIcon active={isActive} item={item} type={item.model} />
+                <ResultNameSection justify="center" spacing="xs">
+                  <Group spacing="xs" align="center" noWrap>
+                    <ResultTitle order={4} truncate>
+                      {getItemName(item)}
+                    </ResultTitle>
+                    <ModerationIcon
+                      status={getModeratedStatus(item)}
+                      size={14}
+                    />
+                  </Group>
+                  <SearchResultLink>
+                    {getTranslatedEntityName(item.model)}
+                  </SearchResultLink>
+                </ResultNameSection>
+                {isItemLoading(item) && (
+                  <LoadingSection px="xs">
+                    <Loader />
+                  </LoadingSection>
+                )}
+              </SearchResultContainer>
+            );
+          })}
+        </Stack>
+      </Stack>
+    );
+  };
+
+  return (
+    <Paper withBorder className={className}>
+      {getDisplayComponent()}
     </Paper>
   );
 };
