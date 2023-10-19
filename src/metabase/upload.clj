@@ -150,17 +150,18 @@
        application settings
     2. 0 and 1 are assumed to be booleans, not ints."
   [value]
-  (let [number-separators (upload-parsing/get-number-separators)]
+  (let [number-separators (upload-parsing/get-number-separators)
+        trimmed-val       (str/trim value)]
     (cond
-      (str/blank? value)                                      nil
-      (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-      (offset-datetime-string? value)                         ::offset-datetime
-      (datetime-string? value)                                ::datetime
-      (date-string? value)                                    ::date
-      (re-matches (int-regex number-separators) value)        ::int
-      (re-matches (float-regex number-separators) value)      ::float
-      (re-matches #".{1,255}" value)                          ::varchar-255
-      :else                                                   ::text)))
+      (str/blank? value)                                            nil
+      (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" trimmed-val) ::boolean
+      (offset-datetime-string? trimmed-val)                         ::offset-datetime
+      (datetime-string? trimmed-val)                                ::datetime
+      (date-string? trimmed-val)                                    ::date
+      (re-matches (int-regex number-separators) trimmed-val)        ::int
+      (re-matches (float-regex number-separators) trimmed-val)      ::float
+      (re-matches #".{1,255}" value)                                ::varchar-255
+      :else                                                         ::text)))
 
 (defn- row->types
   [row]
