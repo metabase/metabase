@@ -273,6 +273,7 @@
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
+                           @api/*current-user*
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
