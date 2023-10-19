@@ -67,12 +67,13 @@ function DashCardActionButtons({
   const buttons = [];
 
   if (dashcard) {
-    buttons.push(<DashCardTabMenu dashCardId={dashcard.id} />);
+    buttons.push(<DashCardTabMenu key="tabs" dashCardId={dashcard.id} />);
   }
 
   if (supportPreviewing) {
     buttons.push(
       <DashCardActionButton
+        key="preview"
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
         aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
