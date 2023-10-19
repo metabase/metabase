@@ -683,8 +683,8 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
-   {:cards        (t2/hydrate (dashboard/dashcards id) :series)
-    :tabs (dashboard/tabs id)}))
+   {:cards (t2/hydrate (dashboard/dashcards id) :series)
+    :tabs  (dashboard/tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."

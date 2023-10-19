@@ -226,7 +226,7 @@
                      (merge
                       seed-dashboard
                       {:dashcards []
-                       :tabs  []})))
+                       :tabs      []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
     {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)

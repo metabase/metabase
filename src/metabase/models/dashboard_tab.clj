@@ -38,7 +38,7 @@
         dashcards         (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids])
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
-        tabs      (sort-by :position tabs)]
+        tabs              (sort-by :position tabs)]
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id)))))
 

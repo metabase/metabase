@@ -84,8 +84,8 @@
        :model/DashboardTab dashtab-2 {:dashboard_id (:id dashboard) :position 1}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-1)}
        DashboardCard   _         {:dashboard_id (:id dashboard) :card_id (:id card) :dashboard_tab_id (:id dashtab-2)}]
-      (is (=? {:tabs [{:id (:id dashtab-1) :position 0 :dashboard_id (:id dashboard)}
-                              {:id (:id dashtab-2) :position 1 :dashboard_id (:id dashboard)}]}
+      (is (=? {:tabs [{:id (:id dashtab-1), :position 0, :dashboard_id (:id dashboard)}
+                      {:id (:id dashtab-2), :position 1, :dashboard_id (:id dashboard)}]}
               (t2/hydrate dashboard :tabs))))))
 
 (deftest hydrate-tabs-card-test

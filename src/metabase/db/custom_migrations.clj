@@ -354,9 +354,9 @@
 (defn- update-card-row-on-downgrade-for-dashboard-tab
   [dashboard-id]
   (let [tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
-                                          :from      [:report_dashboardcard]
-                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
-                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+                                  :from      [:report_dashboardcard]
+                                  :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                  :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
                                (group-by :tab_position)
                                ;; sort by tab position
                                (sort-by first))

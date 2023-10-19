@@ -549,7 +549,7 @@
                (t2/hydrate :tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :dashcards         #(mapv extract-dashcard %))
-        (update :tabs      #(mapv extract-dashtab %))
+        (update :tabs              #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
