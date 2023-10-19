@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.db.data-migrations]
    [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
@@ -17,7 +16,6 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.models/keep-me
-         metabase.db.data-migrations/keep-me
          metabase.models.revision-test/keep-me)
 
 (def ^:private entities-external-name
@@ -34,8 +32,7 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/DataMigrations
-    :model/HTTPAction
+  #{:model/HTTPAction
     :model/ImplicitAction
     :model/QueryAction
     :model/Activity

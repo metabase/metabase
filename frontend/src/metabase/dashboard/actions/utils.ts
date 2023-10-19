@@ -1,16 +1,16 @@
 import _ from "underscore";
 
-import type { Dashboard, DashboardOrderedCard } from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 export function hasDashboardChanged(
   dashboard: Dashboard,
   dashboardBeforeEditing: Dashboard,
 ) {
   return !_.isEqual(
-    { ...dashboard, ordered_cards: dashboard.ordered_cards.length },
+    { ...dashboard, dashcards: dashboard.dashcards.length },
     {
       ...dashboardBeforeEditing,
-      ordered_cards: dashboardBeforeEditing.ordered_cards.length,
+      dashcards: dashboardBeforeEditing.dashcards.length,
     },
   );
 }
@@ -18,8 +18,8 @@ export function hasDashboardChanged(
 // sometimes the cards objects change order but all the cards themselves are the same
 // this should not trigger a save
 export function haveDashboardCardsChanged(
-  newCards: DashboardOrderedCard[],
-  oldCards: DashboardOrderedCard[],
+  newCards: DashboardCard[],
+  oldCards: DashboardCard[],
 ) {
   return (
     !newCards.every(newCard =>

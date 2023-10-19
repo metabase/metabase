@@ -10,6 +10,7 @@ import {
 } from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
 import * as ML_Urls from "metabase-lib/urls";
+import { isDate } from "metabase-lib/types/utils/isa";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);
@@ -100,7 +101,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
       target: target.dimension,
       id,
       slug: id,
-      type: getTypeForSource(source, extraData),
+      type: getTypeForSource(source, data, extraData),
     }))
     .value();
 
@@ -166,12 +167,18 @@ function getParameterValuesBySlug(
     .value();
 }
 
-function getTypeForSource(source, extraData) {
+function getTypeForSource(source, data, extraData) {
   if (source.type === "parameter") {
     const parameters = getIn(extraData, ["dashboard", "parameters"]) || [];
     const { type = "text" } = parameters.find(p => p.id === source.id) || {};
     return type;
   }
+
+  const datum = data[source.type][source.id.toLowerCase()] || [];
+  if (datum.column && isDate(datum.column)) {
+    return "date";
+  }
+
   return "text";
 }
 

@@ -5,6 +5,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
+   [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
    #?@(:clj ([metabase.util.malli.fn :as mu.fn])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
@@ -95,3 +96,130 @@
                  [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]
                               [:asc {} [:field {} (meta/id :orders :id)]]]}]}
                 (lib/drill-thru query -1 drill :desc)))))))
+
+(deftest ^:parallel returns-sort-test-1
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "ID"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-2
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "USER_ID"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-3
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "TOTAL"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-4
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/sort
+    :click-type   :header
+    :query-type   :unaggregated
+    :column-name  "TOTAL"
+    :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
+                      (lib/order-by (meta/field-metadata :orders :total) :desc))
+    :expected     {:type :drill-thru/sort, :sort-directions [:asc]}}))
+
+(deftest ^:parallel returns-sort-test-5
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :unaggregated
+    :column-name "CREATED_AT"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-6
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/sort
+    :click-type   :header
+    :query-type   :unaggregated
+    :column-name  "CREATED_AT"
+    :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                      (lib/order-by (meta/field-metadata :orders :created-at) :asc))
+    :expected     {:type :drill-thru/sort, :sort-directions [:desc]}}))
+
+(deftest ^:parallel returns-sort-test-7
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :aggregated
+    :column-name "CREATED_AT"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-8
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :aggregated
+    :column-name "PRODUCT_ID"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-9
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :aggregated
+    :column-name "count"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-10
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/sort
+    :click-type   :header
+    :query-type   :aggregated
+    :column-name  "count"
+    :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                      (lib/order-by (meta/field-metadata :orders :created-at) :asc))
+    :expected     {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-11
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type  :drill-thru/sort
+    :click-type  :header
+    :query-type  :aggregated
+    :column-name "max"
+    :expected    {:type :drill-thru/sort, :sort-directions [:asc :desc]}}))
+
+(deftest ^:parallel returns-sort-test-12
+  (lib.drill-thru.tu/test-returns-drill
+   {:drill-type   :drill-thru/sort
+    :click-type   :header
+    :query-type   :aggregated
+    :column-name  "CREATED_AT"
+    :custom-query (->
+                   (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                   (lib/order-by (meta/field-metadata :orders :created-at) :asc))
+    :expected     {:type :drill-thru/sort, :sort-directions [:desc]}}))
+
+(deftest ^:parallel custom-column-test
+  (testing "should support sorting for custom column without table relation (metabase#34499)"
+    (let [query (as-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query]) query
+                  (lib/expression query "CustomColumn" (lib/+ 1 1))
+                  (lib/expression query "CustomTax" (lib/+ (meta/field-metadata :orders :tax) 2))
+                  (lib/aggregate query (lib/avg (lib/expression-ref query "CustomTax")))
+                  (lib/breakout query (lib/expression-ref query "CustomColumn")))
+          row   (merge (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :row])
+                       {"CustomColumn" 2
+                        "avg"          13.2})]
+      (lib.drill-thru.tu/test-drill-application
+       {:column-name    "CustomColumn"
+        :click-type     :header
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     row
+        :drill-type     :drill-thru/sort
+        :expected       {:type            :drill-thru/sort
+                         :column          {:name "CustomColumn"}
+                         :sort-directions [:asc :desc]}
+        :expected-query {:stages [{:order-by [[:asc {} [:expression {} "CustomColumn"]]]}]}}))))

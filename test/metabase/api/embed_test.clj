@@ -152,7 +152,7 @@
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:auto_apply_filters true, :description nil, :parameters [], :ordered_cards [], :ordered_tabs [],
+  {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :ordered_tabs [],
    :param_values nil, :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
@@ -556,7 +556,7 @@
                                                                :text         "Text card with variable: {{foo}}"}}]
         (is (= "Text card with variable: bar"
                (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}}))
-                   :ordered_cards
+                   :dashcards
                    first
                    :visualization_settings
                    :text)))))))

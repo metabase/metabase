@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.summarize-column
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
@@ -16,7 +17,9 @@
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
-             (not (lib.types.isa/structured? column)))
+             (not (lib.types.isa/structured? column))
+             (not= (:lib/source column) :source/aggregations)
+             (not (lib.breakout/breakout-column? query stage-number column)))
     ;; I'm not really super clear on how the FE is supposed to be able to display these.
     (let [aggregation-ops (concat [:distinct]
                                   (when (lib.types.isa/summable? column)

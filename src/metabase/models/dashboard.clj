@@ -165,8 +165,8 @@
   [dashboard-or-id]
   (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
-(mi/define-simple-hydration-method ordered-cards
-  :ordered_cards
+(mi/define-simple-hydration-method dashcards
+  :dashcards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
   (t2/select DashboardCard
@@ -217,7 +217,7 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-      (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
+      (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
                            (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
       (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (ordered-tabs dashboard)))))
@@ -341,8 +341,8 @@
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
   (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
-                 (t2/hydrate [:ordered_cards :card]))]
-    (params/dashcards->param-field-ids (:ordered_cards dash))))
+                 (t2/hydrate [:dashcards :card]))]
+    (params/dashcards->param-field-ids (:dashcards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
   "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
@@ -374,7 +374,7 @@
 (def ^:private DashboardWithSeriesAndCard
   [:map
    [:id ms/PositiveInt]
-   [:ordered_cards [:sequential [:map
+   [:dashcards [:sequential [:map
                                  [:card_id {:optional true} [:maybe ms/PositiveInt]]
                                  [:card {:optional true} [:maybe [:map
                                                                   [:id ms/PositiveInt]]]]]]]])
@@ -387,7 +387,7 @@
   {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
-  (let [old-dashcards    (:ordered_cards dashboard)
+  (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
         new-dashcard-ids (set (map :id new-dashcards))
@@ -444,7 +444,7 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [{dashcards      :ordered_cards
+  (let [{dashcards      :dashcards
          tabs           :ordered_tabs
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
@@ -455,7 +455,7 @@
         dashboard  (first (t2/insert-returning-instances!
                             :model/Dashboard
                             (-> dashboard
-                                (dissoc :ordered_cards :ordered_tabs :rule :related
+                                (dissoc :dashcards :ordered_tabs :rule :related
                                         :transient_name :transient_filters :param_fields :more)
                                 (assoc :description description
                                        :collection_id (:id collection)
@@ -486,10 +486,10 @@
 
 (mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
-  (let [dashboard           (t2/hydrate dashboard [:ordered_cards :card])
+  (let [dashboard           (t2/hydrate dashboard [:dashcards :card])
         param-key->mappings (apply
                              merge-with set/union
-                             (for [dashcard (:ordered_cards dashboard)
+                             (for [dashcard (:dashcards dashboard)
                                    param    (:parameter_mappings dashcard)]
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
@@ -523,7 +523,7 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(t2/hydrate % :ordered_cards))
+  (eduction (map #(t2/hydrate % :dashcards))
             (serdes/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
@@ -543,12 +543,12 @@
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
   (let [dash (cond-> dash
-               (nil? (:ordered_cards dash))
-               (t2/hydrate :ordered_cards)
+               (nil? (:dashcards dash))
+               (t2/hydrate :dashcards)
                (nil? (:ordered_tabs dash))
                (t2/hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
-        (update :ordered_cards     #(mapv extract-dashcard %))
+        (update :dashcards         #(mapv extract-dashcard %))
         (update :ordered_tabs      #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
@@ -559,7 +559,7 @@
   [dash]
   (-> dash
       serdes/load-xform-basics
-      ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
+      ;; Deliberately not doing anything to :dashcards - they get handled by load-insert! and load-update! below.
       (update :collection_id     serdes/*import-fk* Collection)
       (update :parameters        serdes/import-parameters)
       (update :creator_id        serdes/*import-user*)
@@ -582,11 +582,11 @@
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards :ordered_tabs) maybe-local)]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :ordered_tabs) maybe-local)]
     (doseq [tab (:ordered_tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
-    (doseq [dashcard (:ordered_cards ingested)]
+    (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
@@ -599,8 +599,8 @@
        set))
 
 (defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id ordered_cards parameters]}]
-  (->> (map serdes-deps-dashcard ordered_cards)
+  [{:keys [collection_id dashcards parameters]}]
+  (->> (map serdes-deps-dashcard dashcards)
        (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))

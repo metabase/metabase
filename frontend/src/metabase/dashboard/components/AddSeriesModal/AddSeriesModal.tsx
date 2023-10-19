@@ -6,7 +6,7 @@ import type {
   Card,
   CardId,
   DashCardId,
-  DashboardOrderedCard,
+  DashboardCard,
   Dataset,
 } from "metabase-types/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -23,11 +23,11 @@ import { QuestionList } from "./QuestionList";
 const CAN_REMOVE_SERIES = (seriesIndex: number) => seriesIndex > 0;
 
 export interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
   fetchCardData: (
     card: Card,
-    dashcard: DashboardOrderedCard,
+    dashcard: DashboardCard,
     options: {
       clearCache?: boolean;
       ignoreCache?: boolean;
@@ -36,7 +36,7 @@ export interface Props {
   ) => Promise<unknown>;
   setDashCardAttributes: (options: {
     id: DashCardId;
-    attributes: Partial<DashboardOrderedCard>;
+    attributes: Partial<DashboardCard>;
   }) => void;
   onClose: () => void;
 }
@@ -44,7 +44,7 @@ export interface Props {
 interface State {
   error: unknown;
   isLoading: boolean;
-  series: NonNullable<DashboardOrderedCard["series"]>;
+  series: NonNullable<DashboardCard["series"]>;
 }
 
 export class AddSeriesModal extends Component<Props, State> {
