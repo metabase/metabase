@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { DashboardOrderedTab } from "metabase-types/api";
 import {
   createMockDashboard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
 } from "metabase-types/api/mocks";
 import {
   createMockDashboardState,
@@ -16,10 +16,10 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { DashCardTabMenu } from "./DashCardTabMenu";
 
-const DASHCARD = createMockDashboardOrderedCard();
+const DASHCARD = createMockDashboardCard();
 
 const TEST_DASHBOARD = createMockDashboard({
-  ordered_cards: [DASHCARD],
+  dashcards: [DASHCARD],
 });
 
 const TAB_1 = getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" });
@@ -42,7 +42,7 @@ const setup = ({
     dashboards: {
       [TEST_DASHBOARD.id]: {
         ...TEST_DASHBOARD,
-        ordered_cards: TEST_DASHBOARD.ordered_cards.map(c => c.id),
+        dashcards: TEST_DASHBOARD.dashcards.map(c => c.id),
         ordered_tabs: tabs,
       },
     },

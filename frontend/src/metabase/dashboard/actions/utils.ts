@@ -15,7 +15,7 @@ export function getExistingDashCards(
 ) {
   const { dashboards, dashcards } = dashboardState;
   const dashboard = dashboards[dashId];
-  return dashboard.ordered_cards
+  return dashboard.dashcards
     .map(id => dashcards[id])
     .filter(dc => {
       if (dc.isRemoved) {
