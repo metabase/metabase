@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Flex, Tooltip } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 
@@ -9,6 +9,7 @@ import { color } from "metabase/lib/colors";
 import type { QueryBuilderMode } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type Filter from "metabase-lib/queries/structured/Filter";
 
 import ViewPill from "../ViewPill";
 import type { ViewPillProps } from "../ViewPill";
@@ -40,7 +41,7 @@ export function FilterHeaderToggle({
   const filters = query.topLevelFilters();
   return (
     <div className={className}>
-      <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
+      <Tooltip label={expanded ? t`Hide filters` : t`Show filters`}>
         <FilterHeaderButton
           small
           icon="filter"
@@ -80,33 +81,55 @@ export function FilterHeader({
 
   return (
     <FilterHeaderContainer data-testid="qb-filters-panel">
-      <div className="flex flex-wrap align-center">
+      <Flex align="center" wrap="wrap">
         {filters.map((filter, index) => (
-          <PopoverWithTrigger
+          <FilterHeaderPopover
             key={index}
-            triggerElement={
-              <FilterPill
-                onRemove={() => onQueryChange(filter.remove().rootQuery())}
-              >
-                {filter.displayName()}
-              </FilterPill>
-            }
-            triggerClasses="flex flex-no-shrink align-center mr1 mb1"
-            sizeToFit
-          >
-            <FilterPopover
-              isTopLevel
-              query={query}
-              filter={filter}
-              onChangeFilter={newFilter =>
-                onQueryChange(newFilter.replace().rootQuery())
-              }
-              className="scroll-y"
-            />
-          </PopoverWithTrigger>
+            query={query}
+            filter={filter}
+            onQueryChange={onQueryChange}
+          />
         ))}
-      </div>
+      </Flex>
     </FilterHeaderContainer>
+  );
+}
+
+interface FilterHeaderPopoverProps {
+  query: StructuredQuery;
+  filter: Filter;
+  onQueryChange: (query: StructuredQuery) => void;
+}
+
+function FilterHeaderPopover({
+  query,
+  filter,
+  onQueryChange,
+}: FilterHeaderPopoverProps) {
+  const handleChange = (newFilter: Filter) => {
+    onQueryChange(newFilter.replace().rootQuery());
+  };
+
+  const handleRemove = () => {
+    onQueryChange(filter.remove().rootQuery());
+  };
+
+  return (
+    <PopoverWithTrigger
+      triggerElement={
+        <FilterPill onRemove={handleRemove}>{filter.displayName()}</FilterPill>
+      }
+      triggerClasses="flex flex-no-shrink align-center mr1 mb1"
+      sizeToFit
+    >
+      <FilterPopover
+        className="scroll-y"
+        query={query}
+        filter={filter}
+        isTopLevel
+        onChangeFilter={handleChange}
+      />
+    </PopoverWithTrigger>
   );
 }
 

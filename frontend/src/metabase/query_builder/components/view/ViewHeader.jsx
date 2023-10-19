@@ -412,7 +412,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -460,7 +459,6 @@ function ViewTitleHeaderRightSide(props) {
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
-          onQueryChange={onQueryChange}
         />
       )}
       {FilterHeaderButton.shouldRender(props) && (
