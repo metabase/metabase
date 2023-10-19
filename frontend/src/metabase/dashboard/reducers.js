@@ -271,9 +271,7 @@ const isNavigatingBackToDashboard = handleActions(
   INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
 );
 
-/**
- * There is another place where the state is updated - `tabsReducer`
- */
+// Many of these slices are also updated by `tabsReducer` in `frontend/src/metabase/dashboard/actions/tabs.ts`
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
