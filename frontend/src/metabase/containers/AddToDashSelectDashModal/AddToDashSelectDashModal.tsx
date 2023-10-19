@@ -9,16 +9,13 @@ import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
-import {
-  useCollectionQuery,
-  useMostRecentlyViewedDashboard,
-} from "metabase/common/hooks";
+import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
-import type { Card, Collection, Dashboard } from "metabase-types/api";
+import type { Card, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
+import { useCollectionId, useMostRecentlyViewedDashboard } from "./hooks";
 
 function mapStateToProps(state: State) {
   return {
@@ -45,21 +42,11 @@ export const AddToDashSelectDashModal = ({
 
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
-  const isQuestionInPersonalCollection = (card.collection as Collection)
-    .is_personal;
-
-  function getCollectionId() {
-    if (
-      isQuestionInPersonalCollection &&
-      !mostRecentlyViewedDashboard?.collection?.is_personal
-    ) {
-      return ROOT_COLLECTION.id;
-    }
-
-    return mostRecentlyViewedDashboard?.collection_id ?? undefined;
-  }
-
-  const collectionId = getCollectionId();
+  const isQuestionInPersonalCollection = Boolean(card.collection?.is_personal);
+  const collectionId = useCollectionId({
+    isQuestionInPersonalCollection,
+    mostRecentlyViewedDashboard,
+  });
   // when collectionId is null and loading is completed, show root collection
   // as user didn't visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
