@@ -1,9 +1,11 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import { Icon } from "metabase/core/components/Icon";
+import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-export const LastEditedInfo = styled(LastEditInfoLabel)`
+export const LastEditedInfoText = styled(LastEditInfoLabel)`
   ${({ theme }) => {
     return css`
       color: ${theme.colors.text[1]};
@@ -25,3 +27,9 @@ export const LastEditedInfo = styled(LastEditInfoLabel)`
     max-width: 50%;
   }
 `;
+
+export const LastEditedInfoTooltip = styled(LastEditInfoLabel)`
+  color: ${color("white")};
+`;
+
+export const DurationIcon = styled(Icon)``;

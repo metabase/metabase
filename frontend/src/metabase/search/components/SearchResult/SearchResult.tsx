@@ -64,29 +64,31 @@ export function SearchResult({
 
   return (
     <SearchResultContainer
+      data-testid="search-result-item"
       component="button"
       onClick={handleClick}
       isActive={isActive}
       isSelected={isSelected}
       p="sm"
       w="100%"
+      aria-label={`${name} ${model}`}
     >
       <ItemIcon active={isActive} item={result} type={model} />
       <ResultNameSection justify="center" spacing="xs">
         <Group spacing="xs" align="center" noWrap>
-          <ResultTitle order={4} truncate>
+          <ResultTitle data-testid="search-result-item-name" order={4} truncate>
             {name}
           </ResultTitle>
           <ModerationIcon status={moderated_status} size={14} />
         </Group>
-        <InfoText result={result} />
+        <InfoText result={result} isCompact={compact} />
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
           <Loader />
         </LoadingSection>
       )}
-      {!compact && description && showDescription && (
+      {description && showDescription && (
         <DescriptionSection>
           <Group noWrap spacing="sm">
             <DescriptionDivider
@@ -94,7 +96,7 @@ export function SearchResult({
               color="focus.0"
               orientation="vertical"
             />
-            <Text align="left" size="sm" lineClamp={3}>
+            <Text color="text.1" align="left" size="sm" lineClamp={3}>
               {description}
             </Text>
           </Group>

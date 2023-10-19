@@ -1,4 +1,7 @@
 import { Fragment } from "react";
+import Tooltip from "metabase/core/components/Tooltip";
+import { color } from "metabase/lib/colors";
+import { getRelativeTimeAbbreviated } from "metabase/lib/time";
 import { isNotNull } from "metabase/core/utils/types";
 import type { UserListResult } from "metabase-types/api";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
@@ -8,13 +11,18 @@ import type { WrappedResult } from "metabase/search/types";
 import { Group, Box, Text } from "metabase/ui";
 import { useInfoText } from "./use-info-text";
 import type { InfoTextData } from "./use-info-text";
-import { LastEditedInfo } from "./InfoText.styled";
+import {
+  DurationIcon,
+  LastEditedInfoText,
+  LastEditedInfoTooltip,
+} from "./InfoText.styled";
 
 type InfoTextProps = {
   result: WrappedResult;
+  isCompact?: boolean;
 };
 
-export const InfoTextAssetLink = ({ result }: { result: WrappedResult }) => {
+export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
   const infoText: InfoTextData[] = useInfoText(result);
 
   const linkSeparator = (
@@ -37,7 +45,7 @@ export const InfoTextAssetLink = ({ result }: { result: WrappedResult }) => {
   );
 };
 
-export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
+export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
   const { data: users = [] } = useUserListQuery();
 
   const isUpdated =
@@ -57,28 +65,47 @@ export const InfoTextEditedInfo = ({ result }: { result: WrappedResult }) => {
 
   const user = users.find((user: UserListResult) => user.id === userId);
 
-  return (
-    <LastEditedInfo
-      item={{
-        "last-edit-info": {
-          id: user?.id,
-          email: user?.email,
-          first_name: user?.first_name,
-          last_name: user?.last_name,
-          timestamp,
-        },
-      }}
-      prefix={prefix}
-    />
+  const formattedDuration = timestamp && getRelativeTimeAbbreviated(timestamp);
+
+  const lastEditedInfoData = {
+    item: {
+      "last-edit-info": {
+        id: user?.id,
+        email: user?.email,
+        first_name: user?.first_name,
+        last_name: user?.last_name,
+        timestamp,
+      },
+    },
+    prefix,
+  };
+
+  return isCompact ? (
+    <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
+      <Group noWrap spacing={0} align="center">
+        <DurationIcon name="clock" size={13} color={color("text-medium")} />
+        <Text
+          span
+          size="sm"
+          c="text.1"
+          ml="xs"
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {formattedDuration}
+        </Text>
+      </Group>
+    </Tooltip>
+  ) : (
+    <LastEditedInfoText {...lastEditedInfoData} />
   );
 };
 
-export const InfoText = ({ result }: InfoTextProps) => (
+export const InfoText = ({ result, isCompact }: InfoTextProps) => (
   <Group noWrap spacing="xs">
     <InfoTextAssetLink result={result} />
     <Text span size="sm" mx="xs" c="text.1">
       •
     </Text>
-    <InfoTextEditedInfo result={result} />
+    <InfoTextEditedInfo result={result} isCompact={isCompact} />
   </Group>
 );

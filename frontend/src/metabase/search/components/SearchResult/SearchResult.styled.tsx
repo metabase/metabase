@@ -31,6 +31,10 @@ export const SearchResultContainer = styled(Box)<
       color: ${isSelected && theme.colors.brand[1]};
       background-color: ${isSelected && theme.colors.brand[0]};
 
+      ${ResultTitle} {
+        color: ${isSelected && theme.colors.brand[1]};
+      }
+
       &:hover {
         background-color: ${theme.colors.brand[0]};
         cursor: pointer;

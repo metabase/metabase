@@ -122,6 +122,7 @@ export const SearchResults = ({
                 <SearchResult
                   result={wrappedResult}
                   compact={true}
+                  showDescription={true}
                   isSelected={cursorIndex === index}
                   onClick={onClick}
                 />

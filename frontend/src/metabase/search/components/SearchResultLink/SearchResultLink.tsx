@@ -38,7 +38,7 @@ export const SearchResultLink = ({
 
   return (
     <Tooltip isEnabled={isOverflowing} tooltip={children}>
-      <ResultLinkWrapper spacing={0}>
+      <ResultLinkWrapper spacing="xs" noWrap>
         {leftIcon}
         <ResultLink
           {...componentProps}

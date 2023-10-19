@@ -14,6 +14,7 @@ import {
   tableRowsQuery,
 } from "metabase/lib/urls";
 
+import { Box } from "metabase/ui";
 import type TableType from "metabase-lib/metadata/Table";
 
 const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
@@ -147,7 +148,9 @@ const useCollectionResultLink = (result: WrappedResult): InfoTextData[] => {
     ? [
         {
           icon: collection.authority_level ? (
-            <CollectionAuthorityLevelIcon size={15} collection={collection} />
+            <Box ml="-1.5px" display="inherit" pos="relative" top="1px">
+              <CollectionAuthorityLevelIcon size={12} collection={collection} />
+            </Box>
           ) : null,
           link: colUrl,
           label: collectionName,

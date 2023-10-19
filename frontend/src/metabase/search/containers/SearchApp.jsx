@@ -81,7 +81,7 @@ function SearchApp({ location }) {
       <Search.ListLoader query={query} wrapped>
         {({ list, metadata }) => (
           <SearchBody direction="column" justify="center">
-            <SearchControls>
+            <SearchControls pb="lg">
               <SearchSidebar value={searchFilters} onChange={onFilterChange} />
             </SearchControls>
             <SearchResultContainer>

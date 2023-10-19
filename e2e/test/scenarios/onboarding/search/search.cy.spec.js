@@ -25,38 +25,31 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 const typeFilters = [
   {
     label: "Question",
-    filterName: "card",
-    resultInfoText: "Saved question in",
+    type: "card",
   },
   {
     label: "Dashboard",
-    filterName: "dashboard",
-    resultInfoText: "Dashboard in",
+    type: "dashboard",
   },
   {
     label: "Collection",
-    filterName: "collection",
-    resultInfoText: "Collection",
+    type: "collection",
   },
   {
     label: "Table",
-    filterName: "table",
-    resultInfoText: "Table in",
+    type: "table",
   },
   {
     label: "Database",
-    filterName: "database",
-    resultInfoText: "Database",
+    type: "database",
   },
   {
     label: "Model",
-    filterName: "dataset",
-    resultInfoText: "Model in",
+    type: "dataset",
   },
   {
     label: "Action",
-    filterName: "action",
-    resultInfoText: "for",
+    type: "action",
   },
 ];
 
@@ -163,7 +156,7 @@ describe("scenarios > search", () => {
     });
   });
   describe("accessing full page search with `Enter`", () => {
-    it("should not render full page search if user has not entered a text query ", () => {
+    it("should not render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
 
       cy.visit("/");
@@ -237,9 +230,9 @@ describe("scenarios > search", () => {
         });
       });
 
-      typeFilters.forEach(({ label, filterName, resultInfoText }) => {
+      typeFilters.forEach(({ label, type }) => {
         it(`should hydrate search with search text and ${label} filter`, () => {
-          cy.visit(`/search?q=e&type=${filterName}`);
+          cy.visit(`/search?q=e&type=${type}`);
           cy.wait("@search");
 
           getSearchBar().should("have.value", "e");
@@ -248,8 +241,11 @@ describe("scenarios > search", () => {
             cy.findByText('Results for "e"').should("exist");
           });
 
-          cy.findAllByTestId("result-link-info-text").each(result => {
-            cy.wrap(result).should("contain.text", resultInfoText);
+          const regex = new RegExp(`${type}$`);
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result)
+              .should("have.attr", "aria-label")
+              .and("match", regex);
           });
 
           cy.findByTestId("type-search-filter").within(() => {
@@ -270,17 +266,18 @@ describe("scenarios > search", () => {
             cy.findByText("Apply").click();
           });
 
-          cy.findAllByTestId("result-link-info-text").each(result => {
-            if (resultInfoText) {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            }
+          const regex = new RegExp(`${type}$`);
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result)
+              .should("have.attr", "aria-label")
+              .and("match", regex);
           });
         });
       });
 
       it("should remove type filter when `X` is clicked on search filter", () => {
-        const { label, filterName } = typeFilters[0];
-        cy.visit(`/search?q=e&type=${filterName}`);
+        const { label, type } = typeFilters[0];
+        cy.visit(`/search?q=e&type=${type}`);
         cy.wait("@search");
 
         cy.findByTestId("type-search-filter").within(() => {
@@ -292,22 +289,21 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        // Check that we're getting elements other than Questions by checking the
-        // result text and checking if there's more than one result-link-info-text text
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
-            );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
-          },
-        );
+        cy.findAllByTestId("search-result-item").then($results => {
+          const uniqueResults = new Set(
+            $results.toArray().map(el => {
+              const label = el.getAttribute("aria-label");
+              return label.split(" ").slice(-1)[0];
+            }),
+          );
+          expect(uniqueResults.size).to.be.greaterThan(1);
+        });
       });
     });
 
-    describe("created_by filter", () => {
-      beforeEach(() => {
-        // create a question from a normal and admin user, then we can query the question
+    beforeEach(() => {
+      // create a question from a normal and admin user, then we can query the question
+      describe("created_by filter", () => {
         // created by that user as an admin
         cy.signInAsNormalUser();
         cy.createQuestion(NORMAL_USER_TEST_QUESTION);
