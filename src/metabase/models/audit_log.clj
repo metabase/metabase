@@ -55,7 +55,7 @@
   [entity event-type]
   (case event-type
     :user-update               (:changes entity)
-    :user-invited              (select-keys entity [:groups :first_name :last_name :email :invite_method])
+    :user-invited              (select-keys entity [:groups :first_name :last_name :email :invite_method :sso_source])
     :password-reset-initiated  (select-keys entity [:token])
     :password-reset-successful (select-keys entity [:token])
     {}))
