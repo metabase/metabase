@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type {
-  DashboardOrderedCard,
+  DashboardCard,
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   CustomDestinationClickBehavior,
@@ -51,7 +51,7 @@ function LinkTypeOptions({
 
 interface Props {
   clickBehavior: CustomDestinationClickBehavior;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }

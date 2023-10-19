@@ -224,7 +224,7 @@
 
   If you do need to implement this method yourself, you do not need to call parent implementations. We'll take care of
   that for you."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver)
   ;; VERY IMPORTANT: Unlike all other driver multimethods, we DO NOT use the driver hierarchy for dispatch here. Why?
   ;; We do not want a driver to inherit parent drivers' implementations and have those implementations end up getting
@@ -244,7 +244,7 @@
   way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
   `lazy-loaded-driver` will create an implementation for you. Probably best if we only have one place where we set
   values for this."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
@@ -253,7 +253,7 @@
 
 (defmulti contact-info
   "The contact information for the driver"
-  {:added "0.43.0" :arglists '([driver])}
+  {:changelog-test/ignore true :added "0.43.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
@@ -281,7 +281,7 @@
   can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
   connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
   in order to suppress logging expected driver validation messages during setup."
-  {:arglists '([driver details])}
+  {:added "0.32.0" :arglists '([driver details])}
   dispatch-on-initialized-driver-safe-keys
   :hierarchy #'hierarchy)
 
@@ -289,7 +289,7 @@
   "Return a map containing information that describes the version of the DBMS. This typically includes a
   `:version` containing the (semantic) version of the DBMS as a string and potentially a `:flavor`
   specifying the flavor like `MySQL` or `MariaDB`."
-  {:arglists '([driver database])}
+  {:changelog-test/ignore true :added "0.46.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -302,7 +302,7 @@
   "Return a map containing information that describes all of the tables in a `database`, an instance of the `Database`
   model. It is expected that this function will be peformant and avoid draining meaningful resources of the database.
   Results should match the [[metabase.sync.interface/DatabaseMetadata]] schema."
-  {:arglists '([driver database])}
+  {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -311,7 +311,7 @@
   therein). `database` will be an instance of the `Database` model; and `table`, an instance of the `Table` model. It
   is expected that this function will be peformant and avoid draining meaningful resources of the database. Results
   should match the [[metabase.sync.interface/TableMetadata]] schema."
-  {:arglists '([driver database table])}
+  {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -329,7 +329,7 @@
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
   should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:arglists '([driver database table])}
+  {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -386,7 +386,7 @@
 
   Like `display-name`, lazy-loaded drivers should specify this in their plugin manifest; `lazy-loaded-driver` will
   automatically create an implementation for you."
-  {:arglists '([driver])}
+  {:added "0.32.0" :arglists '([driver])}
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
@@ -541,7 +541,7 @@
     (supports? :postgres :set-timezone) ; -> true
 
   DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
-  {:arglists '([driver feature]), :deprecated "0.47.0"}
+  {:added "0.32.0", :arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -615,7 +615,7 @@
   users to the erroneous input fields.
   Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
-  {:arglists '([this message])}
+  {:added "0.32.0" :arglists '([this message])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -637,7 +637,7 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -663,7 +663,7 @@
 
   For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
   default implementation is an identity function."
-  {:arglists '([driver query]), :style/indent 1}
+  {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -679,7 +679,7 @@
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
   release ALL related resources when this is called."
-  {:arglists '([driver database])}
+  {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -693,7 +693,7 @@
     (defn sync-in-context [driver database f]
       (with-connection [_ database]
         (f)))"
-  {:arglists '([driver database f]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver database f]), :style/indent 2}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -707,7 +707,7 @@
 
   This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
   drivers to implement it at this time."
-  {:arglists '([driver database table])}
+  {:added "0.32.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -750,7 +750,7 @@
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
   [[metabase.query-processor-test.parameters-test]] and other namespaces."
-  {:arglists '([driver inner-query])}
+  {:added "0.34.0" :arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -821,7 +821,7 @@
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.models.action]]).
   Drivers that support `:actions/custom` must implement this method."
-  {:added "0.44.0", :arglists '([driver query])}
+  {:changelog-test/ignore true, :added "0.44.0", :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -842,7 +842,7 @@
 (defmulti set-role!
   "Sets the database role used on a connection. Called prior to query execution for drivers that support connection
   impersonation (an EE-only feature)."
-  {:arglists '([driver conn role])}
+  {:added "0.47.0" :arglists '([driver conn role])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -853,7 +853,7 @@
 
 (defmulti table-name-length-limit
   "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
-  {:added "0.47.0", :arglists '([driver])}
+  {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -891,7 +891,7 @@
   - [:bigint]
   - [[:varchar 255]]
   - [:generated-always :as :identity :primary-key]"
-  {:added "0.47.0", :arglists '([driver upload-type])}
+  {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
