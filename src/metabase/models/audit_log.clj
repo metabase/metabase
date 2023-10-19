@@ -30,22 +30,6 @@
   [_entity _event-type]
   {})
 
-;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
-;; `metabase.query-processor`
-(defmethod model-details :model/Card
-  [{query :dataset_query, dataset? :dataset :as card} _event-type]
-  (let [query (when (seq query)
-                (try (qp/preprocess query)
-                     (catch Throwable e
-                       (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
-    (merge (select-keys card [:name :description])
-           {:database_id database-id
-            :table_id    table-id
-            ;; Use `model` instead of `dataset` to mirror product terminology
-            :model?      dataset?})))
-
 (defn model-name
   "Given a keyword identifier for a model, returns the name to store in the database"
   [model]
