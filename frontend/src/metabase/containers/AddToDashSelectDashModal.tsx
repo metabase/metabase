@@ -13,11 +13,11 @@ import {
   useCollectionQuery,
   useMostRecentlyViewedDashboard,
 } from "metabase/common/hooks";
-import { coerceCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
 import type { Card, Collection, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {
@@ -45,10 +45,21 @@ export const AddToDashSelectDashModal = ({
 
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
+  const isQuestionInPersonalCollection = (card.collection as Collection)
+    .is_personal;
 
-  const collectionId = mostRecentlyViewedDashboard
-    ? coerceCollectionId(mostRecentlyViewedDashboard.collection_id)
-    : undefined;
+  function getCollectionId() {
+    if (
+      isQuestionInPersonalCollection &&
+      !mostRecentlyViewedDashboard?.collection?.is_personal
+    ) {
+      return ROOT_COLLECTION.id;
+    }
+
+    return mostRecentlyViewedDashboard?.collection_id ?? undefined;
+  }
+
+  const collectionId = getCollectionId();
   // when collectionId is null and loading is completed, show root collection
   // as user didn't visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
@@ -90,9 +101,6 @@ export const AddToDashSelectDashModal = ({
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
-
-  const isQuestionInPersonalCollection = (card.collection as Collection)
-    .is_personal;
 
   return (
     <ModalContent
