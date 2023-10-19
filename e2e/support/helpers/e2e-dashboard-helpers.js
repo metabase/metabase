@@ -248,6 +248,66 @@ export function createTextCard({
   };
 }
 
+export function createHeadingCardDTO({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 24,
+  size_y = 1,
+  text = "Heading text example dto",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "heading",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "dashcard.background": false,
+      text,
+    },
+  };
+}
+
+export function createLinkCardDTO({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 1,
+  url = "https://metabase.com",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "link",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      link: {
+        url,
+      },
+    },
+    parameter_mappings: [],
+  };
+}
+
 export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
