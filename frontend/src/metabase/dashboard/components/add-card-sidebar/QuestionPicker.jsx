@@ -34,9 +34,9 @@ QuestionPicker.propTypes = {
 
 function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   const dashboard = useSelector(getDashboard);
-  const initialCollection = dashboard.collection_id;
+  const initialCollectionId = dashboard.collection.id;
   const [currentCollectionId, setCurrentCollectionId] = useState(
-    initialCollection || ROOT_COLLECTION.id,
+    initialCollectionId || ROOT_COLLECTION.id,
   );
   const [searchText, setSearchText] = useState("");
   const debouncedSearchText = useDebouncedValue(
@@ -49,7 +49,11 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
 
   const handleSearchTextChange = e => setSearchText(e.target.value);
 
-  const collections = (collection && collection.children) || [];
+  const allCollections = (collection && collection.children) || [];
+  const isDashboardInPublicCollection = !dashboard.collection.is_personal;
+  const collections = isDashboardInPublicCollection
+    ? allCollections.filter(collection => !collection.is_personal)
+    : allCollections;
 
   return (
     <QuestionPickerRoot>
