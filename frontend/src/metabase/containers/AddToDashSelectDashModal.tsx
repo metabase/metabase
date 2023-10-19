@@ -49,7 +49,7 @@ export const AddToDashSelectDashModal = ({
     mostRecentDashboardQuery.data?.collection_id,
   );
   // when collectionId is null and loading is completed, show root collection
-  // as user didnt' visit any dashboard last 24hrs
+  // as user didn't visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
     id: collectionId,
     enabled: collectionId !== undefined,
