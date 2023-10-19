@@ -31,16 +31,20 @@ export async function loadLocalization(locale) {
 // Moment.js dow range Sunday (0) - Saturday (6)
 export function updateMomentStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
-  moment.updateLocale(moment.locale(), {
-    week: { dow: startOfWeekDay },
-  });
+  if (startOfWeekDay != null) {
+    moment.updateLocale(moment.locale(), {
+      week: { dow: startOfWeekDay },
+    });
+  }
 }
 
 export function updateDayjsStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
-  dayjs.updateLocale(dayjs.locale(), {
-    week: { dow: startOfWeekDay },
-  });
+  if (startOfWeekDay != null) {
+    dayjs.updateLocale(dayjs.locale(), {
+      week: { dow: startOfWeekDay },
+    });
+  }
 }
 
 // if the start of week Setting is updated, update the moment start of week
