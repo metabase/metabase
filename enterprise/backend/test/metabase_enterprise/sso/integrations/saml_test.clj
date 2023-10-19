@@ -464,6 +464,7 @@
                 (is (= {:details  {:email      "newuser@metabase.com"
                                    :first_name "New"
                                    :last_name  "User"
+                                   :user_group_memberships [{:id 1}]
                                    :sso_source "saml"}
                         :model    "User"
                         :model_id (:id new-user)
