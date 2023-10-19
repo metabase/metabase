@@ -5,9 +5,6 @@ describe("scenarios > models > revision history", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  beforeEach(() => {
     cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
       dataset: true,
@@ -19,15 +16,15 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@modelQuery3");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/question\/3/);
+    cy.location("pathname").should("match", /^\/question\/\d+/);
     cy.get(".LineAreaBarChart");
 
     revertTo("You edited this");
-    cy.wait("@modelQuery3");
+    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
-    cy.location("pathname").should("match", /^\/model\/3/);
+    cy.location("pathname").should("match", /^\/model\/\d+/);
     cy.get(".cellData");
   });
 });

@@ -3,7 +3,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -296,8 +296,8 @@
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
-    (assoc user :has_question_and_dashboard (and (t2/exists? 'Card perms-query)
-                                                 (t2/exists? 'Dashboard perms-query)))))
+    (assoc user :has_question_and_dashboard (and (t2/exists? :model/Card perms-query)
+                                                 (t2/exists? :model/Dashboard perms-query)))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."

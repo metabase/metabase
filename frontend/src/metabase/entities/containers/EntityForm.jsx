@@ -2,9 +2,7 @@
 import { Component } from "react";
 import { t } from "ttag";
 
-import Form from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
-
 import entityType from "./EntityType";
 
 export function getForm(entityDef) {
@@ -24,12 +22,14 @@ const EForm = ({
   resumedValues,
   ...props
 }) => {
+  // custom lazy loading to prevent circular deps problem
+  const FormikForm = require("metabase/containers/FormikForm").default;
   const initialValues =
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
       : entityObject;
   return (
-    <Form
+    <FormikForm
       {...props}
       form={form}
       initialValues={{ ...initialValues, ...resumedValues }}

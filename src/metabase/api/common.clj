@@ -1,3 +1,41 @@
+;; # API Endpoints at Metabase
+;;
+;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
+;;
+;; <pre><code>
+;; (ns metabase.api.dashboard ...)
+;;
+;; (api/defendpoint GET "/"
+;;  "Get `Dashboards`. With filter option `f`..."
+;;  [f]
+;;  {f [:maybe [:enum "all" "mine" "archived"]]}
+;;  (let ...))
+;;
+;;  ; ...
+;;
+;; (api/define-routes)
+;; </code></pre>
+;;
+;; As you can see, the arguments are:
+;;
+;; * **The HTTP verb.**  (`GET`, `PUT`, `POST`, etc)
+;; * **The route.** This will automatically have `api` and the namespace prefixed to it, so in this case `"/"` is defining
+;;   the route for `/api/dashboard/`.
+;; * **A docstring.** Apart from being helpful to us, this is used for API documentation for third-party devs, so please
+;;   be thorough!
+;; * **A schema.** This uses [Malli's vector syntax](https://github.com/metosin/malli#vector-syntax). This is documented
+;;   on Malli's page, of course, but we also have some of our own schemas defined. Start by looking in
+;;   [`metabase.util.malli.schema`](#metabase.util.malli.schema)
+;; * **The parameters.** This uses Compojure's
+;;   [destructuring syntax](https://github.com/weavejester/compojure/wiki/Destructuring-Syntax) (a superset of Clojure's
+;;   normal destructuring syntax).
+;; * **The actual code for the endpoint.** The returned value could be one of several types. The Right Thing (such as
+;;   converting to JSON or setting an appropriate status code) usually happens by default. Consult
+;;   [Compojure's documentation](https://github.com/weavejester/compojure/blob/master/src/compojure/response.clj),
+;;   but it may be more instructive to look at examples in our codebase.
+;;
+;;  <hr />
+
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
@@ -18,10 +56,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [ring.middleware.multipart-params :as mp]
-   [schema.core :as schema]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
@@ -273,7 +310,7 @@
   [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
-        allowed-params  (keys arg->schema)
+        allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
         handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
@@ -332,9 +369,9 @@
 (defn- namespace->api-route-fns
   "Return a sequence of all API endpoint functions defined by `defendpoint` in a namespace."
   [nmspace]
-  (for [[symb varr] (ns-publics nmspace)
+  (for [[_symb varr] (ns-publics nmspace)
         :when       (:is-endpoint? (meta varr))]
-    symb))
+    varr))
 
 (defn- api-routes-docstring [nmspace route-fns middleware]
   (str
@@ -450,7 +487,7 @@
   (check (not (and limit (not offset))) [400 (tru "When including a limit, an offset must also be included.")])
   (check (not (and offset (not limit))) [400 (tru "When including an offset, a limit must also be included.")]))
 
-(schema/defn column-will-change? :- schema/Bool
+(mu/defn column-will-change? :- :boolean
   "Helper for PATCH-style operations to see if a column is set to change when `object-updates` (i.e., the input to the
   endpoint) is applied.
 
@@ -460,7 +497,7 @@
     (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
     (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
-  [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
+  [k :- :keyword object-before-updates :- :map object-updates :- :map]
   (boolean
    (and (contains? object-updates k)
         (not= (get object-before-updates k)
@@ -468,12 +505,12 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
-(schema/defn reconcile-position-for-collection!
+(mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
-  [collection-id :- (schema/maybe su/IntGreaterThanZero)
-   old-position  :- (schema/maybe su/IntGreaterThanZero)
-   new-position  :- (schema/maybe su/IntGreaterThanZero)]
+  [collection-id :- [:maybe ms/PositiveInt]
+   old-position  :- [:maybe ms/PositiveInt]
+   new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
                        (t2/update! model {:collection_id       collection-id
@@ -496,25 +533,25 @@
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"
-  {:collection_id       (schema/maybe su/IntGreaterThanZero)
-   :collection_position (schema/maybe su/IntGreaterThanZero)
-   schema/Any           schema/Any})
+  [:map
+   [:collection_id       [:maybe ms/PositiveInt]]
+   [:collection_position [:maybe ms/PositiveInt]]])
 
 (def ^:private ModelWithOptionalPosition
   "Intended to cover Cards/Dashboards/Pulses updates. Collection id and position are optional, if they are not
   present, they didn't change. If they are present, they might have changed and we need to compare."
-  {(schema/optional-key :collection_id)       (schema/maybe su/IntGreaterThanZero)
-   (schema/optional-key :collection_position) (schema/maybe su/IntGreaterThanZero)
-   schema/Any                                 schema/Any})
+  [:map
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
-(schema/defn maybe-reconcile-collection-position!
+(mu/defn maybe-reconcile-collection-position!
   "Generic function for working on cards/dashboards/pulses. Checks the before and after changes to see if there is any
   impact to the collection position of that model instance. If so, executes updates to fix the collection position
   that goes with the change. The 2-arg version of this function is used for a new card/dashboard/pulse (i.e. not
   updating an existing instance, but creating a new one)."
   ([new-model-data :- ModelWithPosition]
    (maybe-reconcile-collection-position! nil new-model-data))
-  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- (schema/maybe ModelWithPosition)
+  ([{old-collection-id :collection_id, old-position :collection_position, :as _before-update} :- [:maybe ModelWithPosition]
     {new-collection-id :collection_id, new-position :collection_position, :as model-updates} :- ModelWithOptionalPosition]
    (let [updated-collection? (and (contains? model-updates :collection_id)
                                   (not= old-collection-id new-collection-id))

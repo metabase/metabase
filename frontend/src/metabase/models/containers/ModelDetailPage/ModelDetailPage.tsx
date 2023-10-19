@@ -111,7 +111,9 @@ function ModelDetailPage({
     const card = model.card();
     const isModel = model.isDataset();
     if (isModel) {
-      loadMetadataForCard(card);
+      if (model.database()) {
+        loadMetadataForCard(card);
+      }
     } else {
       onChangeLocation(Urls.question(card));
     }

@@ -3,6 +3,9 @@ import {
   filterWidget,
   popover,
   visitDashboard,
+  addOrUpdateDashboardCard,
+  getDashboardCard,
+  appBar,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -329,6 +332,88 @@ describe("scenarios > dashboard > title drill", () => {
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("1");
+      });
+    });
+  });
+
+  describe("on a nested simple question with a connected dashboard parameter", () => {
+    const questionDetails = {
+      name: "GUI Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+      },
+    };
+    const baseNestedQuestionDetails = {
+      name: "Nested GUI Question",
+    };
+
+    const idFilter = { name: "ID", slug: "id", id: "f2bf003c", type: "id" };
+
+    const dashboardDetails = {
+      name: "Nested question dashboard",
+      parameters: [idFilter],
+    };
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.createQuestion(questionDetails, {
+        wrapId: true,
+        idAlias: "questionId",
+      });
+
+      cy.get("@questionId").then(questionId => {
+        const nestedQuestionDetails = {
+          ...baseNestedQuestionDetails,
+          query: {
+            "source-table": `card__${questionId}`,
+          },
+        };
+        cy.createQuestion(nestedQuestionDetails, {
+          wrapId: true,
+          idAlias: "nestedQuestionId",
+        });
+      });
+
+      cy.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboardId } }) => {
+          cy.wrap(dashboardId).as("dashboardId");
+        },
+      );
+
+      cy.then(function () {
+        addOrUpdateDashboardCard({
+          card_id: this.nestedQuestionId,
+          dashboard_id: this.dashboardId,
+          card: {
+            parameter_mappings: [
+              {
+                parameter_id: idFilter.id,
+                card_id: this.nestedQuestionId,
+                target: ["dimension", ["field", PRODUCTS.ID, null]],
+              },
+            ],
+          },
+        });
+      });
+    });
+
+    it("should lead you to a table question with filtered ID (metabase#17213)", () => {
+      cy.get("@dashboardId").then(dashboardId => {
+        const productRecordId = 3;
+        visitDashboard(dashboardId, { params: { id: productRecordId } });
+
+        getDashboardCard().findByText(baseNestedQuestionDetails.name).click();
+
+        appBar()
+          .contains(`Started from ${baseNestedQuestionDetails.name}`)
+          .should("be.visible");
+        cy.findByTestId("question-row-count")
+          .findByText("Showing 1 row")
+          .should("be.visible");
+
+        cy.findByTestId("object-detail").should("not.exist");
       });
     });
   });

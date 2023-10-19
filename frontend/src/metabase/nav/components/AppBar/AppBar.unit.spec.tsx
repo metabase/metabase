@@ -9,7 +9,7 @@ const BreadcrumbsMock = () => <div data-testid="collection-path" />;
 const QuestionLineageMock = () => <div data-testid="question-lineage" />;
 
 jest.mock("../NewItemButton", () => NewItemButtonMock);
-jest.mock("../SearchBar", () => SearchBarMock);
+jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
 jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
 jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
 

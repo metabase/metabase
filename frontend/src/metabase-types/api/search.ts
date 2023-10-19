@@ -4,19 +4,18 @@ import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
 
-export type SearchModelType =
-  | "card"
+export type EnabledSearchModelType =
   | "collection"
   | "dashboard"
+  | "card"
   | "database"
-  | "dataset"
   | "table"
-  | "indexed-entity"
-  | "pulse"
-  | "segment"
-  | "metric"
-  | "action"
-  | "snippet";
+  | "dataset"
+  | "action";
+
+export type SearchModelType =
+  | ("segment" | "metric" | "pulse" | "indexed-entity" | "snippet")
+  | EnabledSearchModelType;
 
 export interface SearchScore {
   weight: number;
@@ -62,7 +61,7 @@ export interface SearchResult {
   table_schema: string | null;
   collection_authority_level: "official" | null;
   updated_at: string;
-  moderated_status: boolean | null;
+  moderated_status: string | null;
   model_id: CardId | null;
   model_name: string | null;
   model_index_id: number | null;

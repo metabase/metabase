@@ -335,6 +335,8 @@ import variable_component from "./variable.svg?component";
 import variable_source from "./variable.svg?source";
 import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
+import verified_filled_component from "./verified_filled.svg?component";
+import verified_filled_source from "./verified_filled.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -1023,6 +1025,10 @@ export const Icons = {
     component: verified_component,
     source: verified_source,
   },
+  verified_filled: {
+    component: verified_filled_component,
+    source: verified_filled_source,
+  },
   view_archive: {
     component: view_archive_component,
     source: view_archive_source,
@@ -1055,7 +1061,7 @@ export const Icons = {
     component: number_component,
     source: number_source,
   },
-  balloons: {
+  cake: {
     component: birthday_component,
     source: birthday_source,
   },

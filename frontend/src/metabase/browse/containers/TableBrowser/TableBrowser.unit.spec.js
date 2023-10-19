@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
-import { screen, waitFor } from "@testing-library/react";
-import { renderWithProviders } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import { RELOAD_INTERVAL } from "../../constants";
 import TableBrowser from "./TableBrowser";
 
@@ -34,9 +38,6 @@ describe("TableBrowser", () => {
     // wait for the response
     const calls2 = fetchMock.calls(/\/api\/database\/1\/schema\/public/);
     expect(calls2.length).toBe(2);
-    // wait for the loading spinner to disapear
-    await waitFor(() => {
-      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-    });
+    await waitForLoaderToBeRemoved();
   });
 });

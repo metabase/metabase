@@ -10,7 +10,7 @@ import DatabaseStatus from "../../containers/DatabaseStatus";
 import FileUploadStatus from "../FileUploadStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
-const StatusListingView = () => {
+const StatusListing = () => {
   const isLoggedIn = !!useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -34,4 +34,4 @@ const StatusListingView = () => {
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StatusListingView;
+export default StatusListing;

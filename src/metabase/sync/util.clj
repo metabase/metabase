@@ -4,7 +4,7 @@
   (:require
    [clojure.math.numeric-tower :as math]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -23,7 +23,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time.temporal Temporal)))
@@ -158,8 +157,7 @@
   {:style/indent [:form]}
   [f]
   (fn []
-    (binding [qp.i/*disable-qp-logging* true
-              db/*disable-db-logging*  true]
+    (binding [qp.i/*disable-qp-logging* true]
       (f))))
 
 (defn- sync-in-context

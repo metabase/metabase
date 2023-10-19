@@ -85,6 +85,9 @@
 (def ^:private offset-part
   (str "(?:Z|(?:[+-]" time-part "))"))
 
+(def ^:private zone-offset-part-regex
+  (re-pattern (str "(?:Z|(?:[+-]" time-part "))")))
+
 (def ^:private ^:const local-date-regex
   (re-pattern (str \^ date-part \$)))
 
@@ -104,6 +107,11 @@
   [:re
    {:error/message "date string literal"}
    local-date-regex])
+
+(mr/def ::string.zone-offset
+  [:re
+   {:error/message "timezone offset string literal"}
+   zone-offset-part-regex])
 
 (mr/def ::string.time
   [:or

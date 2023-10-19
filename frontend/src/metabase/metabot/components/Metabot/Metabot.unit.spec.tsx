@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import registerVisualizations from "metabase/visualizations/register";
 import type { Card, Database } from "metabase-types/api";
 import {
   createMockCard,
@@ -25,6 +26,8 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import Metabot from "./Metabot";
+
+registerVisualizations();
 
 const PROMPT = "average orders total";
 

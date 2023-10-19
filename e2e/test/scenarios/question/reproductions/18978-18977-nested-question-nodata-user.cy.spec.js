@@ -1,3 +1,4 @@
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   appBar,
@@ -17,7 +18,7 @@ describe("11914, 18978, 18977", () => {
   it("should not display query editing controls and 'Browse Data' link", () => {
     cy.createQuestion({
       query: {
-        "source-table": "card__1",
+        "source-table": `card__${ORDERS_QUESTION_ID}`,
       },
     }).then(({ body: { id: questionId } }) => {
       cy.signIn("nodata");

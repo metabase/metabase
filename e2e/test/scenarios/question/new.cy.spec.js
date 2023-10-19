@@ -9,6 +9,8 @@ import {
   getPersonalCollectionName,
   visitCollection,
   modal,
+  setTokenFeatures,
+  describeOSS,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
@@ -33,7 +35,7 @@ describe("scenarios > question > new", () => {
     it("data selector popover should not be too small (metabase#15591)", () => {
       // Add 10 more databases
       for (let i = 0; i < 10; i++) {
-        cy.addH2SampleDatabase({ name: "Sample" + i });
+        cy.addSQLiteDatabase({ name: "Sample" + i });
       }
 
       startNewQuestion();
@@ -133,7 +135,6 @@ describe("scenarios > question > new", () => {
     it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
       cy.request("POST", "/api/collection", {
         name: "foo:bar",
-        color: "#509EE3",
         parent_id: null,
       }).then(({ body: { id: COLLECTION_ID } }) => {
         // Move question #1 ("Orders") to newly created collection
@@ -313,10 +314,11 @@ describe("scenarios > question > new", () => {
 // the data picker has different behavior if there are no models in the instance
 // the default instance image has a model in it, so we need to separately test the
 // model-less behavior
-describe("scenarios > question > new > data picker > without models", () => {
+describeOSS("scenarios > question > new > data picker > without models", () => {
   beforeEach(() => {
     restore("without-models");
     cy.signInAsAdmin();
+    setTokenFeatures("none");
   });
 
   it("can create a question from the sample database", () => {

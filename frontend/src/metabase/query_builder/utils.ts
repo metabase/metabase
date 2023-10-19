@@ -1,8 +1,10 @@
+import type { Location } from "history";
 import querystring from "querystring";
 import * as Urls from "metabase/lib/urls";
 import { serializeCardForUrl } from "metabase/lib/card";
 import type { Card } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 
 interface GetPathNameFromQueryBuilderModeOptions {
   pathname: string;
@@ -57,3 +59,43 @@ export function getURLForCardState(
   }
   return Urls.question(card, options);
 }
+
+export const isNavigationAllowed = ({
+  destination,
+  question,
+  isNewQuestion,
+}: {
+  destination: Location | undefined;
+  question: Question | undefined;
+  isNewQuestion: boolean;
+}) => {
+  /**
+   * If there is no "question" there is no reason to prevent navigation.
+   * If there is no "destination" then it's beforeunload event, which is
+   * handled by useBeforeUnload hook - no reason to duplicate its work.
+   */
+  if (!question || !destination) {
+    return true;
+  }
+
+  const { hash, pathname } = destination;
+
+  if (question.isDataset()) {
+    if (isNewQuestion) {
+      const isQueryTab = pathname === "/model/query";
+      const isMetadataTab = pathname === "/model/metadata";
+      return isQueryTab || isMetadataTab;
+    }
+
+    const isQueryTab = pathname.match(/^\/model\/.+\/query$/) !== null;
+    const isMetadataTab = pathname.match(/^\/model\/.+\/metadata$/) !== null;
+    return isQueryTab || isMetadataTab;
+  }
+
+  if (question.isNative()) {
+    const isRunningQuestion = pathname === "/question" && hash.length > 0;
+    return isRunningQuestion;
+  }
+
+  return true;
+};
