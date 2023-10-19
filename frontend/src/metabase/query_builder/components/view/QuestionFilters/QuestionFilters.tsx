@@ -1,39 +1,48 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
+
 import { color } from "metabase/lib/colors";
 
+import type { QueryBuilderMode } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
 import ViewPill from "../ViewPill";
+import type { ViewPillProps } from "../ViewPill";
 import {
   FilterHeaderContainer,
   FilterHeaderButton,
 } from "./QuestionFilters.styled";
 
-const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
+const FilterPill = (props: ViewPillProps) => (
+  <ViewPill color={color("filter")} {...props} />
+);
+
+interface FilterHeaderToggleProps {
+  className?: string;
+  question: Question;
+  expanded: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
+}
 
 export function FilterHeaderToggle({
   className,
   question,
-  onExpand,
   expanded,
+  onExpand,
   onCollapse,
-  onQueryChange,
-}) {
-  const query = question.query();
+}: FilterHeaderToggleProps) {
+  const query = question.query() as StructuredQuery;
   const filters = query.topLevelFilters();
-  if (filters.length === 0) {
-    return null;
-  }
   return (
     <div className={className}>
       <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
         <FilterHeaderButton
           small
-          rounded
           icon="filter"
           onClick={expanded ? onCollapse : onExpand}
           active={expanded}
@@ -51,12 +60,24 @@ export function FilterHeaderToggle({
   );
 }
 
-export function FilterHeader({ question, expanded, onQueryChange }) {
-  const query = question.query();
+interface FilterHeaderProps {
+  question: Question;
+  expanded: boolean;
+  onQueryChange: (query: StructuredQuery) => void;
+}
+
+export function FilterHeader({
+  question,
+  expanded,
+  onQueryChange,
+}: FilterHeaderProps) {
+  const query = question.query() as StructuredQuery;
   const filters = query.topLevelFilters();
+
   if (filters.length === 0 || !expanded) {
     return null;
   }
+
   return (
     <FilterHeaderContainer data-testid="qb-filters-panel">
       <div className="flex flex-wrap align-center">
@@ -89,11 +110,21 @@ export function FilterHeader({ question, expanded, onQueryChange }) {
   );
 }
 
-const shouldRender = ({ question, queryBuilderMode, isObjectDetail }) =>
+type RenderCheckOpts = {
+  question: Question;
+  queryBuilderMode: QueryBuilderMode;
+  isObjectDetail: boolean;
+};
+
+const shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}: RenderCheckOpts) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  question.query().topLevelFilters().length > 0 &&
+  (question.query() as StructuredQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;
