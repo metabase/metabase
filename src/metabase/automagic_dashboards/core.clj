@@ -1362,43 +1362,38 @@
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
+  [{:keys [dashboard-template show full-name query-filter url dashboard-templates-prefix] :as root}]
   (let [base-context (make-base-context root)]
-    ;; Note that once we verify this works, we can maybe just feed this template into generate-dashboard
     (if dashboard-template
-      (apply-dashboard-template base-context (dashboard-templates/get-dashboard-template dashboard-template))
-      (let [template (first (matching-dashboard-templates
-                              (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
-                              root))]
-        (generate-dashboard base-context template)))))
-
-#_
-(defn- automagic-dashboard
-  "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name query-filter url] :as root}]
-  (let [[dashboard
-         {:keys [dashboard-template-name] :as dashboard-template}
-         {:keys [available-dimensions
-                 available-metrics
-                 available-filters]}] (find-first-match-dashboard-template root)
-        show (or show max-cards)]
-    (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
-    (log/debug (trs "Dimensions bindings:\n{0}"
-                    (->> available-dimensions
-                         (m/map-vals #(update % :matches (partial map :name)))
-                         u/pprint-to-str)))
-    (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                    (->> available-metrics (m/map-vals :metric) u/pprint-to-str)
-                    (-> available-filters u/pprint-to-str)))
-    (-> dashboard
-        (populate/create-dashboard show)
-        (assoc :related (related root available-dimensions dashboard-template)
-               :more (when (and (not= show :all)
-                                (-> dashboard :cards count (> show)))
-                       (format "%s#show=all" url))
-               :transient_filters query-filter
-               :param_fields (filter-referenced-fields root query-filter)
-               :auto_apply_filters true))))
+      (let [[dashboard
+             {:keys [dashboard-template-name] :as dashboard-template}
+             {:keys [available-dimensions
+                     available-metrics
+                     available-filters]}] (apply-dashboard-template
+                                            base-context
+                                            (dashboard-templates/get-dashboard-template dashboard-template))
+            show (or show max-cards)]
+        (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
+        (log/debug (trs "Dimensions bindings:\n{0}"
+                        (->> available-dimensions
+                             (m/map-vals #(update % :matches (partial map :name)))
+                             u/pprint-to-str)))
+        (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                        (->> available-metrics (m/map-vals :metric) u/pprint-to-str)
+                        (-> available-filters u/pprint-to-str)))
+        (-> dashboard
+            (populate/create-dashboard show)
+            (assoc :related (related root available-dimensions dashboard-template)
+                   :more (when (and (not= show :all)
+                                    (-> dashboard :cards count (> show)))
+                           (format "%s#show=all" url))
+                   :transient_filters query-filter
+                   :param_fields (filter-referenced-fields root query-filter)
+                   :auto_apply_filters true))))
+    (let [template (first (matching-dashboard-templates
+                            (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
+                            root))]
+      (generate-dashboard base-context template))))
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
