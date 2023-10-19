@@ -9,23 +9,24 @@ import type {
 import type { PieChartModel } from "../model/types";
 import { SUNBURST_SERIES_OPTION, TOTAL_GRAPHIC_OPTION } from "./constants";
 
-function getTotalGraphic(
+function getTotalGraphicOption(
   total: number,
   formatMetric: Formatter,
   renderingContext: RenderingContext,
 ) {
-  const graphic = { ...TOTAL_GRAPHIC_OPTION };
+  const graphicOption = { ...TOTAL_GRAPHIC_OPTION };
 
-  graphic.children.forEach(child => {
+  graphicOption.children.forEach(child => {
     child.style.fontFamily = renderingContext.fontFamily;
   });
 
-  graphic.children[0].style.text = formatMetric(Math.round(total));
-  graphic.children[0].style.fill = renderingContext.getColor("text-dark");
+  graphicOption.children[0].style.text = formatMetric(Math.round(total));
+  graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
 
-  graphic.children[1].style.fill = renderingContext.getColor("text-light");
+  graphicOption.children[1].style.fill =
+    renderingContext.getColor("text-light");
 
-  return graphic;
+  return graphicOption;
 }
 
 export function getPieChartOption(
@@ -48,7 +49,7 @@ export function getPieChartOption(
       fontFamily: renderingContext.fontFamily,
     },
     graphic: settings["pie.show_total"]
-      ? getTotalGraphic(chartModel.total, formatMetric, renderingContext)
+      ? getTotalGraphicOption(chartModel.total, formatMetric, renderingContext)
       : undefined,
     series: {
       ...SUNBURST_SERIES_OPTION,
