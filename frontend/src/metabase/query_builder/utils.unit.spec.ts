@@ -83,12 +83,13 @@ const getModelLocations = (model: Question) => [
 ];
 
 const getStructuredQuestionLocations = (question: Question) => [
-  ...getQuestionLocations(question),
+  createMockLocation({ pathname: `/question/${question.id()}` }),
+  createMockLocation({ pathname: `/question/${question.slug()}` }),
   createMockLocation({ pathname: `/question/${question.id()}/notebook` }),
   createMockLocation({ pathname: `/question/${question.slug()}/notebook` }),
 ];
 
-const getQuestionLocations = (question: Question) => [
+const getNativeQuestionLocations = (question: Question) => [
   createMockLocation({ pathname: `/question/${question.id()}` }),
   createMockLocation({ pathname: `/question/${question.slug()}` }),
 ];
@@ -138,7 +139,7 @@ describe("isNavigationAllowed", () => {
       ...getModelLocations(structuredModelQuestion),
       ...getModelLocations(nativeModelQuestion),
       ...getStructuredQuestionLocations(structuredQuestion),
-      ...getQuestionLocations(nativeQuestion),
+      ...getNativeQuestionLocations(nativeQuestion),
       newModelQueryTabLocation,
       newModelMetadataTabLocation,
       runModelLocation,
@@ -163,7 +164,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
@@ -194,7 +195,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
@@ -242,7 +243,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
       ])("to `$pathname`", destination => {
@@ -271,7 +272,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelQueryTabLocation,
         newModelMetadataTabLocation,
         runModelLocation,
@@ -312,7 +313,7 @@ describe("isNavigationAllowed", () => {
         ...getModelLocations(structuredModelQuestion),
         ...getModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         runQuestionLocation,
       ])("to `$pathname`", destination => {
         expect(
@@ -347,7 +348,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(nativeModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {
@@ -383,7 +384,7 @@ describe("isNavigationAllowed", () => {
         anyLocation,
         ...getModelLocations(structuredModelQuestion),
         ...getStructuredQuestionLocations(structuredQuestion),
-        ...getQuestionLocations(nativeQuestion),
+        ...getNativeQuestionLocations(nativeQuestion),
         newModelMetadataTabLocation,
         newModelQueryTabLocation,
       ])("to `$pathname`", destination => {
