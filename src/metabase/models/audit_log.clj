@@ -46,10 +46,6 @@
             ;; Use `model` instead of `dataset` to mirror product terminology
             :model?      dataset?})))
 
-#_(defmethod model-details :model/Database
-  [database _event-type]
-  (select-keys database [:id :name :engine]))
-
 (defn model-name
   "Given a keyword identifier for a model, returns the name to store in the database"
   [model]
