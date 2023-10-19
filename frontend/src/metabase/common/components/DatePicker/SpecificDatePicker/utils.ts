@@ -14,13 +14,13 @@ export function getTabs(
 }
 
 export function getDefaultValue(): SpecificDatePickerValue {
-  const today = moment().startOf("date");
-  const past30Days = today.subtract(30, "day");
+  const today = moment().startOf("date").toDate();
+  const past30Days = moment(today).subtract(30, "day").toDate();
 
   return {
     type: "specific",
     operator: "between",
-    values: [past30Days.toDate(), today.toDate()],
+    values: [past30Days, today],
   };
 }
 
@@ -28,16 +28,22 @@ export function setOperator(
   value: SpecificDatePickerValue,
   operator: SpecificDatePickerOperator,
 ): SpecificDatePickerValue {
+  const [date] = value.values;
+  const past30Days = moment(date).subtract(30, "day").toDate();
+  const next30Days = moment(date).add(30, "day").toDate();
+
   switch (operator) {
     case "=":
     case "<":
       return value.operator === "between"
         ? { ...value, operator, values: [value.values[1]] }
-        : { ...value, operator, values: [value.values[0]] };
+        : { ...value, operator, values: [date] };
     case ">":
-      return { ...value, operator, values: [value.values[0]] };
+      return { ...value, operator, values: [date] };
     case "between":
-      return { ...value, operator, values: [value.values[0], value.values[0]] };
+      return value.operator === ">"
+        ? { ...value, operator, values: [date, next30Days] }
+        : { ...value, operator, values: [past30Days, date] };
   }
 }
 

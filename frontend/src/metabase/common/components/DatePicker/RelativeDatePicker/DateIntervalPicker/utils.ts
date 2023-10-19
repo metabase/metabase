@@ -1,6 +1,7 @@
 import * as Lib from "metabase-lib";
 import type { DatePickerTruncationUnit } from "../../types";
 import type { DateIntervalValue } from "../types";
+import { DEFAULT_OFFSETS } from "./constants";
 
 export function setUnit(
   value: DateIntervalValue,
@@ -12,7 +13,7 @@ export function setUnit(
 export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
   return {
     ...value,
-    offsetValue: Math.sign(value.value),
+    offsetValue: DEFAULT_OFFSETS[value.unit] * Math.sign(value.value),
     offsetUnit: value.unit,
     options: {},
   };
