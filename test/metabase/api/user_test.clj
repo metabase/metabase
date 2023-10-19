@@ -1263,6 +1263,5 @@
                     :model    "User"
                     :model_id id
                     :details  {:first_name "Johnny"
-                               :last_name "Appleseed"
-                               :id id}}
+                               :last_name "Appleseed"}}
                    (audit-log-test/event :user-update id))))))))

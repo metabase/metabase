@@ -221,7 +221,7 @@
   (future
     (when-let [{user-id      :id
                 sso-source   :sso_source
-                is-active?   :is_active}
+                is-active?   :is_active :as user}
                (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
@@ -233,10 +233,7 @@
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
-                             {:user-id api/*current-user-id*
-                              ;; Fetch hashed value of reset token as identifer
-                              :details {:id    user-id
-                                        :token (t2/select-one-fn :reset_token :model/User :id user-id)}}))))
+                             (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
@@ -288,10 +285,7 @@
           ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
           ;; Otherwise, send audit log event that a user reset their password.
           (if (:last_login user)
-            (events/publish-event! :event/password-reset-successful
-                                   {:user-id user-id
-                                    :details {:id    user-id
-                                              :token reset-token}})
+            (events/publish-event! :event/password-reset-successful (assoc user :token reset-token))
             ;; Send all the active admins an email :D
             (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
           ;; after a successful password update go ahead and offer the client a new session that they can use
