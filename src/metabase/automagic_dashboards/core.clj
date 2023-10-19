@@ -1283,7 +1283,7 @@
 
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
+  [{{:keys [show] user-defined-metrics :linked-metrics :as root} :root :as base-context}
    {template-dimensions :dimensions
     template-metrics    :metrics
     template-cards      :cards
@@ -1317,7 +1317,7 @@
                         (mapcat (comp :matches grounded-dimensions))
                         (remove (comp (singular-cell-dimensions root) id-or-name)))
           :cards dashcards)
-        (populate/create-dashboard :all)
+        (populate/create-dashboard (or show :all))
         (assoc
           :related (related
                      root grounded-dimensions
