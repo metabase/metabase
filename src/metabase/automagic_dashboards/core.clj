@@ -1281,15 +1281,6 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(grounded-filters
-  [{"Last30Days" {:filter ["time-interval" ["dimension" "CreateTimestamp"] -30 "day"], :score 100}}
-   {"Last30Days" {:filter ["time-interval" ["dimension" "CreateDate"] -30 "day"], :score 99}}
-   {"Last30Days" {:filter ["time-interval" ["dimension" "JoinTimestamp"] -30 "day"], :score 90}}
-   {"Last30Days" {:filter ["time-interval" ["dimension" "JoinDate"] -30 "day"], :score 89}}
-   {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"], :score 80}}
-   {"Last30Days" {:filter ["time-interval" ["dimension" "Date"] -30 "day"], :score 79}}]
-  {})
-
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
   [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
