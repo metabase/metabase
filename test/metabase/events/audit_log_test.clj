@@ -421,16 +421,16 @@
 (deftest user-joined-event-test
   (testing :user-joined
     ;; TODO - what's the difference between `user-login` / `user-joined`?
-    (mt/with-model-cleanup [:model/AuditLog]
-      (let [event {:user-id (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/user-joined event))))
-      (is (= {:topic       :user-joined
-              :user_id     (mt/user->id :rasta)
-              :model       "User"
-              :model_id    (mt/user->id :rasta)
-              :details     {}}
-             (event "user-joined" (mt/user->id :rasta)))))))
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (let [event (mt/fetch-user :rasta)]
+          (is (= event (events/publish-event! :event/user-joined event))))
+        (is (= {:topic       :user-joined
+                :user_id     (mt/user->id :rasta)
+                :model       "User"
+                :model_id    (mt/user->id :rasta)
+                :details     {}}
+               (event :user-joined (mt/user->id :rasta))))))))
 
 (deftest user-invited-event-test
   (testing :event/user-invited
@@ -440,7 +440,7 @@
           (is (= new-user (events/publish-event! :event/user-invited new-user)))
           (is (= {:model_id id
                   :user_id  (mt/user->id :rasta)
-                  :details  {}
+                  :details  (select-keys new-user [:first_name :last_name :email])
                   :topic    :user-invited
                   :model    "User"}
                  (event :user-invited id))))))))
