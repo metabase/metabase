@@ -12,8 +12,10 @@ import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardM
 import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
+import { getCollection } from "metabase/collections/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { useCollectionId, useMostRecentlyViewedDashboard } from "./hooks";
 
@@ -53,6 +55,14 @@ export const AddToDashSelectDashModal = ({
     id: collectionId,
     enabled: collectionId !== undefined,
   });
+
+  const [openCollectionId, setOpenCollectionId] = useState<
+    CollectionId | undefined
+  >();
+  const openCollection = useSelector(state =>
+    getCollection(state, { collectionId: openCollectionId }),
+  );
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -100,17 +110,21 @@ export const AddToDashSelectDashModal = ({
       onClose={onClose}
     >
       <DashboardPicker
+        onOpenCollectionChange={setOpenCollectionId}
         showOnlyPersonalCollections={isQuestionInPersonalCollection}
         onChange={onDashboardSelected}
         collectionId={collectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}
       />
-      <Link onClick={() => setShouldCreateDashboard(true)} to="">
-        <LinkContent>
-          <Icon name="add" className="mx1" />
-          <h4>{t`Create a new dashboard`}</h4>
-        </LinkContent>
-      </Link>
+      {!isQuestionInPersonalCollection ||
+        (isOpenCollectionInPersonalCollection && (
+          <Link onClick={() => setShouldCreateDashboard(true)} to="">
+            <LinkContent>
+              <Icon name="add" className="mx1" />
+              <h4>{t`Create a new dashboard`}</h4>
+            </LinkContent>
+          </Link>
+        ))}
     </ModalContent>
   );
 };

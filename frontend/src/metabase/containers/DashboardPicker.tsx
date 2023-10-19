@@ -1,23 +1,25 @@
+import type { ComponentProps } from "react";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 import ItemPicker from "./ItemPicker";
 
-export interface DashboardPickerProps {
+export interface DashboardPickerProps
+  extends Pick<
+    ComponentProps<typeof ItemPicker>,
+    "showOnlyPersonalCollections" | "onOpenCollectionChange"
+  > {
   value?: DashboardId;
   onChange: (dashboardId: DashboardId) => void;
   collectionId?: CollectionId;
-  showOnlyPersonalCollections?: boolean;
 }
 
 const DashboardPicker = ({
   value,
   onChange,
   collectionId,
-  showOnlyPersonalCollections,
   ...props
 }: DashboardPickerProps) => (
   <ItemPicker
     {...props}
-    showOnlyPersonalCollections={showOnlyPersonalCollections}
     initialOpenCollectionId={collectionId}
     value={value === undefined ? undefined : { model: "dashboard", id: value }}
     onChange={dashboard => onChange(dashboard.id)}
