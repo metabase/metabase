@@ -476,7 +476,8 @@
           (is (= new-user (events/publish-event! :event/user-invited new-user)))
           (is (= {:model_id id
                   :user_id  (mt/user->id :rasta)
-                  :details  (select-keys new-user [:first_name :last_name :email])
+                  :details  (assoc (select-keys new-user [:first_name :last_name :email])
+                                   :user_group_memberships [{:id 1}])
                   :topic    :user-invited
                   :model    "User"}
                  (event :user-invited id))))))))

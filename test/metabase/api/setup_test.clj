@@ -129,11 +129,11 @@
                             :user_id  nil
                             :model    "User"
                             :model_id (u/the-id (t2/select-one User :email email))
-                            :details  {:invite_method "email"
-                                       :first_name    first-name
-                                       :last_name     last-name
-                                       :email         email
-                                       :groups        [{:id 1, :name "All Users"} {:id 2, :name "Administrators"}]}}
+                            :details  {:invite_method          "email"
+                                       :first_name             first-name
+                                       :last_name              last-name
+                                       :email                  email
+                                       :user_group_memberships [{:id 1} {:id 2}]}}
                            logged-event))))))))))))
 
 (deftest invite-user-test-2
