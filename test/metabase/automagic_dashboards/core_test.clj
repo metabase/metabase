@@ -1941,8 +1941,8 @@
                 {total-orders-group         "Total Orders"
                  avg-quantity-ordered-group "Average Quantity Ordered"} (group-by :group dashcards)]
             (is (= 57 (count dashcards)))
-            (is (= 15 (count total-orders-group)))
-            (is (= #{"map" "bar" "scalar" "line" "row"}
+            (is (= 14 (count total-orders-group)))
+            (is (= #{"map" "bar" "line" "row"}
                    (set (map (comp first :visualization) total-orders-group))))
             (is (= 15 (count avg-quantity-ordered-group)))
             (is (= #{"map" "bar" "scalar" "line" "row"}
