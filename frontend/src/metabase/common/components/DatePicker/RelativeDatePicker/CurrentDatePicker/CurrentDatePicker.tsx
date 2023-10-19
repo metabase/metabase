@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import { Button, Group, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
@@ -28,7 +29,7 @@ export function CurrentDatePicker({ value, onChange }: CurrentDatePickerProps) {
           {group.map(unit => (
             <Tooltip
               key={unit}
-              label={`Right now, this is ${getTooltipLabel(unit)}`}
+              label={t`Right now, this is ${getTooltipLabel(unit)}`}
             >
               <Button
                 variant={unit === value.unit ? "filled" : "default"}
