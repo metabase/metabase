@@ -9,6 +9,7 @@
    [metabase.config :as config]
    [metabase.driver.h2 :as h2]
    [metabase.events :as events]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Table User]]
    [metabase.models.setting :as setting]
@@ -87,25 +88,15 @@
           (testing "new User should be created"
             (is (t2/exists? User :email email)))
           (testing "Creating a new admin user should set the `admin-email` Setting"
-            (is (= email
-                   (public-settings/admin-email))))
+            (is (= email (public-settings/admin-email))))
           (testing "Should record :user-joined in the Audit Log (#12933)"
-            (let [user-id (u/the-id (t2/select-one-pk User :email email))]
-              (is (=? {:topic         :user-joined
-                       :model_id      user-id
-                       :user_id       user-id
-                       :model         "User"}
-                      (t2/select-one :model/AuditLog :topic "user-joined", :user_id user-id))))))))))
-
-(defn- event
-  ([topic]
-   (event topic nil))
-
-  ([topic model-id]
-   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
-                  :topic    topic
-                  :model_id model-id
-                  {:order-by [[:id :desc]]})))
+            (let [user-id (u/the-id (t2/select-one User :email email))]
+              (is (= {:topic    :user-joined
+                      :model_id user-id
+                      :user_id  nil
+                      :model    "User"
+                      :details  {}}
+                     (audit-log-test/event :user-joined user-id))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -133,15 +124,17 @@
                      email
                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))
                 (testing "The audit-log :user-invited event is recorded"
-                  (let [audit-log (event :user-invited (u/the-id (t2/select-one User :email email)))]
-                    (is (=? {:topic    :user-invited
-                             :user_id  nil
-                             :model    "User"
-                             :model_id (u/the-id (t2/select-one User :email email))
-                             :details  {}}
-                            audit-log))
-                    (is (= #{:id :invitor :email :first_name :last_name :groups :invite_method}
-                           (set (keys (:details audit-log)))))))))))))))
+                  (let [logged-event (audit-log-test/event :user-invited (u/the-id invited-user))]
+                    (is (= {:topic    :user-invited
+                            :user_id  nil
+                            :model    "User"
+                            :model_id (u/the-id (t2/select-one User :email email))
+                            :details  {:invite_method "email"
+                                       :first_name    first-name
+                                       :last_name     last-name
+                                       :email         email
+                                       :groups        [{:id 1, :name "All Users"} {:id 2, :name "Administrators"}]}}
+                           logged-event))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"

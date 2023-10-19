@@ -275,8 +275,7 @@
                   :user_id  rasta-id
                   :model_id rasta-id
                   :model    "User"
-                  :details  {:id    rasta-id
-                             :token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                  :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
                  (audit-log-test/event :password-reset-initiated rasta-id))))))))
 
 (deftest forgot-password-throttling-test
@@ -345,11 +344,10 @@
               (mt/client :post 200 "session/reset_password" {:token    token
                                                              :password (:new password)})
               (is (= {:topic    :password-reset-successful
-                      :user_id  id
+                      :user_id  nil
                       :model    "User"
                       :model_id id
-                      :details  {:id    id
-                                 :token reset-token}}
+                      :details  {:token reset-token}}
                      (audit-log-test/event :password-reset-successful id))))))))))
 
 (deftest reset-password-validation-test
