@@ -32,18 +32,14 @@ export async function loadLocalization(locale) {
 export function updateMomentStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
   if (startOfWeekDay != null) {
-    moment.updateLocale(moment.locale(), {
-      week: { dow: startOfWeekDay },
-    });
+    moment.updateLocale(moment.locale(), { week: { dow: startOfWeekDay } });
   }
 }
 
 export function updateDayjsStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
   if (startOfWeekDay != null) {
-    dayjs.updateLocale(dayjs.locale(), {
-      week: { dow: startOfWeekDay },
-    });
+    dayjs.updateLocale(dayjs.locale(), { week: { dow: startOfWeekDay } });
   }
 }
 
