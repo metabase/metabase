@@ -115,10 +115,10 @@
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
   [dashboard]
   (update dashboard :dashcards (fn [dashcards]
-                                     (vec (for [dashcard dashcards]
-                                            (-> dashcard
-                                                (update :card hide-unreadable-card)
-                                                (update :series (partial mapv hide-unreadable-card))))))))
+                                 (vec (for [dashcard dashcards]
+                                        (-> dashcard
+                                            (update :card hide-unreadable-card)
+                                            (update :series (partial mapv hide-unreadable-card))))))))
 
 
 ;;; ------------------------------------------ Query Average Duration Info -------------------------------------------

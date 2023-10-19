@@ -229,8 +229,72 @@
     "Oct 3–5, 2023" "2023-10-03" "2023-10-05"
     "Sep 3 – Oct 5, 2023" "2023-09-03" "2023-10-05"
     "Oct 3, 2023, 10:20 AM – 4:30 PM" "2023-10-03T10:20" "2023-10-03T16:30"
-    "Oct 3, 2023, 10:20–30 AM" "2023-10-03T10:20" "2023-10-03T10:30"
+    "Oct 3, 2023, 10:20 AM – 10:30 AM" "2023-10-03T10:20" "2023-10-03T10:30"
     "Oct 3, 2022, 10:20 AM – Oct 3, 2023, 10:30 AM" "2022-10-03T10:20" "2023-10-03T10:30"
     "Jan 1, 2022 – Dec 31, 2023" "2022-01-01" "2023-12-31"
+    "Aug 1 – Dec 31, 2022" "2022-08-01" "2022-12-31"
     ;; I guess?
     "Oct 5, 2023" "2023-10-05" "2023-10-05"))
+
+(deftest format-relative-date-range
+  (with-redefs [internal/now (fn [] (from test-epoch))]
+    (are [exp n unit include-current] (= exp (shared.ut/format-relative-date-range n unit nil nil {:include-current include-current}))
+      "Jan 1, 2022 – Dec 31, 2023" 1 :year true
+      "Jan 1 – Dec 31, 2023" 1 :year false
+      "Jan 1, 2022 – Dec 31, 2026" 4 :year true
+      "Jan 1, 2023 – Dec 31, 2026" 4 :year false
+
+      "Jan 1, 2021 – Dec 31, 2022" -1 :year true
+      "Jan 1 – Dec 31, 2021" -1 :year false
+      "Jan 1, 2018 – Dec 31, 2022" -4 :year true
+      "Jan 1, 2018 – Dec 31, 2021" -4 :year false
+
+      "Dec 18–24, 2022" 1 :week false
+      "Dec 11–24, 2022" 1 :week true
+      "Dec 18, 2022 – Jan 14, 2023" 4 :week false
+      "Dec 11, 2022 – Jan 14, 2023" 4 :week true
+
+      "Dec 4–10, 2022" -1 :week false
+      "Dec 4–17, 2022" -1 :week true
+      "Nov 13 – Dec 10, 2022" -4 :week false
+      "Nov 13 – Dec 17, 2022" -4 :week true
+
+      "Jan 1–31, 2023" 1 :month false
+      "Dec 1, 2022 – Jan 31, 2023" 1 :month true
+      "Jan 1 – Apr 30, 2023" 4 :month false
+      "Dec 1, 2022 – Apr 30, 2023" 4 :month true
+
+      "Nov 1–30, 2022" -1 :month false
+      "Nov 1 – Dec 31, 2022" -1 :month true
+      "Aug 1 – Nov 30, 2022" -4 :month false
+      "Aug 1 – Dec 31, 2022" -4 :month true
+
+      "Dec 15, 2022" 1 :day false
+      "Dec 14–15, 2022" 1 :day true
+      "Dec 15–18, 2022" 4 :day false
+      "Dec 14–18, 2022" 4 :day true
+
+      "Dec 13, 2022" -1 :day false
+      "Dec 13–14, 2022" -1 :day true
+      "Dec 10–13, 2022" -4 :day false
+      "Dec 10–14, 2022" -4 :day true
+
+      "Dec 14, 2022, 2:00 PM – 2:59 PM" 1 :hour false
+      "Dec 14, 2022, 1:00 PM – 2:59 PM" 1 :hour true
+      "Dec 14, 2022, 2:00 PM – 5:59 PM" 4 :hour false
+      "Dec 14, 2022, 1:00 PM – 5:59 PM" 4 :hour true
+
+      "Dec 14, 2022, 12:00 PM – 12:59 PM" -1 :hour false
+      "Dec 14, 2022, 12:00 PM – 1:59 PM" -1 :hour true
+      "Dec 14, 2022, 9:00 AM – 12:59 PM" -4 :hour false
+      "Dec 14, 2022, 9:00 AM – 1:59 PM" -4 :hour true
+
+      "Dec 14, 2022, 1:19 PM" 1 :minute false
+      "Dec 14, 2022, 1:18 PM – 1:19 PM" 1 :minute true
+      "Dec 14, 2022, 1:19 PM – 1:22 PM" 4 :minute false
+      "Dec 14, 2022, 1:18 PM – 1:22 PM" 4 :minute true
+
+      "Dec 14, 2022, 1:17 PM" -1 :minute false
+      "Dec 14, 2022, 1:17 PM – 1:18 PM" -1 :minute true
+      "Dec 14, 2022, 1:14 PM – 1:17 PM" -4 :minute false
+      "Dec 14, 2022, 1:14 PM – 1:18 PM" -4 :minute true)))

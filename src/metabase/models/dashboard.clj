@@ -548,7 +548,7 @@
                (nil? (:ordered_tabs dash))
                (t2/hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
-        (update :dashcards     #(mapv extract-dashcard %))
+        (update :dashcards         #(mapv extract-dashcard %))
         (update :ordered_tabs      #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)

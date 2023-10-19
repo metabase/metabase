@@ -146,8 +146,20 @@ jobs:
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Mark with the commit hash
+        run: echo ${{ github.sha }} > COMMIT-ID
+        shell: bash
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+        shell: bash
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
 
   e2e-tests:
     needs: [build, files-changed, test-run-id, download_uberjar, e2e-matrix-builder]
@@ -215,7 +227,7 @@ jobs:
         if: needs.build.result == 'success'
         name: Retrieve uberjar artifact for ${{ matrix.edition }}
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
 
       - name: Get the version info
         run: |
@@ -385,7 +397,7 @@ jobs:
         if: needs.build.result == 'success'
         name: Retrieve uberjar artifact for ee
         with:
-          name: metabase-ee-uberjar
+          name: metabase-ee-${{ github.sha }}-uberjar
 
       - name: Get the version info
         run: |

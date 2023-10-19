@@ -338,12 +338,12 @@
 (deftest create-linked-dashboard-test-no-linked
   (testing "If there are no linked-tables, create a default view explaining the situation."
     (is (=? {:dashcards [{:visualization_settings {:virtual_card {:display "link", :archived false}
-                                                       :link         {:entity {:model   "dataset"
-                                                                               :display "table"}}}}
-                             {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
-                                                       :virtual_card        {:display :text},
-                                                       :dashcard.background false,
-                                                       :text.align_vertical :bottom}}]}
+                                                   :link         {:entity {:model   "dataset"
+                                                                           :display "table"}}}}
+                         {:visualization_settings {:text                "# Unfortunately, there's not much else to show right now...",
+                                                   :virtual_card        {:display :text},
+                                                   :dashcard.background false,
+                                                   :text.align_vertical :bottom}}]}
             (#'api.magic/create-linked-dashboard {:model             nil
                                                   :linked-tables     ()
                                                   :model-index       nil

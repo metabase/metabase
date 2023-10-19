@@ -4,7 +4,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCard,
   createMockDashboard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockSettings,
   createMockDatasetData,
   createMockTextDashboardCard,
@@ -21,7 +21,7 @@ registerVisualizations();
 
 const dashboard = createMockDashboard();
 
-const tableDashcard = createMockDashboardOrderedCard({
+const tableDashcard = createMockDashboardCard({
   card: createMockCard({
     name: "My Card",
     display: "table",

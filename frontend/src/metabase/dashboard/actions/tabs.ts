@@ -6,7 +6,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import type {
   DashCardId,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   DashboardOrderedTab,
   DashboardTabId,
 } from "metabase-types/api";
@@ -30,7 +30,7 @@ type MoveTabPayload = {
 };
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type SaveCardsAndTabsPayload = {
-  cards: DashboardOrderedCard[];
+  cards: DashboardCard[];
   ordered_tabs: DashboardOrderedTab[];
 };
 type InitTabsPayload = { slug: string | undefined };
