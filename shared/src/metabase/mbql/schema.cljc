@@ -1720,7 +1720,8 @@
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
-                                            :cljs s/Any))})
+                                                           :cljs s/Any))
+   s/Keyword                                   s/Any})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

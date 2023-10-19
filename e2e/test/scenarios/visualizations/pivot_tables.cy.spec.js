@@ -1098,7 +1098,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         },
       },
     });
-    cy.wait("@pivotDataset");
 
     cy.findByTestId("question-row-count").should(
       "have.text",
