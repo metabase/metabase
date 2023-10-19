@@ -208,7 +208,7 @@ describe("getStackedTooltipModel", () => {
     series: () => null,
   };
   const dashboard = {
-    ordered_cards: [],
+    dashcards: [],
   };
   const cols = [StringColumn(), NumberColumn()];
   const getMockSeries = ({ card, rows, hasBreakout }) => {

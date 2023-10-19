@@ -18,7 +18,7 @@ import ClickMappings, {
 import type {
   Dashboard,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
@@ -98,7 +98,7 @@ function TargetClickMappings({
 }: {
   isDash: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDash ? Dashboards : Questions;
@@ -125,7 +125,7 @@ function LinkedEntityPicker({
   clickBehavior,
   updateSettings,
 }: {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {

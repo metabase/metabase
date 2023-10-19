@@ -438,7 +438,7 @@
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
            (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
-                                  :ordered_cards
+                                  :dashcards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
 

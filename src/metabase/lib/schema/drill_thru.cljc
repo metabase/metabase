@@ -71,8 +71,11 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type      [:= :drill-thru/quick-filter]]
-    [:operators [:sequential ::drill-thru.quick-filter.operator]]]])
+    [:type       [:= :drill-thru/quick-filter]]
+    [:operators  [:sequential ::drill-thru.quick-filter.operator]]
+    ;; whether applying this drill thru should introduce a new stage to the query. Filters on aggregate columns should
+    ;; introduce a new stage.
+    [:new-stage? :boolean]]])
 
 (mr/def ::drill-thru.fk-filter
   [:merge

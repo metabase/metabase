@@ -55,7 +55,7 @@ const cardsFromDashboard = dashboard => {
     return [];
   }
 
-  return dashboard.ordered_cards.map(card => ({
+  return dashboard.dashcards.map(card => ({
     id: card.card.id,
     collection_id: card.card.collection_id,
     description: card.card.description,
