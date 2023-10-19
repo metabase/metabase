@@ -1287,47 +1287,47 @@
     template-metrics    :metrics
     template-cards      :cards
     template-filters    :filters
-    :keys [dashboard_filters]
+    :keys               [dashboard_filters]
     :as                 dashboard-template}]
   (let [{grounded-dimensions :dimensions
          grounded-metrics    :metrics} (interesting/identify
-                                         base-context
-                                         {:dimension-specs template-dimensions
-                                          :metric-specs    template-metrics})
+                                        base-context
+                                        {:dimension-specs template-dimensions
+                                         :metric-specs    template-metrics})
         ;; From the template
-        card-templates              (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates (user-defined-metrics->card-templates
-                                      (affinities->viz-types card-templates grounded-dimensions)
-                                      user-defined-metrics)
-        all-cards                   (into card-templates user-defined-card-templates)
-        dashcards                   (combination/grounded-metrics->dashcards
-                                      base-context
-                                      grounded-dimensions
-                                      (grounded-filters template-filters grounded-dimensions)
-                                      all-cards
-                                      grounded-metrics)
-        template-with-user-groups   (update dashboard-template
+        card-templates                 (interesting/normalize-seq-of-maps :card template-cards)
+        user-defined-card-templates    (user-defined-metrics->card-templates
+                                     (affinities->viz-types card-templates grounded-dimensions)
+                                     user-defined-metrics)
+        all-cards                      (into card-templates user-defined-card-templates)
+        dashcards                      (combination/grounded-metrics->dashcards
+                                     base-context
+                                     grounded-dimensions
+                                     (grounded-filters template-filters grounded-dimensions)
+                                     all-cards
+                                     grounded-metrics)
+        template-with-user-groups      (update dashboard-template
                                             :groups into (user-defined-groups user-defined-metrics))
-        empty-dashboard             (make-dashboard root template-with-user-groups)]
+        empty-dashboard                (make-dashboard root template-with-user-groups)]
     (-> (assoc empty-dashboard
-          ;; Adds the filters that show at the top of the dashboard
-          ;; Why do we need (or do we) the last remove form?
-          :filters (->> dashboard_filters
-                        (mapcat (comp :matches grounded-dimensions))
-                        (remove (comp (singular-cell-dimensions root) id-or-name)))
-          :cards dashcards)
+               ;; Adds the filters that show at the top of the dashboard
+               ;; Why do we need (or do we) the last remove form?
+               :filters (->> dashboard_filters
+                             (mapcat (comp :matches grounded-dimensions))
+                             (remove (comp (singular-cell-dimensions root) id-or-name)))
+               :cards dashcards)
         (populate/create-dashboard (or show :all))
         (assoc
-          :related (related
-                     root grounded-dimensions
-                     dashboard-template)
-          ;     :more (when (and (not= show :all)
-          ;                      (-> dashboard :cards count (> show)))
-          ;             (format "%s#show=all" url))
-          ;     :transient_filters query-filter
-          ;     :param_fields (filter-referenced-fields root query-filter)
-          :auto_apply_filters true
-          ))))
+         :related (related
+                   root grounded-dimensions
+                   dashboard-template)
+                                        ;     :more (when (and (not= show :all)
+                                        ;                      (-> dashboard :cards count (> show)))
+                                        ;             (format "%s#show=all" url))
+                                        ;     :transient_filters query-filter
+                                        ;     :param_fields (filter-referenced-fields root query-filter)
+         :auto_apply_filters true
+         ))))
 
 (defn- filter-referenced-fields
   "Return a map of fields referenced in filter clause."

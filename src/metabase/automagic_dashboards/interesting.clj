@@ -378,8 +378,8 @@
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
            metric-specs]} :- [:map
-                              [:dimension-specs [:sequential ads/dimension-template]]
-                              [:metric-specs [:sequential ads/metric-template]]]]
+                              [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
+                              [:metric-specs [:maybe [:sequential ads/metric-template]]]]]
   (let [dims      (find-dimensions context dimension-specs)
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
