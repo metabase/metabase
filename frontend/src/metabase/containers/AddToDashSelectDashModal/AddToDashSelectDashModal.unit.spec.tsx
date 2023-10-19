@@ -20,7 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
+import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
 
@@ -43,11 +43,6 @@ const DASHBOARD_AT_ROOT = createMockDashboard({
   collection_id: null,
   model: "dashboard",
 });
-
-const DASHBOARDS_BY_ID = {
-  [DASHBOARD.id]: DASHBOARD,
-  [DASHBOARD_AT_ROOT.id]: DASHBOARD_AT_ROOT,
-};
 
 const COLLECTION_1 = createMockCollection({
   id: 1,
@@ -104,11 +99,10 @@ const setup = async ({
     <Route
       path="/"
       component={() => (
-        <AddToDashSelectDashModal
+        <ConnectedAddToDashSelectDashModal
           card={CARD}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
-          dashboards={DASHBOARDS_BY_ID}
         />
       )}
     />,

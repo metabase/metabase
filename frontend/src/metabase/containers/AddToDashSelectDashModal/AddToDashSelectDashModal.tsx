@@ -128,5 +128,6 @@ export const AddToDashSelectDashModal = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(AddToDashSelectDashModal);
+export const ConnectedAddToDashSelectDashModal = connect(mapStateToProps)(
+  AddToDashSelectDashModal,
+);
