@@ -1931,7 +1931,13 @@
                                               (magic/affinities->viz-types card-templates ground-dimensions)
                                               user-defined-metrics)
                 all-cards                   (into card-templates user-defined-card-templates)
-                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)
+                ground-filters              (magic/grounded-filters (:filters template) ground-dimensions)
+                dashcards                   (combination/grounded-metrics->dashcards
+                                              base-context
+                                              ground-dimensions
+                                              ground-filters
+                                              all-cards
+                                              grounded-metrics)
                 {total-orders-group         "Total Orders"
                  avg-quantity-ordered-group "Average Quantity Ordered"} (group-by :group dashcards)]
             (is (= 57 (count dashcards)))
@@ -1972,7 +1978,13 @@
                                               (magic/affinities->viz-types card-templates ground-dimensions)
                                               user-defined-metrics)
                 all-cards                   (into card-templates user-defined-card-templates)
-                dashcards                   (combination/grounded-metrics->dashcards base-context ground-dimensions all-cards grounded-metrics)
+                ground-filters              (magic/grounded-filters (:filters template) ground-dimensions)
+                dashcards                   (combination/grounded-metrics->dashcards
+                                              base-context
+                                              ground-dimensions
+                                              ground-filters
+                                              all-cards
+                                              grounded-metrics)
                 template-with-user-groups   (update template :groups into (#'magic/user-defined-groups user-defined-metrics))
                 empty-dashboard             (#'magic/make-dashboard root template-with-user-groups)]
             (is (= (count (:ordered_cards (populate/create-dashboard (assoc empty-dashboard :cards dashcards) :all)))

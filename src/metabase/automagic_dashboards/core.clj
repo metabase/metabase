@@ -1059,7 +1059,6 @@
         available-values       {:available-dimensions available-dimensions
                                 :available-metrics    available-metrics
                                 :available-filters    available-filters}
-        _ (tap> available-values)
         ;; for now we construct affinities from cards
         affinities             (dash-template->affinities-old dashboard-template)
         ;; get the suitable matches for them
@@ -1116,7 +1115,7 @@
          (hash-map :indepth))))
 
 (defn- drilldown-fields
-  [root {:keys [available-dimensions]}]
+  [root available-dimensions]
   (when (and (->> root :source (mi/instance-of? Table))
              (-> root :entity ga-table? not))
     (->> available-dimensions
@@ -1238,10 +1237,10 @@
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
-   available-values
+   available-dimensions
    dashboard-template :- (s/maybe dashboard-templates/DashboardTemplate)]
   (->> (merge (indepth root dashboard-template)
-              (drilldown-fields root available-values)
+              (drilldown-fields root available-dimensions)
               (related-entities root)
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
@@ -1307,11 +1306,7 @@
         (populate/create-dashboard :all)
         (assoc
           :related (related
-                     root {:available-dimensions grounded-dimensions
-                           ;; A map of named metrics to satisfiable metrics
-                           :available-metrics {}
-
-                           :available-filters {}}
+                     root grounded-dimensions
                      dashboard-template)
           ;     :more (when (and (not= show :all)
           ;                      (-> dashboard :cards count (> show)))
@@ -1358,8 +1353,7 @@
          {:keys [dashboard-template-name] :as dashboard-template}
          {:keys [available-dimensions
                  available-metrics
-                 available-filters]
-          :as available-values}] (find-first-match-dashboard-template root)
+                 available-filters]}] (find-first-match-dashboard-template root)
         show (or show max-cards)]
     (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
     (log/debug (trs "Dimensions bindings:\n{0}"
@@ -1371,7 +1365,7 @@
                     (-> available-filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)
-        (assoc :related (related root available-values dashboard-template)
+        (assoc :related (related root available-dimensions dashboard-template)
                :more (when (and (not= show :all)
                                 (-> dashboard :cards count (> show)))
                        (format "%s#show=all" url))
