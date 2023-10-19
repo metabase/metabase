@@ -54,9 +54,9 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
     styles: theme => ({
       weekday: {
         width: rem(40),
-        height: rem(40),
+        height: rem(32),
         color: theme.colors.text[0],
-        fontSize: theme.fontSizes.md,
+        fontSize: theme.fontSizes.sm,
         lineHeight: rem(24),
         textAlign: "center",
         paddingBottom: 0,
@@ -126,7 +126,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
   CalendarHeader: {
     styles: theme => ({
       calendarHeader: {
-        marginBottom: theme.spacing.xs,
+        marginBottom: 0,
       },
       calendarHeaderLevel: {
         height: rem(32),
@@ -147,6 +147,13 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         "&:hover": {
           backgroundColor: theme.colors.bg[0],
         },
+      },
+    }),
+  },
+  MonthLevel: {
+    styles: () => ({
+      calendarHeader: {
+        marginBottom: 0,
       },
     }),
   },
