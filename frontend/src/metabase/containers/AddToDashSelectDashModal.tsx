@@ -43,11 +43,12 @@ export const AddToDashSelectDashModal = ({
 }: AddToDashSelectDashModalProps) => {
   const [shouldCreateDashboard, setShouldCreateDashboard] = useState(false);
 
-  const mostRecentDashboardQuery = useMostRecentlyViewedDashboard();
+  const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
+  const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
 
-  const collectionId = coerceCollectionId(
-    mostRecentDashboardQuery.data?.collection_id,
-  );
+  const collectionId = mostRecentlyViewedDashboard
+    ? coerceCollectionId(mostRecentlyViewedDashboard.collection_id)
+    : undefined;
   // when collectionId is null and loading is completed, show root collection
   // as user didn't visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
@@ -83,8 +84,8 @@ export const AddToDashSelectDashModal = ({
   }
 
   const isLoading =
-    mostRecentDashboardQuery.isLoading || collectionQuery.isLoading;
-  const error = mostRecentDashboardQuery.error ?? collectionQuery.error;
+    mostRecentlyViewedDashboardQuery.isLoading || collectionQuery.isLoading;
+  const error = mostRecentlyViewedDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -107,7 +108,7 @@ export const AddToDashSelectDashModal = ({
         showOnlyPersonalCollections={isQuestionInPersonalCollection}
         onChange={onDashboardSelected}
         collectionId={collectionId}
-        value={mostRecentDashboardQuery.data?.id}
+        value={mostRecentlyViewedDashboardQuery.data?.id}
       />
       <Link onClick={() => setShouldCreateDashboard(true)} to="">
         <LinkContent>
