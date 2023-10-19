@@ -6,13 +6,16 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { FilterPopover } from "metabase/query_builder/components/filters/FilterPopover";
 import { color } from "metabase/lib/colors";
-import ViewPill from "./ViewPill";
 
-import { FilterHeaderContainer, FilterHeaderButton } from "./ViewHeader.styled";
+import ViewPill from "../ViewPill";
+import {
+  FilterHeaderContainer,
+  FilterHeaderButton,
+} from "../ViewHeader.styled";
 
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
-export default function QuestionFilters({
+export function QuestionFilters({
   className,
   question,
   expanded,

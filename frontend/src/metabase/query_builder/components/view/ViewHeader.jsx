@@ -25,9 +25,10 @@ import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import { QuestionNotebookButton } from "./QuestionNotebookButton";
 import ConvertQueryButton from "./ConvertQueryButton";
-import QuestionFilters, {
+import {
   FilterHeaderToggle,
   FilterHeader,
+  QuestionFilters,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
