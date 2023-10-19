@@ -33,6 +33,7 @@ interface OwnProps<TId> {
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
+  showOnlyPersonalCollections?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue<TId>) => void;
@@ -85,6 +86,7 @@ function ItemPicker<TId>({
   className,
   showSearch = true,
   showScroll = true,
+  showOnlyPersonalCollections = false,
   style,
   onChange,
   getCollectionIcon,
@@ -115,13 +117,18 @@ function ItemPicker<TId>({
 
     const collectionItems = list
       .filter(canWriteToCollectionOrChildren)
+      .filter(
+        showOnlyPersonalCollections
+          ? collection => collection.is_personal
+          : _.identity,
+      )
       .map(collection => ({
         ...collection,
         model: "collection",
       }));
 
     return collectionItems as CollectionPickerItem<TId>[];
-  }, [openCollection, models]);
+  }, [openCollection, models, showOnlyPersonalCollections]);
 
   const crumbs = useMemo(
     () =>
