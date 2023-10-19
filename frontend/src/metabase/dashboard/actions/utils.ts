@@ -1,6 +1,33 @@
 import _ from "underscore";
 
-import type { Dashboard, DashboardCard } from "metabase-types/api";
+import type { Draft } from "@reduxjs/toolkit";
+import type { DashboardState } from "metabase-types/store";
+import type {
+  Dashboard,
+  DashboardId,
+  DashboardCard,
+  DashboardTabId,
+} from "metabase-types/api";
+
+export function getExistingDashCards(
+  dashboardState: Draft<DashboardState>,
+  dashId: DashboardId,
+  tabId: DashboardTabId,
+) {
+  const { dashboards, dashcards } = dashboardState;
+  const dashboard = dashboards[dashId];
+  return dashboard.dashcards
+    .map(id => dashcards[id])
+    .filter(dc => {
+      if (dc.isRemoved) {
+        return false;
+      }
+      if (tabId != null) {
+        return dc.dashboard_tab_id === tabId;
+      }
+      return true;
+    });
+}
 
 export function hasDashboardChanged(
   dashboard: Dashboard,
