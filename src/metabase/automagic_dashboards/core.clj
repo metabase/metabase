@@ -1059,7 +1059,6 @@
         available-values       {:available-dimensions available-dimensions
                                 :available-metrics    available-metrics
                                 :available-filters    available-filters}
-        _ (tap> available-values)
         ;; for now we construct affinities from cards
         affinities             (dash-template->affinities-old dashboard-template)
         ;; get the suitable matches for them
