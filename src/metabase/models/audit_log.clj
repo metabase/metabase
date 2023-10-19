@@ -5,8 +5,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.activity :as activity]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as m]
@@ -34,7 +32,7 @@
 
 ;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
 ;; `metabase.query-processor`
-(defmethod model-details Card
+(defmethod model-details :model/Card
   [{query :dataset_query, dataset? :dataset :as card} _event-type]
   (let [query (when (seq query)
                 (try (qp/preprocess query)
@@ -48,9 +46,8 @@
             ;; Use `model` instead of `dataset` to mirror product terminology
             :model?      dataset?})))
 
-;; This is in this namespace instead of `metabase.models.database` to avoid circular dependencies with
-;; `/metabase/driver/sql_jdbc/connection`
-(defmethod model-details Database [database _event-type]
+#_(defmethod model-details :model/Database
+  [database _event-type]
   (select-keys database [:id :name :engine]))
 
 (defn model-name

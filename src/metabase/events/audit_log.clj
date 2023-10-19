@@ -63,10 +63,11 @@
   [topic dashboard]
   (audit-log/record-event! topic dashboard))
 
-(derive ::table-read-event ::event)
-(derive :event/table-read ::table-read-event)
+(derive ::table-event ::event)
+(derive :event/table-read ::table-event)
+(derive :event/table-manual-scan ::table-event)
 
-(methodical/defmethod events/publish-event! ::table-read-event
+(methodical/defmethod events/publish-event! ::table-event
   [topic table]
   (audit-log/record-event! topic table))
 
