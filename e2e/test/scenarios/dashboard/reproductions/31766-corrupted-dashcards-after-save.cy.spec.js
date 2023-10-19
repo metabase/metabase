@@ -66,7 +66,7 @@ describe("issue 31766", () => {
 
     saveUpdatedQuestion();
 
-    modal().should("not.exist");
+    assertQuestionIsUpdatedWithoutError();
   });
 });
 
@@ -75,6 +75,9 @@ function saveUpdatedQuestion() {
 
   cy.findByText("Save").click();
   modal().button("Save").click();
+}
 
+function assertQuestionIsUpdatedWithoutError() {
   cy.wait("@updateQuestion");
+  modal().should("not.exist");
 }
