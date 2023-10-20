@@ -552,15 +552,16 @@
         (is (= [{:metric-name       "Count"
                  :metric-title      "Count"
                  :metric-score      100
-                 :metric-definition {:aggregation ["count"]}}]
+                 :metric-definition {:aggregation [["count"]]}
+                 :dimension-name->field {}}]
                (interesting/grounded-metrics
                  test-metrics
                  {"Count" {:matches []}}))))
       (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
         (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
+                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
                  {:metric-name       "Avg"
-                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
+                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
                 (interesting/grounded-metrics
                   ;; Drop Count
                   (rest test-metrics)
@@ -569,9 +570,9 @@
       (testing "The addition of Discount doesn't add more matches as we need
                  Income as well to add the metric that uses Discount"
         (is (=? [{:metric-name       "Sum"
-                  :metric-definition {:aggregation ["sum" [:field total-id nil]]}}
+                  :metric-definition {:aggregation [["sum" [:field total-id nil]]]}}
                  {:metric-name       "Avg"
-                  :metric-definition {:aggregation ["avg" [:field total-id nil]]}}]
+                  :metric-definition {:aggregation [["avg" [:field total-id nil]]]}}]
                 (interesting/grounded-metrics
                   (rest test-metrics)
                   {"Count"         {:matches []}
@@ -579,7 +580,7 @@
                    "Discount"      {:matches [discount-field]}}))))
       (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
         (is (=? [{:metric-name "AvgDiscount",
-                  :metric-definition {:aggregation ["/" [:field discount-id nil] [:field income-id nil]]}}
+                  :metric-definition {:aggregation [["/" [:field discount-id nil] [:field income-id nil]]]}}
                  {:metric-name "Sum"}
                  {:metric-name "Avg"}]
                 (interesting/grounded-metrics
