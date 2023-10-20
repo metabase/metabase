@@ -13,7 +13,6 @@ frontend_ci: &frontend_ci
   - ".github/actions/prepare-frontend/**"
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/frontend.yml"
-  - ".github/workflows/fuzzing.yml"
 
 frontend_sources: &frontend_sources
   - *shared_sources
