@@ -100,6 +100,20 @@ const TEST_CASES = [
     expectedDisplayName: "Title ends with At",
     expectedRowCount: 0,
   },
+  {
+    title: "string, is empty",
+    column: "Title",
+    operator: "Is empty",
+    expectedDisplayName: "Title is empty",
+    expectedRowCount: 0,
+  },
+  {
+    title: "string, is not empty",
+    column: "Title",
+    operator: "Not empty",
+    expectedDisplayName: "Title is not empty",
+    expectedRowCount: 200,
+  },
 ];
 
 describe("scenarios > question > notebook filters", () => {
