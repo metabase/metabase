@@ -9,11 +9,10 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
-describe("scenarios > dashboard > dashboard cards > click behavior", () => {
+describe("issue 18067", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it(
