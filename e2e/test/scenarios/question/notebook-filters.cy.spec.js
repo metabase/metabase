@@ -30,7 +30,7 @@ describe("scenarios > question > notebook filters", () => {
 
   describe("table source", () => {
     describe("string columns", () => {
-      it("should add a filter with equal operator", () => {
+      it("= operator", () => {
         visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         filter({ mode: "notebook" });
         selectColumn("Title");
@@ -40,6 +40,30 @@ describe("scenarios > question > notebook filters", () => {
         visualize();
         verifyRowCount(1);
       });
+
+      it("!= operator", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Is not");
+        toggleOption("Aerodynamic Concrete Lamp");
+        addFilter();
+        verifyFilterName("Title is not Aerodynamic Concrete Lamp");
+        visualize();
+        verifyRowCount(199);
+      });
+
+      it("contains operator", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Contains");
+        enterValue("Enter some text", "hat");
+        addFilter();
+        verifyFilterName("Title contains hat");
+        visualize();
+        verifyRowCount(12);
+      });
     });
   });
 });
@@ -48,8 +72,17 @@ function selectColumn(columnName) {
   popover().findByText(columnName).click();
 }
 
+function selectOperator(oldOperatorName, newOperatorName) {
+  popover().findByDisplayValue(oldOperatorName).click();
+  cy.findByRole("listbox").findByText(newOperatorName).click();
+}
+
 function toggleOption(optionName) {
   popover().findByText(optionName).click();
+}
+
+function enterValue(placeholder, value) {
+  cy.findByPlaceholderText(placeholder).clear().type(value);
 }
 
 function addFilter() {
