@@ -25,7 +25,7 @@ import { getItemName, getItemUrl, isItemActive } from "./util";
 type RecentsListContentProps = {
   isLoading: boolean;
   results: WrappedRecentItem[];
-  onClick: (item: RecentItem) => void;
+  onClick?: (item: RecentItem) => void;
 };
 
 export const RecentsListContent = ({
@@ -38,7 +38,7 @@ export const RecentsListContent = ({
     HTMLButtonElement
   >({
     list: results,
-    onEnter: (item: WrappedRecentItem) => onClick(item),
+    onEnter: (item: WrappedRecentItem) => onClick?.(item),
   });
 
   if (isLoading) {
@@ -69,7 +69,7 @@ export const RecentsListContent = ({
               ref={getRef(item)}
               key={getItemKey(item)}
               component="button"
-              onClick={() => onClick(item)}
+              onClick={() => onClick?.(item)}
               isActive={isActive}
               isSelected={cursorIndex === index}
               p="sm"
@@ -81,7 +81,6 @@ export const RecentsListContent = ({
                     data-testid="recently-viewed-item-title"
                     truncate
                     href={getItemUrl(item) ?? undefined}
-                    onClick={e => e.stopPropagation()}
                   >
                     {getItemName(item)}
                   </ResultTitle>

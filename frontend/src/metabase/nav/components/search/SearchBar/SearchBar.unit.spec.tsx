@@ -136,7 +136,7 @@ describe("SearchBar", () => {
         );
 
         expect(filteredElement).not.toBeUndefined();
-        expect(filteredElement).toHaveFocus();
+        expect(screen.getByText(cardName)).toHaveFocus();
 
         userEvent.tab();
 

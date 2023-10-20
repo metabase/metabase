@@ -48,6 +48,7 @@ export function SearchResult({
   );
 
   const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
     e.preventDefault();
 
     if (!isActive) {
@@ -82,10 +83,9 @@ export function SearchResult({
       <ResultNameSection justify="center" spacing="xs">
         <Group spacing="xs" align="center" noWrap>
           <ResultTitle
-            href={result.getUrl()}
-            onClick={e => e.stopPropagation()}
             data-testid="search-result-item-name"
             truncate
+            href={!onClick ? result.getUrl() : undefined}
           >
             {name}
           </ResultTitle>
