@@ -119,6 +119,29 @@ describe("scenarios > question > notebook filters", () => {
           rowCount: 184,
         });
       });
+
+      it("starts with operator", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Starts with",
+          placeholder: "Enter some text",
+          value: "AE",
+          filterName: "Title starts with AE",
+          rowCount: 14,
+        });
+      });
+
+      it("starts with operator with case sensitive option", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Starts with",
+          placeholder: "Enter some text",
+          value: "AE",
+          caseSensitive: true,
+          filterName: "Title starts with AE",
+          rowCount: 0,
+        });
+      });
     });
   });
 });
