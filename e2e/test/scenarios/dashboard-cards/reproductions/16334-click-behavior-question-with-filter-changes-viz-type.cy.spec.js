@@ -11,7 +11,6 @@ describe("issue 16334", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
