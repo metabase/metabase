@@ -189,10 +189,6 @@ export function resizeDashboardCard({ card, x, y }) {
   });
 }
 
-export function createLinkCard() {
-  cy.icon("link").click();
-}
-
 export function toggleDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
 }
