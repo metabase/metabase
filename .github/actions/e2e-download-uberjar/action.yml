@@ -28,7 +28,7 @@ runs:
           };
 
           async function getArtifact(commit, depth = 0) {
-            if (depth > 10) {
+            if (depth > 20) {
               throw new Error("Couldn't find the artifact!");
             }
 
