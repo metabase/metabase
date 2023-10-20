@@ -170,41 +170,30 @@ export function FieldValuesWidgetInner({
     setLoadingState("LOADING");
     setOptions([]);
 
-    let newOptions: FieldValue[] = [];
-    let newValuesMode = valuesMode;
+    let values: FieldValue[] = [];
+    let has_more_values = false;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        const { values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        ({ values, has_more_values } =
+          await dispatchFetchDashboardParameterValues(query));
       } else if (canUseCardEndpoints(question)) {
-        const { values, has_more_values } =
-          await dispatchFetchCardParameterValues(query);
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
-      } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await dispatchFetchParameterValues(
+        ({ values, has_more_values } = await dispatchFetchCardParameterValues(
           query,
-        );
-        newOptions = values;
-        newValuesMode = has_more_values ? "search" : newValuesMode;
+        ));
+      } else if (canUseParameterEndpoints(parameter)) {
+        ({ values, has_more_values } = await dispatchFetchParameterValues(
+          query,
+        ));
       } else {
-        newOptions = await fetchFieldValues(query);
-
-        newValuesMode = getValuesMode({
-          parameter,
-          fields,
-          disableSearch,
-          disablePKRemappingForSearch,
-        });
+        values = await fetchFieldValues(query);
       }
     } finally {
-      updateRemappings(newOptions);
-
-      setOptions(newOptions);
+      updateRemappings(values);
+      setOptions(values);
       setLoadingState("LOADED");
-      setValuesMode(newValuesMode);
+      if (has_more_values) {
+        setValuesMode("search");
+      }
     }
   };
 
@@ -408,11 +397,7 @@ export function FieldValuesWidgetInner({
     valuesMode,
   });
 
-  const isListMode =
-    !disableList &&
-    shouldList({ parameter, fields, disableSearch }) &&
-    valuesMode === "list" &&
-    !forceTokenField;
+  const isListMode = !disableList && valuesMode === "list" && !forceTokenField;
   const isLoading = loadingState === "LOADING";
   const hasListValues = hasList({
     parameter,
