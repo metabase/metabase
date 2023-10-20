@@ -263,7 +263,6 @@ export type DrillThruType =
   | "drill-thru/summarize-column-by-time"
   | "drill-thru/column-filter"
   | "drill-thru/underlying-records"
-  | "drill-thru/zoom-in.geographic"
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
