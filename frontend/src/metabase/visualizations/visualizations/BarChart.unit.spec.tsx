@@ -5,12 +5,9 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import registerVisualizations from "metabase/visualizations/register";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import { createMockColumn } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
-
-registerVisualizations();
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -41,7 +38,7 @@ const setup = () => {
         cols: [
           createMockColumn({
             source: "aggregation",
-            field_ref: ["aggregation", 0],
+            field_ref: ["aggregation", 0, null],
             name: "count",
             display_name: "Count",
             base_type: "type/BigInteger",
