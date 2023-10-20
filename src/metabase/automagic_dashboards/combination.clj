@@ -5,10 +5,12 @@
     [clojure.walk :as walk]
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+    [metabase.automagic-dashboards.filters :as filters]
     [metabase.automagic-dashboards.interesting :as interesting]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.automagic-dashboards.visualization-macros :as visualization]
+    [metabase.driver :as driver]
     [metabase.models.interface :as mi]
     [metabase.query-processor.util :as qp.util]
     [metabase.util :as u]
@@ -125,6 +127,39 @@
           dimension-name->field
           (map first card-dimensions)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def ^:private ^{:arglists '([field])} id-or-name
+  (some-fn :id :name))
+
+(defn- singular-cell-dimensions
+  [{:keys [cell-query]}]
+  (letfn [(collect-dimensions [[op & args]]
+            (case (some-> op qp.util/normalize-token)
+              :and (mapcat collect-dimensions args)
+              :=   (filters/collect-field-references args)
+              nil))]
+    (->> cell-query
+         collect-dimensions
+         (map filters/field-reference->id)
+         set)))
+
+(defn- valid-breakout-dimension?
+  [{:keys [base_type db fingerprint aggregation]}]
+  (or (nil? aggregation)
+      (not (isa? base_type :type/Number))
+      (and (driver/database-supports? (:engine db) :binning db)
+           (-> fingerprint :type :type/Number :min))))
+
+(defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
+  (let [cell-dimension? (singular-cell-dimensions root)]
+    (->> satisfied-dimensions
+         (map first)
+         (map (fn [[identifier opts]]
+                (merge (bindings identifier) opts)))
+         (every? (every-pred valid-breakout-dimension?
+                             (complement (comp cell-dimension? id-or-name)))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
@@ -154,9 +189,10 @@
                                      (apply math.combo/cartesian-product)
                                      (map (partial zipmap dim-names)))
           :let [merged-dims (combine-dimensions dimension-name->field card-dimensions)]
-          card-metric-name      card-metrics
-          :let [grounded-metric (metric-name->metric card-metric-name)]
-          :when grounded-metric
+          :when (and (valid-bindings? base-context card-dimensions dimension-name->field)
+                     (every? metric-name->metric card-metrics))
+          :let [[grounded-metric :as all-satisfied-metrics] (map metric-name->metric card-metrics)
+                final-aggregate (reduce into (map (comp :aggregation :metric-definition) all-satisfied-metrics))]
           :let [card             (-> card-template
                                      (visualization/expand-visualization
                                        (vals dimension-name->field)
@@ -174,6 +210,7 @@
               :card-score card-score
               :total-score (long (/ (apply + score-components) (count score-components)))
               :score-components score-components)
+            (assoc-in [:metric-definition :aggregation] final-aggregate)
             (update :metric-definition add-breakouts-and-filter
                     (vals merged-dims)
                     (mapv (comp :filter simple-grounded-filters) card-filters))

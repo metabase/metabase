@@ -105,7 +105,7 @@
                    :metric-title           metric-name
                    :metric-score           metric-score
                    :metric-definition      {:aggregation
-                                            (transform-metric-aggregate metric-definition xform)}}))))))
+                                            [(transform-metric-aggregate metric-definition xform)]}}))))))
 
 (mu/defn grounded-metrics :- [:sequential ads/grounded-metric]
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."
