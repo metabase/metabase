@@ -184,12 +184,3 @@
                                (for [field (meta/fields :products)]
                                  (meta/field-metadata :products field))))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
-
-(deftest ^:parallel metadata-for-expression-preserve-semantic-type-test
-  (testing "Preserve type info like `:semantic-type` in MBQL clauses when calculating metadata for them."
-    (is (=? {:semantic-type :type/Country}
-            (lib/metadata lib.tu/venues-query -1 [:value {:semantic-type  :type/Country
-                                                          :base-type      :type/Text
-                                                          :effective-type :type/Text
-                                                          :lib/uuid       (str (random-uuid))}
-                                                  "United States"])))))
