@@ -399,12 +399,6 @@ export function FieldValuesWidgetInner({
 
   const isListMode = !disableList && valuesMode === "list" && !forceTokenField;
   const isLoading = loadingState === "LOADING";
-  const hasListValues = hasList({
-    parameter,
-    fields,
-    disableSearch,
-    options,
-  });
 
   const parseFreeformValue = (value: string | number) => {
     return isNumeric(fields[0], parameter)
@@ -424,7 +418,7 @@ export function FieldValuesWidgetInner({
       >
         {isListMode && isLoading ? (
           <LoadingState />
-        ) : isListMode && hasListValues && multi ? (
+        ) : isListMode && !_.isEmpty(options) && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
@@ -434,7 +428,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
-        ) : isListMode && hasListValues && !multi ? (
+        ) : isListMode && !_.isEmpty(options) && !multi ? (
           <SingleSelectListField
             isDashboardFilter={!!parameter}
             placeholder={tokenFieldPlaceholder}
