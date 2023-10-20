@@ -58,11 +58,24 @@ describe("scenarios > question > notebook filters", () => {
         filter({ mode: "notebook" });
         selectColumn("Title");
         selectOperator("Is", "Contains");
-        enterValue("Enter some text", "hat");
+        enterValue("Enter some text", "Al");
         addFilter();
-        verifyFilterName("Title contains hat");
+        verifyFilterName("Title contains Al");
         visualize();
-        verifyRowCount(12);
+        verifyRowCount(47);
+      });
+
+      it("contains operator with case sensitive option", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Contains");
+        enterValue("Enter some text", "Al");
+        toggleOption("Case sensitive");
+        addFilter();
+        verifyFilterName("Title contains Al");
+        visualize();
+        verifyRowCount(16);
       });
     });
   });
