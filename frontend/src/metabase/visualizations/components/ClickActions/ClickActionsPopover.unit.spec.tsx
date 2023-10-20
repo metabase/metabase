@@ -245,6 +245,199 @@ describe("ClickActionsPopover", function () {
       );
     });
 
+    describe("SummarizeColumnDrill", () => {
+      it.each([
+        {
+          column: ORDERS_COLUMNS.ID,
+          columnName: ORDERS_COLUMNS.ID.name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: ORDERS_COLUMNS.SUBTOTAL,
+          columnName: ORDERS_COLUMNS.SUBTOTAL.name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.SUBTOTAL,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: ORDERS_COLUMNS.CREATED_AT,
+          columnName: ORDERS_COLUMNS.CREATED_AT.name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+      ])(
+        "should apply drill to default ORDERS question on $columnName header click",
+        async ({ column, buttonText, expectedCard }) => {
+          const { props } = await setup({
+            clicked: {
+              column,
+              value: undefined,
+            },
+          });
+
+          const drill = screen.getByText(buttonText);
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
+            nextCard: expect.objectContaining({
+              dataset_query: expect.objectContaining(expectedCard),
+            }),
+          });
+        },
+      );
+    });
+
+    describe("DistributionDrill", () => {
+      it.each([
+        {
+          column: ORDERS_COLUMNS.USER_ID,
+          columnName: ORDERS_COLUMNS.USER_ID.name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.USER_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: ORDERS_COLUMNS.SUBTOTAL,
+          columnName: ORDERS_COLUMNS.SUBTOTAL.name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.SUBTOTAL,
+                  {
+                    "base-type": "type/Float",
+                    binning: {
+                      strategy: "default",
+                    },
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: ORDERS_COLUMNS.CREATED_AT,
+          columnName: ORDERS_COLUMNS.CREATED_AT.name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "base-type": "type/DateTime",
+                    "temporal-unit": "month",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+      ])(
+        "should apply drill to default ORDERS question on $columnName header click",
+        async ({ column, expectedCard }) => {
+          const { props } = await setup({
+            clicked: {
+              column,
+              value: undefined,
+            },
+          });
+
+          const drill = screen.getByText("Distribution");
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
+            nextCard: expect.objectContaining({
+              dataset_query: expect.objectContaining(expectedCard),
+            }),
+          });
+        },
+      );
+    });
+
     describe("FKFilterDrill", () => {
       it.each([
         {
