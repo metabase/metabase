@@ -1,6 +1,5 @@
 import {
   MODE_TYPE_NATIVE,
-  MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
   MODE_TYPE_TIMESERIES,
   MODE_TYPE_GEO,
@@ -26,10 +25,6 @@ export function getModeType(question: Question): ModeType | null {
   if (query instanceof StructuredQuery) {
     const aggregations = query.aggregations();
     const breakouts = query.breakouts();
-
-    if (aggregations.length === 0 && breakouts.length === 0) {
-      return MODE_TYPE_SEGMENT;
-    }
 
     if (aggregations.length > 0 && breakouts.length === 0) {
       return MODE_TYPE_METRIC;
