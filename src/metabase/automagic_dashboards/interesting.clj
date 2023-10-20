@@ -90,8 +90,8 @@
 (mu/defn ground-metric :- [:sequential ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
    Since there may be multiple matches to a dimension, this will produce a sequence of potential matches."
-  [{metric-name :metric-name
-    metric-score :score
+  [{metric-name       :metric-name
+    metric-score      :score
     metric-definition :metric} :- ads/normalized-metric-template
    ground-dimensions :- ads/dim-name->matching-fields]
   (let [named-dimensions (dashboard-templates/collect-dimensions metric-definition)]
@@ -101,11 +101,13 @@
          (map (fn [nm->field]
                 (let [xform (update-vals nm->field (fn [{field-id :id}]
                                                      [:field field-id nil]))]
-                  {:metric-name            metric-name
-                   :metric-title           metric-name
-                   :metric-score           metric-score
-                   :metric-definition      {:aggregation
-                                            [(transform-metric-aggregate metric-definition xform)]}}))))))
+                  {:metric-name           metric-name
+                   :metric-title          metric-name
+                   :metric-score          metric-score
+                   :metric-definition     {:aggregation
+                                           [(transform-metric-aggregate metric-definition xform)]}
+                   ;; Required for title interpolation in grounded-metrics->dashcards
+                   :dimension-name->field nm->field}))))))
 
 (mu/defn grounded-metrics :- [:sequential ads/grounded-metric]
   "Given a set of metric definitions and grounded (assigned) dimensions, produce a sequence of grounded metrics."

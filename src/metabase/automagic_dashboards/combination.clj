@@ -192,12 +192,15 @@
           :when (and (valid-bindings? base-context card-dimensions dimension-name->field)
                      (every? metric-name->metric card-metrics))
           :let [[grounded-metric :as all-satisfied-metrics] (map metric-name->metric card-metrics)
-                final-aggregate (reduce into (map (comp :aggregation :metric-definition) all-satisfied-metrics))]
-          :let [card             (-> card-template
+                final-aggregate                    (reduce into (map (comp :aggregation :metric-definition) all-satisfied-metrics))
+                bound-metric-dimension-name->field (apply merge (map :dimension-name->field all-satisfied-metrics))
+                card             (-> card-template
                                      (visualization/expand-visualization
                                        (vals dimension-name->field)
                                        nil)
-                                     (instantiate-metadata base-context {} dimension-name->field))
+                                     (instantiate-metadata base-context
+                                                           {}
+                                                           (into dimension-name->field bound-metric-dimension-name->field)))
                 score-components (list* (:card-score card)
                                         (:metric-score grounded-metric)
                                         dim-score)]]
