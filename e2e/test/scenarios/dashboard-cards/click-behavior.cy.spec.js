@@ -48,8 +48,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         visitDashboard(dashboard.id);
         editDashboard();
 
-        const cardIndex = 0;
-        getDashboardCard(cardIndex).icon("click").should("not.exist");
+        getDashboardCard().icon("click").should("not.exist");
       });
     });
   });
