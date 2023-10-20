@@ -340,7 +340,7 @@
                  :user_id     (mt/user->id :rasta)
                  :model       "Pulse"
                  :model_id    (:id pulse)
-                 :details     {:name (:name pulse)}}
+                 :details     {}}
                 (event "pulse-create" (:id pulse)))))))))
 
 (deftest pulse-delete-event-test

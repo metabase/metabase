@@ -87,11 +87,8 @@
 (derive :event/alert-unsubscribe ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [id name details]}]
-  (let [details-map (if (some? name)
-                      {:name name}
-                      details)]
-    (audit-log/record-event! topic details-map api/*current-user-id* :model/Pulse id)))
+  [topic {:keys [id details]}]
+    (audit-log/record-event! topic details api/*current-user-id* :model/Pulse id))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
