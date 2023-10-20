@@ -7,6 +7,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -426,3 +427,17 @@
   (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
   :user-local :only
   :type :string)
+
+;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
+
+(defmethod audit-log/model-details :model/User
+  [entity event-type]
+  (case event-type
+    :user-update               (:changes entity)
+    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :password-reset-initiated  (select-keys entity [:token])
+    :password-reset-successful (select-keys entity [:token])
+    {}))
