@@ -1,16 +1,21 @@
 import {
   filter,
   getNotebookStep,
-  openProductsTable,
   popover,
   restore,
+  visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const TEST_CASES = [
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
+
+const TABLE_CASES = [
   {
     title: "string, is",
-    column: "Category",
+    tableId: PRODUCTS_ID,
+    columnName: "Category",
     operator: "Is",
     options: ["Widget"],
     expectedDisplayName: "Category is Widget",
@@ -18,7 +23,8 @@ const TEST_CASES = [
   },
   {
     title: "string, is, multiple options",
-    column: "Category",
+    tableId: PRODUCTS_ID,
+    columnName: "Category",
     operator: "Is",
     options: ["Widget", "Gadget"],
     expectedDisplayName: "Category is 2 selections",
@@ -26,7 +32,8 @@ const TEST_CASES = [
   },
   {
     title: "string, is not",
-    column: "Category",
+    tableId: PRODUCTS_ID,
+    columnName: "Category",
     operator: "Is not",
     options: ["Widget"],
     expectedDisplayName: "Category is not Widget",
@@ -34,7 +41,8 @@ const TEST_CASES = [
   },
   {
     title: "string, contains",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Contains",
     values: ["Al"],
     expectedDisplayName: "Title contains Al",
@@ -42,7 +50,8 @@ const TEST_CASES = [
   },
   {
     title: "string, contains, case sensitive",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Contains",
     values: ["Al"],
     options: ["Case sensitive"],
@@ -51,7 +60,8 @@ const TEST_CASES = [
   },
   {
     title: "string, does not contain",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Does not contain",
     values: ["Al"],
     expectedDisplayName: "Title does not contain Al",
@@ -59,7 +69,8 @@ const TEST_CASES = [
   },
   {
     title: "string, does not contain, case sensitive",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Does not contain",
     values: ["Al"],
     options: ["Case sensitive"],
@@ -68,7 +79,8 @@ const TEST_CASES = [
   },
   {
     title: "string, starts with",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Starts with",
     values: ["sm"],
     expectedDisplayName: "Title starts with sm",
@@ -76,7 +88,8 @@ const TEST_CASES = [
   },
   {
     title: "string, starts with, case sensitive",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Starts with",
     values: ["Sm"],
     options: ["Case sensitive"],
@@ -85,7 +98,8 @@ const TEST_CASES = [
   },
   {
     title: "string, ends with",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Ends with",
     values: ["At"],
     expectedDisplayName: "Title ends with At",
@@ -93,7 +107,8 @@ const TEST_CASES = [
   },
   {
     title: "string, ends with, case sensitive",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Ends with",
     values: ["At"],
     options: ["Case sensitive"],
@@ -102,19 +117,29 @@ const TEST_CASES = [
   },
   {
     title: "string, is empty",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Is empty",
     expectedDisplayName: "Title is empty",
     expectedRowCount: 0,
   },
   {
     title: "string, is not empty",
-    column: "Title",
+    tableId: PRODUCTS_ID,
+    columnName: "Title",
     operator: "Not empty",
     expectedDisplayName: "Title is not empty",
     expectedRowCount: 200,
   },
 ];
+
+const tableQuestion = tableId => ({
+  dataset_query: {
+    type: "query",
+    query: { "source-table": tableId },
+    database: SAMPLE_DB_ID,
+  },
+});
 
 describe("scenarios > question > notebook filters", () => {
   beforeEach(() => {
@@ -123,10 +148,11 @@ describe("scenarios > question > notebook filters", () => {
   });
 
   describe("table source", () => {
-    TEST_CASES.forEach(
+    TABLE_CASES.forEach(
       ({
         title,
-        column,
+        tableId,
+        columnName,
         operator,
         values = [],
         options = [],
@@ -134,11 +160,11 @@ describe("scenarios > question > notebook filters", () => {
         expectedRowCount,
       }) => {
         it(title, () => {
-          openProductsTable({ mode: "notebook" });
+          visitQuestionAdhoc(tableQuestion(tableId), { mode: "notebook" });
           filter({ mode: "notebook" });
 
           popover().within(() => {
-            cy.findByText(column).click();
+            cy.findByText(columnName).click();
             cy.findByDisplayValue("Is").click();
           });
           cy.findByRole("listbox").findByText(operator).click();
