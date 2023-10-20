@@ -224,7 +224,7 @@ export function createTextCard({
   row = 0,
   size_x = 4,
   size_y = 6,
-  text = "A text card",
+  text = "Text card",
 } = {}) {
   return {
     id,
@@ -261,7 +261,7 @@ export function createHeadingCard({
   row = 0,
   size_x = 4,
   size_y = 1,
-  text = "A heading card",
+  text = "Heading card",
 } = {}) {
   return {
     id,
@@ -299,7 +299,7 @@ export function createActionCard({
   row = 0,
   size_x = 4,
   size_y = 1,
-  label = "An action card",
+  label = "Action card",
   action_id,
   parameter_mappings,
 } = {}) {
