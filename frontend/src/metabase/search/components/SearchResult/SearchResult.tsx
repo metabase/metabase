@@ -3,7 +3,6 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
-import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { Group, Text, Loader } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -72,7 +71,7 @@ export function SearchResult({
       isSelected={isSelected}
       p="sm"
       w="100%"
-      aria-label={t`${name} ${model}`}
+      aria-label={`${name} ${model}`}
     >
       <ItemIcon
         data-testid="search-result-item-icon"
