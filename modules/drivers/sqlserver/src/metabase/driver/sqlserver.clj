@@ -7,6 +7,7 @@
    [honeysql.helpers :as hh]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -657,3 +658,5 @@
     (-> (update database :details #(dissoc % :rowcount-override))
         (update :settings #(assoc % :max-results-bare-rows rowcount-override)))
     database))
+
+(defmethod mdb.query/sql-formatter-dialect :sqlserver [_] :tsql)

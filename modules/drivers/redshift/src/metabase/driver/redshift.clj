@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [java-time.api :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -367,3 +368,5 @@
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+(defmethod mdb.query/sql-formatter-dialect :redshift [_] :redshift)

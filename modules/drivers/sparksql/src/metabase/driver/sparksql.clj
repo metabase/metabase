@@ -6,6 +6,7 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.connection-pool :as connection-pool]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as hive-like]
    [metabase.driver.hive-like.fixed-hive-connection
@@ -222,3 +223,5 @@
 (defmethod sql.qp/quote-style :sparksql
   [_driver]
   :mysql)
+
+(defmethod mdb.query/sql-formatter-dialect :sparksql [_] :sparksql)

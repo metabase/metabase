@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
@@ -445,3 +446,5 @@
     (when-not (str/blank? dataset-id)
       (convert-dataset-id-to-filters! database dataset-id))
     database))
+
+(defmethod mdb.query/sql-formatter-dialect :bigquery-cloud-sdk [_] :mysql)

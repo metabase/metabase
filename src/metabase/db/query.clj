@@ -23,9 +23,11 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]
    [toucan2.jdbc :as t2.jdbc])
   (:import
@@ -34,20 +36,37 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private sql-dialects
+  {:db2 Dialect/Db2
+   :mariadb Dialect/MariaDb
+   :mysql Dialect/MySql
+   :n1ql Dialect/N1ql
+   :plsql Dialect/PlSql
+   :postgresql Dialect/PostgreSql
+   :redshift Dialect/Redshift
+   :sparksql Dialect/SparkSql
+   :standardsql Dialect/StandardSql
+   :tsql Dialect/TSql})
+
+(def ^:private SQLDialect
+  (into [:enum {:error/message "valid sql dialect"}] (keys sql-dialects)))
+
+(defmulti sql-formatter-dialect
+  "A dialect to use for pretty printing SQL queries. By default uses StandardSQL"
+  {:added "0.48.0" :arglists '([driver])}
+   driver/dispatch-on-initialized-driver
+   :hierarchy #'driver/hierarchy)
+
+(mu/defmethod sql-formatter-dialect :default :- SQLDialect
+  [_driver]
+  :standardsql)
+
 (defn- format-sql*
   "Return a nicely-formatted version of a generic `sql` string.
   Note that it will not play well with Metabase parameters."
-  [^String sql db-type]
+  [^String sql driver]
   (when sql
-    (let [formatter (SqlFormatter/of (case db-type
-                                       :mysql Dialect/MySql
-                                       :postgres Dialect/PostgreSql
-                                       :redshift Dialect/Redshift
-                                       :sparksql Dialect/SparkSql
-                                       :sqlserver Dialect/TSql
-                                       :oracle Dialect/PlSql
-                                       :bigquery-cloud-sdk Dialect/MySql
-                                       Dialect/StandardSql))]
+    (let [formatter (SqlFormatter/of (sql-dialects (sql-formatter-dialect driver)))]
       (.format formatter sql))))
 
 (defn- fix-sql-params
@@ -63,9 +82,9 @@
   For mongo queries, return as is since it's already in a nice json-like format."
  ([sql]
   (format-sql sql (mdb.connection/db-type)))
- ([sql db-type]
-  (if (isa? driver.impl/hierarchy db-type :sql)
-    (fix-sql-params (format-sql* sql db-type))
+ ([sql driver]
+  (if (isa? driver.impl/hierarchy driver :sql)
+    (fix-sql-params (format-sql* sql driver))
     sql)))
 
 (defmulti compile

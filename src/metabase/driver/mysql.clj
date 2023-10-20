@@ -10,6 +10,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -505,6 +506,7 @@
   #{"INFORMATION_SCHEMA"})
 
 (defmethod sql.qp/quote-style :mysql [_] :mysql)
+(defmethod mdb.query/sql-formatter-dialect :mysql [_] :mysql)
 
 ;; If this fails you need to load the timezone definitions from your system into MySQL; run the command
 ;;

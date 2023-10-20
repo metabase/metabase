@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
@@ -637,3 +638,5 @@
 (defmethod driver.sql/->prepared-substitution [:oracle Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
+
+(defmethod mdb.query/sql-formatter-dialect :oracle [_] :plsql)

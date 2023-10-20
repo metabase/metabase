@@ -8,6 +8,7 @@
    [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -78,12 +79,6 @@
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             metabase.driver impls                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -846,6 +841,8 @@
        "select t.*"
        "from table_privileges t"
        "where t.select or t.update or t.insert or t.delete"]))))
+
+(defmethod mdb.query/sql-formatter-dialect :postgres [_] :postgresql)
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
