@@ -102,18 +102,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     }).then(({ body: { id: question1Id } }) => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { id, card_id, dashboard_id } }) => {
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 16,
-                size_y: 10,
-                visualization_settings: getVisualizationSettings(question1Id),
-              },
-            ],
+          addOrUpdateDashboardCard({
+            dashboard_id,
+            card_id,
+            card: {
+              id,
+              visualization_settings: getVisualizationSettings(question1Id),
+            },
           });
 
           visitDashboard(dashboard_id);
