@@ -109,7 +109,7 @@ export const updateDashboardAndCards = createThunkAction(
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
         })),
-        ordered_tabs: (dashboard.ordered_tabs ?? [])
+        tabs: (dashboard.tabs ?? [])
           .filter(tab => !tab.isRemoved)
           .map(({ id, name }) => ({
             id,

@@ -20,16 +20,12 @@ import {
   PremiumEmbeddingLicensePageContent,
 } from "./PremiumEmbeddingLicensePage.styled";
 
-const getDescription = (
-  upgradeUrl: string,
-  tokenStatus?: TokenStatus,
-  hasToken?: boolean,
-) => {
-  if (!hasToken) {
+const getDescription = (upgradeUrl: string, tokenStatus?: TokenStatus) => {
+  if (!tokenStatus?.status) {
     return t`Our Premium Embedding product has been discontinued, but if you already have a license you can activate it here. You’ll continue to receive support for the duration of your license.`;
   }
 
-  if (!tokenStatus || !tokenStatus.isValid) {
+  if (!tokenStatus.isValid) {
     return (
       <>
         {jt`Your Premium Embedding license isn’t valid anymore. ${(
@@ -71,7 +67,6 @@ const PremiumEmbeddingLicensePage = ({
   const tokenSetting = settings.find(
     setting => setting.key === "premium-embedding-token",
   );
-  const token = tokenSetting?.value;
 
   const { isLoading, error, tokenStatus, updateToken, isUpdating } =
     useLicense();
@@ -103,18 +98,19 @@ const PremiumEmbeddingLicensePage = ({
       <PremiumEmbeddingLicensePageContent>
         <PremiumEmbeddingHeading>{t`Premium embedding`}</PremiumEmbeddingHeading>
         <PremiumEmbeddingDescription>
-          {getDescription(upgradeUrl, tokenStatus, !!token)}
+          {getDescription(upgradeUrl, tokenStatus)}
         </PremiumEmbeddingDescription>
         {!tokenStatus?.isValid && (
           <LicenseInputTitle>
             {t`Enter the token you bought from the Metabase Store below.`}
           </LicenseInputTitle>
         )}
+        {/* backend does not return token value */}
         <LicenseInput
           disabled={tokenSetting?.is_env_setting}
           error={error}
           loading={isUpdating}
-          token={token ? String(token) : undefined}
+          token={undefined}
           onUpdate={updateToken}
           invalid={isInvalid}
           placeholder={placeholder}

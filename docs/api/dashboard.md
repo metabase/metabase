@@ -73,9 +73,9 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 *  **`id`** value must be an integer greater than zero.
 
-*  **`param-key`** 
+*  **`param-key`**
 
-*  **`query`** 
+*  **`query`**
 
 *  **`query-params`**
 
@@ -91,7 +91,7 @@ Fetch possible values of the parameter whose ID is `:param-key`. If the values c
 
 *  **`id`** value must be an integer greater than zero.
 
-*  **`param-key`** 
+*  **`param-key`**
 
 *  **`query-params`**
 
@@ -176,11 +176,11 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 ### PARAMS:
 
-*  **`dashboard-id`** 
+*  **`dashboard-id`**
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`**
 
-*  **`card-id`** 
+*  **`card-id`**
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
@@ -194,11 +194,11 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 ### PARAMS:
 
-*  **`dashboard-id`** 
+*  **`dashboard-id`**
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`**
 
-*  **`card-id`** 
+*  **`card-id`**
 
 *  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
@@ -221,10 +221,10 @@ Execute the associated Action in the context of a `Dashboard` and `DashboardCard
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a map with schema: (
   value must be a map with schema: (
-    p? : 
-    pred-name : 
+    p? :
+    pred-name :
   ) : value must be a map with schema: (
-    _ : 
+    _ :
   )
 )
 
@@ -278,11 +278,11 @@ Run a pivot table query for a specific DashCard.
 
 ### PARAMS:
 
-*  **`dashboard-id`** 
+*  **`dashboard-id`**
 
-*  **`dashcard-id`** 
+*  **`dashcard-id`**
 
-*  **`card-id`** 
+*  **`card-id`**
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
@@ -330,7 +330,7 @@ Update a Dashboard.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`dash-updates`** 
+*  **`dash-updates`**
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -340,7 +340,7 @@ Update a Dashboard.
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`id`** 
+*  **`id`**
 
 *  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
@@ -357,7 +357,7 @@ Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
                      :series             [{:id 123
                                            ...}]}
                      ...]
-     :ordered_tabs [{:id       ... ; DashboardTab ID
+     :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}.
 
 ### PARAMS:
@@ -366,7 +366,7 @@ Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
 *  **`cards`** value must be seq of maps in which ids are unique
 
-*  **`ordered_tabs`** nullable value must be seq of maps in which ids are unique
+*  **`tabs`** nullable value must be seq of maps in which ids are unique
 
 ---
 

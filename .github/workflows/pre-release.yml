@@ -120,6 +120,7 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      TERM: xterm
     services:
       maildev:
         image: maildev/maildev:2.0.5
@@ -157,8 +158,7 @@ jobs:
       run: |
         mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
         yarn test-cypress-run --folder onboarding
-      env:
-        TERM: xterm
+
     - name: Upload Cypress Artifacts upon failure
       uses: actions/upload-artifact@v3
       if: failure()
