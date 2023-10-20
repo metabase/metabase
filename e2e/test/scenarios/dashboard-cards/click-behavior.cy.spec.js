@@ -25,8 +25,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         const actionCard = createActionCard();
         const linkCard = createLinkCard();
         const cards = [textCard, headingCard, actionCard, linkCard];
-
         updateDashboardCards({ dashboard_id: dashboard.id, cards });
+
         visitDashboard(dashboard.id);
         editDashboard();
 
