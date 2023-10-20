@@ -133,6 +133,31 @@ describe("scenarios > question > notebook filters", () => {
           rowCount: 0,
         });
       });
+
+      it("ends with operator", () => {
+        openProductsTable({ mode: "notebook" });
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Ends with",
+          placeholder: "Enter some text",
+          value: "AT",
+          filterName: "Title ends with AT",
+          rowCount: 22,
+        });
+      });
+
+      it("ends with operator with case sensitive option", () => {
+        openProductsTable({ mode: "notebook" });
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Ends with",
+          placeholder: "Enter some text",
+          value: "AT",
+          caseSensitive: true,
+          filterName: "Title ends with AT",
+          rowCount: 0,
+        });
+      });
     });
   });
 });
