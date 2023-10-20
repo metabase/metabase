@@ -16,6 +16,31 @@ const TEST_CASES = [
     expectedDisplayName: "Category is Widget",
     expectedRowCount: 54,
   },
+  {
+    title: "string, is not",
+    column: "Category",
+    operator: "Is not",
+    options: ["Widget"],
+    expectedDisplayName: "Category is not Widget",
+    expectedRowCount: 146,
+  },
+  {
+    title: "string, contains",
+    column: "Title",
+    operator: "Contains",
+    values: ["Al"],
+    expectedDisplayName: "Title contains Al",
+    expectedRowCount: 47,
+  },
+  {
+    title: "string, contains, case sensitive",
+    column: "Title",
+    operator: "Contains",
+    values: ["Al"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title contains Al",
+    expectedRowCount: 16,
+  },
 ];
 
 describe("scenarios > question > notebook filters", () => {
@@ -31,7 +56,7 @@ describe("scenarios > question > notebook filters", () => {
         column,
         operator,
         values = [],
-        options,
+        options = [],
         expectedDisplayName,
         expectedRowCount,
       }) => {
