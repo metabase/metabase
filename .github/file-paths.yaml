@@ -2,9 +2,6 @@ default: &default
   - "locales/**"
   - "bin/**"
 
-ci: &ci
-  - ".github/**/!(*.md|team.json)"
-
 shared_sources: &shared_sources
   - "shared/src/**"
   - "src/metabase/lib/**"
@@ -33,7 +30,7 @@ frontend_specs: &frontend_specs
   - "jest.tz.unit.conf.json"
 
 frontend_all: &frontend_all
-  - *ci
+  # - *ci
   - *frontend_sources
   - *frontend_specs
 
@@ -61,7 +58,7 @@ backend_specs: &backend_specs
 
 backend_all: &backend_all
   - *default
-  - *ci
+  # - *ci
   - *backend_sources
   - *backend_specs
 
@@ -78,11 +75,11 @@ e2e_specs: &e2e_specs
 
 e2e_all:
   - *default
-  - *ci
+  # - *ci
   - *sources
 
 snowplow:
-  - *ci
+  # - *ci
   - "snowplow/**"
 
 documentation:
@@ -99,7 +96,7 @@ codeql:
 
 i18n:
   - *default
-  - *ci
+  # - *ci
   - *sources
 
 visualizations:
