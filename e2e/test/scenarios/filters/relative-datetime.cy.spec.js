@@ -1,5 +1,10 @@
 import moment from "moment-timezone";
-import { restore, popover, openOrdersTable } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  queryBuilderMain,
+} from "e2e/support/helpers";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -126,7 +131,7 @@ describe("scenarios > question > relative-datetime", () => {
     it("current filters should work (metabase#21977)", () => {
       openOrdersTable();
 
-      cy.findByTextEnsureVisible("Created At").click();
+      queryBuilderMain().findByText("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Relative dates...").click();
@@ -135,12 +140,12 @@ describe("scenarios > question > relative-datetime", () => {
       });
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("There was a problem with your question").should(
-        "not.exist",
-      );
+      queryBuilderMain()
+        .findByText("There was a problem with your question")
+        .should("not.exist");
+
       cy.findByTestId("qb-filters-panel")
-        .findByText("Created At This Year")
+        .findByText("Created At is this year")
         .should("be.visible");
     });
 
@@ -228,19 +233,16 @@ describe("scenarios > question > relative-datetime", () => {
 
       openCreatedAt("Next");
       addStartingFrom();
-      popover().within(() => {
-        cy.findByText("Add filter").click();
-      });
+      popover().button("Add filter").click();
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Next 30 Days, starting 7 days ago").should(
-        "not.exist",
-      );
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Next 30 Days, starting 7 days from now").should(
-        "exist",
-      );
+      cy.findByTestId("qb-filters-panel").within(() => {
+        const baseName = "Created At is in the next 30 days";
+        cy.findByText(`${baseName}, starting 7 days from now`).should(
+          "be.visible",
+        );
+        cy.findByText(`${baseName}, starting 7 days ago`).should("not.exist");
+      });
     });
   });
 });
@@ -277,34 +279,33 @@ const openCreatedAt = tab => {
 };
 
 const addStartingFrom = () => {
-  popover().within(() => {
-    cy.icon("ellipsis").click();
-  });
+  popover().findByLabelText("Options").click();
   popover()
     .last()
-    .within(() => cy.findByText("Starting from...").click());
+    .findByText(/Starting from/)
+    .click();
 };
 
 const setRelativeDatetimeUnit = unit => {
-  cy.findByTestId("relative-datetime-unit").click();
-  popover()
-    .last()
-    .within(() => cy.findByTextEnsureVisible(unit).click());
+  cy.findByLabelText("Unit").click();
+  cy.findByRole("listbox").findByText(unit).click();
 };
 
 const setRelativeDatetimeValue = value => {
-  cy.findByTestId("relative-datetime-value").click().clear().type(value).blur();
+  cy.findByLabelText("Interval").click().clear().type(value).blur();
 };
 
 const setStartingFromUnit = unit => {
-  cy.findByTestId("starting-from-unit").click();
-  popover()
-    .last()
-    .within(() => cy.findByText(unit).click());
+  cy.findByLabelText("Starting from unit").click();
+  cy.findByRole("listbox").findByText(unit).click();
 };
 
 const setStartingFromValue = value => {
-  cy.findByTestId("starting-from-value").click().clear().type(value).blur();
+  cy.findByLabelText("Starting from interval")
+    .click()
+    .clear()
+    .type(value)
+    .blur();
 };
 
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
