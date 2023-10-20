@@ -1086,7 +1086,10 @@
                                                             (deliver update-field-values-called? :sync-called)))]
           (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
           (is (= :sync-called
-                 (deref update-field-values-called? long-timeout :sync-never-called))))))))
+                 (deref update-field-values-called? long-timeout :sync-never-called)))
+          (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+          (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                              :details :id))))))))
 
 (deftest nonadmins-cant-trigger-rescan
   (testing "Non-admins should not be allowed to trigger re-scan"
