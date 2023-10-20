@@ -242,30 +242,12 @@ export function createTextCard({
   };
 }
 
-/**
- * @param {Object=} option
- * @param {number=} option.id
- * @param {number=} option.col
- * @param {number=} option.row
- * @param {number=} option.size_x
- * @param {number=} option.size_y
- * @param {string=} option.text
- */
-export function createHeadingCard({
-  id = getNextUnsavedDashboardCardId(),
-  col = 0,
-  row = 0,
-  size_x = 4,
-  size_y = 1,
-  text = "Heading card",
-} = {}) {
+export function createHeadingCard() {
   return {
-    id,
+    id: getNextUnsavedDashboardCardId(),
     card_id: null,
-    col,
-    row,
-    size_x,
-    size_y,
+    size_x: 4,
+    size_y: 1,
     visualization_settings: {
       virtual_card: {
         name: null,
@@ -274,39 +256,27 @@ export function createHeadingCard({
         dataset_query: {},
         archived: false,
       },
-      text,
+      text: "Heading card",
     },
   };
 }
 /**
  * @param {Object=} option
- * @param {number=} option.id
- * @param {number=} option.col
- * @param {number=} option.row
- * @param {number=} option.size_x
- * @param {number=} option.size_y
  * @param {string=} option.label
  * @param {number=} option.action_id
  * @param {Array=} option.parameter_mappings
  */
 export function createActionCard({
-  id = getNextUnsavedDashboardCardId(),
-  col = 0,
-  row = 0,
-  size_x = 4,
-  size_y = 1,
   label = "Action card",
   action_id,
   parameter_mappings,
 } = {}) {
   return {
-    id,
+    id: getNextUnsavedDashboardCardId(),
     action_id,
     card_id: null,
-    col,
-    row,
-    size_x,
-    size_y,
+    size_x: 4,
+    size_y: 1,
     series: [],
     parameter_mappings,
     visualization_settings: {
