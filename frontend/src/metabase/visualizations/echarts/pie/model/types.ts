@@ -5,11 +5,6 @@ export interface PieColumnDescriptors {
   dimensionDesc: ColumnDescriptor;
 }
 
-export interface PieLegendItem {
-  title: string[];
-  color: string;
-}
-
 export interface PieSlice {
   key: string;
   value: number;
