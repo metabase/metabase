@@ -41,6 +41,23 @@ const TEST_CASES = [
     expectedDisplayName: "Title contains Al",
     expectedRowCount: 16,
   },
+  {
+    title: "string, does not contain",
+    column: "Title",
+    operator: "Does not contain",
+    values: ["Al"],
+    expectedDisplayName: "Title does not contain Al",
+    expectedRowCount: 153,
+  },
+  {
+    title: "string, does not contain, case sensitive",
+    column: "Title",
+    operator: "Does not contain",
+    values: ["Al"],
+    options: ["Case sensitive"],
+    expectedDisplayName: "Title does not contain Al",
+    expectedRowCount: 184,
+  },
 ];
 
 describe("scenarios > question > notebook filters", () => {
