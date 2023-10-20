@@ -91,6 +91,31 @@ describe("scenarios > question > notebook filters", () => {
         visualize();
         verifyRowCount(47);
       });
+
+      it("does not contain operator", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Does not contain");
+        enterValue("Enter some text", "Al");
+        addFilter();
+        verifyFilterName("Title does not contain Al");
+        visualize();
+        verifyRowCount(153);
+      });
+
+      it("does not contain operator with case sensitive option", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Does not contain");
+        enterValue("Enter some text", "Al");
+        toggleOption("Case sensitive");
+        addFilter();
+        verifyFilterName("Title does not contain Al");
+        visualize();
+        verifyRowCount(184);
+      });
     });
   });
 });
