@@ -1039,7 +1039,7 @@
     (let [sync-called?    (promise)
           analyze-called? (promise)]
       (mt/with-model-cleanup [:model/AuditLog :model/Activity]
-        (t2.with-temp/with-temp [Database {{db-id :id} :as _db} {:engine "h2", :details (:details (mt/db))}]
+        (t2.with-temp/with-temp [Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
