@@ -1116,12 +1116,13 @@
 
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Can we DISCARD all the FieldValues for a DB?"
-    (mt/with-temp [Database    db       {:engine "h2", :details (:details (mt/db))}
-                   Table       table  {:db_id (u/the-id db)}
-                   Field       field  {:table_id (u/the-id table)}
-                   FieldValues values {:field_id (u/the-id field), :values [1 2 3 4]}]
-      (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
-      (is (= (:id db) (:model_id (mt/latest-audit-log-entry)))))))
+    (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+      (mt/with-temp [Database    db       {:engine "h2", :details (:details (mt/db))}
+                     Table       table  {:db_id (u/the-id db)}
+                     Field       field  {:table_id (u/the-id table)}
+                     FieldValues values {:field_id (u/the-id field), :values [1 2 3 4]}]
+        (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+        (is (= (:id db) (:model_id (mt/latest-audit-log-entry))))))))
 
 (deftest nonadmins-cant-discard-all-fieldvalues
   (testing "Non-admins should not be allowed to discard all FieldValues"
