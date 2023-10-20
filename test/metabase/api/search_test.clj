@@ -816,3 +816,57 @@
        (testing "`archived-string` is 'true'"
          (is (= #{"action"}
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived-string "true")))))))))
+
+
+(deftest filter-items-in-personal-collection-test
+  (let [search-term "filter-items-in-personal-collection"
+        rasta-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
+        crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+    (mt/with-temp
+      [:model/Collection {sub-public-coll :id}     {:location "/" :name search-term}
+       :model/Dashboard  {dash-public :id}         {:collection_id nil :name search-term}
+       :model/Dashboard  {dash-sub-public :id}     {:collection_id sub-public-coll :name search-term}
+       :model/Collection {rasta-sub-coll :id}      {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
+       :model/Card       {card-rasta :id}          {:collection_id rasta-personal-coll-id :name search-term}
+       :model/Card       {card-sub-rasta :id}      {:collection_id rasta-sub-coll :name search-term}
+       :model/Collection {crowberto-sub-coll :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
+       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :dataset true :name search-term}
+       :model/Card       {model-sub-crowberto :id} {:collection_id crowberto-sub-coll :dataset true :name search-term}]
+
+      (testing "admin only"
+        (is (= #{["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["card" card-rasta]
+                 ["card" card-sub-rasta]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term
+                                          :filter_items_in_personal_collection "only" :models "card" :models "dataset" :models "dashboard")
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+      (testing "non-admin only"
+        (is (= #{["card" card-rasta]
+                 ["card" card-sub-rasta]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :q search-term
+                                          :filter_items_in_personal_collection "only" :models "card" :models "dataset" :models "dashboard")
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+      (testing "admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :q search-term
+                                          :filter_items_in_personal_collection "exclude"  :models "dashboard")
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+      (testing "non-admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :q search-term
+                                          :filter_items_in_personal_collection "exclude"  :models "dashboard")
+                    :data
+                    (map (juxt :model :id))
+                    set)))))))

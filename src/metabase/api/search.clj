@@ -36,13 +36,14 @@
   "Map with the various allowed search parameters, used to construct the SQL query."
   (mc/schema
     [:map {:closed true}
-     [:search-string                       [:maybe ms/NonBlankString]]
-     [:archived?                           :boolean]
-     [:current-user-perms                  [:set perms/PathSchema]]
-     [:models             {:optional true} [:maybe [:set SearchableModel]]]
-     [:table-db-id        {:optional true} [:maybe ms/Int]]
-     [:limit-int          {:optional true} [:maybe ms/Int]]
-     [:offset-int         {:optional true} [:maybe ms/Int]]]))
+     [:search-string                                        [:maybe ms/NonBlankString]]
+     [:archived?                                            :boolean]
+     [:current-user-perms                                   [:set perms/PathSchema]]
+     [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
+     [:models                              {:optional true} [:maybe [:set SearchableModel]]]
+     [:table-db-id                         {:optional true} [:maybe ms/Int]]
+     [:limit-int                           {:optional true} [:maybe ms/Int]]
+     [:offset-int                          {:optional true} [:maybe ms/Int]]]))
 
 (def ^:private HoneySQLColumn
   [:or
@@ -236,21 +237,47 @@
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query               :- ms/Map
-   collection-id-column         :- keyword?
-   {:keys [current-user-perms]} :- SearchContext]
+  [honeysql-query                                :- ms/Map
+   collection-id-column                          :- keyword?
+   {:keys [current-user-perms
+           filter-items-in-personal-collection]} :- SearchContext]
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
                                   visible-collections)
-        honeysql-query           (-> honeysql-query
-                                     (sql.helpers/where collection-filter-clause)
-                                     (sql.helpers/where [:= :collection.namespace nil]))]
+        honeysql-query           (cond-> honeysql-query
+                                   true
+                                   (sql.helpers/where collection-filter-clause [:= :collection.namespace nil])
+
+                                   (some? filter-items-in-personal-collection)
+                                   identity)]
+
     ;; add a JOIN against Collection *unless* the source table is already Collection
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (sql.helpers/left-join [:collection :collection]
-                             [:= collection-id-column :collection.id]))))
+                             [:= collection-id-column :collection.id])
+
+      (some? filter-items-in-personal-collection)
+      (sql.helpers/where
+       (case filter-items-in-personal-collection
+         "only"
+         (concat [:or]
+                 ;; sub personal collections
+                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
+                   [:like :collection.location (format "/%d/%%" id)])
+                 ;; top level personal collections
+                 [[:and
+                   [:= :collection.location "/"]
+                   [:not= :collection.personal_owner_id nil]]])
+
+         "exclude"
+         (conj [:or]
+               (into
+                [:and]
+                (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
+                  [:not-like :collection.location (format "/%d/%%" id)]))
+               [:= collection-id-column nil]))))))
 
 (mu/defn ^:private add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
@@ -486,22 +513,26 @@
    archived-string :- [:maybe ms/BooleanString]
    table-db-id     :- [:maybe ms/PositiveInt]
    models          :- [:maybe [:or SearchableModel [:sequential SearchableModel]]]
+   filter-items-in-personal-collection :- [:maybe [:enum "only" "exclude"]]
    limit           :- [:maybe ms/PositiveInt]
    offset          :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
+    (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
     (some? table-db-id) (assoc :table-db-id table-db-id)
     (some? models)      (assoc :models
                                (apply hash-set (if (vector? models) models [models])))
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
+;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
+;; so we don't have to keep the arguments between 2 API in sync
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
   {table-db-id [:maybe ms/PositiveInt]}
-  (query-model-set (search-context q archived-string table-db-id nil nil nil)))
+  (query-model-set (search-context q archived-string table-db-id nil nil nil nil)))
 
 (api/defendpoint GET "/"
   "Search within a bunch of models for the substring `q`.
@@ -512,11 +543,12 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived table_db_id models]
-  {q            [:maybe ms/NonBlankString]
-   archived     [:maybe ms/BooleanString]
-   table_db_id  [:maybe ms/PositiveInt]
-   models       [:maybe [:or SearchableModel [:sequential SearchableModel]]]}
+  [q archived table_db_id models filter_items_in_personal_collection]
+  {q                                     [:maybe ms/NonBlankString]
+   archived                              [:maybe ms/BooleanString]
+   table_db_id                           [:maybe ms/PositiveInt]
+   filter_items_in_personal_collection   [:maybe [:enum "only" "exclude"]]
+   models                                [:maybe [:or SearchableModel [:sequential SearchableModel]]]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [start-time (System/currentTimeMillis)
         results    (search (search-context
@@ -524,6 +556,7 @@
                             archived
                             table_db_id
                             models
+                            filter_items_in_personal_collection
                             mw.offset-paging/*limit*
                             mw.offset-paging/*offset*))
         duration   (- (System/currentTimeMillis) start-time)]
