@@ -76,7 +76,7 @@ export function FilterColumnPicker({
       const includeSegments = (groupInfo as Lib.TableDisplayInfo).isSourceTable;
 
       const segmentItems = includeSegments
-        ? Lib.availableSegments(query).map(segment => ({
+        ? Lib.availableSegments(query, stageIndex).map(segment => ({
             ...Lib.displayInfo(query, stageIndex, segment),
             segment,
           }))
