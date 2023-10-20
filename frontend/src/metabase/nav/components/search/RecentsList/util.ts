@@ -1,4 +1,4 @@
-import type { RecentItem, RecentItem } from "metabase-types/api";
+import type { RecentItem } from "metabase-types/api";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
@@ -13,5 +13,6 @@ export const isItemActive = ({ model, model_object }: RecentItem) => {
   }
   return isSyncCompleted(model_object);
 };
+
 export const getItemUrl = (item: RecentItem) =>
   isItemActive(item) ? Urls.modelToUrl(item) : "";
