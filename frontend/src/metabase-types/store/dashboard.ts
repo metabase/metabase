@@ -6,7 +6,7 @@ import type {
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
-  DashboardOrderedTab,
+  DashboardTab,
   DashboardTabId,
 } from "metabase-types/api";
 
@@ -18,13 +18,13 @@ export type DashboardSidebarName =
   | "sharing"
   | "info";
 
-export type StoreDashboardTab = DashboardOrderedTab & {
+export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
 };
 
-export type StoreDashboard = Omit<Dashboard, "dashcards" | "ordered_tabs"> & {
+export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   dashcards: DashCardId[];
-  ordered_tabs?: StoreDashboardTab[];
+  tabs?: StoreDashboardTab[];
 };
 
 export type StoreDashcard = DashboardCard & {
