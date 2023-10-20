@@ -24,7 +24,7 @@ export const getYTickWidth = (data, accessors, settings, fontSize) => {
 
 /**
  *
- * @param {import("../components/XYChart/types").ChartStyle} chartStyle
+ * @param {import("../components/Values/types").ChartStyle} chartStyle
  * @param {boolean} isVertical
  */
 export const getXTickLabelProps = (chartStyle, isVertical) => ({
@@ -36,7 +36,7 @@ export const getXTickLabelProps = (chartStyle, isVertical) => ({
 
 /**
  *
- * @param {import("../components/XYChart/types").ChartStyle} chartStyle
+ * @param {import("../components/Values/types").ChartStyle} chartStyle
  */
 export const getYTickLabelProps = chartStyle => ({
   fontFamily: chartStyle.fontFamily,
@@ -47,7 +47,7 @@ export const getYTickLabelProps = chartStyle => ({
 
 /**
  *
- * @param {import("../components/XYChart/types").ChartStyle} chartStyle
+ * @param {import("../components/Values/types").ChartStyle} chartStyle
  */
 export const getLabelProps = chartStyle => ({
   fontFamily: chartStyle.fontFamily,

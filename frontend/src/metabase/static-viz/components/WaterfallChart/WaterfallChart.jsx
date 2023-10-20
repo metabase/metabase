@@ -28,7 +28,7 @@ import {
 } from "../../constants/accessors";
 import { getWaterfallColors } from "../../lib/colors";
 import Values from "../Values";
-import { createXScale } from "../XYChart/utils";
+import { createXScale } from "./utils";
 
 const layout = {
   width: 540,
