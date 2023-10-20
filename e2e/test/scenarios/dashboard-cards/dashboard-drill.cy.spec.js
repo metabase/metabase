@@ -1,13 +1,17 @@
 import {
-  restore,
+  addOrUpdateDashboardCard,
+  assertQueryBuilderRowCount,
+  filterWidget,
+  getDashboardCard,
+  main,
   modal,
   popover,
-  filterWidget,
+  restore,
   showDashboardCardActions,
-  visitDashboard,
-  addOrUpdateDashboardCard,
   sidebar,
-  getDashboardCard,
+  visitDashboard,
+  queryBuilderHeader,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -161,59 +165,47 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should handle question click through on a table", () => {
     createDashboardWithQuestion({}, dashboardId => visitDashboard(dashboardId));
-    cy.icon("pencil").click();
+
+    cy.findByLabelText("Edit dashboard").click();
     showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
+    cy.findByLabelText("Click behavior").click();
+
+    sidebar().within(() => {
+      // Configuring on-click behavior for MY_NUMBER column
+      cy.findByText("MY_NUMBER").click();
+      cy.findByText("Go to a custom destination").click();
+      cy.findByText("Saved question").click();
     });
 
-    // configure a dashboard target for the "MY_NUMBER" column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("On-click behavior for each column")
-      .parent()
-      .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to a custom destination").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved question").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders → User ID").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products → Category").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    popover().within(() => cy.findByText("My Param").click());
+    modal().findByText("Orders").click();
 
-    // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "num: {{my_number}}",
-      { parseSpecialCharSequences: false },
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
+    sidebar().findByText("Orders → User ID").click();
+    popover().findByText("MY_NUMBER").click();
+
+    sidebar().findByText("Products → Category").click();
+    popover().findByText("My Param").click();
+
+    sidebar()
+      .findByLabelText(/Customize link text/)
+      .type("num: {{my_number}}", {
+        parseSpecialCharSequences: false,
+      });
+
+    cy.findByTestId("edit-bar").button("Save").click();
 
     // wait to leave editing mode and set a param value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You're editing this dashboard.").should("not.exist");
+    main().findByText("You're editing this dashboard.").should("not.exist");
     setParamValue("My Param", "Widget");
 
     // click on table value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("num: 111").click();
+    cy.findByTestId("dashcard").findByText("num: 111").click();
 
-    // show filtered question
-    cy.findAllByText("Orders");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("User ID is 111");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Category is Widget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 5 rows");
+    queryBuilderHeader().findByText("Orders").should("be.visible");
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.findByText("User ID is 111").should("be.visible");
+      cy.findByText("Product → Category is Widget").should("be.visible");
+    });
+    assertQueryBuilderRowCount(5);
   });
 
   it("should handle dashboard click through on a table", () => {
@@ -413,26 +405,34 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     it("when clicking on the field value (metabase#13062-1)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("xavier").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("=").click();
+      cy.findByTestId("dashcard").findByText("xavier").click();
+      popover().findByText("Is xavier").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Reviewer is xavier");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Rating is 2 selections");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Reprehenderit non error"); // xavier's review
+      cy.findByTestId("qb-filters-panel").within(() => {
+        cy.findByText("Reviewer is xavier").should("be.visible");
+        cy.findByText("Rating is equal to 2 selections").should("be.visible");
+      });
+
+      // xavier's review
+      queryBuilderMain()
+        .contains("Reprehenderit non error")
+        .should("be.visible");
+
+      assertQueryBuilderRowCount(1);
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(questionDetails.name).click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Rating is 2 selections");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
+      cy.findByTestId("dashcard").findByText(questionDetails.name).click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Rating is equal to 2 selections")
+        .should("be.visible");
+
+      // Sample review body
+      queryBuilderMain()
+        .contains("Ad perspiciatis quis et consectetur.")
+        .should("be.visible");
+
+      assertQueryBuilderRowCount(907);
     });
   });
 
@@ -923,29 +923,29 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
       drillThroughCardTitle("Orders");
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        cy.findByText("37.65");
-        cy.findByText("110.93");
+      queryBuilderMain().within(() => {
+        cy.findByText("37.65").should("be.visible");
+        cy.findByText("110.93").should("be.visible");
         cy.findByText("52.72").should("not.exist");
       });
 
-      cy.findByTestId("question-row-count").findByText("Showing 2 rows");
+      assertQueryBuilderRowCount(2);
 
-      postDrillAssertion();
+      postDrillAssertion("ID is 2 selections");
     });
 
     it("should correctly drill-through on Products filter (metabase#11503-2)", () => {
       setFilterValue(productsIdFilter.name);
 
       drillThroughCardTitle("Orders");
-      cy.findByTestId("TableInteractive-root").within(() => {
+      queryBuilderMain().within(() => {
         cy.findByText("37.65").should("not.exist");
-        cy.findAllByText("105.12");
+        cy.findAllByText("105.12").should("have.length", 17);
       });
 
-      cy.findByTestId("question-row-count").findByText("Showing 191 rows");
+      assertQueryBuilderRowCount(191);
 
-      postDrillAssertion();
+      postDrillAssertion("Product → ID is 2 selections");
     });
 
     function setFilterValue(filterName) {
@@ -955,14 +955,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("2 selections");
     }
 
-    function postDrillAssertion() {
-      cy.findByText("ID is 2 selections").click();
+    function postDrillAssertion(filterName) {
+      cy.findByTestId("qb-filters-panel").findByText(filterName).click();
       popover().within(() => {
-        cy.get("li")
-          .should("have.length", 3) // The third one is an input field
-          .and("contain", "1")
-          .and("contain", "2");
-        cy.findByText("Update filter");
+        cy.get(".input").should("contain", "1").and("contain", "2");
+        cy.button("Update filter").should("be.visible");
       });
     }
   });
