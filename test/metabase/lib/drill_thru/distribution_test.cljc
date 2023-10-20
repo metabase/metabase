@@ -46,3 +46,18 @@
     :query-type  :unaggregated
     :column-name "QUANTITY"
     :expected    {:type :drill-thru/distribution}}))
+
+(deftest ^:parallel apply-to-fk-column-test
+  (testing "do not apply binning to FK columns (#34343)"
+    (lib.drill-thru.tu/test-drill-application
+     {:click-type     :header
+      :column-name    "USER_ID"
+      :query-type     :unaggregated
+      :drill-type     :drill-thru/distribution
+      :expected       {:type   :drill-thru/distribution
+                       :column {:name "USER_ID"}}
+      :expected-query {:stages [{:source-table (meta/id :orders)
+                                 :aggregation  [[:count {}]]
+                                 :breakout     [[:field
+                                                 {:binning (symbol "nil #_\"key is not present.\"")}
+                                                 (meta/id :orders :user-id)]]}]}})))

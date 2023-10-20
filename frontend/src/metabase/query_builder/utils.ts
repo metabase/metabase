@@ -79,22 +79,44 @@ export const isNavigationAllowed = ({
   }
 
   const { hash, pathname } = destination;
+  const isRunningModel = pathname === "/model" && hash.length > 0;
+  const isRunningQuestion = pathname === "/question" && hash.length > 0;
+  const validSlugs = [question.id(), question.slug()]
+    .filter(Boolean)
+    .map(String);
 
   if (question.isDataset()) {
     if (isNewQuestion) {
-      const isQueryTab = pathname === "/model/query";
-      const isMetadataTab = pathname === "/model/metadata";
-      return isQueryTab || isMetadataTab;
+      const allowedPathnames = ["/model/query", "/model/metadata"];
+      return isRunningModel || allowedPathnames.includes(pathname);
     }
 
-    const isQueryTab = pathname.match(/^\/model\/.+\/query$/) !== null;
-    const isMetadataTab = pathname.match(/^\/model\/.+\/metadata$/) !== null;
-    return isQueryTab || isMetadataTab;
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/model/${slug}`,
+      `/model/${slug}/query`,
+      `/model/${slug}/metadata`,
+    ]);
+
+    return isRunningModel || allowedPathnames.includes(pathname);
   }
 
   if (question.isNative()) {
-    const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
+  }
+
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   */
+  if (!isNewQuestion && question.isStructured()) {
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}`,
+      `/question/${slug}/notebook`,
+    ]);
+
+    return (
+      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
+    );
   }
 
   return true;

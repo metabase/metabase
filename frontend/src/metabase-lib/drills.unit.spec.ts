@@ -1789,18 +1789,18 @@ describe("drillThru", () => {
       },
     },
 
-    // FIXME: distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
-    // {
-    //   drillType: "drill-thru/distribution",
-    //   clickType: "header",
-    //   columnName: "USER_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     aggregation: [["count"]],
-    //     breakout: [["field", ORDERS.USER_ID, null]],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
+    // distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
+    {
+      drillType: "drill-thru/distribution",
+      clickType: "header",
+      columnName: "USER_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.USER_ID, { "base-type": "type/Integer" }]],
+        "source-table": ORDERS_ID,
+      },
+    },
     {
       drillType: "drill-thru/distribution",
       clickType: "header",

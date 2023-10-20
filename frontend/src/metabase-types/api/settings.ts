@@ -123,12 +123,13 @@ export type LoadingMessage =
   | "running-query"
   | "loading-results";
 
-export type TokenStatusStatus = "unpaid" | "past-due" | string;
+export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
 export interface TokenStatus {
   status?: TokenStatusStatus;
   valid: boolean;
   "valid-thru"?: string;
+  "error-details"?: string;
   trial: boolean;
 }
 
