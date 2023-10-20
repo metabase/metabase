@@ -28,6 +28,7 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     steps:
       - uses: actions/checkout@v3
@@ -72,6 +73,7 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
+
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
@@ -79,8 +81,7 @@ jobs:
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          TERM: xterm
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()

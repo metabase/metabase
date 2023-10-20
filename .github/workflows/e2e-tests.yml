@@ -182,6 +182,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
+      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
@@ -256,8 +257,6 @@ jobs:
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          TERM: xterm
 
       - name: Run slow and resource-intensive Cypress tests
         if: matrix.name == 'slow' && github.event_name != 'schedule'
@@ -266,8 +265,6 @@ jobs:
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          TERM: xterm
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
@@ -276,8 +273,6 @@ jobs:
           --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          TERM: xterm
 
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
@@ -301,8 +296,6 @@ jobs:
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
           --browser "replay-chromium"
-        env:
-          TERM: xterm
           CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
@@ -314,8 +307,6 @@ jobs:
           --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true" \
           --folder ${{ matrix.name }} \
           --browser "replay-chromium"
-        env:
-          TERM: xterm
           CYPRESS_REPLAYIO_ENABLED: 1
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
