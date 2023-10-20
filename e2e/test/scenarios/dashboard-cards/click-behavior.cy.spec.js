@@ -1,4 +1,5 @@
 import {
+  createActionCard,
   createHeadingCard,
   createTextCard,
   getDashboardCardMenu,
@@ -19,17 +20,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     it("does not allow to set click behavior for virtual dashcards", () => {
       cy.createDashboard().then(({ body: dashboard }) => {
         const cardSize = { size_x: 4, size_y: 1 };
-        const textCard = createTextCard({
-          text: "Hello world",
-          row: 0,
-          ...cardSize,
-        });
-        const headingCard = createHeadingCard({
-          text: "Hello world",
-          row: 1,
-          ...cardSize,
-        });
-        const cards = [textCard, headingCard];
+        const textCard = createTextCard({ row: 0, ...cardSize });
+        const headingCard = createHeadingCard({ row: 1, ...cardSize });
+        const actionCard = createActionCard({ row: 2, ...cardSize });
+        const cards = [textCard, headingCard, actionCard];
         updateDashboardCards({ dashboard_id: dashboard.id, cards });
         visitDashboard(dashboard.id);
         cards.forEach((card, index) => {
