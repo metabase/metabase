@@ -1,11 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createActionCard,
   createHeadingCard,
   createLinkCard,
   createTextCard,
-  getDashboardCardMenu,
+  editDashboard,
+  getDashboardCard,
   restore,
-  showDashboardCardActions,
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -27,14 +28,28 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         updateDashboardCards({ dashboard_id: dashboard.id, cards });
         visitDashboard(dashboard.id);
+        editDashboard();
 
-        cards.forEach((card, index) => {
+        cards.forEach((card, cardIndex) => {
           const display = card.visualization_settings.virtual_card.display;
           cy.log(`does not allow to set click behavior for "${display}" card`);
-
-          showDashboardCardActions(index);
-          getDashboardCardMenu(index).should("not.exist");
+          getDashboardCard(cardIndex).icon("click").should("not.exist");
         });
+      });
+    });
+
+    it("does not allow to set click behavior for object detail dashcard", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          display: "object",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        },
+      }).then(({ body: dashboard }) => {
+        visitDashboard(dashboard.id);
+        editDashboard();
+
+        const cardIndex = 0;
+        getDashboardCard(cardIndex).icon("click").should("not.exist");
       });
     });
   });
