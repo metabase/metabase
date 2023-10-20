@@ -20,7 +20,7 @@ import {
 } from "metabase/search/components/SearchResult";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
-import { getItemName, isItemActive } from "./util";
+import { getItemName, getItemUrl, isItemActive } from "./util";
 
 type RecentsListContentProps = {
   isLoading: boolean;
@@ -41,16 +41,22 @@ export const RecentsListContent = ({
     onEnter: (item: WrappedRecentItem) => onClick(item),
   });
 
-  return isLoading ? (
-    <SearchLoadingSpinner />
-  ) : results.length === 0 ? (
-    <Stack spacing="md" px="sm" py="md">
-      <Title order={4} px="sm">{t`Recently viewed`}</Title>
-      <EmptyStateContainer>
-        <EmptyState message={t`Nothing here`} icon="folder" />
-      </EmptyStateContainer>
-    </Stack>
-  ) : (
+  if (isLoading) {
+    return <SearchLoadingSpinner />;
+  }
+
+  if (results.length === 0) {
+    return (
+      <Stack spacing="md" px="sm" py="md">
+        <Title order={4} px="sm">{t`Recently viewed`}</Title>
+        <EmptyStateContainer>
+          <EmptyState message={t`Nothing here`} icon="folder" />
+        </EmptyStateContainer>
+      </Stack>
+    );
+  }
+
+  return (
     <Stack spacing="md" px="sm" py="md" data-testid="recents-list-container">
       <Title order={4} px="sm">{t`Recently viewed`}</Title>
       <Stack spacing={0}>
@@ -73,8 +79,9 @@ export const RecentsListContent = ({
                 <Group spacing="xs" align="center" noWrap>
                   <ResultTitle
                     data-testid="recently-viewed-item-title"
-                    order={4}
                     truncate
+                    href={getItemUrl(item) ?? undefined}
+                    onClick={e => e.stopPropagation()}
                   >
                     {getItemName(item)}
                   </ResultTitle>

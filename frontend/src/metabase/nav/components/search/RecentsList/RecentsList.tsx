@@ -5,11 +5,10 @@ import { useRecentItemListQuery } from "metabase/common/hooks";
 import type { IconName } from "metabase/core/components/Icon";
 import RecentItems from "metabase/entities/recent-items";
 import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import {
   getItemName,
-  isItemActive,
+  getItemUrl,
 } from "metabase/nav/components/search/RecentsList/util";
 import { Paper } from "metabase/ui";
 
@@ -69,6 +68,3 @@ export const RecentsList = ({ onClick, className }: RecentsListProps) => {
     </Paper>
   );
 };
-
-const getItemUrl = (item: RecentItem) =>
-  isItemActive(item) ? Urls.modelToUrl(item) : "";
