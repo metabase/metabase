@@ -99,10 +99,11 @@ describe("scenarios > dashboard > tabs", () => {
     cy.log("should stay on the same tab");
     cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-    const originalSize = {};
     getDashboardCard(0).then(element => {
-      originalSize.width = element.outerWidth();
-      originalSize.height = element.outerHeight();
+      cy.wrap({
+        width: element.outerWidth(),
+        height: element.outerHeight(),
+      }).as("originalSize");
     });
 
     cy.log("move card to second tab");
@@ -119,9 +120,13 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.log("size should stay the same");
 
-    getDashboardCard(0).should(card => {
-      expect(card.width()).to.equal(originalSize.width);
-      expect(card.height()).to.equal(originalSize.height);
+    getDashboardCard(0).then(element => {
+      cy.get("@originalSize").then(originalSize => {
+        expect({
+          width: element.outerWidth(),
+          height: element.outerHeight(),
+        }).to.deep.eq(originalSize);
+      });
     });
   });
 

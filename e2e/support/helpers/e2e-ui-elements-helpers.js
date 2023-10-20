@@ -11,7 +11,7 @@ export function main() {
 }
 
 export function menu() {
-  return cy.get("[role='menu']");
+  return cy.findByRole("menu");
 }
 
 export function modal() {
