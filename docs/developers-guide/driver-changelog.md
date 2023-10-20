@@ -9,12 +9,12 @@ title: Driver interface changelog
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
-  
+
 - Another driver feature has been added: `:table-privileges`. This feature signals whether we can store
   the table-level privileges for the database on database sync.
-  
-- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
-  the set of privileges the database connection's current user has. It needs to be implemented if the database 
+
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get
+  the set of privileges the database connection's current user has. It needs to be implemented if the database
   supports the `:table-privileges` feature.
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
@@ -69,6 +69,11 @@ title: Driver interface changelog
   `metabase.driver/db-default-timezone` implementations for JDBC-based drivers, has been deprecated, and will be
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
+
+- Added a new multimethod `metabase.driver.sql.parameters.substitution/->temporal-unit`, which returns
+  a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
+  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
 
 ## Metabase 0.47.0
 
