@@ -442,7 +442,7 @@
                                                                    :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/select-one :model/Dashboard :id id)]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal])]
     (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
