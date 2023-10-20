@@ -124,12 +124,12 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
 
   const { prefix, timestamp, userId } = isUpdated
     ? {
-        prefix: "Updated",
+        prefix: t`Updated`,
         timestamp: result.updated_at,
         userId: result.last_editor_id,
       }
     : {
-        prefix: "Created",
+        prefix: t`Created`,
         timestamp: result.created_at,
         userId: result.creator_id,
       };
