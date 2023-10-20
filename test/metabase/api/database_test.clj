@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Collection Database Field FieldValues Metric Segment Table]]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -329,6 +330,17 @@
       (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
+
+(deftest create-db-audit-log-test
+  (testing "POST /api/database"
+    (testing "The id captured in the database-create event matches the new db's id"
+      (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+          (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
+                audit-entry (t2/select-one :model/AuditLog
+                                           {:order-by [[:id :desc]]
+                                            :where [:= :topic "database-create"]})]
+            (is (= id (-> audit-entry :details :id)))))))))
 
 (deftest disallow-creating-h2-database-test
   (testing "POST /api/database/:id"
