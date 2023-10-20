@@ -1,4 +1,11 @@
-import { restore } from "e2e/support/helpers";
+import {
+  createTextCard,
+  getDashboardCardMenu,
+  restore,
+  showDashboardCardActions,
+  updateDashboardCards,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -9,7 +16,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("visualizations without click behavior", () => {
     it('does not allow to set click behavior for "text" virtual dashcard', () => {
-      expect(1).to.be.eq(1);
+      cy.createDashboard().then(({ body: dashboard }) => {
+        const cards = [createTextCard({ text: "Hello world" })];
+        updateDashboardCards({ dashboard_id: dashboard.id, cards });
+        visitDashboard(dashboard.id);
+        showDashboardCardActions();
+        getDashboardCardMenu().should("not.exist");
+      });
     });
   });
 });
