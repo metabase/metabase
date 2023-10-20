@@ -12,6 +12,7 @@ import {
   createOrdersIdDatasetColumn,
   createOrdersProductIdDatasetColumn,
   createOrdersQuantityDatasetColumn,
+  createOrdersSubtotalDatasetColumn,
   createOrdersTableDatasetColumns,
   createOrdersTotalDatasetColumn,
   createOrdersUserIdDatasetColumn,
@@ -226,6 +227,199 @@ describe("ClickActionsPopover", function () {
           expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
           expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
             nextCard: expect.objectContaining(expectedCard),
+          });
+        },
+      );
+    });
+
+    describe("SummarizeColumnDrill", () => {
+      it.each([
+        {
+          column: createOrdersIdDatasetColumn(),
+          columnName: createOrdersIdDatasetColumn().name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.ID,
+                    {
+                      "base-type": "type/BigInteger",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: createOrdersSubtotalDatasetColumn(),
+          columnName: createOrdersSubtotalDatasetColumn().name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.SUBTOTAL,
+                    {
+                      "base-type": "type/Float",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: createOrdersCreatedAtDatasetColumn(),
+          columnName: createOrdersCreatedAtDatasetColumn().name,
+          buttonText: "Distinct values",
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [
+                [
+                  "distinct",
+                  [
+                    "field",
+                    ORDERS.CREATED_AT,
+                    {
+                      "base-type": "type/DateTime",
+                    },
+                  ],
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+      ])(
+        "should apply drill to default ORDERS question on $columnName header click",
+        async ({ column, buttonText, expectedCard }) => {
+          const { props } = await setup({
+            clicked: {
+              column,
+              value: undefined,
+            },
+          });
+
+          const drill = screen.getByText(buttonText);
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
+            nextCard: expect.objectContaining({
+              dataset_query: expect.objectContaining(expectedCard),
+            }),
+          });
+        },
+      );
+    });
+
+    describe("DistributionDrill", () => {
+      it.each([
+        {
+          column: createOrdersUserIdDatasetColumn(),
+          columnName: createOrdersUserIdDatasetColumn().name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.USER_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: createOrdersSubtotalDatasetColumn(),
+          columnName: createOrdersSubtotalDatasetColumn().name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.SUBTOTAL,
+                  {
+                    "base-type": "type/Float",
+                    binning: {
+                      strategy: "default",
+                    },
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+        {
+          column: createOrdersCreatedAtDatasetColumn(),
+          columnName: createOrdersCreatedAtDatasetColumn().name,
+          expectedCard: {
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  ORDERS.CREATED_AT,
+                  {
+                    "base-type": "type/DateTime",
+                    "temporal-unit": "month",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+            type: "query",
+          },
+        },
+      ])(
+        "should apply drill to default ORDERS question on $columnName header click",
+        async ({ column, expectedCard }) => {
+          const { props } = await setup({
+            clicked: {
+              column,
+              value: undefined,
+            },
+          });
+
+          const drill = screen.getByText("Distribution");
+          expect(drill).toBeInTheDocument();
+
+          userEvent.click(drill);
+
+          expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+          expect(props.onChangeCardAndRun).toHaveBeenLastCalledWith({
+            nextCard: expect.objectContaining({
+              dataset_query: expect.objectContaining(expectedCard),
+            }),
           });
         },
       );
