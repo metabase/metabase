@@ -1,13 +1,11 @@
 import type Question from "metabase-lib/Question";
 import {
   MODE_TYPE_NATIVE,
-  MODE_TYPE_SEGMENT,
   MODE_TYPE_METRIC,
   MODE_TYPE_TIMESERIES,
   MODE_TYPE_GEO,
   MODE_TYPE_PIVOT,
 } from "../Mode/constants";
-import { SegmentMode } from "../modes/SegmentMode";
 import { MetricMode } from "../modes/MetricMode";
 import { TimeseriesMode } from "../modes/TimeseriesMode";
 import { GeoMode } from "../modes/GeoMode";
@@ -34,9 +32,6 @@ export function getQueryMode(
   switch (mode) {
     case MODE_TYPE_NATIVE:
       return NativeMode;
-
-    case MODE_TYPE_SEGMENT:
-      return SegmentMode;
 
     case MODE_TYPE_METRIC:
       return MetricMode;
