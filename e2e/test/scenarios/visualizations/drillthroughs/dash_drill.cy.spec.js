@@ -1,5 +1,6 @@
 import {
   addOrUpdateDashboardCard,
+  queryBuilderMain,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -180,9 +181,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           });
 
           visitDashboard(dashboard_id);
-          cy.findByText(QUESTION_NAME).click();
-          cy.findByText("Category is Doohickey");
-          cy.findByText("177"); // Doohickeys for 2022
+          cy.findByTestId("dashcard").findByText(QUESTION_NAME).click();
+          cy.findByTestId("qb-filters-panel")
+            .findByText("Product → Category is Doohickey")
+            .should("be.visible");
+          queryBuilderMain().findByText("177").should("be.visible"); // Doohickeys for 2022
         });
       });
     });
