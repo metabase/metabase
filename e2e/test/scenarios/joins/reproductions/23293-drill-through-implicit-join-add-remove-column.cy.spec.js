@@ -22,55 +22,51 @@ describe("issue 23293", () => {
     modifyColumn("Category", "add");
     cy.wait("@dataset");
 
-    saveQuestion().then(
-      ({
-        response: {
-          body: { id },
-        },
-      }) => {
-        const questionDetails = {
-          query: {
-            "source-table": `card__${id}`,
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                {
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
-              ],
+    saveQuestion().then(({ response }) => {
+      const cardId = response.body.id;
+
+      const questionDetails = {
+        query: {
+          "source-table": `card__${cardId}`,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CATEGORY,
+              {
+                "source-field": ORDERS.PRODUCT_ID,
+              },
             ],
-          },
-          display: "bar",
-        };
+          ],
+        },
+        display: "bar",
+      };
 
-        cy.createQuestionAndDashboard({ questionDetails }).then(
-          ({ body: { dashboard_id } }) => {
-            visitDashboard(dashboard_id);
-          },
-        );
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        },
+      );
 
-        cy.get(".bar").first().realClick();
-        popover()
-          .findByText(/^See these/)
-          .click();
+      cy.get(".bar").first().realClick();
+      popover()
+        .findByText(/^See these/)
+        .click();
 
-        cy.findByTestId("qb-filters-panel").should(
-          "contain",
-          "Product → Category is Doohickey",
-        );
-        cy.findAllByTestId("header-cell")
-          .last()
-          .should("have.text", "Product → Category");
+      cy.findByTestId("qb-filters-panel").should(
+        "contain",
+        "Product → Category is Doohickey",
+      );
+      cy.findAllByTestId("header-cell")
+        .last()
+        .should("have.text", "Product → Category");
 
-        cy.findAllByRole("grid")
-          .last()
-          .as("tableResults")
-          .should("contain", "Doohickey")
-          .and("not.contain", "Gizmo");
-      },
-    );
+      cy.findAllByRole("grid")
+        .last()
+        .as("tableResults")
+        .should("contain", "Doohickey")
+        .and("not.contain", "Gizmo");
+    });
   });
 });
 
