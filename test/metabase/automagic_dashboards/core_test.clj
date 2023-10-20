@@ -1940,7 +1940,7 @@
                                               grounded-metrics)
                 {total-orders-group         "Total Orders"
                  avg-quantity-ordered-group "Average Quantity Ordered"} (group-by :group dashcards)]
-            (is (= 57 (count dashcards)))
+            (is (= 55 (count dashcards)))
             (is (= 14 (count total-orders-group)))
             (is (= #{"map" "bar" "line" "row"}
                    (set (map (comp first :visualization) total-orders-group))))
