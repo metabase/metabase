@@ -4,6 +4,7 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [java-time :as t]
+    [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
@@ -369,6 +370,36 @@
         (map? form) ((some-fn :full-name :name) form))
       form))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TODO - Deduplicate from core
+(def ^:private ^{:arglists '([source])} source->db
+  (comp (partial t2/select-one :model/Database :id) (some-fn :db_id :database_id)))
+
+(defn- enriched-field-with-sources [{:keys [tables source]} field]
+  (assoc field
+    :link (m/find-first (comp :link #{(:table_id field)} u/the-id) tables)
+    :db (source->db source)))
+
+(defn- add-field-links-to-definitions [dimensions field]
+  (->> dimensions
+       (keep (fn [[identifier definition]]
+               (when-let [matches (->> definition
+                                       :matches
+                                       (remove (comp #{(id-or-name field)} id-or-name))
+                                       not-empty)]
+                 [identifier (assoc definition :matches matches)])))
+       (concat [["this" {:matches [field]
+                         :name    (:display_name field)
+                         :score   dashboard-templates/max-score
+                         :card-score   dashboard-templates/max-score}]])
+       (into {})))
+
+(defn- add-field-self-reference [{{:keys [entity]} :root :as context} dimensions]
+  (cond-> dimensions
+    (= Field (mi/model entity))
+    (add-field-links-to-definitions (enriched-field-with-sources context entity))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (mu/defn identify
   :- [:map
       [:dimensions ads/dim-name->matching-fields]
@@ -379,8 +410,9 @@
    {:keys [dimension-specs
            metric-specs]} :- [:map
                               [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
-                              [:metric-specs [:maybe [:sequential ads/metric-template]]]]]
-  (let [dims      (find-dimensions context dimension-specs)
+                                 [:metric-specs [:maybe [:sequential ads/metric-template]]]]]
+  (let [dims      (->> (find-dimensions context dimension-specs)
+                       (add-field-self-reference context))
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
                       (grounded-metrics dims))
         set-score (fn [score metrics]

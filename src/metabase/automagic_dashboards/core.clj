@@ -1280,6 +1280,16 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
+(defn- filter-referenced-fields
+  "Return a map of fields referenced in filter clause."
+  [root filter-clause]
+  (->> filter-clause
+       filters/collect-field-references
+       (map (fn [[_ id-or-name _options]]
+              [id-or-name (->field root id-or-name)]))
+       (remove (comp nil? second))
+       (into {})))
+
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
   [{{:keys [show] user-defined-metrics :linked-metrics :as root} :root :as base-context}
@@ -1328,16 +1338,6 @@
                                         ;     :param_fields (filter-referenced-fields root query-filter)
          :auto_apply_filters true
          ))))
-
-(defn- filter-referenced-fields
-  "Return a map of fields referenced in filter clause."
-  [root filter-clause]
-  (->> filter-clause
-       filters/collect-field-references
-       (map (fn [[_ id-or-name _options]]
-              [id-or-name (->field root id-or-name)]))
-       (remove (comp nil? second))
-       (into {})))
 
 (defn- find-first-match-dashboard-template
   "Given a 'root' context, apply matching dashboard templates in sequence and return the first application of this
