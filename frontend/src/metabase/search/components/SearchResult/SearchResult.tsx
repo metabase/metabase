@@ -70,6 +70,7 @@ export function SearchResult({
       onClick={handleClick}
       isActive={isActive}
       isSelected={isSelected}
+      data-model-type={model}
       data-is-selected={isSelected}
       w="100%"
       aria-label={`${name} ${model}`}

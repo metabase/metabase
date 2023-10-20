@@ -199,7 +199,7 @@ function testOfficialBadgeInSearch({
   cy.findByTestId("search-results-list").within(() => {
     assertSearchResultBadge(collection, {
       expectBadge,
-      selector: "h4",
+      selector: "[data-testid='search-result-item-name']",
     });
     assertSearchResultBadge(question, { expectBadge });
     assertSearchResultBadge(dashboard, { expectBadge });

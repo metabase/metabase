@@ -76,8 +76,8 @@ describeEE("search > recently viewed > enterprise features", () => {
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
     cy.findByPlaceholderText("Search…").click();
 
-    cy.findByTestId("recents-list-container").within(() => {
-      cy.findByText("Orders").closest("button").find(".Icon-verified_filled");
+    cy.findByTestId("recently-viewed-item").within(() => {
+      cy.icon("verified_filled").should("be.visible");
     });
   });
 });
