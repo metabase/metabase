@@ -362,6 +362,20 @@
       (t2.with-temp/with-temp [Database db]
         (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
 
+(let [normalize (fn normalize [audit-log-details] (update audit-log-details :engine keyword))]
+  (deftest delete-database-audit-log-test
+    (testing "DELETE /api/database/:id"
+      (testing "Check that an audit log entry is created when someone deletes a Database"
+        (t2.with-temp/with-temp [Database db]
+          (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+            (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
+            (is (= (audit-log/model-details db :model/Database)
+                   (->> (t2/select-one :model/AuditLog
+                                       {:order-by [[:id :desc]]
+                                        :where [:= :topic "database-delete"]})
+                        :details
+                        normalize)))))))))
+
 (defn- api-update-database! [expected-status-code db-or-id changes]
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
