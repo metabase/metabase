@@ -1,14 +1,16 @@
 (ns metabase.lib.drill-thru.zoom-in-geographic
   "Geographic zooms are of the following flavors. All geographic zooms require both a `:type/Latitude` and a
-  `:type/Longitude` column. and are done in 'cell' context for specific values.
+  `:type/Longitude` column in [[metabase.lib.metadata.calculation/visible-columns]], not necessarily in the
+  query's [[metabase.lib.metadata.calculation/returned-columns]]. E.g. 'count broken out by state' query should still
+  get presented this drill.
+
+  These drills are only for 'cell' context for specific values.
 
   1. Country, State, or City => Binned LatLon
 
      1a. If we are breaking out by a `:type/Country` column: remove breakout on country column, and add/replace
          breakouts on Latitude/Longitude with binning `:bin-width` of 10°, and add `=` filter for the clicked
-         country value. Note that we will need to look at visible columns, rather than returned columns, to determine
-         if there are suitable latitude/longitude columns to use. A 'count broken out by state' query should still get
-         presented this option.
+         country value.
 
      1b. If we have a `:type/State` column, remove breakout on state column, add/replace breakouts on
          Latitude/Longitude with binning `:bin-width` of 1°, and add `=` filter for the clicked state value.
