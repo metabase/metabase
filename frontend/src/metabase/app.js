@@ -11,9 +11,6 @@ import "number-to-locale-string";
 // Should be imported before any other metabase import
 import "ee-overrides"; // eslint-disable-line import/no-duplicates
 
-// day.js plugins should be enabled before setting the locale
-import "metabase/lib/dayjs";
-
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
