@@ -30,7 +30,7 @@ describe("scenarios > question > notebook filters", () => {
 
   describe("table source", () => {
     describe("string columns", () => {
-      it("= operator", () => {
+      it("equals operator", () => {
         visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         filter({ mode: "notebook" });
         selectColumn("Title");
@@ -41,7 +41,7 @@ describe("scenarios > question > notebook filters", () => {
         verifyRowCount(1);
       });
 
-      it("!= operator", () => {
+      it("not equals operator", () => {
         visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         filter({ mode: "notebook" });
         selectColumn("Title");
