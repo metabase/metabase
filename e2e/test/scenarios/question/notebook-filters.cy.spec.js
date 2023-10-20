@@ -96,6 +96,29 @@ describe("scenarios > question > notebook filters", () => {
           rowCount: 16,
         });
       });
+
+      it("does not contain operator", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Does not contain",
+          placeholder: "Enter some text",
+          value: "Al",
+          filterName: "Title does not contain Al",
+          rowCount: 153,
+        });
+      });
+
+      it("does not contain operator with case sensitive option", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Does not contain",
+          placeholder: "Enter some text",
+          value: "Al",
+          caseSensitive: true,
+          filterName: "Title does not contain Al",
+          rowCount: 184,
+        });
+      });
     });
   });
 });
