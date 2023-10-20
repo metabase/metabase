@@ -498,6 +498,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
+(deftest fetch-dashboard-in-personal-collection-test
+  (testing "GET /api/dashboard/:id"
+    (let [crowberto-personal-coll (t2/select-one :model/Collection (mt/user->id :crowberto))]
+     (mt/with-temp
+       [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
+       (is (= (assoc crowberto-personal-coll :is_personal true)
+             (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
@@ -1214,7 +1222,7 @@
 (deftest cards-to-copy-test
   (testing "Identifies all cards to be copied"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                         {:card_id 3 :card (card-model{:id 3})}]]
+                     {:card_id 3 :card (card-model{:id 3})}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :discard []}
@@ -1222,14 +1230,14 @@
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                           {:card_id 3 :card (card-model{:id 3})}]]
+                       {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :discard [{:id 2}]}
                  (#'api.dashboard/cards-to-copy dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                           {:card_id 3 :card (card-model{:id 3})}]]
+                       {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
                   :discard [{:id 1} {:id 2}]}
@@ -1238,7 +1246,7 @@
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
-                         {:card_id 3 :card {:id 3}}]]
+                     {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
              (api.dashboard/update-cards-for-copy 1
                                                   dashcards
@@ -1267,7 +1275,7 @@
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
-                           {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
+                       {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
                (api.dashboard/update-cards-for-copy 1
                                                     dashcards

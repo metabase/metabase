@@ -1143,13 +1143,14 @@
         (assoc user :personal_collection_id (or (user-id->collection-id (u/the-id user))
                                                 (user->personal-collection-id (u/the-id user))))))))
 
-(mi/define-simple-hydration-method ^:private collection-is-root
+#_{:clj-kondo/ignore [:unused-private-var]}
+(mi/define-simple-hydration-method ^:private collection-is-personal
   :is_personal
   "Whether the current collection is or nested in a personal collection."
   [collection]
   (is-personal-collection-or-descendant-of-one? collection))
 
-(mi/define-batched-hydration-method collectiions-is-root
+(mi/define-batched-hydration-method collections-is-personal
   :collections_is_personal
   "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
   `true` means the collection is or nested in a personal collection."
@@ -1158,7 +1159,7 @@
         location-is-personal    (fn [location]
                                   (boolean
                                    (and (string? location)
-                                        (some #(str/starts-with? location (format "/%d" %)) personal-collection-ids))))]
+                                        (some #(str/starts-with? location (format "/%d/" %)) personal-collection-ids))))]
     (map (fn [{:keys [location personal_owner_id] :as coll}]
            (assoc coll :is_personal (or (some? personal_owner_id)
                                         (location-is-personal location))))

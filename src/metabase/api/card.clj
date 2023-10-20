@@ -196,13 +196,13 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  (t2/hydrate :creator
-                          :dashboard_count
-                          :parameter_usage_count
-                          :can_write
-                          :average_query_time
-                          :last_query_start
-                          [:collection :is_personal]
-                          [:moderation_reviews :moderator_details])
+                             :dashboard_count
+                             :parameter_usage_count
+                             :can_write
+                             :average_query_time
+                             :last_query_start
+                             [:collection :is_personal]
+                             [:moderation_reviews :moderator_details])
                  collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (t2/hydrate :persisted))
