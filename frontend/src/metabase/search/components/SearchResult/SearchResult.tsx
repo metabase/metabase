@@ -74,7 +74,12 @@ export function SearchResult({
       w="100%"
       aria-label={t`${name} ${model}`}
     >
-      <ItemIcon active={isActive} item={result} type={model} />
+      <ItemIcon
+        data-testid="search-result-item-icon"
+        active={isActive}
+        item={result}
+        type={model}
+      />
       <ResultNameSection justify="center" spacing="xs">
         <Group spacing="xs" align="center" noWrap>
           <ResultTitle data-testid="search-result-item-name" order={4} truncate>

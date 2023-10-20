@@ -318,6 +318,7 @@ describe("scenarios > search", () => {
 
     describe("created_by filter", () => {
       beforeEach(() => {
+        restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -1160,7 +1161,7 @@ function expectSearchResultContent({ expectedSearchResults, strict = true }) {
           });
         }
         if (expectedSearchResult.timestamp) {
-          cy.findByTestId("info-text-edited-info").should(
+          cy.findByTestId("revision-history-button").should(
             "have.text",
             expectedSearchResult.timestamp,
           );

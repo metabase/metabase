@@ -27,11 +27,17 @@ interface ItemIconProps {
   active: boolean;
   item: WrappedResult | WrappedRecentItem;
   type: SearchModelType;
+  "data-testid"?: string;
 }
 
-export const ItemIcon = ({ active, item, type }: ItemIconProps) => {
+export const ItemIcon = ({
+  active,
+  item,
+  type,
+  "data-testid": dataTestId,
+}: ItemIconProps) => {
   return (
-    <IconWrapper type={type} active={active}>
+    <IconWrapper type={type} active={active} data-testid={dataTestId}>
       <IconComponent item={item} type={type} />
     </IconWrapper>
   );

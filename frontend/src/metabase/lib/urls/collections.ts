@@ -31,12 +31,7 @@ function slugifyPersonalCollection(collection: Collection) {
   return slug;
 }
 
-export function collection(
-  collection?: Pick<Collection, "id" | "name"> & {
-    personal_owner_id?: Collection["personal_owner_id"];
-    originalName?: Collection["originalName"];
-  },
-) {
+export function collection(collection: Collection) {
   const isSystemCollection =
     !collection || collection.id === null || typeof collection.id === "string";
 

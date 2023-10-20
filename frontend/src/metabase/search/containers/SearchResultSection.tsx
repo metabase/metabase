@@ -1,8 +1,7 @@
-import { t } from "ttag";
+import { msgid, ngettext } from "ttag";
 import type { WrappedResult } from "metabase/search/types";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import { Paper, Stack, Text } from "metabase/ui";
-import { pluralize } from "metabase/lib/formatting";
 
 export const SearchResultSection = ({
   results,
@@ -11,10 +10,12 @@ export const SearchResultSection = ({
   results: WrappedResult[];
   totalResults: number;
 }) => {
-  const resultsLabel =
-    totalResults === 1
-      ? t`1 result`
-      : t`${totalResults} ${pluralize("result")}`;
+  const resultsLabel = ngettext(
+    msgid`${totalResults} result`,
+    `${totalResults} results`,
+    totalResults,
+  );
+
   return (
     <Paper px="sm" py="md">
       <Stack spacing="sm">

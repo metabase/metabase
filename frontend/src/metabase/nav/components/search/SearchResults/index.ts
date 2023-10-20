@@ -1,1 +1,2 @@
-export { SearchResults } from "./SearchResults";
+export { SearchResults, SearchLoadingSpinner } from "./SearchResults";
+export * from "./SearchResults.styled";

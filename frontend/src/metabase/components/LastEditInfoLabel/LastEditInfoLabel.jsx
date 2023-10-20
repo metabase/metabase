@@ -62,14 +62,17 @@ function LastEditInfoLabel({
       : null;
 
   return label ? (
-    <Tooltip tooltip={<DateTime value={timestamp} />} isEnabled={!!timeLabel}>
+    <Tooltip
+      tooltip={timestamp ? <DateTime value={timestamp} /> : null}
+      isEnabled={!!timeLabel}
+    >
       <TextButton
         size="small"
         className={className}
         onClick={onClick}
         data-testid="revision-history-button"
       >
-        {t`${prefix} ${label}`}
+        {prefix} {label}
       </TextButton>
     </Tooltip>
   ) : null;

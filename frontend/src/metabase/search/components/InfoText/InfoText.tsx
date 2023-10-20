@@ -1,4 +1,6 @@
+import moment from "moment-timezone";
 import { t } from "ttag";
+import { isNull } from "underscore";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
@@ -15,6 +17,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Box, Text } from "metabase/ui";
+import type Database from "metabase-lib/metadata/Database";
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
 import {
@@ -49,6 +52,27 @@ export const InfoTextTableLink = ({ result }: InfoTextProps) => {
   );
 };
 
+export const DatabaseLink = ({ database }: { database: Database }) => (
+  <SearchResultLink key={database.name} href={browseDatabase(database)}>
+    {database.name}
+  </SearchResultLink>
+);
+export const TableLink = ({ result }: { result: WrappedResult }) => {
+  const link = browseSchema({
+    db: { id: result.database_id },
+    schema_name: result.table_schema,
+  });
+
+  return (
+    <>
+      {LinkSeparator}
+      <SearchResultLink key={result.table_schema} href={link}>
+        {result.table_schema}
+      </SearchResultLink>
+    </>
+  );
+};
+
 export const InfoTextTablePath = ({ result }: InfoTextProps) => {
   const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
     id: result.database_id,
@@ -58,42 +82,10 @@ export const InfoTextTablePath = ({ result }: InfoTextProps) => {
     !isDatabaseLoading && database && database.name !== null;
   const showTableLink = showDatabaseLink && !!result.table_schema;
 
-  const getDatabaseLink = () => {
-    if (!showDatabaseLink) {
-      return null;
-    }
-
-    return (
-      <SearchResultLink key={database.name} href={browseDatabase(database)}>
-        {database.name}
-      </SearchResultLink>
-    );
-  };
-
-  const getTableLink = () => {
-    if (!showTableLink) {
-      return null;
-    }
-
-    const link = browseSchema({
-      db: { id: result.database_id },
-      schema_name: result.table_schema,
-    });
-
-    return (
-      <>
-        {LinkSeparator}
-        <SearchResultLink key={result.table_schema} href={link}>
-          {result.table_schema}
-        </SearchResultLink>
-      </>
-    );
-  };
-
   return (
     <>
-      {getDatabaseLink()}
-      {getTableLink()}
+      {showDatabaseLink && <DatabaseLink database={database} />}
+      {showTableLink && <TableLink result={result} />}
     </>
   );
 };
@@ -120,12 +112,13 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
   const { data: users = [], isLoading } = useUserListQuery();
 
   const isUpdated =
-    isNotNull(result.updated_at) && result.updated_at !== result.created_at;
+    isNotNull(result.last_edited_at) &&
+    !moment(result.last_edited_at).isSame(result.created_at, "seconds");
 
   const { prefix, timestamp, userId } = isUpdated
     ? {
         prefix: t`Updated`,
-        timestamp: result.updated_at,
+        timestamp: result.last_edited_at,
         userId: result.last_editor_id,
       }
     : {
@@ -155,32 +148,45 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
     return <Text color="text-1" data-testid="loading-text">{t`Loading…`}</Text>;
   }
 
-  return isCompact ? (
-    <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
-      <Group noWrap spacing={0} align="center">
-        <DurationIcon name="clock" size={13} color={color("text-medium")} />
-        <Text
-          span
-          size="sm"
-          c="text.1"
-          ml="xs"
-          style={{ whiteSpace: "nowrap" }}
-        >
-          {formattedDuration}
-        </Text>
-      </Group>
-    </Tooltip>
-  ) : (
-    <LastEditedInfoText {...lastEditedInfoData} />
+  if (isNull(timestamp) && isNull(userId)) {
+    return null;
+  }
+
+  const getEditedInfoText = () => {
+    if (isCompact) {
+      return (
+        <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
+          <Group noWrap spacing={0} align="center">
+            <DurationIcon name="clock" size={13} color={color("text-medium")} />
+            <Text
+              span
+              size="sm"
+              c="text.1"
+              ml="xs"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              {formattedDuration}
+            </Text>
+          </Group>
+        </Tooltip>
+      );
+    }
+    return <LastEditedInfoText {...lastEditedInfoData} />;
+  };
+
+  return (
+    <>
+      <Text span size="sm" mx="xs" c="text.1">
+        •
+      </Text>
+      {getEditedInfoText()}
+    </>
   );
 };
 
 export const InfoText = ({ result, isCompact }: InfoTextProps) => (
   <Group noWrap spacing="xs">
     <InfoTextAssetLink result={result} />
-    <Text span size="sm" mx="xs" c="text.1">
-      •
-    </Text>
     <InfoTextEditedInfo result={result} isCompact={isCompact} />
   </Group>
 );
