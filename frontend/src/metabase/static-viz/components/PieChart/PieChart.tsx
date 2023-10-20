@@ -3,14 +3,12 @@ import { Group } from "@visx/group";
 
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
-
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import { calculateLegendRows } from "../Legend/utils";
-import { Legend } from "../Legend";
+
 import { computeStaticPieChartSettings } from "./setttings";
+import { getPieChartLegend } from "./legend";
 
 const PADDING_TOP = 16; // TODO confirm with design
 const WIDTH = 540;
@@ -41,21 +39,13 @@ export function PieChart({
     computedVizSettings,
     renderingContext,
   );
-
-  const legendRows = calculateLegendRows(
-    chartModel.slices.map(s => ({
-      name: `${s.key} - ${formatters.formatPercent(s.normalizedPercentage)}`,
-      color: s.color,
-    })),
+  const { legendHeight, Legend } = getPieChartLegend(
+    chartModel,
+    formatters,
+    computedVizSettings,
     WIDTH,
-    24,
-    18,
-    400,
+    PADDING_TOP,
   );
-  if (!legendRows) {
-    throw Error("Error calculating legend rows");
-  }
-  const { height: legendHeight, items } = legendRows;
 
   const chart = init(null, null, {
     renderer: "svg",
@@ -66,16 +56,14 @@ export function PieChart({
 
   chart.setOption(option);
 
-  const svg = sanitizeSvgForBatik(chart.renderToSVGString());
+  const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString());
 
   return (
     <svg width={WIDTH} height={PADDING_TOP + HEIGHT + legendHeight}>
-      <Group top={PADDING_TOP}>
-        <Legend fontSize={18} fontWeight={400} items={items} />
-      </Group>
+      <Legend />
       <Group
         top={PADDING_TOP + legendHeight}
-        dangerouslySetInnerHTML={{ __html: svg }}
+        dangerouslySetInnerHTML={{ __html: chartSvg }}
       ></Group>
     </svg>
   );
