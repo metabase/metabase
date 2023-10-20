@@ -28,28 +28,32 @@ describe("scenarios > question > notebook filters", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("tables", () => {
-    it("should be able to add a filter for a string column from a table", () => {
-      visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
-      filter({ mode: "notebook" });
-      popover().within(() => {
+  describe("table source", () => {
+    describe("string columns", () => {
+      it("should add a filter with equal operator", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
         selectColumn("Title");
         toggleOption("Aerodynamic Concrete Lamp");
-        cy.button("Add filter").click();
+        addFilter();
+        verifyFilterName("Title is Aerodynamic Concrete Lamp");
+        visualize();
+        verifyRowCount(1);
       });
-      verifyFilterName("Title is Aerodynamic Concrete Lamp");
-      visualize();
-      verifyRowCount(1);
     });
   });
 });
 
 function selectColumn(columnName) {
-  cy.findByText(columnName).click();
+  popover().findByText(columnName).click();
 }
 
 function toggleOption(optionName) {
-  cy.findByText(optionName).click();
+  popover().findByText(optionName).click();
+}
+
+function addFilter() {
+  popover().button("Add filter").click();
 }
 
 function verifyFilterName(filterName) {
