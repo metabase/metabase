@@ -1,6 +1,7 @@
 import {
   createActionCard,
   createHeadingCard,
+  createLinkCard,
   createTextCard,
   getDashboardCardMenu,
   restore,
@@ -21,7 +22,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         const textCard = createTextCard({ size_y: 1 });
         const headingCard = createHeadingCard();
         const actionCard = createActionCard();
-        const cards = [textCard, headingCard, actionCard];
+        const linkCard = createLinkCard();
+        const cards = [textCard, headingCard, actionCard, linkCard];
 
         updateDashboardCards({ dashboard_id: dashboard.id, cards });
         visitDashboard(dashboard.id);
