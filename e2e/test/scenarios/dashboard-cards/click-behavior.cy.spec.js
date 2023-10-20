@@ -24,11 +24,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         const headingCard = createHeadingCard({ row: 1, ...cardSize });
         const actionCard = createActionCard({ row: 2, ...cardSize });
         const cards = [textCard, headingCard, actionCard];
+
         updateDashboardCards({ dashboard_id: dashboard.id, cards });
         visitDashboard(dashboard.id);
+
         cards.forEach((card, index) => {
           const display = card.visualization_settings.virtual_card.display;
           cy.log(`does not allow to set click behavior for "${display}" card`);
+
           showDashboardCardActions(index);
           getDashboardCardMenu(index).should("not.exist");
         });
