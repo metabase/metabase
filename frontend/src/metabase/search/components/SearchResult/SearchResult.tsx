@@ -47,7 +47,7 @@ export function SearchResult({
     [dispatch],
   );
 
-  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (e: MouseEvent) => {
     e.preventDefault();
 
     if (!isActive) {
@@ -70,7 +70,6 @@ export function SearchResult({
       isActive={isActive}
       isSelected={isSelected}
       data-is-selected={isSelected}
-      p="sm"
       w="100%"
       aria-label={`${name} ${model}`}
     >
@@ -82,7 +81,12 @@ export function SearchResult({
       />
       <ResultNameSection justify="center" spacing="xs">
         <Group spacing="xs" align="center" noWrap>
-          <ResultTitle data-testid="search-result-item-name" order={4} truncate>
+          <ResultTitle
+            href={result.getUrl()}
+            onClick={e => e.stopPropagation()}
+            data-testid="search-result-item-name"
+            truncate
+          >
             {name}
           </ResultTitle>
           <ModerationIcon status={moderated_status} filled size={14} />

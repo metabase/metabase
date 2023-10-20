@@ -1,10 +1,10 @@
 import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes, RefObject } from "react";
+import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import type { BoxProps, TitleProps } from "metabase/ui";
-import { Box, Divider, Stack, Title as MantineTitle } from "metabase/ui";
+import type { AnchorProps, BoxProps } from "metabase/ui";
+import { Box, Divider, Stack, Anchor } from "metabase/ui";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
@@ -16,7 +16,19 @@ const isBoxPropValid = (propName: PropertyKey) => {
   );
 };
 
-export const ResultTitle = styled(MantineTitle)<TitleProps>``;
+export const ResultTitle = styled(Anchor)<
+  AnchorProps & AnchorHTMLAttributes<HTMLAnchorElement>
+>`
+  line-height: unset;
+  font-weight: 700;
+  font-size: ${({ theme }) => theme.fontSizes.md};
+
+  color: ${({ theme }) => theme.colors.text[2]};
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.brand[1]};
+  }
+`;
 
 export const SearchResultContainer = styled(Box, {
   shouldForwardProp: isBoxPropValid,
@@ -34,6 +46,8 @@ export const SearchResultContainer = styled(Box, {
   justify-content: center;
   align-items: center;
   gap: 0.5rem 0.75rem;
+
+  padding: ${({ theme }) => theme.spacing.sm};
 
   ${({ theme, isActive, isSelected }) =>
     isActive &&
