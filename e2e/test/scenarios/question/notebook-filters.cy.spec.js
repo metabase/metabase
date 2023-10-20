@@ -77,6 +77,20 @@ describe("scenarios > question > notebook filters", () => {
         visualize();
         verifyRowCount(16);
       });
+
+      it("contains operator without case sensitive option", () => {
+        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+        filter({ mode: "notebook" });
+        selectColumn("Title");
+        selectOperator("Is", "Contains");
+        enterValue("Enter some text", "Al");
+        toggleOption("Case sensitive");
+        toggleOption("Case sensitive");
+        addFilter();
+        verifyFilterName("Title contains Al");
+        visualize();
+        verifyRowCount(47);
+      });
     });
   });
 });
