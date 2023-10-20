@@ -86,18 +86,18 @@ describe("TabButton", () => {
     expect(await screen.findByDisplayValue(newLabel)).toBeInTheDocument();
   });
 
-  it("should limit the length to 75chars", async () => {
+  it("should limit the length to 75 chars", async () => {
     const { onRename } = setup();
 
     userEvent.click(getIcon("chevrondown"));
     (await screen.findByRole("option", { name: "Rename" })).click();
 
-    const newLabel = Array.from({ length: 100 }).fill("a").join("");
+    const newLabel = "a".repeat(100);
     const expectedLabel = newLabel.slice(0, 75);
 
     const inputEl = screen.getByRole("textbox");
     userEvent.type(inputEl, newLabel);
-    fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
+    userEvent.type(inputEl, '{enter}');
 
     expect(onRename).toHaveBeenCalledWith(expectedLabel);
     expect(await screen.findByDisplayValue(expectedLabel)).toBeInTheDocument();
