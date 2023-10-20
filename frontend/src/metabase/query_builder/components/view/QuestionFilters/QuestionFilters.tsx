@@ -150,10 +150,8 @@ function FilterHeaderPopover({
   onQueryChange,
   onLegacyQueryChange,
 }: FilterHeaderPopoverProps) {
-  const [
-    isOpen,
-    { turnOn: handleOpen, turnOff: handleClose, toggle: handleToggle },
-  ] = useToggle(false);
+  const [isOpen, { turnOff: handleClose, toggle: handleToggle }] =
+    useToggle(false);
 
   const handleChange = (
     newFilter: Lib.ExpressionClause | Lib.SegmentMetadata,
@@ -180,7 +178,7 @@ function FilterHeaderPopover({
       trapFocus
       transitionProps={NO_TRANSITION}
       position="bottom-start"
-      onClose={handleOpen}
+      onClose={handleClose}
     >
       <Popover.Target>
         <div>
