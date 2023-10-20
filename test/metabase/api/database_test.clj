@@ -1117,9 +1117,7 @@
 (deftest discard-db-fieldvalues-audit-log-test
   (testing "Can we DISCARD all the FieldValues for a DB?"
     (mt/with-model-cleanup [:model/AuditLog :model/Activity]
-      (mt/with-temp [Database    db       {:engine "h2", :details (:details (mt/db))}
-                     Table       table  {:db_id (u/the-id db)}
-                     Field       field  {:table_id (u/the-id table)}]
+      (mt/with-temp [Database db    {:engine "h2", :details (:details (mt/db))}]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
         (is (= (:id db) (:model_id (mt/latest-audit-log-entry))))))))
 
