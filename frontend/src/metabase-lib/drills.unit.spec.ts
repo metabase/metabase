@@ -174,8 +174,8 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
     {
+      // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
       clickType: "cell",
       queryType: "aggregated",
       columnName: "count",
@@ -195,8 +195,8 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
     {
+      // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
       clickType: "cell",
       queryType: "aggregated",
       columnName: "max",
