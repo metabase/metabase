@@ -16,7 +16,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.signInAsAdmin();
   });
 
-  describe("visualizations without click behavior", () => {
+  describe("dashcards without click behavior", () => {
     it("does not allow to set click behavior for virtual dashcards", () => {
       cy.createDashboard().then(({ body: dashboard }) => {
         const textCard = createTextCard({ size_y: 1 });
