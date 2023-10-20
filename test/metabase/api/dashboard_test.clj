@@ -500,11 +500,11 @@
 
 (deftest fetch-dashboard-in-personal-collection-test
   (testing "GET /api/dashboard/:id"
-    (let [crowberto-personal-coll (t2/select-one :model/Collection (mt/user->id :crowberto))]
-     (mt/with-temp
-       [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
-       (is (= (assoc crowberto-personal-coll :is_personal true)
-             (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+    (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+      (mt/with-temp
+        [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
+        (is (= (assoc crowberto-personal-coll :is_personal true)
+               (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
 
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
