@@ -323,6 +323,27 @@ export function createActionCard({
   };
 }
 
+export function createLinkCard() {
+  return {
+    id: getNextUnsavedDashboardCardId(),
+    card_id: null,
+    size_x: 4,
+    size_y: 1,
+    visualization_settings: {
+      link: {
+        url: "https://example.com",
+      },
+      virtual_card: {
+        name: null,
+        display: "link",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+    },
+  };
+}
+
 export const getNextUnsavedDashboardCardId = (() => {
   let id = 0;
   return () => --id;
