@@ -452,7 +452,6 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
     {
       clickType: "cell",
       queryType: "aggregated",
@@ -473,7 +472,6 @@ describe("availableDrillThrus", () => {
         },
       ],
     },
-    // fk-filter gets returned for non-fk column (metabase#34440), fk-details gets returned for non-fk colum (metabase#34441), underlying-records drill gets shown two times for aggregated query (metabase#34439)
     {
       clickType: "cell",
       queryType: "aggregated",
@@ -509,7 +507,7 @@ describe("availableDrillThrus", () => {
     //       "manyPks?": false,
     //     },
     //     {
-    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+    //       rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
     //       tableName: "Orders",
     //       type: "drill-thru/underlying-records",
     //     },
@@ -526,9 +524,13 @@ describe("availableDrillThrus", () => {
     //       operators: ["<", ">", "=", "≠"],
     //     },
     //     {
-    //       rowCount: 3, // FIXME: (metabase#32108) this should return real count of rows
+    //       rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
     //       tableName: "Orders",
     //       type: "drill-thru/underlying-records",
+    //     },
+    //     {
+    //       displayName: "See this month by week",
+    //       type: "drill-thru/zoom-in.timeseries",
     //     },
     //   ],
     // },
@@ -983,7 +985,6 @@ describe("availableDrillThrus", () => {
         type: "drill-thru/fk-filter",
       },
     },
-    // `fk-filter` doesn't get returned for fk column that was used as breakout (metabase#34440)
     {
       drillType: "drill-thru/fk-filter",
       clickType: "cell",
@@ -1036,17 +1037,16 @@ describe("availableDrillThrus", () => {
         operators: ["<", ">", "=", "≠"],
       },
     },
-    // FIXME: quick-filter doesn't get returned for CREATED_AT column in aggregated query (metabase#34443)
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   queryType: "aggregated",
-    //   columnName: "CREATED_AT",
-    //   expectedParameters: {
-    //     type: "drill-thru/quick-filter",
-    //     operators: ["<", ">", "=", "≠"],
-    //   },
-    // },
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      queryType: "aggregated",
+      columnName: "CREATED_AT",
+      expectedParameters: {
+        type: "drill-thru/quick-filter",
+        operators: ["<", ">", "=", "≠"],
+      },
+    },
     {
       drillType: "drill-thru/quick-filter",
       clickType: "cell",
@@ -1067,7 +1067,6 @@ describe("availableDrillThrus", () => {
         operators: ["<", ">", "=", "≠"],
       },
     },
-    // quick-filter returns extra "<", ">" operators for cell with no value (metabase#34445)
     {
       drillType: "drill-thru/quick-filter",
       clickType: "cell",
@@ -1146,7 +1145,6 @@ describe("availableDrillThrus", () => {
     // endregion
 
     // region --- drill-thru/zoom-in.timeseries
-    // "zoom-in.timeseries" should be returned for aggregated query metric click (metabase#33811)
     {
       drillType: "drill-thru/zoom-in.timeseries",
       clickType: "cell",
@@ -1789,7 +1787,6 @@ describe("drillThru", () => {
       },
     },
 
-    // distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
     {
       drillType: "drill-thru/distribution",
       clickType: "header",
@@ -1970,7 +1967,6 @@ describe("drillThru", () => {
       },
     },
 
-    // filter gets applied on the the same query stage as aggregations, but it should wrap the query (metabase#34346)
     {
       drillType: "drill-thru/quick-filter",
       clickType: "cell",
@@ -2035,7 +2031,6 @@ describe("drillThru", () => {
       },
     },
 
-    // fk-details should create a query for fk target table (metabase#34383)
     {
       drillType: "drill-thru/fk-details",
       clickType: "cell",
@@ -2185,7 +2180,6 @@ describe("drillThru", () => {
           "order-by": [["asc", ["aggregation", 3]]],
         },
       },
-      // should support sorting for custom column without table relation (metabase#34499)
       {
         // should support sorting for custom column without table relation
         drillType: "drill-thru/sort",
