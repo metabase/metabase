@@ -44,13 +44,10 @@ function HeaderContent({ dashcard, selectedColumn, onUnsetColumn }: Props) {
   return <DefaultHeader>{dashcard.card.name}</DefaultHeader>;
 }
 
-function ClickBehaviorSidebarHeader(props: Props) {
+export const ClickBehaviorSidebarHeader = (props: Props) => {
   return (
     <SidebarHeader>
       <HeaderContent {...props} />
     </SidebarHeader>
   );
-}
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebarHeader;
+};
