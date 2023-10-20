@@ -83,6 +83,7 @@ export function SearchResult({
       <ResultNameSection justify="center" spacing="xs">
         <Group spacing="xs" align="center" noWrap>
           <ResultTitle
+            role="heading"
             data-testid="search-result-item-name"
             truncate
             href={!onClick ? result.getUrl() : undefined}
