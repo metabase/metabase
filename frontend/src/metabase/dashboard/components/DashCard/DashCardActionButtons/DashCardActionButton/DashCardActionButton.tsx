@@ -11,6 +11,7 @@ import {
 interface Props extends React.HTMLAttributes<HTMLAnchorElement> {
   tooltip: string;
   analyticsEvent?: string;
+  as?: React.ElementType;
 }
 
 function DashActionButton({
