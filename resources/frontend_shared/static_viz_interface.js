@@ -22,12 +22,11 @@ function row_chart(settings, data, colors) {
   });
 }
 
-function combo_chart(series, settings, instanceColors) {
-  // Thinking of combo as similar to multiple, although they're different in BE
-  return StaticViz.RenderChart("combo-chart", {
-    multipleSeries: JSON.parse(series),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
+function isomorphic(cardsWithData, dashcardSettings, colors) {
+  return StaticViz.RenderChart("isomorphic", {
+    rawSeries: JSON.parse(cardsWithData),
+    dashcardSettings: JSON.parse(dashcardSettings),
+    colors: JSON.parse(colors),
   });
 }
 
