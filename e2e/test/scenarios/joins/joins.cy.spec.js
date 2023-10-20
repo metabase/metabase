@@ -85,13 +85,17 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Reviews - Product → Rating is equal to 2",
+    );
     assertQueryBuilderRowCount(89);
 
     // Make sure UI overlay doesn't obstruct viewing results after we save this question (metabase#13468)
     saveQuestion();
 
-    cy.findByTestId("qb-filters-panel").findByText("Rating is equal to 2");
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Reviews - Product → Rating is equal to 2",
+    );
     assertQueryBuilderRowCount(89);
   });
 
@@ -166,9 +170,13 @@ describe("scenarios > question > joined questions", () => {
     });
     visualize();
 
-    cy.findByTestId("qb-filters-panel")
-      .findByText("CATEGORY is Gadget")
-      .should("be.visible");
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      cy.findByTestId("qb-filters-panel")
+        .findByText(
+          `Question ${joinedQuestionId} - PRODUCT_ID → Category is Gadget`,
+        )
+        .should("be.visible");
+    });
     cy.get(".ScalarValue").contains("Gadget").should("be.visible");
   });
 
@@ -255,9 +263,12 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
     queryBuilderMain().findByText("Sum Divide");
-    cy.findByTestId("qb-filters-panel")
-      .findByText("ID is 12")
-      .should("be.visible");
+
+    cy.get("@joinedQuestionId").then(joinedQuestionId => {
+      cy.findByTestId("qb-filters-panel")
+        .findByText(`Question ${joinedQuestionId} - Product → ID is 12`)
+        .should("be.visible");
+    });
   });
 
   it("should handle joins on different stages", () => {
