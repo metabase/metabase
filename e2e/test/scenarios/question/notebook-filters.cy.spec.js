@@ -29,9 +29,12 @@ describe("scenarios > question > notebook filters", () => {
   });
 
   describe("table source", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+    });
+
     describe("string columns", () => {
       it("equals operator", () => {
-        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Is",
@@ -42,7 +45,6 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("equals operator with multiple options", () => {
-        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Is",
@@ -53,13 +55,45 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("not equals operator", () => {
-        visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
         addFilterAndVerify({
           column: "Category",
           operator: "Is not",
           options: ["Widget"],
           filterName: "Category is not Widget",
           rowCount: 146,
+        });
+      });
+
+      it("not equals operator with multiple options", () => {
+        addFilterAndVerify({
+          column: "Category",
+          operator: "Is not",
+          options: ["Widget", "Gadget"],
+          filterName: "Category is not 2 selections",
+          rowCount: 93,
+        });
+      });
+
+      it("contains operator", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Contains",
+          placeholder: "Enter some text",
+          value: "Al",
+          filterName: "Title contains Al",
+          rowCount: 47,
+        });
+      });
+
+      it("contains operator with case sensitive option", () => {
+        addFilterAndVerify({
+          column: "Title",
+          operator: "Contains",
+          placeholder: "Enter some text",
+          value: "Al",
+          caseSensitive: true,
+          filterName: "Title contains Al",
+          rowCount: 16,
         });
       });
     });
@@ -69,9 +103,10 @@ describe("scenarios > question > notebook filters", () => {
 function addFilterAndVerify({
   column,
   operator,
-  value,
   placeholder,
+  value,
   options = [],
+  caseSensitive = false,
   filterName,
   rowCount,
 }) {
@@ -83,6 +118,9 @@ function addFilterAndVerify({
     popover().findByPlaceholderText(placeholder).type(value);
   } else {
     options.forEach(option => popover().findByText(option).click());
+  }
+  if (caseSensitive) {
+    popover().findByText("Case sensitive").click();
   }
   popover().button("Add filter").click();
   getNotebookStep("filter").findByText(filterName).should("be.visible");
