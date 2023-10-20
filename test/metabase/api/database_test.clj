@@ -337,9 +337,8 @@
       (mt/with-model-cleanup [:model/Activity :model/AuditLog]
         (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
-                audit-entry (t2/select-one :model/AuditLog
-                                           {:order-by [[:id :desc]]
-                                            :where [:= :topic "database-create"]})]
+                audit-entry (mt/latest-audit-log-entry "database-create")]
+            (is (= id (-> audit-entry :model_id)))
             (is (= id (-> audit-entry :details :id)))))))))
 
 (deftest disallow-creating-h2-database-test
@@ -370,9 +369,7 @@
           (mt/with-model-cleanup [:model/AuditLog :model/Activity]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
             (is (= (audit-log/model-details db :model/Database)
-                   (->> (t2/select-one :model/AuditLog
-                                       {:order-by [[:id :desc]]
-                                        :where [:= :topic "database-delete"]})
+                   (->> (mt/latest-audit-log-entry "database-delete")
                         :details
                         normalize)))))))))
 
@@ -439,6 +436,17 @@
             (updates2!)
             (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
+
+(deftest update-database-audit-log-test
+  (testing "Check that we get audit log entries that match the db when updating a Database"
+    (mt/with-model-cleanup [:model/AuditLog :model/Activity]
+      (t2.with-temp/with-temp [Database {db-id :id}]
+        (with-redefs [driver/can-connect? (constantly true)]
+          (is (= "Cam's Awesome multimethod Database"
+                 (:name (api-update-database! 200 db-id {:name "Cam's Awesome multimethod Database"}))))
+          (let [audit-log-entry (mt/latest-audit-log-entry)]
+            (is (= db-id (:model_id audit-log-entry)))
+            (is (= db-id (-> audit-log-entry :details :id)))))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"
