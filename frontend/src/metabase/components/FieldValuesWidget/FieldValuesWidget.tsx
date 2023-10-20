@@ -47,13 +47,13 @@ import type { ValuesMode, LoadingStateType } from "./types";
 import {
   canUseParameterEndpoints,
   isNumeric,
-  hasList,
   isSearchable,
   isExtensionOfPreviousSearch,
   showRemapping,
   getNonVirtualFields,
   dedupeValues,
   searchFieldValues,
+  SEARCH_THE_LIST_PLACEHOLDER,
   getValuesMode,
   shouldList,
   canUseDashboardEndpoints,
@@ -387,16 +387,6 @@ export function FieldValuesWidgetInner({
         );
   }
 
-  const tokenFieldPlaceholder = getTokenFieldPlaceholder({
-    fields,
-    parameter,
-    disableSearch,
-    placeholder,
-    disablePKRemappingForSearch,
-    options,
-    valuesMode,
-  });
-
   const isListMode = !disableList && valuesMode === "list" && !forceTokenField;
   const isLoading = loadingState === "LOADING";
 
@@ -421,7 +411,7 @@ export function FieldValuesWidgetInner({
         ) : isListMode && !_.isEmpty(options) && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
-            placeholder={tokenFieldPlaceholder}
+            placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
             value={value?.filter((v: string) => v != null)}
             onChange={onChange}
             options={options}
@@ -431,7 +421,7 @@ export function FieldValuesWidgetInner({
         ) : isListMode && !_.isEmpty(options) && !multi ? (
           <SingleSelectListField
             isDashboardFilter={!!parameter}
-            placeholder={tokenFieldPlaceholder}
+            placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
             value={value.filter(v => v != null)}
             onChange={onChange}
             options={options}
@@ -443,7 +433,17 @@ export function FieldValuesWidgetInner({
             prefix={prefix}
             value={value.filter(v => v != null)}
             onChange={onChange}
-            placeholder={tokenFieldPlaceholder}
+            placeholder={
+              placeholder ??
+              getTokenFieldPlaceholder({
+                fields,
+                parameter,
+                disableSearch,
+                disablePKRemappingForSearch,
+                options,
+                valuesMode,
+              })
+            }
             updateOnInputChange
             // forwarded props
             multi={multi}
@@ -542,15 +542,7 @@ function renderOptions({
   if (alwaysShowOptions || isFocused) {
     if (optionsList) {
       return optionsList;
-    } else if (
-      hasList({
-        parameter,
-        fields,
-        disableSearch,
-        options,
-      }) &&
-      valuesMode === "list"
-    ) {
+    } else if (!_.isEmpty(options) && valuesMode === "list") {
       if (isAllSelected) {
         return <EveryOptionState />;
       }

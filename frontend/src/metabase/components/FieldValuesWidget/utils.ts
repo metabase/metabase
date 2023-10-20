@@ -23,6 +23,8 @@ import type Question from "metabase-lib/Question";
 
 import type { ValuesMode } from "./types";
 
+export const SEARCH_THE_LIST_PLACEHOLDER = t`Search the list`;
+
 export async function searchFieldValues(
   {
     fields,
@@ -174,22 +176,6 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-export function hasList({
-  parameter,
-  fields,
-  disableSearch,
-  options,
-}: {
-  parameter?: Parameter;
-  fields: Field[];
-  disableSearch: boolean;
-  options: FieldValue[];
-}) {
-  return (
-    shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)
-  );
-}
-
 // if this search is just an extension of the previous search, and the previous search
 // wasn't truncated, then we don't need to do another search because TypeaheadListing
 // will filter the previous result client-side
@@ -234,7 +220,6 @@ export function getTokenFieldPlaceholder({
   fields,
   parameter,
   disableSearch,
-  placeholder,
   disablePKRemappingForSearch,
   options,
   valuesMode,
@@ -247,22 +232,10 @@ export function getTokenFieldPlaceholder({
   options: FieldValue[];
   valuesMode: ValuesMode;
 }) {
-  if (placeholder) {
-    return placeholder;
+  if (shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)) {
+    return SEARCH_THE_LIST_PLACEHOLDER;
   }
-
-  const [firstField] = fields;
-
   if (
-    hasList({
-      parameter,
-      fields,
-      disableSearch,
-      options,
-    })
-  ) {
-    return t`Search the list`;
-  } else if (
     isSearchable({
       parameter,
       fields,
@@ -274,11 +247,11 @@ export function getTokenFieldPlaceholder({
     return getSearchableTokenFieldPlaceholder(
       parameter,
       fields,
-      firstField,
+      fields[0],
       disablePKRemappingForSearch,
     );
   } else {
-    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
+    return getNonSearchableTokenFieldPlaceholder(fields[0], parameter);
   }
 }
 
