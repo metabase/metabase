@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import type { DashboardOrderedTab } from "metabase-types/api";
+import type { DashboardTab } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -26,8 +26,8 @@ const setup = ({
   tabs = [TAB_1, TAB_2, TAB_3],
   selectedTab = TAB_1,
 }: {
-  tabs?: DashboardOrderedTab[];
-  selectedTab?: DashboardOrderedTab;
+  tabs?: DashboardTab[];
+  selectedTab?: DashboardTab;
 }) => {
   const dashboard = createMockDashboardState({
     dashboardId: TEST_DASHBOARD.id,
@@ -39,7 +39,7 @@ const setup = ({
       [TEST_DASHBOARD.id]: {
         ...TEST_DASHBOARD,
         dashcards: TEST_DASHBOARD.dashcards.map(c => c.id),
-        ordered_tabs: tabs,
+        tabs,
       },
     },
   });

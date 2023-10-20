@@ -7,7 +7,7 @@ import type {
   DashCardId,
   DashboardId,
   DashboardCard,
-  DashboardOrderedTab,
+  DashboardTab,
   DashboardTabId,
 } from "metabase-types/api";
 import type {
@@ -41,7 +41,7 @@ type MoveDashCardToTabPayload = {
 };
 type SaveCardsAndTabsPayload = {
   cards: DashboardCard[];
-  ordered_tabs: DashboardOrderedTab[];
+  tabs: DashboardTab[];
 };
 type InitTabsPayload = { slug: string | undefined };
 
@@ -110,8 +110,7 @@ function getPrevDashAndTabs({
   const dashId = state.dashboardId;
   const prevDash = dashId ? state.dashboards[dashId] : null;
   const prevTabs =
-    prevDash?.ordered_tabs?.filter(t => !filterRemovedTabs || !t.isRemoved) ??
-    [];
+    prevDash?.tabs?.filter(t => !filterRemovedTabs || !t.isRemoved) ?? [];
 
   return { dashId, prevDash, prevTabs };
 }
@@ -165,7 +164,7 @@ export const tabsReducer = createReducer<DashboardState>(
             dashId,
             name: t`Tab ${prevTabs.filter(t => !t.isRemoved).length + 1}`,
           });
-          prevDash.ordered_tabs = [...prevTabs, newTab];
+          prevDash.tabs = [...prevTabs, newTab];
 
           // 2. Select new tab
           state.selectedTabId = tabId;
@@ -181,7 +180,7 @@ export const tabsReducer = createReducer<DashboardState>(
           getDefaultTab({ tabId: firstTabId, dashId, name: t`Tab 1` }),
           getDefaultTab({ tabId: secondTabId, dashId, name: t`Tab 2` }),
         ];
-        prevDash.ordered_tabs = [...prevTabs, ...newTabs];
+        prevDash.tabs = [...prevTabs, ...newTabs];
 
         // 2. Select second tab
         state.selectedTabId = secondTabId;
@@ -291,11 +290,7 @@ export const tabsReducer = createReducer<DashboardState>(
           );
         }
 
-        prevDash.ordered_tabs = arrayMove(
-          prevTabs,
-          sourceTabIndex,
-          destTabIndex,
-        );
+        prevDash.tabs = arrayMove(prevTabs, sourceTabIndex, destTabIndex);
       },
     );
 
@@ -329,7 +324,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       saveCardsAndTabs,
-      (state, { payload: { cards: newCards, ordered_tabs: newTabs } }) => {
+      (state, { payload: { cards: newCards, tabs: newTabs } }) => {
         const { prevDash, prevTabs } = getPrevDashAndTabs({
           state,
           filterRemovedTabs: true,
@@ -344,8 +339,13 @@ export const tabsReducer = createReducer<DashboardState>(
         const prevCards = prevDash.dashcards.filter(
           id => !state.dashcards[id].isRemoved,
         );
+
         prevCards.forEach((oldId, index) => {
-          state.dashcardData[newCards[index].id] = state.dashcardData[oldId];
+          const prevDashcardData = state.dashcardData[oldId];
+
+          if (prevDashcardData) {
+            state.dashcardData[newCards[index].id] = prevDashcardData;
+          }
         });
 
         // 2. Re-select the currently selected tab with its real id

@@ -93,9 +93,8 @@ export const updateDashboardAndCards = createThunkAction(
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      // update the dashboard cards and tabs
       const dashcardsToUpdate = dashboard.dashcards.filter(dc => !dc.isRemoved);
-      const updatedCardsAndTabs = await DashboardApi.updateCardsAndTabs({
+      const updateCardsAndTabs = DashboardApi.updateCardsAndTabs({
         dashId: dashboard.id,
         cards: dashcardsToUpdate.map(dc => ({
           id: dc.id,
@@ -110,16 +109,23 @@ export const updateDashboardAndCards = createThunkAction(
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
         })),
-        ordered_tabs: (dashboard.ordered_tabs ?? [])
+        tabs: (dashboard.tabs ?? [])
           .filter(tab => !tab.isRemoved)
           .map(({ id, name }) => ({
             id,
             name,
           })),
       });
-      dispatch(saveCardsAndTabs(updatedCardsAndTabs));
 
-      await dispatch(Dashboards.actions.update(dashboard));
+      updateCardsAndTabs.then(updatedCardsAndTabs => {
+        dispatch(saveCardsAndTabs(updatedCardsAndTabs));
+      });
+
+      // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
+      await Promise.all([
+        updateCardsAndTabs,
+        dispatch(Dashboards.actions.update(dashboard)),
+      ]);
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(

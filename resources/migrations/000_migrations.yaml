@@ -15351,6 +15351,82 @@ databaseChangeLog:
                   remarks: 'Metabase version used to create the card.'
 
   - changeSet:
+      id: v48.00-022
+      author: johnswanson
+      comment: Migrate migrate-click-through to a custom migration
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-click-through';
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateClickThrough"
+
+  - changeSet:
+      id: v48.00-023
+      author: piranha
+      comment: Data migration migrate-remove-admin-from-group-mapping-if-needed
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT count(*) FROM data_migrations WHERE id = 'migrate-remove-admin-from-group-mapping-if-needed';
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateRemoveAdminFromGroupMappingIfNeeded"
+
+  - changeSet:
+      id: v48.00-024
+      author: piranha
+      comment: All data migrations were transferred to custom_migrations!
+      changes:
+        - dropTable:
+            tableName: data_migrations
+      rollback:
+        - sql:
+            sql: >-
+              CREATE TABLE data_migrations (
+                id varchar(254) primary key,
+                timestamp ${timestamp_type} not null
+              );
+              INSERT INTO data_migrations VALUES
+                  ('set-card-database-and-table-ids', current_timestamp),
+                  ('set-mongodb-databases-ssl-false', current_timestamp),
+                  ('set-default-schemas', current_timestamp),
+                  ('set-admin-email', current_timestamp),
+                  ('remove-database-sync-activity-entries', current_timestamp),
+                  ('remove-duplicate-fk-entries', current_timestamp),
+                  ('update-dashboards-to-new-grid', current_timestamp),
+                  ('migrate-field-visibility-type', current_timestamp),
+                  ('fix-dashboard-cards-without-positions', current_timestamp),
+                  ('migrate-fk-metadata', current_timestamp),
+                  ('create-raw-tables', current_timestamp),
+                  ('migrate-base-types', current_timestamp),
+                  ('migrate-field-types', current_timestamp),
+                  ('fix-invalid-field-types', current_timestamp),
+                  ('add-users-to-default-permissions-groups', current_timestamp),
+                  ('add-admin-group-root-entry', current_timestamp),
+                  ('add-databases-to-magic-permissions-groups', current_timestamp),
+                  ('fix-legacy-magic-group-names', current_timestamp),
+                  ('remove-trailing-slashes-from-site-url-setting', current_timestamp),
+                  ('copy-site-url-setting-and-remove-trailing-slashes', current_timestamp),
+                  ('migrate-query-executions', current_timestamp),
+                  ('drop-old-query-execution-table', current_timestamp),
+                  ('ensure-protocol-specified-in-site-url', current_timestamp),
+                  ('populate-card-database-id', current_timestamp),
+                  ('migrate-humanization-setting', current_timestamp),
+                  ('populate-card-read-permissions', current_timestamp),
+                  ('mark-category-fields-as-list', current_timestamp),
+                  ('repopulate-card-read-permissions', current_timestamp),
+                  ('add-legacy-sql-directive-to-bigquery-sql-cards', current_timestamp),
+                  ('clear-ldap-user-local-passwords', current_timestamp),
+                  ('add-migrated-collections', current_timestamp),
+                  ('migrate-map-regions', current_timestamp),
+                  ('migrate-click-through', current_timestamp),
+                  ('migrate-remove-admin-from-group-mapping-if-needed', current_timestamp);
+
+  - changeSet:
       id: v48.00-025
       author: piranha
       comment: 'Revisions store Metabase version used to create them'

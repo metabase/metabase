@@ -851,9 +851,11 @@
 
 (defmethod driver.sql/set-role-statement :postgres
   [_ role]
-  (if (= (u/upper-case-en role) "NONE")
-   (format "SET ROLE %s;" role)
-   (format "SET ROLE \"%s\";" role)))
+  (let [special-chars-pattern #"[^a-zA-Z0-9_]"
+        needs-quote           (re-find special-chars-pattern role)]
+    (if needs-quote
+      (format "SET ROLE \"%s\";" role)
+      (format "SET ROLE %s;" role))))
 
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
