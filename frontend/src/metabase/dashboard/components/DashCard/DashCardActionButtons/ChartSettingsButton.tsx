@@ -33,6 +33,7 @@ function ChartSettingsButton({
       triggerElement={
         <DashCardActionButton
           as="span"
+          role="button"
           tooltip={t`Visualization options`}
           aria-label={t`Show visualization options`}
         >
