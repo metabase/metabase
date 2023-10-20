@@ -1,19 +1,17 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries
   (:require
-   [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
@@ -25,26 +23,11 @@
   (zipmap (drop-last valid-current-units)
           (drop 1 valid-current-units)))
 
-(defn- is-ref-for-source-column? [a-ref column]
-  (and (lib.util/clause-of-type? a-ref :field)
-       (let [[_field _opts id-or-name] a-ref]
-         (if (integer? id-or-name)
-           (= id-or-name (:id column))
-           (and (if-let [join-alias (lib.join.util/current-join-alias a-ref)]
-                  (= join-alias (lib.join.util/current-join-alias column))
-                  true)
-                (= id-or-name (:lib/source-column-alias column)))))))
-
-(mu/defn ^:private matching-breakout-ref :- [:maybe :mbql.clause/field]
+(mu/defn ^:private matching-breakout-ref :- [:maybe ::lib.schema.ref/ref]
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- lib.metadata/ColumnMetadata]
-  (let [breakouts (lib.breakout/breakouts query stage-number)]
-    (m/find-first (fn [breakout]
-                    (and (is-ref-for-source-column? breakout column)
-                         (= (lib.temporal-bucket/temporal-bucket breakout)
-                            (lib.temporal-bucket/temporal-bucket column))))
-                  breakouts)))
+  (lib.breakout/existing-breakout query stage-number column {:same-temporal-bucket? true}))
 
 (mu/defn ^:private next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [column :- lib.metadata/ColumnMetadata]
@@ -91,5 +74,5 @@
   (let [breakout     (matching-breakout-ref query stage-number column)
         new-breakout (lib.temporal-bucket/with-temporal-bucket breakout next-unit)]
     (-> query
-      (lib.filter/filter stage-number (lib.filter/= column value))
-      (lib.remove-replace/replace-clause stage-number breakout new-breakout))))
+        (lib.filter/filter stage-number (lib.filter/= column value))
+        (lib.remove-replace/replace-clause stage-number breakout new-breakout))))

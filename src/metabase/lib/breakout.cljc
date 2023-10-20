@@ -1,12 +1,16 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -40,16 +44,18 @@
     stage-number :- :int]
    (not-empty (:breakout (lib.util/query-stage query stage-number)))))
 
-(mu/defn breakouts-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn breakouts-metadata :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Get metadata about the breakouts in a given stage of a `query`."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (some->> (not-empty (:breakout (lib.util/query-stage query stage-number)))
-           (mapv (fn [field-ref]
-                   (-> (lib.metadata.calculation/metadata query stage-number field-ref)
-                       (assoc :lib/source :source/breakouts))))))
+  ([query]
+   (breakouts-metadata query -1))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (some->> (breakouts query stage-number)
+            (mapv (fn [field-ref]
+                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
+                        (assoc :lib/source :source/breakouts)))))))
 
-(mu/defn breakoutable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be broken out by in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
@@ -84,10 +90,42 @@
                     pos (assoc :breakout-position pos)))
                cols))))))
 
+(mu/defn existing-breakout :- [:maybe ::lib.schema.ref/ref]
+  "Returns the existing breakout MBQL expression for `column` in a stage if there is one."
+  ([query stage-number column]
+   (existing-breakout query stage-number column nil))
+
+  ([query                                         :- ::lib.schema/query
+    stage-number                                  :- :int
+    column                                        :- ::lib.schema.metadata/column
+    {:keys [same-temporal-bucket?], :as _options} :- [:maybe
+                                                      [:map
+                                                       {:closed true}
+                                                       [:same-temporal-bucket? {:optional true} [:maybe :boolean]]]]]
+   (m/find-first (fn [a-breakout]
+                   (and (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true})
+                        (if same-temporal-bucket?
+                          (= (lib.temporal-bucket/temporal-bucket a-breakout)
+                             (lib.temporal-bucket/temporal-bucket column))
+                          true)))
+                 (breakouts query stage-number))))
+
 (defn breakout-column?
   "Returns if `column` is a breakout column of stage with `stage-number` of `query`."
   [query stage-number column]
-  (some?
-   (some (fn [a-breakout]
-           (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true}))
-         (breakouts query stage-number))))
+  (some? (existing-breakout query stage-number column)))
+
+(mu/defn remove-existing-breakouts-for-column :- ::lib.schema/query
+  "Remove all existing breakouts against `column` if there are any in the stage in question. Disregards temporal
+  bucketing and binning."
+  ([query column]
+   (remove-existing-breakouts-for-column query -1 column))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    column       :- ::lib.schema.metadata/column]
+   (if-let [a-breakout (existing-breakout query stage-number column)]
+     (let [query' (lib.remove-replace/remove-clause query stage-number a-breakout)]
+       ;; recurse in case there are more breakouts on this column.
+       (recur query' stage-number column))
+     query)))
