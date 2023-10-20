@@ -210,15 +210,13 @@ export const dashboardGrid = () => {
 };
 
 /**
- *
- * @param {number} dashboardId
  * @param {Object} option
  * @param {number=} option.id
  * @param {number=} option.col
  * @param {number=} option.row
  * @param {number=} option.size_x
  * @param {number=} option.size_y
- * @param {string} option.text
+ * @param {string=} option.text
  */
 export function createTextCard({
   id = getNextUnsavedDashboardCardId(),
@@ -226,7 +224,7 @@ export function createTextCard({
   row = 0,
   size_x = 4,
   size_y = 6,
-  text,
+  text = "A text card",
 }) {
   return {
     id,
@@ -249,15 +247,13 @@ export function createTextCard({
 }
 
 /**
- *
- * @param {number} dashboardId
  * @param {Object} option
  * @param {number=} option.id
  * @param {number=} option.col
  * @param {number=} option.row
  * @param {number=} option.size_x
  * @param {number=} option.size_y
- * @param {string} option.text
+ * @param {string=} option.text
  */
 export function createHeadingCard({
   id = getNextUnsavedDashboardCardId(),
@@ -265,7 +261,7 @@ export function createHeadingCard({
   row = 0,
   size_x = 4,
   size_y = 1,
-  text,
+  text = "A heading card",
 }) {
   return {
     id,
@@ -283,6 +279,44 @@ export function createHeadingCard({
         archived: false,
       },
       text,
+    },
+  };
+}
+/**
+ * @param {Object} option
+ * @param {number=} option.id
+ * @param {number=} option.col
+ * @param {number=} option.row
+ * @param {number=} option.size_x
+ * @param {number=} option.size_y
+ * @param {string=} option.label
+ */
+export function createActionCard({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 1,
+  label = "An action card",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    series: [],
+    visualization_settings: {
+      actionDisplayType: "button",
+      virtual_card: {
+        name: null,
+        display: "action",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "button.label": label,
     },
   };
 }
