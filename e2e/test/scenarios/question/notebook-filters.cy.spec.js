@@ -1,26 +1,11 @@
 import {
   filter,
   getNotebookStep,
+  openProductsTable,
   popover,
   restore,
-  visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
-
-const tableQuestion = {
-  display: "table",
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": PRODUCTS_ID,
-    },
-  },
-};
 
 describe("scenarios > question > notebook filters", () => {
   beforeEach(() => {
@@ -29,12 +14,9 @@ describe("scenarios > question > notebook filters", () => {
   });
 
   describe("table source", () => {
-    beforeEach(() => {
-      visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
-    });
-
     describe("string columns", () => {
       it("equals operator", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Is",
@@ -45,6 +27,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("equals operator with multiple options", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Is",
@@ -55,6 +38,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("not equals operator", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Category",
           operator: "Is not",
@@ -65,6 +49,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("not equals operator with multiple options", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Category",
           operator: "Is not",
@@ -75,6 +60,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("contains operator", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Contains",
@@ -86,6 +72,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("contains operator with case sensitive option", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Contains",
@@ -98,6 +85,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("does not contain operator", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Does not contain",
@@ -109,6 +97,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("does not contain operator with case sensitive option", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Does not contain",
@@ -121,6 +110,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("starts with operator", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Starts with",
@@ -132,6 +122,7 @@ describe("scenarios > question > notebook filters", () => {
       });
 
       it("starts with operator with case sensitive option", () => {
+        openProductsTable({ mode: "notebook" });
         addFilterAndVerify({
           column: "Title",
           operator: "Starts with",
