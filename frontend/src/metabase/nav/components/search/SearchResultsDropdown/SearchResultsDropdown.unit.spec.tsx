@@ -5,8 +5,14 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import {
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import {
+  setupSearchEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
 import { checkNotNull } from "metabase/core/utils/types";
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
@@ -29,6 +35,7 @@ const setup = async ({
   const goToSearchApp = jest.fn();
 
   setupSearchEndpoints(searchResults);
+  setupUsersEndpoints([createMockUser()]);
 
   const { history } = renderWithProviders(
     <Route
@@ -58,11 +65,9 @@ describe("SearchResultsDropdown", () => {
 
     expect(searchItem).toHaveTextContent("Test 1");
 
-    const href = checkNotNull(searchItem.getAttribute("href"));
-
     userEvent.click(searchItem);
 
-    expect(history.getCurrentLocation().pathname).toEqual(href);
+    expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
   });
 
   it("should call goToSearchApp when the footer is clicked", async () => {

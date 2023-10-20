@@ -5,12 +5,18 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import {
+  setupSearchEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import type {
   SearchResult,
   SearchResults as SearchResultsType,
 } from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { checkNotNull } from "metabase/core/utils/types";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
@@ -41,6 +47,7 @@ const setup = async ({
   footer = null,
 }: SearchResultsSetupProps = {}) => {
   setupSearchEndpoints(searchResults);
+  setupUsersEndpoints([createMockUser()]);
 
   const onEntitySelect = jest.fn();
 

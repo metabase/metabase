@@ -10,6 +10,7 @@ import {
 import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
@@ -25,6 +26,7 @@ import {
   createMockRecentItem,
   createMockTable,
   createMockDashboard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
@@ -244,6 +246,7 @@ describe("LinkViz", () => {
 
     it("clicking a search item should update the entity", async () => {
       setupSearchEndpoints([searchCardItem]);
+      setupUsersEndpoints([createMockUser()]);
 
       const { changeSpy } = setup({
         isEditing: true,

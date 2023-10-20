@@ -9,11 +9,13 @@ import {
 import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   createMockCollectionItem,
   createMockModelObject,
   createMockRecentItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -61,6 +63,7 @@ const setup = ({
 
   setupSearchEndpoints(searchResultItems);
   setupRecentViewsEndpoints(recentViewsItems);
+  setupUsersEndpoints([createMockUser()]);
 
   const { history } = renderWithProviders(
     <Route path="*" component={SearchBar} />,

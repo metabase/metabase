@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type { HTMLAttributes, RefObject } from "react";
@@ -7,9 +8,19 @@ import { Box, Divider, Stack, Title as MantineTitle } from "metabase/ui";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
+const isBoxPropValid = (propName: PropertyKey) => {
+  return (
+    propName !== "isActive" &&
+    propName !== "isSelected" &&
+    isPropValid(propName)
+  );
+};
+
 export const ResultTitle = styled(MantineTitle)<TitleProps>``;
 
-export const SearchResultContainer = styled(Box)<
+export const SearchResultContainer = styled(Box, {
+  shouldForwardProp: isBoxPropValid,
+})<
   BoxProps &
     HTMLAttributes<HTMLButtonElement> & {
       isActive?: boolean;
