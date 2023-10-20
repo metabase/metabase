@@ -179,7 +179,9 @@
    (when source-table
      (:display-name (lib.metadata/table query source-table)))
    (when source-card
-     (lib.card/fallback-display-name source-card))
+     (if-let [card-metadata (lib.metadata/card query source-card)]
+       (lib.metadata.calculation/display-name query 0 card-metadata)
+       (lib.card/fallback-display-name source-card)))
    (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
