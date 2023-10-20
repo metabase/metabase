@@ -46,7 +46,7 @@ runs:
               const parentCommit = getCommit(`${commit}^`);
               console.log(`Didn't find the artifact for ${commit}.\n`);
               console.log(`Switching to the parent commit: ${parentCommit}`);
-              return getArtifact(parentCommit, ++depth);
+              return getArtifact(parentCommit, depth + 1);
             } else {
               return artifact;
             }
