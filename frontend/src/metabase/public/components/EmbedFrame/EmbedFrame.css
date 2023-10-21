@@ -56,3 +56,7 @@ body {
 .Theme--transparent.EmbedFrame .DashCard .Card {
   background-color: transparent;
 }
+
+.Theme--transparent-frame.EmbedFrame {
+  backgrund-color: transparent;
+}
