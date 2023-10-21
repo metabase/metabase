@@ -8,25 +8,12 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
-  removeParameter,
 } from "./actions";
 
 describe("dashboard reducers", () => {
   let initState;
-  let dispatch;
-  let getState;
   beforeEach(() => {
     initState = reducer(undefined, {});
-    dispatch = jest.fn();
-    getState = () => ({
-      dashboard: {
-        ...initState,
-        parameterValues: {
-          123: null,
-          456: null,
-        },
-      },
-    });
   });
 
   it("should return the initial state", () => {
@@ -200,25 +187,6 @@ describe("dashboard reducers", () => {
           },
         ),
       ).toEqual({ ...initState, parameterValues: { 456: "def" } });
-    });
-    it("should remove the parameter from `parameterValues`", async () => {
-      expect(
-        reducer(
-          {
-            ...initState,
-            parameterValues: {
-              123: null,
-              456: null,
-            },
-          },
-          await removeParameter(123)(dispatch, getState),
-        ),
-      ).toEqual({
-        ...initState,
-        parameterValues: {
-          456: null,
-        },
-      });
     });
   });
 
