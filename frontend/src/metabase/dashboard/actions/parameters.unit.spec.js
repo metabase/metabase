@@ -21,7 +21,7 @@ describe("removeParameter", () => {
       },
     });
   });
-  it("should return the correct `parameterId` as `payload.id` (metabase#34680)", async () => {
+  it("should return the `parameterId` as `payload.id` (metabase#34680)", async () => {
     const result = await removeParameter(123)(dispatch, getState);
     expect(result).toEqual({
       type: REMOVE_PARAMETER,
