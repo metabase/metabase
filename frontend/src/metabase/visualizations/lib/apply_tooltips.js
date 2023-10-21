@@ -48,7 +48,7 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   const { card: addedSeriesCard } = series[seriesIndex];
 
   // find the dashcard associated with the first series
-  const dashCard = dashboard.ordered_cards.find(
+  const dashCard = dashboard.dashcards.find(
     dashCard => dashCard.card_id === firstCardInSeries.id,
   );
 

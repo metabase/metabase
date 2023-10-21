@@ -73,29 +73,50 @@ export const isNavigationAllowed = ({
    * If there is no "question" there is no reason to prevent navigation.
    * If there is no "destination" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
-   *
-   * If it's a new question, we're going to deal with it later as part of the epic:
-   * https://github.com/metabase/metabase/issues/33749
    */
-  if (!question || !destination || isNewQuestion) {
+  if (!question || !destination) {
     return true;
   }
 
   const { hash, pathname } = destination;
+  const isRunningModel = pathname === "/model" && hash.length > 0;
+  const isRunningQuestion = pathname === "/question" && hash.length > 0;
+  const validSlugs = [question.id(), question.slug()]
+    .filter(Boolean)
+    .map(String);
 
   if (question.isDataset()) {
-    const isGoingToQueryTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/query");
-    const isGoingToMetadataTab =
-      pathname.startsWith("/model/") && pathname.endsWith("/metadata");
+    if (isNewQuestion) {
+      const allowedPathnames = ["/model/query", "/model/metadata"];
+      return isRunningModel || allowedPathnames.includes(pathname);
+    }
 
-    return isGoingToQueryTab || isGoingToMetadataTab;
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/model/${slug}`,
+      `/model/${slug}/query`,
+      `/model/${slug}/metadata`,
+    ]);
+
+    return isRunningModel || allowedPathnames.includes(pathname);
   }
 
   if (question.isNative()) {
-    const isRunningQuestion = pathname === "/question" && hash.length > 0;
-
     return isRunningQuestion;
+  }
+
+  /**
+   * New structured questions will be handled in
+   * https://github.com/metabase/metabase/issues/34686
+   */
+  if (!isNewQuestion && question.isStructured()) {
+    const allowedPathnames = validSlugs.flatMap(slug => [
+      `/question/${slug}`,
+      `/question/${slug}/notebook`,
+    ]);
+
+    return (
+      isRunningModel || isRunningQuestion || allowedPathnames.includes(pathname)
+    );
   }
 
   return true;

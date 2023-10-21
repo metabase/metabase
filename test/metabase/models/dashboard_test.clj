@@ -670,6 +670,22 @@
                     (:filteringParameters parameter)))
              (is (not (contains? parameter :filteringParameters))))))))))
 
+(deftest migrate-parameters-with-linked-filters-and-values-query-type-test
+  (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_query_type is 'none'"
+    (doseq [[values_query_type
+             keep-filtering-parameters?] {"none" false
+                                          "list" true}]
+      (testing (format "\nvalues_query_type=%s" values_query_type)
+       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
+                                                                default-parameter
+                                                                {:filteringParameters ["other-param-id"]
+                                                                 :values_query_type   values_query_type})]}]
+         (let [parameter (first (:parameters dashboard))]
+           (if keep-filtering-parameters?
+             (is (= ["other-param-id"]
+                    (:filteringParameters parameter)))
+             (is (not (contains? parameter :filteringParameters))))))))))
+
 (deftest migrate-parameters-empty-name-test
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
     (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
@@ -791,7 +807,7 @@
           (let [dashboard       (magic/automagic-analysis (t2/select-one Table :id (mt/id :venues)) {})
                 saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
-                   (-> dashboard :ordered_cards count)))))))))
+                   (-> dashboard :dashcards count)))))))))
 
 (deftest validate-collection-namespace-test
   (t2.with-temp/with-temp [Collection {collection-id :id} {:namespace "currency"}]

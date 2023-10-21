@@ -85,7 +85,7 @@ For exactly how to create a new role in your database and grant that role privil
 **In your Metabase:**
 
 - Create a [new group](../people-and-groups/managing.md#groups), or select an existing group.
-- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to that group. You'll use this user attribute to associate that group with a role that you created in your database. For example, if you created a role named "Sales" in your database with access to a subset of tables, you would add a user attribute "Sales" to the group. The user attribute should match the name of the role your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute name and role match exactly just in case. 
+- Assign a [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to people in that group. You'll use this user attribute to associate people in that group with a role that you created in your database. For example, if you created a role named "Sales" in your database with access to a subset of tables, you would add a user attribute "Sales" to the group. The user attribute should match the name of the role in your database. Only some databases enforce case sensitivity, so you might want to make sure the attribute name and role match exactly just in case. 
 - Next, you'll need to apply the impersonation access to that group. Go to **Admin settings** > **Permissions** > **Data**.
 - Select the database you want to set permissions on.
 - Find the group that you want to associate with the database role you created. Under **Data access** for that group, select **Impersonation**.

@@ -74,4 +74,30 @@ describe("ParameterLinkedFilters", () => {
       expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     },
   );
+
+  it("should not show linked filter options if the parameter has values_query_type = 'none'", () => {
+    setup({
+      parameter: createMockUiParameter({
+        id: "p1",
+        name: "P1",
+        values_query_type: "none",
+        values_source_config: {
+          values: ["foo", "bar"],
+        },
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          id: "p2",
+          name: "P2",
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        "This filter can't be limited by another dashboard filter because its widget type is an input box.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
 });

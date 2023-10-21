@@ -23,6 +23,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -794,8 +795,8 @@
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."
-  [a-query]
-  (to-array (lib.core/available-segments a-query)))
+  [a-query stage-number]
+  (to-array (lib.core/available-segments a-query stage-number)))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
@@ -895,3 +896,15 @@
    Can be passed an integer table id or a legacy `card__<id>` string."
   [a-query table-id]
   (lib.core/with-different-table a-query table-id))
+
+(defn ^:export format-relative-date-range
+  "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
+  [n unit offset-n offset-unit options]
+  (shared.ut/format-relative-date-range
+    n
+    (keyword unit)
+    offset-n
+    (some-> offset-unit keyword)
+    (js->clj options :keywordize-keys true)))

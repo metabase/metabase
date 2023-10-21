@@ -15,9 +15,9 @@
   This has the same effect as the `=` filter on a generic field (ie. not a key), but renders differently.
 
   Contrast [[object-detail-drill]], which shows the details of the foreign object."
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  [query                                :- ::lib.schema/query
+   stage-number                         :- :int
+   {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (some? value)
