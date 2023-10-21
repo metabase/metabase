@@ -516,8 +516,11 @@
                   :channel      (:channel_type channel)
                   :schedule     (:schedule_type channel)
                   :recipients   (:recipients channel)}]
-    ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/pulse-create (assoc pulse :details details))))
+    ;; return the full Pulse (and record our create event). Adds details for the event loggins
+    ;; and removes after event logging is done.
+    (->
+     (events/publish-event! :event/pulse-create (assoc pulse :details details))
+     (dissoc :details))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"

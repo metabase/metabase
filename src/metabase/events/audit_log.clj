@@ -88,7 +88,7 @@
 
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [id details]}]
-    (audit-log/record-event! topic details api/*current-user-id* :model/Pulse id))
+  (audit-log/record-event! topic details api/*current-user-id* :model/Pulse id))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
