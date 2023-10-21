@@ -11,7 +11,7 @@ runs:
     - name: Download previously stored uberjar
       uses: actions/github-script@v6
       with:
-        script: |
+        script: | # js
           const fs = require('fs');
           const execSync = require("child_process").execSync;
 
@@ -32,11 +32,13 @@ runs:
               throw new Error("Couldn't find the artifact!");
             }
 
+            const artifactName = `metabase-${{ inputs.edition }}-${commit}-uberjar`;
+
             const {
               data: { artifacts },
             } = await github.rest.actions.listArtifactsForRepo({
               ...baseConfig,
-              name: `metabase-${{ inputs.edition }}-${commit}-uberjar`,
+              name: artifactName,
               per_page: 1,
             });
 
@@ -44,7 +46,7 @@ runs:
 
             if (!artifact) {
               const parentCommit = getCommit(`${commit}^`);
-              console.log(`Didn't find the artifact for ${commit}.\n`);
+              console.log(`Didn't find ${artifactName}.\n`);
               console.log(`Switching to the parent commit: ${parentCommit}`);
               return getArtifact(parentCommit, depth + 1);
             } else {
