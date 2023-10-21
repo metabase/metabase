@@ -23,6 +23,7 @@ const THEME_OPTIONS = [
   { name: t`Light`, value: null },
   { name: t`Dark`, value: "night" },
   { name: t`Transparent`, value: "transparent" },
+  { name: t`Transparent Frame`, value: "transparent-frame" },
 ];
 
 const mapStateToProps = state => ({
