@@ -64,27 +64,6 @@
 
 (def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
-;; Clj
-;;
-;; min-value: -2.0E-4
-;; max-value: 10000.34
-;; num-bins: 8
-;; min-bin-width: 1250.04253
-;; scale: 1000.0
-;; candidate-width: 1000.0
-;; candidate-width: 1250.0
-;; candidate-width: 2000.0
-
-;; JS
-;;
-;; min-value: -0.0002
-;; max-value: 10000.34
-;; num-bins: 8
-;; min-bin-width: 1250.0
-;; scale: 1000
-;; candidate-width: 1000
-;; candidate-width: 1250
-
 (mu/defn nicer-bin-width :- ::lib.schema.binning/bin-width
   "Calculate the bin width we should use for `:num-bins` binning based on `min-value` and `max-value`, taken from a
   column's fingerprint... rather than simply doing
@@ -95,16 +74,10 @@
   [min-value :- number?
    max-value :- number?
    num-bins  :- ::lib.schema.binning/num-bins]
-  (println "min-value:" min-value) ; NOCOMMIT
-  (println "max-value:" max-value) ; NOCOMMIT
-  (println "num-bins:" num-bins) ; NOCOMMIT
   (let [min-bin-width (calculate-bin-width min-value max-value num-bins)
         scale         (math/pow 10 (u/order-of-magnitude min-bin-width))]
-    (println "min-bin-width:" min-bin-width) ; NOCOMMIT]
-    (println "scale:" scale) ; NOCOMMIT
     (some (fn [pleasing-number]
             (let [candidate-width (* pleasing-number scale)]
-              (println "candidate-width:" candidate-width) ; NOCOMMIT
               (when (>= candidate-width min-bin-width)
                 candidate-width)))
           pleasing-numbers)))
