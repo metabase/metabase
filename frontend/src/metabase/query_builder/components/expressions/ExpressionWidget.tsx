@@ -63,7 +63,8 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const helpTextTargetRef = useRef(null);
 
-  const isValidName = withName ? !!name : true;
+  const isOnlySpaces = (str: string) => /^\s*$/.test(str);
+  const isValidName = withName ? !!name && !isOnlySpaces(name) : true;
   const isValidExpression = !!expression && isExpression(expression);
 
   const isValid = !error && isValidName && isValidExpression;
@@ -124,15 +125,10 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             value={name}
             placeholder={t`Something nice and descriptive`}
             fullWidth
-            onChange={event => setName(event.target.value.replace(/\s/g, ""))}
+            onChange={event => setName(event.target.value)}
             onKeyPress={e => {
               if (e.key === "Enter") {
                 handleCommit(expression);
-              }
-              // Prevent the user to type spaces since the expression's name
-              // can't contain spaces.
-              if (e.key === " ") {
-                e.preventDefault();
               }
             }}
           />

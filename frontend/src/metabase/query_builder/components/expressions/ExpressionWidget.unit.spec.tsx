@@ -101,6 +101,9 @@ describe("ExpressionWidget", () => {
       const { onChangeExpression } = setup({ expression, withName: true });
 
       const doneButton = screen.getByRole("button", { name: "Done" });
+      const expressionNameInput = screen.getByPlaceholderText(
+        "Something nice and descriptive",
+      );
 
       expect(doneButton).toBeDisabled();
 
@@ -109,36 +112,24 @@ describe("ExpressionWidget", () => {
       // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
-      // Type characters with lowercase, uppercase, numbers, and special characters
+      // The name must not be empty and must not consist of spaces only.
+      userEvent.type(expressionNameInput, "       ");
+      expect(doneButton).toBeDisabled();
+
+      userEvent.clear(expressionNameInput);
+
       userEvent.type(
-        screen.getByPlaceholderText("Something nice and descriptive"),
-        "Some n_am!e for-expression_123!@#$%^&*()Zxcbyut",
+        expressionNameInput,
+        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
       );
 
       expect(doneButton).toBeEnabled();
 
       userEvent.click(doneButton);
 
-      // Spaces must be removed from the name
       expect(onChangeExpression).toHaveBeenCalledTimes(1);
       expect(onChangeExpression).toHaveBeenCalledWith(
-        "Somen_am!efor-expression_123!@#$%^&*()Zxcbyut",
-        expression,
-      );
-
-      // Paste text with spaces
-      userEvent.paste(
-        screen.getByPlaceholderText("Something nice and descriptive"),
-        " added- another pasted text",
-      );
-
-      userEvent.click(doneButton);
-
-      // Pasted text must be added to the previous name
-      // and its spaces must be removed
-      expect(onChangeExpression).toHaveBeenCalledTimes(2);
-      expect(onChangeExpression).toHaveBeenCalledWith(
-        "Somen_am!efor-expression_123!@#$%^&*()Zxcbyutadded-anotherpastedtext",
+        "Some n_am!e 2q$w&YzT(6i~#sLXv7+HjP}Ku1|9c*RlF@4o5N=e8;G*-bZ3/U0:Qa'V,t(W-_D",
         expression,
       );
     });
