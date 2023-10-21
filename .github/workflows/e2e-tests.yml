@@ -140,6 +140,7 @@ jobs:
         uses: ./.github/actions/e2e-download-uberjar
         with:
           edition: ${{ matrix.edition }}
+          was-built: ${{ needs.build.result == 'success' }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -277,6 +278,7 @@ jobs:
         uses: ./.github/actions/e2e-download-uberjar
         with:
           edition: 'ee'
+          was-built: ${{ needs.build.result == 'success' }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
