@@ -76,10 +76,10 @@
              args  (drill-thru-test-args drill)]
        (condp = (:type drill)
          :drill-thru/pivot
-         (log/warnf "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
+         (log/warn "drill-thru-method is not yet implemented for :drill-thru/pivot (#33559)")
 
          :drill-thru/underlying-records
-         (log/warnf "drill-thru-method is not yet implemented for :drill-thru/underlying-records (#34233)")
+         (log/warn "drill-thru-method is not yet implemented for :drill-thru/underlying-records (#34233)")
 
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)

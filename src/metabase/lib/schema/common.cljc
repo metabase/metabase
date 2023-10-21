@@ -21,6 +21,11 @@
 (mr/def ::positive-int
   pos-int?)
 
+(mr/def ::positive-number
+  [:fn
+   {:error/message "positive number"}
+   (every-pred number? pos?)])
+
 (mr/def ::uuid
   ;; TODO -- should this be stricter?
   [:string {:min 36, :max 36}])
