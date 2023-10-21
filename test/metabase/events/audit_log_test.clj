@@ -354,7 +354,7 @@
                  :user_id     (mt/user->id :rasta)
                  :model       "Pulse"
                  :model_id    (:id pulse)
-                 :details     {:name (:name pulse)}}
+                 :details     {}}
                 (event "pulse-delete" (:id pulse)))))))))
 
 (deftest subscription-unsubscribe-event-test
