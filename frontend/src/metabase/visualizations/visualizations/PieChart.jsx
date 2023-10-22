@@ -225,7 +225,7 @@ export default class PieChart extends Component {
     ] = series;
     const dimensionIndex = settings["pie._dimensionIndex"];
     const metricIndex = settings["pie._metricIndex"];
-
+  
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
         ...settings.column(cols[dimensionIndex]),
@@ -380,7 +380,7 @@ export default class PieChart extends Component {
 
     const getSliceClickObject = index => {
       const slice = slices[index];
-      const sliceRows = slice.rowIndex && rows[slice.rowIndex];
+      const sliceRows = slice.rowIndex != undefined && slice.rowIndex != null && rows[slice.rowIndex];
       const data =
         sliceRows &&
         sliceRows.map((value, index) => ({
