@@ -1,3 +1,4 @@
+// Expect E2E workflow not to build fresh uberjar
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
