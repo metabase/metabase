@@ -225,7 +225,7 @@ export default class PieChart extends Component {
     ] = series;
     const dimensionIndex = settings["pie._dimensionIndex"];
     const metricIndex = settings["pie._metricIndex"];
-  
+
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
         ...settings.column(cols[dimensionIndex]),
