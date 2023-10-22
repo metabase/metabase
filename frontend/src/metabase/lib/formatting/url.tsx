@@ -1,3 +1,4 @@
+// Expect E2E workflow to build fresh uberjar
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDataFromClicked } from "metabase-lib/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/types/utils/isa";
