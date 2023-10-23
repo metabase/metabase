@@ -3,6 +3,7 @@ import _ from "underscore";
 import type {
   Card,
   Collection,
+  CollectionId,
   CollectionItem,
   Dashboard,
 } from "metabase-types/api";
@@ -31,7 +32,7 @@ export function setupCollectionsEndpoints({
       query: { tree: true, "exclude-archived": true },
       overwriteRoutes: false,
     },
-    collections.filter(collection => !collection.archived),
+    buildCollectionTree(collections.filter(collection => !collection.archived)),
   );
   fetchMock.get(
     {
@@ -39,12 +40,63 @@ export function setupCollectionsEndpoints({
       query: { tree: true },
       overwriteRoutes: false,
     },
-    collections,
+    buildCollectionTree(collections),
   );
   fetchMock.get(
     { url: "path:/api/collection", overwriteRoutes: false },
     collections,
   );
+}
+
+function buildCollectionTree(collections: Collection[]) {
+  const nonRootCollections = collections.filter(
+    collection => collection.id !== "root",
+  );
+  const usedCollectionIds = new Set();
+  const tree: Collection[] = [];
+
+  let currentTreeLevel = 0;
+  while (usedCollectionIds.size < nonRootCollections.length) {
+    for (let index = 0; index < nonRootCollections.length; index++) {
+      if (usedCollectionIds.has(index)) {
+        continue;
+      }
+
+      const collection = nonRootCollections[index];
+      const ROOT_LOCATION = "/";
+      const collectionPath = (collection.location ?? ROOT_LOCATION)
+        .split("/")
+        .filter(collectionId => collectionId)
+        .map(Number);
+      const collectionLevel = collectionPath.length;
+      const isAtCurrentTreeLevel = collectionLevel === currentTreeLevel;
+
+      if (isAtCurrentTreeLevel) {
+        const node = walkTree(tree, collectionPath);
+        node.push({ ...collection });
+        usedCollectionIds.add(index);
+      }
+    }
+    currentTreeLevel++;
+  }
+
+  return tree;
+}
+
+function walkTree(tree: Collection[], path: CollectionId[]): Collection[] {
+  let collectionChildren = tree;
+  for (const collectionId of path) {
+    const collection = collectionChildren.find(
+      node => node.id === collectionId,
+    );
+    if (collection) {
+      if (!collection.children) {
+        collection.children = [];
+      }
+      collectionChildren = collection.children;
+    }
+  }
+  return collectionChildren;
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
