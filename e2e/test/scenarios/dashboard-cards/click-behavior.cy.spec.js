@@ -14,9 +14,11 @@ import {
 } from "e2e/support/helpers";
 
 const URL = "https://example.com/";
-const COUNT_COLUMN_NAME = "count";
-const CREATED_AT_COLUMN_NAME = "CREATED_AT";
-const FILTER_NAME = "testFilter";
+const COUNT_COLUMN_ID = "count";
+const COUNT_COLUMN_NAME = "Count";
+const CREATED_AT_COLUMN_ID = "CREATED_AT";
+const CREATED_AT_COLUMN_NAME = "Created At";
+const FILTER_NAME = "test-filter";
 const FILTER_VALUE = "123";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -29,6 +31,10 @@ const LINE_CHART = {
     breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
   },
 };
+
+const POINT_COUNT = 344;
+const POINT_CREATED_AT = "2026-04";
+const POINT_INDEX = 48;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -99,17 +105,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
         },
       );
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COUNT_COLUMN_NAME}}}/{{${CREATED_AT_COLUMN_NAME}}}`;
+      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
       const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
       const expectedUrlWithParams = urlWithParams
-        .replace(`{{${COUNT_COLUMN_NAME}}}`, 344)
-        .replace(`{{${CREATED_AT_COLUMN_NAME}}}`, "2026-04")
+        .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
+        .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
         .replace(`{{${FILTER_NAME}}}`, FILTER_VALUE);
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
@@ -124,8 +130,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.get("aside").findByText("URL").click();
           modal().findByText("Values you can reference").click();
           popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(COUNT_COLUMN_ID).should("exist");
+            cy.findByText(CREATED_AT_COLUMN_ID).should("exist");
             cy.findByText(FILTER_NAME).should("exist");
             cy.realPress("Escape");
           });
@@ -149,7 +155,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
         },
       );
     });
@@ -168,6 +174,36 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       );
     });
+
+    it("allows updating single dashboard filter", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          addFilter();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Update a dashboard filter").click();
+          cy.get("aside").findByText(FILTER_NAME).click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+
+            cy.findByText(COUNT_COLUMN_NAME).click();
+          });
+          cy.get("aside").button("Done").click();
+
+          cy.findByTestId("edit-bar").button("Save").click();
+          cy.findByTestId("edit-bar").should("not.exist");
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+
+          cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
+          cy.url().should("include", `?${FILTER_NAME}=${POINT_COUNT}`);
+        },
+      );
+    });
   });
 });
 
@@ -180,8 +216,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 const escapeCypressCurlyBraces = value => value.replaceAll("{", "{{}");
 
 /**
- * This function exists to work around custom dynamic anchor creation
+ * This function exists to work around custom dynamic anchor creation.
  * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
+ *
+ * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
  */
 const onNextAnchorClick = callback => {
   cy.window().then(window => {
