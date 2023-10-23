@@ -66,9 +66,12 @@
                 (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))
 
 (defn liquibase-file->included-ids
-  [file-path]
+  [file-path db-type]
   (let [content (u.yaml/from-file (io/resource file-path))]
     (->> (:databaseChangeLog content)
+         ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
+         (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
+                                                        (not (str/includes? dbms (name db-type))))))
          (map #(str (get-in % [:changeSet :id])))
          (remove str/blank?)
          set)))
@@ -83,13 +86,13 @@
         (t2/update! (liquibase/changelog-table-name conn) {:filename "migrations/000_migrations.yaml"})
         (liquibase/consolidate-liquibase-changesets! conn)
         (testing "makes sure the change log filename are correctly set"
-          (is (= (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml")
+          (is (= (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*)
                  (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/000_legacy_migrations.yaml")))
 
-          (is (= (liquibase-file->included-ids "migrations/001_update_migrations.yaml")
+          (is (= (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
                  (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/001_update_migrations.yaml"))))
 
         (is (= (t2/select-fn-set :id (liquibase/changelog-table-name conn))
                (set/union
-                (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml")
-                (liquibase-file->included-ids "migrations/001_update_migrations.yaml"))))))))
+                (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*)
+                (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))))))))
