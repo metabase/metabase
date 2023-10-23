@@ -15439,13 +15439,13 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: timestamp
-                  type: DATETIME
+                  type: ${timestamp_type}
                   remarks: The time an event was recorded
                   constraints:
                     nullable: false
               - column:
                   name: end_timestamp
-                  type: DATETIME
+                  type: ${timestamp_type}
                   remarks: The time an event ended, if applicable
                   constraints:
                     nullable: true
@@ -15457,7 +15457,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: model
-                  type: varchar(16)
+                  type: varchar(32)
                   remarks: The name of the model this event applies to (e.g. Card, Dashboard), if applicable
                   constraints:
                     nullable: true
