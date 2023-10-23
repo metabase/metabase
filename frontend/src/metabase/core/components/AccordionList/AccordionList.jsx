@@ -111,7 +111,7 @@ export default class AccordionList extends Component {
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
     hideEmptySectionsInSearch: false,
-    role: "tree",
+    role: "grid",
 
     // section getters/render props
     renderSectionIcon: section => section.icon && <Icon name={section.icon} />,
@@ -569,7 +569,7 @@ export default class AccordionList extends Component {
     if (!this.isVirtualized()) {
       return (
         <AccordionListRoot
-          role={role}
+          role="tree"
           onKeyDown={this.handleKeyDown}
           tabIndex={-1}
           className={className}
@@ -624,7 +624,6 @@ export default class AccordionList extends Component {
         id={id}
         ref={list => (this._list = list)}
         className={className}
-        role={role}
         style={{ ...defaultListStyle, ...style }}
         containerStyle={{ pointerEvents: "auto" }}
         width={width}
@@ -638,6 +637,7 @@ export default class AccordionList extends Component {
         scrollToIndex={scrollToIndex}
         scrollToAlignment={scrollToAlignment}
         containerProps={{
+          role,
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,
         }}
