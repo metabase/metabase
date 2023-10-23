@@ -20,9 +20,9 @@ import {
   getDashboardCard,
   menu,
   getDashboardCards,
-  createTextCard,
-  createHeadingCardDTO,
-  createLinkCardDTO,
+  getTextCardDetails,
+  getHeadingCardDetails,
+  getLinkCardDetails,
   updateDashboardCards,
 } from "e2e/support/helpers";
 
@@ -136,13 +136,13 @@ describe("scenarios > dashboard > tabs", () => {
     { scrollBehavior: false },
     () => {
       const cards = [
-        createTextCard({
+        getTextCardDetails({
           text: "Text card",
         }),
-        createHeadingCardDTO({
+        getHeadingCardDetails({
           text: "Heading card",
         }),
-        createLinkCardDTO({
+        getLinkCardDetails({
           url: "https://metabase.com",
         }),
       ];

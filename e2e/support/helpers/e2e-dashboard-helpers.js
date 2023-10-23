@@ -220,7 +220,7 @@ export const dashboardGrid = () => {
  * @param {number=} option.size_y
  * @param {string} option.text
  */
-export function createTextCard({
+export function getTextCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
   row = 0,
@@ -248,7 +248,7 @@ export function createTextCard({
   };
 }
 
-export function createHeadingCardDTO({
+export function getHeadingCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
   row = 0,
@@ -277,7 +277,7 @@ export function createHeadingCardDTO({
   };
 }
 
-export function createLinkCardDTO({
+export function getLinkCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
   row = 0,

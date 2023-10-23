@@ -1,6 +1,6 @@
 import {
   addOrUpdateDashboardCard,
-  createTextCard,
+  getTextCardDetails,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -76,7 +76,7 @@ function createTextDashcard(id) {
   addOrUpdateDashboardCard({
     dashboard_id: id,
     card_id: null,
-    card: createTextCard({
+    card: getTextCardDetails({
       size_x: 5,
       size_y: 20,
       text: "I am a tall card",
