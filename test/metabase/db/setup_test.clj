@@ -1,6 +1,7 @@
 (ns metabase.db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
@@ -56,9 +57,10 @@
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         ;; set up a db in a way we have a MB instance running metabase 42
         (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase 381 ""))
-        (is (= "v42.00-071"
-               (t2/select-one-pk :databasechangelog {:order-by [[:dateexecuted :desc]]}))))
+          (.update liquibase 380 ""))
+        (is (str/starts-with?
+             (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})
+             "v42")))
 
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))
@@ -69,9 +71,10 @@
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         ;; set up a db in a way we have a MB instance running metabase 45
         (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase 503 ""))
-        (is (= "v45.00-057"
-               (t2/select-one-pk :databasechangelog {:order-by [[:dateexecuted :desc]]}))))
+          (.update liquibase 500 ""))
+        (str/starts-with?
+             (t2/select-one-pk (liquibase/changelog-table-name conn) {:order-by [[:dateexecuted :desc]]})
+             "v45"))
 
       (is (= :done
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true))))))

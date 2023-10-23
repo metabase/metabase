@@ -58,7 +58,8 @@
        :doc     "Liquibase setting used for upgrading a fresh instance or instances running version >= 45."}
   ^String changelog-file "liquibase.yaml")
 
-(defn- changelog-table-name
+(defn changelog-table-name
+  "Return the proper changelog table name based on db type of the connection."
   [^java.sql.Connection conn]
   (if (= "PostgreSQL" (-> conn .getMetaData .getDatabaseProductName))
     "databasechangelog"

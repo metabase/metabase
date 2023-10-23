@@ -80,16 +80,16 @@
       (with-redefs [liquibase/decide-liquibase-file (fn [& _args] @#'liquibase/changelog-legacy-file)]
         (liquibase/with-liquibase [liquibase conn]
           (.update liquibase ""))
-        (t2/update! :databasechangelog {:filename "migrations/000_migrations.yaml"})
+        (t2/update! (liquibase/changelog-table-name conn) {:filename "migrations/000_migrations.yaml"})
         (liquibase/consolidate-liquibase-changesets! conn)
         (testing "makes sure the change log filename are correctly set"
           (is (= (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml")
-                 (t2/select-fn-set :id :databasechangelog :filename "migrations/000_legacy_migrations.yaml")))
+                 (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/000_legacy_migrations.yaml")))
 
           (is (= (liquibase-file->included-ids "migrations/001_update_migrations.yaml")
-                 (t2/select-fn-set :id :databasechangelog :filename "migrations/001_update_migrations.yaml"))))
+                 (t2/select-fn-set :id (liquibase/changelog-table-name conn) :filename "migrations/001_update_migrations.yaml"))))
 
-        (is (= (t2/select-fn-set :id :databasechangelog)
+        (is (= (t2/select-fn-set :id (liquibase/changelog-table-name conn))
                (set/union
                 (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml")
                 (liquibase-file->included-ids "migrations/001_update_migrations.yaml"))))))))
