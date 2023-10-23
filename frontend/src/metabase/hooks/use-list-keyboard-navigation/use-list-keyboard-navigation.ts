@@ -66,6 +66,6 @@ export const useListKeyboardNavigation = <
     reset,
     cursorIndex,
     selectedItem,
-    getRef: (item: T) => (item === selectedItem ? selectedRef : undefined),
+    getRef: (item: T) => (item === selectedItem ? selectedRef : null),
   };
 };

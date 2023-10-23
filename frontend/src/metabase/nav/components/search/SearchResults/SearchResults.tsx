@@ -21,6 +21,8 @@ import type {
 } from "metabase-types/api";
 import {
   EmptyStateContainer,
+  ResultsContainer,
+  ResultsFooter,
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 
@@ -131,37 +133,43 @@ export const SearchResults = ({
     return <SearchLoadingSpinner />;
   }
 
-  return (
-    <>
-      <SearchResultsList data-testid="search-results-list">
-        {hasResults ? (
-          list.map((item, index) => {
-            const isIndexedEntity = item.model === "indexed-entity";
-            const onClick =
-              onEntitySelect && (isIndexedEntity || forceEntitySelect)
-                ? onEntitySelect
-                : undefined;
-            const ref = getRef(item);
-            const wrappedResult = Search.wrapEntity(item, dispatch);
+  return hasResults ? (
+    <SearchResultsList data-testid="search-results-list" spacing={0}>
+      <ResultsContainer>
+        {list.map((item, index) => {
+          const isIndexedEntity = item.model === "indexed-entity";
+          const onClick =
+            onEntitySelect && (isIndexedEntity || forceEntitySelect)
+              ? onEntitySelect
+              : undefined;
+          const ref = getRef(item);
+          const wrappedResult = Search.wrapEntity(item, dispatch);
 
-            return (
-              <li key={`${item.model}:${item.id}`} ref={ref}>
-                <SearchResult
-                  result={wrappedResult}
-                  compact={true}
-                  showDescription={true}
-                  isSelected={cursorIndex === index}
-                  onClick={onClick}
-                />
-              </li>
-            );
-          })
-        ) : (
-          <EmptyStateContainer>
-            <EmptyState message={t`Didn't find anything`} icon="search" />
-          </EmptyStateContainer>
-        )}
-      </SearchResultsList>
-    </>
+          return (
+            <li key={`${item.model}:${item.id}`} ref={ref}>
+              <SearchResult
+                result={wrappedResult}
+                compact={true}
+                showDescription={true}
+                isSelected={cursorIndex === index}
+                onClick={onClick}
+              />
+            </li>
+          );
+        })}
+      </ResultsContainer>
+      {showFooter && (
+        <ResultsFooter ref={getRef(footerComponent)}>
+          {footerComponent({
+            metadata,
+            isSelected: cursorIndex === keyboardList.length - 1,
+          })}
+        </ResultsFooter>
+      )}
+    </SearchResultsList>
+  ) : (
+    <EmptyStateContainer>
+      <EmptyState message={t`Didn't find anything`} icon="search" />
+    </EmptyStateContainer>
   );
 };
