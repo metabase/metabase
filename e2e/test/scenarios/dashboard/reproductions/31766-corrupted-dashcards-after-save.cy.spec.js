@@ -3,7 +3,7 @@ import {
   modal,
   restore,
   visitDashboard,
-  createTextCard,
+  getTextCardDetails,
   updateDashboardCards,
   saveDashboard,
 } from "e2e/support/helpers";
@@ -29,7 +29,7 @@ describe("issue 31766", () => {
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
     }).then(({ body: { dashboard_id, question_id } }) => {
-      const textCard = createTextCard({
+      const textCard = getTextCardDetails({
         row: 0,
         size_x: 24,
         size_y: 1,

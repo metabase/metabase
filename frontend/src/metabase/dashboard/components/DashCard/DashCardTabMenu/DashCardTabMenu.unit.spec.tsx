@@ -9,10 +9,6 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { getDefaultTab } from "metabase/dashboard/actions";
-import {
-  getDashCardById,
-  getSelectedTabId,
-} from "metabase/dashboard/selectors";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { DashCardTabMenu } from "./DashCardTabMenu";
 
@@ -90,57 +86,6 @@ describe("DashCardTabMenu", () => {
       expect(within(menu).getByText(TAB_3.name)).toBeInTheDocument();
     });
   });
-
-  describe("when selecting tab name from the menu", () => {
-    it("should move the card to the selected tab", async () => {
-      const { store } = setup({});
-
-      await clickOnTabMenuItem(TAB_3.name);
-
-      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
-
-      expect(storeDashcard.dashboard_tab_id).toBe(TAB_3.id);
-    });
-
-    it("should stay on the current tab", async () => {
-      const { store } = setup({});
-
-      clickOnTabMenuItem(TAB_3.name);
-
-      expect(getSelectedTabId(store.getState())).toBe(TAB_1.id);
-    });
-
-    it("should keep the query of the card the same", async () => {
-      const { store } = setup({});
-
-      await clickOnTabMenuItem(TAB_3.name);
-
-      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
-
-      expect(storeDashcard.card.dataset_query).toBe(
-        DASHCARD.card.dataset_query,
-      );
-    });
-
-    it("should keep the size of the card the same", async () => {
-      const { store } = setup({});
-
-      await clickOnTabMenuItem(TAB_3.name);
-
-      const storeDashcard = getDashCardById(store.getState(), DASHCARD.id);
-
-      expect(storeDashcard.size_x).toBe(DASHCARD.size_x);
-      expect(storeDashcard.size_y).toBe(DASHCARD.size_y);
-    });
-  });
 });
 
 const getIconButton = () => screen.getByLabelText("move_card icon");
-
-const clickOnTabMenuItem = async (tabName: string) => {
-  userEvent.hover(getIconButton());
-
-  const menu = await waitFor(() => screen.findByRole("menu"));
-
-  userEvent.click(within(menu).getByText(tabName));
-};

@@ -220,7 +220,7 @@ export const dashboardGrid = () => {
  * @param {number=} option.size_y
  * @param {string} option.text
  */
-export function createTextCard({
+export function getTextCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
   row = 0,
@@ -245,6 +245,66 @@ export function createTextCard({
       },
       text,
     },
+  };
+}
+
+export function getHeadingCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 24,
+  size_y = 1,
+  text = "Heading text example dto",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "heading",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "dashcard.background": false,
+      text,
+    },
+  };
+}
+
+export function getLinkCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 1,
+  url = "https://metabase.com",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "link",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      link: {
+        url,
+      },
+    },
+    parameter_mappings: [],
   };
 }
 

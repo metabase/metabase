@@ -17,6 +17,13 @@ import {
   deleteTab,
   visitCollection,
   main,
+  getDashboardCard,
+  menu,
+  getDashboardCards,
+  getTextCardDetails,
+  getHeadingCardDetails,
+  getLinkCardDetails,
+  updateDashboardCards,
 } from "e2e/support/helpers";
 
 import {
@@ -82,8 +89,90 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it("should allow moving dashcards between tabs", () => {
-    // TODO
+    visitDashboardAndCreateTab({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      save: false,
+    });
+
+    cy.findByRole("tab", { name: "Tab 1" }).click();
+
+    cy.log("should stay on the same tab");
+    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
+
+    getDashboardCard(0).then(element => {
+      cy.wrap({
+        width: element.outerWidth(),
+        height: element.outerHeight(),
+      }).as("originalSize");
+    });
+
+    cy.log("move card to second tab");
+
+    getDashboardCard().realHover();
+    cy.icon("move_card").click();
+    menu().findByText("Tab 2").click();
+
+    getDashboardCards().should("have.length", 0);
+
+    cy.findByRole("tab", { name: "Tab 2" }).click();
+
+    getDashboardCards().should("have.length", 1);
+
+    cy.log("size should stay the same");
+
+    getDashboardCard(0).then(element => {
+      cy.get("@originalSize").then(originalSize => {
+        expect({
+          width: element.outerWidth(),
+          height: element.outerHeight(),
+        }).to.deep.eq(originalSize);
+      });
+    });
   });
+
+  it(
+    "should allow moving different types of dashcards to other tabs",
+    // cy auto scroll makes the dashcard actions menu go under the header
+    { scrollBehavior: false },
+    () => {
+      const cards = [
+        getTextCardDetails({
+          text: "Text card",
+        }),
+        getHeadingCardDetails({
+          text: "Heading card",
+        }),
+        getLinkCardDetails({
+          url: "https://metabase.com",
+        }),
+      ];
+
+      cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+        updateDashboardCards({ dashboard_id, cards });
+
+        visitDashboard(dashboard_id);
+      });
+
+      editDashboard();
+      createNewTab();
+      cy.findByRole("tab", { name: "Tab 1" }).click();
+
+      cy.log("moving dashcards to second tab");
+
+      cards.forEach(() => {
+        getDashboardCard(0).realHover();
+        cy.icon("move_card").eq(0).click();
+
+        menu().findByText("Tab 2").click();
+      });
+
+      getDashboardCards().should("have.length", 0);
+
+      cy.findByRole("tab", { name: "Tab 2" }).click();
+
+      getDashboardCards().should("have.length", cards.length);
+    },
+  );
 
   it("should leave dashboard if navigating back after initial load", () => {
     visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
