@@ -39,6 +39,9 @@ type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destTabId: DashboardTabId;
 };
+type UndoMoveDashCardToTabPayload = {
+  dashCardId: DashCardId;
+};
 type SaveCardsAndTabsPayload = {
   cards: DashboardCard[];
   tabs: DashboardTab[];
@@ -52,6 +55,8 @@ const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const MOVE_TAB = "metabase/dashboard/MOVE_TAB";
 const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
 const MOVE_DASHCARD_TO_TAB = "metabase/dashboard/MOVE_DASHCARD_TO_TAB";
+const UNDO_MOVE_DASHCARD_TO_TAB =
+  "metabase/dashboard/UNDO_MOVE_DASHCARD_TO_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
 const INIT_TABS = "metabase/dashboard/INIT_TABS";
 
@@ -94,6 +99,10 @@ export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 
 export const moveDashCardToTab =
   createAction<MoveDashCardToTabPayload>(MOVE_DASHCARD_TO_TAB);
+
+export const undoMoveDashCardToTab = createAction<UndoMoveDashCardToTabPayload>(
+  UNDO_MOVE_DASHCARD_TO_TAB,
+);
 
 export const saveCardsAndTabs =
   createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
@@ -309,6 +318,22 @@ export const tabsReducer = createReducer<DashboardState>(
         }
         const dashCard = state.dashcards[dashCardId];
 
+        if (!dashCard.dashboard_tab_id) {
+          throw Error(
+            `MOVE_DASHCARD_TO_TAB was dispatched but dashCard.dashboard_tab_id (${dashCard.dashboard_tab_id}) is null`,
+          );
+        }
+
+        const dashboard = state.dashboards[dashId];
+        if (!dashboard.dashCardTabMovements) {
+          dashboard.dashCardTabMovements = {};
+        }
+        dashboard.dashCardTabMovements[dashCardId] = {
+          originalRow: dashCard.row,
+          originalCol: dashCard.col,
+          originalTabId: dashCard.dashboard_tab_id,
+        };
+
         const { row, col } = getPositionForNewDashCard(
           getExistingDashCards(state, dashId, destTabId),
           dashCard.size_x,
@@ -318,6 +343,28 @@ export const tabsReducer = createReducer<DashboardState>(
         dashCard.col = col;
 
         dashCard.dashboard_tab_id = destTabId;
+        dashCard.isDirty = true;
+      },
+    );
+
+    builder.addCase(
+      undoMoveDashCardToTab,
+      (state, { payload: { dashCardId } }) => {
+        if (!state.dashboardId) {
+          throw Error(`state.dashboardId is null in undoMoveDashCardToTab`);
+        }
+        const dashboard = state.dashboards[state.dashboardId];
+
+        const dashCard = state.dashcards[dashCardId];
+        const movement = dashboard.dashCardTabMovements?.[dashCardId];
+
+        if (!movement) {
+          throw Error(`cannot find movement to undo undoMoveDashCardToTab`);
+        }
+
+        dashCard.row = movement.originalRow;
+        dashCard.col = movement.originalCol;
+        dashCard.dashboard_tab_id = movement.originalTabId;
         dashCard.isDirty = true;
       },
     );
