@@ -100,7 +100,6 @@
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
     [metabase.db.query :as mdb.query]
-    [metabase.driver :as driver]
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.mbql.predicates :as mbql.preds]
     [metabase.mbql.util :as mbql.u]
@@ -122,7 +121,6 @@
     [metabase.util.malli :as mu]
     #_{:clj-kondo/ignore [:deprecated-namespace]}
     [metabase.util.malli.schema :as ms]
-    [potemkin :as p]
     [ring.util.codec :as codec]
     [schema.core :as s]
     [toucan2.core :as t2]))
@@ -194,13 +192,6 @@
     (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
     (saved-metric? metric)                (->> args first (t2/select-one Metric :id) :name)
     :else                                 (second args)))
-
-(defn metric-op
-  "Return the name op of the metric"
-  [[op & args :as metric]]
-  (if (saved-metric? metric)
-    (get-in (t2/select-one Metric :id (first args)) [:definition :aggregation 0 0])
-    op))
 
 (defn- join-enumeration
   "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""
@@ -506,35 +497,6 @@
                                         (classify/run-classifiers field {})
                                         (assoc field :db db)))))]
         (constantly source-fields)))))
-
-(p/defprotocol+ AffinitySetProvider
-  "For some item, determine the affinity sets of that item. This is a set of sets, each underlying set being a set of
-  dimensions that, if satisfied, specify affinity to the item."
-  (create-affinity-sets [this item]))
-
-(mu/defn base-dimension-provider :- [:fn #(satisfies? AffinitySetProvider %)]
-  "Takes a dashboard template and produces a function that takes a dashcard template and returns a seq of potential
-  dimension sets that can satisfy the card."
-  [{card-metrics :metrics card-filters :filters} :- ads/dashboard-template]
-  (let [dim-groups (fn [items]
-                     (-> (->> items
-                              (map
-                                (fn [item]
-                                  [(ffirst item)
-                                   (set (dashboard-templates/collect-dimensions item))]))
-                              (group-by first))
-                         (update-vals (fn [v] (mapv second v)))
-                         (update "this" conj #{})))
-        m->dims    (dim-groups card-metrics)
-        f->dims    (dim-groups card-filters)]
-    (reify AffinitySetProvider
-      (create-affinity-sets [_ {:keys [dimensions metrics filters]}]
-        (let [dimset                (set (map ffirst dimensions))
-              underlying-dim-groups (concat (map m->dims metrics) (map f->dims filters))]
-          (set
-            (map
-              (fn [lower-dims] (reduce into dimset lower-dims))
-              (apply math.combo/cartesian-product underlying-dim-groups))))))))
 
 (s/defn ^:private make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.

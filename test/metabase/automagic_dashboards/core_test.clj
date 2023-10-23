@@ -375,11 +375,6 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (t2/select-one Card :id card-id) 8)))))))
 
-(defn field! [table column]
-  (or (t2/select-one Field :id (mt/id table column))
-      (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
-                      {:table table :column column}))))
-
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
     (mt/dataset sample-dataset
