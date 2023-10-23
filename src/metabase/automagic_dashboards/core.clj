@@ -716,59 +716,6 @@
               (fn [lower-dims] (reduce into dimset lower-dims))
               (apply math.combo/cartesian-product underlying-dim-groups))))))))
 
-(mu/defn dash-template->affinities-old :- ads/affinities-old
-  "Takes a dashboard template, pulls the affinities from its cards, adds the name of the card
-  as the affinity name, and adds in the set of all required base dimensions to satisfy the card.
-
-  As card, filter, and metric names need not be unique, the number of affinities computed may
-  be larger than the number of distinct card names and affinities are a sequence, not a map.
-
-  These can easily be grouped by :affinity-name, :base-dims, etc. to efficiently select
-  the appropriate affinities for a given situation.
-
-  eg:
-  (dash-template->affinities-map
-   (dashboard-templates/get-dashboard-template [\"table\" \"TransactionTable\"]))
-
-   [{:metrics [\"TotalOrders\"]
-     :score 100
-     :dimensions []
-     :affinity-name \"Rowcount\"
-      :base-dims #{}}
-    {:filters [\"Last30Days\"]
-      :metrics [\"TotalOrders\"]
-      :score 100
-      :dimensions []
-      :affinity-name \"RowcountLast30Days\"
-      :base-dims #{\"Timestamp\"}}
-      ...
-   ].
-"
-  [{card-templates :cards :as dashboard-template} :- ads/dashboard-template]
-  ;; todo: cards can specify native queries with dimension template tags. See
-  ;; resources/automagic_dashboards/table/example.yaml
-  ;; note that they can specify dimension dependencies and ALSO table dependencies:
-  ;; - Native:
-  ;;    title: Native query
-  ;;    # Template interpolation works the same way as in title and description. Field
-  ;;    # names are automatically expanded into the full TableName.FieldName form.
-  ;;    query: select count(*), [[State]]
-  ;;           from [[GenericTable]] join [[UserTable]] on
-  ;;           [[UserFK]] = [[UserPK]]
-  ;;    visualization: bar
-  (let [provider (base-dimension-provider dashboard-template)]
-    (letfn [(card-deps [card]
-              (-> (select-keys card [:dimensions :filters :metrics :card-score])
-                  (update :dimensions (partial mapv ffirst))))]
-      (mapcat
-        (fn [card-template]
-          (let [[card-name template] (first card-template)]
-            (for [base-dims (create-affinity-sets provider template)]
-              (assoc (card-deps template)
-                :affinity-name card-name
-                :base-dims base-dims))))
-        card-templates))))
-
 (mu/defn dash-template->affinities :- [:sequential ads/affinity]
   "Takes a dashboard-template and the ground dimensions and produces a sequence of affinities. An affinity is a map
  with a set of semantic/effective types that have an affinity with each other, a name, and an optional score. We mine
@@ -1280,16 +1227,6 @@
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
-(defn- filter-referenced-fields
-  "Return a map of fields referenced in filter clause."
-  [root filter-clause]
-  (->> filter-clause
-       filters/collect-field-references
-       (map (fn [[_ id-or-name _options]]
-              [id-or-name (->field root id-or-name)]))
-       (remove (comp nil? second))
-       (into {})))
-
 (defn generate-dashboard
   "Produce a dashboard from the base context for an item and a dashboad template."
   [{{:keys [show] user-defined-metrics :linked-metrics :as root} :root :as base-context}
@@ -1338,26 +1275,6 @@
                                         ;     :param_fields (filter-referenced-fields root query-filter)
          :auto_apply_filters true))))
 
-(defn- find-first-match-dashboard-template
-  "Given a 'root' context, apply matching dashboard templates in sequence and return the first application of this
-   template that generates cards."
-  [{:keys [dashboard-template dashboard-templates-prefix full-name] :as root}]
-  (let [base-context (make-base-context root)]
-    (or (when dashboard-template
-          (apply-dashboard-template base-context (dashboard-templates/get-dashboard-template dashboard-template)))
-        (some
-          (fn [dashboard-template]
-            (apply-dashboard-template base-context dashboard-template))
-          (matching-dashboard-templates
-            (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
-            root))
-        (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))
-                        (let [templates (->> (or (some-> dashboard-template dashboard-templates/get-dashboard-template vector)
-                                                 (dashboard-templates/get-dashboard-templates dashboard-templates-prefix))
-                                             (map :dashboard-template-name))]
-                          {:root                          root
-                           :available-dashboard-templates templates}))))))
-
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
@@ -1368,34 +1285,6 @@
                                 (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
                                 root)))]
     (generate-dashboard base-context template)))
-
-(defn automagic-dashboard-old
-  "Create dashboards for table `root` using the best matching heuristics."
-  [{:keys [show full-name query-filter url] :as root}]
-  (let [[dashboard
-         {:keys [dashboard-template-name] :as dashboard-template}
-         {:keys [available-dimensions
-                 available-metrics
-                 available-filters]
-          :as available-values}] (find-first-match-dashboard-template root)
-        show (or show max-cards)]
-    (log/debug (trs "Applying heuristic {0} to {1}." dashboard-template-name full-name))
-    (log/debug (trs "Dimensions bindings:\n{0}"
-                    (->> available-dimensions
-                         (m/map-vals #(update % :matches (partial map :name)))
-                         u/pprint-to-str)))
-    (log/debug (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                    (->> available-metrics (m/map-vals :metric) u/pprint-to-str)
-                    (-> available-filters u/pprint-to-str)))
-    (-> dashboard
-        (populate/create-dashboard show)
-        (assoc :related (related root available-values dashboard-template)
-               :more (when (and (not= show :all)
-                                (-> dashboard :cards count (> show)))
-                       (format "%s#show=all" url))
-               :transient_filters query-filter
-               :param_fields (filter-referenced-fields root query-filter)
-               :auto_apply_filters true))))
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
