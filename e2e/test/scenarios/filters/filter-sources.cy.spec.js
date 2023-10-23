@@ -9,7 +9,7 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, PRODUCTS, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const tableQuestion = {
   display: "table",
@@ -34,6 +34,53 @@ const tableQuestionWithExpression = {
     },
   },
   visualization_settings: {},
+};
+
+const tableQuestionWithJoin = {
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          fields: "all",
+          "source-table": PRODUCTS_ID,
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          alias: "Products",
+        },
+      ],
+    },
+  },
+  visualization_settings: {},
+};
+
+const tableQuestionWithJoinAndFields = {
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      joins: [
+        {
+          "source-table": PRODUCTS_ID,
+          fields: [["field", PRODUCTS.RATING, { "join-alias": "Products" }]],
+          condition: [
+            "=",
+            ["field", ORDERS.PRODUCT_ID, null],
+            ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+          ],
+          alias: "Products",
+        },
+      ],
+    },
+  },
 };
 
 const tableWithAggregations = {
@@ -85,6 +132,34 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("Total100 is greater than 250.5");
       visualize();
       verifyRowCount(239);
+    });
+
+    it("column from an explicit join", () => {
+      visitQuestionAdhoc(tableQuestionWithJoin, { mode: "notebook" });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Vendor").click();
+        cy.findByText("Aufderhar-Boehm").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products → Vendor is Aufderhar-Boehm");
+      visualize();
+      verifyRowCount(95);
+    });
+
+    it("column from an explicit join with fields", () => {
+      visitQuestionAdhoc(tableQuestionWithJoinAndFields, { mode: "notebook" });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Rating").click();
+        cy.findByPlaceholderText("Enter a number").type("3.7");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products → Rating is equal to 3.7");
+      visualize();
+      verifyRowCount(883);
     });
 
     it("column from an implicit join", () => {
