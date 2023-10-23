@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupUsersEndpoints,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
@@ -213,8 +214,13 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
+  const collectionList = [SAMPLE_COLLECTION, EMPTY_COLLECTION];
   setupCollectionsEndpoints({
-    collections: [SAMPLE_COLLECTION, EMPTY_COLLECTION],
+    collections: collectionList,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: collectionList,
   });
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [

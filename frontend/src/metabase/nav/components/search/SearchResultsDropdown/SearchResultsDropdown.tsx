@@ -1,4 +1,5 @@
 import { jt } from "ttag";
+import { MIN_RESULTS_FOR_FOOTER } from "metabase/nav/components/search/SearchResultsDropdown/constants";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
@@ -21,7 +22,7 @@ export const SearchResultsDropdown = ({
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
   const renderFooter: SearchResultsFooter = ({ metadata, isSelected }) =>
-    metadata.total > 4 ? (
+    metadata.total > MIN_RESULTS_FOR_FOOTER ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"

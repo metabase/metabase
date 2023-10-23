@@ -1,3 +1,4 @@
+import isPropValid from "@emotion/is-prop-valid";
 import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
@@ -6,7 +7,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import type { PaperProps } from "metabase/ui";
+import type { PaperProps, GroupProps } from "metabase/ui";
 import { Group, Paper } from "metabase/ui";
 
 export const SearchResultsContainer = styled(Paper)<PaperProps>`
@@ -29,11 +30,13 @@ const selectedStyles = ({ theme }: { theme: Theme }) => css`
   transition: all 0.2s ease-in-out;
 `;
 
-export const SearchDropdownFooter = styled(Group)<{ isSelected: boolean }>`
+export const SearchDropdownFooter = styled(Group, {
+  shouldForwardProp: propName =>
+    isPropValid(propName) && propName !== "isSelected",
+})<{ isSelected?: boolean } & GroupProps>`
   border-top: 1px solid ${({ theme }) => theme.colors.border[0]};
 
   ${({ theme, isSelected }) => isSelected && selectedStyles({ theme })}
-
   &:hover {
     ${({ theme }) => selectedStyles({ theme })}
   }

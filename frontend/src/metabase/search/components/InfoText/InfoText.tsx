@@ -1,4 +1,6 @@
+/* eslint-disable react/prop-types */
 import moment from "moment-timezone";
+import { Fragment } from "react";
 import { t } from "ttag";
 import { isNull } from "underscore";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
@@ -45,13 +47,13 @@ const InfoTextSeparator = (
   </Text>
 );
 
-const LoadingText = (
+const LoadingText = ({ "data-testid": dataTestId = "loading-text" }) => (
   <Text
     color="text-1"
     span
     size="sm"
     truncate
-    data-testid="loading-text"
+    data-testid={dataTestId}
   >{t`Loading…`}</Text>
 );
 
@@ -77,7 +79,7 @@ export const InfoTextCollectionLink = ({ result }: InfoTextProps) => {
   });
 
   if (isLoading) {
-    return LoadingText;
+    return <LoadingText data-testid="info-text-collection-loading-text" />;
   }
 
   if (error || !data) {
@@ -101,12 +103,12 @@ export const InfoTextCollectionLink = ({ result }: InfoTextProps) => {
   return (
     <>
       {ancestorCollectionElements?.map(({ icon, label, link, key }, index) => (
-        <>
+        <Fragment key={key}>
           {index !== 0 && LinkSeparator}
           <SearchResultLink key={key} href={link} leftIcon={icon}>
             {label}
           </SearchResultLink>
-        </>
+        </Fragment>
       )) ?? null}
     </>
   );
@@ -217,7 +219,7 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
     return (
       <>
         {InfoTextSeparator}
-        {LoadingText}
+        <LoadingText data-testid="last-edited-info-loading-text" />
       </>
     );
   }

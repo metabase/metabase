@@ -1,6 +1,7 @@
 import { waitFor } from "@testing-library/react";
 import moment from "moment";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUsersEndpoints,
@@ -24,7 +25,6 @@ const MOCK_COLLECTION = createMockCollection({
 });
 const MOCK_TABLE = createMockTable({ id: 1, display_name: "Table Name" });
 const MOCK_DATABASE = createMockDatabase({ id: 1, name: "Database Name" });
-
 const MOCK_USER = createMockUser();
 const MOCK_OTHER_USER = createMockUser({
   id: 2,
@@ -72,6 +72,9 @@ async function setup({
   setupTableEndpoints(MOCK_TABLE);
   setupDatabaseEndpoints(MOCK_DATABASE);
   setupUsersEndpoints([MOCK_USER, MOCK_OTHER_USER]);
+  setupCollectionByIdEndpoint({
+    collections: [MOCK_COLLECTION],
+  });
 
   const result = createSearchResult({ model, ...resultProps });
 

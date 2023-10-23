@@ -32,7 +32,7 @@ export type SearchResultsFooter =
       isSelected,
     }: {
       metadata: Omit<SearchResultsType, "data">;
-      isSelected: boolean;
+      isSelected?: boolean;
     }) => JSX.Element | null)
   | null;
 
