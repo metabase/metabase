@@ -1377,54 +1377,6 @@
               [:= [:field 2 nil]]
               [:= [:field "TOTAL" {:base-type :type/Number}]]]})))))
 
-(deftest all-satisfied-bindings-test
-  (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
-    (is (= {}
-           (let [distinct-affinity-sets []
-                 available-dimensions   {}]
-             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
-  (testing "A two-binding affinity with multiple matches will expand out to all options."
-    (is (= {#{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
-
-           (let [distinct-affinity-sets [#{"Lat" "Lon"}]
-                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
-                                                          {:name "LATITUDE"}]}
-                                         "Lon" {:matches [{:name "Longitude"}
-                                                          {:name "LONGITUDE"}]}}]
-             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
-  (testing "Adding in an affinity group with no dimensions produces an empty set of satisfied bindings"
-    (is (= {#{"Category"} []
-            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
-
-           (let [distinct-affinity-sets [#{"Category"}
-                                         #{"Lat" "Lon"}]
-                 available-dimensions   {"Lat" {:matches [{:name "Latitude"}
-                                                          {:name "LATITUDE"}]}
-                                         "Lon" {:matches [{:name "Longitude"}
-                                                          {:name "LONGITUDE"}]}}]
-             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions)))))
-  (testing "All affinities match up to potential bindings across multiple affinity sets"
-    (is (= {#{"Category"} [{"Category" {:name "User Category"}}]
-            #{"Lat" "Lon"} [{"Lat" {:name "Latitude"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "Latitude"}, "Lon" {:name "LONGITUDE"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "Longitude"}}
-                            {"Lat" {:name "LATITUDE"}, "Lon" {:name "LONGITUDE"}}]}
-
-           (let [distinct-affinity-sets [#{"Category"}
-                                         #{"Lat" "Lon"}]
-                 available-dimensions   {"Category" {:matches [{:name "User Category"}]}
-                                         "Lat" {:matches [{:name "Latitude"}
-                                                          {:name "LATITUDE"}]}
-                                         "Lon" {:matches [{:name "Longitude"}
-                                                          {:name "LONGITUDE"}]}}]
-             (magic/all-satisfied-bindings distinct-affinity-sets available-dimensions))))))
-
 (deftest linked-metrics-test
   (testing "Testing the ability to return linked metrics based on a provided entity."
     (mt/dataset sample-dataset

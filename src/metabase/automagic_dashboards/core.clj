@@ -538,14 +538,6 @@
        (apply math.combo/cartesian-product)
        (mapv (fn [combos] (zipmap affinity-set combos)))))
 
-(mu/defn all-satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
-  "Compute all potential combinations of dimensions for each affinity set."
-  [distinct-affinity-sets :- [:sequential ads/dimension-set]
-   available-dimensions :- ads/dim-name->matching-fields]
-  (let [satisfied-combos (map #(satisified-bindings % available-dimensions)
-                              distinct-affinity-sets)]
-    (zipmap distinct-affinity-sets satisfied-combos)))
-
 (defn affinities->viz-types
   "Generate a map of satisfiable affinity sets (sets of dimensions that belong together)
   to visualization types that would be appropriate for each affinity set."
