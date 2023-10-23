@@ -103,13 +103,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          onNextAnchorClick(anchor => {
-            expect(anchor).to.have.attr("rel", "noopener");
-            expect(anchor).not.to.have.attr("target");
-          });
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
-          cy.location("pathname", pathname => {
-            expect(pathname).to.equal("/question");
+          cy.findByText("Count by Created At: Month").should("exist");
+          cy.location().should(location => {
+            expect(location.pathname).to.equal("/question");
+            const card = deserializeCardFromUrl(location.hash);
+            expect(card.name).to.deep.equal(LINE_CHART.name);
+            expect(card.display).to.deep.equal(LINE_CHART.display);
+            expect(card.dataset_query.query).to.deep.equal(LINE_CHART.query);
           });
           cy.location("hash", hash => {
             const card = deserializeCardFromUrl(hash);
