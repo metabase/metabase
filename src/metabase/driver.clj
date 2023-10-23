@@ -54,6 +54,7 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :audit      :getter
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)

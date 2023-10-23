@@ -40,16 +40,17 @@
   :type       :boolean
   :visibility :public
   :default    config/is-prod?
-  :doc        false)
+  :doc        false
+  :audit      :never)
 
 (defsetting snowplow-enabled
   (deferred-tru
    (str "Boolean indicating whether analytics events are being sent to Snowplow. "
         "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
-  :type   :boolean
-  :setter :none
-  :getter (fn [] (and (snowplow-available)
-                      (public-settings/anon-tracking-enabled)))
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (and (snowplow-available)
+                          (public-settings/anon-tracking-enabled)))
   :visibility :public
   :doc        false)
 
@@ -60,6 +61,7 @@
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
                 "http://localhost:9090")
   :visibility :public
+  :audit      :never
   :doc        false)
 
 (defn- first-user-creation

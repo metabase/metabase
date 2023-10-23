@@ -83,8 +83,9 @@
 (setting/defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
   :visibility :internal
-  :type :integer
-  :default 15)
+  :type       :integer
+  :default    15
+  :audit      :getter)
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
