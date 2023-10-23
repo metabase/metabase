@@ -66,9 +66,8 @@ export function FilterPicker({
 
   const checkItemIsSelected = useCallback(
     (item: ColumnListItem | SegmentListItem) => {
-      return !!(
-        typeof filterIndex === "number" &&
-        item.filterPositions?.includes?.(filterIndex)
+      return Boolean(
+        filterIndex != null && item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],
