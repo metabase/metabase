@@ -1,6 +1,9 @@
 import { createAndArchiveDashboard, restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -156,7 +159,7 @@ describe("scenarios > collections > archive", () => {
 
     createAndArchiveDashboard({
       name: CURATEABLE_NAME,
-      collection_id: 6,
+      collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
     });
 
     // assert on desired behavior for read-only user
