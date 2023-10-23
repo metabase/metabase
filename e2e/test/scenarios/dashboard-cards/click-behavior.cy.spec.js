@@ -16,7 +16,8 @@ import {
 const URL = "https://example.com/";
 const FILTER_NAME = "testFilter";
 const FILTER_VALUE = "123";
-const COLUMN_NAME = "count";
+const COUNT_COLUMN_NAME = "count";
+const CREATED_AT_COLUMN_NAME = "CREATED_AT";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -104,25 +105,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COLUMN_NAME}}}`;
+      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COUNT_COLUMN_NAME}}}`;
       const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
       const expectedUrlWithParams = urlWithParams
         .replace(`{{${FILTER_NAME}}}`, FILTER_VALUE)
-        .replace(`{{${COLUMN_NAME}}}`, 344);
+        .replace(`{{${COUNT_COLUMN_NAME}}}`, 344);
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: dashboard }) => {
           visitDashboard(dashboard.id);
           editDashboard();
-
-          getDashboardCard().realHover().icon("click").click();
-          getSidebar().findByText("Go to a custom destination").click();
-          getSidebar().findByText("URL").click();
-          modal().within(() => {
-            cy.findByRole("textbox").type(escapedUrlWithParams);
-            cy.button("Done").click();
-          });
-          getSidebar().button("Done").click();
 
           cy.icon("filter").click();
           popover().within(() => {
@@ -134,6 +126,22 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             .clear()
             .type(FILTER_NAME);
           cy.findByTestId("parameter-sidebar").button("Done").click();
+
+          getDashboardCard().realHover().icon("click").click();
+          getSidebar().findByText("Go to a custom destination").click();
+          getSidebar().findByText("URL").click();
+          modal().findByText("Values you can reference").click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(FILTER_NAME).should("exist");
+            cy.realPress("Escape");
+          });
+          modal().within(() => {
+            cy.findByRole("textbox").type(escapedUrlWithParams);
+            cy.button("Done").click();
+          });
+          getSidebar().button("Done").click();
 
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
