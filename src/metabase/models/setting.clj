@@ -313,7 +313,9 @@
    :enabled?    (s/maybe clojure.lang.IFn)
 
    ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
-   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited.
+   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
+   ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
+   ;; the default getter or a custom one.
    ;; (default: `:no-value`)
    :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
@@ -682,6 +684,14 @@
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
 
+(defn obfuscate-value
+  "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
+  value is what's expected (e.g. the correct password).
+
+    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\""
+  [s]
+  (str "**********" (str/join (take-last 2 (str s)))))
+
 (defmulti set-value-of-type!
   "Set the value of a `setting-type` `setting-definition-or-name`. A `nil` value deletes the current value of the
   Setting (when set in the application database). Returns `new-value`.
@@ -816,15 +826,16 @@
   (partial set-value-of-type! (keyword setting-type)))
 
 (defn- audit-setting-change!
-  [name audit previous-value new-value]
-  (audit-log/record-event!
-   :setting-update
-   (merge {:key name}
-          (when (not= audit :no-value)
-            {:previous-value previous-value
-             :new-value      new-value}))
-   api/*current-user-id*
-   :model/Setting))
+  [{:keys [name audit sensitive?]} previous-value new-value]
+  (let [maybe-obfuscate #(if sensitive? (obfuscate-value %) %)]
+   (audit-log/record-event!
+    :setting-update
+    (merge {:key name}
+           (when (not= audit :no-value)
+             {:previous-value (maybe-obfuscate previous-value)
+              :new-value      (maybe-obfuscate new-value)}))
+    api/*current-user-id*
+    :model/Setting)))
 
 (defn- should-audit?
   "Returns true if the setting change should be written to the `audit_log`."
@@ -833,7 +844,7 @@
 
 (defn- set-with-audit-logging!
   "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
-  [{:keys [name setter getter audit] :as setting} new-value]
+  [{:keys [setter getter audit] :as setting} new-value]
   (if (should-audit? setting)
     (let [audit-value-fn #(condp = audit
                             :no-value  nil
@@ -841,7 +852,7 @@
                             :getter    (getter))
           previous-value (audit-value-fn)]
       (u/prog1 (setter new-value)
-        (audit-setting-change! name audit previous-value (audit-value-fn))))
+        (audit-setting-change! setting previous-value (audit-value-fn))))
     (setter new-value)))
 
 (defn set!
@@ -1021,10 +1032,10 @@
   "Defines a new Setting that will be added to the DB at some point in the future.
   Conveniently can be used as a getter/setter as well
 
-    (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
-    (mandrill-api-key)            ; get the value
-    (mandrill-api-key! new-value) ; update the value
-    (mandrill-api-key! nil)       ; delete the value
+  (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
+  (mandrill-api-key)            ; get the value
+  (mandrill-api-key! new-value) ; update the value
+  (mandrill-api-key! nil)       ; delete the value
 
   A setting can be set from the Admin Panel or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
   example above.
@@ -1111,8 +1122,11 @@
 
   ###### `audit`
   Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
-  `:never`, `:no-value`, `:raw-value`, and `:getter` (logs the value from the custom getter, if applicable).
-  (Default: `:no-value`)"
+  `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
+  should be used for most non-sensitive settings, and will log the value returned by its getter, which may be
+  the default getter or a custom one. `:raw-value` will audit the raw string value of the setting in the database.
+  (default: `:no-value` for most settings; `:never` for user- and database-local settings, settings with no setter,
+  and `:sensitive` settings.)"
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)
@@ -1165,14 +1179,6 @@
     (catch Throwable e
       (setting.cache/restore-cache!)
       (throw e))))
-
-(defn obfuscate-value
-  "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
-  value is what's expected (e.g. the correct password).
-
-    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\""
-  [s]
-  (str "**********" (str/join (take-last 2 (str s)))))
 
 (defn user-facing-value
   "Get the value of a Setting that should be displayed to a User (i.e. via `/api/setting/` endpoints): for Settings set

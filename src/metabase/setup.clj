@@ -13,7 +13,8 @@
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
   :visibility :public
-  :setter     :none)
+  :setter     :none
+  :audit      :never)
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
@@ -63,4 +64,5 @@
                           (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
                             (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                             exists?))))))
-  :doc        false)
+  :doc        false
+  :audit      :never)
