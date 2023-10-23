@@ -392,6 +392,24 @@ describe("scenarios > filters > filter sources", () => {
       visualize();
       verifyRowCount(883);
     });
+
+    it("column from an implicit join with fields", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Ean").click();
+        cy.findByText("0001664425970").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      visualize();
+      verifyRowCount(104);
+    });
   });
 });
 
