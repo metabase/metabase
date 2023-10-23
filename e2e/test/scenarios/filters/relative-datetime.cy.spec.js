@@ -80,7 +80,8 @@ describe("scenarios > question > relative-datetime", () => {
       setRelativeDatetimeUnit("year");
       addStartingFrom();
       setStartingFromValue(2);
-      cy.button("Add filter").should("be.enabled");
+
+      popover().button("Update filter").should("be.enabled");
     });
   });
 
