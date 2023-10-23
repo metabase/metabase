@@ -4,6 +4,7 @@
    [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase-enterprise.internal-user :as ee.internal-user]
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.db.connection :as mdb.connection]
@@ -13,11 +14,10 @@
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.cron :as u.cron]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [malli.core :as mc]
-   [metabase.util.cron :as u.cron])
+   [toucan2.core :as t2])
   (:import [java.util.jar JarEntry JarFile]))
 
 (set! *warn-on-reflection* true)
