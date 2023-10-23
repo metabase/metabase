@@ -168,7 +168,7 @@ export const SearchResults = ({
       )}
     </SearchResultsList>
   ) : (
-    <EmptyStateContainer>
+    <EmptyStateContainer data-testid="search-results-empty-state">
       <EmptyState message={t`Didn't find anything`} icon="search" />
     </EmptyStateContainer>
   );
