@@ -117,7 +117,7 @@
                              :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
-                             :initial_sync_status "complete"
+                             :is_full_sync true
                              :is_on_demand     false
                              :creator_id       nil
                              :auto_run_queries true})))))

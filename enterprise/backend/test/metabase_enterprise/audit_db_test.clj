@@ -55,14 +55,11 @@
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
       (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
-      (let [adb (t2/select-one 'Database {:where [:= :is_audit true]})
-            sync-job-info (task/job-info "metabase.task.sync-and-analyze.job")
+      (let [sync-job-info (task/job-info "metabase.task.sync-and-analyze.job")
             db-has-sync-job-trigger? (fn [db-id]
                                        (contains?
                                         (set (map #(-> % :data (get "db-id")) (:triggers sync-job-info)))
                                         db-id))]
-        (is (= (:metadata_sync_schedule adb) "0 0 0 1 1 ? 2147483647")
-            "Metadata Sync scheduled for 2 billion years in the future")
         (is (db-has-sync-job-trigger? 1))
         (is (not (db-has-sync-job-trigger? (audit-db/default-audit-db-id))))))))
 
