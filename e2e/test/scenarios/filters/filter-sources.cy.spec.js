@@ -127,6 +127,19 @@ describe("scenarios > filters > filter sources", () => {
       visualize();
       verifyRowCount(115);
     });
+
+    it("column from a nested breakout", () => {
+      visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("Product ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("10");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Product ID is 10", { stage: 1 });
+      visualize();
+      verifyRowCount(1);
+    });
   });
 });
 
