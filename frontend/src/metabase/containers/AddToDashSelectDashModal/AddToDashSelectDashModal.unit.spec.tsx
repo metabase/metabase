@@ -213,113 +213,10 @@ describe("AddToDashSelectDashModal", () => {
         );
       });
 
-      describe("question is in a personal collection", () => {
-        const CARD_IN_PERSONAL_COLLECTION = createMockCard({
-          id: 2,
-          name: "Card in a personal collection",
-          dataset: true,
-          collection: PERSONAL_COLLECTION,
-        });
-
-        describe('"Create a new dashboard" option', () => {
-          // XXX: #5
-          it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
-            await setup({
-              card: CARD_IN_PERSONAL_COLLECTION,
-              noRecentDashboard: true,
-            });
-
-            expect(
-              screen.queryByRole("heading", {
-                name: "Create a new dashboard",
-              }),
-            ).not.toBeInTheDocument();
-          });
-
-          // XXX: #6
-          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
-            await setup({
-              card: CARD_IN_PERSONAL_COLLECTION,
-              noRecentDashboard: true,
-            });
-
-            userEvent.click(
-              screen.getByRole("heading", {
-                name: PERSONAL_COLLECTION.name,
-              }),
-            );
-
-            expect(
-              screen.getByRole("heading", {
-                name: "Create a new dashboard",
-              }),
-            ).toBeInTheDocument();
-          });
-        });
-
-        describe("whether we should render dashboards in a collection", () => {
-          // XXX: #5
-          it("should not render dashboards when opening the root collection (public collection)", async () => {
-            const dashboardInPublicCollection = createMockDashboard({
-              id: 3,
-              name: "Dashboard in public collection",
-              // `null` means it's in the root collection
-              collection_id: null,
-              model: "dashboard",
-            });
-
-            await setup({
-              card: CARD_IN_PERSONAL_COLLECTION,
-              dashboard: dashboardInPublicCollection,
-              noRecentDashboard: true,
-            });
-
-            expect(
-              screen.queryByRole("heading", {
-                name: dashboardInPublicCollection.name,
-              }),
-            ).not.toBeInTheDocument();
-          });
-
-          // XXX: #6
-          it("should render dashboards when opening personal subcollections", async () => {
-            const dashboardInPersonalSubcollection = createMockDashboard({
-              id: 3,
-              name: "Dashboard in personal subcollection",
-              collection_id: PERSONAL_SUBCOLLECTION.id as number,
-              model: "dashboard",
-            });
-
-            await setup({
-              card: CARD_IN_PERSONAL_COLLECTION,
-              dashboard: dashboardInPersonalSubcollection,
-              noRecentDashboard: true,
-            });
-
-            userEvent.click(
-              screen.getByRole("heading", {
-                name: PERSONAL_COLLECTION.name,
-              }),
-            );
-
-            userEvent.click(
-              screen.getByRole("heading", {
-                name: PERSONAL_SUBCOLLECTION.name,
-              }),
-            );
-
-            expect(
-              await screen.findByRole("heading", {
-                name: dashboardInPersonalSubcollection.name,
-              }),
-            ).toBeInTheDocument();
-          });
-        });
-      });
-
       describe("question is in a public collection", () => {
         describe('"Create a new dashboard" option', () => {
-          it('should render "Create a new dashboard" option when opening public collections', async () => {
+          // XXX: #3
+          it('should render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup({
               noRecentDashboard: true,
             });
@@ -331,6 +228,7 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
+          // XXX: #3
           it('should render "Create a new dashboard" option when opening public subcollections', async () => {
             await setup({
               noRecentDashboard: true,
@@ -347,9 +245,22 @@ describe("AddToDashSelectDashModal", () => {
                 name: "Create a new dashboard",
               }),
             ).toBeInTheDocument();
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: SUBCOLLECTION.name,
+              }),
+            );
+
+            expect(
+              screen.getByRole("heading", {
+                name: "Create a new dashboard",
+              }),
+            ).toBeInTheDocument();
           });
 
-          it('should render "Create a new dashboard" option when opening personal collections', async () => {
+          // XXX: #4
+          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
             await setup({
               noRecentDashboard: true,
             });
@@ -365,18 +276,7 @@ describe("AddToDashSelectDashModal", () => {
                 name: "Create a new dashboard",
               }),
             ).toBeInTheDocument();
-          });
 
-          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
-            await setup({
-              noRecentDashboard: true,
-            });
-
-            userEvent.click(
-              screen.getByRole("heading", {
-                name: PERSONAL_COLLECTION.name,
-              }),
-            );
             userEvent.click(
               screen.getByRole("heading", {
                 name: PERSONAL_SUBCOLLECTION.name,
@@ -507,6 +407,122 @@ describe("AddToDashSelectDashModal", () => {
 
             expect(
               screen.getByRole("heading", {
+                name: dashboardInPersonalSubcollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+        });
+      });
+
+      describe("question is in a personal collection", () => {
+        const CARD_IN_PERSONAL_COLLECTION = createMockCard({
+          id: 2,
+          name: "Card in a personal collection",
+          dataset: true,
+          collection: PERSONAL_COLLECTION,
+        });
+
+        describe('"Create a new dashboard" option', () => {
+          // XXX: #5
+          it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              noRecentDashboard: true,
+            });
+
+            expect(
+              screen.queryByRole("heading", {
+                name: "Create a new dashboard",
+              }),
+            ).not.toBeInTheDocument();
+          });
+
+          // XXX: #6
+          it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+
+            expect(
+              screen.getByRole("heading", {
+                name: "Create a new dashboard",
+              }),
+            ).toBeInTheDocument();
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_SUBCOLLECTION.name,
+              }),
+            );
+
+            expect(
+              screen.getByRole("heading", {
+                name: "Create a new dashboard",
+              }),
+            ).toBeInTheDocument();
+          });
+        });
+
+        describe("whether we should render dashboards in a collection", () => {
+          // XXX: #5
+          it("should not render dashboards when opening the root collection (public collection)", async () => {
+            const dashboardInPublicCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in public collection",
+              // `null` means it's in the root collection
+              collection_id: null,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPublicCollection,
+              noRecentDashboard: true,
+            });
+
+            expect(
+              screen.queryByRole("heading", {
+                name: dashboardInPublicCollection.name,
+              }),
+            ).not.toBeInTheDocument();
+          });
+
+          // XXX: #6
+          it("should render dashboards when opening personal subcollections", async () => {
+            const dashboardInPersonalSubcollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal subcollection",
+              collection_id: PERSONAL_SUBCOLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPersonalSubcollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_SUBCOLLECTION.name,
+              }),
+            );
+
+            expect(
+              await screen.findByRole("heading", {
                 name: dashboardInPersonalSubcollection.name,
               }),
             ).toBeInTheDocument();
