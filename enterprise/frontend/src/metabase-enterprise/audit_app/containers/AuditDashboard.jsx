@@ -16,7 +16,7 @@ const AuditDashboard = ({ cards, ...props }) => (
     style={{ backgroundColor: "transparent", padding: 0 }}
     // HACK: to get inline dashboards working quickly
     dashboardId={{
-      ordered_cards: cards.map(([{ x, y, w, h }, dc]) => ({
+      dashcards: cards.map(([{ x, y, w, h }, dc]) => ({
         col: x,
         row: y,
         size_x: w,
