@@ -356,7 +356,7 @@ const onNextAnchorClick = callback => {
  * Duplicated from metabase/lib/card because Cypress can't handle import from there.
  *
  * @param {string} value
- * @returns string
+ * @returns object
  */
 const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
