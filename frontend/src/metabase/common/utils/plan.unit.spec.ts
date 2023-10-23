@@ -1,3 +1,4 @@
+// Test
 import { getPlan } from "metabase/common/utils/plan";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
