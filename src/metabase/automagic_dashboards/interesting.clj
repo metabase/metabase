@@ -426,7 +426,7 @@
                            (when (mi/instance-of? :model/Metric entity)
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
-                               :metric-definition (-> entity :definition)
+                               :metric-definition {:aggregation [(->reference :mbql entity)]}
                                :metric-score      dashboard-templates/max-score}])))}))
 
 (defn card->dashcard
