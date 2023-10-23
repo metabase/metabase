@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [flatland.ordered.map :refer [ordered-map]]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]

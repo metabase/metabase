@@ -88,7 +88,6 @@
     [clojure.string :as str]
     [clojure.walk :as walk]
     [clojure.zip :as zip]
-    [flatland.ordered.map :refer [ordered-map]]
     [java-time.api :as t]
     [kixi.stats.core :as stats]
     [kixi.stats.math :as math]
@@ -100,17 +99,16 @@
     [metabase.automagic-dashboards.populate :as populate]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]
-    [metabase.automagic-dashboards.visualization-macros :as visualization]
     [metabase.db.query :as mdb.query]
     [metabase.driver :as driver]
     [metabase.mbql.normalize :as mbql.normalize]
     [metabase.mbql.predicates :as mbql.preds]
     [metabase.mbql.util :as mbql.u]
-    [metabase.models.card :as card :refer [Card]]
+    [metabase.models.card :refer [Card]]
     [metabase.models.database :refer [Database]]
     [metabase.models.field :as field :refer [Field]]
     [metabase.models.interface :as mi]
-    [metabase.models.metric :as metric :refer [Metric]]
+    [metabase.models.metric :refer [Metric]]
     [metabase.models.query :refer [Query]]
     [metabase.models.segment :refer [Segment]]
     [metabase.models.table :refer [Table]]
@@ -411,17 +409,6 @@
                               (root attribute)
                               (interesting/->reference template-type entity))))))))
 
-(defn- build-order-by
-  [{:keys [dimensions metrics order_by]}]
-  (let [dimensions (into #{} (map ffirst) dimensions)]
-    (for [[identifier ordering] (map first order_by)]
-      [(if (= ordering "ascending")
-         :asc
-         :desc)
-       (if (dimensions identifier)
-         [:dimension identifier]
-         [:aggregation (u/index-of #{identifier} metrics)])])))
-
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
@@ -470,15 +457,6 @@
          collect-dimensions
          (map filters/field-reference->id)
          set)))
-
-(defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
-  (let [cell-dimension? (singular-cell-dimensions root)]
-    (->> satisfied-dimensions
-         (map first)
-         (map (fn [[identifier opts]]
-                (merge (bindings identifier) opts)))
-         (every? (every-pred valid-breakout-dimension?
-                             (complement (comp cell-dimension? id-or-name)))))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
@@ -591,24 +569,6 @@
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
-
-(defn- enriched-field-with-sources [{:keys [tables source]} field]
-  (assoc field
-    :link (m/find-first (comp :link #{(:table_id field)} u/the-id) tables)
-    :db (source->db source)))
-
-(defn- add-field-links-to-definitions [dimensions field]
-  (->> dimensions
-       (keep (fn [[identifier definition]]
-               (when-let [matches (->> definition
-                                       :matches
-                                       (remove (comp #{(id-or-name field)} id-or-name))
-                                       not-empty)]
-                 [identifier (assoc definition :matches matches)])))
-       (concat [["this" {:matches [field]
-                         :name    (:display_name field)
-                         :card-score   dashboard-templates/max-score}]])
-       (into {})))
 
 (mu/defn satisified-bindings :- ads/dimension-maps
   "Take an affinity set (a set of dimensions) and a map of dimension to bound items and return all possible realized
