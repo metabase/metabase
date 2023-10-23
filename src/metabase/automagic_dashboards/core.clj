@@ -1076,7 +1076,6 @@
           :cards dashcards))))
 
 (def ^:private ^:const ^Long max-related 8)
-(def ^:private ^:const ^Long max-cards 15)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"

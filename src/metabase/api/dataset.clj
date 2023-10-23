@@ -76,12 +76,9 @@
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
-  [:as {{:keys [database type query parameters] :as full-query} :body}]
-  {database [:maybe :int]
-   type keyword?
-   query map?
-   parameters vector?}
-  (run-query-async (update-in full-query [:middleware :js-int-to-string?] (fnil identity true))))
+  [:as {{:keys [database] :as query} :body}]
+  {database [:maybe :int]}
+  (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
