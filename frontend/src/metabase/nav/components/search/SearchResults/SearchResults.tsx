@@ -26,21 +26,23 @@ import {
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 
+export type SearchResultsFooter =
+  | (({
+      metadata,
+      isSelected,
+    }: {
+      metadata: Omit<SearchResultsType, "data">;
+      isSelected: boolean;
+    }) => JSX.Element | null)
+  | null;
+
 export type SearchResultsProps = {
   onEntitySelect?: (result: any) => void;
   forceEntitySelect?: boolean;
   searchText?: string;
   searchFilters?: SearchFilters;
   models?: SearchModelType[];
-  footerComponent?:
-    | (({
-        metadata,
-        isSelected,
-      }: {
-        metadata: Omit<SearchResultsType, "data">;
-        isSelected: boolean;
-      }) => JSX.Element | null)
-    | null;
+  footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
 };
 
@@ -100,14 +102,12 @@ export const SearchResults = ({
     return showFooter ? [...list, footerComponent] : list;
   }, [footerComponent, list, showFooter]);
 
-  const onEnterSelect = (
-    item: CollectionItem | SearchResultsProps["footerComponent"],
-  ) => {
+  const onEnterSelect = (item?: CollectionItem | SearchResultsFooter) => {
     if (showFooter && cursorIndex === dropdownItemList.length - 1) {
       onFooterSelect?.();
     }
 
-    if (typeof item !== "function") {
+    if (item && typeof item !== "function") {
       if (onEntitySelect) {
         onEntitySelect(Search.wrapEntity(item, dispatch));
       } else if (item && item.getUrl) {

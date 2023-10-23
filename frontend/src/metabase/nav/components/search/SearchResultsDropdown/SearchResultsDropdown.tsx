@@ -3,7 +3,7 @@ import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import type { SearchResultsProps } from "metabase/nav/components/search/SearchResults/SearchResults";
+import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import {
   SearchDropdownFooter,
   SearchResultsContainer,
@@ -20,12 +20,8 @@ export const SearchResultsDropdown = ({
   onSearchItemSelect,
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
-  const renderFooter: SearchResultsProps["footerComponent"] = ({
-    metadata,
-    isSelected,
-  }) =>
-    // todo: change back to 4, just using 0 for testing
-    metadata.total > 0 ? (
+  const renderFooter: SearchResultsFooter = ({ metadata, isSelected }) =>
+    metadata.total > 4 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"

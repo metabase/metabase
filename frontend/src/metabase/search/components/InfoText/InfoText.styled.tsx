@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
@@ -31,5 +30,3 @@ export const LastEditedInfoText = styled(LastEditInfoLabel)`
 export const LastEditedInfoTooltip = styled(LastEditInfoLabel)`
   color: ${color("white")};
 `;
-
-export const DurationIcon = styled(Icon)``;
