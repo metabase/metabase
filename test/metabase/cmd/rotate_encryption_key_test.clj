@@ -35,7 +35,7 @@
                                 "select value from setting where setting.key=?;") keyy]))))
 
 (deftest cmd-rotate-encryption-key-errors-when-failed-test
-  (with-redefs [rotate-encryption-key! #(throw "err")
+  (with-redefs [rotate-encryption-key! #(throw (Exception. "err"))
                 cmd/system-exit! identity]
     (is (= 1 (cmd/rotate-encryption-key
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))

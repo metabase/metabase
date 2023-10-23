@@ -210,3 +210,44 @@
               (is (bytes? decoded))
               (is (= content
                      (String. ^bytes decoded "UTF-8"))))))))))
+
+(deftest use-latest-version-test
+  (testing "when reading a secret from the DB, the latest version is taken (#33116)"
+    (let [initial-value "vnetillo"
+          latest-value (str initial-value "s")
+          initial-source "source"
+          latest-source (str initial-source "s")
+          secret-property "secret"
+          secret-map1 {:name  secret-property
+                       :kind  ::secret/password
+                       :value initial-value
+                       :source initial-source}
+          secret-map2 {:name  secret-property
+                       :kind  ::secret/password
+                       :value latest-value
+                       :source latest-source}
+          crowberto-id (mt/user->id :crowberto)
+          by-crowberto #(assoc % :creator_id crowberto-id)
+          timestamp-string? (fn [s]
+                              (try
+                                (java.time.Instant/parse s)
+                                true
+                                (catch Exception _
+                                  false)))]
+      (t2.with-temp/with-temp [Secret {:keys [id version]} (by-crowberto secret-map1)
+                               Secret _ (-> secret-map2
+                                            by-crowberto
+                                            (assoc :id id :version (inc version)))]
+        (let [details {:secret-id id}]
+          (testing "db-details-prop->secret-map"
+            (let [secret (secret/db-details-prop->secret-map details secret-property)]
+              (is (= latest-value (-> secret :value bytes (String. "UTF8"))))
+              (is (= (keyword latest-source) (:source secret)))))
+          (testing "get-secret-string"
+            (is (= latest-value (secret/get-secret-string details secret-property))))
+          (testing "expand-inferred-secret-values"
+            (is (=? {:secret-id id
+                     :secret-source (keyword latest-source)
+                     :secret-creator-id crowberto-id
+                     :secret-created-at timestamp-string?}
+                    (secret/expand-inferred-secret-values details secret-property id)))))))))

@@ -214,6 +214,10 @@ export const createAndArchiveDashboard = ({ name, collection_id }) => {
   });
 };
 
+export const dashboardGrid = () => {
+  return cy.findByTestId("dashboard-grid");
+};
+
 /**
  *
  * @param {number} dashboardId

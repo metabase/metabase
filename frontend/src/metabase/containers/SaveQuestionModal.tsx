@@ -47,7 +47,7 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
 interface SaveQuestionModalProps {
   question: Question;
   originalQuestion: Question | null;
-  onCreate: (question: Question) => void;
+  onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
@@ -78,7 +78,7 @@ export const SaveQuestionModal = ({
   initialCollectionId,
 }: SaveQuestionModalProps) => {
   const handleOverwrite = useCallback(
-    async (originalQuestion: Question, details: FormValues) => {
+    async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
         originalQuestion.collectionId(),
       );
@@ -120,7 +120,7 @@ export const SaveQuestionModal = ({
   const handleSubmit = useCallback(
     async (details: FormValues) => {
       if (isOverwriteMode(originalQuestion, details.saveType)) {
-        await handleOverwrite(originalQuestion, details);
+        await handleOverwrite(originalQuestion);
       } else {
         await handleCreate(details);
       }
@@ -169,7 +169,12 @@ export const SaveQuestionModal = ({
   return (
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
-        <ModalContent id="SaveQuestionModal" title={title} onClose={onClose}>
+        <ModalContent
+          data-testid="save-question-modal"
+          id="SaveQuestionModal"
+          title={title}
+          onClose={onClose}
+        >
           <FormProvider
             initialValues={{ ...initialValues, ...resumedValues }}
             onSubmit={handleSubmit}

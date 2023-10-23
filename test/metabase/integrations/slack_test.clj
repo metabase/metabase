@@ -79,6 +79,12 @@
   (doseq [f [test-no-auth-token test-invalid-auth-token]]
     (f endpoint thunk)))
 
+(deftest slack-app-token-truncation-test
+  (testing "slack-app-token is truncated when fetched by the setting's custom getter"
+    (tu/with-temporary-setting-values [slack-app-token "xoxb-781236542736-2364535789652-GkwFDQoHqzXDVsC6GzqYUypD"]
+      (is (= "xoxb-7812...UypD"
+             (slack/slack-app-token))))))
+
 (deftest conversations-list-test
   (testing "conversations-list"
     (test-auth conversations-endpoint slack/conversations-list)

@@ -1,6 +1,8 @@
 import fetchMock from "fetch-mock";
 import type { VersionInfoRecord } from "metabase-types/api";
 import {
+  createMockSettingDefinition,
+  createMockSettings,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
@@ -11,6 +13,10 @@ import {
 } from "metabase-types/store/mocks";
 import * as domUtils from "metabase/lib/dom";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
 const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
@@ -46,6 +52,8 @@ const setup = ({
     "version-info": createMockVersionInfo({ latest, older }),
     "last-acknowledged-version": lastAcknowledged,
   });
+  setupPropertiesEndpoints(createMockSettings());
+  setupSettingsEndpoints([createMockSettingDefinition()]);
 
   return renderWithProviders(<WhatsNewNotification></WhatsNewNotification>, {
     storeInitialState: createMockState({ settings: mockSettings }),

@@ -10,12 +10,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
@@ -25,7 +23,7 @@
    [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
-   (java.sql Connection PreparedStatement SQLException)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,7 +41,7 @@
     If non per-column error is available, returns an empty map.
 
   Or return `nil` if the parser doesn't match."
-  {:arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
+  {:changelog-test/ignore true, :arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
   (fn [driver error-type _database _action-type _error-message]
    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
@@ -101,7 +99,7 @@
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting
   this from implementations of [[metabase.test.data.sql/field-base-type->sql-type]] so go find that stuff if you need
   to write more implementations for this."
-  {:arglists '([driver]), :added "0.44.0"}
+  {:changelog-test/ignore true, :arglists '([driver]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -192,7 +190,7 @@
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
   query of the type corresponding to `action`."
-  {:arglists '([driver action hsql-query]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver action hsql-query]), :added "0.46.0"}
   (fn [driver action _]
     [(driver/dispatch-on-initialized-driver driver)
      (keyword action)])
@@ -251,7 +249,7 @@
   `create-hsql` is the honeysql query used to insert the new row,
   `conn` is the DB connection used to insert the new row and
   `result` is the value returned by the insert command."
-  {:arglists '([driver create-hsql conn result]), :added "0.46.0"}
+  {:changelog-test/ignore true, :arglists '([driver create-hsql conn result]), :added "0.46.0"}
   (fn [driver _ _ _]
     (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
@@ -313,7 +311,7 @@
 
   So the point of using nested transactions is that if 2 is done inside a nested transaction we can rollback the
   nested transaction which allows the top-level transaction to proceed even tho part of it errored."
-  {:arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
+  {:changelog-test/ignore true :arglists '([driver ^java.sql.Connection connection thunk]), :added "0.44.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -346,21 +344,6 @@
             [(conj errors {:index row-index, :error (ex-message e)})
              successes]))))
      rows)))
-
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{db-id :id} (lib.metadata/database (qp.store/metadata-provider))]
-      (with-jdbc-transaction [conn db-id]
-        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
-          {:rows-affected (if (instance? PreparedStatement stmt)
-                            (.executeUpdate ^PreparedStatement stmt)
-                            (.executeUpdate stmt sql))})))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
 
 ;;;; `:bulk/create`
 

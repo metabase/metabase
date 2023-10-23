@@ -1,8 +1,9 @@
 (ns metabase.driver.mongo.query-processor-test
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.models :refer [Field Table]]
@@ -249,7 +250,16 @@
               ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
               ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
               ;; see docstring on mongo.qp/remove-parent-fields for full details
-              (is (empty? (set/intersection projections #{"source" "url" "venue"}))))))))))
+              (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
+          (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
+            (let [query (mt/mbql-query tips
+                          {:joins [{:alias "Tips"
+                                    :source-table $$tips
+                                    :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
+                  compiled (mongo.qp/mbql->native query)
+                  let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
+                 (is (and (not (str/includes? let-lhs "."))
+                          (str/includes? let-lhs "source_categories"))))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo

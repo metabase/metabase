@@ -61,7 +61,7 @@ export const argTypes = {
 
 # Menu
 
-Our themed wrapper around [Mantine Menu](https://mantine.dev/core/menu/).
+Our themed wrapper around [Mantine Menu](https://v6.mantine.dev/core/menu/).
 
 ## When to use Menu
 
@@ -82,7 +82,7 @@ Not to use:
 ## Docs
 
 - [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design&node-id=1-96&mode=design&t=vj3dPYMbYVYVuKBy-0)
-- [Mantine Menu Docs](https://mantine.dev/core/menu/)
+- [Mantine Menu Docs](https://v6.mantine.dev/core/menu/)
 
 ## Caveats
 
@@ -101,7 +101,7 @@ export const DefaultTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
-        <Button>Toggle menu</Button>
+        <Button variant="filled">Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item>Question</Menu.Item>
@@ -119,7 +119,7 @@ export const RightSectionTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
-        <Button>Toggle menu</Button>
+        <Button variant="filled">Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item rightSection={<Text color="inherit">⌘K</Text>}>
@@ -139,7 +139,7 @@ export const IconsTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
-        <Button>Toggle menu</Button>
+        <Button variant="filled">Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item icon={<Icon name="insight" />}>Question</Menu.Item>
@@ -157,7 +157,7 @@ export const LabelsAndDividersTemplate = args => (
   <Flex justify="center">
     <Menu {...args}>
       <Menu.Target>
-        <Button>Toggle menu</Button>
+        <Button variant="filled">Toggle menu</Button>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>Data</Menu.Label>

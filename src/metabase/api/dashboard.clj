@@ -42,9 +42,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -117,11 +114,11 @@
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
   [dashboard]
-  (update dashboard :ordered_cards (fn [dashcards]
-                                     (vec (for [dashcard dashcards]
-                                            (-> dashcard
-                                                (update :card hide-unreadable-card)
-                                                (update :series (partial mapv hide-unreadable-card))))))))
+  (update dashboard :dashcards (fn [dashcards]
+                                 (vec (for [dashcard dashcards]
+                                        (-> dashcard
+                                            (update :card hide-unreadable-card)
+                                            (update :series (partial mapv hide-unreadable-card))))))))
 
 
 ;;; ------------------------------------------ Query Average Duration Info -------------------------------------------
@@ -205,7 +202,7 @@
 (defn add-query-average-durations
   "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
-  (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
+  (update dashboard :dashcards add-query-average-duration-to-dashcards))
 
 (defn- get-dashboard
   "Get Dashboard with ID."
@@ -215,12 +212,12 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (t2/hydrate [:ordered_cards
+      (t2/hydrate [:dashcards
                    [:card [:moderation_reviews :moderator_details]]
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
-                  :ordered_tabs
+                  :tabs
                   :collection_authority_level
                   :can_write
                   :param_fields
@@ -235,7 +232,7 @@
 (defn- cards-to-copy
   "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
   card. The `:discard` key is a vector of cards which were not copied due to permissions."
-  [ordered-cards]
+  [dashcards]
   (letfn [(split-cards [{:keys [card series] :as db-card}]
             (cond
               (nil? (:card_id db-card)) ; text card
@@ -259,14 +256,14 @@
                     (update :discard concat discard))))
             {:copy {}
              :discard []}
-            ordered-cards)))
+            dashcards)))
 
 (defn- duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
   {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
   [dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id dashboard) dest-coll-id)
-        {:keys [copy discard]} (cards-to-copy (:ordered_cards dashboard))]
+        {:keys [copy discard]} (cards-to-copy (:dashcards dashboard))]
     (reduce (fn [m [id card]]
               (assoc-in m
                         [:copied id]
@@ -276,6 +273,7 @@
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
+                           @api/*current-user*
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
@@ -292,22 +290,22 @@
     (zipmap (map :id existing-tabs) new-tab-ids)))
 
 (defn update-cards-for-copy
-  "Update ordered-cards in a dashboard for copying.
-  If the dashboard has tabs, fix up the tab ids in ordered-cards to point to the new tabs.
+  "Update dashcards in a dashboard for copying.
+  If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
   collections and it is omitted. Dashboard-id is only needed for useful errors."
-  [dashboard-id ordered-cards deep? id->new-card id->new-tab-id]
+  [dashboard-id dashcards deep? id->new-card id->new-tab-id]
   (when (and deep? (nil? id->new-card))
     (throw (ex-info (tru "No copied card information found")
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
-  (let [ordered-cards (if (seq id->new-tab-id)
+  (let [dashcards (if (seq id->new-tab-id)
                         (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             ordered-cards)
-                        ordered-cards)]
+                             dashcards)
+                        dashcards)]
     (if-not deep?
-      ordered-cards
+      dashcards
       (keep (fn [dashboard-card]
               (cond
                 ;; text cards need no manipulation
@@ -335,7 +333,7 @@
                                                    (when-let [id' (new-id (:id card))]
                                                      (assoc card :id id')))
                                                  series)))))))
-            ordered-cards))))
+            dashcards))))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
   "Copy a Dashboard."
@@ -367,11 +365,11 @@
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))
 
-                              id->new-tab-id (when-let [existing-tabs (seq (:ordered_tabs existing-dashboard))]
+                              id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                (duplicate-tabs dash existing-tabs))]
                           (reset! new-cards (vals id->new-card))
                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
-                                                                           (:ordered_cards existing-dashboard)
+                                                                           (:dashcards existing-dashboard)
                                                                            is_deep_copy
                                                                            id->new-card
                                                                            id->new-tab-id))]
@@ -468,10 +466,10 @@
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
-(s/defn ^:private check-parameter-mapping-permissions
+(mu/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [dashboard-card/ParamMapping]]
+  [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
@@ -644,19 +642,19 @@
                      :series             [{:id 123
                                            ...}]}
                      ...]
-     :ordered_tabs [{:id       ... ; DashboardTab ID
+     :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [id :as {{:keys [cards ordered_tabs]} :body}]
+  [id :as {{:keys [cards tabs]} :body}]
   {id           ms/PositiveInt
    cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
-   ;; ordered_tabs should be required in production, making it optional because lots of
+   ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
-   ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+   tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
-                      (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
-        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs)]
-    (when (and (seq (:ordered_tabs dashboard))
+                      (t2/hydrate [:dashcards :series :card] :tabs))
+        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)]
+    (when (and (seq (:tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
@@ -665,9 +663,9 @@
         (t2/with-transaction [_conn]
           (let [{:keys [old->new-tab-id
                         deleted-tab-ids]
-                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
+                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
                 deleted-tab-ids          (set deleted-tab-ids)
-                current-cards            (cond->> (:ordered_cards dashboard)
+                current-cards            (cond->> (:dashcards dashboard)
                                            (seq deleted-tab-ids)
                                            (remove (fn [card]
                                                      (contains? deleted-tab-ids (:dashboard_tab_id card)))))
@@ -686,8 +684,8 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
-   {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
-    :ordered_tabs (dashboard/ordered-tabs id)}))
+   {:cards (t2/hydrate (dashboard/dashcards id) :series)
+    :tabs  (dashboard/tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
@@ -786,8 +784,8 @@
   "How many results to return when chain filtering"
   1000)
 
-(s/defn ^:private mappings->field-ids :- (s/maybe #{su/IntGreaterThanZero})
-  [parameter-mappings :- (s/maybe (s/cond-pre #{dashboard-card/ParamMapping} [dashboard-card/ParamMapping]))]
+(mu/defn ^:private mappings->field-ids :- [:maybe [:set ms/PositiveInt]]
+  [parameter-mappings :- [:maybe [:or [:set dashboard-card/ParamMapping] [:sequential dashboard-card/ParamMapping]]]]
   (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
              :let  [field-clause (params/param-target->field-clause target card)]
              :when field-clause
@@ -857,7 +855,7 @@
            (api/throw-403 e)
            (throw e)))))))
 
-(s/defn param-values
+(mu/defn param-values
   "Fetch values for a parameter.
 
   The source of values could be:
@@ -867,10 +865,10 @@
   ([dashboard param-key query-params]
    (param-values dashboard param-key query-params nil))
 
-  ([dashboard                   :- su/Map
-    param-key                   :- su/NonBlankString
-    constraint-param-key->value :- su/Map
-    query                       :- (s/maybe su/NonBlankString)]
+  ([dashboard                   :- :map
+    param-key                   :- ms/NonBlankString
+    constraint-param-key->value :- :map
+    query                       :- [:maybe ms/NonBlankString]]
    (let [dashboard (t2/hydrate dashboard :resolved-params)
          param     (get (:resolved-params dashboard) param-key)]
      (when-not param

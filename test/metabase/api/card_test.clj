@@ -9,11 +9,12 @@
    [clojure.tools.macro :as tools.macro]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -663,7 +664,8 @@
                                                  :is_superuser false
                                                  :last_name    "Toucan"
                                                  :first_name   "Rasta"
-                                                 :email        "rasta@metabase.com"})})
+                                                 :email        "rasta@metabase.com"})
+                       :metabase_version       config/mb-version-string})
                      (-> (mt/user-http-request :rasta :post 200 "card" card)
                          (dissoc :created_at :updated_at :id)
                          (update :table_id integer?)
@@ -809,13 +811,14 @@
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
-              (is (= [{:base_type     :type/Integer
-                       :display_name  "Count"
-                       :name          "count"
-                       :semantic_type :type/Quantity
-                       :source        :aggregation
-                       :field_ref     [:aggregation 0]}]
-                     (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
+              (is (=? [{:base_type         :type/Integer
+                        :display_name      "Count"
+                        :name              "count"
+                        :semantic_type     :type/Quantity
+                        :source            :aggregation
+                        :field_ref         [:aggregation 0]
+                        :aggregation_index 0}]
+                      (t2/select-one-fn :result_metadata :model/Card :name card-name))))))))))
 
 (defn- updating-card-updates-metadata-query []
   (mt/mbql-query venues {:fields [$id $name]}))
@@ -1055,7 +1058,8 @@
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
                    :collection             (into {} collection)
-                   :result_metadata        (mt/obj->json->obj (:result_metadata card))})
+                   :result_metadata        (mt/obj->json->obj (:result_metadata card))
+                   :metabase_version       config/mb-version-string})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
         (testing "Card should include last edit info if available"
           (mt/with-temp [User     {user-id :id} {:first_name "Test" :last_name "User" :email "user@test.com"}

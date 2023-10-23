@@ -54,13 +54,11 @@ jobs:
           git checkout master
           git push -u origin ${BACKPORT_BRANCH}
 
-          BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "was-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
-
-          #${ORIGINAL_PULL_REQUEST_NUMBER}")
-
+          BACKPORT_PR_URL=$(gh pr create --base "${TARGET_BRANCH}" --head "${BACKPORT_BRANCH}" --label "was-backported" --assignee "${GITHUB_ACTOR}" --title "🤖 backported \"${ORIGINAL_TITLE}\"" --body "#${ORIGINAL_PULL_REQUEST_NUMBER}")
           BACKPORT_PR_NUMBER=${BACKPORT_PR_URL##*/}
 
           echo "backport_pr_number=$BACKPORT_PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "New PR has been created"
         env:
           TARGET_BRANCH: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}

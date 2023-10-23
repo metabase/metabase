@@ -4,7 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
@@ -223,7 +223,39 @@
                :database   (mt/id)
                :parameters [{:type   :category
                              :target [:dimension [:template-tag "price"]]
-                             :value  [1 2]}]}))))))
+                             :value  [1 2]}]}))))
+    (testing "Comma-separated numbers in a number field"
+      ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
+      (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type :native
+               :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
+                        :template-tags {"number_comma"
+                                        {:name "number_comma"
+                                         :display-name "Number Comma"
+                                         :type :number
+                                         :dimension [:field (mt/id :venues :price) nil]}}}
+               :database (mt/id)
+               :parameters [{:type "number/="
+                             :value ["1,2,3"]
+                             :target [:variable [:template-tag "number_comma"]]}]}))))
+    (testing "Trailing commas do not cause errors"
+      ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
+      (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type :native
+               :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
+                        :template-tags {"number_comma"
+                                        {:name "number_comma"
+                                         :display-name "Number Comma"
+                                         :type :number
+                                         :dimension [:field (mt/id :venues :price) nil]}}}
+               :database (mt/id)
+               :parameters [{:type "number/="
+                             :value ["1,2,"]
+                             :target [:variable [:template-tag "number_comma"]]}]}))))))
 
 (deftest ^:parallel params-in-comments-test
   (testing "Params in SQL comments are ignored"

@@ -9,6 +9,8 @@
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn describe-temporal-unit :- :string
@@ -195,7 +197,8 @@
 
 (defmethod lib.metadata.calculation/display-info-method :option/temporal-bucketing
   [query stage-number option]
-  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)}
+  (merge {:display-name (lib.metadata.calculation/display-name query stage-number option)
+          :short-name (u/qualified-name (raw-temporal-bucket option))}
          (select-keys option [:default :selected])))
 
 (defmulti available-temporal-buckets-method
@@ -219,3 +222,10 @@
     stage-number :- :int
     x]
    (available-temporal-buckets-method query stage-number x)))
+
+(mu/defn describe-temporal-pair :- :string
+  "Return a string describing the temporal pair.
+   Used when comparing temporal values like `[:!= ... [:field {:temporal-unit :day-of-week} ...] \"2022-01-01\"]`"
+  [temporal-column
+   temporal-value :- [:or :int :string]]
+  (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))

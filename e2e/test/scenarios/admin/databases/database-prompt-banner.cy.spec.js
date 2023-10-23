@@ -105,7 +105,7 @@ describeEE("database prompt banner", () => {
 
       it("should not render for any other condition", () => {
         // Adding a second database should prevent the database prompt
-        cy.addH2SampleDatabase({ name: "H2 DB" });
+        cy.addSQLiteDatabase();
 
         visitFullAppEmbeddingUrl({
           url: "/",

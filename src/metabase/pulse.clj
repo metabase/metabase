@@ -199,8 +199,8 @@
   (let [dashboard-id      (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
       (if (dashboard/has-tabs? dashboard)
-        (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
-         (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
+        (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
+         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                            (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
         (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
@@ -536,7 +536,7 @@
                                      :recipients   recipients
                                      :message-type message-type
                                      :message      message
-                                     :bcc?         true})
+                                     :bcc?         (email/bcc-enabled?)})
       (catch ExceptionInfo e
         (when (not= :smtp-host-not-set (:cause (ex-data e)))
           (throw e))))))

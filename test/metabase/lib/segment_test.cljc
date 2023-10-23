@@ -40,7 +40,7 @@
   (lib.metadata/segment query-with-segment segment-id))
 
 (deftest ^:parallel query-suggested-name-test
-  (is (= "Venues, Filtered by ID equals 5 and PriceID-BBQ"
+  (is (= "Venues, Filtered by ID is 5 and PriceID-BBQ"
          (lib.metadata.calculation/suggested-name query-with-segment))))
 
 (deftest ^:parallel display-info-test
@@ -48,17 +48,10 @@
                       :display-name      "PriceID-BBQ",
                       :long-display-name "PriceID-BBQ",
                       :effective-type    :type/Boolean,
-                      :description       "The ID is greater than 11 times the price and the name contains \"BBQ\".",
-                      :selected          true}
+                      :description       "The ID is greater than 11 times the price and the name contains \"BBQ\"."}
                      (lib.metadata.calculation/display-info query-with-segment segment))
     segment-clause
     segment-metadata))
-
-(deftest ^:parallel display-info-unselected-segment-test
-  (testing "Include `:selected false` in display info for Segments not in aggregations"
-    (are [segment] (not (:selected (lib.metadata.calculation/display-info lib.tu/venues-query segment)))
-      segment-clause
-      segment-metadata)))
 
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/Boolean
@@ -75,6 +68,25 @@
               :definition  segment-definition
               :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
             (lib/available-segments (lib/query metadata-provider (meta/table-metadata :venues))))))
+  (testing "Should return filter-positions"
+    (let [query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                    (lib/filter segment-clause))
+          available-segments (lib/available-segments query)]
+      (is (=? [{:lib/type    :metadata/segment
+                :id          segment-id
+                :name        "PriceID-BBQ"
+                :table-id    (meta/id :venues)
+                :definition  segment-definition
+                :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."
+                :filter-positions [0]}]
+              available-segments))
+      (is (=? [{:name "priceid_bbq",
+                :display-name "PriceID-BBQ",
+                :long-display-name "PriceID-BBQ",
+                :effective-type :type/Boolean,
+                :description "The ID is greater than 11 times the price and the name contains \"BBQ\".",
+                :filter-positions [0]}]
+              (map #(lib/display-info query %) available-segments)))))
   (testing "query with different Table -- don't return Segments"
     (is (nil? (lib/available-segments (lib/query metadata-provider (meta/table-metadata :orders)))))))
 
@@ -100,7 +112,6 @@
                       :display-name      "PriceID-BBQ",
                       :long-display-name "PriceID-BBQ",
                       :effective-type    :type/Boolean,
-                      :description       "The ID is greater than 11 times the price and the name contains \"BBQ\".",
-                      :selected          true}]
+                      :description       "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
                     (map (partial lib/display-info query')
                          (lib/filters query'))))))))))

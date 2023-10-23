@@ -17,9 +17,16 @@
 (mr/def ::pivot-types
   [:enum :category :location :time])
 
+(mr/def ::drill-thru.type
+  [:fn
+   {:error/message "valid drill-thru :type keyword"}
+   (fn [k]
+     (and (qualified-keyword? k)
+          (= (namespace k) "drill-thru")))])
+
 (mr/def ::drill-thru.common
   [:map
-   [:type     keyword?]
+   [:type     ::drill-thru.type]
    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
 
 (mr/def ::drill-thru.object-details
@@ -64,8 +71,11 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type      [:= :drill-thru/quick-filter]]
-    [:operators [:sequential ::drill-thru.quick-filter.operator]]]])
+    [:type       [:= :drill-thru/quick-filter]]
+    [:operators  [:sequential ::drill-thru.quick-filter.operator]]
+    ;; whether applying this drill thru should introduce a new stage to the query. Filters on aggregate columns should
+    ;; introduce a new stage.
+    [:new-stage? :boolean]]])
 
 (mr/def ::drill-thru.fk-filter
   [:merge
@@ -172,10 +182,34 @@
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]]])
 
+;;; Frontend passes in something that looks like this. Why this shape? Who knows.
+(comment
+  {:column     {:lib/type            :metadata/column
+                :remapped-from-index nil
+                :base-type           :type/BigInteger
+                :semantic-type       :type/Quantity
+                :name                "count"
+                :lib/source          :source/aggregations
+                :aggregation-index   0
+                :effective-type      :type/BigInteger
+                :display-name        "Count"
+                :remapping           nil}
+   :value      457
+   :row        [{:column-name "CREATED_AT", :value "2024-01-01T00:00:00Z"}
+                {:column-name "count", :value 457}]
+   :dimensions [{:column-name "CREATED_AT", :value "2024-01-01T00:00:00Z"}]})
+
+(mr/def ::context.row.value
+  [:map
+   [:column-name string?]
+   [:value       :any]])
+
+(mr/def ::context.row
+  [:sequential [:ref ::context.row.value]])
+
 (mr/def ::context
   [:map
    [:column [:ref ::lib.schema.metadata/column]]
    [:value  [:maybe :any]]
-   [:row    {:optional true} [:sequential [:map
-                                           [:column-name string?]
-                                           [:value       :any]]]]])
+   [:row        {:optional true} [:ref ::context.row]]
+   [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])

@@ -120,7 +120,11 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       openBinningListForDimension("Created At", "by month");
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: TIME_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should render longitude/latitude binning options correctly", () => {
@@ -162,7 +166,11 @@ describe("scenarios > binning > binning options", () => {
       cy.findByText("Created At: Month").click();
       openBinningListForDimension("Created At", "by month");
 
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: TIME_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should render longitude/latitude binning options correctly", () => {
@@ -305,7 +313,7 @@ function getTitle(title) {
   cy.findByText(title);
 }
 
-function getAllOptions({ options, isSelected } = {}) {
+function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   const selectedOption = options.find(option => option === isSelected);
   const regularOptions = options.filter(option => option !== isSelected);
 
@@ -315,6 +323,10 @@ function getAllOptions({ options, isSelected } = {}) {
   popover()
     .last()
     .within(() => {
+      if (shouldExpandList) {
+        cy.button("More…").click();
+      }
+
       regularOptions.forEach(option => {
         // Implicit assertion - will fail if string is rendered multiple times
         cy.findByText(option);

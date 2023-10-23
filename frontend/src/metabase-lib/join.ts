@@ -1,22 +1,26 @@
 import * as ML from "cljs/metabase.lib.js";
 
 import type {
+  Bucket,
   CardMetadata,
   Clause,
   ColumnMetadata,
   Join,
   JoinCondition,
   JoinConditionOperator,
+  JoinConditionParts,
   JoinStrategy,
   Query,
   TableMetadata,
 } from "./types";
+import { expressionParts } from "./expression";
+import { displayInfo, isColumnMetadata } from "./metadata";
 
 /**
  * Something you can join against -- either a raw Table, or a Card, which can be either a plain Saved Question or a
  * Model
  */
-type Joinable = TableMetadata | CardMetadata;
+export type Joinable = TableMetadata | CardMetadata;
 
 type JoinOrJoinable = Join | Joinable;
 
@@ -31,6 +35,17 @@ export function joinClause(
   conditions: JoinCondition[],
 ): Join {
   return ML.join_clause(joinable, conditions);
+}
+
+export function joinConditionClause(
+  query: Query,
+  stageIndex: number,
+  operator: JoinConditionOperator,
+  lhsColumn: ColumnMetadata,
+  rhsColumn: ColumnMetadata,
+): JoinCondition {
+  const operatorInfo = displayInfo(query, stageIndex, operator);
+  return ML.expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {
@@ -56,11 +71,53 @@ export function joinConditions(join: Join): JoinCondition[] {
   return ML.join_conditions(join);
 }
 
+export function joinConditionParts(
+  query: Query,
+  stageIndex: number,
+  condition: JoinCondition,
+): JoinConditionParts {
+  const {
+    operator: operatorName,
+    args: [lhsColumn, rhsColumn],
+  } = expressionParts(query, stageIndex, condition);
+
+  if (!isColumnMetadata(lhsColumn) || !isColumnMetadata(rhsColumn)) {
+    throw new TypeError("Unexpected join condition");
+  }
+
+  const operator = joinConditionOperators(
+    query,
+    stageIndex,
+    lhsColumn,
+    rhsColumn,
+  ).find(op => displayInfo(query, stageIndex, op).shortName === operatorName);
+
+  if (!operator) {
+    throw new TypeError("Unexpected join condition");
+  }
+
+  return { operator, lhsColumn, rhsColumn };
+}
+
 export function withJoinConditions(
   join: Join,
   newConditions: JoinCondition[],
 ): Join {
   return ML.with_join_conditions(join, newConditions);
+}
+
+export function joinConditionUpdateTemporalBucketing(
+  query: Query,
+  stageIndex: number,
+  condition: JoinCondition,
+  bucket: Bucket,
+): JoinCondition {
+  return ML.join_condition_update_temporal_bucketing(
+    query,
+    stageIndex,
+    condition,
+    bucket,
+  );
 }
 
 /**
@@ -147,7 +204,7 @@ export function suggestedJoinCondition(
   return ML.suggested_join_condition(query, stageIndex, joinable);
 }
 
-type JoinFields = ColumnMetadata[] | "all" | "none";
+export type JoinFields = ColumnMetadata[] | "all" | "none";
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
