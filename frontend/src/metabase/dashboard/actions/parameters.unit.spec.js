@@ -21,6 +21,7 @@ describe("removeParameter", () => {
       },
     });
   });
+
   it("should return the `parameterId` as `payload.id` (metabase#33826)", async () => {
     const result = await removeParameter(123)(dispatch, getState);
     expect(result).toEqual({
