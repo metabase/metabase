@@ -55,8 +55,17 @@ export function ArchiveApp() {
 
   const writableList = useMemo(() => {
     clear(); // clear selected items if data is ever refreshed
-    return data?.filter(item => item?.can_write) ?? [];
-  }, [data, clear]);
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    if (isAdmin) {
+      return data;
+    }
+
+    return data.filter(item => item?.can_write);
+  }, [clear, data, isAdmin]);
 
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(writableList);
