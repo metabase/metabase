@@ -95,13 +95,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
 
-          const { resetAnchorClickStub } = expectDynamicAnchorClick({
+          expectNextAnchorClick({
             href: "https://example.com/",
             rel: "noopener",
             target: "_blank",
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
-          resetAnchorClickStub();
         },
       );
     });
@@ -114,11 +113,9 @@ const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
  * This function exists to work around custom dynamic anchor creation
  * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
  */
-const expectDynamicAnchorClick = ({ href, rel, target }) => {
-  let originalClick;
-
+const expectNextAnchorClick = ({ href, rel, target }) => {
   cy.window().then(window => {
-    originalClick = window.HTMLAnchorElement.prototype.click;
+    const originalClick = window.HTMLAnchorElement.prototype.click;
 
     window.HTMLAnchorElement.prototype.click = function () {
       if (href) {
@@ -138,14 +135,8 @@ const expectDynamicAnchorClick = ({ href, rel, target }) => {
       } else {
         expect(this).not.to.have.property("target");
       }
+
+      window.HTMLAnchorElement.prototype.click = originalClick;
     };
   });
-
-  const resetAnchorClickStub = () => {
-    cy.window().then(window => {
-      window.HTMLAnchorElement.prototype.click = originalClick;
-    });
-  };
-
-  return { resetAnchorClickStub };
 };
