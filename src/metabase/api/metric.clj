@@ -146,10 +146,10 @@
    revision_id ms/PositiveInt}
   (api/write-check Metric id)
   (revision/revert!
-    :entity      Metric
+   {:entity      Metric
     :id          id
     :user-id     api/*current-user-id*
-    :revision-id revision_id))
+    :revision-id revision_id}))
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."

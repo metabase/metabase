@@ -49,11 +49,11 @@
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-    :entity   ::FakedCard
+   {:entity   ::FakedCard
     :id       card-id
     :user-id  (mt/user->id :rasta)
     :object   (dissoc object :message)
-    :message  message))
+    :message  message}))
 
 (deftest ^:parallel post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
@@ -189,10 +189,10 @@
                                                                  :card_id      card-id
                                                                  :target       [:dimension (mt/$ids $categories.name)]}]}]
       (let [push-revision (fn [] (revision/push-revision!
-                                   :entity :model/Dashboard
+                                  {:entity :model/Dashboard
                                    :id     dash-id
                                    :user-id (mt/user->id :rasta)
-                                   :object (t2/select-one :model/Dashboard dash-id)))]
+                                   :object (t2/select-one :model/Dashboard dash-id)}))]
         (testing "first revision should be recorded"
           (push-revision)
           (is (= 1 (count (revision/revisions :model/Dashboard dash-id)))))
@@ -292,19 +292,19 @@
     (t2.with-temp/with-temp [Card {card-id :id}]
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (let [[{revision-id :id}] (revision/revisions ::FakedCard card-id)]
-        (revision/revert! :entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id)
+        (revision/revert! {:entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id revision-id})
         (is (= {:name "Tips Created by Day"}
                @reverted-to))))))
 
 (deftest revert-to-revision!-default-impl-test
   (testing "Check default impl of revert-to-revision! just does mapply upd"
     (t2.with-temp/with-temp [Card {card-id :id} {:name "Spots Created By Day"}]
-      (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"})
-      (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"})
+      (revision/push-revision! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"}})
+      (revision/push-revision! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"}})
       (is (= "Spots Created By Day"
              (:name (t2/select-one Card :id card-id))))
       (let [[_ {old-revision-id :id}] (revision/revisions Card card-id)]
-        (revision/revert! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
+        (revision/revert! {:entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
         (is (= "Tips Created by Day"
                (:name (t2/select-one Card :id card-id))))))))
 
@@ -314,7 +314,7 @@
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (push-fake-revision! card-id, :name "Spots Created by Day")
       (let [[_ {old-revision-id :id}] (revision/revisions ::FakedCard card-id)]
-        (revision/revert! :entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
+        (revision/revert! {:entity ::FakedCard, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
         (is (partial=
              [(mi/instance
                Revision

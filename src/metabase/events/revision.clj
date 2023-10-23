@@ -23,12 +23,12 @@
                         (throw (ex-info "Event does not have ID associated with it"
                                         {:mode model, :event event})))
             user-id (events/object->user-id event)]
-        (revision/push-revision! :entity       model
-                                 :id           id
-                                 :object       (api/check-404 (t2/select-one model :id id))
-                                 :user-id      user-id
-                                 :is-creation? is-creation?
-                                 :message      revision-message))
+        (revision/push-revision! {:entity       model
+                                  :id           id
+                                  :object       (api/check-404 (t2/select-one model :id id))
+                                  :user-id      user-id
+                                  :is-creation? is-creation?
+                                  :message      revision-message}))
       (catch Throwable e
         (log/warnf e "Failed to process revision event for model %s" model)))))
 

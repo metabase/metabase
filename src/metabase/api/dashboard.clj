@@ -301,38 +301,38 @@
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
   (let [dashcards (if (seq id->new-tab-id)
-                        (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             dashcards)
-                        dashcards)]
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
     (if-not deep?
       dashcards
       (keep (fn [dashboard-card]
               (cond
-                ;; text cards need no manipulation
-                (nil? (:card_id dashboard-card))
-                dashboard-card
+               ;; text cards need no manipulation
+               (nil? (:card_id dashboard-card))
+               dashboard-card
 
-                ;; if we didn't duplicate, it doesn't go in the dashboard
-                (not (id->new-card (:card_id dashboard-card)))
-                nil
+               ;; if we didn't duplicate, it doesn't go in the dashboard
+               (not (id->new-card (:card_id dashboard-card)))
+               nil
 
-                :else
-                (let [new-id (fn [id]
-                               (-> id id->new-card :id))]
-                  (-> dashboard-card
-                      (update :card_id new-id)
-                      (assoc :card (-> dashboard-card :card_id id->new-card))
-                      (m/update-existing :parameter_mappings
-                                         (fn [pms]
-                                           (keep (fn [pm]
-                                                   (m/update-existing pm :card_id new-id))
-                                                 pms)))
-                      (m/update-existing :series
-                                         (fn [series]
-                                           (keep (fn [card]
-                                                   (when-let [id' (new-id (:id card))]
-                                                     (assoc card :id id')))
-                                                 series)))))))
+               :else
+               (let [new-id (fn [id]
+                              (-> id id->new-card :id))]
+                 (-> dashboard-card
+                     (update :card_id new-id)
+                     (assoc :card (-> dashboard-card :card_id id->new-card))
+                     (m/update-existing :parameter_mappings
+                                        (fn [pms]
+                                          (keep (fn [pm]
+                                                  (m/update-existing pm :card_id new-id))
+                                                pms)))
+                     (m/update-existing :series
+                                        (fn [series]
+                                          (keep (fn [card]
+                                                  (when-let [id' (new-id (:id card))]
+                                                    (assoc card :id id')))
+                                                series)))))))
             dashcards))))
 
 (api/defendpoint POST "/:from-dashboard-id/copy"
@@ -701,10 +701,10 @@
    revision_id ms/PositiveInt}
   (api/write-check :model/Dashboard id)
   (revision/revert!
-    :entity      :model/Dashboard
+   {:entity      :model/Dashboard
     :id          id
     :user-id     api/*current-user-id*
-    :revision-id revision_id))
+    :revision-id revision_id}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
