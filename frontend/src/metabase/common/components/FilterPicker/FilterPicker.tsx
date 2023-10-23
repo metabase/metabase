@@ -46,13 +46,15 @@ export function FilterPicker({
   onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
+  const [column, setColumn] = useState(
+    getInitialColumn(query, stageIndex, filter),
+  );
+
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(filter && Lib.isCustomFilter(query, stageIndex, filter));
-
-  const [column, setColumn] = useState<Lib.ColumnMetadata | undefined>(
-    getInitialColumn(query, stageIndex, filter),
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
   );
 
   const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
@@ -73,17 +75,19 @@ export function FilterPicker({
     [legacyQuery, legacyFilter, onSelectLegacy, onClose],
   );
 
+  const renderExpressionEditor = () => (
+    <ExpressionWidget
+      query={legacyQuery}
+      expression={legacyFilter?.raw() as LegacyExpressionClause}
+      startRule="boolean"
+      header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+      onChangeExpression={handleExpressionChange}
+      onClose={closeExpressionEditor}
+    />
+  );
+
   if (isEditingExpression) {
-    return (
-      <ExpressionWidget
-        query={legacyQuery}
-        expression={legacyFilter?.raw() as LegacyExpressionClause}
-        startRule="boolean"
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeExpression={handleExpressionChange}
-        onClose={closeExpressionEditor}
-      />
-    );
+    return renderExpressionEditor();
   }
 
   if (!column) {
@@ -102,18 +106,24 @@ export function FilterPicker({
 
   const FilterWidget = getFilterWidget(column);
 
-  return (
-    <Box miw={MIN_WIDTH}>
-      <FilterWidget
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        filter={filter}
-        onChange={handleChange}
-        onBack={() => setColumn(undefined)}
-      />
-    </Box>
-  );
+  if (FilterWidget) {
+    return (
+      <Box miw={MIN_WIDTH}>
+        <FilterWidget
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          filter={filter}
+          onChange={handleChange}
+          onBack={() => setColumn(undefined)}
+        />
+      </Box>
+    );
+  }
+
+  // This codepath should never be hit,
+  // but is here to make TypeScript happy
+  return renderExpressionEditor();
 }
 
 function getInitialColumn(
@@ -126,7 +136,18 @@ function getInitialColumn(
     : undefined;
 }
 
-const NotImplementedPicker = () => <div />;
+function isExpressionEditorInitiallyOpen(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata | undefined,
+  filter?: Lib.FilterClause,
+) {
+  if (!filter) {
+    return false;
+  }
+  const hasWidget = column && getFilterWidget(column) != null;
+  return !hasWidget || Lib.isCustomFilter(query, stageIndex, filter);
+}
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isBoolean(column)) {
@@ -147,5 +168,5 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isNumeric(column)) {
     return NumberFilterPicker;
   }
-  return NotImplementedPicker;
+  return null;
 }
