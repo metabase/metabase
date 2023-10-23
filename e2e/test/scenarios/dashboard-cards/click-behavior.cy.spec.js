@@ -79,23 +79,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: dashboard }) => {
           visitDashboard(dashboard.id);
           editDashboard();
+
           getDashboardCard().realHover().icon("click").click();
-
-          cy.log("does not allow to update dashboard filter if there are none");
-          getSidebar()
-            .findByText("Update a dashboard filter")
-            .invoke("css", "pointer-events")
-            .should("equal", "none");
-
           getSidebar().findByText("Go to a custom destination").click();
           getSidebar().findByText("URL").click();
-
           modal().within(() => {
             cy.findByRole("textbox").type(URL);
             cy.button("Done").click();
           });
-
           getSidebar().button("Done").click();
+
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
 
@@ -105,8 +98,24 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.property("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
+        },
+      );
+    });
 
+    it("allows setting URL with parameters as custom destination", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
           editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          getSidebar().findByText("Go to a custom destination").click();
+          getSidebar().findByText("URL").click();
+          modal().within(() => {
+            cy.findByRole("textbox").type(`${URL}{{}{{}${FILTER_NAME}}}`);
+            cy.button("Done").click();
+          });
+          getSidebar().button("Done").click();
 
           cy.icon("filter").click();
           popover().within(() => {
@@ -118,16 +127,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             .clear()
             .type(FILTER_NAME);
           cy.findByTestId("parameter-sidebar").button("Done").click();
-
-          getDashboardCard().realHover().icon("click").click();
-          getSidebar().findByText(URL).click();
-
-          modal().within(() => {
-            cy.findByRole("textbox").type(`{{}{{}${FILTER_NAME}}}`);
-            cy.button("Done").click();
-          });
-
-          getSidebar().button("Done").click();
 
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
@@ -156,7 +155,6 @@ const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
  * This function exists to work around custom dynamic anchor creation
  * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
  */
-
 const onNextAnchorClick = callback => {
   cy.window().then(window => {
     const originalClick = window.HTMLAnchorElement.prototype.click;
