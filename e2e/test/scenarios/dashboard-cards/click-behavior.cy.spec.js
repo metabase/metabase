@@ -159,6 +159,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       );
     });
+
+    it("does not allow updating dashboard filters if there are none", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside")
+            .findByText("Update a dashboard filter")
+            .invoke("css", "pointer-events")
+            .should("equal", "none");
+        },
+      );
+    });
   });
 });
 
