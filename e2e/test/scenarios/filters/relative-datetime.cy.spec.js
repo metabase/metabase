@@ -61,7 +61,7 @@ describe("scenarios > question > relative-datetime", () => {
     it("should not clobber filter when value is set to 1", () => {
       openOrdersTable();
 
-      cy.findByTextEnsureVisible("Created At").click();
+      queryBuilderMain().findByText("Created At").click();
 
       popover().within(() => {
         cy.findByText("Filter by this column").click();
@@ -72,7 +72,10 @@ describe("scenarios > question > relative-datetime", () => {
       cy.wait("@dataset");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Previous 30 Days").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At is in the previous 30 days")
+        .click();
+
       setRelativeDatetimeValue(1);
       setRelativeDatetimeUnit("year");
       addStartingFrom();
@@ -200,32 +203,32 @@ describe("scenarios > question > relative-datetime", () => {
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       setRelativeDatetimeValue(1);
-      popover().within(() => {
-        cy.button("Add filter").click();
-      });
+      popover().button("Add filter").click();
       cy.wait("@dataset");
 
-      cy.findByTextEnsureVisible(
-        "Created At Previous Month, starting 7 months ago",
-      ).click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText(
+          "Created At is in the previous month, starting 7 months ago",
+        )
+        .click();
       setRelativeDatetimeValue(3);
-      popover().within(() => {
-        cy.button("Update filter").click();
-      });
+      popover().button("Update filter").click();
       cy.wait("@dataset");
 
-      cy.findByTextEnsureVisible(
-        "Created At Previous 3 Months, starting 7 months ago",
-      ).click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText(
+          "Created At is in the previous 3 months, starting 7 months ago",
+        )
+        .click();
       setStartingFromValue(30);
-      popover().within(() => {
-        cy.button("Update filter").click();
-      });
+      popover().button("Update filter").click();
       cy.wait("@dataset");
 
-      cy.findByTextEnsureVisible(
-        "Created At Previous 3 Months, starting 30 months ago",
-      );
+      cy.findByTestId("qb-filters-panel")
+        .findByText(
+          "Created At is in the previous 3 months, starting 30 months ago",
+        )
+        .should("be.visible");
     });
 
     it("starting from option should set correct sign (metabase#22228)", () => {
