@@ -1,4 +1,5 @@
 import {
+  assertQueryBuilderRowCount,
   filter,
   getNotebookStep,
   popover,
@@ -244,7 +245,7 @@ describe("scenarios > filters > filter types", () => {
 
           popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByTestId("filter-operator-picker").click();
+            cy.findByLabelText("Filter operator").click();
           });
           cy.findByRole("listbox").findByText(operator).click();
           popover().within(() => {
@@ -262,10 +263,7 @@ describe("scenarios > filters > filter types", () => {
             .findByText(expectedDisplayName)
             .should("be.visible");
           visualize();
-          cy.findByTestId("question-row-count").should(
-            "contain",
-            `Showing ${expectedRowCount} row`,
-          );
+          assertQueryBuilderRowCount(expectedRowCount);
         });
       },
     );

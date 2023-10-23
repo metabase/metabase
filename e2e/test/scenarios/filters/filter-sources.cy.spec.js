@@ -1,4 +1,5 @@
 import {
+  assertQueryBuilderRowCount,
   filter,
   getNotebookStep,
   popover,
@@ -245,9 +246,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Tax is equal to 6.1");
+      assertFilterName("Tax is equal to 6.1");
       visualize();
-      verifyRowCount(10);
+      assertQueryBuilderRowCount(10);
     });
 
     it("column from an expression based on another table column", () => {
@@ -259,9 +260,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Total100 is greater than 250.5");
+      assertFilterName("Total100 is greater than 250.5");
       visualize();
-      verifyRowCount(239);
+      assertQueryBuilderRowCount(239);
     });
 
     it("column from an explicit join", () => {
@@ -273,9 +274,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products → Vendor is Aufderhar-Boehm");
+      assertFilterName("Products → Vendor is Aufderhar-Boehm");
       visualize();
-      verifyRowCount(95);
+      assertQueryBuilderRowCount(95);
     });
 
     it("column from an explicit join with fields", () => {
@@ -287,9 +288,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products → Rating is equal to 3.7");
+      assertFilterName("Products → Rating is equal to 3.7");
       visualize();
-      verifyRowCount(883);
+      assertQueryBuilderRowCount(883);
     });
 
     it("column from an implicit join", () => {
@@ -301,49 +302,49 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Product → Ean is 0001664425970");
+      assertFilterName("Product → Ean is 0001664425970");
       visualize();
-      verifyRowCount(104);
+      assertQueryBuilderRowCount(104);
     });
 
     it("column from a nested aggregation without column", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Count is equal to 90", { stage: 1 });
+      assertFilterName("Count is equal to 90", { stage: 1 });
       visualize();
-      verifyRowCount(7);
+      assertQueryBuilderRowCount(7);
     });
 
     it("column from a nested aggregation with column", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().findByText("Sum of Quantity").click();
       selectOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Sum of Quantity is less than 350", { stage: 1 });
+      assertFilterName("Sum of Quantity is less than 350", { stage: 1 });
       visualize();
-      verifyRowCount(115);
+      assertQueryBuilderRowCount(115);
     });
 
     it("column from a nested breakout", () => {
       visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("Product ID").click();
         cy.findByPlaceholderText("Enter an ID").type("10");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Product ID is 10", { stage: 1 });
+      assertFilterName("Product ID is 10", { stage: 1 });
       visualize();
-      verifyRowCount(1);
+      assertQueryBuilderRowCount(1);
     });
   });
 
@@ -358,9 +359,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Tax is equal to 6.1");
+      assertFilterName("Tax is equal to 6.1");
       visualize();
-      verifyRowCount(10);
+      assertQueryBuilderRowCount(10);
     });
 
     it("column from an expression based on a question column", () => {
@@ -376,9 +377,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Total100 is greater than 250.5");
+      assertFilterName("Total100 is greater than 250.5");
       visualize();
-      verifyRowCount(239);
+      assertQueryBuilderRowCount(239);
     });
 
     it("column from an explicit join", () => {
@@ -394,9 +395,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      assertFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
       visualize();
-      verifyRowCount(95);
+      assertQueryBuilderRowCount(95);
     });
 
     it("column from an explicit join with fields", () => {
@@ -412,9 +413,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      assertFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
       visualize();
-      verifyRowCount(883);
+      assertQueryBuilderRowCount(883);
     });
 
     it("column from an implicit join with fields", () => {
@@ -430,9 +431,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      assertFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
       visualize();
-      verifyRowCount(104);
+      assertQueryBuilderRowCount(104);
     });
 
     it("column from a nested aggregation without column", () => {
@@ -441,15 +442,15 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Count is equal to 90", { stage: 1 });
+      assertFilterName("Count is equal to 90", { stage: 1 });
       visualize();
-      verifyRowCount(7);
+      assertQueryBuilderRowCount(7);
     });
 
     it("column from a nested aggregation with column", () => {
@@ -458,16 +459,16 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().findByText("Sum of Quantity").click();
       selectOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Sum of Quantity is less than 350", { stage: 1 });
+      assertFilterName("Sum of Quantity is less than 350", { stage: 1 });
       visualize();
-      verifyRowCount(115);
+      assertQueryBuilderRowCount(115);
     });
 
     it.skip("column from a nested breakout", () => {
@@ -476,15 +477,15 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("Product ID").click();
         cy.findByPlaceholderText("Enter a number").type("10");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Product ID is equal to 10", { stage: 1 });
+      assertFilterName("Product ID is equal to 10", { stage: 1 });
       visualize();
-      verifyRowCount(1);
+      assertQueryBuilderRowCount(1);
     });
   });
 
@@ -499,9 +500,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
-      verifyFilterName("TAX is equal to 6.1");
+      assertFilterName("TAX is equal to 6.1");
       visualize();
-      verifyRowCount(10);
+      assertQueryBuilderRowCount(10);
     });
 
     it.skip("column from an expression based on a question column", () => {
@@ -517,9 +518,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Total100 is greater than 250.5");
+      assertFilterName("Total100 is greater than 250.5");
       visualize();
-      verifyRowCount(239);
+      assertQueryBuilderRowCount(239);
     });
 
     it("column from an explicit join", () => {
@@ -535,9 +536,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      assertFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
       visualize();
-      verifyRowCount(95);
+      assertQueryBuilderRowCount(95);
     });
 
     it("column from an explicit join with fields", () => {
@@ -553,9 +554,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("3.7");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      assertFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
       visualize();
-      verifyRowCount(883);
+      assertQueryBuilderRowCount(883);
     });
 
     it("column from an implicit join with fields", () => {
@@ -571,9 +572,9 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByText("0001664425970").click();
         cy.button("Add filter").click();
       });
-      verifyFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      assertFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
       visualize();
-      verifyRowCount(104);
+      assertQueryBuilderRowCount(104);
     });
 
     it("column from a nested aggregation without column", () => {
@@ -582,15 +583,15 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("Count").click();
         cy.findByPlaceholderText("Enter a number").type("90");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Count is equal to 90", { stage: 1 });
+      assertFilterName("Count is equal to 90", { stage: 1 });
       visualize();
-      verifyRowCount(7);
+      assertQueryBuilderRowCount(7);
     });
 
     it("column from a nested aggregation with column", () => {
@@ -599,16 +600,16 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().findByText("Sum of QUANTITY").click();
       selectOperator("Less than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("350");
         cy.button("Add filter").click();
       });
-      verifyFilterName("Sum of QUANTITY is less than 350", { stage: 1 });
+      assertFilterName("Sum of QUANTITY is less than 350", { stage: 1 });
       visualize();
-      verifyRowCount(115);
+      assertQueryBuilderRowCount(115);
     });
 
     it("column from a nested breakout", () => {
@@ -617,33 +618,30 @@ describe("scenarios > filters > filter sources", () => {
           mode: "notebook",
         });
       });
-      getNotebookStep("summarize").findByText("Filter").click();
+      addNewFilter();
       popover().within(() => {
         cy.findByText("PRODUCT_ID").click();
         cy.findByPlaceholderText("Enter a number").type("10");
         cy.button("Add filter").click();
       });
-      verifyFilterName("PRODUCT_ID is equal to 10", { stage: 1 });
+      assertFilterName("PRODUCT_ID is equal to 10", { stage: 1 });
       visualize();
-      verifyRowCount(1);
+      assertQueryBuilderRowCount(1);
     });
   });
 });
 
 function selectOperator(operatorName) {
-  cy.findByTestId("filter-operator-picker").click();
+  cy.findByLabelText("Filter operator").click();
   cy.findByRole("listbox").findByText(operatorName).click();
 }
 
-function verifyFilterName(filterName, options) {
+function addNewFilter() {
+  cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
+}
+
+function assertFilterName(filterName, options) {
   getNotebookStep("filter", options)
     .findByText(filterName)
     .should("be.visible");
-}
-
-function verifyRowCount(rowCount) {
-  cy.findByTestId("question-row-count").should(
-    "contain",
-    `Showing ${rowCount} row`,
-  );
 }

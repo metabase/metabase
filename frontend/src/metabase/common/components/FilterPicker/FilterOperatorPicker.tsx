@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import type { SelectProps } from "metabase/ui";
 import { Select } from "metabase/ui";
 import type { FilterOperatorName } from "metabase-lib";
@@ -20,5 +21,5 @@ export function FilterOperatorPicker({
     }));
   }, [options]);
 
-  return <Select data={data} {...props} data-testid="filter-operator-picker" />;
+  return <Select data={data} {...props} aria-label={t`Filter operator`} />;
 }
