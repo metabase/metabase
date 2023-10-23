@@ -1,15 +1,7 @@
 import { t } from "ttag";
-import {
-  PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_COLLECTIONS,
-} from "metabase/plugins";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
 import type { Collection } from "metabase-types/api";
-import { collection as collectionUrl } from "metabase/lib/urls";
-
-import { Box } from "metabase/ui";
-
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export type InfoTextData = {
   link?: string | null;
@@ -17,20 +9,20 @@ export type InfoTextData = {
   label?: string | null;
 };
 
-export const getInfoText = (result: WrappedResult): InfoTextData => {
-  switch (result.model) {
-    case "collection":
-      return getCollectionInfoText(result);
-    case "database":
-      return getDatabaseInfoText();
-    case "action":
-      return getActionInfoText(result);
-    case "card":
-    case "dataset":
-    case "indexed-entity":
-    default:
-      return getCollectionResult(result);
+export const getInfoText = (result: WrappedResult): InfoTextData | null => {
+  if (result.model === "collection") {
+    return getCollectionInfoText(result);
   }
+
+  if (result.model === "database") {
+    return getDatabaseInfoText();
+  }
+
+  if (result.model === "action") {
+    return getActionInfoText(result);
+  }
+
+  return null;
 };
 const getActionInfoText = (result: WrappedResult): InfoTextData => {
   return {
@@ -57,21 +49,4 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
   return {
     label: `${level.name} ${t`Collection`}`,
   };
-};
-
-const getCollectionResult = (result: WrappedResult): InfoTextData => {
-  const collection = result.getCollection();
-  const colUrl = collectionUrl(collection);
-  const collectionName = collection.name;
-  return collectionName
-    ? {
-        icon: collection.authority_level ? (
-          <Box ml="-1.5px" display="inherit" pos="relative" top="-0.5px">
-            <CollectionAuthorityLevelIcon size={12} collection={collection} />
-          </Box>
-        ) : null,
-        link: colUrl,
-        label: collectionName,
-      }
-    : {};
 };
