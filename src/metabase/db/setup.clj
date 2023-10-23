@@ -87,10 +87,7 @@
   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
-                        available just in case).
-
-  Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by
-  [[metabase.db.data-migrations/run-all!]]. ([[setup-db!]], below, calls both this function and [[run-all!]])."
+                        available just in case)."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
@@ -145,13 +142,6 @@
                      (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
                 (u/emoji "✅")))))
 
-(def ^:dynamic ^Boolean *disable-data-migrations*
-  "Should we skip running data migrations when setting up the DB? (Default is `false`).
-  There are certain places where we don't want to do this; for example, none of the migrations should be ran when
-  Metabase is launched via `load-from-h2`.  That's because they will end up doing things like creating duplicate
-  entries for the \"magic\" groups and permissions entries. "
-  false)
-
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [db-type       :- :keyword
@@ -160,14 +150,6 @@
   (log/info (trs "Running Database Migrations..."))
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
-
-(mu/defn ^:private run-data-migrations!
-  "Do any custom code-based migrations now that the db structure is up to date."
-  []
-  ;; TODO -- check whether we can remove the circular ref busting here.
-  (when-not *disable-data-migrations*
-    (classloader/require 'metabase.db.data-migrations)
-    ((resolve 'metabase.db.data-migrations/run-all!))))
 
 (defn- fresh-install?
   [db-type data-source]
@@ -193,8 +175,7 @@
            (log/info "Running database initialization")
            (initialize-db! db-type data-source)
            (log/info "Done database initialization"))
-         (run-schema-migrations! db-type data-source auto-migrate?)
-         (run-data-migrations!))))
+         (run-schema-migrations! db-type data-source auto-migrate?))))
   :done)
 
 ;;;; Toucan Setup.

@@ -6,7 +6,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -26,7 +26,7 @@ import LinkCardEditButton from "./LinkCardEditButton";
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   isLoading: boolean;
   isVirtualDashCard: boolean;
   isPreviewing: boolean;
