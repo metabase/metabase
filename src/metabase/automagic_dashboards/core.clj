@@ -622,6 +622,7 @@
           :cards dashcards))))
 
 (def ^:private ^:const ^Long max-related 8)
+(def ^:private ^:const ^Long max-cards 15)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"
@@ -800,23 +801,34 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
+(defn- filter-referenced-fields
+  "Return a map of fields referenced in filter clause."
+  [root filter-clause]
+  (->> filter-clause
+       filters/collect-field-references
+       (map (fn [[_ id-or-name _options]]
+              [id-or-name (->field root id-or-name)]))
+       (remove (comp nil? second))
+       (into {})))
+
 (defn generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
-  [{{:keys [show] :as root} :root :as base-context}
+  [{{:keys [show url query-filter] :as root} :root :as base-context}
    {:as dashboard-template}
    {grounded-dimensions :dimensions :as grounded-values}]
-  (let [dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
+  (let [show      (or show max-cards)
+        dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
     (-> dashboard
-        (populate/create-dashboard (or show :all))
+        (populate/create-dashboard show)
         (assoc
           :related (related
                      root grounded-dimensions
                      dashboard-template)
-          ;     :more (when (and (not= show :all)
-          ;                      (-> dashboard :cards count (> show)))
-          ;             (format "%s#show=all" url))
-          ;     :transient_filters query-filter
-          ;     :param_fields (filter-referenced-fields root query-filter)
+          :more (when (and (not= show :all)
+                           (-> dashboard :cards count (> show)))
+                  (format "%s#show=all" url))
+          :transient_filters query-filter
+          :param_fields (filter-referenced-fields root query-filter)
           :auto_apply_filters true))))
 
 (defn- automagic-dashboard
