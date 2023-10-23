@@ -99,10 +99,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
 
-          expectNextAnchorClick({
-            href: URL,
-            rel: "noopener",
-            target: "_blank",
+          onNextAnchorClick(anchor => {
+            expect(anchor).to.have.property("href", URL);
+            expect(anchor).to.have.property("rel", "noopener");
+            expect(anchor).to.have.property("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
 
@@ -138,10 +138,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.button("Add filter").click();
           });
 
-          expectNextAnchorClick({
-            href: `${URL}${FILTER_VALUE}`,
-            rel: "noopener",
-            target: "_blank",
+          onNextAnchorClick(anchor => {
+            expect(anchor).to.have.property("href", `${URL}${FILTER_VALUE}`);
+            expect(anchor).to.have.property("rel", "noopener");
+            expect(anchor).to.have.property("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
         },
@@ -156,29 +156,13 @@ const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
  * This function exists to work around custom dynamic anchor creation
  * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
  */
-const expectNextAnchorClick = ({ href, rel, target }) => {
+
+const onNextAnchorClick = callback => {
   cy.window().then(window => {
     const originalClick = window.HTMLAnchorElement.prototype.click;
 
     window.HTMLAnchorElement.prototype.click = function () {
-      if (href) {
-        expect(this).to.have.property("href", href);
-      } else {
-        expect(this).not.to.have.property("href");
-      }
-
-      if (rel) {
-        expect(this).to.have.property("rel", rel);
-      } else {
-        expect(this).not.to.have.property("rel");
-      }
-
-      if (target) {
-        expect(this).to.have.property("target", target);
-      } else {
-        expect(this).not.to.have.property("target");
-      }
-
+      callback(this);
       window.HTMLAnchorElement.prototype.click = originalClick;
     };
   });
