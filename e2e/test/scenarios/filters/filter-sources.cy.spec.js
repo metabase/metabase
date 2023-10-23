@@ -100,6 +100,13 @@ const tableWithAggregations = {
   visualization_settings: {},
 };
 
+const structuredQuestion = {
+  display: "table",
+  database: SAMPLE_DB_ID,
+  query: { "source-table": ORDERS_ID },
+  visualization_settings: {},
+};
+
 const nativeQuestion = {
   display: "table",
   database: SAMPLE_DB_ID,
@@ -335,6 +342,147 @@ describe("scenarios > filters > filter sources", () => {
         cy.button("Add filter").click();
       });
       verifyFilterName("Product ID is 10", { stage: 1 });
+      visualize();
+      verifyRowCount(1);
+    });
+  });
+
+  describe("nested structured questions", () => {
+    it("column from a question", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Tax").click();
+        cy.findByPlaceholderText("Enter a number").type("6.1");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Tax is equal to 6.1");
+      visualize();
+      verifyRowCount(10);
+    });
+
+    it("column from an expression based on a question column", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithExpression(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().findByText("Total100").click();
+      selectOperator("Greater than");
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("250.5");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Total100 is greater than 250.5");
+      visualize();
+      verifyRowCount(239);
+    });
+
+    it("column from an explicit join", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoin(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Vendor").click();
+        cy.findByText("Aufderhar-Boehm").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      visualize();
+      verifyRowCount(95);
+    });
+
+    it("column from an explicit join with fields", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Rating").click();
+        cy.findByPlaceholderText("Enter a number").type("3.7");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      visualize();
+      verifyRowCount(883);
+    });
+
+    it("column from an implicit join with fields", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Ean").click();
+        cy.findByText("0001664425970").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
+      visualize();
+      verifyRowCount(104);
+    });
+
+    it("column from a nested aggregation without column", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("Count").click();
+        cy.findByPlaceholderText("Enter a number").type("90");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Count is equal to 90", { stage: 1 });
+      visualize();
+      verifyRowCount(7);
+    });
+
+    it("column from a nested aggregation with column", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().findByText("Sum of Quantity").click();
+      selectOperator("Less than");
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Sum of Quantity is less than 350", { stage: 1 });
+      visualize();
+      verifyRowCount(115);
+    });
+
+    it.skip("column from a nested breakout", () => {
+      cy.createQuestion(structuredQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("Product ID").click();
+        cy.findByPlaceholderText("Enter a number").type("10");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Product ID is equal to 10", { stage: 1 });
       visualize();
       verifyRowCount(1);
     });
