@@ -20,27 +20,6 @@
     [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Global affinity definitions
-
-(defn affinity-set-interestingness [affinity-set]
-  (reduce + (map (fn [a] (count (ancestors a))) affinity-set)))
-
-(def affinity-specs
-  (mapv
-    (fn [{:keys [affinity-set] :as m}]
-      (assoc m :affinity-interestingness (affinity-set-interestingness affinity-set)))
-    [{:affinity-set #{:type/Longitude :type/Latitude} :charts [:map :binned-map]}
-     {:affinity-set #{:type/Country} :charts [:map]}
-     ;; How does this look?
-     {:affinity-set #{:type/State} :charts [:map]}
-     ;{:affinity-set #{:type/ZipCode} :charts [:map]}
-     {:affinity-set #{:type/Source} :charts [:bar]}
-     {:affinity-set #{:type/Category} :charts [:bar]}
-     {:affinity-set #{:type/CreationTimestamp} :charts [:line]}
-     {:affinity-set #{:type/Quantity} :charts [:line]}
-     {:affinity-set #{:type/Discount} :charts [:line]}]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
 
 (defn find-field-ids

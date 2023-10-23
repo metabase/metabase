@@ -1,9 +1,7 @@
 (ns metabase.automagic-dashboards.schema
   (:require [malli.core :as mc]
-            [malli.generator :as mg]
             [malli.util :as mut]))
 
-;; --
 (def context
   "The big ball of mud data object from which we generate x-rays"
   (mc/schema
@@ -12,22 +10,6 @@
      [:root any?]
      [:tables {:optional true} any?]
      [:query-filter {:optional true} any?]]))
-
-#_
-(def dashcard-template
-  (mc/schema
-    [:map
-     [:card-name]
-     [:card-score]
-     [:dimensions]
-     [:filters]
-     [:group]
-     [:height]
-     [:metrics]
-     [:title]
-     [:visualization]
-     [:width]
-     [:x_label]]))
 
 (def dashcard
   "The base unit thing we are trying to produce in x-rays"
@@ -61,6 +43,7 @@
   (mc/schema [:maybe [:sequential dashcard]]))
 
 (def field-type
+  "A dimension reference, as either a semantic type or entity type and semantic type."
   (mc/schema
     [:or
      [:tuple :keyword]
@@ -279,18 +262,6 @@
         [:map
          [:aggregation [:sequential any?]]
          [:breakout [:sequential any?]]]]])))
-
-(def metric-types->dimset->cards
-  "A map of sets of dimension names contained in metric definitions
-   to dimension names in the breakouts to card templates."
-  (mc/schema
-    [:map-of [:or
-              [:set :keyword]
-              :keyword]
-     [:map-of [:set :keyword]
-      [:map
-       [:cards
-        [:sequential card-value]]]]]))
 
 (comment
   (require '[malli.generator :as mg])

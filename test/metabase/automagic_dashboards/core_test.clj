@@ -1894,12 +1894,12 @@
 
 (deftest user-defined-groups-test
   (testing "Example of group generation from user metrics (based on a seq of maps with `:metric-name`)."
-    (= {"METRIC0" {:title "Your METRIC0 Metric" :score 0}
-        "METRIC1" {:title "Your METRIC1 Metric" :score 0}}
-       (magic/user-defined-groups
-         [{:metric-name "METRIC0"}
-          {:metric-name "METRIC0"}
-          {:metric-name "METRIC1"}]))))
+    (is (= {"METRIC0" {:title "Your METRIC0 Metric" :score 0}
+            "METRIC1" {:title "Your METRIC1 Metric" :score 0}}
+           (magic/user-defined-groups
+             [{:metric-name "METRIC0"}
+              {:metric-name "METRIC0"}
+              {:metric-name "METRIC1"}])))))
 
 (deftest combination-grounded-metrics->dashcards-test
   (testing "Dashcard creation example test"
@@ -1917,7 +1917,7 @@
                  template-cards      :cards
                  :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                 metric-templates            (interesting/normalize-seq-of-maps :metric template-metrics)
-                {{user-defined-metrics :linked-metrics :as root} :root
+                {{user-defined-metrics :linked-metrics} :root
                  :as                                             base-context} (#'magic/make-base-context (magic/->root entity))
                 ;; A mapping of dimension (by name) to dimension definition + matches (a seq of matching fields)
                 ground-dimensions           (interesting/find-dimensions base-context template-dimensions)

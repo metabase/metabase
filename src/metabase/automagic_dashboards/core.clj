@@ -1269,7 +1269,7 @@
                             :let [f
                                   (walk/prewalk
                                     (fn [x]
-                                      (if (and (vector? x))
+                                      (if (vector? x)
                                         (let [[ds dim-name] x]
                                           (if (and (= "dimension" ds)
                                                    (string? dim-name))
@@ -1336,8 +1336,7 @@
                                         ;             (format "%s#show=all" url))
                                         ;     :transient_filters query-filter
                                         ;     :param_fields (filter-referenced-fields root query-filter)
-         :auto_apply_filters true
-         ))))
+         :auto_apply_filters true))))
 
 (defn- find-first-match-dashboard-template
   "Given a 'root' context, apply matching dashboard templates in sequence and return the first application of this
@@ -1373,7 +1372,7 @@
 (defn automagic-dashboard-old
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [show full-name query-filter url] :as root}]
-  (let [[{:keys [cards] :as dashboard}
+  (let [[dashboard
          {:keys [dashboard-template-name] :as dashboard-template}
          {:keys [available-dimensions
                  available-metrics
