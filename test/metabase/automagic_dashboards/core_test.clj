@@ -1136,6 +1136,11 @@
 
 ;;; -------------------- Filters --------------------
 
+(defn field! [table column]
+  (or (t2/select-one Field :id (mt/id table column))
+      (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
+                      {:table table :column column}))))
+
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
     (mt/dataset sample-dataset
