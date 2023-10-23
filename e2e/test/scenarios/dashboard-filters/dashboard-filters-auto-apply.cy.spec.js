@@ -627,7 +627,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
-      cy.findByLabelText(filterToggleLabel).click();
+      cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("not.be.checked");
       expectGoodSnowplowEvents(
@@ -646,7 +646,7 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
-      cy.findByLabelText(filterToggleLabel).click();
+      cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("be.checked");
       expectGoodSnowplowEvents(
