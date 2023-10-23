@@ -9,6 +9,7 @@
    [filter])
   (:require
    [clojure.walk :as walk]
+   [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -30,10 +31,19 @@
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
+(defn- remove-undefined-properties
+  [obj]
+  (cond-> obj
+    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+
 (defn- convert-js-template-tags [tags]
-  (update-vals (js->clj tags) #(-> %
-                                   (update-keys keyword)
-                                   (update :type keyword))))
+  (-> tags
+      (gobject/map (fn [e _ _]
+                     (remove-undefined-properties e)))
+      js->clj
+      (update-vals #(-> %
+                        (update-keys keyword)
+                        (update :type keyword)))))
 
 (defn ^:export extract-template-tags
   "Extract the template tags from a native query's text.
