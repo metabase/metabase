@@ -14,6 +14,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import * as Lib from "metabase-lib";
+import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
@@ -152,6 +153,12 @@ describe("FilterPicker", () => {
         "aria-selected",
         "false",
       );
+    });
+
+    it("should open the expression editor when column type isn't supported", () => {
+      jest.spyOn(Lib_ColumnTypes, "isNumeric").mockReturnValue(false);
+      setup(createQueryWithFilter());
+      expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
     });
   });
 });
