@@ -16,7 +16,6 @@
    [metabase.db.custom-migrations-test :as custom-migrations-test]
    [metabase.db.query :as mdb.query]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.db.setup :as db.setup]
    [metabase.models
     :refer [Action
             Card
@@ -52,8 +51,6 @@
                               :id))]
         (migrate!)
         (let [latest-id (get-last-id)]
-          ;; This is an unusual usage of db.setup/migrate! with an explicit version, which is not currently
-          ;; available via the CLI, but is used here to rollback to the lowest version we support.
           (migrate! :down 45)
           ;; will always be the last v44 migration
           (is (= "v45.00-057" (get-last-id)))
@@ -295,13 +292,8 @@
 
 (deftest migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
-    (impl/test-migrations ["v47.00-001"] [_]
-      (let [{:keys [db-type ^javax.sql.DataSource
-                    data-source]} mdb.connection/*application-db*
-            ;; Use db.setup/migrate! instead of the impl/test-migrations migrate! binding, otherwise the rollback
-            ;; will sometimes fail to work in CI (metabase#29515)
-            migrate! (partial db.setup/migrate! db-type data-source)
-            [pg-db-id
+    (impl/test-migrations ["v47.00-001"] [migrate!]
+      (let [[pg-db-id
              mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
                                                               {:name "MySQL Database" :engine "mysql"}])
             [pg-table-id
@@ -316,7 +308,7 @@
                                                                 {:name "PG Field 3"    :table_id pg-table-id    :database_type "varchar" :base_type :type/Text}
                                                                 {:name "MySQL Field 1" :table_id mysql-table-id :database_type "json"    :base_type :type/SerializedJSON}
                                                                 {:name "MySQL Field 2" :table_id mysql-table-id :database_type "varchar" :base_type :type/Text}])
-            _ (migrate! :up)
+            _ (migrate!)
             new-base-types (t2/select-pk->fn :base_type Field)]
         (are [field-id expected] (= expected (get new-base-types field-id))
           pg-field-1-id :type/JSON
@@ -386,10 +378,8 @@
                                :order-by [[:id :asc]]}))))))
 
 (deftest migrate-grid-from-18-to-24-test
-  (impl/test-migrations ["v47.00-031" "v47.00-032"] [_migrate!]
-    (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-          migrate!     (partial db.setup/migrate! db-type data-source)
-          user         (create-raw-user! (tu.random/random-email))
+  (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
+    (let [user         (create-raw-user! (tu.random/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
           ;; this layout is from magic dashboard for order table
@@ -413,10 +403,10 @@
                                                                  :visualization_settings {}
                                                                  :parameter_mappings     {}}) cases))]
       (testing "forward migration migrate correctly"
-        (migrate! :up)
+        (migrate!)
         (let [migrated-to-24 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
-                                                :model/DashboardCard :id [:in dashcard-ids]
-                                                 {:order-by [[:id :asc]]})]
+                                               :model/DashboardCard :id [:in dashcard-ids]
+                                               {:order-by [[:id :asc]]})]
           (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
                   {:row 7  :col 16 :size_x 8  :size_y 8}
                   {:row 2  :col 7  :size_x 6  :size_y 3}
