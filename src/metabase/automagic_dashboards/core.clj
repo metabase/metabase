@@ -1041,49 +1041,6 @@
        :group         group-name
        :card-name     (format "Card[%s][%s]" metric-title (first viz))})))
 
-(s/defn ^:private apply-dashboard-template
-  "Apply a 'dashboard template' (a card template) to the root entity to produce a dashboard
-  (including filters and cards).
-
-  Returns nil if no cards are produced."
-  [{root :root :as base-context}
-   {template-dimensions :dimensions
-    template-metrics    :metrics
-    template-filters    :filters
-    template-cards      :cards
-    :keys               [dashboard-template-name dashboard_filters]
-    :as                 dashboard-template} :- dashboard-templates/DashboardTemplate]
-  (log/debugf "Applying dashboard template '%s'" dashboard-template-name)
-  (let [available-dimensions   (->> template-dimensions
-                                    (interesting/find-dimensions base-context)
-                                    (add-field-self-reference base-context))
-        ;; Satisfied metrics and filters are those for which there is a dimension that can be bound to them.
-        available-metrics      (->> (resolve-available-dimensions available-dimensions template-metrics)
-                                    (add-metric-self-reference base-context)
-                                    (into {}))
-        available-filters      (into {} (resolve-available-dimensions available-dimensions template-filters))
-        available-values       {:available-dimensions available-dimensions
-                                :available-metrics    available-metrics
-                                :available-filters    available-filters}
-        ;; for now we construct affinities from cards
-        affinities             (dash-template->affinities-old dashboard-template)
-        ;; get the suitable matches for them
-        satisfied-affinities   (match-affinities affinities (set (keys available-dimensions)))
-        distinct-affinity-sets (-> satisfied-affinities vals distinct flatten)
-        cards                  (make-cards base-context
-                                           available-values
-                                           satisfied-affinities
-                                           (all-satisfied-bindings distinct-affinity-sets available-dimensions)
-                                           (card-based-layout dashboard-template))]
-    (when (or (not-empty cards) (nil? template-cards))
-      [(assoc (make-dashboard root dashboard-template base-context available-values)
-         :filters (->> dashboard_filters
-                       (mapcat (comp :matches available-dimensions))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
-         :cards cards)
-       dashboard-template
-       available-values])))
-
 (defn generate-base-dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
@@ -1148,21 +1105,23 @@
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
          (keep (fn [{indepth-template-name :dashboard-template-name
-                     template-dimensions :dimensions
-                     template-metrics    :metrics
-                     template-filters    :filters
-                     :as indepth}]
-                 (when-let [{:keys [description] :as dashboard} (generate-base-dashboard
-                                                                  base-context
-                                                                  indepth
-                                                                  (interesting/identify
-                                                                    base-context
-                                                                    {:dimension-specs template-dimensions
-                                                                     :metric-specs    template-metrics
-                                                                     :filter-specs    template-filters}))]
-                   {:title       ((some-fn :short-title :title) dashboard)
-                    :description description
-                    :url         (format "%s/rule/%s/%s" url dashboard-template-name indepth-template-name)})))
+                     template-dimensions   :dimensions
+                     template-metrics      :metrics
+                     template-filters      :filters
+                     :as                   indepth}]
+                 (let [grounded-values (interesting/identify
+                                         base-context
+                                         {:dimension-specs template-dimensions
+                                          :metric-specs    template-metrics
+                                          :filter-specs    template-filters})
+                       {:keys [description cards] :as dashboard} (generate-base-dashboard
+                                                                   base-context
+                                                                   indepth
+                                                                   grounded-values)]
+                   (when (and description (seq cards))
+                     {:title       ((some-fn :short-title :title) dashboard)
+                      :description description
+                      :url         (format "%s/rule/%s/%s" url dashboard-template-name indepth-template-name)}))))
          (hash-map :indepth))))
 
 (defn- drilldown-fields
