@@ -11,12 +11,13 @@
    [metabase.models.database :refer [Database]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [malli.core :as mc]
+   [metabase.util.cron :as u.cron])
   (:import [java.util.jar JarEntry JarFile]))
 
 (set! *warn-on-reflection* true)
@@ -99,6 +100,12 @@
   []
   (collection-entity-id->collection default-audit-collection-entity-id))
 
+(def ^:private eon-away-cron-schedule
+  "This cron schedule will basically never run."
+  (let [schedule "0 0 0 1 1 ? 2147483647"]
+    (assert (mc/validate u.cron/CronScheduleString schedule) "Must be a valid cron schedule")
+    schedule))
+
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
@@ -119,11 +126,17 @@
                              :name             "Internal Metabase Database"
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
-                             :is_full_sync     true
+                             :initial_sync_status "complete"
+                             :cache_field_values_schedule eon-away-cron-schedule
+                             :metadata_sync_schedule eon-away-cron-schedule
+                             ;; TODO:
+                             ;; Should we have
+                             ;; `:is_full_sync false` ?
+                             ;; ?
+                             :is_full_sync     false
                              :is_on_demand     false
                              :creator_id       nil
                              :auto_run_queries true})))))
-
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -213,10 +226,7 @@
   (u/prog1 (ensure-db-installed!)
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
       (assert audit-db "Audit DB was not installed correctly!!")
-      ;; There's a sync scheduled, but we want to force a sync right away:
-      (log/info "Beginning Audit DB Sync...")
-      (sync-metadata/sync-db-metadata! audit-db)
-      (log/info "Audit DB Sync Complete.")
+      (log/info "Skipping Audit DB Sync...") ;; TODO remove this
       (when analytics-dir-resource
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
