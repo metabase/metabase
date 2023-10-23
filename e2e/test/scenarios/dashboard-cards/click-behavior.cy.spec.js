@@ -87,11 +87,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getSidebar().findByText("URL").click();
 
           modal().within(() => {
-            cy.findByRole("textbox").type("https://example.com");
+            cy.findByRole("textbox").type("https://example.com/");
             cy.button("Done").click();
           });
 
           getSidebar().button("Done").click();
+          cy.findByTestId("edit-bar").button("Save").click();
+          cy.findByTestId("edit-bar").should("not.exist");
+
+          const { resetAnchorClickStub } = expectDynamicAnchorClick({
+            href: "https://example.com/",
+            rel: "noopener",
+            target: "_blank",
+          });
+          cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
+          resetAnchorClickStub();
         },
       );
     });
@@ -99,3 +109,43 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 });
 
 const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
+
+/**
+ * This function exists to work around custom dynamic anchor creation
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
+ */
+const expectDynamicAnchorClick = ({ href, rel, target }) => {
+  let originalClick;
+
+  cy.window().then(window => {
+    originalClick = window.HTMLAnchorElement.prototype.click;
+
+    window.HTMLAnchorElement.prototype.click = function () {
+      if (href) {
+        expect(this).to.have.property("href", href);
+      } else {
+        expect(this).not.to.have.property("href");
+      }
+
+      if (rel) {
+        expect(this).to.have.property("rel", rel);
+      } else {
+        expect(this).not.to.have.property("rel");
+      }
+
+      if (target) {
+        expect(this).to.have.property("target", target);
+      } else {
+        expect(this).not.to.have.property("target");
+      }
+    };
+  });
+
+  const resetAnchorClickStub = () => {
+    cy.window().then(window => {
+      window.HTMLAnchorElement.prototype.click = originalClick;
+    });
+  };
+
+  return { resetAnchorClickStub };
+};
