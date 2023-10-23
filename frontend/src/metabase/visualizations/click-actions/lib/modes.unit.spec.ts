@@ -26,10 +26,10 @@ describe("forQuestion(question)", () => {
   const rawDataQuery = rawDataQuestion.query() as StructuredQuery;
 
   describe("with structured query question", () => {
-    it("returns `segment` mode with raw data", () => {
+    it("returns `default` mode with raw data", () => {
       const question = rawDataQuery.question();
       const mode = getMode(question);
-      expect(mode && mode.name()).toEqual("segment");
+      expect(mode && mode.name()).toEqual("default");
     });
 
     it("returns `metric` mode with >= 1 aggregations", () => {
@@ -84,12 +84,12 @@ describe("forQuestion(question)", () => {
       expect(mode && mode.name()).toEqual("pivot");
     });
 
-    it("returns `segment` mode with pk filter", () => {
+    it("returns `default` mode with pk filter", () => {
       const question = rawDataQuery
         .filter(["=", ["field", ORDERS.ID, null], 42])
         .question();
       const mode = getMode(question);
-      expect(mode && mode.name()).toEqual("segment");
+      expect(mode && mode.name()).toEqual("default");
     });
 
     it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
