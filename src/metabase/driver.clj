@@ -643,7 +643,25 @@
 
 (defmulti prettify-native-form
   "Pretty-format native form presumably coming from compiled query.
-  Used eg. in API endpoint `/dataset/native`, to present user with nicely formatted query."
+  Used eg. in API endpoint `/dataset/native`, to present user with nicely formatted query.
+
+  - Why is this multimethod defined here and not in driver.sql?
+
+    Because this way it could be called with nosql drivers, so branchings or calls to
+    [[metabase.util/ignore-exceptions]] can be avoided as previously needed in `/dataset/native` or former
+    implementation of [[metabase.db.query/format-sql]].
+
+  - What is relationship between `:sql` implementation of this method and [[metabase.driver.sql.util/format-sql]]?
+
+    Function in question is implemented in a way, that driver developers, who would like to use it implementing
+    this multimethod, can:
+    - Avoid implementing it completely, if their driver keyword representation corresponds to key in
+      [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
+    - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
+      to `:standardsql`'s value from the dialects map (eg `:h2`).
+    - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword 
+      representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
+    - Completly reimplement this method with their special formatting code."
   {:added "0.48.0", :arglists '([driver native-form]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
