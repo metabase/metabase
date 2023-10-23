@@ -121,6 +121,53 @@ const nestedQuestion = card => ({
   visualization_settings: {},
 });
 
+const nestedQuestionWithExpression = card => ({
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${card.id}`,
+      expressions: {
+        Total100: ["+", ["field", ORDERS.TOTAL, null], 100],
+      },
+    },
+  },
+  visualization_settings: {},
+});
+
+const nestedQuestionWithJoin = card => ({
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${card.id}`,
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Products - PRODUCT_ID",
+          condition: [
+            "=",
+            ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products - PRODUCT_ID",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  },
+  visualization_settings: {},
+});
+
 describe("scenarios > filters > filter sources", () => {
   beforeEach(() => {
     restore();
@@ -128,7 +175,7 @@ describe("scenarios > filters > filter sources", () => {
   });
 
   describe("tables", () => {
-    it("table column", () => {
+    it("column from a table", () => {
       visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().within(() => {
@@ -141,7 +188,7 @@ describe("scenarios > filters > filter sources", () => {
       verifyRowCount(10);
     });
 
-    it("expression based on a table column", () => {
+    it("column from an expression based on another table column", () => {
       visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().findByText("Total100").click();
@@ -239,7 +286,7 @@ describe("scenarios > filters > filter sources", () => {
   });
 
   describe("nested native questions", () => {
-    it("question column", () => {
+    it("column from a question", () => {
       cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
@@ -252,6 +299,42 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("TAX is equal to 6.1");
       visualize();
       verifyRowCount(10);
+    });
+
+    it.skip("column from an expression based on a question column", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithExpression(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().findByText("Total100").click();
+      selectOperator("Greater than");
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("250.5");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Total100 is greater than 250.5");
+      visualize();
+      verifyRowCount(239);
+    });
+
+    it("column from an explicit join", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoin(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Vendor").click();
+        cy.findByText("Aufderhar-Boehm").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
+      visualize();
+      verifyRowCount(95);
     });
   });
 });
