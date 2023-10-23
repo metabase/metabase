@@ -28,7 +28,6 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
@@ -99,8 +98,6 @@ export function DashCardCardParameterMapper({
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
-  const onlyAcceptsSingleValue =
-    isVariableTarget(target) && !isDateParameter(editingParameter);
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const selectedMappingOption = _.find(mappingOptions, option =>
     _.isEqual(normalize(option.target), normalize(target)),
@@ -294,9 +291,9 @@ export function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && (
+      {isVariableTarget(target) && (
         <Warning>
-          {t`This field only accepts a single value because it's used in a SQL query.`}
+          {t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
       )}
     </Container>
