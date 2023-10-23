@@ -96,14 +96,14 @@ export const SearchResults = ({
   const hasResults = list.length > 0;
   const showFooter = hasResults && footerComponent && metadata;
 
-  const keyboardList = useMemo(() => {
+  const dropdownItemList = useMemo(() => {
     return showFooter ? [...list, footerComponent] : list;
   }, [footerComponent, list, showFooter]);
 
   const onEnterSelect = (
     item: CollectionItem | SearchResultsProps["footerComponent"],
   ) => {
-    if (showFooter && cursorIndex === keyboardList.length - 1) {
+    if (showFooter && cursorIndex === dropdownItemList.length - 1) {
       onFooterSelect?.();
     }
 
@@ -120,7 +120,7 @@ export const SearchResults = ({
     CollectionItem | SearchResultsProps["footerComponent"],
     HTMLLIElement
   >({
-    list: keyboardList,
+    list: dropdownItemList,
     onEnter: onEnterSelect,
     resetOnListChange: false,
   });
@@ -162,7 +162,7 @@ export const SearchResults = ({
         <ResultsFooter ref={getRef(footerComponent)}>
           {footerComponent({
             metadata,
-            isSelected: cursorIndex === keyboardList.length - 1,
+            isSelected: cursorIndex === dropdownItemList.length - 1,
           })}
         </ResultsFooter>
       )}
