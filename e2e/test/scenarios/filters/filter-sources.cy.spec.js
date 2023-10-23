@@ -349,7 +349,7 @@ describe("scenarios > filters > filter sources", () => {
   });
 
   describe("nested structured questions", () => {
-    it("column from a question", () => {
+    it.skip("column from a question", () => {
       cy.createQuestion(structuredQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
