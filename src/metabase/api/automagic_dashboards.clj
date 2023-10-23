@@ -155,20 +155,6 @@
     (-> (->entity entity entity-id-or-query)
         (automagic-analysis {:show (keyword show)}))))
 
-(api/defendpoint GET "/:entity/:entity-id-or-query/V2"
-  "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity entity-id-or-query]
-  {entity (mu/with-api-error-message
-            (into [:enum] entities)
-            (deferred-tru "Invalid entity type"))}
-  (api/let-404 [entity (->entity entity entity-id-or-query)]
-    (api/read-check entity)
-    (let [{:keys [dashboard-templates-prefix] :as root} (magic/->root entity)
-          [template] (#'magic/matching-dashboard-templates
-                       (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
-                       root)]
-      (magic/generate-dashboard (#'magic/make-base-context root) template))))
-
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
   [{{field-ref :pk_ref} :model-index {rsmd :result_metadata} :model}]
