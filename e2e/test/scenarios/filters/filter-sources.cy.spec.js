@@ -100,6 +100,27 @@ const tableWithAggregations = {
   visualization_settings: {},
 };
 
+const nativeQuestion = {
+  display: "table",
+  database: SAMPLE_DB_ID,
+  native: {
+    query: "SELECT * FROM ORDERS",
+  },
+  visualization_settings: {},
+};
+
+const nestedQuestion = card => ({
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${card.id}`,
+    },
+  },
+  visualization_settings: {},
+});
+
 describe("scenarios > filters > filter sources", () => {
   beforeEach(() => {
     restore();
@@ -214,6 +235,23 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("Product ID is 10", { stage: 1 });
       visualize();
       verifyRowCount(1);
+    });
+  });
+
+  describe("nested native questions", () => {
+    it("table column", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("TAX").click();
+        cy.findByPlaceholderText("Enter a number").type("6.1");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("TAX is equal to 6.1");
+      visualize();
+      verifyRowCount(10);
     });
   });
 });
