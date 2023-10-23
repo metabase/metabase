@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import type { CollectionItem } from "metabase-types/api";
-// !!!!!
-// import type { EntityWrappedCollectionItem } from "metabase-types/api";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
@@ -13,7 +11,6 @@ import { useSearchListQuery } from "metabase/common/hooks";
 import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import { openNavbar } from "metabase/redux/app";
-import { getCollectionsById } from "metabase/selectors/collection";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -41,7 +38,6 @@ export function ArchiveApp() {
   const dispatch = useDispatch();
   const isNavbarOpen = useSelector(getIsNavbarOpen);
   const isAdmin = useSelector(getUserIsAdmin);
-  const collectionsById = useSelector(getCollectionsById);
   const mainElement = getMainElement();
 
   useEffect(() => {
@@ -57,22 +53,10 @@ export function ArchiveApp() {
   const { clear, getIsSelected, selected, selectOnlyTheseItems, toggleItem } =
     useListSelect<CollectionItem>(item => `${item.model}:${item.id}`);
 
-  const list = useMemo(() => {
-    clear();
-    return data ?? [];
+  const writableList = useMemo(() => {
+    clear(); // clear selected items if data is ever refreshed
+    return data?.filter(item => item?.can_write) ?? [];
   }, [data, clear]);
-
-  const [writableList, setWritableList] = useState(list);
-
-  useEffect(() => {
-    const newWritableList = list.filter(
-      item =>
-        collectionsById[Search.objectSelectors.getCollection(item).id]
-          ?.can_write,
-    );
-
-    setWritableList(newWritableList);
-  }, [list, collectionsById]);
 
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(writableList);
