@@ -3350,21 +3350,6 @@ databaseChangeLog:
             where: semantic_type = 'type/Number'
       rollback:
 
-  - changeSet:
-      id: v48.00-027
-      author: qnkhuat
-      comment: re-consolidate change log filename on downgrade
-      changes:
-        - sql:
-          sql: select 1;
-      rollback:
-        - update:
-            tableName: ${databasechangelog.name}
-            columns:
-              - column:
-                  name: filename
-                  value: migrations/000_migrations.yaml
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
