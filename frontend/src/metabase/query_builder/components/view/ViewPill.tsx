@@ -1,9 +1,20 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
 import { color as c, alpha } from "metabase/lib/colors";
 
-export default function ViewPill({
+export interface ViewPillProps {
+  className?: string;
+  color?: string;
+  invert?: boolean;
+  icon?: IconName;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  onClick?: React.MouseEventHandler<HTMLSpanElement>;
+  onRemove?: () => void;
+}
+
+function ViewPill({
   className,
   style = {},
   color = c("brand"),
@@ -13,7 +24,7 @@ export default function ViewPill({
   onRemove,
   icon,
   ...props
-}) {
+}: ViewPillProps) {
   return (
     <span
       {...props}
@@ -49,3 +60,6 @@ export default function ViewPill({
     </span>
   );
 }
+
+// eslint-disable-next-line import/no-default-export
+export default ViewPill;

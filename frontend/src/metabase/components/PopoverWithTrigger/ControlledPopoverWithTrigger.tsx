@@ -44,6 +44,9 @@ type RenderTriggerArgs = {
   closePopover: () => void;
 };
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 function ControlledPopoverWithTrigger({
   triggerClasses,
   triggerStyle,

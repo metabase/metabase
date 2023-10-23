@@ -325,7 +325,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-mysql-5-7-ee:
+  be-tests-mysql-8-0-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -341,15 +341,15 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: circleci/mysql:5.7.23
+        image: cimg/mysql:8.0
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v3
-    - name: Test MySQL driver (5.7)
+    - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-5-7-ee'
+        junit-name: 'be-tests-mysql-8-0-ee'
 
   be-tests-mysql-latest-ee:
     needs: files-changed
@@ -644,7 +644,7 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-sqlserver-ee:
+  be-tests-sqlserver-2017-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -666,10 +666,38 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
     - uses: actions/checkout@v3
-    - name: Test MS SQL Server driver
+    - name: Test MS SQL Server 2017 driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
+        test-args: ":exclude-tags '[:mb/once]'"
+
+  be-tests-sqlserver-2022-ee:
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: sqlserver
+      MB_SQLSERVER_TEST_HOST: localhost
+      MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+      MB_SQLSERVER_TEST_USER: SA
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+          - "1433:1433"
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
+          MSSQL_MEMORY_LIMIT_MB: 1024
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MS SQL Server 2022 driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-sqlserver-2022-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-vertica-ee:

@@ -1,8 +1,6 @@
 import _ from "underscore";
 
-export const LINE_AREA_BAR_CHART_TYPE = "combo-chart";
-
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
+export const LINE_TWO_BARS = {
   settings: {
     show_values: true,
     goal: {
@@ -20,6 +18,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
       right: "Sum",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -129,7 +128,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_1 = {
   ],
 };
 
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
+export const LINE_BAR_AREA = {
   settings: {
     x: {
       type: "timeseries",
@@ -147,6 +146,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
       right: "Sum",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -231,7 +231,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_2 = {
   ],
 };
 
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
+export const CATEGORICAL_LINE_BAR = {
   settings: {
     goal: {
       value: 120,
@@ -248,6 +248,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
       right: "Sum",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -303,7 +304,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_3 = {
   ],
 };
 
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
+export const TIMESERIES_WITH_NEGATIVE_DATA = {
   settings: {
     stacking: "stack",
     x: {
@@ -322,6 +323,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
       left: "Sum",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -419,7 +421,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_4 = {
   ],
 };
 
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_5 = {
+export const SINGLE_SERIES_BAR = {
   settings: {
     x: {
       type: "ordinal",
@@ -431,6 +433,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_5 = {
       left: "Count",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -449,7 +452,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_5 = {
   ],
 };
 
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_6 = {
+export const SINGLE_SERIES_MANY_BARS = {
   settings: {
     x: {
       type: "ordinal",
@@ -461,6 +464,7 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_6 = {
       left: "Count",
       bottom: "Date",
     },
+    visualization_settings: {},
   },
   multipleSeries: [
     [
@@ -469,36 +473,6 @@ export const LINE_AREA_BAR_DEFAULT_OPTIONS_6 = {
         yAxisPosition: "left",
         type: "bar",
         data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
-        column: {
-          name: "count",
-          source: "aggregation",
-          display_name: "Count",
-        },
-      },
-    ],
-  ],
-};
-
-export const LINE_AREA_BAR_DEFAULT_OPTIONS_7 = {
-  settings: {
-    x: {
-      type: "ordinal",
-    },
-    y: {
-      type: "linear",
-    },
-    labels: {
-      left: "Count",
-      bottom: "Date",
-    },
-  },
-  multipleSeries: [
-    [
-      {
-        cardName: "bar series",
-        yAxisPosition: "left",
-        type: "bar",
-        data: _.range(20).map(n => [`bar ${n + 1}`, n + 1]),
         column: {
           name: "count",
           source: "aggregation",

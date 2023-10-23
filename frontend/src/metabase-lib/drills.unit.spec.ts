@@ -27,6 +27,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockColumn } from "metabase-types/api/mocks";
 import type {
+  ComparisonFilter,
   DatasetColumn,
   RowValue,
   StructuredDatasetQuery,
@@ -1788,18 +1789,18 @@ describe("drillThru", () => {
       },
     },
 
-    // FIXME: distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
-    // {
-    //   drillType: "drill-thru/distribution",
-    //   clickType: "header",
-    //   columnName: "USER_ID",
-    //   queryType: "unaggregated",
-    //   expectedQuery: {
-    //     aggregation: [["count"]],
-    //     breakout: [["field", ORDERS.USER_ID, null]],
-    //     "source-table": ORDERS_ID,
-    //   },
-    // },
+    // distribution drill result for FK columns creates extra binning, which is wrong (metabase#34343)
+    {
+      drillType: "drill-thru/distribution",
+      clickType: "header",
+      columnName: "USER_ID",
+      queryType: "unaggregated",
+      expectedQuery: {
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.USER_ID, { "base-type": "type/Integer" }]],
+        "source-table": ORDERS_ID,
+      },
+    },
     {
       drillType: "drill-thru/distribution",
       clickType: "header",
@@ -1969,70 +1970,70 @@ describe("drillThru", () => {
       },
     },
 
-    // FIXME: filter gets applied on the the same query stage as aggregations, but it should wrap the query (metabase#34346)
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   columnName: "sum",
-    //   queryType: "aggregated",
-    //   drillArgs: ["="],
-    //   expectedQuery: {
-    //     "source-query": AGGREGATED_ORDERS_DATASET_QUERY.query,
-    //     filter: [
-    //       "=",
-    //       [
-    //         "field",
-    //         "sum",
-    //         {
-    //           "base-type": "type/Float",
-    //         },
-    //       ],
-    //       AGGREGATED_ORDERS_ROW_VALUES.sum,
-    //     ],
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   columnName: "CREATED_AT",
-    //   queryType: "aggregated",
-    //   drillArgs: ["<"],
-    //   expectedQuery: {
-    //     ...AGGREGATED_ORDERS_DATASET_QUERY.query,
-    //     filter: [
-    //       "<",
-    //       [
-    //         "field",
-    //         ORDERS.CREATED_AT,
-    //         {
-    //           "base-type": "type/DateTime",
-    //           "temporal-unit": "month",
-    //         },
-    //       ],
-    //       AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
-    //     ] as ComparisonFilter,
-    //   },
-    // },
-    // {
-    //   drillType: "drill-thru/quick-filter",
-    //   clickType: "cell",
-    //   columnName: "max",
-    //   queryType: "aggregated",
-    //   drillArgs: ["≠"],
-    //   expectedQuery: {
-    //     "source-query": AGGREGATED_ORDERS_DATASET_QUERY.query,
-    //     filter: [
-    //       "not-null",
-    //       [
-    //         "field",
-    //         "max",
-    //         {
-    //           "base-type": "type/Float",
-    //         },
-    //       ],
-    //     ],
-    //   },
-    // },
+    // filter gets applied on the the same query stage as aggregations, but it should wrap the query (metabase#34346)
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      columnName: "sum",
+      queryType: "aggregated",
+      drillArgs: ["="],
+      expectedQuery: {
+        "source-query": AGGREGATED_ORDERS_DATASET_QUERY.query,
+        filter: [
+          "=",
+          [
+            "field",
+            "sum",
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          AGGREGATED_ORDERS_ROW_VALUES.sum,
+        ],
+      },
+    },
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      columnName: "CREATED_AT",
+      queryType: "aggregated",
+      drillArgs: ["<"],
+      expectedQuery: {
+        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        filter: [
+          "<",
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+            },
+          ],
+          AGGREGATED_ORDERS_ROW_VALUES.CREATED_AT,
+        ] as ComparisonFilter,
+      },
+    },
+    {
+      drillType: "drill-thru/quick-filter",
+      clickType: "cell",
+      columnName: "max",
+      queryType: "aggregated",
+      drillArgs: ["≠"],
+      expectedQuery: {
+        "source-query": AGGREGATED_ORDERS_DATASET_QUERY.query,
+        filter: [
+          "not-null",
+          [
+            "field",
+            "max",
+            {
+              "base-type": "type/Float",
+            },
+          ],
+        ],
+      },
+    },
 
     // fk-details should create a query for fk target table (metabase#34383)
     {

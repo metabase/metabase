@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "master"
-  pull_request_target:
+  pull_request:
     types: [synchronize, labeled, unlabeled]
 
 concurrency:
@@ -12,34 +12,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  authorize:
-    environment:
-      ${{ github.event_name == 'pull_request_target' &&
-      github.event.pull_request.head.repo.full_name != github.repository &&
-      'external' || 'internal' }}
-    runs-on: ubuntu-22.04
-    steps:
-      - run: echo "true"
-
   files-changed:
     name: Check which files changed
-    needs: [authorize]
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
     steps:
       - uses: actions/checkout@v3
       - name: Test which files changed
         uses: dorny/paths-filter@v2.11.1
         id: changes
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
   fe-chromatic:
-    needs: [authorize, files-changed]
-    if: contains(github.event.pull_request_target.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    needs: files-changed
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository

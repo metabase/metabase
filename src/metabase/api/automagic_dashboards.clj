@@ -222,11 +222,11 @@
              (reduce (fn [dashboard {:keys [tab dash-cards]}]
                        (-> dashboard
                            (update :dashcards into dash-cards)
-                           (update :ordered_tabs conj tab)))
+                           (update :tabs conj tab)))
                      (merge
                       seed-dashboard
                       {:dashcards []
-                       :ordered_tabs  []})))
+                       :tabs      []})))
         (update seed-dashboard
                 :dashcards (fn [cards] (add-source-model-link model cards)))))
     {:name      (format "Here's a look at \"%s\" from \"%s\"" indexed-entity-name model-name)

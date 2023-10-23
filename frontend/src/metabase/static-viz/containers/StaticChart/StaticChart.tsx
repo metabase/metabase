@@ -1,39 +1,46 @@
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import RowChart from "metabase/static-viz/components/RowChart";
-import { ROW_CHART_TYPE } from "metabase/static-viz/components/RowChart/constants";
 import Gauge from "metabase/static-viz/components/Gauge";
-import { GAUGE_CHART_TYPE } from "metabase/static-viz/components/Gauge/constants";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
-import { CATEGORICAL_DONUT_CHART_TYPE } from "metabase/static-viz/components/CategoricalDonutChart/constants";
 import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
-import { WATERFALL_CHART_TYPE } from "metabase/static-viz/components/WaterfallChart/constants";
 import ProgressBar from "metabase/static-viz/components/ProgressBar";
-import { PROGRESS_BAR_TYPE } from "metabase/static-viz/components/ProgressBar/constants";
 import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
-import { LINE_AREA_BAR_CHART_TYPE } from "metabase/static-viz/components/LineAreaBarChart/constants";
 import Funnel from "metabase/static-viz/components/FunnelChart";
-import { FUNNEL_CHART_TYPE } from "metabase/static-viz/components/FunnelChart/constants";
+import type { ColorPalette } from "metabase/lib/colors/types";
 
-import type { StaticChartProps } from "./types";
+export type StaticChartType =
+  | "categorical/donut"
+  | "progress"
+  | "row"
+  | "waterfall"
+  | "gauge"
+  | "combo-chart"
+  | "funnel";
+
+export interface StaticChartProps {
+  type: StaticChartType;
+  options: any;
+  colors?: ColorPalette;
+}
 
 const StaticChart = ({ type, options }: StaticChartProps) => {
   const getColor = createColorGetter(options.colors);
   const chartProps = { ...options, getColor };
 
   switch (type) {
-    case CATEGORICAL_DONUT_CHART_TYPE:
+    case "categorical/donut":
       return <CategoricalDonutChart {...chartProps} />;
-    case WATERFALL_CHART_TYPE:
+    case "waterfall":
       return <WaterfallChart {...chartProps} />;
-    case GAUGE_CHART_TYPE:
+    case "gauge":
       return <Gauge {...chartProps} />;
-    case ROW_CHART_TYPE:
+    case "row":
       return <RowChart {...chartProps} />;
-    case PROGRESS_BAR_TYPE:
+    case "progress":
       return <ProgressBar {...chartProps} />;
-    case LINE_AREA_BAR_CHART_TYPE:
+    case "combo-chart":
       return <LineAreaBarChart {...chartProps} />;
-    case FUNNEL_CHART_TYPE:
+    case "funnel":
       return <Funnel {...chartProps} />;
   }
 };
