@@ -239,7 +239,7 @@ describe("scenarios > filters > filter sources", () => {
   });
 
   describe("nested native questions", () => {
-    it("table column", () => {
+    it("question column", () => {
       cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestion(card), { mode: "notebook" });
       });
