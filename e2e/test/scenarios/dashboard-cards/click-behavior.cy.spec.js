@@ -15,7 +15,8 @@ import {
 
 const URL = "https://example.com/";
 const FILTER_NAME = "testFilter";
-const FILTER_VALUE = "abc123";
+const FILTER_VALUE = "123";
+const COLUMN_NAME = "count";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -93,9 +94,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("edit-bar").should("not.exist");
 
           onNextAnchorClick(anchor => {
-            expect(anchor).to.have.property("href", URL);
-            expect(anchor).to.have.property("rel", "noopener");
-            expect(anchor).to.have.property("target", "_blank");
+            expect(anchor).to.have.attr("href", URL);
+            expect(anchor).to.have.attr("rel", "noopener");
+            expect(anchor).to.have.attr("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
         },
@@ -103,6 +104,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
+      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COLUMN_NAME}}}`;
+      const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
+      const expectedUrlWithParams = urlWithParams
+        .replace(`{{${FILTER_NAME}}}`, FILTER_VALUE)
+        .replace(`{{${COLUMN_NAME}}}`, 344);
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: dashboard }) => {
           visitDashboard(dashboard.id);
@@ -112,7 +119,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getSidebar().findByText("Go to a custom destination").click();
           getSidebar().findByText("URL").click();
           modal().within(() => {
-            cy.findByRole("textbox").type(`${URL}{{}{{}${FILTER_NAME}}}`);
+            cy.findByRole("textbox").type(escapedUrlWithParams);
             cy.button("Done").click();
           });
           getSidebar().button("Done").click();
@@ -138,9 +145,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           });
 
           onNextAnchorClick(anchor => {
-            expect(anchor).to.have.property("href", `${URL}${FILTER_VALUE}`);
-            expect(anchor).to.have.property("rel", "noopener");
-            expect(anchor).to.have.property("target", "_blank");
+            expect(anchor).to.have.attr("href", expectedUrlWithParams);
+            expect(anchor).to.have.attr("rel", "noopener");
+            expect(anchor).to.have.attr("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
         },
@@ -150,6 +157,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 });
 
 const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
+
+/**
+ * @param {string} value
+ * @returns string
+ *
+ * @see https://docs.cypress.io/api/commands/type#Arguments
+ */
+const escapeCypressCurlyBraces = value => value.replaceAll("{", "{{}");
 
 /**
  * This function exists to work around custom dynamic anchor creation
