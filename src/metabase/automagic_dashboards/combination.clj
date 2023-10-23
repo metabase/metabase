@@ -60,14 +60,16 @@
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database]} :root :keys [source]}]
-  (assoc ground-metric-with-dimensions
-    :dataset_query {:database database
-                    :type     :query
-                    :query    (assoc metric-definition
-                                :source-table (if (->> source (mi/instance-of? :model/Table))
-                                                (-> source u/the-id)
-                                                (->> source u/the-id (str "card__"))))}))
+   {{:keys [database query-filter]} :root :keys [source]}]
+  (let [source-table (if (->> source (mi/instance-of? :model/Table))
+                       (-> source u/the-id)
+                       (->> source u/the-id (str "card__")))]
+    (assoc ground-metric-with-dimensions
+           :dataset_query {:database database
+                           :type     :query
+                           :query    (cond-> (assoc metric-definition
+                                                    :source-table source-table)
+                                       query-filter (assoc :filter query-filter))})))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -192,7 +194,10 @@
           :when (and (valid-bindings? base-context card-dimensions dimension-name->field)
                      (every? metric-name->metric card-metrics))
           :let [[grounded-metric :as all-satisfied-metrics] (map metric-name->metric card-metrics)
-                final-aggregate                    (reduce into (map (comp :aggregation :metric-definition) all-satisfied-metrics))
+                final-aggregate                    (into []
+                                                         (comp (map (comp :aggregation :metric-definition))
+                                                               cat)
+                                                         all-satisfied-metrics)
                 bound-metric-dimension-name->field (apply merge (map :dimension-name->field all-satisfied-metrics))
                 card             (-> card-template
                                      (visualization/expand-visualization
