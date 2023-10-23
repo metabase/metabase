@@ -221,7 +221,7 @@
   (future
     (when-let [{user-id      :id
                 sso-source   :sso_source
-                is-active?   :is_active}
+                is-active?   :is_active :as user}
                (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
@@ -231,7 +231,9 @@
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?)))
+      (events/publish-event! :event/password-reset-initiated
+                             (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
@@ -278,17 +280,20 @@
   {token    ms/NonBlankString
    password ms/ValidPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
-        (user/set-password! user-id password)
-        ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
-        ;; Send all the active admins an email :D
-        (when-not (:last_login user)
-          (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
-        ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
-              response                        {:success    true
-                                               :session_id (str session-uuid)}]
-          (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))
-      (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
+        (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
+          (user/set-password! user-id password)
+          ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
+          ;; Otherwise, send audit log event that a user reset their password.
+          (if (:last_login user)
+            (events/publish-event! :event/password-reset-successful (assoc user :token reset-token))
+            ;; Send all the active admins an email :D
+            (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
+          ;; after a successful password update go ahead and offer the client a new session that they can use
+          (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
+                response                        {:success    true
+                                                 :session_id (str session-uuid)}]
+            (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
+        (api/throw-invalid-param-exception :password (tru "Invalid reset token"))))
 
 (api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."

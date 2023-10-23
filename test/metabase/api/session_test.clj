@@ -261,6 +261,23 @@
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
 
+(deftest forgot-password-event-test
+  (reset-throttlers!)
+  (with-redefs [api.session/forgot-password-impl
+                (let [orig @#'api.session/forgot-password-impl]
+                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (testing "Test that forgot password event is logged."
+        (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                              {:email (:username (mt/user->credentials :rasta))})
+        (let [rasta-id (mt/user->id :rasta)]
+          (is (= {:topic    :password-reset-initiated
+                  :user_id  rasta-id
+                  :model_id rasta-id
+                  :model    "User"
+                  :details  {:token (t2/select-one-fn :reset_token :model/User :id rasta-id)}}
+                 (audit-log-test/event :password-reset-initiated rasta-id))))))))
+
 (deftest forgot-password-throttling-test
   (reset-throttlers!)
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
@@ -312,6 +329,26 @@
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
                        (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+
+(deftest reset-password-successful-event-test
+  (reset-throttlers!)
+  (testing "Test that a successful password reset creates the correct event"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (mt/with-fake-inbox
+        (let [password {:old "password"
+                        :new "whateverUP12!!"}]
+          (t2.with-temp/with-temp [User {:keys [id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+            (let [token       (u/prog1 (str id "_" (random-uuid))
+                                       (t2/update! User id {:reset_token <> :last_login :%now}))
+                  reset-token (t2/select-one-fn :reset_token :model/User :id id)]
+              (mt/client :post 200 "session/reset_password" {:token    token
+                                                             :password (:new password)})
+              (is (= {:topic    :password-reset-successful
+                      :user_id  nil
+                      :model    "User"
+                      :model_id id
+                      :details  {:token reset-token}}
+                     (audit-log-test/event :password-reset-successful id))))))))))
 
 (deftest reset-password-validation-test
   (reset-throttlers!)
