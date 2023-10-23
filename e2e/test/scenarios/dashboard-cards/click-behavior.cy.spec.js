@@ -7,14 +7,19 @@ import {
   editDashboard,
   getDashboardCard,
   modal,
+  popover,
   restore,
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
 
+const URL = "https://example.com/";
+const FILTER_NAME = "testFilter";
+const FILTER_VALUE = "abc123";
+
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
-const lineChartQuestionDetails = {
+const LINE_CHART = {
   display: "line",
   query: {
     "source-table": ORDERS_ID,
@@ -67,14 +72,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   describe("line chart", () => {
-    const questionDetails = lineChartQuestionDetails;
+    const questionDetails = LINE_CHART;
 
     it("allows setting URL as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: dashboard }) => {
           visitDashboard(dashboard.id);
           editDashboard();
-
           getDashboardCard().realHover().icon("click").click();
 
           cy.log("does not allow to update dashboard filter if there are none");
@@ -87,7 +91,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getSidebar().findByText("URL").click();
 
           modal().within(() => {
-            cy.findByRole("textbox").type("https://example.com/");
+            cy.findByRole("textbox").type(URL);
             cy.button("Done").click();
           });
 
@@ -96,7 +100,46 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("edit-bar").should("not.exist");
 
           expectNextAnchorClick({
-            href: "https://example.com/",
+            href: URL,
+            rel: "noopener",
+            target: "_blank",
+          });
+          cy.findByTestId("dashcard").get("circle.dot").eq(48).click();
+
+          editDashboard();
+
+          cy.icon("filter").click();
+          popover().within(() => {
+            cy.findByText("Text or Category").click();
+            cy.findByText("Is").click();
+          });
+          cy.findByTestId("parameter-sidebar")
+            .findByLabelText("Label")
+            .clear()
+            .type(FILTER_NAME);
+          cy.findByTestId("parameter-sidebar").button("Done").click();
+
+          getDashboardCard().realHover().icon("click").click();
+          getSidebar().findByText(URL).click();
+
+          modal().within(() => {
+            cy.findByRole("textbox").type(`{{}{{}${FILTER_NAME}}}`);
+            cy.button("Done").click();
+          });
+
+          getSidebar().button("Done").click();
+
+          cy.findByTestId("edit-bar").button("Save").click();
+          cy.findByTestId("edit-bar").should("not.exist");
+
+          cy.findByTestId("field-set").click();
+          popover().within(() => {
+            cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+            cy.button("Add filter").click();
+          });
+
+          expectNextAnchorClick({
+            href: `${URL}${FILTER_VALUE}`,
             rel: "noopener",
             target: "_blank",
           });
