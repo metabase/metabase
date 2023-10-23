@@ -767,10 +767,17 @@
   [pk-col          :- [:maybe lib.metadata/ColumnMetadata]
    visible-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
   (when-let [pk-id (:id pk-col)]
-    (m/find-first (fn [{:keys [fk-target-field-id], :as col}]
-                    (and (lib.types.isa/foreign-key? col)
-                         (= fk-target-field-id pk-id)))
-                  visible-columns)))
+    (let [candidates (filter (fn [{:keys [fk-target-field-id], :as col}]
+                               (and (lib.types.isa/foreign-key? col)
+                                    (= fk-target-field-id pk-id)))
+                             visible-columns)
+          primary (first candidates)]
+      (if (some #(= (:id %) (:id primary)) (rest candidates))
+        (when (not-any? #(= (:lib/desired-column-alias %) (:lib/desired-column-alias primary)) (rest candidates))
+          ;; there are multiple candidates but :lib/desired-column-alias disambiguates them,
+          ;; so reference by name
+          (dissoc primary :id))
+        primary))))
 
 (mu/defn ^:private fk-column-for :- [:maybe lib.metadata/ColumnMetadata]
   "Given a query stage find an FK column that points to the PK `pk-col`."
@@ -795,14 +802,14 @@
    (let [joinable-col-options {:include-implicitly-joinable? false
                                :include-implicitly-joinable-for-source-card? false}]
      (letfn [(filter-clause [x y]
-                   (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
-           (or (when-let [pk-col (pk-column query stage-number joinable joinable-col-options)]
-                 (when-let [fk-col (fk-column-for query stage-number pk-col)]
-                   (filter-clause fk-col pk-col)))
-               (when-let [pk-col (pk-column query stage-number (lib.util/query-stage query stage-number) nil)]
-                 (when-let [fk-col (fk-column-for-pk-in pk-col (lib.metadata.calculation/visible-columns
-                                                                query stage-number joinable joinable-col-options))]
-                   (filter-clause pk-col fk-col))))))))
+               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
+       (or (when-let [pk-col (pk-column query stage-number joinable joinable-col-options)]
+             (when-let [fk-col (fk-column-for query stage-number pk-col)]
+               (filter-clause fk-col pk-col)))
+           (when-let [pk-col (pk-column query stage-number (lib.util/query-stage query stage-number) nil)]
+             (when-let [fk-col (fk-column-for-pk-in pk-col (lib.metadata.calculation/visible-columns
+                                                            query stage-number joinable joinable-col-options))]
+               (filter-clause pk-col fk-col))))))))
 
 (defn- add-join-alias-to-joinable-columns [cols a-join]
   (let [join-alias     (lib.join.util/current-join-alias a-join)

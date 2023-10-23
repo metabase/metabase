@@ -63,6 +63,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByLabelText(backButtonLabel).should("be.visible");
     visualize();
     cy.findByLabelText(backButtonLabel).click();
+    modal().button("Leave anyway").click();
     cy.findByTestId("dashboard-header")
       .findByText(dashboardName)
       .should("be.visible");

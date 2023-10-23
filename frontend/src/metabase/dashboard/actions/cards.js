@@ -32,7 +32,7 @@ function generateTemporaryDashcardId() {
 function getExistingDashCards(state, dashId, tabId) {
   const { dashboards, dashcards } = state.dashboard;
   const dashboard = dashboards[dashId];
-  return dashboard.ordered_cards
+  return dashboard.dashcards
     .map(id => dashcards[id])
     .filter(dc => {
       if (dc.isRemoved) {

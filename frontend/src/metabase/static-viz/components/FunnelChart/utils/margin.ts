@@ -39,6 +39,6 @@ export const calculateMargin = (
     top,
     bottom,
     left,
-    rigth: 0,
+    right: 0,
   };
 };

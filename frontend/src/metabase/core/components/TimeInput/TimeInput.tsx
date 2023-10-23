@@ -25,6 +25,9 @@ export interface TimeInputProps {
   onClear?: (value: Moment) => void;
 }
 
+/**
+ * @deprecated: use TimeInput from "metabase/ui"
+ */
 const TimeInput = forwardRef(function TimeInput(
   {
     value,

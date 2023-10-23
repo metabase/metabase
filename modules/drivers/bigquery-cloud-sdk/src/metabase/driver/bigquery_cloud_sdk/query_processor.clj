@@ -74,7 +74,7 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:arglists '([column-type column-mode timezone-id v])}
+  {:added "0.41.0" :arglists '([column-type column-mode timezone-id v])}
   (fn [column-type _ _ _] column-type))
 
 (defn- parse-value
