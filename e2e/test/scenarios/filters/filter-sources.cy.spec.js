@@ -52,7 +52,7 @@ describe("scenarios > filters > filter sources", () => {
       verifyRowCount(10);
     });
 
-    it("expression on a table column", () => {
+    it("expression based on a table column", () => {
       visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().findByText("Total100").click();
@@ -64,6 +64,20 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("Total100 is greater than 250.5");
       visualize();
       verifyRowCount(239);
+    });
+
+    it("column from an implicit join", () => {
+      visitQuestionAdhoc(tableQuestion, { mode: "notebook" });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Ean").click();
+        cy.findByText("0001664425970").click();
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Product → Ean is 0001664425970");
+      visualize();
+      verifyRowCount(104);
     });
   });
 });
