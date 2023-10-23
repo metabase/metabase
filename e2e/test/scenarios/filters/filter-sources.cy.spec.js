@@ -12,15 +12,19 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const tableQuestion = {
+  display: "table",
   dataset_query: {
+    database: SAMPLE_DB_ID,
     type: "query",
     query: { "source-table": ORDERS_ID },
-    database: SAMPLE_DB_ID,
   },
+  visualization_settings: {},
 };
 
 const tableQuestionWithExpression = {
+  display: "table",
   dataset_query: {
+    database: SAMPLE_DB_ID,
     type: "query",
     query: {
       "source-table": ORDERS_ID,
@@ -28,8 +32,25 @@ const tableQuestionWithExpression = {
         Total100: ["+", ["field", ORDERS.TOTAL, null], 100],
       },
     },
-    database: SAMPLE_DB_ID,
   },
+  visualization_settings: {},
+};
+
+const tableWithAggregations = {
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
+      ],
+      breakout: [["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }]],
+    },
+  },
+  visualization_settings: {},
 };
 
 describe("scenarios > filters > filter sources", () => {
@@ -79,6 +100,33 @@ describe("scenarios > filters > filter sources", () => {
       visualize();
       verifyRowCount(104);
     });
+
+    it("column from a nested aggregation without column", () => {
+      visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("Count").click();
+        cy.findByPlaceholderText("Enter a number").type("90");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Count is equal to 90", { stage: 1 });
+      visualize();
+      verifyRowCount(7);
+    });
+
+    it("column from a nested aggregation with column", () => {
+      visitQuestionAdhoc(tableWithAggregations, { mode: "notebook" });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().findByText("Sum of Quantity").click();
+      selectOperator("Less than");
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Sum of Quantity is less than 350", { stage: 1 });
+      visualize();
+      verifyRowCount(115);
+    });
   });
 });
 
@@ -87,8 +135,10 @@ function selectOperator(operatorName) {
   cy.findByRole("listbox").findByText(operatorName).click();
 }
 
-function verifyFilterName(filterName) {
-  getNotebookStep("filter").findByText(filterName).should("be.visible");
+function verifyFilterName(filterName, options) {
+  getNotebookStep("filter", options)
+    .findByText(filterName)
+    .should("be.visible");
 }
 
 function verifyRowCount(rowCount) {
