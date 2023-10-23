@@ -220,7 +220,7 @@ const tableQuestion = tableId => ({
   },
 });
 
-describe("scenarios > question > notebook filters", () => {
+describe("scenarios > filters > filter types", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
