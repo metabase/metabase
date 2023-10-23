@@ -1440,12 +1440,8 @@
 
 (deftest check-data-migrations-rollback
   (impl/test-migrations ["v48.00-024"] [migrate!]
-    (let [{:keys [db-type ^javax.sql.DataSource
-                  data-source]} mdb.connection/*application-db*
-          migrate-all!          (partial db.setup/migrate! db-type data-source)
-          throw-err             (fn [& _args]
+    (let [throw-err             (fn [& _args]
                                   (throw (ex-info "This shouldn't be called ever" {})))]
-
       (testing "we can migrate even if data_migrations is empty"
         ;; 0 because we removed them and fresh db won't trigger any
         (is (= 0 (t2/count :data_migrations)))
@@ -1456,7 +1452,7 @@
                      (t2/count :data_migrations))))
 
       (testing "rollback causes all known data_migrations to reappear"
-        (migrate-all! :down 47)
+        (migrate! :down 47)
         ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
         (is (= 34 (t2/count :data_migrations))))
 
