@@ -145,9 +145,47 @@ const nestedQuestionWithJoin = card => ({
       "source-table": `card__${card.id}`,
       joins: [
         {
-          fields: "all",
-          strategy: "left-join",
           alias: "Products - PRODUCT_ID",
+          strategy: "left-join",
+          fields: "all",
+          condition: [
+            "=",
+            ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+            [
+              "field",
+              PRODUCTS.ID,
+              {
+                "base-type": "type/BigInteger",
+                "join-alias": "Products - PRODUCT_ID",
+              },
+            ],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+      ],
+    },
+  },
+  visualization_settings: {},
+});
+
+const nestedQuestionWithJoinAndFields = card => ({
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${card.id}`,
+      joins: [
+        {
+          alias: "Products - PRODUCT_ID",
+          strategy: "left-join",
+          fields: [
+            [
+              "field",
+              PRODUCTS.RATING,
+              { "join-alias": "Products - PRODUCT_ID" },
+            ],
+          ],
           condition: [
             "=",
             ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
@@ -335,6 +373,24 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("Products - PRODUCT_ID → Vendor is Aufderhar-Boehm");
       visualize();
       verifyRowCount(95);
+    });
+
+    it("column from an explicit join with fields", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithJoinAndFields(card), {
+          mode: "notebook",
+        });
+      });
+      filter({ mode: "notebook" });
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Rating").click();
+        cy.findByPlaceholderText("Enter a number").type("3.7");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Products - PRODUCT_ID → Rating is equal to 3.7");
+      visualize();
+      verifyRowCount(883);
     });
   });
 });
