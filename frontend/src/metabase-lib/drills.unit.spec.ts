@@ -1786,7 +1786,6 @@ describe("drillThru", () => {
         "source-table": ORDERS_ID,
       },
     },
-
     {
       drillType: "drill-thru/distribution",
       clickType: "header",
@@ -2100,9 +2099,9 @@ describe("drillThru", () => {
 
   describe("with custom column", () => {
     const ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery = {
-      ...AGGREGATED_ORDERS_DATASET_QUERY,
+      ...ORDERS_DATASET_QUERY,
       query: {
-        ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+        ...ORDERS_DATASET_QUERY.query,
         expressions: {
           CustomColumn: ["+", 1, 1],
           CustomTax: [
@@ -2117,14 +2116,6 @@ describe("drillThru", () => {
             2,
           ],
         },
-        aggregation: [
-          ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
-          ["avg", ["expression", "CustomTax"]],
-        ],
-        breakout: [
-          ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
-          ["expression", "CustomColumn"],
-        ],
       },
     };
 
@@ -2132,8 +2123,71 @@ describe("drillThru", () => {
       metadata: SAMPLE_METADATA,
       dataset_query: ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
     });
-
     const ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
+      ...ORDERS_COLUMNS,
+      CustomColumn: createMockColumn({
+        base_type: "type/Integer",
+        name: "CustomColumn",
+        display_name: "CustomColumn",
+        expression_name: "CustomColumn",
+        field_ref: ["expression", "CustomColumn"],
+        source: "fields",
+        effective_type: "type/Integer",
+      }),
+      CustomTax: createMockColumn({
+        base_type: "type/Float",
+        name: "CustomTax",
+        display_name: "CustomTax",
+        expression_name: "CustomTax",
+        field_ref: ["expression", "CustomTax"],
+        source: "fields",
+        effective_type: "type/Float",
+      }),
+    };
+    const ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
+      ...ORDERS_ROW_VALUES,
+      CustomColumn: 2,
+      CustomTax: 13.2,
+    };
+
+    const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY: StructuredDatasetQuery =
+      {
+        ...AGGREGATED_ORDERS_DATASET_QUERY,
+        query: {
+          ...AGGREGATED_ORDERS_DATASET_QUERY.query,
+          expressions: {
+            CustomColumn: ["+", 1, 1],
+            OtherCustomColumn: ["+", 1, 1],
+            CustomTax: [
+              "+",
+              [
+                "field",
+                ORDERS.TAX,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+              2,
+            ],
+          },
+          aggregation: [
+            ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
+            ["avg", ["expression", "CustomTax"]],
+            ["sum", ["expression", "OtherCustomColumn"]],
+          ],
+          breakout: [
+            ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
+            ["expression", "CustomColumn"],
+          ],
+        },
+      };
+
+    const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION = Question.create({
+      metadata: SAMPLE_METADATA,
+      dataset_query: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY,
+    });
+
+    const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS = {
       ...AGGREGATED_ORDERS_COLUMNS,
       CustomColumn: createMockColumn({
         base_type: "type/Integer",
@@ -2152,21 +2206,38 @@ describe("drillThru", () => {
         field_ref: ["aggregation", 3],
         effective_type: "type/Float",
       }),
+      sum_2: createMockColumn({
+        base_type: "type/Float",
+        name: "sum_2",
+        display_name: "Sum of OtherCustomColumn",
+        source: "aggregation",
+        field_ref: ["aggregation", 4],
+        effective_type: "type/Float",
+      }),
     };
-    const ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
+    const AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES = {
       ...AGGREGATED_ORDERS_ROW_VALUES,
       CustomColumn: 2,
       avg: 13.2,
+      sum_2: 123,
     };
 
     type ApplyDrillTestCaseWithCustomColumn = {
       clickType: "cell" | "header";
       customQuestion?: Question;
-      columnName: keyof typeof ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
       drillType: Lib.DrillThruType;
       drillArgs?: any[];
       expectedQuery: StructuredQueryApi;
-    };
+    } & (
+      | {
+          queryType: "unaggregated";
+          columnName: keyof typeof ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
+        }
+      | {
+          queryType: "aggregated";
+          columnName: keyof typeof AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS;
+        }
+    );
 
     it.each<ApplyDrillTestCaseWithCustomColumn>([
       {
@@ -2175,8 +2246,9 @@ describe("drillThru", () => {
         clickType: "header",
         columnName: "avg",
         drillArgs: ["asc"],
+        queryType: "aggregated",
         expectedQuery: {
-          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
           "order-by": [["asc", ["aggregation", 3]]],
         },
       },
@@ -2186,8 +2258,9 @@ describe("drillThru", () => {
         clickType: "header",
         columnName: "CustomColumn",
         drillArgs: ["asc"],
+        queryType: "aggregated",
         expectedQuery: {
-          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          ...AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
           "order-by": [
             [
               "asc",
@@ -2196,16 +2269,45 @@ describe("drillThru", () => {
           ],
         },
       },
+      // FIXME: using summarize-column on a custom column produces incorrect query due to extra field types (metabase#34957)
+      // {
+      //   drillType: "drill-thru/summarize-column",
+      //   clickType: "header",
+      //   columnName: "CustomColumn",
+      //   drillArgs: ["sum"],
+      //   queryType: "unaggregated",
+      //   expectedQuery: {
+      //     ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+      //     aggregation: [["sum", ["expression", "CustomColumn"]]],
+      //   },
+      // },
     ])(
       'should return correct result on "$drillType" drill apply to $columnName on $clickType in query with custom column',
-      ({ columnName, clickType, drillArgs, expectedQuery, drillType }) => {
-        const { query, stageIndex, column, cellValue, row } = setup({
-          question: ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
-          clickedColumnName: columnName,
-          columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
-          rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
-          tableName: "ORDERS",
-        });
+      ({
+        columnName,
+        clickType,
+        queryType,
+        drillArgs,
+        expectedQuery,
+        drillType,
+      }) => {
+        const { query, stageIndex, column, cellValue, row } = setup(
+          queryType === "unaggregated"
+            ? {
+                question: ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                clickedColumnName: columnName,
+                columns: ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+                tableName: "ORDERS",
+              }
+            : {
+                question: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_QUESTION,
+                clickedColumnName: columnName,
+                columns: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_COLUMNS,
+                rowValues: AGGREGATED_ORDERS_WITH_CUSTOM_COLUMN_ROW_VALUES,
+                tableName: "ORDERS",
+              },
+        );
 
         const { drills, drillsDisplayInfo } = setupDrillDisplayInfo({
           clickType,
