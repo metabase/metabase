@@ -132,7 +132,7 @@ const TABLE_CASES = [
     expectedRowCount: 200,
   },
   {
-    title: "number, is",
+    title: "number, equal to",
     tableId: PRODUCTS_ID,
     columnName: "Rating",
     operator: "Equal to",
@@ -141,13 +141,31 @@ const TABLE_CASES = [
     expectedRowCount: 37,
   },
   {
-    title: "number, is, multiple values",
+    title: "number, equal to, multiple values",
     tableId: PRODUCTS_ID,
     columnName: "Rating",
     operator: "Equal to",
     values: ["4", "5"],
     expectedDisplayName: "Rating is equal to 2 selections",
     expectedRowCount: 40,
+  },
+  {
+    title: "number, not equal to",
+    tableId: PRODUCTS_ID,
+    columnName: "Rating",
+    operator: "Not equal to",
+    values: ["4"],
+    expectedDisplayName: "Rating is not equal to 4",
+    expectedRowCount: 163,
+  },
+  {
+    title: "number, greater than",
+    tableId: PRODUCTS_ID,
+    columnName: "Price",
+    operator: "Greater than",
+    values: ["47.5"],
+    expectedDisplayName: "Price is greater than 47.5",
+    expectedRowCount: 111,
   },
 ];
 
