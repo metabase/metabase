@@ -18,8 +18,9 @@
           count-col (m/find-first (fn [col]
                                     (= (:display-name col) "Count"))
                                   (lib/returned-columns query))
-          context   {:column count-col
-                     :value  nil}]
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      nil}]
       (is (some? count-col))
       (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))
 

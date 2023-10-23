@@ -85,9 +85,9 @@
    row       :- Row
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [cols       (lib/returned-columns query -1 (lib.util/query-stage query -1))
-        col        (m/find-first (fn [col]
-                                   (= (:name col) column-name))
-                                 cols)
+        by-name    (m/index-by :name cols)
+        col        (get by-name column-name)
+        refs       (update-vals by-name lib/ref)
         _          (assert col (lib.util/format "No column found named %s; found: %s"
                                                 (pr-str column-name)
                                                 (pr-str (map :name cols))))
@@ -98,14 +98,20 @@
                      (for [col   cols
                            :when (and (= (:lib/source col) :source/breakouts)
                                       (not= (:name col) column-name))]
-                       {:column-name (:name col), :value (get row (:name col))}))]
+                       {:column     col
+                        :column-ref (get refs (:name col))
+                        :value      (get row (:name col))}))]
     (merge
-     {:column col
-      :value  nil}
+     {:column     col
+      :column-ref (get refs column-name)
+      :value      nil}
      (when (= click-type :cell)
        {:value      value
-        :row        (for [[column-name value] row]
-                      {:column-name column-name, :value value})
+        :row        (for [[column-name value] row
+                          :let [column (by-name column-name)]]
+                      {:column     column
+                       :column-ref (get refs column-name)
+                       :value      value})
         :dimensions dimensions}))))
 
 (def ^:private AvailableDrillsTestCase
