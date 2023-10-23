@@ -32,6 +32,11 @@ const LINE_CHART = {
   },
 };
 
+const OBJECT_DETAIL_CHART = {
+  display: "object",
+  query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+};
+
 const POINT_COUNT = 344;
 const POINT_CREATED_AT = "2026-04";
 const POINT_INDEX = 48;
@@ -66,10 +71,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("does not allow to set click behavior for object detail dashcard", () => {
       cy.createQuestionAndDashboard({
-        questionDetails: {
-          display: "object",
-          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
-        },
+        questionDetails: OBJECT_DETAIL_CHART,
       }).then(({ body: dashboard }) => {
         visitDashboard(dashboard.id);
         editDashboard();
