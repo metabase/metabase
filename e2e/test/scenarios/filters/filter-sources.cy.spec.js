@@ -47,34 +47,39 @@ describe("scenarios > filters > filter sources", () => {
         cy.findByPlaceholderText("Enter a number").type("6.1");
         cy.button("Add filter").click();
       });
-      getNotebookStep("filter")
-        .findByText("Tax is equal to 6.1")
-        .should("be.visible");
+      verifyFilterName("Tax is equal to 6.1");
       visualize();
-      cy.findByTestId("view-footer")
-        .findByText("Showing 10 rows")
-        .should("be.visible");
+      verifyRowCount(10);
     });
 
     it("expression on a table column", () => {
       visitQuestionAdhoc(tableQuestionWithExpression, { mode: "notebook" });
       filter({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText("Total100").click();
-        cy.findByDisplayValue("Equal to").click();
-      });
-      cy.findByRole("listbox").findByText("Greater than").click();
+      popover().findByText("Total100").click();
+      selectOperator("Greater than");
       popover().within(() => {
         cy.findByPlaceholderText("Enter a number").type("250.5");
         cy.button("Add filter").click();
       });
-      getNotebookStep("filter")
-        .findByText("Total100 is greater than 250.5")
-        .should("be.visible");
+      verifyFilterName("Total100 is greater than 250.5");
       visualize();
-      cy.findByTestId("view-footer")
-        .findByText("Showing 239 rows")
-        .should("be.visible");
+      verifyRowCount(239);
     });
   });
 });
+
+function selectOperator(operatorName) {
+  cy.findByTestId("filter-operator-picker").click();
+  cy.findByRole("listbox").findByText(operatorName).click();
+}
+
+function verifyFilterName(filterName) {
+  getNotebookStep("filter").findByText(filterName).should("be.visible");
+}
+
+function verifyRowCount(rowCount) {
+  cy.findByTestId("question-row-count").should(
+    "contain",
+    `Showing ${rowCount} row`,
+  );
+}
