@@ -10,6 +10,7 @@ import {
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
   STRING_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS_WITH_OPTIONS,
   TIME_FILTER_OPERATORS,
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
@@ -33,6 +34,7 @@ import type {
   ExcludeDateFilterParts,
   ExpressionClause,
   ExpressionOperatorName,
+  ExpressionOptions,
   ExpressionParts,
   FilterClause,
   FilterOperator,
@@ -46,6 +48,7 @@ import type {
   SpecificDateFilterOperatorName,
   SpecificDateFilterParts,
   StringFilterOperatorName,
+  StringFilterOptions,
   StringFilterParts,
   TimeFilterOperatorName,
   TimeFilterParts,
@@ -82,7 +85,11 @@ export function stringFilterClause({
   values,
   options,
 }: StringFilterParts): ExpressionClause {
-  return expressionClause(operator, [column, ...values], options);
+  return expressionClause(
+    operator,
+    [column, ...values],
+    getStringFilterOptions(operator, options),
+  );
 }
 
 export function stringFilterParts(
@@ -108,7 +115,7 @@ export function stringFilterParts(
     operator,
     column,
     values,
-    options,
+    options: getStringFilterOptions(operator, options),
   };
 }
 
@@ -554,6 +561,15 @@ function isStringOperator(
 ): operator is StringFilterOperatorName {
   const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS;
   return operators.includes(operator);
+}
+
+function getStringFilterOptions(
+  operator: ExpressionOperatorName,
+  options: ExpressionOptions,
+): StringFilterOptions {
+  const operators: ReadonlyArray<string> = STRING_FILTER_OPERATORS_WITH_OPTIONS;
+  const supportsOptions = operators.includes(operator);
+  return supportsOptions ? { "case-sensitive": false, ...options } : {};
 }
 
 function isNumberOperator(
