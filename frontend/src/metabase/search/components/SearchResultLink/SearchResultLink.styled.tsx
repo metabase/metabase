@@ -6,6 +6,8 @@ import { Group } from "metabase/ui";
 type ResultLinkProps = AnchorProps | TextProps;
 
 export const ResultLink = styled.a<ResultLinkProps>`
+  line-height: unset;
+
   ${({ theme, href }) => {
     return (
       href &&
