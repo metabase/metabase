@@ -329,19 +329,30 @@
                                :table_id    (mt/id :venues)}}
                 (event "metric-delete" (:id metric)))))))))
 
-(deftest pulse-create-event-test
-  (testing :pulse-create
-    (t2.with-temp/with-temp [Pulse pulse]
+(deftest subscription-create-event-test
+  (testing :subscription-create
+    (t2.with-temp/with-temp [Dashboard      dashboard {}
+                             Pulse          pulse
+                             {:archived     false
+                              :name         "name"
+                              :dashboard_id (:id dashboard)
+                              :parameters   ()}]
       (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
          (is (= pulse
-                (events/publish-event! :event/pulse-create pulse)))
-         (is (= {:topic       :pulse-create
+                (events/publish-event! :event/subscription-create pulse)))
+         (is (= {:topic       :subscription-create
                  :user_id     (mt/user->id :rasta)
                  :model       "Pulse"
                  :model_id    (:id pulse)
-                 :details     {}}
-                (event "pulse-create" (:id pulse)))))))))
+                 :details     {:archived     false
+                               :name         "name"
+                               :dashboard_id (:id dashboard)
+                               :parameters   []
+                               :channel      nil
+                               :schedule     nil
+                               :recipients   nil}}
+                (event "subscription-create" (:id pulse)))))))))
 
 (deftest pulse-delete-event-test
   (testing :pulse-delete

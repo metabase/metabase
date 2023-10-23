@@ -85,10 +85,26 @@
 (derive :event/subscription-unsubscribe ::pulse-event)
 (derive :event/subscription-unsubscribe-undo ::pulse-event)
 (derive :event/alert-unsubscribe ::pulse-event)
+(derive :event/subscription-create ::pulse-event)
+(derive :event/subscription-update ::pulse-event)
+
+(defn- create-details-map [pulse]
+  (let [channel (first (:channels pulse))]
+    {:archived     (:archived pulse)
+     :name         (:name pulse)
+     :dashboard_id (:dashboard_id pulse)
+     :parameters   (:parameters pulse)
+     :channel      (:channel_type channel)
+     :schedule     (:schedule_type channel)
+     :recipients   (:recipients channel)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [id details]}]
-  (audit-log/record-event! topic details api/*current-user-id* :model/Pulse id))
+  [topic {:keys [id details] :as object}]
+  ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
+  (let [details-map (if (some? id)
+                      (create-details-map object)
+                      details)]
+    (audit-log/record-event! topic details-map api/*current-user-id* :model/Pulse id)))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)

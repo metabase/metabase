@@ -507,20 +507,9 @@
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
-  (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)
-        pulse    (retrieve-pulse pulse-id)
-        channel  (first channels)
-        details  {:name         (:name pulse)
-                  :dashboard_id (:dashboard_id pulse)
-                  :parameters   (:parameters pulse)
-                  :channel      (:channel_type channel)
-                  :schedule     (:schedule_type channel)
-                  :recipients   (:recipients channel)}]
-    ;; return the full Pulse (and record our create event). Adds details for the event loggins
-    ;; and removes after event logging is done.
-    (->
-     (events/publish-event! :event/pulse-create (assoc pulse :details details))
-     (dissoc :details))))
+  (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
+    ;; return the full Pulse (and record our create event).
+    (events/publish-event! :event/subscription-create (retrieve-pulse pulse-id))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -579,8 +568,8 @@
   Returns the updated Pulse or throws an Exception."
   [pulse]
   (update-notification! pulse)
-  ;; fetch the fully updated pulse and return it
-  (retrieve-pulse (u/the-id pulse)))
+  ;; fetch the fully updated pulse, log an update event, and return it
+  (events/publish-event! :event/subscription-update (retrieve-pulse (u/the-id pulse))))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
