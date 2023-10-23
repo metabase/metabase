@@ -9,6 +9,7 @@ import {
   modal,
   popover,
   restore,
+  saveDashboard,
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -99,8 +100,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           });
           cy.get("aside").button("Done").click();
 
-          cy.findByTestId("edit-bar").button("Save").click();
-          cy.findByTestId("edit-bar").should("not.exist");
+          saveDashboard();
 
           onNextAnchorClick(anchor => {
             expect(anchor).to.have.attr("href", URL);
@@ -143,8 +143,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           });
           cy.get("aside").button("Done").click();
 
-          cy.findByTestId("edit-bar").button("Save").click();
-          cy.findByTestId("edit-bar").should("not.exist");
+          saveDashboard();
 
           cy.findByTestId("field-set").click();
           popover().within(() => {
@@ -196,8 +195,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           });
           cy.get("aside").button("Done").click();
 
-          cy.findByTestId("edit-bar").button("Save").click();
-          cy.findByTestId("edit-bar").should("not.exist");
+          saveDashboard();
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
 
