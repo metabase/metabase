@@ -28,7 +28,6 @@ function getExpandedCollectionsById(
           : null,
       parent: null,
       children: [],
-      is_personal: c.personal_owner_id != null,
     };
   }
 
