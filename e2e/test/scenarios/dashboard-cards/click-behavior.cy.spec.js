@@ -19,7 +19,8 @@ const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
-const FILTER_NAME = "test-filter";
+const TEXT_FILTER_NAME = "filter-text";
+const TIME_FILTER_NAME = "filter-time";
 const FILTER_VALUE = "123";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -40,6 +41,7 @@ const OBJECT_DETAIL_CHART = {
 
 const POINT_COUNT = 344;
 const POINT_CREATED_AT = "2026-04";
+const POINT_CREATED_AT_FORMATTED = "April 2026";
 const POINT_INDEX = 48;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
@@ -113,19 +115,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${FILTER_NAME}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
+      const urlWithParams = `${URL}{{${TEXT_FILTER_NAME}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
       const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
       const expectedUrlWithParams = urlWithParams
         .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
         .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
-        .replace(`{{${FILTER_NAME}}}`, FILTER_VALUE);
+        .replace(`{{${TEXT_FILTER_NAME}}}`, FILTER_VALUE);
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: dashboard }) => {
           visitDashboard(dashboard.id);
           editDashboard();
 
-          addFilter();
+          addTextFilter();
 
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Go to a custom destination").click();
@@ -134,7 +136,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_ID).should("exist");
             cy.findByText(CREATED_AT_COLUMN_ID).should("exist");
-            cy.findByText(FILTER_NAME).should("exist");
+            cy.findByText(TEXT_FILTER_NAME).should("exist");
             cy.realPress("Escape");
           });
           modal().within(() => {
@@ -182,15 +184,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           visitDashboard(dashboard.id);
           editDashboard();
 
-          addFilter();
+          addTextFilter();
 
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Update a dashboard filter").click();
-          cy.get("aside").findByText(FILTER_NAME).click();
+          cy.get("aside").findByText(TEXT_FILTER_NAME).click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("exist");
             cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
-
             cy.findByText(COUNT_COLUMN_NAME).click();
           });
           cy.get("aside").button("Done").click();
@@ -200,7 +201,49 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
 
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
-          cy.url().should("include", `?${FILTER_NAME}=${POINT_COUNT}`);
+          cy.url().should("include", `?${TEXT_FILTER_NAME}=${POINT_COUNT}`);
+        },
+      );
+    });
+
+    it("allows updating multiple dashboard filters", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          addTextFilter();
+          addTimeFilter();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Update a dashboard filter").click();
+          cy.get("aside").findByText(TEXT_FILTER_NAME).click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(COUNT_COLUMN_NAME).click();
+          });
+          cy.get("aside").findByText(TIME_FILTER_NAME).click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).click();
+          });
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+
+          cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
+          cy.findAllByTestId("field-set").should(
+            "contain.text",
+            POINT_CREATED_AT_FORMATTED,
+          );
+          cy.url().should(
+            "include",
+            `?${TEXT_FILTER_NAME}=${POINT_COUNT}&${TIME_FILTER_NAME}=${POINT_CREATED_AT}`,
+          );
         },
       );
     });
@@ -232,12 +275,30 @@ const onNextAnchorClick = callback => {
   });
 };
 
-const addFilter = () => {
+const addTextFilter = () => {
   cy.icon("filter").click();
   popover().within(() => {
     cy.findByText("Text or Category").click();
     cy.findByText("Is").click();
   });
-  cy.get("aside").findByLabelText("Label").clear().type(FILTER_NAME);
+  cy.get("aside")
+    .findByLabelText("Label")
+    .focus()
+    .clear()
+    .type(TEXT_FILTER_NAME);
+  cy.get("aside").button("Done").click();
+};
+
+const addTimeFilter = () => {
+  cy.icon("filter").click();
+  popover().within(() => {
+    cy.findByText("Time").click();
+    cy.findByText("Month and Year").click();
+  });
+  cy.get("aside")
+    .findByLabelText("Label")
+    .focus()
+    .clear()
+    .type(TIME_FILTER_NAME);
   cy.get("aside").button("Done").click();
 };
