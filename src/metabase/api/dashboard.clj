@@ -462,7 +462,8 @@
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
+  (when-let [field-clause (:dimension
+                           (params/param-target->template-tag target {:dataset_query query}))]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -784,22 +785,26 @@
   "How many results to return when chain filtering"
   1000)
 
-(mu/defn ^:private mappings->field-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn ^:private mappings->fields :- [:maybe [:set [:map
+                                                         [:field-id ms/PositiveInt]
+                                                         [:options [:maybe map?]]]]]
   [parameter-mappings :- [:maybe [:or [:set dashboard-card/ParamMapping] [:sequential dashboard-card/ParamMapping]]]]
   (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
-             :let  [field-clause (params/param-target->field-clause target card)]
-             :when field-clause
+             :let  [ttag (params/param-target->template-tag target card)]
+             :when ttag
              :let  [{:keys [result_metadata]} card
+                    options  (:options ttag)
                     field-id (or
                               ;; Get the field id from the field-clause if it contains it. This is the common case for
                               ;; mbql queries.
-                              (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)
+                              (mbql.u/match-one (:dimension ttag) [:field (id :guard integer?) _] id)
                               ;; Attempt to get the field clause from the model metadata corresponding to the field.
                               ;; This is the common case for native queries in which mappings from original columns
                               ;; have been performed using model metadata.
-                              (:id (qp.util/field->field-info field-clause result_metadata)))]
+                              (:id (qp.util/field->field-info (:dimension ttag) result_metadata)))]
              :when field-id]
-         field-id)))
+         {:field-id field-id
+          :options  options})))
 
 (defn- param-key->param
   "Get Field ID(s) associated with a parameter in a Dashboard.
@@ -815,11 +820,15 @@
   (into {} (for [[param-key value] constraint-param-key->value
                  :let              [param      (param-key->param dashboard param-key)
                                     param-type (:type param)
-                                    op         (keyword (name param-type))]
-                 field-id          (mappings->field-ids (:mappings param))]
-             [field-id (if (sequential? value)
-                         (into [op] value)
-                         [op value])])))
+                                    op         (if (qualified-keyword? param-type)
+                                                 (keyword (name param-type))
+                                                 :=)]
+                 field             (mappings->fields (:mappings param))]
+             [(:field-id field)
+              (cond-> [op]
+                (vector? value)        (into value)
+                (not (vector? value))  (conj value)
+                (seq (:options field)) (conj (:options field)))])))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
@@ -834,7 +843,7 @@
     query                       :- [:maybe ms/NonBlankString]]
    (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (param-key->param dashboard param-key)
-         field-ids   (mappings->field-ids (:mappings param))]
+         field-ids   (map :field-id (mappings->fields (:mappings param)))]
      (when (empty? field-ids)
        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                        {:param       (get (:resolved-params dashboard) param-key)

@@ -115,7 +115,7 @@
 
 (defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
-  [source-table-id field-id value options]
+  [source-table-id field-id value]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (when-not (= this-field-table-id source-table-id)
                                           {:join-alias (joined-table-alias this-field-table-id)})])]
@@ -154,14 +154,14 @@
 
 (defn- add-filters [query source-table-id joined-table-ids constraints]
   (reduce
-   (fn [query [field-id value options]]
+   (fn [query [field-id value]]
      ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
      ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
      ;; it.
      (let [field-table-id (field/field-id->table-id field-id)]
        (if (or (= field-table-id source-table-id)
                (contains? joined-table-ids field-table-id))
-         (let [clause (filter-clause source-table-id field-id value options)]
+         (let [clause (filter-clause source-table-id field-id value)]
            (log/tracef "Added filter clause for %s %s: %s"
                        (name-for-logging Table field-table-id)
                        (name-for-logging Field field-id)

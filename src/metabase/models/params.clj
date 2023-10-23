@@ -100,14 +100,15 @@
        field-ids->param-field-values-ignoring-current-user
        params.field-values/field-id->field-values-for-current-user) param-field-ids)))
 
-(defn- template-tag->field-form
+(defn- find-template-tag
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
-    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+    (find-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [[_ tag] card]
-  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
+  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)]))
 
-(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
+(mu/defn param-target->template-tag :- [:maybe [:or mbql.s/TemplateTag
+                                                [:map [:dimension mbql.s/Field]]]]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -115,10 +116,9 @@
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
-          (unwrap-field-or-expression-clause
-           (if (mbql.u/is-clause? :template-tag dimension)
-             (template-tag->field-form dimension card)
-             dimension))
+          (if (mbql.u/is-clause? :template-tag dimension)
+            (find-template-tag dimension card)
+            {:dimension dimension})
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
 
@@ -227,7 +227,8 @@
   [dashcards]
   (when-let [fields (seq (for [dashcard dashcards
                                param    (:parameter_mappings dashcard)
-                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
+                               :let     [field-clause (:dimension
+                                                       (param-target->template-tag (:target param) (:card dashcard)))]
                                :when    field-clause]
                            field-clause))]
     (set fields)))

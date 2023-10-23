@@ -2466,8 +2466,8 @@
 (deftest mappings->field-ids-test
   (testing "mappings->field-ids"
     (testing "Should extra Field IDs from parameter mappings"
-      (is (= #{1 2}
-             (#'api.dashboard/mappings->field-ids
+      (is (= #{{:field-id 1 :options nil} {:field-id 2 :options nil}}
+             (#'api.dashboard/mappings->fields
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension [:field 1 nil]]}
@@ -2475,8 +2475,8 @@
                 :card_id      1
                 :target       [:dimension [:field 2 nil]]}]))))
     (testing "Should normalize MBQL clauses"
-      (is (= #{1 2}
-             (#'api.dashboard/mappings->field-ids
+      (is (= #{{:field-id 1 :options nil} {:field-id 2 :options nil}}
+             (#'api.dashboard/mappings->fields
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -2484,8 +2484,8 @@
                 :card_id      1
                 :target       ["dimension" ["field" 2 nil]]}]))))
     (testing "Should ignore field-literal clauses"
-      (is (= #{1}
-             (#'api.dashboard/mappings->field-ids
+      (is (= #{{:field-id 1 :options nil}}
+             (#'api.dashboard/mappings->fields
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -2493,8 +2493,8 @@
                 :card_id      1
                 :target       ["dimension" ["field" "wow" {:base-type "type/Text"}]]}]))))
     (testing "Should ignore invalid mappings"
-      (is (= #{1}
-             (#'api.dashboard/mappings->field-ids
+      (is (= #{{:field-id 1 :options nil}}
+             (#'api.dashboard/mappings->fields
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -2954,7 +2954,7 @@
 (deftest chain-filter-constraints-test
   (testing "Chain filter should return correct results when :string/!= type is used"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (is (= "ood"
+      (is (= [:= "ood"]
              (-> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})
                  first second)))
       (is (= [:!= "ood"]
