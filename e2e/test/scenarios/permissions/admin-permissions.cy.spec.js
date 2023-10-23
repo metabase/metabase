@@ -104,9 +104,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Data").click();
 
       modal().within(() => {
-        cy.findByText("Changes were not saved");
+        cy.findByText("Discard your changes?");
         cy.findByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
+          "Your changes haven't been saved, so you'll lose them if you navigate away.",
         );
 
         cy.button("Cancel").click();
@@ -304,9 +304,9 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       cy.get("label").contains("Collection").click();
 
       modal().within(() => {
-        cy.findByText("Changes were not saved");
+        cy.findByText("Discard your changes?");
         cy.findByText(
-          "Navigating away from here will cause you to lose any changes you have made.",
+          "Your changes haven't been saved, so you'll lose them if you navigate away.",
         );
 
         cy.button("Cancel").click();
