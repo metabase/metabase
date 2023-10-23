@@ -206,6 +206,23 @@ const nestedQuestionWithJoinAndFields = card => ({
   visualization_settings: {},
 });
 
+const nestedQuestionWithAggregations = card => ({
+  display: "table",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": `card__${card.id}`,
+      aggregation: [
+        ["count"],
+        ["sum", ["field", "QUANTITY", { "base-type": "type/Integer" }]],
+      ],
+      breakout: [["field", "PRODUCT_ID", { "base-type": "type/Integer" }]],
+    },
+  },
+  visualization_settings: {},
+});
+
 describe("scenarios > filters > filter sources", () => {
   beforeEach(() => {
     restore();
@@ -409,6 +426,58 @@ describe("scenarios > filters > filter sources", () => {
       verifyFilterName("Products - PRODUCT_ID → Ean is 0001664425970");
       visualize();
       verifyRowCount(104);
+    });
+
+    it("column from a nested aggregation without column", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("Count").click();
+        cy.findByPlaceholderText("Enter a number").type("90");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Count is equal to 90", { stage: 1 });
+      visualize();
+      verifyRowCount(7);
+    });
+
+    it("column from a nested aggregation with column", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().findByText("Sum of QUANTITY").click();
+      selectOperator("Less than");
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("350");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("Sum of QUANTITY is less than 350", { stage: 1 });
+      visualize();
+      verifyRowCount(115);
+    });
+
+    it("column from a nested breakout", () => {
+      cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
+        visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
+          mode: "notebook",
+        });
+      });
+      getNotebookStep("summarize").findByText("Filter").click();
+      popover().within(() => {
+        cy.findByText("PRODUCT_ID").click();
+        cy.findByPlaceholderText("Enter a number").type("10");
+        cy.button("Add filter").click();
+      });
+      verifyFilterName("PRODUCT_ID is equal to 10", { stage: 1 });
+      visualize();
+      verifyRowCount(1);
     });
   });
 });
