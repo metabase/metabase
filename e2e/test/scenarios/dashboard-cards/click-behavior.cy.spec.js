@@ -14,6 +14,8 @@ import {
   visitDashboard,
 } from "e2e/support/helpers";
 
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+
 const URL = "https://example.com/";
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
@@ -30,11 +32,12 @@ const POINT_INDEX = 48;
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const LINE_CHART = {
+  name: "Line chart",
   display: "line",
   query: {
-    "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    "source-table": ORDERS_ID,
   },
 };
 
@@ -85,6 +88,38 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("line chart", () => {
     const questionDetails = LINE_CHART;
+
+    it("allows setting saved question as custom destination", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Saved question").click();
+          modal().findByText(LINE_CHART.name).click();
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          onNextAnchorClick(anchor => {
+            const [base, hash] = anchor.href.split("#");
+            const card = deserializeCardFromUrl(hash);
+
+            expect(base).to.match(/\/question$/);
+            expect(card.name).to.deep.equal(LINE_CHART.name);
+            expect(card.display).to.deep.equal(LINE_CHART.display);
+            expect(card.dataset_query.query).to.deep.equal(LINE_CHART.query);
+
+            expect(anchor).to.have.attr("rel", "noopener");
+            expect(anchor).not.to.have.attr("target");
+          });
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+        },
+      );
+    });
 
     it("allows setting URL as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
@@ -278,6 +313,15 @@ const onNextAnchorClick = callback => {
     };
   });
 };
+
+/**
+ * Duplicated from metabase/lib/card because Cypress can't handle import from there.
+ *
+ * @param {string} value
+ * @returns string
+ */
+const deserializeCardFromUrl = serialized =>
+  JSON.parse(b64hash_to_utf8(serialized));
 
 const addTextFilter = () => {
   cy.icon("filter").click();
