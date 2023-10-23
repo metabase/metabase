@@ -19,6 +19,7 @@ import { StyledAccordionList } from "./FilterColumnPicker.styled";
 export interface FilterColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
+  checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
   onColumnSelect: (column: Lib.ColumnMetadata) => void;
   onSegmentSelect: (segment: Lib.SegmentMetadata) => void;
   onExpressionSelect: () => void;
@@ -45,6 +46,7 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
 export function FilterColumnPicker({
   query,
   stageIndex,
+  checkItemIsSelected,
   onColumnSelect,
   onSegmentSelect,
   onExpressionSelect,
@@ -80,8 +82,6 @@ export function FilterColumnPicker({
     return [...sections, CUSTOM_EXPRESSION_SECTION];
   }, [query, stageIndex]);
 
-  const checkColumnSelected = () => false;
-
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
       onExpressionSelect();
@@ -101,7 +101,7 @@ export function FilterColumnPicker({
       sections={sections}
       onChange={handleSelect}
       onChangeSection={handleSectionChange}
-      itemIsSelected={checkColumnSelected}
+      itemIsSelected={checkItemIsSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
