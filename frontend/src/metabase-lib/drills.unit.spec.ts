@@ -2269,18 +2269,23 @@ describe("drillThru", () => {
           ],
         },
       },
-      // FIXME: using summarize-column on a custom column produces incorrect query due to extra field types (metabase#34957)
-      // {
-      //   drillType: "drill-thru/summarize-column",
-      //   clickType: "header",
-      //   columnName: "CustomColumn",
-      //   drillArgs: ["sum"],
-      //   queryType: "unaggregated",
-      //   expectedQuery: {
-      //     ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
-      //     aggregation: [["sum", ["expression", "CustomColumn"]]],
-      //   },
-      // },
+      // using summarize-column on a custom column produces incorrect query due to extra field types (metabase#34957)
+      {
+        drillType: "drill-thru/summarize-column",
+        clickType: "header",
+        columnName: "CustomColumn",
+        drillArgs: ["sum"],
+        queryType: "unaggregated",
+        expectedQuery: {
+          ...ORDERS_WITH_CUSTOM_COLUMN_DATASET_QUERY.query,
+          aggregation: [
+            [
+              "sum",
+              ["expression", "CustomColumn", { "base-type": "type/Integer" }],
+            ],
+          ],
+        },
+      },
     ])(
       'should return correct result on "$drillType" drill apply to $columnName on $clickType in query with custom column',
       ({
