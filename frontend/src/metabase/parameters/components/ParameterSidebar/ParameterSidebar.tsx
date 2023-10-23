@@ -124,7 +124,7 @@ const ParameterSidebar = ({
   );
 
   return (
-    <Sidebar data-testid="parameter-sidebar" onClose={onClose}>
+    <Sidebar onClose={onClose}>
       <SidebarHeader>
         <Radio
           value={tab}

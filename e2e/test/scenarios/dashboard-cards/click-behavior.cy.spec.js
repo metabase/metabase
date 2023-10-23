@@ -83,13 +83,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          getSidebar().findByText("Go to a custom destination").click();
-          getSidebar().findByText("URL").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("URL").click();
           modal().within(() => {
             cy.findByRole("textbox").type(URL);
             cy.button("Done").click();
           });
-          getSidebar().button("Done").click();
+          cy.get("aside").button("Done").click();
 
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
@@ -121,15 +121,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.findByText("Text or Category").click();
             cy.findByText("Is").click();
           });
-          cy.findByTestId("parameter-sidebar")
-            .findByLabelText("Label")
-            .clear()
-            .type(FILTER_NAME);
-          cy.findByTestId("parameter-sidebar").button("Done").click();
+          cy.get("aside").findByLabelText("Label").clear().type(FILTER_NAME);
+          cy.get("aside").button("Done").click();
 
           getDashboardCard().realHover().icon("click").click();
-          getSidebar().findByText("Go to a custom destination").click();
-          getSidebar().findByText("URL").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("URL").click();
           modal().findByText("Values you can reference").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("exist");
@@ -141,7 +138,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.findByRole("textbox").type(escapedUrlWithParams);
             cy.button("Done").click();
           });
-          getSidebar().button("Done").click();
+          cy.get("aside").button("Done").click();
 
           cy.findByTestId("edit-bar").button("Save").click();
           cy.findByTestId("edit-bar").should("not.exist");
@@ -163,8 +160,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 });
-
-const getSidebar = () => cy.findByTestId("click-behavior-sidebar");
 
 /**
  * @param {string} value

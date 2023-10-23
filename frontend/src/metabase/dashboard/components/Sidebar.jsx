@@ -7,21 +7,13 @@ const WIDTH = 384;
 const propTypes = {
   closeIsDisabled: PropTypes.bool,
   children: PropTypes.node,
-  "data-testid": PropTypes.string,
   onClose: PropTypes.func,
   onCancel: PropTypes.func,
 };
 
-function Sidebar({
-  closeIsDisabled,
-  children,
-  "data-testid": dataTestId,
-  onClose,
-  onCancel,
-}) {
+function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
   return (
     <aside
-      data-testid={dataTestId}
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
     >
