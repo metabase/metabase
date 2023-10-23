@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
@@ -31,8 +31,15 @@ export type SearchResultsProps = {
   searchFilters?: SearchFilters;
   models?: SearchModelType[];
   footerComponent?:
-    | ((metadata: Omit<SearchResultsType, "data">) => JSX.Element | null)
+    | (({
+        metadata,
+        isSelected,
+      }: {
+        metadata: Omit<SearchResultsType, "data">;
+        isSelected: boolean;
+      }) => JSX.Element | null)
     | null;
+  onFooterSelect?: () => void;
 };
 
 export const SearchLoadingSpinner = () => (
@@ -51,10 +58,12 @@ export const SearchResults = ({
   searchFilters = {},
   models,
   footerComponent,
+  onFooterSelect,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>();
+
   const isWaitingForDebounce = searchText !== debouncedSearchText;
 
   useDebounce(
@@ -82,23 +91,41 @@ export const SearchResults = ({
     enabled: !!debouncedSearchText,
   });
 
+  const hasResults = list.length > 0;
+  const showFooter = hasResults && footerComponent && metadata;
+
+  const keyboardList = useMemo(() => {
+    return showFooter ? [...list, footerComponent] : list;
+  }, [footerComponent, list, showFooter]);
+
+  const onEnterSelect = (
+    item: CollectionItem | SearchResultsProps["footerComponent"],
+  ) => {
+    if (showFooter && cursorIndex === keyboardList.length - 1) {
+      onFooterSelect?.();
+    }
+
+    if (typeof item !== "function") {
+      if (onEntitySelect) {
+        onEntitySelect(Search.wrapEntity(item, dispatch));
+      } else if (item && item.getUrl) {
+        dispatch(push(item.getUrl()));
+      }
+    }
+  };
+
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation<
-    CollectionItem,
+    CollectionItem | SearchResultsProps["footerComponent"],
     HTMLLIElement
   >({
-    list,
-    onEnter: onEntitySelect
-      ? item => onEntitySelect(Search.wrapEntity(item, dispatch))
-      : item => dispatch(push(item.getUrl())),
+    list: keyboardList,
+    onEnter: onEnterSelect,
     resetOnListChange: false,
   });
 
   useEffect(() => {
     reset();
   }, [searchText, reset]);
-
-  const hasResults = list.length > 0;
-  const showFooter = hasResults && footerComponent && metadata;
 
   if (isLoading || isWaitingForDebounce) {
     return <SearchLoadingSpinner />;
@@ -135,7 +162,6 @@ export const SearchResults = ({
           </EmptyStateContainer>
         )}
       </SearchResultsList>
-      {showFooter && footerComponent(metadata)}
     </>
   );
 };

@@ -20,8 +20,12 @@ export const SearchResultsDropdown = ({
   onSearchItemSelect,
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
-  const renderFooter: SearchResultsProps["footerComponent"] = metadata =>
-    metadata.total > 1 ? (
+  const renderFooter: SearchResultsProps["footerComponent"] = ({
+    metadata,
+    isSelected,
+  }) =>
+    // todo: change back to 4, just using 0 for testing
+    metadata.total > 0 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"
@@ -29,6 +33,7 @@ export const SearchResultsDropdown = ({
         px="lg"
         py="0.625rem"
         onClick={goToSearchApp}
+        isSelected={isSelected}
       >
         <Text
           weight={700}
@@ -48,6 +53,7 @@ export const SearchResultsDropdown = ({
         searchText={searchText.trim()}
         onEntitySelect={onSearchItemSelect}
         footerComponent={renderFooter}
+        onFooterSelect={goToSearchApp}
       />
     </SearchResultsContainer>
   );

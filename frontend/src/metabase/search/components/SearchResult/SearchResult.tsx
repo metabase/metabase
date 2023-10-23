@@ -113,7 +113,7 @@ export function SearchResult({
               color="text.1"
               align="left"
               size="sm"
-              lineClamp={3}
+              lineClamp={2}
             >
               {description}
             </Text>

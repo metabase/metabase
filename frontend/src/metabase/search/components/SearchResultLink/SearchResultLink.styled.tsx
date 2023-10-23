@@ -10,8 +10,11 @@ export const ResultLink = styled.a<ResultLinkProps>`
     return (
       href &&
       css`
-        &:hover {
+        &:hover,
+        &:focus,
+        &:focus-within {
           color: ${theme.colors.brand[1]};
+          outline: 0;
         }
       `
     );

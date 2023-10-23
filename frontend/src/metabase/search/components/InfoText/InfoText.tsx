@@ -8,8 +8,7 @@ import {
   tableRowsQuery,
 } from "metabase/lib/urls";
 import Tooltip from "metabase/core/components/Tooltip";
-import { color } from "metabase/lib/colors";
-import { getRelativeTimeAbbreviated } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/core/utils/types";
 import type { UserListResult } from "metabase-types/api";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
@@ -20,11 +19,7 @@ import { Group, Box, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
-import {
-  DurationIcon,
-  LastEditedInfoText,
-  LastEditedInfoTooltip,
-} from "./InfoText.styled";
+import { LastEditedInfoText, LastEditedInfoTooltip } from "./InfoText.styled";
 
 export type InfoTextProps = {
   result: WrappedResult;
@@ -35,6 +30,12 @@ const LinkSeparator = (
   <Box component="span" c="text.1">
     <Icon name="chevronright" size={8} />
   </Box>
+);
+
+const InfoTextSeparator = (
+  <Text span size="sm" mx="xs" c="text.1">
+    •
+  </Text>
 );
 
 export const InfoTextTableLink = ({ result }: InfoTextProps) => {
@@ -129,8 +130,6 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
 
   const user = users.find((user: UserListResult) => user.id === userId);
 
-  const formattedDuration = timestamp && getRelativeTimeAbbreviated(timestamp);
-
   const lastEditedInfoData = {
     item: {
       "last-edit-info": {
@@ -145,7 +144,18 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
   };
 
   if (isLoading) {
-    return <Text color="text-1" data-testid="loading-text">{t`Loading…`}</Text>;
+    return (
+      <>
+        {InfoTextSeparator}
+        <Text
+          color="text-1"
+          span
+          size="sm"
+          truncate
+          data-testid="loading-text"
+        >{t`Loading…`}</Text>
+      </>
+    );
   }
 
   if (isNull(timestamp) && isNull(userId)) {
@@ -154,20 +164,12 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
 
   const getEditedInfoText = () => {
     if (isCompact) {
+      const formattedDuration = timestamp && getRelativeTime(timestamp);
       return (
         <Tooltip tooltip={<LastEditedInfoTooltip {...lastEditedInfoData} />}>
-          <Group noWrap spacing={0} align="center">
-            <DurationIcon name="clock" size={13} color={color("text-medium")} />
-            <Text
-              span
-              size="sm"
-              c="text.1"
-              ml="xs"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              {formattedDuration}
-            </Text>
-          </Group>
+          <Text span size="sm" c="text.1" truncate>
+            {formattedDuration}
+          </Text>
         </Tooltip>
       );
     }
@@ -176,9 +178,7 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
 
   return (
     <>
-      <Text span size="sm" mx="xs" c="text.1">
-        •
-      </Text>
+      {InfoTextSeparator}
       {getEditedInfoText()}
     </>
   );

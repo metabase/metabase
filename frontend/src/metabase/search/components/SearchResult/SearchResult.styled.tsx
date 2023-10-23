@@ -25,8 +25,12 @@ export const ResultTitle = styled(Anchor)<
 
   color: ${({ theme }) => theme.colors.text[2]};
 
-  &:hover {
+  &:hover,
+  &:focus-visible,
+  &:focus {
+    text-decoration: none;
     color: ${({ theme }) => theme.colors.brand[1]};
+    outline: 0;
   }
 `;
 
@@ -67,6 +71,10 @@ export const SearchResultContainer = styled(Box, {
         ${ResultTitle} {
           color: ${theme.colors.brand[1]};
         }
+      }
+
+      &:focus-within {
+        background-color: ${theme.colors.brand[0]};
       }
     `}
 `;
