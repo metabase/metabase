@@ -659,7 +659,7 @@
       [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
     - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
       to `:standardsql`'s value from the dialects map (eg `:h2`).
-    - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword 
+    - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
       representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
     - Completly reimplement this method with their special formatting code."
   {:added "0.48.0", :arglists '([driver native-form]), :style/indent 1}
