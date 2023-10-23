@@ -439,13 +439,6 @@
        x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
-(defn- valid-breakout-dimension?
-  [{:keys [base_type db fingerprint aggregation]}]
-  (or (nil? aggregation)
-      (not (isa? base_type :type/Number))
-      (and (driver/database-supports? (:engine db) :binning db)
-           (-> fingerprint :type :type/Number :min))))
-
 (defn- singular-cell-dimensions
   [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]

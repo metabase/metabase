@@ -1382,38 +1382,6 @@
               [:= [:field 2 nil]]
               [:= [:field "TOTAL" {:base-type :type/Number}]]]})))))
 
-(deftest valid-bindings?-test
-  (testing "Cases in which the bindings are valid."
-    (is (true?
-         (let [context           nil
-               common-dimensions [{"Date" {}}]
-               bindings          {"Date"     {:name "SALES_DATE"}
-                                  "Discount" {:name "Price Discount"}
-                                  "Income"   {:name "Income"}}]
-           (#'magic/valid-bindings? context common-dimensions bindings))))
-    (is (true?
-         (let [context           nil
-               common-dimensions []
-               bindings          {"X" {:name "Y"}}]
-           (#'magic/valid-bindings? context common-dimensions bindings))))
-    (testing "If there is no context, common dimensions, or bound dimensions, return true.
-              This demonstrates that valid-bindings? is generally permissive."
-      (is (true?
-           (#'magic/valid-bindings? nil [] {})))))
-  (testing "The binding is invalid if the bound field's id or name is in the cell query."
-    (is (false?
-         (let [context           {:root {:cell-query
-                                         [:= [:field 123 {:base-type :type/Integer}]]}}
-               common-dimensions [{"ID" {}}]
-               bindings          {"ID" {:id 123}}]
-           (#'magic/valid-bindings? context common-dimensions bindings))))
-    (is (false?
-         (let [context           {:root {:cell-query
-                                         [:= [:field "X" {:base-type :type/Integer}]]}}
-               common-dimensions [{"X" {}}]
-               bindings          {"X" {:name "X"}}]
-           (#'magic/valid-bindings? context common-dimensions bindings))))))
-
 (deftest all-satisfied-bindings-test
   (testing "Simple test of no affinity sets and nothing to bind gives nothing back."
     (is (= {}
