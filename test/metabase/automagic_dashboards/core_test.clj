@@ -1337,40 +1337,6 @@
                                            {:name "L3" :display_name "Frooby"}]}}
                       bound-dimensions)))))))))
 
-;;; -------------------- Resolve overloading (metrics and filters) --------------------
-
-(deftest has-matches-test
-  (testing "has-matches? checks only the keys of the bound dimensions map against the [dimension X] vector in the
-            metric or filter definition."
-    (let [dimensions {"GenericNumber" {:this :does :not :matter}
-                      "Income" {:this :does :not :matter}
-                      "Day" {:this :does :not :matter}}]
-      (testing "has-matches only matches on dimension name. These have no nominal matches to our input dimension names."
-        (is (false? (#'magic/has-matches? dimensions
-                                          {"Avg" {:metric ["avg" ["dimension" "FROOB"]]}})))
-        (is (false? (#'magic/has-matches? dimensions
-                                          {"Last30Days" {:filter ["time-interval" ["dimension" "Timestamp"] -30 "day"]}}))))
-      (testing "Basic single name match will match on dimension names."
-        (is (true?
-             (#'magic/has-matches?
-              dimensions
-              {"Avg" {:metric ["avg" ["dimension" "GenericNumber"]]}})))
-        (is (true?
-             (#'magic/has-matches?
-              dimensions
-              {"Last30Days" {:filter ["time-interval" ["dimension" "Day"] -30 "day"]}}))))
-      (testing "Despite one dimension matching (Income) both must match to pass."
-        (is (false?
-             (#'magic/has-matches?
-              dimensions
-              {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}}))))
-      (testing "Once all specified dimensions are present the predicate will pass."
-        (is (true?
-             (#'magic/has-matches?
-              (assoc dimensions "Discount" :something)
-              {"AvgDiscount" {:metric ["/" ["sum" ["dimension" "Discount"]] ["sum" ["dimension" "Income"]]]}})))))))
-
-
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
 (deftest related-card-generation-test

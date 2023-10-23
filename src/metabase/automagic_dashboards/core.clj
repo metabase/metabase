@@ -422,54 +422,6 @@
          [:dimension identifier]
          [:aggregation (u/index-of #{identifier} metrics)])])))
 
-(defn- build-mbql-query [{:keys [root source]} bindings filters metrics dimensions limit order-by]
- (walk/postwalk
-   (fn [subform]
-     (if (dashboard-templates/dimension-form? subform)
-       (let [[_ identifier opts] subform]
-         (interesting/->reference :mbql (-> identifier bindings (merge opts))))
-       subform))
-   {:type     :query
-    :database (-> root :database)
-    :query    (cond-> {:source-table (if (->> source (mi/instance-of? Table))
-                                       (-> source u/the-id)
-                                       (->> source u/the-id (str "card__")))}
-                (seq filters)
-                (assoc :filter (apply
-                                 vector
-                                 :and
-                                 (map (comp (partial mbql.normalize/normalize-fragment [:query :filter])
-                                            :filter)
-                                      filters)))
-
-                (seq dimensions)
-                (assoc :breakout dimensions)
-
-                (seq metrics)
-                (assoc :aggregation (map :metric metrics))
-
-                limit
-                (assoc :limit limit)
-
-                (seq order-by)
-                (assoc :order-by order-by))}))
-
-(defn- build-native-query [context bindings query]
-  {:type     :native
-   :native   {:query (fill-templates :native context bindings query)}
-   :database (-> context :root :database)})
-
-(defn- has-matches?
-  "Does the dimension match the metric or filter definition?
-  The metric or filter definition will have named dimensions (e.g. [\"dimension\" \"Lat\"]) and the dimensions are a map
-  of dimension name to dimension data. has-matches? checks that every dimension detected in the definition item is also
-  found in the keys of the dimensions map. Note that it also returns true if there are no dimensions in the definition
-  as every predicate is considered satisfied on an empty collection."
-  [dimensions definition]
-  (->> definition
-       dashboard-templates/collect-dimensions
-       (every? (partial get dimensions))))
-
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
   (let [dimension->name (comp vector :name dimensions)
@@ -519,54 +471,6 @@
          (map filters/field-reference->id)
          set)))
 
-(defn- build-dashcard
-  "Build a dashcard from the given context, card template, common entities, and field bindings.
-
-  As used, multiple candidate dashcards may be built from the same card template if multiple combinations of valid
-  bindings are provided. E.g. if X is mapped over Y and multiple fields are candidates for dimension Y, you will end
-  up with a dashcard for each potential valid X and Y combination."
-  [context
-   {card-dimensions :dimensions
-    card-query      :query
-    card-score      :card-score
-    :keys           [limit]
-    :as             card-template}
-   {:keys [satisfied-dimensions satisfied-metrics satisfied-filters]}
-   bindings]
-  (let [score          (if card-query
-                         card-score
-                         (* (or (->> (concat (vals satisfied-filters)
-                                             (vals satisfied-metrics)
-                                             (vals satisfied-dimensions))
-                                     (transduce (keep :score) stats/mean))
-                                dashboard-templates/max-score)
-                            (/ card-score dashboard-templates/max-score)))
-        metrics        (for [metric (vals satisfied-metrics)]
-                         {:name   ((some-fn :name (comp metric-name :metric)) metric)
-                          :metric (:metric metric)
-                          :op     (-> metric :metric metric-op)})
-        dashcard       (visualization/expand-visualization
-                         card-template
-                         (vals bindings)
-                         metrics)
-        dashcard-query (if card-query
-                         (build-native-query context bindings card-query)
-                         (build-mbql-query context
-                                           bindings
-                                           (vals satisfied-filters)
-                                           metrics
-                                           (map (comp #(into [:dimension] %) first) card-dimensions)
-                                           limit
-                                           (build-order-by dashcard)))]
-    (-> dashcard
-        (instantiate-metadata context satisfied-metrics (->> (map :name metrics)
-                                                            (zipmap (:metrics dashcard))
-                                                            (merge bindings)))
-        (assoc :dataset_query dashcard-query
-               :metrics metrics
-               :dimensions (map :name (vals bindings))
-               :card-score score))))
-
 (defn- valid-bindings? [{:keys [root]} satisfied-dimensions bindings]
   (let [cell-dimension? (singular-cell-dimensions root)]
     (->> satisfied-dimensions
@@ -575,44 +479,6 @@
                 (merge (bindings identifier) opts)))
          (every? (every-pred valid-breakout-dimension?
                              (complement (comp cell-dimension? id-or-name)))))))
-
-(mu/defn card-candidates
-  "Generate all potential cards given a card definition and bindings for
-   dimensions, metrics, and filters."
-  [{:keys [query-filter] :as context} :- ads/context
-   satisfied-bindings :- [:map-of ads/dimension-set ads/dimension-maps]
-   {:keys [available-dimensions available-metrics available-filters]} :- ads/available-values
-   {card-dimensions :dimensions
-    card-metrics    :metrics
-    card-filters    :filters
-    :as                 card-template}]
-  (let [satisfied-metrics    (zipmap
-                               card-metrics
-                               (map available-metrics card-metrics))
-        satisfied-filters    (cond-> (zipmap
-                                       card-filters
-                                       (map available-filters card-filters))
-                               query-filter
-                               (assoc "query-filter" {:filter query-filter}))
-        satisfied-dimensions (zipmap
-                               card-dimensions
-                               (map
-                                 (fn [card-dimension]
-                                   (-> card-dimension
-                                       ffirst
-                                       available-dimensions
-                                       (dissoc :matches)))
-                                 card-dimensions))
-        satisfied-values     {:satisfied-dimensions satisfied-dimensions
-                              :satisfied-metrics    satisfied-metrics
-                              :satisfied-filters    satisfied-filters}
-        dimension-locations  [satisfied-metrics satisfied-filters]
-        used-dimensions      (set (into
-                                    (map ffirst card-dimensions)
-                                    (dashboard-templates/collect-dimensions dimension-locations)))]
-    (->> (satisfied-bindings (set used-dimensions))
-         (filter (partial valid-bindings? context card-dimensions))
-         (map (partial build-dashcard context card-template satisfied-values)))))
 
 (defn- matching-dashboard-templates
   "Return matching dashboard templates ordered by specificity.
