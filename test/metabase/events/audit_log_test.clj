@@ -457,13 +457,92 @@
 (deftest user-joined-event-test
   (testing :user-joined
     ;; TODO - what's the difference between `user-login` / `user-joined`?
-    (mt/with-model-cleanup [:model/AuditLog]
-      (let [event {:user-id (mt/user->id :rasta)}]
-        (is (= event
-               (events/publish-event! :event/user-joined event))))
-      (is (= {:topic       :user-joined
-              :user_id     (mt/user->id :rasta)
-              :model       "User"
-              :model_id    (mt/user->id :rasta)
-              :details     {}}
-             (event "user-joined" (mt/user->id :rasta)))))))
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (let [event (mt/fetch-user :rasta)]
+          (is (= event (events/publish-event! :event/user-joined event))))
+        (is (= {:topic       :user-joined
+                :user_id     (mt/user->id :rasta)
+                :model       "User"
+                :model_id    (mt/user->id :rasta)
+                :details     {}}
+               (event :user-joined (mt/user->id :rasta))))))))
+
+(deftest user-invited-event-test
+  (testing :event/user-invited
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (mt/with-temp [:model/User {:keys [id] :as new-user}]
+          (is (= new-user (events/publish-event! :event/user-invited new-user)))
+          (is (= {:model_id id
+                  :user_id  (mt/user->id :rasta)
+                  :details  (assoc (select-keys new-user [:first_name :last_name :email])
+                                   :user_group_memberships [{:id 1}])
+                  :topic    :user-invited
+                  :model    "User"}
+                 (event :user-invited id))))))))
+
+(deftest user-update-event-test
+  (testing :event/user-update
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (let [event (assoc (mt/fetch-user :lucky) :changes {:last_name "Charms"})]
+          (is (= event (events/publish-event! :event/user-update event))))
+        (is (= {:model_id (mt/user->id :lucky)
+                :user_id  (mt/user->id :rasta)
+                :details  {:last_name "Charms"}
+                :topic    :user-update
+                :model    "User"}
+               (event :user-update (mt/user->id :lucky))))))))
+
+(deftest user-deactivated-event-test
+ (testing :event/user-deactivated
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-model-cleanup [:model/AuditLog]
+       (let [event (mt/fetch-user :lucky)]
+         (is (= event (events/publish-event! :event/user-deactivated event))))
+       (is (= {:model_id (mt/user->id :lucky)
+               :user_id  (mt/user->id :rasta)
+               :details  {}
+               :topic    :user-deactivated
+               :model    "User"}
+              (event :user-deactivated (mt/user->id :lucky))))))))
+
+(deftest user-reactivated-event-test
+ (testing :event/user-reactivated
+   (mt/with-current-user (mt/user->id :rasta)
+     (mt/with-model-cleanup [:model/AuditLog]
+       (let [event (mt/fetch-user :lucky)]
+         (is (= event (events/publish-event! :event/user-reactivated event))))
+       (is (= {:model_id (mt/user->id :lucky)
+               :user_id  (mt/user->id :rasta)
+               :details  {}
+               :topic    :user-reactivated
+               :model    "User"}
+              (event :user-reactivated (mt/user->id :lucky))))))))
+
+(deftest password-reset-initiated-event-test
+  (testing :event/password-reset-initiated
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (let [event (assoc (mt/fetch-user :rasta) :token "hash")]
+          (is (= event (events/publish-event! :event/password-reset-initiated event))))
+        (is (= {:model_id (mt/user->id :rasta)
+                :user_id  (mt/user->id :rasta)
+                :details  {:token "hash"}
+                :topic    :password-reset-initiated
+                :model    "User"}
+               (event :password-reset-initiated (mt/user->id :rasta))))))))
+
+(deftest password-reset-successful-event-test
+  (testing :event/password-reset-successful
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-model-cleanup [:model/AuditLog]
+        (let [event (assoc (mt/fetch-user :rasta) :token "hash")]
+          (is (= event (events/publish-event! :event/password-reset-successful event))))
+        (is (= {:model_id (mt/user->id :rasta)
+                :user_id  (mt/user->id :rasta)
+                :details  {:token "hash"}
+                :topic    :password-reset-successful
+                :model    "User"}
+               (event :password-reset-successful (mt/user->id :rasta))))))))

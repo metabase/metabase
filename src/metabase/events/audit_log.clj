@@ -112,14 +112,21 @@
   [topic segment]
   (audit-log/record-event! topic segment))
 
-(derive ::user-joined-event ::event)
-(derive :event/user-joined ::user-joined-event)
+(derive ::user-event ::event)
+(derive :event/user-joined ::user-event)
+(derive :event/user-invited ::user-event)
+(derive :event/user-update ::user-event)
+(derive :event/user-deactivated ::user-event)
+(derive :event/user-reactivated ::user-event)
+(derive :event/password-reset-initiated ::user-event)
+(derive :event/password-reset-successful ::user-event)
 
-(methodical/defmethod events/publish-event! ::user-joined-event
+(methodical/defmethod events/publish-event! ::user-event
   [topic object]
-  {:pre [(pos-int? (:user-id object))]}
-  (let [user-id (:user-id object)]
-   (audit-log/record-event! topic {} user-id :model/User user-id)))
+  {:pre [(let [id (:user-id object)]
+           (or (nil? id)
+               (pos-int? id)))]}
+  (audit-log/record-event! topic object))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
