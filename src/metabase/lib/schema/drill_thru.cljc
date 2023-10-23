@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -159,7 +160,7 @@
    ::drill-thru.common.with-column
    [:map
     [:type      [:= :drill-thru/zoom-in.timeseries]]
-    [:value     some?]
+    [:dimension [:ref ::context.row.value]]
     [:next-unit [:ref ::drill-thru.zoom-in.timeseries.next-unit]]]])
 
 (mr/def ::drill-thru.zoom-in.geographic.column.latitude
@@ -257,34 +258,19 @@
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
     [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]]])
 
-;;; Frontend passes in something that looks like this. Why this shape? Who knows.
-(comment
-  {:column     {:lib/type            :metadata/column
-                :remapped-from-index nil
-                :base-type           :type/BigInteger
-                :semantic-type       :type/Quantity
-                :name                "count"
-                :lib/source          :source/aggregations
-                :aggregation-index   0
-                :effective-type      :type/BigInteger
-                :display-name        "Count"
-                :remapping           nil}
-   :value      457
-   :row        [{:column-name "CREATED_AT", :value "2024-01-01T00:00:00Z"}
-                {:column-name "count", :value 457}]
-   :dimensions [{:column-name "CREATED_AT", :value "2024-01-01T00:00:00Z"}]})
-
 (mr/def ::context.row.value
   [:map
-   [:column-name string?]
-   [:value       :any]])
+   [:column     [:ref ::lib.schema.metadata/column]]
+   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:value      :any]])
 
 (mr/def ::context.row
   [:sequential [:ref ::context.row.value]])
 
 (mr/def ::context
   [:map
-   [:column [:ref ::lib.schema.metadata/column]]
-   [:value  [:maybe :any]]
+   [:column     [:ref ::lib.schema.metadata/column]]
+   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:value      [:maybe :any]]
    [:row        {:optional true} [:ref ::context.row]]
    [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])
