@@ -201,7 +201,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
 
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
-          cy.url().should("include", `?${TEXT_FILTER_NAME}=${POINT_COUNT}`);
+          cy.location("search").should(
+            "eq",
+            `?${TEXT_FILTER_NAME}=${POINT_COUNT}`,
+          );
         },
       );
     });
@@ -240,8 +243,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             "contain.text",
             POINT_CREATED_AT_FORMATTED,
           );
-          cy.url().should(
-            "include",
+          cy.location("search").should(
+            "eq",
             `?${TEXT_FILTER_NAME}=${POINT_COUNT}&${TIME_FILTER_NAME}=${POINT_CREATED_AT}`,
           );
         },
