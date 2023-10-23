@@ -50,6 +50,7 @@
 (doto :model/Pulse
   (derive :metabase/model)
   (derive :hook/timestamped?)
+  (derive ::collection/no-updated-at-on-position-change)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set))
 

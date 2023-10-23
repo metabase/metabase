@@ -25,6 +25,7 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]))
 
@@ -65,6 +66,16 @@
   (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
+
+(t2/define-before-update ::no-updated-at-on-position-change
+  [obj]
+  (let [changes (if (t2/instance? obj) (t2/changes obj) obj)
+        only-changes-position? (set/subset? (set (keys changes))
+                                            #{:collection_position})]
+    (cond-> obj
+      only-changes-position? (assoc :updated_at nil))))
+
+(methodical/prefer-method! #'t2.before-update/before-update ::no-updated-at-on-position-change :hook/timestamped?)
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."

@@ -85,6 +85,17 @@
                  :updated_at (partial not= updated-at)}
                 (t2/select-one [Table :id :name :updated_at] (u/the-id table))))))))
 
+(deftest add-updated-at-respects-existing
+  (testing "when explicitly set to a value, it's not affected"
+    (is (= {:updated_at "123"}
+           (#'mi/add-updated-at-timestamp {:updated_at "123"}))))
+  (testing "when explicitly set to `nil`, it's removed"
+    (is (= {}
+           (#'mi/add-updated-at-timestamp {:updated_at nil}))))
+  (testing "when not set at all, it's added"
+    (is (some? (:updated_at
+                (#'mi/add-updated-at-timestamp {}))))))
+
 (deftest timestamped-property-do-not-stomp-on-explicit-values-test
   (testing "The :timestamped property should not stomp on :created_at/:updated_at if they are explicitly specified"
     (t2.with-temp/with-temp [Field field]

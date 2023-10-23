@@ -381,12 +381,13 @@
 
 (defn- add-updated-at-timestamp [obj]
   ;; don't stomp on `:updated_at` if it's already explicitly specified.
-  (let [changes-already-include-updated-at? (if (t2/instance? obj)
-                                              (:updated_at (t2/changes obj))
-                                              (:updated_at obj))]
+  (let [changes (if (t2/instance? obj) (t2/changes obj) obj)
+        changes-already-include-updated-at? (contains? changes :updated_at)
+        ;; explicitly set to `nil` means "do not change this"
+        nil-updated-at? (and changes-already-include-updated-at? (nil? (:updated_at changes)))]
     (cond-> obj
-      (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
-
+      (not changes-already-include-updated-at?) (assoc :updated_at (now))
+      nil-updated-at? (dissoc :updated_at))))
 
 (t2/define-before-insert :hook/timestamped?
   [instance]

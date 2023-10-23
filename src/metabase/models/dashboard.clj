@@ -45,6 +45,7 @@
 (doto :model/Dashboard
   (derive :metabase/model)
   (derive ::perms/use-parent-collection-perms)
+  (derive ::collection/no-updated-at-on-position-change)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
