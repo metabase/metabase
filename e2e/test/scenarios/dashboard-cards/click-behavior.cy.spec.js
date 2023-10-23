@@ -22,6 +22,10 @@ const CREATED_AT_COLUMN_NAME = "Created At";
 const TEXT_FILTER_NAME = "filter-text";
 const TIME_FILTER_NAME = "filter-time";
 const FILTER_VALUE = "123";
+const POINT_COUNT = 344;
+const POINT_CREATED_AT = "2026-04";
+const POINT_CREATED_AT_FORMATTED = "April 2026";
+const POINT_INDEX = 48;
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -38,11 +42,6 @@ const OBJECT_DETAIL_CHART = {
   display: "object",
   query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
 };
-
-const POINT_COUNT = 344;
-const POINT_CREATED_AT = "2026-04";
-const POINT_CREATED_AT_FORMATTED = "April 2026";
-const POINT_INDEX = 48;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
