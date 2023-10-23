@@ -1214,7 +1214,7 @@
 (deftest cards-to-copy-test
   (testing "Identifies all cards to be copied"
     (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                         {:card_id 3 :card (card-model{:id 3})}]]
+                     {:card_id 3 :card (card-model{:id 3})}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :discard []}
@@ -1222,14 +1222,14 @@
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                           {:card_id 3 :card (card-model{:id 3})}]]
+                       {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :discard [{:id 2}]}
                  (#'api.dashboard/cards-to-copy dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
-                           {:card_id 3 :card (card-model{:id 3})}]]
+                       {:card_id 3 :card (card-model{:id 3})}]]
         (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
                   :discard [{:id 1} {:id 2}]}
@@ -1238,7 +1238,7 @@
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
-                         {:card_id 3 :card {:id 3}}]]
+                     {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
              (api.dashboard/update-cards-for-copy 1
                                                   dashcards
@@ -1267,7 +1267,7 @@
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
-                           {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
+                       {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
                (api.dashboard/update-cards-for-copy 1
                                                     dashcards
@@ -1393,7 +1393,7 @@
 
 (defn- dashcard-like-response
   [id]
-  (t2/hydrate (t2/select-one DashboardCard :id id) :series))
+  (first (t2/hydrate (t2/select DashboardCard :id id) :series)))
 
 (defn- current-cards
   "Returns the current ordered cards of a dashboard."
@@ -2058,6 +2058,7 @@
                                                                                     :tabs  []})))
           (is (= 1
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+
     (testing "prune"
       (mt/with-temp [Dashboard     {dashboard-id :id} {}
                      Card          {card-id :id}      {}
