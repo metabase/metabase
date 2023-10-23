@@ -641,6 +641,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti prettify-native-form
+  "Pretty-format native form presumably coming from compiled query.
+  Used eg. in API endpoint `/dataset/native`, to present user with nicely formatted query."
+  {:added "0.48.0", :arglists '([driver native-form]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod prettify-native-form ::driver
+ [_ native-form]
+ native-form)
+
 (defmulti splice-parameters-into-native-query
   "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
 
