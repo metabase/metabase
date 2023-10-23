@@ -15,6 +15,8 @@ export const getNumberInputOverrides =
     NumberInput: {
       defaultProps: {
         size: "md",
+        precision: 16,
+        removeTrailingZeros: true,
         hideControls: true,
       },
       styles: (

@@ -11,6 +11,13 @@ export const STRING_FILTER_OPERATORS = [
   "ends-with",
 ] as const;
 
+export const STRING_FILTER_OPERATORS_WITH_OPTIONS = [
+  "contains",
+  "does-not-contain",
+  "starts-with",
+  "ends-with",
+] as const;
+
 export const NUMBER_FILTER_OPERATORS = [
   "=",
   "!=",
