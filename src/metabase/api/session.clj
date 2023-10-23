@@ -244,12 +244,12 @@
   (forgot-password-impl email)
   api/generic-204-no-content)
 
-
 (defsetting reset-token-ttl-hours
   (deferred-tru "Number of hours a password reset is considered valid.")
   :visibility :internal
   :type       :integer
-  :default    48)
+  :default    48
+  :audit      :getter)
 
 (defn reset-token-ttl-ms
   "number of milliseconds a password reset is considered valid."
@@ -359,8 +359,8 @@
         (throw (ex-info (tru "Email for pulse-id doesn't exist.")
                         {:type        type
                          :status-code 400}))))
-      (events/publish-event! :event/subscription-unsubscribe {:details {:email email}})
-      {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
+    (events/publish-event! :event/subscription-unsubscribe {:details {:email email}})
+    {:status :success :title (:name (pulse/retrieve-notification pulse-id :archived false))}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."

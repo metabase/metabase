@@ -74,6 +74,7 @@
   (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
   :visibility :admin
   :type       :integer
+  :audit      :never
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
@@ -193,6 +194,7 @@
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")
   :visibility :admin
   :type       :json
+  :audit      :never
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
@@ -202,6 +204,7 @@
 
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
+  :audit :never
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
@@ -289,6 +292,7 @@
   (let [options (merge {:type       :boolean
                         :visibility :public
                         :setter     :none
+                        :audit      :never
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
@@ -395,6 +399,7 @@
   :type       :boolean
   :visibility :public
   :setter     :none
+  :audit      :never
   :getter     (fn [] (boolean ((token-features) "hosting")))
   :doc        false)
 

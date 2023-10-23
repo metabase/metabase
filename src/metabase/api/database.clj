@@ -591,6 +591,7 @@
   :visibility :public
   :type       :keyword
   :default    :substring
+  :audit      :raw-value
   :setter     (fn [v]
                 (let [v (cond-> v (string? v) keyword)]
                   (if (autocomplete-matching-options v)
