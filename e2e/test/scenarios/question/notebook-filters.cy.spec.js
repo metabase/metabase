@@ -131,6 +131,24 @@ const TABLE_CASES = [
     expectedDisplayName: "Title is not empty",
     expectedRowCount: 200,
   },
+  {
+    title: "number, is",
+    tableId: PRODUCTS_ID,
+    columnName: "Rating",
+    operator: "Equal to",
+    values: ["4"],
+    expectedDisplayName: "Rating is equal to 4",
+    expectedRowCount: 37,
+  },
+  {
+    title: "number, is, multiple values",
+    tableId: PRODUCTS_ID,
+    columnName: "Rating",
+    operator: "Equal to",
+    values: ["4", "5"],
+    expectedDisplayName: "Rating is equal to 2 selections",
+    expectedRowCount: 40,
+  },
 ];
 
 const tableQuestion = tableId => ({
@@ -165,11 +183,13 @@ describe("scenarios > question > notebook filters", () => {
 
           popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByDisplayValue("Is").click();
+            cy.findByTestId("filter-operator-picker").click();
           });
           cy.findByRole("listbox").findByText(operator).click();
           popover().within(() => {
-            values.forEach(value => cy.findByRole("textbox").type(value));
+            values.forEach(value =>
+              cy.findByRole("textbox").type(`${value}{enter}`),
+            );
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
           });

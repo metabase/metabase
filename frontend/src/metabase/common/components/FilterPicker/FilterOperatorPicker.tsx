@@ -20,5 +20,5 @@ export function FilterOperatorPicker({
     }));
   }, [options]);
 
-  return <Select data={data} {...props} />;
+  return <Select data={data} {...props} data-testid="filter-operator-picker" />;
 }
