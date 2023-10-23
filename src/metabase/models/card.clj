@@ -57,6 +57,7 @@
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive ::perms/use-parent-collection-perms)
+  (derive ::collection/remove-updated-at-for-collection-position-changes)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 

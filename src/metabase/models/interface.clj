@@ -387,7 +387,6 @@
     (cond-> obj
       (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
 
-
 (t2/define-before-insert :hook/timestamped?
   [instance]
   (-> instance
