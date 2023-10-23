@@ -1,10 +1,6 @@
 import _ from "underscore";
 import * as Lib from "metabase-lib";
-import type {
-  ColumnListItem,
-  SegmentListItem,
-  PickerOperatorOption,
-} from "./types";
+import type { PickerOperatorOption } from "./types";
 
 export function getAvailableOperatorOptions<
   T extends PickerOperatorOption<Lib.FilterOperatorName>,
@@ -30,9 +26,3 @@ export function getAvailableOperatorOptions<
     ...option,
   }));
 }
-
-export const isSegmentListItem = (
-  item: ColumnListItem | SegmentListItem,
-): item is SegmentListItem => {
-  return (item as SegmentListItem).segment != null;
-};

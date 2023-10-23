@@ -13,7 +13,6 @@ import type { IconName } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
 
 import type { ColumnListItem, SegmentListItem } from "../types";
-import { isSegmentListItem } from "../utils";
 import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
@@ -37,6 +36,12 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   name: t`Custom Expression`,
   items: [],
   icon: "filter",
+};
+
+export const isSegmentListItem = (
+  item: ColumnListItem | SegmentListItem,
+): item is SegmentListItem => {
+  return (item as SegmentListItem).segment != null;
 };
 
 /**
