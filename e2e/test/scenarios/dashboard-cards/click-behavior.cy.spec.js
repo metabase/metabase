@@ -200,6 +200,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
 
+          cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.location("search").should(
             "eq",
@@ -238,6 +239,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
 
+          cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.findAllByTestId("field-set").should(
             "contain.text",
