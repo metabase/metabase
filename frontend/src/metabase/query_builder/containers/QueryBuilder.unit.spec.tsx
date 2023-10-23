@@ -212,6 +212,8 @@ const TestQueryBuilder = (
 
 const TestHome = () => <NewItemMenu trigger={<button>New</button>} />;
 
+const TestRedirect = () => <div />;
+
 function isSavedCard(card: Card | UnsavedCard | null): card is Card {
   return card !== null && "id" in card;
 }
@@ -270,6 +272,7 @@ const setup = async ({
         <Route path=":slug" component={TestQueryBuilder} />
         <Route path=":slug/notebook" component={TestQueryBuilder} />
       </Route>
+      <Route path="/redirect" component={TestRedirect} />
     </Route>,
     {
       withRouter: true,
@@ -570,15 +573,12 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when leaving via SPA navigation", async () => {
         const { history } = await setup({
           card: null,
-          initialRoute: "/",
+          initialRoute: "/model/new",
         });
-
-        history.push("/model/new");
-        await waitForLoaderToBeRemoved();
 
         await startNewNotebookModel();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -629,17 +629,14 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when user tries to leave an ad-hoc native query", async () => {
         const { history } = await setup({
           card: TEST_UNSAVED_NATIVE_CARD,
-          initialRoute: "/",
+          initialRoute: `/question#${serializeCardForUrl(
+            TEST_UNSAVED_NATIVE_CARD,
+          )}`,
         });
-
-        history.push(
-          `/question#${serializeCardForUrl(TEST_UNSAVED_NATIVE_CARD)}`,
-        );
-        await waitForLoaderToBeRemoved();
 
         await triggerNativeQueryChange();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -674,7 +671,7 @@ describe("QueryBuilder", () => {
             screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(
             screen.queryByTestId("leave-confirmation"),
@@ -686,16 +683,13 @@ describe("QueryBuilder", () => {
         it("shows custom warning modal when leaving edited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-          await waitForLoaderToBeRemoved();
 
           await triggerNotebookQueryChange();
           await waitForSaveModelToBeEnabled();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
@@ -703,11 +697,8 @@ describe("QueryBuilder", () => {
         it("does not show custom warning modal when leaving unedited query via SPA navigation", async () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
-            initialRoute: "/",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/query`,
           });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/query`);
-          await waitForLoaderToBeRemoved();
 
           await triggerNotebookQueryChange();
           await waitForSaveModelToBeEnabled();
@@ -715,7 +706,7 @@ describe("QueryBuilder", () => {
           await revertNotebookQueryChange();
           await waitForSaveModelToBeDisabled();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(
             screen.queryByTestId("leave-confirmation"),
@@ -776,7 +767,7 @@ describe("QueryBuilder", () => {
             screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(
             screen.queryByTestId("leave-confirmation"),
@@ -789,16 +780,13 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
-
-          history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
-          await waitForLoaderToBeRemoved();
 
           await triggerMetadataChange();
           await waitForSaveModelToBeEnabled();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
         });
@@ -807,13 +795,10 @@ describe("QueryBuilder", () => {
           const { history } = await setup({
             card: TEST_MODEL_CARD,
             dataset: TEST_MODEL_DATASET,
-            initialRoute: "/",
+            initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
           });
 
-          history.push(`/model/${TEST_MODEL_CARD.id}/metadata`);
-          await waitForLoaderToBeRemoved();
-
-          history.goBack();
+          history.push("/redirect");
 
           expect(
             screen.queryByTestId("leave-confirmation"),
@@ -880,7 +865,7 @@ describe("QueryBuilder", () => {
             screen.queryByTestId("leave-confirmation"),
           ).not.toBeInTheDocument();
 
-          history.goBack();
+          history.push("/redirect");
 
           expect(
             screen.queryByTestId("leave-confirmation"),
@@ -931,7 +916,7 @@ describe("QueryBuilder", () => {
         await triggerNativeQueryChange();
         await waitForSaveNewQuestionToBeEnabled();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -948,7 +933,7 @@ describe("QueryBuilder", () => {
         );
         await waitForLoaderToBeRemoved();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1019,7 +1004,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1031,14 +1016,13 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when leaving edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
         await triggerNativeQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -1046,14 +1030,12 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_NATIVE_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
         });
 
-        history.push(`/question/${TEST_NATIVE_CARD.id}`);
-        await waitForLoaderToBeRemoved();
         await waitForNativeQueryEditoReady();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1108,7 +1090,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1151,7 +1133,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1163,16 +1145,13 @@ describe("QueryBuilder", () => {
       it("shows custom warning modal when leaving notebook-edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
         });
-
-        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
-        await waitForLoaderToBeRemoved();
 
         await triggerNotebookQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
       });
@@ -1180,16 +1159,13 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal when leaving visualization-edited question via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_STRUCTURED_CARD.id}`,
         });
-
-        history.push(`/question/${TEST_STRUCTURED_CARD.id}`);
-        await waitForLoaderToBeRemoved();
 
         await triggerVisualizationQueryChange();
         await waitForSaveQuestionToBeEnabled();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1199,13 +1175,10 @@ describe("QueryBuilder", () => {
       it("does not show custom warning modal leaving with no changes via SPA navigation", async () => {
         const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
-          initialRoute: "/",
+          initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
         });
 
-        history.push(`/question/${TEST_STRUCTURED_CARD.id}/notebook`);
-        await waitForLoaderToBeRemoved();
-
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1240,7 +1213,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
@@ -1283,7 +1256,7 @@ describe("QueryBuilder", () => {
           screen.queryByTestId("leave-confirmation"),
         ).not.toBeInTheDocument();
 
-        history.goBack();
+        history.push("/redirect");
 
         expect(
           screen.queryByTestId("leave-confirmation"),
