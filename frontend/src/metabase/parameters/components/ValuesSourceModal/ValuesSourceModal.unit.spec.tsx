@@ -52,8 +52,11 @@ describe("ValuesSourceModal", () => {
       await setup();
 
       expect(
-        screen.getByText(/You haven’t connected a field to this filter/),
-      ).toBeInTheDocument();
+        screen.queryByRole("radio", { name: "From connected fields" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      ).toBeChecked();
     });
 
     it("should show a message about missing field values", async () => {
@@ -82,21 +85,6 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-    });
-
-    it("should not show the fields option for variable template tags", async () => {
-      await setup({
-        parameter: createMockUiParameter({
-          hasVariableTemplateTagTarget: true,
-        }),
-      });
-
-      expect(
-        screen.queryByRole("radio", { name: "From connected fields" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("radio", { name: "From another model or question" }),
-      ).toBeChecked();
     });
 
     it("should preserve custom list option for variable template tags", async () => {
@@ -368,6 +356,7 @@ describe("ValuesSourceModal", () => {
     it("should preserve the list when changing the source type", async () => {
       await setup({
         parameter: createMockUiParameter({
+          fields: [field1],
           values_source_type: "static-list",
           values_source_config: {
             values: ["Gadget", "Widget"],

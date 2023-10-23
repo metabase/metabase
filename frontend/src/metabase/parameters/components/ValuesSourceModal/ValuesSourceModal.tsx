@@ -1,22 +1,18 @@
 import { useCallback, useState } from "react";
-import type {
-  Parameter,
-  ValuesSourceConfig,
-  ValuesSourceType,
-} from "metabase-types/api";
+import type { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 import {
   getSourceConfig,
   getSourceConfigForType,
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
-import type { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
 type ModalStep = "main" | "card";
 
 interface ModalProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   onSubmit: (
     sourceType: ValuesSourceType,
     sourceConfig: ValuesSourceConfig,
@@ -68,10 +64,11 @@ const ValuesSourceModal = ({
   );
 };
 
-const getInitialSourceType = (parameter: ParameterWithTemplateTagTarget) => {
+const getInitialSourceType = (parameter: UiParameter) => {
   const sourceType = getSourceType(parameter);
 
-  return sourceType === null && parameter.hasVariableTemplateTagTarget
+  return sourceType === null &&
+    !("fields" in parameter && parameter.fields.length > 0)
     ? "card"
     : sourceType;
 };
