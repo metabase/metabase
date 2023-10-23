@@ -254,15 +254,19 @@
               :existing-schedule (:cache_field_values_schedule database)
               :ti                field-values-task-info
               :trigger           fv-trigger
-              :description       "field-values"}]]
-      (when (or (not existing-trigger)
-                (not= (:schedule existing-trigger) existing-schedule))
-        (delete-task! database ti)
-        (log/info
-         (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
-                         description (u/the-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
-        ;; now (re)schedule the task
-        (task/add-trigger! trigger)))))
+              :description       "field-values"}]
+            :when (or (not existing-trigger)
+                      (not= (:schedule existing-trigger) existing-schedule))
+            :when (not (and (:is_audit database) (= description "sync/analyze")
+                            (u/prog1 true
+                              (log/info
+                               (u/format-color 'red "Not scheduling %s for database %d" description (:id database))))))]
+      (delete-task! database ti)
+      (log/info
+       (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
+                       description (:id database) (.. ^org.quartz.Trigger trigger getKey getName)))
+      ;; now (re)schedule the task
+      (task/add-trigger! trigger))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

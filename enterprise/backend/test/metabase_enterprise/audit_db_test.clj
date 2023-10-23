@@ -5,6 +5,7 @@
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.core :as mbc]
             [metabase.models.database :refer [Database]]
+            [metabase.task :as task]
             [metabase.test :as mt]
             [toucan2.core :as t2]))
 
@@ -49,6 +50,21 @@
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count 'Card {:where [:= :database_id (audit-db/default-audit-db-id)]}))
           "Cards should be created for Audit DB when the content is there."))))
+
+(deftest audit-db-does-not-have-scheduled-syncs
+  (mt/test-drivers #{:postgres :h2 :mysql}
+    (with-audit-db-restoration
+      (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+      (let [adb (t2/select-one 'Database {:where [:= :is_audit true]})
+            sync-job-info (task/job-info "metabase.task.sync-and-analyze.job")
+            db-has-sync-job-trigger? (fn [db-id]
+                                       (contains?
+                                        (set (map #(-> % :data (get "db-id")) (:triggers sync-job-info)))
+                                        db-id))]
+        (is (= (:metadata_sync_schedule adb) "0 0 0 1 1 ? 2147483647")
+            "Metadata Sync scheduled for 2 billion years in the future")
+        (is (db-has-sync-job-trigger? 1))
+        (is (not (db-has-sync-job-trigger? (audit-db/default-audit-db-id))))))))
 
 (deftest audit-db-instance-analytics-content-is-coppied-properly
   (fs/delete-tree "plugins/instance_analytics")

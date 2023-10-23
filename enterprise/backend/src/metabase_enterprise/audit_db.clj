@@ -100,20 +100,11 @@
   []
   (collection-entity-id->collection default-audit-collection-entity-id))
 
-(def ^:private eon-away-cron-schedule
-  "This cron schedule will basically never run."
-  (let [schedule "0 0 0 1 1 ? 2147483647"]
-    (assert (mc/validate u.cron/CronScheduleString schedule) "Must be a valid cron schedule")
-    schedule))
-
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
   - This uses a weird ID because some tests are hardcoded to look for database with ID = 2, and inserting an extra db
-  throws that off since the IDs are sequential...
-
-  - In the unlikely case that a user has many many databases in Metabase, and ensure there can Never be a collision, we
-  do a quick check here and pick a new ID if it would have collided. Similar to finding an open port number."
+  throws that off since the IDs are sequential."
   ([engine] (install-database! engine (default-audit-db-id)))
   ([engine id]
    (if (t2/select-one Database :id id)
@@ -127,13 +118,6 @@
                              :description      "Internal Audit DB used to power metabase analytics."
                              :engine           engine
                              :initial_sync_status "complete"
-                             :cache_field_values_schedule eon-away-cron-schedule
-                             :metadata_sync_schedule eon-away-cron-schedule
-                             ;; TODO:
-                             ;; Should we have
-                             ;; `:is_full_sync false` ?
-                             ;; ?
-                             :is_full_sync     false
                              :is_on_demand     false
                              :creator_id       nil
                              :auto_run_queries true})))))
@@ -225,8 +209,6 @@
   []
   (u/prog1 (ensure-db-installed!)
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (assert audit-db "Audit DB was not installed correctly!!")
-      (log/info "Skipping Audit DB Sync...") ;; TODO remove this
       (when analytics-dir-resource
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
@@ -243,6 +225,6 @@
                                                                 :token-check? false))]
                (if (not-empty (:errors report))
                  (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities synchronized."))))
+                 (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))))
              (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
                (adjust-audit-db-to-host! audit-db)))))))))
