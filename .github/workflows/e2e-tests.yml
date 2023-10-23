@@ -1,3 +1,4 @@
+# Do not run backend or drivers
 name: E2E Tests
 
 on:
