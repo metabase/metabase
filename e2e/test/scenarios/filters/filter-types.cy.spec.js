@@ -183,7 +183,7 @@ const TABLE_CASES = [
     operator: "Greater than or equal to",
     values: ["47.5"],
     expectedDisplayName: "Price is greater than or equal to 47.5",
-    expectedRowCount: 89,
+    expectedRowCount: 111,
   },
   {
     title: "number, less than or equal to",
@@ -248,9 +248,12 @@ describe("scenarios > question > notebook filters", () => {
           });
           cy.findByRole("listbox").findByText(operator).click();
           popover().within(() => {
-            values.forEach(value =>
-              cy.findByRole("textbox").type(`${value}{enter}`),
-            );
+            values.forEach((value, index) => {
+              if (index !== 0) {
+                cy.findByRole("textbox").type("{enter}");
+              }
+              cy.findByRole("textbox").type(value);
+            });
             options.forEach(option => cy.findByText(option).click());
             cy.button("Add filter").click();
           });
