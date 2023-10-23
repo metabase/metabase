@@ -16,6 +16,8 @@ ul,
 li,
 span {
   box-sizing: border-box;
+  text-wrap: wrap;
+  line-height: normal;
 }
 
 /* for applying border-box to other elements on ad-hoc basis */
