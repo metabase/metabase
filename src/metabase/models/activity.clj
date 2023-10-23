@@ -110,7 +110,10 @@
                                            :topic       (keyword (name topic))
                                            :user_id     (or user-id (events/object->user-id object))
                                            :model       (or model (events/topic->model topic))
-                                           :model_id    (or model-id (events/object->model-id topic object))
+                                           :model_id    (or model-id (events/object->model-id topic object)
+                                                            ;; should eventually be (:id object) ;; where object is a
+                                                            ;; key of event
+                                                            (events/object->model-id topic (:object object)))
                                            :database_id database-id
                                            :table_id    table-id
                                            :custom_id   (:custom_id object)

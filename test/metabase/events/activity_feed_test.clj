@@ -25,6 +25,7 @@
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
 
+
 (deftest card-create-test
   (testing :card-create
     (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]
@@ -103,8 +104,9 @@
   (testing :dashboard-create
     (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
       (mt/with-model-cleanup [Activity]
-        (is (= dashboard
-               (events/publish-event! :event/dashboard-create dashboard)))
+        (is (= {:object dashboard
+                :creator-id (mt/user->id :rasta)}
+               (events/publish-event! :event/dashboard-create {:object dashboard :creator-id (mt/user->id :rasta)})))
         (is (= {:topic       :dashboard-create
                 :user_id     (mt/user->id :rasta)
                 :model       "dashboard"
@@ -135,8 +137,8 @@
                    Card          card {}
                    DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-model-cleanup [Activity]
-        (let [event {:id        (:id dashboard)
-                     :actor_id  (mt/user->id :rasta)
+        (let [event {:object    dashboard
+                     :actor-id  (mt/user->id :rasta)
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-add-cards event))))
@@ -160,24 +162,24 @@
                    Card          card {}
                    DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-model-cleanup [Activity]
-        (let [event {:id        (:id dashboard)
-                     :actor_id  (mt/user->id :rasta)
+        (let [event {:object    dashboard
+                     :actor-id  (mt/user->id :rasta)
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-remove-cards event))))
-        (is (= {:topic       :dashboard-remove-cards
-                :user_id     (mt/user->id :rasta)
-                :model       "dashboard"
-                :model_id    (:id dashboard)
-                :database_id nil
-                :table_id    nil
-                :details     {:name        "My Cool Dashboard"
-                              :description nil
-                              :dashcards   [{:description (:description card)
-                                             :name        (:name card)
-                                             :id          (:id dashcard)
-                                             :card_id     (:id card)}]}}
-               (activity "dashboard-remove-cards" (:id dashboard))))))))
+       (is (= {:topic       :dashboard-remove-cards
+               :user_id     (mt/user->id :rasta)
+               :model       "dashboard"
+               :model_id    (:id dashboard)
+               :database_id nil
+               :table_id    nil
+               :details     {:name        "My Cool Dashboard"
+                             :description nil
+                             :dashcards   [{:description (:description card)
+                                            :name        (:name card)
+                                            :id          (:id dashcard)
+                                            :card_id     (:id card)}]}}
+              (activity "dashboard-remove-cards" #p (:id dashboard))))))))
 
 (deftest install-event-test
   (testing :install

@@ -4,6 +4,7 @@
    [clojure.core :as core]
    [malli.core :as mc]
    [malli.destructure]
+   [malli.error :as me]
    [malli.util :as mut]
    [metabase.shared.util.i18n :as i18n]
    #?@(:clj
@@ -109,5 +110,9 @@
                 schema-or-validator
                 (mc/validator schema-or-validator))
               value)
-       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
+       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator
+                                                      :error (-> schema-or-validator
+                                                                 (mc/explain value)
+                                                                 me/with-spell-checking
+                                                                 (me/humanize {:wrap humanize-include-value}))}))
        value)))

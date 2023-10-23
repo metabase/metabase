@@ -47,22 +47,22 @@
 (derive :event/dashboard-remove-cards ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic object]
+  [topic event]
   (let [create-delete-details
         #(select-keys % [:description :name])
 
         add-remove-card-details
-        (fn [{:keys [dashcards] :as obj}]
+        (fn [{:keys [dashcards] :as _event}]
           ;; we expect that the object has just a dashboard :id at the top level
           ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
+          (-> (t2/select-one [Dashboard :description :name], :id (get-in event [:object :id]))
               (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                   (-> (t2/select-one [Card :name :description], :id card_id)
                                       (assoc :id id)
                                       (assoc :card_id card_id))))))]
     (activity/record-activity!
       :topic      topic
-      :object     object
+      :object     event
       :details-fn (case topic
                     :event/dashboard-create       create-delete-details
                     :event/dashboard-delete       create-delete-details

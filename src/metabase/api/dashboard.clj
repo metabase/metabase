@@ -96,10 +96,9 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-    (events/publish-event! :event/dashboard-create dash)
+    (events/publish-event! :event/dashboard-create {:object dash :creator-id api/*current-user-id*})
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
-
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -382,7 +381,8 @@
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
         (events/publish-event! :event/card-create card)))
-    (events/publish-event! :event/dashboard-create dashboard)))
+    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+    dashboard))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
@@ -391,7 +391,7 @@
   [id]
   {id ms/PositiveInt}
   (let [dashboard (get-dashboard id)]
-    (events/publish-event! :event/dashboard-read (assoc dashboard :actor_id api/*current-user-id*))
+    (events/publish-event! :event/dashboard-read {:object dashboard :actor-id api/*current-user-id*})
     (last-edit/with-last-edit-info dashboard :dashboard)))
 
 (defn- check-allowed-to-change-embedding
@@ -443,7 +443,7 @@
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one :model/Dashboard :id id)]
-    (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
+    (events/publish-event! :event/dashboard-update {:object dashboard :actor-id api/*current-user-id*})
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
@@ -458,7 +458,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :event/dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
+    (events/publish-event! :event/dashboard-delete {:object dashboard :actor-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -590,15 +590,16 @@
    [:name ms/NonBlankString]])
 
 (defn- track-dashcard-and-tab-events!
-  [dashboard-id {:keys [created-dashcards deleted-dashcards updated-dashcards
-                        created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
+  [{dashboard-id :id :as dashboard}
+   {:keys [created-dashcards deleted-dashcards updated-dashcards
+           created-tab-ids updated-tab-ids deleted-tab-ids total-num-tabs]}]
   ;; Dashcard events
   (when (seq deleted-dashcards)
     (events/publish-event! :event/dashboard-remove-cards
-                           {:id dashboard-id :actor_id api/*current-user-id* :dashcards deleted-dashcards}))
+                           {:object dashboard :actor-id api/*current-user-id* :dashcards deleted-dashcards}))
   (when (seq created-dashcards)
     (events/publish-event! :event/dashboard-add-cards
-                           {:id dashboard-id :actor_id api/*current-user-id* :dashcards created-dashcards})
+                           {:object dashboard :actor-id api/*current-user-id* :dashcards created-dashcards})
     (for [{:keys [card_id]} created-dashcards
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
@@ -607,7 +608,7 @@
   ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
   (when (seq updated-dashcards)
     (events/publish-event! :event/dashboard-reposition-cards
-                           {:id dashboard-id :actor_id api/*current-user-id* :dashcards updated-dashcards}))
+                           {:object dashboard :actor-id api/*current-user-id* :dashcards updated-dashcards}))
 
   ;; Tabs events
   (when (seq deleted-tab-ids)
@@ -617,7 +618,7 @@
                             :num-tabs       (count deleted-tab-ids)
                             :total-num-tabs total-num-tabs})
     (events/publish-event! :event/dashboard-remove-tabs
-                           {:id dashboard-id :actor_id api/*current-user-id* :tab-ids deleted-tab-ids}))
+                           {:object dashboard :actor-id api/*current-user-id* :tab-ids deleted-tab-ids}))
   (when (seq created-tab-ids)
     (snowplow/track-event! ::snowplow/dashboard-tab-created
                            api/*current-user-id*
@@ -625,10 +626,10 @@
                             :num-tabs       (count created-tab-ids)
                             :total-num-tabs total-num-tabs})
     (events/publish-event! :event/dashboard-add-tabs
-                           {:id dashboard-id :actor_id api/*current-user-id* :tab-ids created-tab-ids}))
+                           {:object dashboard :actor-id api/*current-user-id* :tab-ids created-tab-ids}))
   (when (seq updated-tab-ids)
     (events/publish-event! :event/dashboard-update-tabs
-                           {:id dashboard-id :actor_id api/*current-user-id* :tab-ids updated-tab-ids})))
+                           {:object dashboard :actor-id api/*current-user-id* :tab-ids updated-tab-ids})))
 
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
@@ -682,7 +683,7 @@
                       (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
                       (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
         ;; trigger events out of tx so rows are committed and visible from other threads
-        (track-dashcard-and-tab-events!  id @changes-stats)
+        (track-dashcard-and-tab-events! (t2/select-one :model/Dashboard id) @changes-stats)
         true))
    {:cards (t2/hydrate (dashboard/dashcards id) :series)
     :tabs  (dashboard/tabs id)}))
@@ -764,8 +765,9 @@
   [parent-collection-id :as {dashboard :body}]
   {parent-collection-id ms/PositiveInt}
   (collection/check-write-perms-for-collection parent-collection-id)
-  (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
-       (events/publish-event! :event/dashboard-create)))
+  (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
+    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+    dashboard))
 
 (api/defendpoint POST "/save"
   "Save a denormalized description of dashboard."
@@ -773,10 +775,10 @@
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (populate/get-or-create-root-container-collection))
                                (t2/select-one-fn :id 'Collection
-                                 :personal_owner_id api/*current-user-id*))]
-    (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
-         (events/publish-event! :event/dashboard-create))))
-
+                                                 :personal_owner_id api/*current-user-id*))
+        dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
+    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+    dashboard))
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 

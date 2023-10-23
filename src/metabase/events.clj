@@ -10,6 +10,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [metabase.events.schema :as events.schema]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -107,22 +108,25 @@
   (if-not @events-initialized?
     ;; if the event namespaces aren't initialized yet, make sure they're all loaded up before trying to do dispatch.
     (do
-      (initialize-events!)
-      (publish-event! topic event))
+     (initialize-events!)
+     (publish-event! topic event))
     (do
-      (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
-      (assert (and (qualified-keyword? topic)
-                   (isa? topic :metabase/event))
-              (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
-      (assert (map? event)
-              (format "Invalid event %s: event must be a map." (pr-str event)))
-      (try
-        (next-method topic event)
-        (catch Throwable e
-          (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
-                          {:topic topic, :event event}
-                          e))))
-      event)))
+     (log/debugf "Publishing %s event:\n\n%s" (u/colorize :yellow (pr-str topic)) (u/pprint-to-str event))
+     (assert (and (qualified-keyword? topic)
+                  (isa? topic :metabase/event))
+             (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))
+     (assert (map? event)
+             (format "Invalid event %s: event must be a map." (pr-str event)))
+     (try
+      (if-let [schema (events.schema/topic->schema topic)]
+        (mu/validate-throw schema event)
+        (log/warn (format "Missing schema for topic: %s" topic)))
+      (next-method topic event)
+      (catch Throwable e
+        (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
+                        {:topic topic, :event event}
+                        e))))
+     event)))
 
 (mu/defn topic->model :- [:maybe :string]
   "Determine a valid `model` identifier for the given `topic`."
@@ -140,7 +144,7 @@
 
 (def ^{:arglists '([object])} object->user-id
   "Determine the appropriate `user_id` (if possible) for a given `object`."
-  (some-fn :actor_id :user_id :creator_id))
+  (some-fn :actor_id :user_id :creator_id :actor-id :user-id :creator-id))
 
 (defn object->metadata
   "Determine metadata, if there is any, for given `object`.
