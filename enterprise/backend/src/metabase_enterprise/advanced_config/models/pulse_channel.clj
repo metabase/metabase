@@ -12,7 +12,8 @@
   :feature    :email-allow-list
   ;; this is a comma-separated string but we're not using `:csv` because it gets serialized to an array which makes it
   ;; inconvenient to use on the frontend.
-  :type       :string)
+  :type       :string
+  :audit      :getter)
 
 (defn- allowed-domains-set
   "Parse [[subscription-allowed-domains]] into a set. `nil` if the Setting is not set or empty."

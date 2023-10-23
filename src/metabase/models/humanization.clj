@@ -80,6 +80,7 @@
   :type       :keyword
   :default    :simple
   :visibility :settings-manager
+  :audit      :raw-value
   :getter     (fn []
                 (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)]
                   ;; actual advanced method has been excised. Use `:simple` instead if someone had specified
