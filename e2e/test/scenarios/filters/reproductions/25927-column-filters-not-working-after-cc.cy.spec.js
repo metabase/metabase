@@ -42,6 +42,7 @@ describe("issue 25927", () => {
     cy.findByTestId("qb-filters-panel")
       .contains("Created At is in the previous 30 days")
       .click();
-    cy.button("Add filter").should("not.be.disabled");
+
+    popover().button("Update filter").should("not.be.disabled");
   });
 });
