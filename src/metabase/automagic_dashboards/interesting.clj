@@ -381,6 +381,35 @@
     (add-field-links-to-definitions (enriched-field-with-sources context entity))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn grounded-filters
+  "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
+  filter name to grounded versions of the filter."
+  [filter-templates ground-dimensions]
+  (->> filter-templates
+       (keep (fn [fltr]
+               (let [[fname {:keys [filter] :as v}] (first fltr)
+                     dims (dashboard-templates/collect-dimensions v)
+                     opts (->> (map (comp
+                                      (partial map (partial ->reference :mbql))
+                                      :matches
+                                      ground-dimensions) dims)
+                               (apply math.combo/cartesian-product)
+                               (map (partial zipmap dims)))]
+                 (seq (for [opt opts
+                            :let [f
+                                  (walk/prewalk
+                                    (fn [x]
+                                      (if (vector? x)
+                                        (let [[ds dim-name] x]
+                                          (if (and (= "dimension" ds)
+                                                   (string? dim-name))
+                                            (opt dim-name)
+                                            x))
+                                        x))
+                                    filter)]]
+                        (assoc v :filter f :filter-name fname))))))
+       flatten))
+
 (mu/defn identify
   :- [:map
       [:dimensions ads/dim-name->matching-fields]
@@ -389,9 +418,11 @@
   interesting metrics which are satisfied. Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
-           metric-specs]} :- [:map
-                              [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
-                                 [:metric-specs [:maybe [:sequential ads/metric-template]]]]]
+           metric-specs
+           filter-specs]} :- [:map
+                               [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
+                                 [:metric-specs [:maybe [:sequential ads/metric-template]]]
+                                 [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)
@@ -406,7 +437,8 @@
                              [{:metric-name       "this"
                                :metric-title      (:name entity)
                                :metric-definition {:aggregation [(->reference :mbql entity)]}
-                               :metric-score      dashboard-templates/max-score}])))}))
+                               :metric-score      dashboard-templates/max-score}])))
+     :filters (grounded-filters filter-specs dims)}))
 
 (defn card->dashcard
   "Convert a card to a dashboard card."

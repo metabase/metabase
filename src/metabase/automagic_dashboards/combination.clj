@@ -166,9 +166,9 @@
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
   [base-context
+   card-templates
    ground-dimensions :- ads/dim-name->matching-fields
    ground-filters
-   card-templates
    grounded-metrics :- [:sequential ads/grounded-metric]]
   (let [metric-name->metric (zipmap
                               (map :metric-name grounded-metrics)

@@ -1084,6 +1084,40 @@
        dashboard-template
        available-values])))
 
+(defn generate-base-dashboard
+  "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
+  This includes dashcards and global filters, but does not include related items and is not yet populated.
+  Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
+  create dashboard."
+  [{{user-defined-metrics :linked-metrics :as root} :root :as base-context}
+   {template-cards      :cards
+    :keys               [dashboard_filters]
+    :as                 dashboard-template}
+   {grounded-dimensions :dimensions
+    grounded-metrics    :metrics
+    grounded-filters    :filters}]
+  (let [card-templates                 (interesting/normalize-seq-of-maps :card template-cards)
+        user-defined-card-templates    (user-defined-metrics->card-templates
+                                         (affinities->viz-types card-templates grounded-dimensions)
+                                         user-defined-metrics)
+        all-cards                      (into card-templates user-defined-card-templates)
+        dashcards                      (combination/grounded-metrics->dashcards
+                                         base-context
+                                         all-cards
+                                         grounded-dimensions
+                                         grounded-filters
+                                         grounded-metrics)
+        template-with-user-groups      (update dashboard-template
+                                               :groups into (user-defined-groups user-defined-metrics))
+        empty-dashboard                (make-dashboard root template-with-user-groups)]
+    (-> (assoc empty-dashboard
+          ;; Adds the filters that show at the top of the dashboard
+          ;; Why do we need (or do we) the last remove form?
+          :filters (->> dashboard_filters
+                        (mapcat (comp :matches grounded-dimensions))
+                        (remove (comp (singular-cell-dimensions root) id-or-name)))
+          :cards dashcards))))
+
 (def ^:private ^:const ^Long max-related 8)
 (def ^:private ^:const ^Long max-cards 15)
 
@@ -1113,8 +1147,19 @@
    {:keys [dashboard-template-name]} :- (s/maybe dashboard-templates/DashboardTemplate)]
   (let [base-context (make-base-context root)]
     (->> (dashboard-templates/get-dashboard-templates (concat dashboard-templates-prefix [dashboard-template-name]))
-         (keep (fn [{indepth-template-name :dashboard-template-name :as indepth}]
-                 (when-let [{:keys [description] :as dashboard} (first (apply-dashboard-template base-context indepth))]
+         (keep (fn [{indepth-template-name :dashboard-template-name
+                     template-dimensions :dimensions
+                     template-metrics    :metrics
+                     template-filters    :filters
+                     :as indepth}]
+                 (when-let [{:keys [description] :as dashboard} (generate-base-dashboard
+                                                                  base-context
+                                                                  indepth
+                                                                  (interesting/identify
+                                                                    base-context
+                                                                    {:dimension-specs template-dimensions
+                                                                     :metric-specs    template-metrics
+                                                                     :filter-specs    template-filters}))]
                    {:title       ((some-fn :short-title :title) dashboard)
                     :description description
                     :url         (format "%s/rule/%s/%s" url dashboard-template-name indepth-template-name)})))
@@ -1251,93 +1296,43 @@
               (comparisons root))
        (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
 
-(defn grounded-filters
-  "Take filter templates (as from a dashboard template's :filters) and ground dimensions and produce a map of the
-  filter name to grounded versions of the filter."
-  [filter-templates ground-dimensions]
-  (->> filter-templates
-       (keep (fn [fltr]
-               (let [[fname {:keys [filter] :as v}] (first fltr)
-                     dims (dashboard-templates/collect-dimensions v)
-                     opts (->> (map (comp
-                                      (partial map (partial interesting/->reference :mbql))
-                                      :matches
-                                      ground-dimensions) dims)
-                               (apply math.combo/cartesian-product)
-                               (map (partial zipmap dims)))]
-                 (seq (for [opt opts
-                            :let [f
-                                  (walk/prewalk
-                                    (fn [x]
-                                      (if (vector? x)
-                                        (let [[ds dim-name] x]
-                                          (if (and (= "dimension" ds)
-                                                   (string? dim-name))
-                                            (opt dim-name)
-                                            x))
-                                        x))
-                                    filter)]]
-                        (assoc v :filter f :filter-name fname))))))
-       flatten))
-
 (defn generate-dashboard
-  "Produce a dashboard from the base context for an item and a dashboad template."
-  [{{:keys [show] user-defined-metrics :linked-metrics :as root} :root :as base-context}
-   {template-dimensions :dimensions
-    template-metrics    :metrics
-    template-cards      :cards
-    template-filters    :filters
-    :keys               [dashboard_filters]
-    :as                 dashboard-template}]
-  (let [{grounded-dimensions :dimensions
-         grounded-metrics    :metrics} (interesting/identify
-                                        base-context
-                                        {:dimension-specs template-dimensions
-                                         :metric-specs    template-metrics})
-        ;; From the template
-        card-templates                 (interesting/normalize-seq-of-maps :card template-cards)
-        user-defined-card-templates    (user-defined-metrics->card-templates
-                                        (affinities->viz-types card-templates grounded-dimensions)
-                                        user-defined-metrics)
-        all-cards                      (into card-templates user-defined-card-templates)
-        dashcards                      (combination/grounded-metrics->dashcards
-                                        base-context
-                                        grounded-dimensions
-                                        (grounded-filters template-filters grounded-dimensions)
-                                        all-cards
-                                        grounded-metrics)
-        template-with-user-groups      (update dashboard-template
-                                               :groups into (user-defined-groups user-defined-metrics))
-        empty-dashboard                (make-dashboard root template-with-user-groups)]
-    (-> (assoc empty-dashboard
-               ;; Adds the filters that show at the top of the dashboard
-               ;; Why do we need (or do we) the last remove form?
-               :filters (->> dashboard_filters
-                             (mapcat (comp :matches grounded-dimensions))
-                             (remove (comp (singular-cell-dimensions root) id-or-name)))
-               :cards dashcards)
+  "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
+  [{{:keys [show] :as root} :root :as base-context}
+   {:as dashboard-template}
+   {grounded-dimensions :dimensions :as grounded-values}]
+  (let [dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
+    (-> dashboard
         (populate/create-dashboard (or show :all))
         (assoc
-         :related (related
-                   root grounded-dimensions
-                   dashboard-template)
-                                        ;     :more (when (and (not= show :all)
-                                        ;                      (-> dashboard :cards count (> show)))
-                                        ;             (format "%s#show=all" url))
-                                        ;     :transient_filters query-filter
-                                        ;     :param_fields (filter-referenced-fields root query-filter)
-         :auto_apply_filters true))))
+          :related (related
+                     root grounded-dimensions
+                     dashboard-template)
+          ;     :more (when (and (not= show :all)
+          ;                      (-> dashboard :cards count (> show)))
+          ;             (format "%s#show=all" url))
+          ;     :transient_filters query-filter
+          ;     :param_fields (filter-referenced-fields root query-filter)
+          :auto_apply_filters true))))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."
   [{:keys [dashboard-template dashboard-templates-prefix] :as root}]
-  (let [base-context (make-base-context root)
-        template     (if dashboard-template
-                       (dashboard-templates/get-dashboard-template dashboard-template)
-                       (first (matching-dashboard-templates
-                                (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
-                                root)))]
-    (generate-dashboard base-context template)))
+  (let [base-context    (make-base-context root)
+        {template-dimensions :dimensions
+         template-metrics    :metrics
+         template-filters    :filters
+         :as                 template} (if dashboard-template
+                                         (dashboard-templates/get-dashboard-template dashboard-template)
+                                         (first (matching-dashboard-templates
+                                                  (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
+                                                  root)))
+        grounded-values (interesting/identify
+                          base-context
+                          {:dimension-specs template-dimensions
+                           :metric-specs    template-metrics
+                           :filter-specs    template-filters})]
+    (generate-dashboard base-context template grounded-values)))
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
