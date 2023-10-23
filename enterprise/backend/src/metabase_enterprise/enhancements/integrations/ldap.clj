@@ -22,17 +22,20 @@
 (defsetting ldap-sync-user-attributes
   (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
   :type    :boolean
-  :default true)
+  :default true
+  :audit   :getter)
 
 ;; TODO - maybe we want to add a csv setting type?
 (defsetting ldap-sync-user-attributes-blacklist
   (deferred-tru "Comma-separated list of user attributes to skip syncing for LDAP users.")
   :default "userPassword,dn,distinguishedName"
-  :type    :csv)
+  :type    :csv
+  :audit   :getter)
 
 (defsetting ldap-group-membership-filter
   (deferred-tru "Group membership lookup filter. The placeholders '{dn}' and '{uid}' will be replaced by the user''s Distinguished Name and UID, respectively.")
-  :default "(member={dn})")
+  :default "(member={dn})"
+  :audit   :getter)
 
 (defn- syncable-user-attributes [m]
   (when (ldap-sync-user-attributes)
