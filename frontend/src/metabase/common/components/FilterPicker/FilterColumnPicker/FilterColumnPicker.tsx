@@ -12,11 +12,13 @@ import type { IconName } from "metabase/core/components/Icon";
 
 import * as Lib from "metabase-lib";
 
+import type { ColumnListItem, SegmentListItem } from "../types";
 import { StyledAccordionList } from "./FilterColumnPicker.styled";
 
 export interface FilterColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
+  checkItemIsSelected: (item: ColumnListItem | SegmentListItem) => boolean;
   onColumnSelect: (column: Lib.ColumnMetadata) => void;
   onSegmentSelect: (segment: Lib.SegmentMetadata) => void;
   onExpressionSelect: () => void;
@@ -36,15 +38,7 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   icon: "filter",
 };
 
-export type ColumnListItem = Lib.ColumnDisplayInfo & {
-  column: Lib.ColumnMetadata;
-};
-
-export type SegmentListItem = Lib.SegmentDisplayInfo & {
-  segment: Lib.SegmentMetadata;
-};
-
-const isSegmentListItem = (
+export const isSegmentListItem = (
   item: ColumnListItem | SegmentListItem,
 ): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;
@@ -57,6 +51,7 @@ const isSegmentListItem = (
 export function FilterColumnPicker({
   query,
   stageIndex,
+  checkItemIsSelected,
   onColumnSelect,
   onSegmentSelect,
   onExpressionSelect,
@@ -92,8 +87,6 @@ export function FilterColumnPicker({
     return [...sections, CUSTOM_EXPRESSION_SECTION];
   }, [query, stageIndex]);
 
-  const checkColumnSelected = () => false;
-
   const handleSectionChange = (section: Section) => {
     if (section.key === "custom-expression") {
       onExpressionSelect();
@@ -113,7 +106,7 @@ export function FilterColumnPicker({
       sections={sections}
       onChange={handleSelect}
       onChangeSection={handleSectionChange}
-      itemIsSelected={checkColumnSelected}
+      itemIsSelected={checkItemIsSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}

@@ -13,6 +13,8 @@ import { isExpression as isLegacyExpression } from "metabase-lib/expressions";
 import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
+import type { ColumnListItem, SegmentListItem } from "./types";
+
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
@@ -25,6 +27,7 @@ export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  filterIndex?: number;
 
   legacyQuery: LegacyQuery;
   legacyFilter?: LegacyFilter;
@@ -40,6 +43,7 @@ export function FilterPicker({
   query,
   stageIndex,
   filter,
+  filterIndex,
   legacyQuery,
   legacyFilter,
   onSelect,
@@ -59,6 +63,15 @@ export function FilterPicker({
     onSelect(filter);
     onClose?.();
   };
+
+  const checkItemIsSelected = useCallback(
+    (item: ColumnListItem | SegmentListItem) => {
+      return Boolean(
+        filterIndex != null && item.filterPositions?.includes?.(filterIndex),
+      );
+    },
+    [filterIndex],
+  );
 
   const handleExpressionChange = useCallback(
     (name: string, expression: LegacyExpressionClause) => {
@@ -92,6 +105,7 @@ export function FilterPicker({
         <FilterColumnPicker
           query={query}
           stageIndex={stageIndex}
+          checkItemIsSelected={checkItemIsSelected}
           onColumnSelect={setColumn}
           onSegmentSelect={handleChange}
           onExpressionSelect={openExpressionEditor}
