@@ -117,13 +117,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           visitDashboard(dashboard.id);
           editDashboard();
 
-          cy.icon("filter").click();
-          popover().within(() => {
-            cy.findByText("Text or Category").click();
-            cy.findByText("Is").click();
-          });
-          cy.get("aside").findByLabelText("Label").clear().type(FILTER_NAME);
-          cy.get("aside").button("Done").click();
+          addFilter();
 
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Go to a custom destination").click();
@@ -198,4 +192,14 @@ const onNextAnchorClick = callback => {
       window.HTMLAnchorElement.prototype.click = originalClick;
     };
   });
+};
+
+const addFilter = () => {
+  cy.icon("filter").click();
+  popover().within(() => {
+    cy.findByText("Text or Category").click();
+    cy.findByText("Is").click();
+  });
+  cy.get("aside").findByLabelText("Label").clear().type(FILTER_NAME);
+  cy.get("aside").button("Done").click();
 };
