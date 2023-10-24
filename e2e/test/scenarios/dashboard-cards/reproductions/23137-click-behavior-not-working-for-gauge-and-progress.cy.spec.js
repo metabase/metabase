@@ -1,6 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { restore, visitDashboard } from "e2e/support/helpers";
+import {
+  addOrUpdateDashboardCard,
+  restore,
+  visitDashboard,
+} from "e2e/support/helpers";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -33,8 +37,20 @@ describe("issue 23137", () => {
     cy.createQuestionAndDashboard({
       questionDetails: GAUGE_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [getDashcardDetails({ id, card_id, target_id })],
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          id,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "question",
+              targetId: target_id,
+              parameterMapping: {},
+            },
+          },
+        },
       });
 
       visitDashboard(dashboard_id);
@@ -52,8 +68,20 @@ describe("issue 23137", () => {
     cy.createQuestionAndDashboard({
       questionDetails: PROGRESS_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [getDashcardDetails({ id, card_id, target_id })],
+      addOrUpdateDashboardCard({
+        card_id,
+        dashboard_id,
+        card: {
+          id,
+          visualization_settings: {
+            click_behavior: {
+              type: "link",
+              linkType: "question",
+              targetId: target_id,
+              parameterMapping: {},
+            },
+          },
+        },
       });
 
       visitDashboard(dashboard_id);
@@ -64,21 +92,4 @@ describe("issue 23137", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
-});
-
-const getDashcardDetails = ({ id, card_id, target_id }) => ({
-  id,
-  card_id,
-  row: 0,
-  col: 0,
-  size_x: 16,
-  size_y: 10,
-  visualization_settings: {
-    click_behavior: {
-      type: "link",
-      linkType: "question",
-      targetId: target_id,
-      parameterMapping: {},
-    },
-  },
 });
