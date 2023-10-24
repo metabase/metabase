@@ -1,4 +1,20 @@
 (ns metabase.automagic-dashboards.combination
+  "Generate \"interesting\" combinations of metrics, dimensions, and filters.
+
+  In the `metabase.automagic-dashboards.interesting` namespace, we create \"grounded\" metrics, which are both realized
+  (field references have been added to their aggregate clauses) and interesting (because metrics are always
+  interesting), as well as grounded dimensions and filters. This ns combines these dimensions (as breakouts) and filters
+  (as filters) into the ground metrics based on the affinities defined in provided card-templates.
+
+  Card templates provided the following key relationships:
+  - dimension to dimension affinities - The groups of dimensions the might appear on the x-axis of a chart (breakouts).
+    These generally a single dimension (e.g. time or category) but can be multiple (e.g. longitude and latitude)
+  - dimension to metric affinities - Combinations of dimensions and metrics (e.g. profit metric over time dimension).
+    This functionally adds breakouts to a metric.
+  - metric to metric affinities - Combinations of metrics that belong together (e.g. Sum, Avg, Max, and Min of a field).
+
+  The primary function in this ns, `grounded-metrics->dashcards` takes the base context , above grounded values, and
+  card definitions and creates a set of dashcards with the above combinations of metrics, dimensions, and filters."
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.string :as str]
