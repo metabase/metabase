@@ -79,7 +79,12 @@ export const isNavigationAllowed = ({
   }
 
   const { hash, pathname } = destination;
-  const isRunningModel = pathname === "/model" && hash.length > 0;
+
+  const runModelPathnames = question.isStructured()
+    ? ["/model", "/model/notebook"]
+    : ["/model"];
+  const isRunningModel =
+    runModelPathnames.includes(pathname) && hash.length > 0;
   const validSlugs = [question.id(), question.slug()]
     .filter(Boolean)
     .map(String);
