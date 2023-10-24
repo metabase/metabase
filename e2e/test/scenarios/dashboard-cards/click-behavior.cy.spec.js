@@ -53,7 +53,7 @@ const FILTER_CREATED_AT = [
   "2026-04-30",
 ];
 
-const FILTER_COUNT = ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT];
+const FILTER_QUANTITY = ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT];
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -209,7 +209,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(card.display).to.deep.equal(LINE_CHART.display);
             expect(card.dataset_query.query).to.deep.equal({
               ...LINE_CHART.query,
-              filter: ["and", FILTER_CREATED_AT, FILTER_COUNT],
+              filter: ["and", FILTER_CREATED_AT, FILTER_QUANTITY],
             });
           });
         },
