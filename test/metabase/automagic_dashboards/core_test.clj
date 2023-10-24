@@ -820,9 +820,7 @@
               (let [all-dashcard-filters (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
                                               :dashcards
                                               (keep (comp :filter :query :dataset_query :card)))
-                    filter-contains-cell-query?                 #(= cell-query (some #{cell-query} %))
-                    ;filter-clauses () (get-in first-dashcard [:card :dataset_query :query :filter])
-                    ]
+                    filter-contains-cell-query?                 #(= cell-query (some #{cell-query} %))]
                 (is (pos? (count all-dashcard-filters)))
                 (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
 
