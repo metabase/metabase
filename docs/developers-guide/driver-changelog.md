@@ -71,7 +71,7 @@ title: Driver interface changelog
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
 - `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
-  specific to their driver. For details see the issue #34235.
+  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
 
 ## Metabase 0.47.0
 
