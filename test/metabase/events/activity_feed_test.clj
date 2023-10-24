@@ -179,7 +179,7 @@
                                             :name        (:name card)
                                             :id          (:id dashcard)
                                             :card_id     (:id card)}]}}
-              (activity "dashboard-remove-cards" #p (:id dashboard))))))))
+              (activity "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test
   (testing :install
