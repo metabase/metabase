@@ -505,7 +505,7 @@ describe("scenarios > filters > filter sources", () => {
       assertQueryBuilderRowCount(10);
     });
 
-    it.skip("column from an expression based on a question column", () => {
+    it("column from an expression based on a question column", () => {
       cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
