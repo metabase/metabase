@@ -201,6 +201,36 @@ const DATE_SHORTCUT_CASES = [
     shortcut: "Yesterday",
     expectedDisplayName: "Created At is yesterday",
   },
+  {
+    title: "last week",
+    shortcut: "Last week",
+    expectedDisplayName: "Created At is in the previous week",
+  },
+  {
+    title: "last 7 days",
+    shortcut: "Last 7 days",
+    expectedDisplayName: "Created At is in the previous 7 days",
+  },
+  {
+    title: "last 30 days",
+    shortcut: "Last 30 days",
+    expectedDisplayName: "Created At is in the previous 30 days",
+  },
+  {
+    title: "last month",
+    shortcut: "Last month",
+    expectedDisplayName: "Created At is in the previous month",
+  },
+  {
+    title: "last 3 months",
+    shortcut: "Last 3 months",
+    expectedDisplayName: "Created At is in the previous 3 months",
+  },
+  {
+    title: "last 12 months",
+    shortcut: "Last 12 months",
+    expectedDisplayName: "Created At is in the previous 12 months",
+  },
 ];
 
 describe("scenarios > filters > filter types", () => {
@@ -279,7 +309,7 @@ describe("scenarios > filters > filter types", () => {
     );
   });
 
-  describe("date filters", () => {
+  describe("date filters, shortcuts", () => {
     DATE_SHORTCUT_CASES.forEach(({ title, shortcut, expectedDisplayName }) => {
       it(title, () => {
         openProductsTable({ mode: "notebook" });
