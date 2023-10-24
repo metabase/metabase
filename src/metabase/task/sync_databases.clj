@@ -227,7 +227,11 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
-(defn is-audit-db-sync-job? [database {:keys [key db-schedule-column]}]
+(defn is-audit-db-sync-job?
+  "Returns true when the job is a sync job, and the database is an audit database.
+
+  This is in [[check-and-schedule-tasks-for-db!]] to skip the creation of the sync job test for audit databases."
+  [database {:keys [key db-schedule-column]}]
   (and (:is_audit database)
        (= key :sync-and-analyze)
        (= db-schedule-column :metadata_sync_schedule)))
