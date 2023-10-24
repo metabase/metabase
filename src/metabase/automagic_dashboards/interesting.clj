@@ -1,4 +1,44 @@
 (ns metabase.automagic-dashboards.interesting
+  "Generate \"interesting\" inputs for the automatic dashboard pipeline.
+
+  In this context, \"interesting\" means \"grounded\" values. In particular, the most interesting values of all are
+  metrics. Metrics are intrinsically interesting and can be displayed on their own. Dimensions and filters, while not
+  interesting on their own, can be combined with metrics to add more interest to the metric. In MBQL parlance, metrics
+  are aggregates, dimensions are breakouts, and filters are filters. However, a user-defined metric may go beyond a
+  simple aggregate.
+
+  Our main namespace function, `identify`, takes an object to be analyzed for interestingness and a data structure
+  consisting of templates for interesting combinations of metrics, dimensions, and filters. In this stage, we return
+  grounded metrics (inherently interesting) along with grounded dimensions and filters that can be combined with our
+  grounded metrics downstream for added interest.
+
+  The template arguments are defined in terms of Dimensions, Metrics, and Filters. These are *named* values, such as:
+   - Dimension:
+     - GenericNumber
+     - Timestamp
+     - Country
+     - Longitude
+     - Latitude
+     - Income
+     - Discount
+   - Metric:
+     - Count - Dimensionless
+     - Sum - A metric over a single field
+     - AverageDiscount - A metric defined by the Income and Discount fields (as an example)
+   - Filter:
+     - Last30Days - A named quantity that is defined by one or more constituent Dimensions
+
+   Template Metrics and Filters are made up of some combination of field references (Dimensions). These are referenced
+   using the Dimension names (e.g. Avg of some GenericNumber) despite these constituent fields technically not being
+   Dimensions. Metrics and Dimensions should be thought of as orthogonal concerns, but for our matching algorithm, this
+   is how constituent fields are selected.
+
+   The \"grounding\" process binds individual fields to named Dimensions as well as constituent elements of Filter and
+   Metric definitions.
+
+   Note that the binding process is 1:N, where a single dimension may match to multiple fields.
+   A field can only bind to one dimension.
+   "
   (:require
     [clojure.math.combinatorics :as math.combo]
     [clojure.string :as str]
@@ -415,7 +455,8 @@
       [:dimensions ads/dim-name->matching-fields]
       [:metrics [:sequential ads/grounded-metric]]]
   "Identify interesting metrics and dimensions of a `thing`. First identifies interesting dimensions, and then
-  interesting metrics which are satisfied. Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
+  interesting metrics which are satisfied.
+  Metrics from the template are assigned a score of 50; user defined metrics a score of 95"
   [{{:keys [linked-metrics]} :root :as context}
    {:keys [dimension-specs
            metric-specs
