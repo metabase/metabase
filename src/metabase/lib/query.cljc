@@ -126,7 +126,7 @@
                                          (-> (lib.expression/expression-ref query stage-number expression-name)
                                            second
                                            (select-keys [:base-type :effective-type]))
-                                         (catch Exception _
+                                         (catch #?(:clj Exception :cljs :default) _
                                            ;; This currently does not find expressions defined in join stages
                                            nil))]
                          ;; Fallback if metadata is missing
