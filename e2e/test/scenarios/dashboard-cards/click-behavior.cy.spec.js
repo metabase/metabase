@@ -130,6 +130,23 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   describe("line chart", () => {
     const questionDetails = LINE_CHART;
 
+    it("should open drill-through menu as a default click-behavior", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+
+          popover()
+            .should("contain", "See these Orders")
+            .and("contain", "See this month by week")
+            .and("contain", "Break out by…")
+            .and("contain", "Automatic insights…")
+            .and("contain", "Filter by this value");
+        },
+      );
+    });
+
     it("does not not allow setting dashboard as custom destination if user has no permissions to it", () => {
       cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
