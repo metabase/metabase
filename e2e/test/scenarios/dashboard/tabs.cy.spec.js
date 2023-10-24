@@ -146,12 +146,15 @@ describe("scenarios > dashboard > tabs", () => {
       });
 
       cy.log("undoing movement of second card");
+
       cy.findAllByTestId("toast-undo").eq(0).findByRole("button").click();
+
       goToTab("Tab 1");
 
       getDashboardCards().should("have.length", 1);
 
       cy.log("second card should be in the original position");
+
       getDashboardCard().then(element => {
         cy.get("@card2OriginalPosition").then(originalPosition => {
           const position = element.offset();
