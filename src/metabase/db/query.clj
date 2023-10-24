@@ -32,8 +32,7 @@
 (set! *warn-on-reflection* true)
 
 (defn format-sql
-  "Return a nicely-formatted version of a `query` string with current application db driver formatting. If you need
-  to use specific driver formatting use [[driver/prettify-native-form]] instead."
+  "Return a nicely-formatted version of a `query` string with the current application db driver formatting."
   [sql]
   (driver/prettify-native-form (mdb.connection/db-type) sql))
 
