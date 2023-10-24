@@ -4,6 +4,22 @@ import { restore, visitDashboard } from "e2e/support/helpers";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
+const GAUGE_QUESTION_DETAILS = {
+  display: "gauge",
+  query: {
+    "source-table": REVIEWS_ID,
+    aggregation: [["count"]],
+  },
+};
+
+const PROGRESS_QUESTION_DETAILS = {
+  display: "progress",
+  query: {
+    "source-table": REVIEWS_ID,
+    aggregation: [["count"]],
+  },
+};
+
 describe("issue 23137", () => {
   beforeEach(() => {
     restore();
@@ -15,7 +31,7 @@ describe("issue 23137", () => {
     const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
-      questionDetails: getQuestionDetails({ display: "gauge" }),
+      questionDetails: GAUGE_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
         cards: [getDashcardDetails({ id, card_id, target_id })],
@@ -34,7 +50,7 @@ describe("issue 23137", () => {
     const target_id = ORDERS_QUESTION_ID;
 
     cy.createQuestionAndDashboard({
-      questionDetails: getQuestionDetails({ display: "progress" }),
+      questionDetails: PROGRESS_QUESTION_DETAILS,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
         cards: [getDashcardDetails({ id, card_id, target_id })],
@@ -48,14 +64,6 @@ describe("issue 23137", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
   });
-});
-
-const getQuestionDetails = ({ display }) => ({
-  display,
-  query: {
-    "source-table": REVIEWS_ID,
-    aggregation: [["count"]],
-  },
 });
 
 const getDashcardDetails = ({ id, card_id, target_id }) => ({
