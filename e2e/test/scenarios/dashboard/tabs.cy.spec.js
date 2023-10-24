@@ -18,12 +18,13 @@ import {
   visitCollection,
   main,
   getDashboardCard,
-  menu,
   getDashboardCards,
   getTextCardDetails,
   getHeadingCardDetails,
   getLinkCardDetails,
   updateDashboardCards,
+  goToTab,
+  moveDashCardToTab,
 } from "e2e/support/helpers";
 
 import {
@@ -31,6 +32,8 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > tabs", () => {
@@ -61,7 +64,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.url().should("include", "2-tab-2");
 
     // Go back to first tab
-    cy.findByRole("tab", { name: "Tab 1" }).click();
+    goToTab("Tab 1");
     dashboardCards().within(() => {
       cy.findByText("Orders, count").should("not.exist");
     });
@@ -82,7 +85,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Undo then go back to first tab
     undo();
-    cy.findByRole("tab", { name: "Tab 1" }).click();
+    goToTab("Tab 1");
     dashboardCards().within(() => {
       cy.findByText("Orders").should("be.visible");
     });
@@ -94,7 +97,7 @@ describe("scenarios > dashboard > tabs", () => {
       save: false,
     });
 
-    cy.findByRole("tab", { name: "Tab 1" }).click();
+    goToTab("Tab 1");
 
     cy.log("should stay on the same tab");
     cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
@@ -108,13 +111,11 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.log("move card to second tab");
 
-    getDashboardCard().realHover();
-    cy.icon("move_card").click();
-    menu().findByText("Tab 2").click();
+    moveDashCardToTab({ tabName: "Tab 2" });
 
     getDashboardCards().should("have.length", 0);
 
-    cy.findByRole("tab", { name: "Tab 2" }).click();
+    goToTab("Tab 2");
 
     getDashboardCards().should("have.length", 1);
 
@@ -155,24 +156,54 @@ describe("scenarios > dashboard > tabs", () => {
 
       editDashboard();
       createNewTab();
-      cy.findByRole("tab", { name: "Tab 1" }).click();
+      goToTab("Tab 1");
 
       cy.log("moving dashcards to second tab");
 
       cards.forEach(() => {
-        getDashboardCard(0).realHover();
-        cy.icon("move_card").eq(0).click();
-
-        menu().findByText("Tab 2").click();
+        moveDashCardToTab({ tabName: "Tab 2" });
       });
 
       getDashboardCards().should("have.length", 0);
 
-      cy.findByRole("tab", { name: "Tab 2" }).click();
+      goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
     },
   );
+
+  it("should allow moving dashcard even if we don't have permission on that underlying query", () => {
+    const questionDetails = {
+      native: {
+        query: "select 42",
+      },
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    };
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.signInAsNormalUser();
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+    createNewTab();
+
+    goToTab("Tab 1");
+
+    getDashboardCard()
+      .findByText(/you don't have permission/)
+      .should("exist");
+
+    moveDashCardToTab({ tabName: "Tab 2" });
+
+    saveDashboard();
+
+    getDashboardCards().should("have.length", 0);
+  });
 
   it("should leave dashboard if navigating back after initial load", () => {
     visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
@@ -227,12 +258,12 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuery").should("not.have.been.called");
 
     // Visit second tab and confirm only second card was queried
-    cy.findByRole("tab", { name: "Tab 2" }).click();
+    goToTab("Tab 2");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
     // Go back to first tab, expect no additional queries
-    cy.findByRole("tab", { name: "Tab 1" }).click();
+    goToTab("Tab 1");
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("have.been.calledOnce");
 
@@ -263,7 +294,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuery").should("not.have.been.called");
 
     // Visit second tab and confirm only second card was queried
-    cy.findByRole("tab", { name: "Tab 2" }).click();
+    goToTab("Tab 2");
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
   });

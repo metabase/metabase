@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { popover } from "./e2e-ui-elements-helpers";
+import { menu, popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -165,6 +165,15 @@ export function deleteTab(tabName) {
   popover().within(() => {
     cy.findByText("Delete").click();
   });
+}
+
+export function goToTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").click();
+  menu().findByText(tabName).click();
 }
 
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
