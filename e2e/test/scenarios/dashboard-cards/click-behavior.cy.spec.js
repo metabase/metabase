@@ -43,7 +43,9 @@ const LINE_CHART = {
 
 const OBJECT_DETAIL_CHART = {
   display: "object",
-  query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+  query: {
+    "source-table": ORDERS_ID,
+  },
 };
 
 const FILTER_CREATED_AT = [
