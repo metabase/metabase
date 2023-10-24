@@ -188,7 +188,6 @@ describe("AddToDashSelectDashModal", () => {
       expect(screen.getByText(ERROR)).toBeInTheDocument();
     });
 
-    // XXX: 7,8,9,10
     describe("when user visited some dashboard in last 24hrs", () => {
       it("should preselected last visited dashboard in the picker", async () => {
         await setup({
@@ -230,7 +229,6 @@ describe("AddToDashSelectDashModal", () => {
           model: "dashboard",
         });
 
-        // XXX: #7
         it("should show most recently visited dashboard if the question is in a public collection", async () => {
           await setup({
             mostRecentlyViewedDashboard: dashboardInPublicSubcollection,
@@ -247,7 +245,6 @@ describe("AddToDashSelectDashModal", () => {
           ).toBeInTheDocument();
         });
 
-        // XXX: #9
         it("should show the root collection if the question is in a personal collection", async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
@@ -273,7 +270,6 @@ describe("AddToDashSelectDashModal", () => {
           model: "dashboard",
         });
 
-        // XXX: #8
         it("should show most recently visited dashboard if the question is in a public collection", async () => {
           await setup({
             mostRecentlyViewedDashboard: dashboardInPersonalSubcollection,
@@ -294,7 +290,6 @@ describe("AddToDashSelectDashModal", () => {
           ).toBeInTheDocument();
         });
 
-        // XXX: #10
         it("should show most recently visited dashboard if the question is in a personal collection", async () => {
           await setup({
             card: CARD_IN_PERSONAL_COLLECTION,
@@ -330,7 +325,6 @@ describe("AddToDashSelectDashModal", () => {
 
       describe("question is in a public collection", () => {
         describe('"Create a new dashboard" option', () => {
-          // XXX: #3
           it('should render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup();
 
@@ -341,7 +335,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #3
           it('should render "Create a new dashboard" option when opening public subcollections', async () => {
             await setup();
 
@@ -370,7 +363,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #4
           it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
             await setup();
 
@@ -401,7 +393,6 @@ describe("AddToDashSelectDashModal", () => {
         });
 
         describe("whether we should render dashboards in a collection", () => {
-          // XXX: #1
           it("should render dashboards when opening the root collection (public collection)", async () => {
             // no `collection` and `collection_id` means it's in the root collection
             const dashboardInRootCollection = createMockDashboard({
@@ -421,7 +412,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #1
           it("should render dashboards when opening public subcollections", async () => {
             const dashboardInPublicSubcollection = createMockDashboard({
               id: 5,
@@ -447,7 +437,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #1
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
               id: 5,
@@ -473,7 +462,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #1
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
               id: 5,
@@ -508,7 +496,6 @@ describe("AddToDashSelectDashModal", () => {
 
       describe("question is in a personal collection", () => {
         describe('"Create a new dashboard" option', () => {
-          // XXX: #5
           it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
@@ -521,7 +508,6 @@ describe("AddToDashSelectDashModal", () => {
             ).not.toBeInTheDocument();
           });
 
-          // XXX: #6
           it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
@@ -554,7 +540,6 @@ describe("AddToDashSelectDashModal", () => {
         });
 
         describe("whether we should render dashboards in a collection", () => {
-          // XXX: #2
           it("should not render dashboards when opening the root collection (public collection)", async () => {
             const dashboardInPublicCollection = createMockDashboard({
               id: 5,
@@ -580,7 +565,6 @@ describe("AddToDashSelectDashModal", () => {
             ).not.toBeInTheDocument();
           });
 
-          // XXX: #2
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
               id: 5,
@@ -607,7 +591,6 @@ describe("AddToDashSelectDashModal", () => {
             ).toBeInTheDocument();
           });
 
-          // XXX: #2
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
               id: 5,
