@@ -1261,7 +1261,7 @@
                                       (t2/hydrate :is_personal)
                                       :is_personal)
                                   (as-> (t2/select :model/Collection :id [:in id-or-ids]) collections
-                                    (t2/hydrate collections :collections_is_personal)
+                                    (t2/hydrate collections :is_personal)
                                     (map :is_personal collections))))]
 
         (testing "simple hydration and batched hydration should return correctly"

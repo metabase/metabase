@@ -78,7 +78,7 @@
           (mt/with-temporary-setting-values [user-recent-views              []
                                              most-recently-viewed-dashboard nil]
             (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :crowberto)))
-            (let [crowberto-personal-coll (t2/select-one :model/Collection (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto)))]
+            (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
               (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true))
                      (mt/user-http-request :crowberto :get 200
                                            "activity/most_recently_viewed_dashboard"))))))
