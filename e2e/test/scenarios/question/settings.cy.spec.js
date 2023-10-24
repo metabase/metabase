@@ -72,7 +72,7 @@ describe("scenarios > question > settings", () => {
       cy.get("@table").contains("Total").should("not.exist");
     });
 
-    it("should allow you to re-order columns even when one has been removed (metabase2#9287)", () => {
+    it("should allow you to re-order columns even when one has been removed (metabase #14238, #29287)", () => {
       cy.viewport(1600, 800);
 
       visitQuestionAdhoc({
