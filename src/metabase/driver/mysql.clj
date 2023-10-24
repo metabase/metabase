@@ -655,29 +655,46 @@
 
 (sql/register-clause! ::load format-load :insert-into)
 
+(defmulti value->string
+  "Convert a value into a string that's safe for insertion"
+  {:arglists '([val])}
+  type)
+
+(defmethod value->string :default
+  [val]
+  (str val))
+
+(defmethod value->string Boolean
+  [val]
+  (if val
+    "1"
+    "0"))
+
+(defmethod value->string java.time.LocalDateTime
+  [val]
+  (t/format :iso-local-date-time val))
+
+(defmethod value->string java.time.OffsetDateTime
+  [val]
+  (t/format :iso-offset-date-time val))
+
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
   ;; Backslash is the MySQL escape character within strings in SQL statements. Thus, to specify a literal backslash,
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (cond
-    (string? v)
-    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
-                                   "\n" "\\n"
-                                   "\r" "\\r"
-                                   "\t" "\\t"})
-    (boolean? v)
-    (if v 1 0)
-    :else
-    v))
+  (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                 "\n" "\\n"
+                                 "\r" "\\r"
+                                 "\t" "\\t"}))
 
 (defn- row->tsv
   [column-count row]
   (when (not= column-count (count row))
     (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
-       (map sanitize-value)
+       (map (comp sanitize-value value->string))
        (str/join "\t")))
 
 (defn- get-global-variable
