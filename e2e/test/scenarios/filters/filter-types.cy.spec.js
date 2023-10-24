@@ -290,6 +290,18 @@ const EXCLUDE_DATE_CASES = [
     expectedDisplayName: "Created At excludes 3 hour of day selections",
     expectedRowCount: 183,
   },
+  {
+    title: "is empty",
+    label: "Is empty",
+    expectedDisplayName: "Created At is not empty",
+    expectedRowCount: 200,
+  },
+  {
+    title: "not empty",
+    label: "Is not empty",
+    expectedDisplayName: "Created At is empty",
+    expectedRowCount: 0,
+  },
 ];
 
 describe("scenarios > filters > filter types", () => {
@@ -399,8 +411,10 @@ describe("scenarios > filters > filter types", () => {
               cy.findByText("Created At").click();
               cy.findByText("Exclude…").click();
               cy.findByText(label).click();
-              options.forEach(option => cy.findByText(option).click());
-              cy.button("Add filter").click();
+              if (options) {
+                options.forEach(option => cy.findByText(option).click());
+                cy.button("Add filter").click();
+              }
             });
             assertFilterName(expectedDisplayName);
             visualize();
