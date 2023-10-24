@@ -23,6 +23,12 @@
               "!metabase/lib/utils"
             ]
           }
+        ],
+        "paths": [
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
+          }
         ]
       }
     ]
