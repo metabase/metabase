@@ -30,6 +30,7 @@ import {
 } from "metabase/lib/core";
 import { TYPE } from "metabase-lib/types/constants";
 import { getFieldValues } from "metabase-lib/queries/utils/field";
+import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -71,12 +72,18 @@ const Fields = createEntity({
     fetchFieldValues: compose(
       withAction(FETCH_FIELD_VALUES),
       withCachedDataAndRequestState(
-        ({ id }) => [...Fields.getObjectStatePath(id)],
-        ({ id }) => [...Fields.getObjectStatePath(id), "values"],
+        ({ id, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, table_id });
+          return [...Fields.getObjectStatePath(uniqueId)];
+        },
+        ({ id, table_id }) => {
+          const uniqueId = getUniqueFieldId({ id, table_id });
+          return [...Fields.getObjectStatePath(uniqueId), "values"];
+        },
         entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
-    )(({ id: fieldId, ...params }) => async (dispatch, getState) => {
+    )(({ id: fieldId, ...params }) => async () => {
       const {
         field_id: id,
         values,
@@ -85,7 +92,9 @@ const Fields = createEntity({
         fieldId,
         ...params,
       });
-      return { id, values, has_more_values };
+
+      // table_id is required for uniqueFieldId as it's a way to know if field is virtual
+      return { id, values, has_more_values, table_id: params.table_id };
     }),
 
     updateField(field, values, opts) {
