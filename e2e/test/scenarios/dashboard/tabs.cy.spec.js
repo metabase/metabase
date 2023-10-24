@@ -172,8 +172,10 @@ describe("scenarios > dashboard > tabs", () => {
     { scrollBehavior: false },
     () => {
       const cards = [
+        // small card aligned to the left so that the dashcard actions will be left-aligned
         getTextCardDetails({
           text: "Text card",
+          size_x: 2,
         }),
         getHeadingCardDetails({
           text: "Heading card",

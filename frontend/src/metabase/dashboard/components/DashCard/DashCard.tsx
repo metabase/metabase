@@ -250,8 +250,12 @@ function DashCard({
 
   const renderDashCardActions = useCallback(() => {
     if (isEditingDashboardLayout) {
+      // to avoid having actions buttons outside of the viewport
+      const leftAlignActions = dashcard.size_x <= 3 && dashcard.col <= 2;
+
       return (
         <DashboardCardActionsPanel
+          leftAlign={leftAlignActions}
           onMouseDown={preventDragging}
           data-testid="dashboardcard-actions-panel"
         >
