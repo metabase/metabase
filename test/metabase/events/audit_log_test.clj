@@ -10,7 +10,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Dashboard DashboardCard Metric Pulse Segment Table]]
-   [metabase.pulse-test :as pulse-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
