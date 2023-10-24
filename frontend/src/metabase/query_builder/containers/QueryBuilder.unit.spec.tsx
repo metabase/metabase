@@ -1185,6 +1185,29 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
       });
 
+      it("does not show custom warning modal when editing & visualizing the question back and forth (metabase#35000)", async () => {
+        await setup({
+          card: TEST_STRUCTURED_CARD,
+          initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+        });
+
+        await triggerNotebookQueryChange();
+        await waitForSaveQuestionToBeEnabled();
+
+        userEvent.click(screen.getByText("Visualize"));
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(screen.getByLabelText("notebook icon"));
+
+        await waitFor(() => {
+          expect(screen.getByText("Visualize")).toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
       it("does not show custom warning modal when saving edited question", async () => {
         const { history } = await setup({
           card: TEST_STRUCTURED_CARD,
