@@ -1,5 +1,5 @@
-import { jt } from "ttag";
-import { MIN_RESULTS_FOR_FOOTER } from "metabase/nav/components/search/SearchResultsDropdown/constants";
+import { jt, t } from "ttag";
+import { MIN_RESULTS_FOR_FOOTER_TEXT } from "metabase/nav/components/search/SearchResultsDropdown/constants";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
@@ -21,8 +21,13 @@ export const SearchResultsDropdown = ({
   onSearchItemSelect,
   goToSearchApp,
 }: SearchResultsDropdownProps) => {
-  const renderFooter: SearchResultsFooter = ({ metadata, isSelected }) =>
-    metadata.total > MIN_RESULTS_FOR_FOOTER ? (
+  const renderFooter: SearchResultsFooter = ({ metadata, isSelected }) => {
+    const resultText =
+      metadata.total > MIN_RESULTS_FOR_FOOTER_TEXT
+        ? jt`View and filter all ${metadata.total} results`
+        : t`View and filter results`;
+
+    return metadata.total > MIN_RESULTS_FOR_FOOTER_TEXT ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"
@@ -32,14 +37,13 @@ export const SearchResultsDropdown = ({
         onClick={goToSearchApp}
         isSelected={isSelected}
       >
-        <Text
-          weight={700}
-          size="sm"
-          c="inherit"
-        >{jt`View and filter all ${metadata.total} results`}</Text>
+        <Text weight={700} size="sm" c="inherit">
+          {resultText}
+        </Text>
         <Icon name="arrow_right" size={14} />
       </SearchDropdownFooter>
     ) : null;
+  };
 
   return (
     <SearchResultsContainer

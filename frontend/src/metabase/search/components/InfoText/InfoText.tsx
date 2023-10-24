@@ -1,18 +1,11 @@
 /* eslint-disable react/prop-types */
 import moment from "moment-timezone";
-import { Fragment } from "react";
 import { t } from "ttag";
 import { isNull } from "underscore";
-import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-import {
-  useCollectionQuery,
-  useDatabaseQuery,
-  useTableQuery,
-} from "metabase/common/hooks";
+import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
   browseSchema,
-  collection as collectionUrl,
   tableRowsQuery,
 } from "metabase/lib/urls";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -25,10 +18,9 @@ import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import { Group, Box, Text } from "metabase/ui";
 import type Database from "metabase-lib/metadata/Database";
+import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
 import { LastEditedInfoText, LastEditedInfoTooltip } from "./InfoText.styled";
-
-const { CollectionAuthorityLevelIcon } = PLUGIN_COLLECTION_COMPONENTS;
 
 export type InfoTextProps = {
   result: WrappedResult;
@@ -69,48 +61,6 @@ export const InfoTextTableLink = ({ result }: InfoTextProps) => {
     <SearchResultLink key={label} href={link}>
       {label}
     </SearchResultLink>
-  );
-};
-
-export const InfoTextCollectionLink = ({ result }: InfoTextProps) => {
-  const collection = result.getCollection();
-  const { data, error, isLoading } = useCollectionQuery({
-    id: collection.id,
-  });
-
-  if (isLoading) {
-    return <LoadingText data-testid="info-text-collection-loading-text" />;
-  }
-
-  if (error || !data) {
-    return null;
-  }
-
-  const ancestorCollectionElements = [
-    ...(data.effective_ancestors ?? []),
-    data,
-  ]?.map(ancestor => ({
-    key: ancestor.id,
-    link: collectionUrl(ancestor),
-    icon: ancestor.authority_level ? (
-      <Box ml="-1.5px" display="inherit" pos="relative" top="1.5px">
-        <CollectionAuthorityLevelIcon size={12} collection={ancestor} />
-      </Box>
-    ) : null,
-    label: ancestor.name,
-  }));
-
-  return (
-    <>
-      {ancestorCollectionElements?.map(({ icon, label, link, key }, index) => (
-        <Fragment key={key}>
-          {index !== 0 && LinkSeparator}
-          <SearchResultLink key={key} href={link} leftIcon={icon}>
-            {label}
-          </SearchResultLink>
-        </Fragment>
-      )) ?? null}
-    </>
   );
 };
 
@@ -161,24 +111,13 @@ export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
     return <InfoTextTableLink result={result} />;
   }
 
-  if (
-    result.model === "collection" ||
-    result.model === "database" ||
-    result.model === "action"
-  ) {
-    const infoText = getInfoText(result);
-    if (infoText) {
-      const { label, link, icon } = infoText;
+  const { label, link, icon }: InfoTextData = getInfoText(result);
 
-      return label ? (
-        <SearchResultLink key={label} href={link} leftIcon={icon}>
-          {label}
-        </SearchResultLink>
-      ) : null;
-    }
-  }
-
-  return <InfoTextCollectionLink result={result} />;
+  return label ? (
+    <SearchResultLink key={label} href={link} leftIcon={icon}>
+      {label}
+    </SearchResultLink>
+  ) : null;
 };
 
 export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {

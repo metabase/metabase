@@ -19,7 +19,7 @@ import type { SearchResult } from "metabase-types/api";
 import { checkNotNull } from "metabase/core/utils/types";
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
-// Mock MIN_RESULTS_FOR_FOOTER so we don't have to generate a ton of elements for the footer test
+// Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
 jest.mock(
   "metabase/nav/components/search/SearchResultsDropdown/constants",
   () => ({
