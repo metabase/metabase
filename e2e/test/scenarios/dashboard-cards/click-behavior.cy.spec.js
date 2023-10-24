@@ -130,6 +130,40 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   describe("line chart", () => {
     const questionDetails = LINE_CHART;
 
+    it("does not not allow setting dashboard as custom destination if user has no permissions to it", () => {
+      cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
+        ({ body: restrictedCollection }) => {
+          cy.updateCollectionGraph({
+            [USER_GROUPS.COLLECTION_GROUP]: {
+              [restrictedCollection.id]: "none",
+            },
+          });
+
+          cy.createDashboard({
+            ...TARGET_DASHBOARD,
+            collection_id: restrictedCollection.id,
+          });
+        },
+      );
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+
+          modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
+          modal().findByText(TARGET_DASHBOARD.name).should("not.exist");
+        },
+      );
+    });
+
     it("allows setting dashboard as custom destination", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
