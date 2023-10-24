@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
                             ModelIndexValue Segment]]

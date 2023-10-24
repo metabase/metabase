@@ -5,7 +5,6 @@
     [clojure.walk :as walk]
     [medley.core :as m]
     [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.filters :as filters]
     [metabase.automagic-dashboards.interesting :as interesting]
     [metabase.automagic-dashboards.schema :as ads]
     [metabase.automagic-dashboards.util :as magic.util]

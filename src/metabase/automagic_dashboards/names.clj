@@ -88,6 +88,7 @@
                                qp.util/normalize-token))
 
 (defn field-name
+  "Determine the right field name to display from a field or field reference."
   ([root field-reference]
    (->> field-reference (magic.util/field-reference->field root) field-name))
   ([{:keys [display_name unit] :as _field}]
@@ -95,6 +96,7 @@
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defn pluralize
+  "Add appropriate pluralization suffixes for integer numbers."
   [x]
   ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
   (case (int (mod x 10))
@@ -104,6 +106,7 @@
     (tru "{0}th" x)))
 
 (defn humanize-datetime
+  "Convert a time data type into a human friendly string."
   [t-str unit]
   (let [dt (u.date/parse t-str)]
     (case unit
