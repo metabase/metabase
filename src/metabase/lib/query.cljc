@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [remove])
   (:require
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -100,17 +101,31 @@
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
         query (-> query
                   (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?))]
+                  (dissoc :lib.convert/converted?))
+        stages (:stages query)]
     (cond-> query
       converted?
-      (mbql.u/replace
-        [:field
-         (opts :guard (complement (some-fn :base-type :effective-type)))
-         (field-id :guard (every-pred number? pos?))]
-        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
-                            (select-keys [:base-type :effective-type]))]
-          ;; Fallback if metadata is missing
-          [:field (merge found-ref opts) field-id])))))
+      (assoc
+        :stages
+        (into []
+              (map (fn [[stage-number stage]]
+                     (mbql.u/replace stage
+                       [:field
+                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        (field-id :guard (every-pred number? pos?))]
+                       (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
+                                           (select-keys [:base-type :effective-type]))]
+                              ;; Fallback if metadata is missing
+                         [:field (merge found-ref opts) field-id])
+                       [:expression
+                        (opts :guard (complement (some-fn :base-type :effective-type)))
+                        expression-name]
+                       (let [found-ref (-> (lib.expression/expression-ref query stage-number expression-name)
+                                           second
+                                           (select-keys [:base-type :effective-type]))]
+                              ;; Fallback if metadata is missing
+                         [:expression (merge found-ref opts) expression-name]))))
+              (m/indexed stages))))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

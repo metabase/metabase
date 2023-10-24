@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
@@ -52,3 +53,17 @@
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
            (:stages (lib/with-different-table query (str "card__" card-id)))))))
+
+(deftest ^:parallel type-fill-in-converted-test
+  (is (=? {:stages [{:fields [[:field {:base-type :type/BigInteger
+                                       :effective-type :type/BigInteger}
+                               (meta/id :venues :id)]]
+                     :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
+          (lib/query
+           meta/metadata-provider
+            (lib.convert/->pMBQL {:type :query
+                                  :database (meta/id)
+                                  :query {:source-table (meta/id :venues)
+                                          :expressions {"math" [:+ 1 1]}
+                                          :fields [[:field (meta/id :venues :id) nil]]
+                                          :filters [[:= [:expression "math"] 2]]}})))))
