@@ -50,9 +50,17 @@ const LoadingText = ({ "data-testid": dataTestId = "loading-text" }) => (
 );
 
 export const InfoTextTableLink = ({ result }: InfoTextProps) => {
-  const { data: table, isLoading } = useTableQuery({
+  const {
+    data: table,
+    isLoading,
+    error,
+  } = useTableQuery({
     id: result.table_id,
   });
+
+  if (error) {
+    return null;
+  }
 
   const link = tableRowsQuery(result.database_id, result.table_id);
   const label = table?.display_name ?? null;
@@ -89,12 +97,19 @@ export const TableLink = ({ result }: { result: WrappedResult }) => {
 };
 
 export const InfoTextTablePath = ({ result }: InfoTextProps) => {
-  const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: hasDatabaseError,
+  } = useDatabaseQuery({
     id: result.database_id,
   });
 
   const showDatabaseLink =
-    !isDatabaseLoading && database && database.name !== null;
+    !hasDatabaseError &&
+    !isDatabaseLoading &&
+    database &&
+    database.name !== null;
   const showTableLink = showDatabaseLink && !!result.table_schema;
 
   if (isDatabaseLoading) {
@@ -133,7 +148,11 @@ export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
 };
 
 export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
-  const { data: users = [], isLoading } = useUserListQuery();
+  const { data: users = [], isLoading, error } = useUserListQuery();
+
+  if (error) {
+    return null;
+  }
 
   const isUpdated =
     isNotNull(result.last_edited_at) &&
