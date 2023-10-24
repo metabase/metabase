@@ -25,6 +25,7 @@ export default class LoadingAndErrorWrapper extends Component {
     messageInterval: PropTypes.number,
     loadingScenes: PropTypes.array,
     renderError: PropTypes.func,
+    "data-testid": PropTypes.string,
   };
 
   static defaultProps = {
@@ -116,6 +117,7 @@ export default class LoadingAndErrorWrapper extends Component {
       showSpinner,
       loadingMessages,
       loadingScenes,
+      "data-testid": testId,
     } = this.props;
 
     const { messageIndex, sceneIndex } = this.state;
@@ -134,7 +136,11 @@ export default class LoadingAndErrorWrapper extends Component {
       return Children.only(children);
     }
     return (
-      <div className={this.props.className} style={this.props.style}>
+      <div
+        className={this.props.className}
+        style={this.props.style}
+        data-testid={testId}
+      >
         {error ? (
           this.renderError(contentClassName)
         ) : loading ? (

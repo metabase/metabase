@@ -285,62 +285,62 @@ function withCachedData(
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-    // thunk:
-    async (dispatch, getState) => {
-      const options = args[args.length - 1] || {};
-      const { useCachedForbiddenError, reload, properties } = options;
+      // thunk:
+      async function thunk(dispatch, getState) {
+        const options = args[args.length - 1] || {};
+        const { useCachedForbiddenError, reload, properties } = options;
 
-      const existingStatePath = getExistingStatePath(...args);
-      const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-      const newQueryKey = getQueryKey && getQueryKey(...args);
-      const existingData = getIn(getState(), existingStatePath);
-      const { loading, loaded, queryKey, error } =
-        getIn(getState(), requestStatePath) || {};
+        const existingStatePath = getExistingStatePath(...args);
+        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+        const newQueryKey = getQueryKey && getQueryKey(...args);
+        const existingData = getIn(getState(), existingStatePath);
+        const { loading, loaded, queryKey, error } =
+          getIn(getState(), requestStatePath) || {};
 
-      // Avoid requesting data with permanently forbidden access
-      if (useCachedForbiddenError && error?.status === 403) {
-        throw error;
-      }
-
-      const hasRequestedProperties =
-        properties &&
-        existingData &&
-        _.all(properties, p => existingData[p] !== undefined);
-
-      // return existing data if
-      if (
-        // we don't want to reload
-        // the check is a workaround for EntityListLoader passing reload function to children
-        reload !== true &&
-        // reload if the query used to load an entity has changed even if it's already loaded
-        newQueryKey === queryKey
-      ) {
-        // and we have a non-error request state or have a list of properties that all exist on the object
-        if (loaded || hasRequestedProperties) {
-          return existingData;
-        } else if (loading) {
-          const queryPromise = getIn(
-            getState(),
-            requestStatePath,
-          )?.queryPromise;
-
-          if (queryPromise) {
-            // wait for current loading request to be resolved
-            await queryPromise;
-
-            // need to wait for next tick to allow loaded request data to be processed and avoid loops
-            await delay(0);
-
-            // retry this function after waited request gets resolved
-            return thunkCreator(...args)(dispatch, getState);
-          }
-
-          return existingData;
+        // Avoid requesting data with permanently forbidden access
+        if (useCachedForbiddenError && error?.status === 403) {
+          throw error;
         }
-      }
 
-      return thunkCreator(...args)(dispatch, getState);
-    };
+        const hasRequestedProperties =
+          properties &&
+          existingData &&
+          _.all(properties, p => existingData[p] !== undefined);
+
+        // return existing data if
+        if (
+          // we don't want to reload
+          // the check is a workaround for EntityListLoader passing reload function to children
+          reload !== true &&
+          // reload if the query used to load an entity has changed even if it's already loaded
+          newQueryKey === queryKey
+        ) {
+          // and we have a non-error request state or have a list of properties that all exist on the object
+          if (loaded || hasRequestedProperties) {
+            return existingData;
+          } else if (loading) {
+            const queryPromise = getIn(
+              getState(),
+              requestStatePath,
+            )?.queryPromise;
+
+            if (queryPromise) {
+              // wait for current loading request to be resolved
+              await queryPromise;
+
+              // need to wait for next tick to allow loaded request data to be processed and avoid loops
+              await delay(0);
+
+              // retry this function after waited request gets resolved
+              return thunk(dispatch, getState);
+            }
+
+            return existingData;
+          }
+        }
+
+        return thunkCreator(...args)(dispatch, getState);
+      };
 }
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
