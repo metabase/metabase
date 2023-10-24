@@ -20,7 +20,7 @@ type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
 export const SearchFilterApplyButton = ({
   onApply,
 }: Pick<SearchFilterPopoverWrapperProps, "onApply">) => (
-  <Button onClick={onApply}>{t`Apply`}</Button>
+  <Button variant="filled" onClick={onApply}>{t`Apply`}</Button>
 );
 
 export const SearchFilterPopoverWrapper = ({

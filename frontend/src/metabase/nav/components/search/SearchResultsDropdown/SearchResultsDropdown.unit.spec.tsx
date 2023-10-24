@@ -23,7 +23,7 @@ import { SearchResultsDropdown } from "./SearchResultsDropdown";
 jest.mock(
   "metabase/nav/components/search/SearchResultsDropdown/constants",
   () => ({
-    MIN_RESULTS_FOR_FOOTER: 1,
+    MIN_RESULTS_FOR_FOOTER_TEXT: 1,
   }),
 );
 
@@ -116,15 +116,21 @@ describe("SearchResultsDropdown", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not render the footer if there are less than the max search results for the footer", async () => {
+  it("should only render 'View all results' if there are less than MAX_SEARCH_RESULTS_FOR_FOOTER results for the footer", async () => {
     await setup({ searchResults: TEST_SEARCH_RESULTS.slice(0, 1) });
-    expect(
-      screen.queryByTestId("search-dropdown-footer"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("search-dropdown-footer")).toBeInTheDocument();
+    expect(screen.getByText("View and filter results")).toBeInTheDocument();
   });
 
-  it("should render the footer if there are more than max search results for the footer", async () => {
-    await setup();
+  it("should render 'View all X results' if there are more than MAX_SEARCH_RESULTS_FOR_FOOTER results for the footer", async () => {
+    await setup({
+      searchText: "e",
+    });
     expect(screen.getByTestId("search-dropdown-footer")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `View and filter all ${TEST_SEARCH_RESULTS.length} results`,
+      ),
+    ).toBeInTheDocument();
   });
 });

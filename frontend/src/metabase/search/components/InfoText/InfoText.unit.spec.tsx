@@ -99,8 +99,13 @@ async function setup({
   );
 
   await waitFor(() =>
-    expect(screen.queryByTestId("loading-text")).not.toBeInTheDocument(),
+    expect(
+      screen.queryByTestId("info-text-asset-link-loading-text"),
+    ).not.toBeInTheDocument(),
   );
+
+  // await waitforAssetLinkLoadingTextToBeRemoved()
+  await waitForLoadingTextToBeRemoved();
 
   return {
     getUrl,
@@ -329,3 +334,17 @@ describe("InfoText", () => {
     });
   });
 });
+
+async function waitForLoadingTextToBeRemoved() {
+  await waitFor(() => {
+    expect(
+      screen.queryByTestId("info-text-asset-link-loading-text"),
+    ).not.toBeInTheDocument();
+  });
+
+  await waitFor(() => {
+    expect(
+      screen.queryByTestId("last-edited-info-loading-text"),
+    ).not.toBeInTheDocument();
+  });
+}

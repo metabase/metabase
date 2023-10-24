@@ -1,5 +1,4 @@
 import { jt, t } from "ttag";
-import { MIN_RESULTS_FOR_FOOTER_TEXT } from "metabase/nav/components/search/SearchResultsDropdown/constants";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
@@ -9,6 +8,7 @@ import {
   SearchDropdownFooter,
   SearchResultsContainer,
 } from "./SearchResultsDropdown.styled";
+import { MIN_RESULTS_FOR_FOOTER_TEXT } from "./constants";
 
 export type SearchResultsDropdownProps = {
   searchText: string;
@@ -27,7 +27,7 @@ export const SearchResultsDropdown = ({
         ? jt`View and filter all ${metadata.total} results`
         : t`View and filter results`;
 
-    return metadata.total > MIN_RESULTS_FOR_FOOTER_TEXT ? (
+    return metadata.total > 0 ? (
       <SearchDropdownFooter
         data-testid="search-dropdown-footer"
         position="apart"

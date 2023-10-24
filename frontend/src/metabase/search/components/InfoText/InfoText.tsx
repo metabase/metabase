@@ -50,12 +50,16 @@ const LoadingText = ({ "data-testid": dataTestId = "loading-text" }) => (
 );
 
 export const InfoTextTableLink = ({ result }: InfoTextProps) => {
-  const { data: table } = useTableQuery({
+  const { data: table, isLoading } = useTableQuery({
     id: result.table_id,
   });
 
   const link = tableRowsQuery(result.database_id, result.table_id);
   const label = table?.display_name ?? null;
+
+  if (isLoading) {
+    return <LoadingText data-testid="info-text-asset-link-loading-text" />;
+  }
 
   return (
     <SearchResultLink key={label} href={link}>
@@ -77,7 +81,6 @@ export const TableLink = ({ result }: { result: WrappedResult }) => {
 
   return (
     <>
-      {LinkSeparator}
       <SearchResultLink key={result.table_schema} href={link}>
         {result.table_schema}
       </SearchResultLink>
@@ -94,10 +97,19 @@ export const InfoTextTablePath = ({ result }: InfoTextProps) => {
     !isDatabaseLoading && database && database.name !== null;
   const showTableLink = showDatabaseLink && !!result.table_schema;
 
+  if (isDatabaseLoading) {
+    return <LoadingText data-testid="info-text-asset-link-loading-text" />;
+  }
+
   return (
     <>
       {showDatabaseLink && <DatabaseLink database={database} />}
-      {showTableLink && <TableLink result={result} />}
+      {showTableLink && (
+        <>
+          {LinkSeparator}
+          <TableLink result={result} />
+        </>
+      )}
     </>
   );
 };

@@ -126,6 +126,8 @@ describe("scenarios > model indexes", () => {
       .findByPlaceholderText("Search…")
       .type("marble shoes");
 
+    cy.wait("@searchQuery");
+
     cy.findByTestId("search-results-empty-state").should("be.visible");
   });
 
