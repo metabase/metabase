@@ -7,6 +7,7 @@ import { replace } from "react-router-redux";
 import screenfull from "screenfull";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
+import { DASHBOARD_MAX_WIDTHS } from "metabase/dashboard/constants";
 
 const TICK_PERIOD = 1; // seconds
 
@@ -26,6 +27,7 @@ export default ComposedComponent =>
       state = {
         isFullscreen: false,
         theme: null,
+        maxWidth: DASHBOARD_MAX_WIDTHS[0],
 
         refreshPeriod: null,
 
@@ -159,6 +161,17 @@ export default ComposedComponent =>
         }
       };
 
+      setMaxWidth = hasMaxWidth => {
+        if (!hasMaxWidth) {
+          const index =
+            (DASHBOARD_MAX_WIDTHS.indexOf(this.state.maxWidth) + 1) %
+            DASHBOARD_MAX_WIDTHS.length;
+          this.setState({ maxWidth: DASHBOARD_MAX_WIDTHS[index] });
+        } else {
+          this.setState({ maxWidth: hasMaxWidth });
+        }
+      };
+
       setHideParameters = parameters => {
         this.setState({ hideParameters: parameters });
       };
@@ -227,6 +240,7 @@ export default ComposedComponent =>
             updateDashboardParams={this.updateDashboardParams}
             onNightModeChange={this.setNightMode}
             onFullscreenChange={this.setFullscreen}
+            setMaxWidth={this.setMaxWidth}
             onRefreshPeriodChange={this.setRefreshPeriod}
           />
         );

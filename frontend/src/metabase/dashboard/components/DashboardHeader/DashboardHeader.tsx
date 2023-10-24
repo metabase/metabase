@@ -1,8 +1,9 @@
+import type { CSSProperties } from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
-import type * as React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import type { Location } from "history";
+import { WidthChangeButton } from "metabase/dashboard/components/DashboardHeader/WidthChangeButton";
 
 import type { Dashboard } from "metabase-types/api";
 
@@ -31,6 +32,8 @@ interface DashboardHeaderViewProps {
   headerClassName: string;
   location: Location;
   isEditing: boolean;
+  maxWidth: CSSProperties["maxWidth"];
+  setMaxWidth: (val: CSSProperties["maxWidth"]) => void;
   isEditingInfo: boolean;
   isNavBarOpen: boolean;
   dashboard: Dashboard;
@@ -49,11 +52,13 @@ export function DashboardHeaderComponent({
   headerClassName = "py1 lg-py2 xl-py3 wrapper",
   location,
   isEditing,
+  maxWidth,
   isNavBarOpen,
   dashboard,
   isLastEditInfoVisible,
   onLastEditInfoClick,
   setDashboardAttribute,
+  setMaxWidth,
 }: DashboardHeaderViewProps) {
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
@@ -89,7 +94,14 @@ export function DashboardHeaderComponent({
   }, []);
 
   return (
-    <div>
+    <div
+      style={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       {isEditing && (
         <EditBar
           title={editingTitle}
@@ -102,7 +114,7 @@ export function DashboardHeaderComponent({
           <span>{editWarning}</span>
         </EditWarning>
       )}
-      <div>
+      <div style={{ width: `min(${maxWidth}, 100%)` ?? "100%" }}>
         <HeaderRow
           isNavBarOpen={isNavBarOpen}
           className={cx("QueryBuilder-section", headerClassName)}
@@ -132,6 +144,7 @@ export function DashboardHeaderComponent({
           </HeaderContent>
 
           <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+            <WidthChangeButton maxWidth={maxWidth} setMaxWidth={setMaxWidth} />
             {_headerButtons}
           </HeaderButtonsContainer>
         </HeaderRow>

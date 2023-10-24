@@ -45,16 +45,22 @@ export const DashboardLoadingAndErrorWrapper = styled(
 export const DashboardStyled = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: center;
   min-height: 100%;
   width: 100%;
 `;
 
-export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
+export const DashboardBody = styled.div<{
+  isEditingOrSharing: boolean;
+  maxWidth?: string;
+}>`
   position: relative;
   display: flex;
   flex: 1 0 auto;
   min-width: 0;
   min-height: 0;
+
+  width: ${({ maxWidth }) => (maxWidth ? `min(${maxWidth}, 100%)` : "100%")};
 
   ${({ isEditingOrSharing }) =>
     isEditingOrSharing &&
@@ -67,6 +73,12 @@ export const HeaderContainer = styled.header<{
   isFullscreen: boolean;
   isNightMode: boolean;
 }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  width: 100%;
+
   position: relative;
   z-index: 2;
 
@@ -121,10 +133,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     isEditing &&
     css`
       border-top: 1px solid ${color("border")};
-    `}
-
-  /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky }) =>
+    `} /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */ ${({
+    isSticky,
+  }) =>
     isSticky &&
     css`
       position: sticky;
@@ -140,7 +151,6 @@ export const CardsContainer = styled(FullWidthContainer)<{
     css`
       margin-top: ${space(2)};
     `}
-
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;
 

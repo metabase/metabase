@@ -99,6 +99,9 @@ class DashboardHeader extends Component {
     isNightMode: PropTypes.bool.isRequired,
     isAdditionalInfoVisible: PropTypes.bool,
 
+    maxWidth: PropTypes.string,
+    setMaxWidth: PropTypes.func.isRequired,
+
     refreshPeriod: PropTypes.number,
     setRefreshElapsedHook: PropTypes.func.isRequired,
 
@@ -529,6 +532,7 @@ class DashboardHeader extends Component {
           location={this.props.location}
           dashboard={dashboard}
           isEditing={isEditing}
+          maxWidth={this.props.maxWidth}
           isBadgeVisible={
             !isEditing && !isFullscreen && isAdditionalInfoVisible
           }
@@ -545,6 +549,7 @@ class DashboardHeader extends Component {
           editingButtons={this.getEditingButtons()}
           setDashboardAttribute={setDashboardAttribute}
           onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
+          setMaxWidth={this.props.setMaxWidth}
         />
 
         <Modal isOpen={showCancelWarning}>

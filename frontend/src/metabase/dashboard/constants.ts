@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type {
   DashboardSidebarName,
   DashboardState,
@@ -41,3 +42,13 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
 };
 
 export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
+
+export const DASHBOARD_MAX_WIDTHS: CSSProperties["maxWidth"][] = [
+  "1100px",
+  "1500px",
+  "2000px",
+  "50vw",
+  "75vw",
+  "90vw",
+  "100%",
+];

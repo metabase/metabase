@@ -46,6 +46,9 @@ class Dashboard extends Component {
     loadDashboardParams: PropTypes.func,
     location: PropTypes.object,
 
+    maxWidth: PropTypes.string,
+    setMaxWidth: PropTypes.func.isRequired,
+
     isAdmin: PropTypes.bool,
     isFullscreen: PropTypes.bool,
     isNightMode: PropTypes.bool,
@@ -214,6 +217,8 @@ class Dashboard extends Component {
     this.props.setEditingDashboard(isEditing);
   };
 
+  setViewWidth = width => {};
+
   setDashboardAttribute = (attribute, value) => {
     this.props.setDashboardAttributes({
       id: this.props.dashboard.id,
@@ -304,6 +309,8 @@ class Dashboard extends Component {
       isHeaderVisible,
       embedOptions,
       isAutoApplyFilters,
+      maxWidth,
+      setMaxWidth,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -361,6 +368,8 @@ class Dashboard extends Component {
                   addParameter={addParameter}
                   parametersWidget={parametersWidget}
                   onSharingClick={this.onSharingClick}
+                  setMaxWidth={setMaxWidth}
+                  maxWidth={maxWidth}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
@@ -374,7 +383,10 @@ class Dashboard extends Component {
               </HeaderContainer>
             )}
 
-            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+            <DashboardBody
+              maxWidth={maxWidth}
+              isEditingOrSharing={isEditing || isSharing}
+            >
               <ParametersAndCardsContainer
                 data-testid="dashboard-parameters-and-cards"
                 shouldMakeDashboardHeaderStickyAfterScrolling={
