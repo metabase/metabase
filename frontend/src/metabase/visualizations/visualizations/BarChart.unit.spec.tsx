@@ -6,7 +6,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import registerVisualizations from "metabase/visualizations/register";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import type { Series } from "metabase-types/api";
 import Question from "metabase-lib/Question";
@@ -14,8 +13,6 @@ import Question from "metabase-lib/Question";
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
-
-registerVisualizations();
 
 interface SetupProps {
   question: Question;
