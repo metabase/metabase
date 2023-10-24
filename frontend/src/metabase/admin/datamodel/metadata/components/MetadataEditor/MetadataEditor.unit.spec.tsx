@@ -25,7 +25,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getMetadataRoutes } from "../../routes";
 
@@ -136,7 +136,7 @@ const setup = async ({
     { withRouter: true, initialRoute },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
+  await waitForLoaderToBeRemoved();
 
   return { history };
 };
@@ -501,7 +501,7 @@ describe("MetadataEditor", () => {
       expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
       userEvent.click(screen.getByText("Link to Datamodel"));
 
-      await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
+      await waitForLoaderToBeRemoved();
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
       history?.goBack();
