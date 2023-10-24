@@ -895,14 +895,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti upload-type->parser
-  "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
-  suitable for insertion."
-  {:added "0.48.0", :arglists '([driver upload-type])}
-  (fn [driver upload-type]
-    [(the-initialized-driver driver) upload-type])
-  :hierarchy #'hierarchy)
-
 (defmulti current-user-table-privileges
   "Returns the rows of data as arrays needed to populate the tabel_privileges table
    with the DB connection's current user privileges.

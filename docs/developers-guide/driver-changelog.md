@@ -70,10 +70,6 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
-- `metabase.driver/upload-type->parser` has been added (replacing `metabase.upload/upload-type->parser`). An
-   implementation is required for any databases that support uploading CSV files, although the defaults defined for
-   `:sql-jdbc` should be adequate for most cases.
-
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in

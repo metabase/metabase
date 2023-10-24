@@ -13,6 +13,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.upload :as upload]
+   [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -129,7 +130,7 @@
            [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]]]
     (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
       (let [type   (upload/value->type string-value)
-            parser (#'driver/upload-type->parser :h2 type)]
+            parser (#'upload-parsing/upload-type->parser type)]
         (testing (format "\"%s\" is a %s" string-value type)
           (is (= expected-type
                  type)))

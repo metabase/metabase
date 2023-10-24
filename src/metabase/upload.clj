@@ -10,13 +10,10 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Database]]
-   [metabase.public-settings :as public-settings]
    [metabase.search.util :as search.util]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2])
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.io File)))
 
@@ -238,10 +235,10 @@
 (defn- parsed-rows
   "Returns a lazy seq of parsed rows from the `reader`.
    Replaces empty strings with nil."
-  [driver col->upload-type reader]
+  [col->upload-type reader]
   (let [[header & rows] (csv/read-csv reader)
         column-count    (count header)
-        parsers         (map (partial driver/upload-type->parser driver) (vals col->upload-type))]
+        parsers         (map upload-parsing/upload-type->parser (vals col->upload-type))]
     (for [row rows]
       (for [[value parser] (map vector (pad column-count row) parsers)]
         (when (not (str/blank? value))
@@ -288,11 +285,6 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
-(defn current-database
-  "Returns the current uploads database (defined as a setting)."
-  []
-  (t2/select-one Database :id (public-settings/uploads-database-id)))
-
 (defn load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -305,7 +297,7 @@
     (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows driver col-to-insert->upload-type reader)]
+        (let [rows (parsed-rows col-to-insert->upload-type reader)]
           (driver/insert-into! driver db-id table-name csv-col-names rows)
           {:num-rows          (count rows)
            :num-columns       (count csv-col-names)

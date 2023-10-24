@@ -32,7 +32,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -531,8 +531,6 @@
 ;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
 ;;
 ;; TIMEZONE FIXME — not 100% sure this behavior makes sense
-;;
-;; NOTE: this `zone-id` logic is also used below in [[driver/upload-type->parser]] for offset datetimes
 (defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
   [driver ^java.sql.PreparedStatement ps ^Integer i t]
   (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
@@ -622,28 +620,6 @@
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp]))
 
-(defn- offset-date-time->local-date-time
-  "Remove the offset from a string datetime, returning a LocalDateTime in whatever timezone the `database` is configured
-  to use. This is necessary since MySQL doesn't support timezone offsets and so we need to calculate one by hand. This
-  is used for the upload parser below, which was looking messy with error-handling so it made sense to extract the logic."
-  [s database]
-  (let [offset-time (t/offset-date-time (str/trim s))
-        zone-id     (t/zone-id (qp.timezone/results-timezone-id database))]
-    (t/local-date-time offset-time zone-id )))
-
-(defmethod driver/upload-type->parser [:mysql ::upload/offset-datetime]
-  [_ _]
-  (comp
-   (fn [s]
-     (try (t/local-date s)
-          (catch Exception _
-            (try
-              (offset-date-time->local-date-time s (upload/current-database))
-              (catch Exception _
-                (throw (IllegalArgumentException.
-                        (tru "{0} is not a recognizable offset datetime" s))))))))
-   str/trim))
-
 (defmethod driver/table-name-length-limit :mysql
   [_driver]
   ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
@@ -655,7 +631,7 @@
 
 (sql/register-clause! ::load format-load :insert-into)
 
-(defmulti value->string
+(defmulti ^:private value->string
   "Convert a value into a string that's safe for insertion"
   {:arglists '([val])}
   type)
