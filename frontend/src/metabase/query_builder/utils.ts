@@ -80,7 +80,6 @@ export const isNavigationAllowed = ({
 
   const { hash, pathname } = destination;
   const isRunningModel = pathname === "/model" && hash.length > 0;
-  const isRunningQuestion = pathname === "/question" && hash.length > 0;
   const validSlugs = [question.id(), question.slug()]
     .filter(Boolean)
     .map(String);
@@ -101,6 +100,7 @@ export const isNavigationAllowed = ({
   }
 
   if (question.isNative()) {
+    const isRunningQuestion = pathname === "/question" && hash.length > 0;
     return isRunningQuestion;
   }
 
@@ -109,6 +109,8 @@ export const isNavigationAllowed = ({
    * https://github.com/metabase/metabase/issues/34686
    */
   if (!isNewQuestion && question.isStructured()) {
+    const isRunningQuestion =
+      ["/question", "/question/notebook"].includes(pathname) && hash.length > 0;
     const allowedPathnames = validSlugs.flatMap(slug => [
       `/question/${slug}`,
       `/question/${slug}/notebook`,
