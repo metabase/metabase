@@ -1,7 +1,8 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -66,4 +67,26 @@
                                   :query {:source-table (meta/id :venues)
                                           :expressions {"math" [:+ 1 1]}
                                           :fields [[:field (meta/id :venues :id) nil]]
-                                          :filters [[:= [:expression "math"] 2]]}})))))
+                                          :filters [[:= [:expression "math"] 2]]}}))))
+  (testing "filling in works for nested join queries"
+    (let [clause (as-> (lib/expression lib.tu/venues-query "CC" (lib/+ 1 1)) $q
+                   (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
+                                               (lib/expression-ref $q "CC"))]))
+          query (lib/join lib.tu/venues-query clause)
+          ;; Make a legacy query but don't put types in :field and :expression
+          converted-query (lib.convert/->pMBQL
+                            (walk/postwalk
+                              (fn [node]
+                                (if (map? node)
+                                  (dissoc node :base-type :effective-type)
+                                  node))
+                              (lib.convert/->legacy-MBQL query)))]
+      (is (=? {:stages [{:joins [{:conditions [[:= {}
+                                                [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
+                                                [:expression
+                                                 {}
+                                                 ;; TODO Fill these in?
+                                                 #_{:base-type :type/Integer}
+                                                 "CC"]]]}]}]}
+
+              (lib/query meta/metadata-provider converted-query))))))

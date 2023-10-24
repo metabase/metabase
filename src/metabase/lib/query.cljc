@@ -97,6 +97,7 @@
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
+;; - fill in top expression refs with metadata
 (defmethod query-method :mbql/query
   [metadata-providerable {converted? :lib.convert/converted? :as query}]
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
@@ -116,15 +117,19 @@
                         (field-id :guard (every-pred number? pos?))]
                        (let [found-ref (-> (lib.metadata/field metadata-provider field-id)
                                            (select-keys [:base-type :effective-type]))]
-                              ;; Fallback if metadata is missing
+                         ;; Fallback if metadata is missing
                          [:field (merge found-ref opts) field-id])
                        [:expression
                         (opts :guard (complement (some-fn :base-type :effective-type)))
                         expression-name]
-                       (let [found-ref (-> (lib.expression/expression-ref query stage-number expression-name)
+                       (let [found-ref (try
+                                         (-> (lib.expression/expression-ref query stage-number expression-name)
                                            second
-                                           (select-keys [:base-type :effective-type]))]
-                              ;; Fallback if metadata is missing
+                                           (select-keys [:base-type :effective-type]))
+                                         (catch Exception _
+                                           ;; This currently does not find expressions defined in join stages
+                                           nil))]
+                         ;; Fallback if metadata is missing
                          [:expression (merge found-ref opts) expression-name]))))
               (m/indexed stages))))))
 
