@@ -171,6 +171,7 @@ describe("AddToDashSelectDashModal", () => {
       expect(screen.getByText(ERROR)).toBeInTheDocument();
     });
 
+    // XXX: 7,8,9,10
     describe("when user visited some dashboard in last 24hrs", () => {
       it("should preselected last visited dashboard in the picker", async () => {
         await setup();
@@ -292,31 +293,28 @@ describe("AddToDashSelectDashModal", () => {
         });
 
         describe("whether we should render dashboards in a collection", () => {
-          it("should render dashboards when opening public collections", async () => {
-            const dashboardInPublicCollection = createMockDashboard({
+          // XXX: #1
+          it("should render dashboards when opening the root collection (public collection)", async () => {
+            // no `collection` and `collection_id` means it's in the root collection
+            const dashboardInRootCollection = createMockDashboard({
               id: 3,
-              name: "Dashboard in public collection",
-              // `null` means it's in the root collection
-              collection_id: null,
+              name: "Dashboard in root collection",
               model: "dashboard",
             });
 
             await setup({
-              dashboard: dashboardInPublicCollection,
+              dashboard: dashboardInRootCollection,
               noRecentDashboard: true,
             });
 
-            await waitFor(() => {
-              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-            });
-
             expect(
-              screen.getByRole("heading", {
-                name: dashboardInPublicCollection.name,
+              await screen.findByRole("heading", {
+                name: dashboardInRootCollection.name,
               }),
             ).toBeInTheDocument();
           });
 
+          // XXX: #1
           it("should render dashboards when opening public subcollections", async () => {
             const dashboardInPublicSubcollection = createMockDashboard({
               id: 3,
@@ -336,17 +334,14 @@ describe("AddToDashSelectDashModal", () => {
               }),
             );
 
-            await waitFor(() => {
-              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-            });
-
             expect(
-              screen.getByRole("heading", {
+              await screen.findByRole("heading", {
                 name: dashboardInPublicSubcollection.name,
               }),
             ).toBeInTheDocument();
           });
 
+          // XXX: #1
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
               id: 3,
@@ -366,17 +361,14 @@ describe("AddToDashSelectDashModal", () => {
               }),
             );
 
-            await waitFor(() => {
-              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-            });
-
             expect(
-              screen.getByRole("heading", {
+              await screen.findByRole("heading", {
                 name: dashboardInPersonalCollection.name,
               }),
             ).toBeInTheDocument();
           });
 
+          // XXX: #1
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
               id: 3,
@@ -401,12 +393,8 @@ describe("AddToDashSelectDashModal", () => {
               }),
             );
 
-            await waitFor(() => {
-              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-            });
-
             expect(
-              screen.getByRole("heading", {
+              await screen.findByRole("heading", {
                 name: dashboardInPersonalSubcollection.name,
               }),
             ).toBeInTheDocument();
@@ -471,7 +459,7 @@ describe("AddToDashSelectDashModal", () => {
         });
 
         describe("whether we should render dashboards in a collection", () => {
-          // XXX: #5
+          // XXX: #2
           it("should not render dashboards when opening the root collection (public collection)", async () => {
             const dashboardInPublicCollection = createMockDashboard({
               id: 3,
@@ -487,6 +475,10 @@ describe("AddToDashSelectDashModal", () => {
               noRecentDashboard: true,
             });
 
+            await waitFor(() => {
+              expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+            });
+
             expect(
               screen.queryByRole("heading", {
                 name: dashboardInPublicCollection.name,
@@ -494,7 +486,35 @@ describe("AddToDashSelectDashModal", () => {
             ).not.toBeInTheDocument();
           });
 
-          // XXX: #6
+          // XXX: #2
+          it("should render dashboards when opening personal collections", async () => {
+            const dashboardInPersonalCollection = createMockDashboard({
+              id: 3,
+              name: "Dashboard in personal collection",
+              collection_id: PERSONAL_COLLECTION.id as number,
+              model: "dashboard",
+            });
+
+            await setup({
+              card: CARD_IN_PERSONAL_COLLECTION,
+              dashboard: dashboardInPersonalCollection,
+              noRecentDashboard: true,
+            });
+
+            userEvent.click(
+              screen.getByRole("heading", {
+                name: PERSONAL_COLLECTION.name,
+              }),
+            );
+
+            expect(
+              await screen.findByRole("heading", {
+                name: dashboardInPersonalCollection.name,
+              }),
+            ).toBeInTheDocument();
+          });
+
+          // XXX: #2
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
               id: 3,
