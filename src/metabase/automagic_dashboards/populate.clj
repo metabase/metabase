@@ -275,6 +275,22 @@
 
 (def ^:private ^:const ^Long max-filters 4)
 
+(defn ordered-group-by-seq
+  "A seq from a group-by in a particular order. If you don't need the map itself, just to get the key value pairs in a
+  particular order. Clojure's `sorted-map-by` doesn't handle distinct keys with the same score. So this just iterates
+  over the groupby in a reasonable order."
+  [f key-order coll]
+  (letfn [(access [ks grouped]
+            (if (seq ks)
+              (let [k (first ks)]
+                (lazy-seq
+                 (if-let [x (find grouped k)]
+                   (cons x (access (next ks) (dissoc grouped k)))
+                   (access (next ks) grouped))))
+              (seq grouped)))]
+    (let [g (group-by f coll)]
+      (access key-order g))))
+
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
@@ -290,9 +306,12 @@
                         :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
-                            (partition-by :group)
-                            (reduce (fn [[dashboard grid] cards]
-                                      (let [group (some-> cards first :group groups)]
+                            (ordered-group-by-seq :group
+                                                  (when groups
+                                                    (sort-by (comp (fnil - 0) :score groups)
+                                                             (keys groups))))
+                            (reduce (fn [[dashboard grid] [group-name cards]]
+                                      (let [group (get groups group-name)]
                                         (add-group dashboard grid group cards)))
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
@@ -302,7 +321,7 @@
                      (count cards)
                      title
                      (str/join "; " (map :title cards))))
-     (cond-> dashboard
+     (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
 (defn- downsize-titles
