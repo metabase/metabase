@@ -46,6 +46,15 @@ const OBJECT_DETAIL_CHART = {
   query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
 };
 
+const FILTER_CREATED_AT = [
+  "between",
+  ["field", ORDERS.CREATED_AT, null],
+  "2026-04-01",
+  "2026-04-30",
+];
+
+const FILTER_COUNT = ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT];
+
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
@@ -150,12 +159,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(card.display).to.deep.equal(LINE_CHART.display);
             expect(card.dataset_query.query).to.deep.equal({
               ...LINE_CHART.query,
-              filter: [
-                "between",
-                ["field", 14, null],
-                "2026-04-01",
-                "2026-04-30",
-              ],
+              filter: FILTER_CREATED_AT,
             });
           });
         },
@@ -205,16 +209,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(card.display).to.deep.equal(LINE_CHART.display);
             expect(card.dataset_query.query).to.deep.equal({
               ...LINE_CHART.query,
-              filter: [
-                "and",
-                [
-                  "between",
-                  ["field", ORDERS.CREATED_AT, null],
-                  "2026-04-01",
-                  "2026-04-30",
-                ],
-                ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT],
-              ],
+              filter: ["and", FILTER_CREATED_AT, FILTER_COUNT],
             });
           });
         },
