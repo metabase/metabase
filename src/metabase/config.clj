@@ -56,8 +56,7 @@
 
 ;; separate map for EE stuff so merge conflicts aren't annoying.
 (def ^:private ee-app-defaults
-  {:embed-max-session-age      "1440"   ; how long a FULL APP EMBED session is valid for. One day, by default
-   :mb-session-cookie-samesite "lax"})
+  {:embed-max-session-age      "1440"}) ; how long a FULL APP EMBED session is valid for. One day, by default
 
 (alter-var-root #'app-defaults merge ee-app-defaults)
 
@@ -132,18 +131,6 @@
   ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
   mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
-
-(defn- mb-session-cookie-samesite*
-  []
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
-    (when-not (#{"none", "lax", "strict"} same-site)
-      (throw (ex-info "Invalid value for MB_SESSION_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))
-    (keyword same-site)))
-
-(def ^Keyword mb-session-cookie-samesite
-  "Value for session cookie's `SameSite` directive. Must be one of \"none\", \"lax\", or \"strict\" (case insensitive)."
-  (mb-session-cookie-samesite*))
 
 ;; In 0.41.0 we switched from Leiningen to deps.edn. This warning here to keep people from being bitten in the ass by
 ;; the little gotcha described below.
