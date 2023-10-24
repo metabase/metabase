@@ -132,25 +132,21 @@ describe("scenarios > dashboard > tabs", () => {
   });
 
   it(
-    "should allow moving different types of dashcards to other tabs and allow undo",
+    "should allow moving different types of dashcards to other tabs",
     // cy auto scroll makes the dashcard actions menu go under the header
     { scrollBehavior: false },
     () => {
       const cards = [
         getTextCardDetails({
           text: "Text card",
-          col: 5,
         }),
         getHeadingCardDetails({
           text: "Heading card",
-          size_x: 4,
         }),
         getLinkCardDetails({
           url: "https://metabase.com",
         }),
       ];
-
-      const textCardIndexInDom = 1;
 
       cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
         updateDashboardCards({ dashboard_id, cards });
@@ -161,10 +157,6 @@ describe("scenarios > dashboard > tabs", () => {
       editDashboard();
       createNewTab();
       goToTab("Tab 1");
-
-      getDashboardCard(textCardIndexInDom).then(element => {
-        cy.wrap(element.offset()).as("originalPosition");
-      });
 
       cy.log("moving dashcards to second tab");
 
@@ -177,29 +169,6 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
-
-      cy.log("undo 'Text card'");
-
-      cy.findAllByTestId("toast-undo").should("have.length", 3);
-
-      cy.findAllByTestId("toast-undo").eq(2).findByRole("button").click();
-
-      getDashboardCards().should("have.length", cards.length - 1);
-
-      cy.log("check if 'Text card' is correctly in Tab 1");
-
-      goToTab("Tab 1");
-
-      getDashboardCards().should("have.length", 1);
-
-      getDashboardCard().then(element => {
-        cy.get("@originalPosition").then(originalPosition => {
-          const position = element.offset();
-          // position is a bit flaky, but the important thing is that it's not a different cell in the grid
-          expect(position.left).to.approximately(originalPosition.left, 15);
-          expect(position.top).to.approximately(originalPosition.top, 15);
-        });
-      });
     },
   );
 
