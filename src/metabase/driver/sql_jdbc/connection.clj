@@ -38,7 +38,7 @@
   DO NOT USE THIS METHOD DIRECTLY UNLESS YOU KNOW WHAT YOU ARE DOING! THIS RETURNS AN UNPOOLED CONNECTION SPEC! IF YOU
   WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
   CONNECTION SPEC."
-  {:arglists '([driver details-map])}
+  {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
@@ -57,7 +57,7 @@
   powering Cards and the sync process, which are less sensitive to overhead than something like the application DB.
 
   Drivers that need to override the default properties below can provide custom implementations of this method."
-  {:arglists '([driver database])}
+  {:added "0.33.4" :arglists '([driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -67,7 +67,7 @@
 
   The default method uses the first non-nil value of the keys `:db`, `:dbname`, `:sid`, or `:catalog`; implement a new
   method if your driver does not have any of these keys in its details."
-  {:arglists '([driver details]), :added "0.45.0"}
+  {:changelog-test/ignore true, :arglists '([driver details]), :added "0.45.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

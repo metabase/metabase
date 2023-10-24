@@ -516,14 +516,14 @@ saved later when it is ready."
   transaction and work in the `:card-create` event cannot proceed because the cards would not be visible outside of
   the transaction yet. If you pass true here it is important to call the event after the cards are successfully
   created."
-  ([card] (create-card! card false))
-  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} delay-event?]
+  ([card creator] (create-card! card creator false))
+  ([{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data} creator delay-event?]
    ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
    ;; `api/maybe-reconcile-collection-position!`
    (let [data-keys            [:dataset_query :description :display :name :visualization_settings
                                :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
          card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                     :creator_id api/*current-user-id*
+                                     :creator_id (:id creator)
                                      :dataset (boolean (:dataset card-data))
                                      :parameters (or parameters [])
                                      :parameter_mappings (or parameter_mappings []))
@@ -553,7 +553,7 @@ saved later when it is ready."
                            :average_query_time
                            :last_query_start
                            :collection [:moderation_reviews :moderator_details])
-                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))
+                  (assoc :last-edit-info (last-edit/edit-information-for-user creator)))
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
 
@@ -577,7 +577,7 @@ saved later when it is ready."
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
-  (create-card! body))
+  (create-card! body @api/*current-user*))
 
 (api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
@@ -586,7 +586,7 @@ saved later when it is ready."
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
-    (create-card! new-card)))
+    (create-card! new-card @api/*current-user*)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
@@ -1232,7 +1232,8 @@ saved later when it is ready."
                                                        :type     :query}
                               :display                :table
                               :name                   (humanization/name->human-readable-name filename-prefix)
-                              :visualization_settings {}})
+                              :visualization_settings {}}
+                             @api/*current-user*)
           upload-seconds    (/ (- (System/currentTimeMillis) start-time)
                                1000.0)]
       (snowplow/track-event! ::snowplow/csv-upload-successful

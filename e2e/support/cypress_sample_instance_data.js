@@ -63,7 +63,7 @@ export const ORDERS_DASHBOARD_ID = _.findWhere(
 export const ORDERS_DASHBOARD_DASHCARD_ID = _.findWhere(
   SAMPLE_INSTANCE_DATA.dashboards,
   { name: "Orders in a dashboard" },
-).ordered_cards[0].id;
+).dashcards[0].id;
 
 export const ADMIN_USER_ID = _.findWhere(SAMPLE_INSTANCE_DATA.users, {
   email: "admin@metabase.test",

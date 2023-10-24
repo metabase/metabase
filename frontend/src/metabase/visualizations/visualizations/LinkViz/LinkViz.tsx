@@ -7,7 +7,7 @@ import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type {
-  DashboardOrderedCard,
+  DashboardCard,
   LinkCardSettings,
   SearchModelType,
   UnrestrictedLinkEntity,
@@ -46,12 +46,12 @@ const MODELS_TO_SEARCH: SearchModelType[] = [
 ];
 
 export interface LinkVizProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   isEditing: boolean;
   onUpdateVisualizationSettings: (
-    newSettings: Partial<DashboardOrderedCard["visualization_settings"]>,
+    newSettings: Partial<DashboardCard["visualization_settings"]>,
   ) => void;
-  settings: DashboardOrderedCard["visualization_settings"] & {
+  settings: DashboardCard["visualization_settings"] & {
     link: LinkCardSettings;
   };
   isEditingParameter?: boolean;
