@@ -290,7 +290,7 @@ describeEE("impersonated permission", () => {
 
       // Go to settings
       cy.findByRole("dialog").findByText("Edit settings").click();
-      cy.get("@leaveConfirmation").findByText("Leave anyway").click();
+      cy.get("@leaveConfirmation").findByText("Discard changes").click();
 
       cy.focused().should("have.attr", "placeholder", "username");
     });
