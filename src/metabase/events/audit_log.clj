@@ -88,33 +88,34 @@
 (derive :event/subscription-create ::pulse-event)
 (derive :event/subscription-update ::pulse-event)
 
-(defn- create-details-map [pulse]
-  (let [channel (first (:channels pulse))]
+(defn- create-details-map [pulse name]
+  (let [channels (:channels pulse)]
     {:archived     (:archived pulse)
-     :name         (:name pulse)
+     :name         name
      :dashboard_id (:dashboard_id pulse)
      :parameters   (:parameters pulse)
-     :channel      (:channel_type channel)
-     :schedule     (:schedule_type channel)
-     :recipients   (:recipients channel)}))
+     :channel      (map :channel_type channels)
+     :schedule     (map :schedule_type channels)
+     :recipients   (map :recipients channels)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [id details] :as object}]
   ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
   (let [details-map (if (some? id)
-                      (create-details-map object)
+                      (create-details-map object (:name object))
                       details)]
     (audit-log/record-event! topic details-map api/*current-user-id* :model/Pulse id)))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
 (derive :event/alert-delete ::alert-event)
+(derive :event/alert-update ::alert-event)
 
 (methodical/defmethod events/publish-event! ::alert-event
   [topic {:keys [card] :as alert}]
   (let [card-name (:name card)]
     ;; Alerts are centered around a card/question. Users always interact with the alert via the question
-    (audit-log/record-event! topic {:name card-name} api/*current-user-id* :mode/Card (:id alert))))
+    (audit-log/record-event! topic (create-details-map alert card-name) api/*current-user-id* :mode/Card (:id alert))))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)

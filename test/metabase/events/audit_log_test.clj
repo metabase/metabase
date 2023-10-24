@@ -9,7 +9,8 @@
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
-    :refer [Card Dashboard DashboardCard Table Metric Pulse Segment]]
+    :refer [Card Dashboard DashboardCard Metric Pulse Segment Table]]
+   [metabase.pulse-test :as pulse-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -329,44 +330,90 @@
                                :table_id    (mt/id :venues)}}
                 (event "metric-delete" (:id metric)))))))))
 
-(deftest subscription-create-event-test
-  (testing :subscription-create
-    (t2.with-temp/with-temp [Dashboard      dashboard {}
-                             Pulse          pulse
-                             {:archived     false
-                              :name         "name"
-                              :dashboard_id (:id dashboard)
-                              :parameters   ()}]
+(deftest subscription-events-test
+  (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
+                           Pulse          pulse {:archived     false
+                                                 :name         "name"
+                                                 :dashboard_id dashboard-id
+                                                 :parameters   ()}]
+    (let [recipients [{:email "test@metabase.com"}
+                      {:id    (mt/user->id :rasta)
+                       :email "rasta@metabase.com"}]
+          pulse      (assoc pulse
+                            :channels [{:channel_type  :email
+                                        :schedule_type :daily
+                                        :recipients    recipients}])]
       (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
-         (is (= pulse
-                (events/publish-event! :event/subscription-create pulse)))
-         (is (= {:topic       :subscription-create
-                 :user_id     (mt/user->id :rasta)
-                 :model       "Pulse"
-                 :model_id    (:id pulse)
-                 :details     {:archived     false
-                               :name         "name"
-                               :dashboard_id (:id dashboard)
-                               :parameters   []
-                               :channel      nil
-                               :schedule     nil
-                               :recipients   nil}}
-                (event "subscription-create" (:id pulse)))))))))
+          (testing :subscription-update
+            (is (= pulse
+                   (events/publish-event! :event/subscription-update pulse)))
+            (is (= {:topic       :subscription-update
+                    :user_id     (mt/user->id :rasta)
+                    :model       "Pulse"
+                    :model_id    (:id pulse)
+                    :details     {:archived     false
+                                  :name         "name"
+                                  :dashboard_id dashboard-id
+                                  :parameters   []
+                                  :channel      ["email"]
+                                  :schedule     ["daily"]
+                                  :recipients   [recipients]}}
+                   (event "subscription-update" (:id pulse)))))
+          (testing :subscription-create
+            (is (= pulse
+                   (events/publish-event! :event/subscription-create pulse)))
+            (is (= {:topic       :subscription-create
+                    :user_id     (mt/user->id :rasta)
+                    :model       "Pulse"
+                    :model_id    (:id pulse)
+                    :details     {:archived     false
+                                  :name         "name"
+                                  :dashboard_id dashboard-id
+                                  :parameters   []
+                                  :channel      ["email"]
+                                  :schedule     ["daily"]
+                                  :recipients   [recipients]}}
+                   (event "subscription-create" (:id pulse))))))))))
 
-(deftest pulse-delete-event-test
-  (testing :pulse-delete
-    (t2.with-temp/with-temp [Pulse pulse]
+
+(deftest alert-events-test
+  (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
+                           Card           card {:name "card-name"}
+                           Pulse          pulse {:archived     false
+                                                 :name         "name"
+                                                 :dashboard_id dashboard-id
+                                                 :parameters   ()}]
+    (let [pulse (-> pulse
+                    (assoc :card card)
+                    (assoc :channels [{:channel_type  :email
+                                       :schedule_type :daily
+                                       :recipients    [{:email "test@metabase.com"}
+                                                       {:id    (mt/user->id :rasta)
+                                                        :email "rasta@metabase.com"}]}
+                                      {:channel_type  :slack
+                                       :schedule_type :hourly
+                                       :recipients    [{:id (mt/user->id :rasta)}]}]))]
       (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-test-user :rasta
-         (is (= pulse
-                (events/publish-event! :event/pulse-delete pulse)))
-         (is (= {:topic       :pulse-delete
-                 :user_id     (mt/user->id :rasta)
-                 :model       "Pulse"
-                 :model_id    (:id pulse)
-                 :details     {}}
-                (event "pulse-delete" (:id pulse)))))))))
+          (testing :alert-update
+            (is (= pulse
+                   (events/publish-event! :event/alert-update pulse)))
+            (is (= {:topic       :alert-update
+                    :user_id     (mt/user->id :rasta)
+                    :model       "Card"
+                    :model_id    (:id pulse)
+                    :details     {:archived     false
+                                  :name         "card-name"
+                                  :dashboard_id dashboard-id
+                                  :parameters   []
+                                  :channel      ["email" "slack"]
+                                  :schedule     ["daily" "hourly"]
+                                  :recipients   [[{:email "test@metabase.com"}
+                                                  {:id    (mt/user->id :rasta)
+                                                   :email "rasta@metabase.com"}]
+                                                 [{:id (mt/user->id :rasta)}]]}}
+                   (event "alert-update" (:id pulse))))))))))
 
 (deftest subscription-unsubscribe-event-test
   (testing :subscription-unsubscribe

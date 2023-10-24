@@ -586,7 +586,7 @@
   [alert]
   (update-notification! (alert->notification alert))
   ;; fetch the fully updated pulse and return it
-  (retrieve-alert (u/the-id alert)))
+  (events/publish-event! :event/alert-update (retrieve-alert (u/the-id alert))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
