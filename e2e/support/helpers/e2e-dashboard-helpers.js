@@ -167,6 +167,10 @@ export function deleteTab(tabName) {
   });
 }
 
+export function goToTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).click();
+}
+
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   visitDashboard(dashboardId);
   editDashboard();
