@@ -81,159 +81,42 @@
    fields specified in the template, then build metrics, filters, and finally cards based on the bound dimensions.
   "
   (:require
-    [buddy.core.codecs :as codecs]
-    [cheshire.core :as json]
-    [clojure.math.combinatorics :as math.combo]
-    [clojure.set :as set]
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [clojure.zip :as zip]
-    [java-time.api :as t]
-    [kixi.stats.core :as stats]
-    [kixi.stats.math :as math]
-    [medley.core :as m]
-    [metabase.automagic-dashboards.combination :as combination]
-    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.filters :as filters]
-    [metabase.automagic-dashboards.interesting :as interesting]
-    [metabase.automagic-dashboards.populate :as populate]
-    [metabase.automagic-dashboards.schema :as ads]
-    [metabase.automagic-dashboards.util :as magic.util]
-    [metabase.db.query :as mdb.query]
-    [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.mbql.predicates :as mbql.preds]
-    [metabase.mbql.util :as mbql.u]
-    [metabase.models.card :refer [Card]]
-    [metabase.models.database :refer [Database]]
-    [metabase.models.field :as field :refer [Field]]
-    [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [Metric]]
-    [metabase.models.query :refer [Query]]
-    [metabase.models.segment :refer [Segment]]
-    [metabase.models.table :refer [Table]]
-    [metabase.query-processor.util :as qp.util]
-    [metabase.related :as related]
-    [metabase.sync.analyze.classify :as classify]
-    [metabase.util :as u]
-    [metabase.util.date-2 :as u.date]
-    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru trun]]
-    [metabase.util.log :as log]
-    [metabase.util.malli :as mu]
-    #_{:clj-kondo/ignore [:deprecated-namespace]}
-    [metabase.util.malli.schema :as ms]
-    [ring.util.codec :as codec]
-    [schema.core :as s]
-    [toucan2.core :as t2]))
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [clojure.zip :as zip]
+   [kixi.stats.core :as stats]
+   [kixi.stats.math :as math]
+   [medley.core :as m]
+   [metabase.automagic-dashboards.combination :as combination]
+   [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
+   [metabase.automagic-dashboards.filters :as filters]
+   [metabase.automagic-dashboards.interesting :as interesting]
+   [metabase.automagic-dashboards.names :as names]
+   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.db.query :as mdb.query]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.query :refer [Query]]
+   [metabase.models.segment :refer [Segment]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.related :as related]
+   [metabase.sync.analyze.classify :as classify]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n :refer [tru trun]]
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
-
-(mu/defn ->field :- [:maybe (ms/InstanceOf Field)]
-  "Return `Field` instance for a given ID or name in the context of root."
-  [{{result-metadata :result_metadata} :source, :as root}
-   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
-  (let [id-or-name (if (sequential? field-id-or-name-or-clause)
-                     (filters/field-reference->id field-id-or-name-or-clause)
-                     field-id-or-name-or-clause)]
-    (or
-      ;; Handle integer Field IDs.
-      (when (integer? id-or-name)
-        (t2/select-one Field :id id-or-name))
-      ;; handle field string names. Only if we have result metadata. (Not sure why)
-      (when (string? id-or-name)
-        (when-not result-metadata
-          (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
-        (when-let [field (m/find-first #(= (:name %) id-or-name)
-                                       result-metadata)]
-          (as-> field field
-                (update field :base_type keyword)
-                (update field :semantic_type keyword)
-                (mi/instance Field field)
-                (classify/run-classifiers field {}))))
-      ;; otherwise this isn't returning something, and that's probably an error. Log it.
-      (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
-                     \newline
-                     (u/pprint-to-str root))))))
-
-(def ^{:arglists '([root])} source-name
-  "Return the (display) name of the source of a given root object."
-  (comp (some-fn :display_name :name) :source))
-
-;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
-;; here so make sure to do a *thorough* find and replace on this.
-(def ^:private op->name
-  {:sum       (deferred-tru "sum")
-   :avg       (deferred-tru "average")
-   :min       (deferred-tru "minumum")
-   :max       (deferred-tru "maximum")
-   :count     (deferred-tru "number")
-   :distinct  (deferred-tru "distinct count")
-   :stddev    (deferred-tru "standard deviation")
-   :cum-count (deferred-tru "cumulative count")
-   :cum-sum   (deferred-tru "cumulative sum")})
-
-(def ^:private ^{:arglists '([metric])} saved-metric?
-  (every-pred (partial mbql.u/is-clause? :metric)
-              (complement mbql.u/ga-metric-or-segment?)))
-
-(def ^:private ^{:arglists '([metric])} custom-expression?
-  (partial mbql.u/is-clause? :aggregation-options))
-
-(def ^:private ^{:arglists '([metric])} adhoc-metric?
-  (complement (some-fn saved-metric? custom-expression?)))
-
-(defn metric-name
-  "Return the name of the metric or name by describing it."
-  [[op & args :as metric]]
-  (cond
-    (mbql.u/ga-metric-or-segment? metric) (-> args first str (subs 3) str/capitalize)
-    (adhoc-metric? metric)                (-> op qp.util/normalize-token op->name)
-    (saved-metric? metric)                (->> args first (t2/select-one Metric :id) :name)
-    :else                                 (second args)))
-
-(defn- join-enumeration
-  "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""
-  [xs]
-  (if (next xs)
-    (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
-    (first xs)))
-
-(defn- metric->description
-  [root aggregation-clause]
-  (join-enumeration
-   (for [metric (if (sequential? (first aggregation-clause))
-                  aggregation-clause
-                  [aggregation-clause])]
-     (if (adhoc-metric? metric)
-       (tru "{0} of {1}" (metric-name metric) (or (some->> metric
-                                                           second
-                                                           (->field root)
-                                                           :display_name)
-                                                  (source-name root)))
-       (metric-name metric)))))
-
-(defn- question-description
-  [root question]
-  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
-                          (metric->description root))
-        dimensions   (->> (get-in question [:dataset_query :query :breakout])
-                          (mapcat filters/collect-field-references)
-                          (map (comp :display_name
-                                     (partial ->field root)))
-                          join-enumeration)]
-    (if dimensions
-      (tru "{0} by {1}" aggregations dimensions)
-      aggregations)))
-
-(def ^{:arglists '([x])} encode-base64-json
-  "Encode given object as base-64 encoded JSON."
-  (comp codec/base64-encode codecs/str->bytes json/encode))
-
-(defn- ga-table?
-  [table]
-  (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
 (defmulti
   ^{:doc      "Get user-defined metrics linked to a given entity."
@@ -360,7 +243,7 @@
      :database                   (:database_id card)
      :query-filter               (get-in card [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
-     :short-name                 (source-name {:source source})
+     :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (if dataset "model" "question") (u/the-id card))
      :dashboard-templates-prefix [(if (table-like? card)
                                     "table"
@@ -376,9 +259,10 @@
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query) (-> source ->root :full-name)
-                                   :else (question-description {:source source} query))
-     :short-name                 (source-name {:source source})
-     :url                        (format "%sadhoc/%s" public-endpoint (encode-base64-json (:dataset_query query)))
+                                   :else (names/question-description {:source source} query))
+     :short-name                 (names/source-name {:source source})
+     :url                        (format "%sadhoc/%s" public-endpoint
+                                         (magic.util/encode-base64-json (:dataset_query query)))
      :dashboard-templates-prefix [(if (table-like? query)
                                     "table"
                                     "question")]}))
@@ -435,11 +319,11 @@
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
               :and (mapcat collect-dimensions args)
-              :=   (filters/collect-field-references args)
+              :=   (magic.util/collect-field-references args)
               nil))]
     (->> cell-query
          collect-dimensions
-         (map filters/field-reference->id)
+         (map magic.util/field-reference->id)
          set)))
 
 (defn- matching-dashboard-templates
@@ -524,19 +408,6 @@
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
-
-(mu/defn satisified-bindings :- ads/dimension-maps
-  "Take an affinity set (a set of dimensions) and a map of dimension to bound items and return all possible realized
-  affinity combinations for this affinity set and binding."
-  [affinity-set :- ads/dimension-set
-   available-dimensions :- ads/dim-name->matching-fields]
-  (->> affinity-set
-       (map
-         (fn [affinity-dimension]
-           (let [{:keys [matches]} (available-dimensions affinity-dimension)]
-             matches)))
-       (apply math.combo/cartesian-product)
-       (mapv (fn [combos] (zipmap affinity-set combos)))))
 
 (defn affinities->viz-types
   "Generate a map of satisfiable affinity sets (sets of dimensions that belong together)
@@ -673,7 +544,7 @@
 (defn- drilldown-fields
   [root available-dimensions]
   (when (and (->> root :source (mi/instance-of? Table))
-             (-> root :entity ga-table? not))
+             (-> root :entity magic.util/ga-table? not))
     (->> available-dimensions
          vals
          (mapcat :matches)
@@ -693,7 +564,7 @@
                [{:url         (if (->> root :source (mi/instance-of? Table))
                                 (str (:url root) "/compare/table/" (-> root :source u/the-id))
                                 (str (:url root) "/compare/adhoc/"
-                                     (encode-base64-json
+                                     (magic.util/encode-base64-json
                                       {:database (:database root)
                                        :type     :query
                                        :query    {:source-table (->> root
@@ -805,9 +676,9 @@
   "Return a map of fields referenced in filter clause."
   [root filter-clause]
   (->> filter-clause
-       filters/collect-field-references
+       magic.util/collect-field-references
        (map (fn [[_ id-or-name _options]]
-              [id-or-name (->field root id-or-name)]))
+              [id-or-name (magic.util/->field root id-or-name)]))
        (remove (comp nil? second))
        (into {})))
 
@@ -879,15 +750,15 @@
            (let [table-id (table-id question)]
              (mi/instance Metric {:definition {:aggregation  [aggregation-clause]
                                                :source-table table-id}
-                                  :name       (metric->description root aggregation-clause)
+                                  :name       (names/metric->description root aggregation-clause)
                                   :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
 (s/defn ^:private collect-breakout-fields :- (s/maybe [#_{:clj-kondo/ignore [:deprecated-var]} (mi/InstanceOf:Schema Field)])
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
-        field-clause (take 1 (filters/collect-field-references breakout))
-        :let         [field (->field root field-clause)]
+        field-clause (take 1 (magic.util/collect-field-references breakout))
+        :let         [field (magic.util/->field root field-clause)]
         :when        field]
     field))
 
@@ -907,108 +778,6 @@
           (comp cat (map analyze))
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
-
-(defn- pluralize
-  [x]
-  ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
-  (case (int (mod x 10))
-    1 (tru "{0}st" x)
-    2 (tru "{0}nd" x)
-    3 (tru "{0}rd" x)
-    (tru "{0}th" x)))
-
-(defn- humanize-datetime
-  [t-str unit]
-  (let [dt (u.date/parse t-str)]
-    (case unit
-      :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
-      :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
-      :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
-      :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
-      :week            (tru "in {0} week - {1}"
-                            (pluralize (u.date/extract dt :week-of-year))
-                            (str (u.date/extract dt :year)))
-      :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
-      :quarter         (tru "in Q{0} - {1}"
-                            (u.date/extract dt :quarter-of-year)
-                            (str (u.date/extract dt :year)))
-      :year            (t/format "YYYY" dt)
-      :day-of-week     (t/format "EEEE" dt)
-      :hour-of-day     (tru "at {0}" (t/format "h a" dt))
-      :month-of-year   (t/format "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
-      (:minute-of-hour
-       :day-of-month
-       :day-of-year
-       :week-of-year)  (u.date/extract dt unit))))
-
-(defn- field-reference->field
-  [root field-reference]
-  (let [normalized-field-reference (mbql.normalize/normalize field-reference)
-        temporal-unit              (mbql.u/match-one normalized-field-reference
-                                     [:field _ (opts :guard :temporal-unit)]
-                                     (:temporal-unit opts))]
-    (cond-> (->> normalized-field-reference
-                 filters/collect-field-references
-                 first
-                 (->field root))
-      temporal-unit
-      (assoc :unit temporal-unit))))
-
-(defmulti
-  ^{:private true
-    :arglists '([fieldset [op & args]])}
-  humanize-filter-value (fn [_ [op & _args]]
-                          (qp.util/normalize-token op)))
-
-(def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
-                                :hour-of-day     (deferred-tru "hour")
-                                :day-of-week     (deferred-tru "day of week")
-                                :day-of-month    (deferred-tru "day of month")
-                                :day-of-year     (deferred-tru "day of year")
-                                :week-of-year    (deferred-tru "week")
-                                :month-of-year   (deferred-tru "month")
-                                :quarter-of-year (deferred-tru "quarter")}
-                               qp.util/normalize-token))
-
-(defn- field-name
-  ([root field-reference]
-   (->> field-reference (field-reference->field root) field-name))
-  ([{:keys [display_name unit] :as _field}]
-   (cond->> display_name
-     (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
-
-(defmethod humanize-filter-value :=
-  [root [_ field-reference value]]
-  (let [field      (field-reference->field root field-reference)
-        field-name (field-name field)]
-    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
-      (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
-      (tru "{0} is {1}" field-name value))))
-
-(defmethod humanize-filter-value :between
-  [root [_ field-reference min-value max-value]]
-  (tru "{0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
-
-(defmethod humanize-filter-value :inside
-  [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
-  (tru "{0} is between {1} and {2}; and {3} is between {4} and {5}"
-       (field-name root lon-reference) lon-min lon-max
-       (field-name root lat-reference) lat-min lat-max))
-
-(defmethod humanize-filter-value :and
-  [root [_ & clauses]]
-  (->> clauses
-       (map (partial humanize-filter-value root))
-       join-enumeration))
-
-(defn cell-title
-  "Return a cell title given a root object and a cell query."
-  [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
-                   (metric->description root aggregation)
-                   (:full-name root))
-                 (tru "where {0}" (humanize-filter-value root cell-query))]))
 
 (defn- key-in?
   "Recursively finds key in coll, returns true or false"
@@ -1054,7 +823,7 @@
                                                  (decompose-question root entity opts))]
                            (merge dash
                                   (when cell-query
-                                    (let [title (tru "A closer look at {0}" (cell-title root cell-query))]
+                                    (let [title (tru "A closer look at {0}" (names/cell-title root cell-query))]
                                       {:transient_name title
                                        :name           title})))))]
     (maybe-enrich-joins (:entity root) transient-dash)))
@@ -1064,7 +833,7 @@
   (let [root     (->root card)
         cell-url (format "%squestion/%s/cell/%s" public-endpoint
                          (u/the-id card)
-                         (encode-base64-json cell-query))]
+                         (magic.util/encode-base64-json cell-query))]
     (query-based-analysis root opts
                           (when cell-query
                             {:cell-query cell-query
@@ -1077,8 +846,8 @@
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
         cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint
-                           (encode-base64-json (:dataset_query query))
-                           (encode-base64-json cell-query))]
+                           (magic.util/encode-base64-json (:dataset_query query))
+                           (magic.util/encode-base64-json cell-query))]
     (query-based-analysis root opts
                           (when cell-query
                             {:cell-query cell-query
