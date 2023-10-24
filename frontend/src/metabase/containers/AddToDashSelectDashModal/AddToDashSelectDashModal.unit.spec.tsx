@@ -93,7 +93,7 @@ interface SetupOpts {
   collections?: Collection[];
   error?: string;
   dashboard?: Dashboard;
-  noRecentDashboard?: boolean;
+  mostRecentlyViewedDashboard?: Dashboard;
   waitForContent?: boolean;
 }
 
@@ -101,7 +101,7 @@ const setup = async ({
   card = CARD,
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
-  noRecentDashboard = false,
+  mostRecentlyViewedDashboard = undefined,
   error,
   waitForContent = true,
 }: SetupOpts = {}) => {
@@ -109,7 +109,7 @@ const setup = async ({
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
-  setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
+  setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
 
   renderWithProviders(
     <Route
@@ -140,7 +140,9 @@ const setup = async ({
 describe("AddToDashSelectDashModal", () => {
   describe("Create new Dashboard", () => {
     it("should open CreateDashboardModal", async () => {
-      await setup();
+      await setup({
+        mostRecentlyViewedDashboard: DASHBOARD,
+      });
 
       const createNewDashboard = screen.getByRole("heading", {
         name: "Create a new dashboard",
@@ -159,14 +161,17 @@ describe("AddToDashSelectDashModal", () => {
 
   describe("Add to existing Dashboard", () => {
     it("should show loading", async () => {
-      await setup({ waitForContent: false });
+      await setup({
+        waitForContent: false,
+        mostRecentlyViewedDashboard: DASHBOARD,
+      });
 
       expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
     it("should show error", async () => {
       const ERROR = "Server Error!";
-      await setup({ error: ERROR });
+      await setup({ error: ERROR, mostRecentlyViewedDashboard: DASHBOARD });
 
       expect(screen.getByText(ERROR)).toBeInTheDocument();
     });
@@ -174,7 +179,9 @@ describe("AddToDashSelectDashModal", () => {
     // XXX: 7,8,9,10
     describe("when user visited some dashboard in last 24hrs", () => {
       it("should preselected last visited dashboard in the picker", async () => {
-        await setup();
+        await setup({
+          mostRecentlyViewedDashboard: DASHBOARD,
+        });
 
         const dashboardCollection = COLLECTIONS.find(
           collection => collection.id === DASHBOARD.collection_id,
@@ -192,6 +199,7 @@ describe("AddToDashSelectDashModal", () => {
         it("should render root collection", async () => {
           await setup({
             dashboard: DASHBOARD_AT_ROOT,
+            mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
           });
 
           // breadcrumbs
@@ -204,9 +212,7 @@ describe("AddToDashSelectDashModal", () => {
 
     describe("when user didn't visit any dashboard during last 24hrs", () => {
       it("should render root collection without preselection", async () => {
-        await setup({
-          noRecentDashboard: true,
-        });
+        await setup();
 
         // breadcrumbs show root collection only
         expect(screen.getByTestId("item-picker-header")).toHaveTextContent(
@@ -218,9 +224,7 @@ describe("AddToDashSelectDashModal", () => {
         describe('"Create a new dashboard" option', () => {
           // XXX: #3
           it('should render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
-            await setup({
-              noRecentDashboard: true,
-            });
+            await setup();
 
             expect(
               screen.getByRole("heading", {
@@ -231,9 +235,7 @@ describe("AddToDashSelectDashModal", () => {
 
           // XXX: #3
           it('should render "Create a new dashboard" option when opening public subcollections', async () => {
-            await setup({
-              noRecentDashboard: true,
-            });
+            await setup();
 
             userEvent.click(
               screen.getByRole("heading", {
@@ -262,9 +264,7 @@ describe("AddToDashSelectDashModal", () => {
 
           // XXX: #4
           it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
-            await setup({
-              noRecentDashboard: true,
-            });
+            await setup();
 
             userEvent.click(
               screen.getByRole("heading", {
@@ -304,7 +304,6 @@ describe("AddToDashSelectDashModal", () => {
 
             await setup({
               dashboard: dashboardInRootCollection,
-              noRecentDashboard: true,
             });
 
             expect(
@@ -325,7 +324,6 @@ describe("AddToDashSelectDashModal", () => {
 
             await setup({
               dashboard: dashboardInPublicSubcollection,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
@@ -352,7 +350,6 @@ describe("AddToDashSelectDashModal", () => {
 
             await setup({
               dashboard: dashboardInPersonalCollection,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
@@ -379,7 +376,6 @@ describe("AddToDashSelectDashModal", () => {
 
             await setup({
               dashboard: dashboardInPersonalSubcollection,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
@@ -415,7 +411,6 @@ describe("AddToDashSelectDashModal", () => {
           it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
-              noRecentDashboard: true,
             });
 
             expect(
@@ -429,7 +424,6 @@ describe("AddToDashSelectDashModal", () => {
           it('should render "Create a new dashboard" option when opening personal subcollections', async () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
@@ -472,7 +466,6 @@ describe("AddToDashSelectDashModal", () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
               dashboard: dashboardInPublicCollection,
-              noRecentDashboard: true,
             });
 
             await waitFor(() => {
@@ -498,7 +491,6 @@ describe("AddToDashSelectDashModal", () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
               dashboard: dashboardInPersonalCollection,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
@@ -526,7 +518,6 @@ describe("AddToDashSelectDashModal", () => {
             await setup({
               card: CARD_IN_PERSONAL_COLLECTION,
               dashboard: dashboardInPersonalSubcollection,
-              noRecentDashboard: true,
             });
 
             userEvent.click(
