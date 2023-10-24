@@ -235,6 +235,9 @@ export function getTokenFieldPlaceholder({
   if (shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)) {
     return SEARCH_THE_LIST_PLACEHOLDER;
   }
+
+  const [firstField] = fields;
+
   if (
     isSearchable({
       parameter,
@@ -247,11 +250,11 @@ export function getTokenFieldPlaceholder({
     return getSearchableTokenFieldPlaceholder(
       parameter,
       fields,
-      fields[0],
+      firstField,
       disablePKRemappingForSearch,
     );
   } else {
-    return getNonSearchableTokenFieldPlaceholder(fields[0], parameter);
+    return getNonSearchableTokenFieldPlaceholder(firstField, parameter);
   }
 }
 
