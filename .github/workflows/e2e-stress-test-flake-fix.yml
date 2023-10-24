@@ -3,10 +3,6 @@ name: E2E Stress Test Flake Fix
 on:
   workflow_dispatch:
     inputs:
-      artifact:
-        description: 'Artifact ID'
-        type: string
-        required: true
       spec:
         description: 'Relative path of the target spec'
         type: string
@@ -28,9 +24,13 @@ jobs:
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
+      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     steps:
       - uses: actions/checkout@v3
+        with:
+          # Important because we need previous commits hashes to find and download the uberjar!
+          fetch-depth: 20
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -43,19 +43,11 @@ jobs:
           mysql: true
           mongo: true
 
-      - name: Download Metabase uberjar from a previously stored artifact
-        run: |
-          curl -L \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/metabase/metabase/actions/artifacts/$ARTIFACT_ID/zip \
-            -o mb.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_ID: ${{ github.event.inputs.artifact }}
-      - name: Unzip Metabase artifact containing an uberjar
-        run: unzip mb.zip
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: 'ee'
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
@@ -68,10 +60,7 @@ jobs:
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
-      - name: Get Metabase version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
+
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
           yarn run test-cypress-run \
@@ -79,8 +68,7 @@ jobs:
           --env burn=${{ github.event.inputs.burn_in }} \
           --config-file e2e/support/cypress-stress-test.config.js
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
-        env:
-          TERM: xterm
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
