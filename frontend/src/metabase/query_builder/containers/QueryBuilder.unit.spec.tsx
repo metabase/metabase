@@ -401,7 +401,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -429,7 +429,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerMetadataChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           const mockEvent = callMockEvent(mockEventListener, "beforeunload");
           expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -464,7 +464,7 @@ describe("QueryBuilder", () => {
         await waitForLoaderToBeRemoved();
 
         await triggerNativeQueryChange();
-        await waitForSaveNewQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).toHaveBeenCalled();
@@ -606,7 +606,7 @@ describe("QueryBuilder", () => {
         setupCardQueryMetadataEndpoint(TEST_NATIVE_CARD);
 
         await startNewNotebookModel();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByRole("button", { name: "Save" }));
         userEvent.click(
@@ -652,7 +652,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveQuestionToBeEnabled();
+          await waitForSaveToBeEnabled();
 
           userEvent.click(screen.getByText("Save"));
           userEvent.click(
@@ -688,7 +688,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           history.push("/redirect");
 
@@ -702,10 +702,10 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           await revertNotebookQueryChange();
-          await waitForSaveModelToBeDisabled();
+          await waitForSaveChangesToBeDisabled();
 
           history.push("/redirect");
 
@@ -721,7 +721,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -735,10 +735,10 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           await revertNotebookQueryChange();
-          await waitForSaveModelToBeDisabled();
+          await waitForSaveChangesToBeDisabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -754,7 +754,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerNotebookQueryChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -785,7 +785,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerMetadataChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           history.push("/redirect");
 
@@ -830,7 +830,7 @@ describe("QueryBuilder", () => {
           });
 
           await triggerMetadataChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -852,7 +852,7 @@ describe("QueryBuilder", () => {
           userEvent.click(screen.getByText("Metadata"));
 
           await triggerMetadataChange();
-          await waitForSaveModelToBeEnabled();
+          await waitForSaveChangesToBeEnabled();
 
           userEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -882,7 +882,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveModelToBeEnabled();
+        await waitForSaveChangesToBeEnabled();
 
         userEvent.click(screen.getByTestId("editor-tabs-metadata-name"));
 
@@ -891,7 +891,7 @@ describe("QueryBuilder", () => {
         ).not.toBeInTheDocument();
 
         await triggerMetadataChange();
-        await waitForSaveModelToBeEnabled();
+        await waitForSaveChangesToBeEnabled();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
 
@@ -907,7 +907,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Visualize"));
         await waitForLoaderToBeRemoved();
@@ -938,7 +938,7 @@ describe("QueryBuilder", () => {
         await waitForLoaderToBeRemoved();
 
         await triggerNativeQueryChange();
-        await waitForSaveNewQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         history.push("/redirect");
 
@@ -1002,7 +1002,7 @@ describe("QueryBuilder", () => {
         await waitForLoaderToBeRemoved();
 
         await triggerNativeQueryChange();
-        await waitForSaveNewQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1044,7 +1044,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNativeQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         history.push("/redirect");
 
@@ -1073,7 +1073,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNativeQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(
           within(screen.getByTestId("query-builder-main")).getByRole("button", {
@@ -1093,7 +1093,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNativeQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1128,7 +1128,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNativeQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1173,7 +1173,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         history.push("/redirect");
 
@@ -1187,7 +1187,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerVisualizationQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         history.push("/redirect");
 
@@ -1216,7 +1216,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Visualize"));
         await waitForLoaderToBeRemoved();
@@ -1239,7 +1239,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1274,7 +1274,7 @@ describe("QueryBuilder", () => {
         });
 
         await triggerNotebookQueryChange();
-        await waitForSaveQuestionToBeEnabled();
+        await waitForSaveToBeEnabled();
 
         userEvent.click(screen.getByText("Save"));
 
@@ -1456,26 +1456,22 @@ const revertNotebookQueryChange = async () => {
   userEvent.tab();
 };
 
-const waitForSaveModelToBeEnabled = async () => {
+const waitForSaveChangesToBeEnabled = async () => {
   await waitFor(() => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
   });
 };
 
-const waitForSaveModelToBeDisabled = async () => {
+const waitForSaveChangesToBeDisabled = async () => {
   await waitFor(() => {
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
 };
 
-const waitForSaveQuestionToBeEnabled = async () => {
+const waitForSaveToBeEnabled = async () => {
   await waitFor(() => {
     expect(screen.getByText("Save")).toBeEnabled();
   });
-};
-
-const waitForSaveNewQuestionToBeEnabled = async () => {
-  await waitForSaveQuestionToBeEnabled();
 };
 
 const waitForNativeQueryEditoReady = async () => {
