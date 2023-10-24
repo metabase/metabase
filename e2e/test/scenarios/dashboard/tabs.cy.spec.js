@@ -18,13 +18,13 @@ import {
   visitCollection,
   main,
   getDashboardCard,
-  menu,
   getDashboardCards,
   getTextCardDetails,
   getHeadingCardDetails,
   getLinkCardDetails,
   updateDashboardCards,
   goToTab,
+  moveDashCardToTab,
 } from "e2e/support/helpers";
 
 import {
@@ -111,9 +111,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.log("move card to second tab");
 
-    getDashboardCard().realHover();
-    cy.icon("move_card").click();
-    menu().findByText("Tab 2").click();
+    moveDashCardToTab({ tabName: "Tab 2" });
 
     getDashboardCards().should("have.length", 0);
 
@@ -163,10 +161,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.log("moving dashcards to second tab");
 
       cards.forEach(() => {
-        getDashboardCard(0).realHover();
-        cy.icon("move_card").eq(0).click();
-
-        menu().findByText("Tab 2").click();
+        moveDashCardToTab({ tabName: "Tab 2" });
       });
 
       getDashboardCards().should("have.length", 0);
@@ -199,10 +194,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     goToTab("Tab 1");
 
-    // TODO: create moveDashcardToTab helper
-    getDashboardCard(0).realHover();
-    cy.icon("move_card").eq(0).click();
-    menu().findByText("Tab 2").click();
+    moveDashCardToTab({ tabName: "Tab 2" });
 
     saveDashboard();
 
