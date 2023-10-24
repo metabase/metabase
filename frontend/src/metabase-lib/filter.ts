@@ -261,9 +261,9 @@ export function specificDateFilterClause(
   { operator, column, values }: SpecificDateFilterParts,
 ): ExpressionClause {
   const hasTime = values.some(hasTimeParts);
-  const stringValues = hasTime
-    ? values.map(value => dateToDateTimeString(value))
-    : values.map(value => dateToDateString(value));
+  const serializedValues = hasTime
+    ? values.map(value => serializeDateTime(value))
+    : values.map(value => serializeDate(value));
 
   const minuteBucket = hasTime
     ? findTemporalBucket(query, stageIndex, column, "minute")
@@ -275,7 +275,7 @@ export function specificDateFilterClause(
 
   return expressionClause(operator, [
     columnWithOrWithoutBucket,
-    ...stringValues,
+    ...serializedValues,
   ]);
 }
 
@@ -289,12 +289,12 @@ export function specificDateFilterParts(
     return null;
   }
 
-  const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  const [column, ...serializedValues] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(serializedValues)) {
     return null;
   }
 
-  const values = stringValues.map(value => dateTimeStringToDate(value));
+  const values = serializedValues.map(value => deserializeDateTime(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -368,11 +368,11 @@ export function excludeDateFilterClause(
 
   const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
   const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const valueArgs = values.map(value =>
-    excludeDatePartToExpressionArg(value, bucketName),
+  const serializedValues = values.map(value =>
+    serializeExcludeDatePart(value, bucketName),
   );
 
-  return expressionClause(operator, [columnWithBucket, ...valueArgs]);
+  return expressionClause(operator, [columnWithBucket, ...serializedValues]);
 }
 
 export function excludeDateFilterParts(
@@ -385,7 +385,7 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const [column, ...valueArgs] = args;
+  const [column, ...serializedValues] = args;
   if (!isColumnMetadata(column)) {
     return null;
   }
@@ -400,8 +400,8 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const values = valueArgs.map(value =>
-    expressionArgToExcludeDatePart(value, bucketInfo.shortName),
+  const values = serializedValues.map(value =>
+    deserializeExcludeDatePart(value, bucketInfo.shortName),
   );
   if (!isDefinedArray(values)) {
     return null;
@@ -429,8 +429,8 @@ export function timeFilterClause({
   values,
 }: TimeFilterParts): ExpressionClause {
   const columnWithoutBucket = withTemporalBucket(column, null);
-  const stringValues = values.map(value => dateToTimeString(value));
-  return expressionClause(operator, [columnWithoutBucket, ...stringValues]);
+  const serializedValues = values.map(value => serializeTime(value));
+  return expressionClause(operator, [columnWithoutBucket, ...serializedValues]);
 }
 
 export function timeFilterParts(
@@ -443,12 +443,12 @@ export function timeFilterParts(
     return null;
   }
 
-  const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  const [column, ...serializedValues] = args;
+  if (!isColumnMetadata(column) || !isStringLiteralArray(serializedValues)) {
     return null;
   }
 
-  const values = stringValues.map(value => timeStringToDate(value));
+  const values = serializedValues.map(value => deserializeTime(value));
   if (!isDefinedArray(values)) {
     return null;
   }
@@ -637,15 +637,15 @@ function hasTimeParts(date: Date): boolean {
   return date.getHours() !== 0 || date.getMinutes() !== 0;
 }
 
-function dateToDateString(date: Date): string {
+function serializeDate(date: Date): string {
   return moment(date).format(DATE_FORMAT);
 }
 
-function dateToDateTimeString(date: Date): string {
+function serializeDateTime(date: Date): string {
   return moment(date).format(DATE_TIME_FORMAT);
 }
 
-function dateTimeStringToDate(value: string): Date | null {
+function deserializeDateTime(value: string): Date | null {
   const dateTime = moment(value, [DATE_TIME_FORMAT, DATE_FORMAT], true);
   if (!dateTime.isValid()) {
     return null;
@@ -654,11 +654,11 @@ function dateTimeStringToDate(value: string): Date | null {
   return dateTime.toDate();
 }
 
-function dateToTimeString(value: Date): string {
+function serializeTime(value: Date): string {
   return moment(value).format(TIME_FORMAT);
 }
 
-function timeStringToDate(value: string): Date | null {
+function deserializeTime(value: string): Date | null {
   const time = moment(value, TIME_FORMAT, true);
   if (!time.isValid()) {
     return null;
@@ -763,7 +763,7 @@ function relativeDateFilterPartsWithOffset(
   };
 }
 
-function excludeDatePartToExpressionArg(
+function serializeExcludeDatePart(
   value: number,
   bucketName: ExcludeDateBucketName,
 ): ExpressionArg {
@@ -787,7 +787,7 @@ function excludeDatePartToExpressionArg(
   return date.format(DATE_FORMAT);
 }
 
-function expressionArgToExcludeDatePart(
+function deserializeExcludeDatePart(
   value: ExpressionArg | ExpressionParts,
   bucketName: BucketName,
 ): number | null {
