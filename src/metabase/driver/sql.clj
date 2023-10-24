@@ -50,7 +50,7 @@
 
 (defmethod driver/prettify-native-form :sql
   [driver native-form]
-    (sql.u/format-sql-and-fix-params driver native-form))
+  (sql.u/format-sql-and-fix-params driver native-form))
 
 (mu/defmethod driver/substitute-native-parameters :sql
   [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ms/NonBlankString}]]]
