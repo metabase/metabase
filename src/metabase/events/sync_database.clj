@@ -1,24 +1,22 @@
 (ns metabase.events.sync-database
   (:require
    [metabase.events :as events]
-   [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (derive ::event :metabase/event)
 (derive :event/database-create ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [topic object]
+  [topic event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when object
-      (when-let [database (t2/select-one Database :id (events/object->model-id topic object))]
+    (when event
+      (when-let [database (:object event)]
         ;; just kick off a sync on another thread
         (future
           (try

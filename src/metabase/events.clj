@@ -60,7 +60,7 @@
   "'Publish' an event by calling [[publish-event!]] with a [[Topic]] and an `event` map, whose contents vary
   based on their `topic`. These calls return the original `event` object passed in, to support chaining.
 
-    (events/publish-event! :event/database-create database)
+    (events/publish-event! :event/database-create {:object database :actor-id api/*current-user-id*})
 
   'Subscribe' to an event by add a Methodical method implementation. Since this uses
   the [[methodical/do-method-combination]], all multiple method implementations can be called for a single invocation.

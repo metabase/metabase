@@ -96,7 +96,7 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-    (events/publish-event! :event/dashboard-create {:object dash :creator-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object dash :actor-id api/*current-user-id*})
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -380,8 +380,8 @@
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
       (doseq [card newly-created-cards]
-        (events/publish-event! :event/card-create card)))
-    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+        (events/publish-event! :event/card-create {:object card :actor-id api/*current-user-id*})))
+    (events/publish-event! :event/dashboard-create {:object dashboard :actor-id api/*current-user-id*})
     dashboard))
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
@@ -766,7 +766,7 @@
   {parent-collection-id ms/PositiveInt}
   (collection/check-write-perms-for-collection parent-collection-id)
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object dashboard :actor-id api/*current-user-id*})
     dashboard))
 
 (api/defendpoint POST "/save"
@@ -777,7 +777,7 @@
                                (t2/select-one-fn :id 'Collection
                                                  :personal_owner_id api/*current-user-id*))
         dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
-    (events/publish-event! :event/dashboard-create {:object dashboard :creator-id api/*current-user-id*})
+    (events/publish-event! :event/dashboard-create {:object dashboard :actor-id api/*current-user-id*})
     dashboard))
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------

@@ -84,15 +84,14 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when event
-      (let [model                          (events/topic->model topic)
-            model-id                       (or (events/object->model-id topic event)
-                                               (events/object->model-id topic (:object event)))
-            user-id                        (or (events/object->user-id event)
-                                               (events/object->user-id (:object event)))
+      (let [object                         (:object event)
+            model                          (events/topic->model topic)
+            model-id                       (events/object->model-id topic object)
+            user-id                        (:actor-id event)
             ;; `:context` comes
             ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
             ;; and it should only be present for `:event/card-query`
-            {:keys [context] :as metadata} (events/object->metadata event)]
+            {:keys [context] :as metadata} (events/object->metadata object)]
         (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
                    ;; we don't want to count pinned card views
                    ((complement #{:collection :dashboard}) context))

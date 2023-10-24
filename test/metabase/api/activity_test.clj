@@ -98,26 +98,21 @@
                                           {:topic :event/card-query :item card1}
                                           {:topic :event/card-query :item card1}
                                           {:topic :event/card-query :item card1}
+                                          {:topic :event/dashboard-read :item dash}
                                           {:topic :event/card-query :item card1}
+                                          {:topic :event/dashboard-read :item dash}
                                           {:topic :event/table-read :item table1}
                                           {:topic :event/card-query :item archived}
                                           {:topic :event/table-read :item hidden-table}]]
               (events/publish-event!
                topic
                ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-               (assoc item :actor_id (mt/user->id :crowberto))))
-
-           (doseq [{:keys [topic item]} [{:topic :event/dashboard-read :item dash}
-                                         {:topic :event/dashboard-read :item dash}]]
-                  (events/publish-event!
-                   topic
-                   ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-                   {:object item :actor-id (mt/user->id :crowberto)}))
+               {:object item :actor-id (mt/user->id :crowberto)}))
            (testing "No duplicates or archived items are returned."
              (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
                (is (partial=
-                    [{:model "dashboard" :model_id (u/the-id dash)}
-                     {:model "table" :model_id (u/the-id table1)}
+                    [{:model "table" :model_id (u/the-id table1)}
+                     {:model "dashboard" :model_id (u/the-id dash)}
                      {:model "card" :model_id (u/the-id card1)}
                      {:model "dataset" :model_id (u/the-id dataset)}]
                     recent-views))))))

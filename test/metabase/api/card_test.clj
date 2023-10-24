@@ -776,7 +776,7 @@
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
-        (let [card        (card-with-name-and-query)]
+        (let [card (card-with-name-and-query)]
           (is (= 1234
                  (:cache_ttl (mt/user-http-request :rasta
                                                    :post

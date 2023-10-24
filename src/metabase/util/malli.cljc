@@ -110,9 +110,5 @@
                 schema-or-validator
                 (mc/validator schema-or-validator))
               value)
-       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator
-                                                      :error (-> schema-or-validator
-                                                                 (mc/explain value)
-                                                                 me/with-spell-checking
-                                                                 (me/humanize {:wrap humanize-include-value}))}))
+       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
        value)))
