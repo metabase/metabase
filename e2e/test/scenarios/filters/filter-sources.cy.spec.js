@@ -137,7 +137,7 @@ const nestedQuestionWithExpression = card => ({
     query: {
       "source-table": `card__${card.id}`,
       expressions: {
-        Total100: ["+", ["field", ORDERS.TOTAL, null], 100],
+        Total100: ["+", ["field", "TOTAL", { "base-type": "type/Float" }], 100],
       },
     },
   },
@@ -505,7 +505,7 @@ describe("scenarios > filters > filter sources", () => {
       assertQueryBuilderRowCount(10);
     });
 
-    it.skip("column from an expression based on a question column", () => {
+    it("column from an expression based on a question column", () => {
       cy.createNativeQuestion(nativeQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestionWithExpression(card), {
           mode: "notebook",
