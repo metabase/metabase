@@ -238,7 +238,7 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests]
+    needs: [e2e-tests, e2e-matrix-builder]
     if: |
       !cancelled() &&
       needs.e2e-tests.result == 'skipped'
