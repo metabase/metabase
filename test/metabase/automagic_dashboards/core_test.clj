@@ -802,6 +802,29 @@
           (-> (t2/select-one Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
+(deftest cell-query-is-applied-test
+  (testing "Ensure that the cell query is applied to every card in the resulting dashboard"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [Collection {collection-id :id} {}
+                     Card {card-id :id} {:table_id      (mt/id :venues)
+                                         :collection_id collection-id
+                                         :dataset_query {:query    {:filter       [:> [:field (mt/id :venues :price) nil] 10]
+                                                                    :source-table (mt/id :venues)}
+                                                         :type     :query
+                                                         :database (mt/id)}}]
+        (let [entity     (t2/select-one Card :id card-id)
+              cell-query [:= [:field (mt/id :venues :category_id) nil] 2]]
+          (mt/with-test-user :rasta
+            (automagic-dashboards.test/with-dashboard-cleanup
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
+              (let [all-dashcard-filters (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
+                                              :dashcards
+                                              (keep (comp :filter :query :dataset_query :card)))
+                    filter-contains-cell-query?                 #(= cell-query (some #{cell-query} %))
+                    ;filter-clauses () (get-in first-dashcard [:card :dataset_query :query :filter])
+                    ]
+                (is (pos? (count all-dashcard-filters)))
+                (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
 
 (deftest complicated-card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms

@@ -75,7 +75,7 @@
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database query-filter]} :root :keys [source]}]
+   {{:keys [database]} :root :keys [source query-filter]}]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))]
