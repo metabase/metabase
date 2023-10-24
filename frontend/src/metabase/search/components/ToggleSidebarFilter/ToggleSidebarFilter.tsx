@@ -1,37 +1,6 @@
-/*
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- * TODO: Change mantine switch import before merging!!
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
- * */
-
-// eslint-disable-next-line no-restricted-imports
-import { Switch } from "@mantine/core";
 import type { SearchFilterToggle } from "metabase/search/types";
-import { Group, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
+import { FilterSwitch } from "./ToggleSidebarFilter.styled";
 
 export type ToggleSidebarFilterProps = {
   filter: SearchFilterToggle;
@@ -39,6 +8,7 @@ export type ToggleSidebarFilterProps = {
   onChange: (value: boolean) => void;
   "data-testid"?: string;
 };
+
 export const ToggleSidebarFilter = ({
   filter: { label },
   value,
@@ -46,19 +16,17 @@ export const ToggleSidebarFilter = ({
   "data-testid": dataTestId,
 }: ToggleSidebarFilterProps) => {
   return (
-    <Group noWrap spacing="xs" data-testid={dataTestId}>
-      <Text w="100%" c="text.1" size="md" fw={700}>
-        {label()}
-      </Text>
-      <Switch
-        wrapperProps={{
-          "data-testid": "toggle-filter-switch",
-        }}
-        size="sm"
-        data-is-checked={value}
-        checked={value}
-        onChange={event => onChange(event.currentTarget.checked)}
-      />
-    </Group>
+    <FilterSwitch
+      wrapperProps={{
+        "data-testid": dataTestId,
+      }}
+      data-testid="toggle-filter-switch"
+      size="sm"
+      labelPosition="left"
+      label={<Text color="text.2">{label()}</Text>}
+      data-is-checked={value}
+      checked={value}
+      onChange={event => onChange(event.currentTarget.checked)}
+    />
   );
 };

@@ -8,12 +8,14 @@ import {
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Route } from "metabase/hoc/Title";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
@@ -56,6 +58,7 @@ const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
 const TEST_DATABASE = createMockDatabase();
 const TEST_TABLE = createMockTable();
 const TEST_USER_LIST = [createMockUserListResult()];
+const TEST_COLLECTION = createMockCollection();
 
 const setup = async ({
   searchText,
@@ -70,6 +73,9 @@ const setup = async ({
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
   setupUsersEndpoints(TEST_USER_LIST);
+  setupCollectionByIdEndpoint({
+    collections: [TEST_COLLECTION],
+  });
 
   // for testing the hydration of search text and filters on page load
   const params = {

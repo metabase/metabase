@@ -78,14 +78,14 @@ function SearchApp({ location }) {
       <Text size="xl" weight={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) => (
-          <SearchBody direction="column" justify="center">
-            <SearchControls>
-              <SearchSidebar value={searchFilters} onChange={onFilterChange} />
-            </SearchControls>
-            <SearchResultContainer>
-              {list.length === 0 ? (
+      <SearchBody direction="column" justify="center">
+        <SearchControls pb="lg">
+          <SearchSidebar value={searchFilters} onChange={onFilterChange} />
+        </SearchControls>
+        <SearchResultContainer>
+          <Search.ListLoader query={query} wrapped>
+            {({ list, metadata }) =>
+              list.length === 0 ? (
                 <Paper shadow="lg" p="2rem">
                   <EmptyState
                     title={t`Didn't find anything`}
@@ -99,7 +99,10 @@ function SearchApp({ location }) {
                 </Paper>
               ) : (
                 <Box>
-                  <SearchResultSection items={list} />
+                  <SearchResultSection
+                    totalResults={metadata.total}
+                    results={list}
+                  />
                   <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls
                       showTotal
@@ -112,11 +115,11 @@ function SearchApp({ location }) {
                     />
                   </Group>
                 </Box>
-              )}
-            </SearchResultContainer>
-          </SearchBody>
-        )}
-      </Search.ListLoader>
+              )
+            }
+          </Search.ListLoader>
+        </SearchResultContainer>
+      </SearchBody>
     </SearchMain>
   );
 }

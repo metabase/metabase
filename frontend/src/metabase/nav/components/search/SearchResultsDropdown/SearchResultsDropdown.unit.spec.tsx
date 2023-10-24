@@ -5,15 +5,41 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import {
+  createMockCollection,
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupSearchEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
 import { checkNotNull } from "metabase/core/utils/types";
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
+// Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test
+jest.mock(
+  "metabase/nav/components/search/SearchResultsDropdown/constants",
+  () => ({
+    MIN_RESULTS_FOR_FOOTER: 1,
+  }),
+);
+
+const TEST_COLLECTION = createMockCollection();
+
 const TEST_SEARCH_RESULTS = [
-  createMockSearchResult({ id: 1, name: "Test 1" }),
-  createMockSearchResult({ id: 2, name: "Test 2" }),
+  createMockSearchResult({
+    id: 1,
+    name: "Test 1",
+    collection: TEST_COLLECTION,
+  }),
+  createMockSearchResult({
+    id: 2,
+    name: "Test 2",
+    collection: TEST_COLLECTION,
+  }),
   createMockSearchResult({
     id: 3,
     name: "Indexed Entity",
@@ -29,6 +55,10 @@ const setup = async ({
   const goToSearchApp = jest.fn();
 
   setupSearchEndpoints(searchResults);
+  setupUsersEndpoints([createMockUser()]);
+  setupCollectionByIdEndpoint({
+    collections: [TEST_COLLECTION],
+  });
 
   const { history } = renderWithProviders(
     <Route
@@ -58,11 +88,9 @@ describe("SearchResultsDropdown", () => {
 
     expect(searchItem).toHaveTextContent("Test 1");
 
-    const href = checkNotNull(searchItem.getAttribute("href"));
-
     userEvent.click(searchItem);
 
-    expect(history.getCurrentLocation().pathname).toEqual(href);
+    expect(history.getCurrentLocation().pathname).toEqual("/question/1-test-1");
   });
 
   it("should call goToSearchApp when the footer is clicked", async () => {
@@ -88,7 +116,14 @@ describe("SearchResultsDropdown", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should render the footer if there are search results", async () => {
+  it("should not render the footer if there are less than the max search results for the footer", async () => {
+    await setup({ searchResults: TEST_SEARCH_RESULTS.slice(0, 1) });
+    expect(
+      screen.queryByTestId("search-dropdown-footer"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should render the footer if there are more than max search results for the footer", async () => {
     await setup();
     expect(screen.getByTestId("search-dropdown-footer")).toBeInTheDocument();
   });

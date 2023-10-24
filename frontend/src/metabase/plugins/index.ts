@@ -160,8 +160,11 @@ export const PLUGIN_COLLECTIONS = {
   ): AuthorityLevelMenuItem[] => [],
 };
 
-type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+export type CollectionAuthorityLevelIcon = ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+    tooltip?: "default" | "belonging";
+  }
 >;
 
 type FormCollectionAuthorityLevelPicker = ComponentType<

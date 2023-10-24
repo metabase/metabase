@@ -14,10 +14,10 @@ import {
   summarize,
 } from "e2e/support/helpers";
 import {
-  NORMAL_USER_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
   ADMIN_USER_ID,
+  NORMAL_USER_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -25,38 +25,31 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 const typeFilters = [
   {
     label: "Question",
-    filterName: "card",
-    resultInfoText: "Saved question in",
+    type: "card",
   },
   {
     label: "Dashboard",
-    filterName: "dashboard",
-    resultInfoText: "Dashboard in",
+    type: "dashboard",
   },
   {
     label: "Collection",
-    filterName: "collection",
-    resultInfoText: "Collection",
+    type: "collection",
   },
   {
     label: "Table",
-    filterName: "table",
-    resultInfoText: "Table in",
+    type: "table",
   },
   {
     label: "Database",
-    filterName: "database",
-    resultInfoText: "Database",
+    type: "database",
   },
   {
     label: "Model",
-    filterName: "dataset",
-    resultInfoText: "Model in",
+    type: "dataset",
   },
   {
     label: "Action",
-    filterName: "action",
-    resultInfoText: "for",
+    type: "action",
   },
 ];
 
@@ -105,18 +98,33 @@ describe("scenarios > search", () => {
       cy.visit("/");
       getSearchBar().as("searchBox").type("product").blur();
 
-      cy.findByTestId("search-results-list").within(() => {
-        getProductsSearchResults();
+      cy.wait("@search");
+
+      expectSearchResultContent({
+        expectedSearchResults: [
+          {
+            name: "Products",
+            description:
+              "Includes a catalog of all the products ever sold by the famed Sample Company.",
+            collection: "Sample Database",
+          },
+        ],
+        strict: false,
       });
 
       cy.get("@searchBox").type("{enter}");
       cy.wait("@search");
 
-      cy.findAllByTestId("search-result-item")
-        .first()
-        .within(() => {
-          getProductsSearchResults();
-        });
+      expectSearchResultContent({
+        expectedSearchResults: [
+          {
+            name: "Products",
+            description:
+              "Includes a catalog of all the products ever sold by the famed Sample Company.",
+          },
+        ],
+        strict: false,
+      });
     });
 
     it("should work for user with permissions (metabase#12332)", () => {
@@ -163,7 +171,7 @@ describe("scenarios > search", () => {
     });
   });
   describe("accessing full page search with `Enter`", () => {
-    it("should not render full page search if user has not entered a text query ", () => {
+    it("should not render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
 
       cy.visit("/");
@@ -237,9 +245,9 @@ describe("scenarios > search", () => {
         });
       });
 
-      typeFilters.forEach(({ label, filterName, resultInfoText }) => {
+      typeFilters.forEach(({ label, type }) => {
         it(`should hydrate search with search text and ${label} filter`, () => {
-          cy.visit(`/search?q=e&type=${filterName}`);
+          cy.visit(`/search?q=e&type=${type}`);
           cy.wait("@search");
 
           getSearchBar().should("have.value", "e");
@@ -248,8 +256,11 @@ describe("scenarios > search", () => {
             cy.findByText('Results for "e"').should("exist");
           });
 
-          cy.findAllByTestId("result-link-info-text").each(result => {
-            cy.wrap(result).should("contain.text", resultInfoText);
+          const regex = new RegExp(`${type}$`);
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result)
+              .should("have.attr", "aria-label")
+              .and("match", regex);
           });
 
           cy.findByTestId("type-search-filter").within(() => {
@@ -270,17 +281,18 @@ describe("scenarios > search", () => {
             cy.findByText("Apply").click();
           });
 
-          cy.findAllByTestId("result-link-info-text").each(result => {
-            if (resultInfoText) {
-              cy.wrap(result).should("contain.text", resultInfoText);
-            }
+          const regex = new RegExp(`${type}$`);
+          cy.findAllByTestId("search-result-item").each(result => {
+            cy.wrap(result)
+              .should("have.attr", "aria-label")
+              .and("match", regex);
           });
         });
       });
 
       it("should remove type filter when `X` is clicked on search filter", () => {
-        const { label, filterName } = typeFilters[0];
-        cy.visit(`/search?q=e&type=${filterName}`);
+        const { label, type } = typeFilters[0];
+        cy.visit(`/search?q=e&type=${type}`);
         cy.wait("@search");
 
         cy.findByTestId("type-search-filter").within(() => {
@@ -292,21 +304,21 @@ describe("scenarios > search", () => {
 
         cy.url().should("not.contain", "type");
 
-        // Check that we're getting elements other than Questions by checking the
-        // result text and checking if there's more than one result-link-info-text text
-        cy.findAllByTestId("result-link-info-text").then(
-          $resultTypeDescriptions => {
-            const uniqueTypeDescriptions = new Set(
-              $resultTypeDescriptions.toArray().map(el => el.textContent),
-            );
-            expect(uniqueTypeDescriptions.size).to.be.greaterThan(1);
-          },
-        );
+        cy.findAllByTestId("search-result-item").then($results => {
+          const uniqueResults = new Set(
+            $results.toArray().map(el => {
+              const label = el.getAttribute("aria-label");
+              return label.split(" ").slice(-1)[0];
+            }),
+          );
+          expect(uniqueResults.size).to.be.greaterThan(1);
+        });
       });
     });
 
     describe("created_by filter", () => {
       beforeEach(() => {
+        restore();
         // create a question from a normal and admin user, then we can query the question
         // created by that user as an admin
         cy.signInAsNormalUser();
@@ -329,11 +341,20 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").should("exist");
         });
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name, ADMIN_TEST_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: ADMIN_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by you",
+              collection: "Our analytics",
+            },
+          ],
         });
-
-        // TODO: Add more assertions for search results when we redesign the search result elements to include users.
       });
 
       it("should filter results by one user", () => {
@@ -359,11 +380,16 @@ describe("scenarios > search", () => {
         });
         cy.url().should("contain", "created_by");
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
-
       it("should filter results by more than one user", () => {
         cy.visit("/");
 
@@ -387,8 +413,19 @@ describe("scenarios > search", () => {
         });
         cy.url().should("contain", "created_by");
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name, ADMIN_TEST_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: ADMIN_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by you",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
 
@@ -399,8 +436,19 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name, ADMIN_TEST_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: ADMIN_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by you",
+              collection: "Our analytics",
+            },
+          ],
         });
 
         cy.findByTestId("created_by-search-filter").click();
@@ -420,8 +468,14 @@ describe("scenarios > search", () => {
       it("should remove created_by filter when `X` is clicked on filter", () => {
         cy.visit(`/search?q=reviews&created_by=${NORMAL_USER_ID}`);
 
-        expectSearchResultItemNameContent({
-          itemNames: [NORMAL_USER_TEST_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+          ],
         });
 
         cy.findByTestId("created_by-search-filter").within(() => {
@@ -484,8 +538,14 @@ describe("scenarios > search", () => {
           cy.findByLabelText("close icon").should("exist");
         });
 
-        expectSearchResultItemNameContent({
-          itemNames: [LAST_EDITED_BY_NORMAL_USER_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
 
@@ -511,10 +571,15 @@ describe("scenarios > search", () => {
         });
         cy.url().should("contain", "last_edited_by");
 
-        cy.findByTestId("search-result-item-name").should(
-          "contain.text",
-          LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-        );
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+          ],
+        });
       });
 
       it("should filter last_edited results by more than user", () => {
@@ -540,10 +605,18 @@ describe("scenarios > search", () => {
         });
         cy.url().should("contain", "last_edited_by");
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+              timestamp: "Updated a few seconds ago by you",
+              collection: "Our analytics",
+            },
           ],
         });
       });
@@ -555,10 +628,18 @@ describe("scenarios > search", () => {
 
         cy.wait("@search");
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+              timestamp: "Updated a few seconds ago by you",
+              collection: "Our analytics",
+            },
           ],
         });
 
@@ -571,8 +652,14 @@ describe("scenarios > search", () => {
           cy.findByText("Apply").click();
         });
 
-        expectSearchResultItemNameContent({
-          itemNames: [LAST_EDITED_BY_ADMIN_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+              timestamp: "Updated a few seconds ago by you",
+              collection: "Our analytics",
+            },
+          ],
         });
       });
 
@@ -581,10 +668,18 @@ describe("scenarios > search", () => {
           `/search?q=reviews&last_edited_by=${NORMAL_USER_ID}&last_edited_by=${ADMIN_USER_ID}`,
         );
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
-            LAST_EDITED_BY_ADMIN_QUESTION.name,
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+            {
+              name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+              timestamp: "Updated a few seconds ago by you",
+              collection: "Our analytics",
+            },
           ],
         });
 
@@ -621,8 +716,6 @@ describe("scenarios > search", () => {
             cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
-
-          // TODO: Add more tests once the search result elements are redesigned to include 'created_at' times.
         });
       });
 
@@ -631,8 +724,6 @@ describe("scenarios > search", () => {
       it(`should filter results by Today (created_at=thisday)`, () => {
         cy.visit(`/search?q=Reviews`);
 
-        // we have to use {strict: false} here because the CI environment creates
-        // the reviews table on first run (i.e. today), while the local environment may not
         expectSearchResultItemNameContent(
           {
             itemNames: [REVIEWS_TABLE_NAME, NORMAL_USER_TEST_QUESTION.name],
@@ -645,26 +736,32 @@ describe("scenarios > search", () => {
           cy.findByText("Today").click();
         });
 
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
       });
 
       it("should remove created_at filter when `X` is clicked on search filter", () => {
         cy.visit(`/search?q=Reviews&created_at=thisday`);
         cy.wait("@search");
 
-        // we have to use {strict: false} here because the CI environment creates
-        // the reviews table on first run (i.e. today), while the local environment may not
-        expectSearchResultItemNameContent(
-          {
-            itemNames: [NORMAL_USER_TEST_QUESTION.name],
-          },
-          { strict: false },
-        );
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Created a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
+        });
 
         cy.findByTestId("created_at-search-filter").within(() => {
           cy.findByText("Today").should("exist");
@@ -683,9 +780,6 @@ describe("scenarios > search", () => {
           },
           { strict: false },
         );
-
-        // TODO: Add more assertions for search results when we redesign the search result elements to include
-        // creation times
       });
     });
 
@@ -712,7 +806,7 @@ describe("scenarios > search", () => {
 
       TEST_CREATED_AT_FILTERS.forEach(([label, filter]) => {
         it(`should hydrate last_edited_at=${filter}`, () => {
-          cy.visit(`/search?q=orders&last_edited_at=${filter}`);
+          cy.visit(`/search?q=reviews&last_edited_at=${filter}`);
 
           cy.wait("@search");
 
@@ -720,8 +814,6 @@ describe("scenarios > search", () => {
             cy.findByText(label).should("exist");
             cy.findByLabelText("close icon").should("exist");
           });
-
-          // TODO: Add more tests once the search result elements are redesigned to include 'last_edited_at' times.
         });
       });
 
@@ -742,8 +834,15 @@ describe("scenarios > search", () => {
           cy.findByText("Today").click();
         });
 
-        expectSearchResultItemNameContent({
-          itemNames: [LAST_EDITED_BY_NORMAL_USER_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
         });
       });
 
@@ -751,8 +850,15 @@ describe("scenarios > search", () => {
         cy.visit(`/search?q=Reviews&last_edited_at=thisday`);
         cy.wait("@search");
 
-        expectSearchResultItemNameContent({
-          itemNames: [LAST_EDITED_BY_NORMAL_USER_QUESTION.name],
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
+              collection: "Our analytics",
+              timestamp: "Updated a few seconds ago by Robert Tableton",
+            },
+          ],
+          strict: false,
         });
 
         cy.findByTestId("last_edited_at-search-filter").within(() => {
@@ -772,9 +878,6 @@ describe("scenarios > search", () => {
             LAST_EDITED_BY_NORMAL_USER_QUESTION.name,
           ],
         });
-
-        // TODO: Add more assertions for search results when we redesign the search result elements to include
-        // "last edited" times
       });
     });
 
@@ -800,7 +903,7 @@ describe("scenarios > search", () => {
 
         cy.findAllByTestId("search-result-item").each(result => {
           cy.wrap(result).within(() => {
-            cy.findByLabelText("verified icon").should("exist");
+            cy.findByLabelText("verified_filled icon").should("exist");
           });
         });
       });
@@ -812,12 +915,14 @@ describe("scenarios > search", () => {
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
-          .findByTestId("toggle-filter-switch")
+          .findByText("Verified items only")
           .click();
+
+        cy.wait("@search");
 
         cy.findAllByTestId("search-result-item").each(result => {
           cy.wrap(result).within(() => {
-            cy.findByLabelText("verified icon").should("exist");
+            cy.findByLabelText("verified_filled icon").should("exist");
           });
         });
       });
@@ -828,7 +933,7 @@ describe("scenarios > search", () => {
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
-          .findByTestId("toggle-filter-switch")
+          .findByText("Verified items only")
           .click();
         cy.url().should("not.include", "verified=true");
 
@@ -836,7 +941,7 @@ describe("scenarios > search", () => {
         let unverifiedElementCount = 0;
         cy.findAllByTestId("search-result-item")
           .each($el => {
-            if (!$el.find('[aria-label="verified icon"]').length) {
+            if (!$el.find('[aria-label="verified_filled icon"]').length) {
               unverifiedElementCount++;
             } else {
               verifiedElementCount++;
@@ -881,56 +986,28 @@ describe("scenarios > search", () => {
           );
         });
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
+        });
       });
 
       it("should include results that contain native query data when the toggle is on", () => {
         cy.visit(`/search?q=${TEST_NATIVE_QUESTION_NAME}`);
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(1);
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
-
-        cy.findByTestId("search_native_query-search-filter").within(() => {
-          cy.findByTestId("toggle-filter-switch").click();
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME],
         });
+
+        cy.findByTestId("search_native_query-search-filter")
+          .findByText("Search the contents of native queries")
+          .click();
 
         cy.url().should("include", "search_native_query=true");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
+        });
       });
 
       it("should not include results that contain native query data if the toggle is off", () => {
@@ -939,35 +1016,17 @@ describe("scenarios > search", () => {
         );
         cy.wait("@search");
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(2);
-            expect(uniqueSearchResultItemNames).to.contain("Native Query");
-
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
-
-        cy.findByTestId("search_native_query-search-filter").within(() => {
-          cy.findByTestId("toggle-filter-switch").click();
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME, "Native Query"],
         });
 
-        cy.findAllByTestId("search-result-item-name").then(
-          $searchResultItemNames => {
-            const uniqueSearchResultItemNames = new Set(
-              $searchResultItemNames.toArray().map(el => el.textContent),
-            );
-            expect(uniqueSearchResultItemNames.size).to.eq(1);
-            expect(uniqueSearchResultItemNames).to.contain(
-              TEST_NATIVE_QUESTION_NAME,
-            );
-          },
-        );
+        cy.findByTestId("search_native_query-search-filter")
+          .findByText("Search the contents of native queries")
+          .click();
+
+        expectSearchResultItemNameContent({
+          itemNames: [TEST_NATIVE_QUESTION_NAME],
+        });
       });
     });
 
@@ -1037,14 +1096,6 @@ describeWithSnowplow("scenarios > search", () => {
   });
 });
 
-function getProductsSearchResults() {
-  cy.findByText("Products");
-  // This part about the description reproduces metabase#20018
-  cy.findByText(
-    "Includes a catalog of all the products ever sold by the famed Sample Company.",
-  );
-}
-
 function getSearchBar() {
   return cy.findByPlaceholderText("Search…");
 }
@@ -1063,4 +1114,59 @@ function expectSearchResultItemNameContent(
     }
     expect(searchResultLabelList).to.include.members(itemNames);
   });
+}
+
+/**
+ * Checks the search results against expectedSearchValues, including descriptions,
+ * collection names, and timestamps, depending on the given data.
+ *
+ * @param {Object} options - Options for the test.
+ * @param {Object[]} options.expectedSearchResults - An array of search result items to compare against.
+ * @param {string} options.expectedSearchResults[].name - The name of the search result item.
+ * @param {string} options.expectedSearchResults[].description - The description of the search result item.
+ * @param {string} options.expectedSearchResults[].collection - The collection label of the search result item.
+ * @param {string} options.expectedSearchResults[].timestamp - The timestamp label of the search result item .
+ * @param {boolean} [strict=true] - Whether to check if the contents AND length of search results are the same
+ */
+function expectSearchResultContent({ expectedSearchResults, strict = true }) {
+  const searchResultItemSelector = "[data-testid=search-result-item]";
+
+  const searchResultItems = cy.get(searchResultItemSelector);
+
+  searchResultItems.then($results => {
+    if (strict) {
+      // Check if the length of the search results is the same as the expected length
+      expect($results).to.have.length(expectedSearchResults.length);
+    }
+  });
+
+  for (const expectedSearchResult of expectedSearchResults) {
+    cy.contains(searchResultItemSelector, expectedSearchResult.name).within(
+      () => {
+        cy.findByTestId("search-result-item-name").should(
+          "have.text",
+          expectedSearchResult.name,
+        );
+
+        if (expectedSearchResult.description) {
+          cy.findByTestId("result-description").should(
+            "have.text",
+            expectedSearchResult.description,
+          );
+        }
+
+        if (expectedSearchResult.collection) {
+          cy.findAllByTestId("result-link-wrapper").first(() => {
+            cy.findByText(expectedSearchResult.collection).should("exist");
+          });
+        }
+        if (expectedSearchResult.timestamp) {
+          cy.findByTestId("revision-history-button").should(
+            "have.text",
+            expectedSearchResult.timestamp,
+          );
+        }
+      },
+    );
+  }
 }

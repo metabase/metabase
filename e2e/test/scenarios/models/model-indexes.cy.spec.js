@@ -126,7 +126,7 @@ describe("scenarios > model indexes", () => {
       .findByPlaceholderText("Search…")
       .type("marble shoes");
 
-    cy.findByTestId("search-results-list").findByText(/didn't find anything/i);
+    cy.findByTestId("search-results-empty-state").should("be.visible");
   });
 
   it("should be able to search model index values and visit detail records", () => {

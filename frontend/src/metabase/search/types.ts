@@ -2,7 +2,6 @@ import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import type {
-  Collection,
   EnabledSearchModelType,
   SearchResult,
   UserId,
@@ -18,7 +17,7 @@ export interface WrappedResult extends SearchResult {
     width?: number;
     height?: number;
   };
-  getCollection: () => Partial<Collection>;
+  getCollection: () => SearchResult["collection"];
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
