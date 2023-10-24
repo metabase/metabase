@@ -233,6 +233,65 @@ const DATE_SHORTCUT_CASES = [
   },
 ];
 
+const EXCLUDE_DATE_CASES = [
+  {
+    title: "day of week",
+    label: "Days of the week…",
+    options: ["Monday"],
+    expectedDisplayName: "Created At excludes Mondays",
+    expectedRowCount: 166,
+  },
+  {
+    title: "day of week, multiple",
+    label: "Days of the week…",
+    options: ["Monday", "Wednesday"],
+    expectedDisplayName: "Created At excludes 2 day of week selections",
+    expectedRowCount: 132,
+  },
+  {
+    title: "month of year",
+    label: "Months of the year…",
+    options: ["July"],
+    expectedDisplayName: "Created At excludes each Jul",
+    expectedRowCount: 182,
+  },
+  {
+    title: "month of year, multiple",
+    label: "Months of the year…",
+    options: ["July", "May"],
+    expectedDisplayName: "Created At excludes 2 month of year selections",
+    expectedRowCount: 163,
+  },
+  {
+    title: "quarter of year",
+    label: "Quarters of the year…",
+    options: ["1st"],
+    expectedDisplayName: "Created At excludes Q1 each year",
+    expectedRowCount: 154,
+  },
+  {
+    title: "quarter of year, multiple",
+    label: "Quarters of the year…",
+    options: ["1st", "4th"],
+    expectedDisplayName: "Created At excludes 2 quarter of year selections",
+    expectedRowCount: 102,
+  },
+  {
+    title: "hour of day",
+    label: "Hours of the day…",
+    options: ["1 AM"],
+    expectedDisplayName: "Created At excludes the hour of 1 AM",
+    expectedRowCount: 191,
+  },
+  {
+    title: "quarter of year, multiple",
+    label: "Hours of the day…",
+    options: ["1 AM", "10 AM", "5 PM"],
+    expectedDisplayName: "Created At excludes 3 hour of day selections",
+    expectedRowCount: 183,
+  },
+];
+
 describe("scenarios > filters > filter types", () => {
   beforeEach(() => {
     restore();
@@ -309,20 +368,46 @@ describe("scenarios > filters > filter types", () => {
     );
   });
 
-  describe("date filters, shortcuts", () => {
-    DATE_SHORTCUT_CASES.forEach(({ title, shortcut, expectedDisplayName }) => {
-      it(title, () => {
-        openProductsTable({ mode: "notebook" });
-        filter({ mode: "notebook" });
+  describe("date filters", () => {
+    describe("shortcuts", () => {
+      DATE_SHORTCUT_CASES.forEach(
+        ({ title, shortcut, expectedDisplayName }) => {
+          it(title, () => {
+            openProductsTable({ mode: "notebook" });
+            filter({ mode: "notebook" });
 
-        popover().within(() => {
-          cy.findByText("Created At").click();
-          cy.findByText(shortcut).click();
-        });
-        assertFilterName(expectedDisplayName);
-        visualize();
-        assertFiltersExist();
-      });
+            popover().within(() => {
+              cy.findByText("Created At").click();
+              cy.findByText(shortcut).click();
+            });
+            assertFilterName(expectedDisplayName);
+            visualize();
+            assertFiltersExist();
+          });
+        },
+      );
+    });
+
+    describe("exclude dates", () => {
+      EXCLUDE_DATE_CASES.forEach(
+        ({ title, label, options, expectedDisplayName, expectedRowCount }) => {
+          it(title, () => {
+            openProductsTable({ mode: "notebook" });
+            filter({ mode: "notebook" });
+
+            popover().within(() => {
+              cy.findByText("Created At").click();
+              cy.findByText("Exclude…").click();
+              cy.findByText(label).click();
+              options.forEach(option => cy.findByText(option).click());
+              cy.button("Add filter").click();
+            });
+            assertFilterName(expectedDisplayName);
+            visualize();
+            assertQueryBuilderRowCount(expectedRowCount);
+          });
+        },
+      );
     });
   });
 });

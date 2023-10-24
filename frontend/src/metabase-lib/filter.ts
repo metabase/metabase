@@ -32,6 +32,7 @@ import type {
   ExcludeDateBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
+  ExpressionArg,
   ExpressionClause,
   ExpressionOperatorName,
   ExpressionOptions,
@@ -367,11 +368,11 @@ export function excludeDateFilterClause(
 
   const bucket = findTemporalBucket(query, stageIndex, column, bucketName);
   const columnWithBucket = withTemporalBucket(column, bucket ?? null);
-  const stringValues = values.map(value =>
-    excludeDatePartToString(value, bucketName),
+  const valueArgs = values.map(value =>
+    excludeDatePartToExpressionArg(value, bucketName),
   );
 
-  return expressionClause(operator, [columnWithBucket, ...stringValues]);
+  return expressionClause(operator, [columnWithBucket, ...valueArgs]);
 }
 
 export function excludeDateFilterParts(
@@ -384,8 +385,8 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const [column, ...stringValues] = args;
-  if (!isColumnMetadata(column) || !isStringLiteralArray(stringValues)) {
+  const [column, ...valueArgs] = args;
+  if (!isColumnMetadata(column)) {
     return null;
   }
 
@@ -399,10 +400,10 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const bucketValues = stringValues.map(value =>
-    stringToExcludeDatePart(value, bucketInfo.shortName),
+  const values = valueArgs.map(value =>
+    expressionArgToExcludeDatePart(value, bucketInfo.shortName),
   );
-  if (!isDefinedArray(bucketValues)) {
+  if (!isDefinedArray(values)) {
     return null;
   }
 
@@ -410,7 +411,7 @@ export function excludeDateFilterParts(
     column,
     operator,
     bucket: bucketInfo.shortName,
-    values: bucketValues,
+    values,
   };
 }
 
@@ -762,16 +763,16 @@ function relativeDateFilterPartsWithOffset(
   };
 }
 
-function excludeDatePartToString(
+function excludeDatePartToExpressionArg(
   value: number,
   bucketName: ExcludeDateBucketName,
-): string {
-  const date = moment();
+): ExpressionArg {
+  if (bucketName === "hour-of-day") {
+    return value;
+  }
 
+  const date = moment();
   switch (bucketName) {
-    case "hour-of-day":
-      date.hour(value);
-      break;
     case "day-of-week":
       date.isoWeekday(value);
       break;
@@ -786,18 +787,24 @@ function excludeDatePartToString(
   return date.format(DATE_FORMAT);
 }
 
-function stringToExcludeDatePart(
-  value: string,
+function expressionArgToExcludeDatePart(
+  value: ExpressionArg | ExpressionParts,
   bucketName: BucketName,
 ): number | null {
+  if (bucketName === "hour-of-day") {
+    return isNumberLiteral(value) ? value : null;
+  }
+
+  if (!isStringLiteral(value)) {
+    return null;
+  }
+
   const date = moment(value, DATE_FORMAT, true);
   if (!date.isValid()) {
     return null;
   }
 
   switch (bucketName) {
-    case "hour-of-day":
-      return date.hour();
     case "day-of-week":
       return date.isoWeekday();
     case "month-of-year":
