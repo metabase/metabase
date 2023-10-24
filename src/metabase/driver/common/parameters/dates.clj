@@ -330,7 +330,7 @@
    ;; datetime range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
-              {:start date-1, :end date-2})
+              {:start date-1, :end date-2 :unit (absolute-date->unit date-1)})
     :filter (fn [{:keys [date-1 date-2]} field-clause]
               [:between (with-temporal-unit-if-field field-clause :default)
                (->iso-8601-date-time date-1)
