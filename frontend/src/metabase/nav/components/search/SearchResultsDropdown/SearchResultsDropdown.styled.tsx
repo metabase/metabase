@@ -1,4 +1,3 @@
-import isPropValid from "@emotion/is-prop-valid";
 import type { Theme } from "@emotion/react";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
@@ -31,8 +30,7 @@ const selectedStyles = ({ theme }: { theme: Theme }) => css`
 `;
 
 export const SearchDropdownFooter = styled(Group, {
-  shouldForwardProp: propName =>
-    isPropValid(propName) && propName !== "isSelected",
+  shouldForwardProp: propName => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
   border-top: 1px solid ${({ theme }) => theme.colors.border[0]};
 
