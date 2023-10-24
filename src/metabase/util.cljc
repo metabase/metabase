@@ -848,7 +848,4 @@
   "Converts a map (with potentially nested maps as values) into a sorted map of sorted maps."
   [m]
   (into (sorted-map)
-        (zipmap
-         (keys m)
-         (map (fn [val] (if (map? val) (deep-sort-map val) val))
-              (vals m)))))
+        (update-vals m (fn [val] (cond-> val (map? val) deep-sort-map)))))
