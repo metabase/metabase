@@ -16,8 +16,9 @@
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))
         drill (lib.drill-thru.sort/sort-drill query
                                               -1
-                                              {:column (meta/field-metadata :orders :id)
-                                               :value  nil})]
+                                              {:column     (meta/field-metadata :orders :id)
+                                               :column-ref (lib/ref (meta/field-metadata :orders :id))
+                                               :value      nil})]
     (is (=? {:type            :drill-thru/sort
              :column          {:id (meta/id :orders :id)}
              :sort-directions [:asc :desc]}
@@ -55,8 +56,9 @@
           count-col (m/find-first (fn [col]
                                     (= (:display-name col) "Count"))
                                   (lib/returned-columns query))
-          context   {:column count-col
-                     :value  nil}]
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      nil}]
       (is (some? count-col))
       (let [drill (lib.drill-thru.sort/sort-drill query -1 context)]
         (is (=? {:lib/type        :metabase.lib.drill-thru/drill-thru
@@ -79,8 +81,10 @@
     (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                       (lib/order-by (meta/field-metadata :orders :user-id))
                       (lib/order-by (meta/field-metadata :orders :id)))
-          context {:column (meta/field-metadata :orders :user-id)
-                   :value  nil}
+          user-id (meta/field-metadata :orders :user-id)
+          context {:column     user-id
+                   :column-ref (lib/ref user-id)
+                   :value      nil}
           drill   (lib.drill-thru.sort/sort-drill query -1 context)]
       (is (=? {:stages
                [{:order-by [[:asc {} [:field {} (meta/id :orders :user-id)]]
