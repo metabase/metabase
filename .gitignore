@@ -78,13 +78,18 @@ dev/src/dev/nocommit/
 /frontend/src/cljs
 /frontend/src/cljs_release
 .shadow-cljs
+.clerk
 
 # lsp: ignore all but the config file
 .lsp/*
 !.lsp/config.edn
-.clj-kondo/.cache
-*.code-workspace
+modules/drivers/*/.lsp/*
+!modules/drivers/*/.lsp/config.edn
+**/.clj-kondo/.cache
 
+# Editor- or environment-specific local files
+*.code-workspace
+.java-version
 .calva/
 
 # malli + clj-kondo: ignore malli-types
