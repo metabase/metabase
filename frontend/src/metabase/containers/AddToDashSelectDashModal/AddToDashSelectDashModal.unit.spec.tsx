@@ -16,7 +16,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { Card, Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { isNotNull } from "metabase/core/utils/types";
+import { checkNotNull, isNotNull } from "metabase/core/utils/types";
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({
@@ -194,15 +194,14 @@ describe("AddToDashSelectDashModal", () => {
           mostRecentlyViewedDashboard: DASHBOARD,
         });
 
-        const dashboardCollection = COLLECTIONS.find(
-          collection => collection.id === DASHBOARD.collection_id,
+        const dashboardCollection = checkNotNull(
+          COLLECTIONS.find(
+            collection => collection.id === DASHBOARD.collection_id,
+          ),
         );
 
         // breadcrumbs
-        expect(
-          screen.getByText(`${dashboardCollection?.name}`),
-        ).toBeInTheDocument();
-        // dashboard item
+        assertBreadcrumbs([dashboardCollection]);
         expect(screen.getByText(DASHBOARD.name)).toBeInTheDocument();
       });
 
@@ -214,8 +213,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-          // dashboard item
+          assertBreadcrumbs([ROOT_COLLECTION]);
           expect(screen.getByText(DASHBOARD_AT_ROOT.name)).toBeInTheDocument();
         });
       });
@@ -235,9 +233,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-          expect(screen.getByText(COLLECTION.name)).toBeInTheDocument();
-          expect(screen.getByText(SUBCOLLECTION.name)).toBeInTheDocument();
+          assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
 
           // dashboard item
           expect(
@@ -252,7 +248,7 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+          assertBreadcrumbs([ROOT_COLLECTION]);
 
           // Showing personal collection means we're viewing the root collection
           expect(
@@ -276,13 +272,11 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-          expect(
-            screen.getByText(PERSONAL_COLLECTION.name),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(PERSONAL_SUBCOLLECTION.name),
-          ).toBeInTheDocument();
+          assertBreadcrumbs([
+            ROOT_COLLECTION,
+            PERSONAL_COLLECTION,
+            PERSONAL_SUBCOLLECTION,
+          ]);
 
           // dashboard item
           expect(
@@ -297,13 +291,11 @@ describe("AddToDashSelectDashModal", () => {
           });
 
           // breadcrumbs
-          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
-          expect(
-            screen.getByText(PERSONAL_COLLECTION.name),
-          ).toBeInTheDocument();
-          expect(
-            screen.getByText(PERSONAL_SUBCOLLECTION.name),
-          ).toBeInTheDocument();
+          assertBreadcrumbs([
+            ROOT_COLLECTION,
+            PERSONAL_COLLECTION,
+            PERSONAL_SUBCOLLECTION,
+          ]);
 
           // dashboard item
           expect(
@@ -627,3 +619,9 @@ describe("AddToDashSelectDashModal", () => {
     });
   });
 });
+
+function assertBreadcrumbs(collections: Collection[]) {
+  collections.forEach(collection => {
+    expect(screen.getByText(collection.name)).toBeInTheDocument();
+  });
+}
