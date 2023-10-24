@@ -20,18 +20,26 @@
                        :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
                                      [:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
             query))
-    (let [created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
+    (let [columns    (lib/returned-columns query)
+          created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
                                          (= (lib.temporal-bucket/raw-temporal-bucket %) :year))
                                    (lib/returned-columns query))
           _          (assert created-at)
-          drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill query
-                                                                                 -1
-                                                                                 {:column created-at
-                                                                                  :value  2022})]
+          count-col  (m/find-first #(= (:name %) "count") columns)
+          _          (assert count-col)
+          drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
+                       query -1
+                       {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value 200
+                        :dimensions [{:column     created-at
+                                      :column-ref (lib/ref created-at)
+                                      :value      2022}]})]
       (is (=? {:type         :drill-thru/zoom-in.timeseries
-               :column       {:id                               (meta/id :orders :created-at)
-                              :metabase.lib.field/temporal-unit :year}
-               :value        2022
+               :dimension    {:column     {:id                               (meta/id :orders :created-at)
+                                           :metabase.lib.field/temporal-unit :year}
+                              :column-ref [:field {} (meta/id :orders :created-at)]
+                              :value      2022}
                :next-unit    :quarter
                :display-name "See this year by quarter"}
               drill))
@@ -46,18 +54,24 @@
                                           [:field {:temporal-unit :year} (meta/id :orders :created-at)]
                                           2022]]}]}
                 query'))
-        (let [created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
+        (let [columns    (lib/returned-columns query')
+              created-at (m/find-first #(and (= (:id %) (meta/id :orders :created-at))
                                              (= (lib.temporal-bucket/raw-temporal-bucket %) :quarter))
-                                       (lib/returned-columns query'))
+                                       columns)
               _          (assert created-at)
-              drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill query'
-                                                                                     -1
-                                                                                     {:column created-at
-                                                                                      :value  "2022-04-01T00:00:00"})]
+              drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
+                           query' -1
+                           {:column     count-col
+                            :column-ref (lib/ref count-col)
+                            :value      19
+                            :dimensions [{:column     created-at
+                                          :column-ref (lib/ref created-at)
+                                          :value      "2022-04-01T00:00:00"}]})]
           (is (=? {:type         :drill-thru/zoom-in.timeseries
-                   :column       {:id                               (meta/id :orders :created-at)
-                                  :metabase.lib.field/temporal-unit :quarter}
-                   :value        "2022-04-01T00:00:00"
+                   :dimension    {:column     {:id                               (meta/id :orders :created-at)
+                                               :metabase.lib.field/temporal-unit :quarter}
+                                  :column-ref [:field {} (meta/id :orders :created-at)]
+                                  :value      "2022-04-01T00:00:00"}
                    :next-unit    :month
                    :display-name "See this quarter by month"}
                   drill))
