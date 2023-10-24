@@ -262,6 +262,7 @@ const setup = async ({
         <Route path="new" component={NewModelOptions} />
         <Route path="query" component={TestQueryBuilder} />
         <Route path="metadata" component={TestQueryBuilder} />
+        <Route path="notebook" component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
         <Route path=":slug/notebook" component={TestQueryBuilder} />
@@ -893,6 +894,29 @@ describe("QueryBuilder", () => {
         await waitForSaveModelToBeEnabled();
 
         userEvent.click(screen.getByTestId("editor-tabs-query-name"));
+
+        expect(
+          screen.queryByTestId("leave-confirmation"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("does not show custom warning modal when editing & visualizing the model back and forth (metabase#35000)", async () => {
+        await setup({
+          card: TEST_MODEL_CARD,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/notebook`,
+        });
+
+        await triggerNotebookQueryChange();
+        await waitForSaveQuestionToBeEnabled();
+
+        userEvent.click(screen.getByText("Visualize"));
+        await waitForLoaderToBeRemoved();
+
+        userEvent.click(screen.getByLabelText("notebook icon"));
+
+        await waitFor(() => {
+          expect(screen.getByText("Visualize")).toBeInTheDocument();
+        });
 
         expect(
           screen.queryByTestId("leave-confirmation"),
