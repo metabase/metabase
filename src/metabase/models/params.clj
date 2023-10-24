@@ -107,8 +107,7 @@
   [[_ tag] card]
   (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)]))
 
-(mu/defn param-target->template-tag :- [:maybe [:or mbql.s/TemplateTag
-                                                [:map [:dimension mbql.s/Field]]]]
+(mu/defn param-target->template-tag :- [:maybe mbql.s/TemplateTag]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -116,9 +115,16 @@
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
-          (if (mbql.u/is-clause? :template-tag dimension)
+          (cond
+            (mbql.u/is-clause? :template-tag dimension)
             (find-template-tag dimension card)
-            {:dimension    (unwrap-field-or-expression-clause dimension)})
+
+            (mbql.u/is-clause? :field dimension)
+            {:name         "generated"
+             :display-name "generated"
+             :type         :dimension
+             :widget-type  :string/=
+             :dimension    (unwrap-field-or-expression-clause dimension)})
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
 
