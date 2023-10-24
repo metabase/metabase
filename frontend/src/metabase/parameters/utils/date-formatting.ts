@@ -100,7 +100,7 @@ const prefixedOperators = new Set([
   "not-empty",
 ]);
 
-function getFilterTitle(filter: any[]) {
+export function getFilterTitle(filter: any[]) {
   const values = generateTimeFilterValuesDescriptions(filter);
   const desc =
     values.length > 2
