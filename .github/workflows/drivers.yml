@@ -325,7 +325,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-mysql-5-7-ee:
+  be-tests-mysql-8-0-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
@@ -341,15 +341,15 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: circleci/mysql:5.7.23
+        image: cimg/mysql:8.0
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v3
-    - name: Test MySQL driver (5.7)
+    - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-5-7-ee'
+        junit-name: 'be-tests-mysql-8-0-ee'
 
   be-tests-mysql-latest-ee:
     needs: files-changed

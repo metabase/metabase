@@ -180,7 +180,7 @@ describeEE("scenarios > premium > content verification", () => {
           .first()
           .within(() => {
             cy.findByText("Orders, Count");
-            cy.icon("verified");
+            cy.icon("verified_filled");
           });
 
         cy.visit("/collection/root");

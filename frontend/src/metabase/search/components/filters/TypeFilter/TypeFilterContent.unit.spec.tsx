@@ -146,10 +146,10 @@ describe("TypeFilterContent", () => {
 
     for (let i = 0; i < options.length; i++) {
       userEvent.click(options[i]);
-      expect(onChangeFilters).toHaveReturnedTimes(i + 1);
     }
 
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
 
@@ -161,8 +161,8 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });
 });
