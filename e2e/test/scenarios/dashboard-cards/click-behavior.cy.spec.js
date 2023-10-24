@@ -58,14 +58,6 @@ const TARGET_QUESTION = {
   name: "Target question",
 };
 
-const SECRET_QUESTION = {
-  name: "Secret question",
-  query: {
-    "source-table": ORDERS_ID,
-    limit: 5,
-  },
-};
-
 const DASHBOARD_FILTER_TEXT = createMockActionParameter({
   id: "1",
   name: "filter-text",
@@ -397,7 +389,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    it("does not not allow setting saved question as custom destination if user has no permissions to that question", () => {
+    it("does not not allow setting saved question as custom destination if user has no permissions to it", () => {
       cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
           cy.updateCollectionGraph({
@@ -407,7 +399,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           });
 
           cy.createQuestion({
-            ...SECRET_QUESTION,
+            ...TARGET_QUESTION,
             collection_id: restrictedCollection.id,
           });
         },
@@ -426,7 +418,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.get("aside").findByText("Saved question").click();
 
           modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-          modal().findByText(SECRET_QUESTION.name).should("not.exist");
+          modal().findByText(TARGET_QUESTION.name).should("not.exist");
         },
       );
     });
