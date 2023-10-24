@@ -140,20 +140,3 @@ export const getFocusColor = (
   colorName: string,
   palette: ColorPalette = colors,
 ) => lighten(color(colorName, palette), 0.465);
-
-// We intentionally want to return white text color more frequently
-// https://www.notion.so/Maz-notes-on-viz-settings-67aed0e4ddcc4d4a83028992c4301820?d=513f4f7fa9c143cb874c7e4525dfb1e9#277d6b3eeb464eac86088abd144fde9e
-const whiteTextColorPriorityFactor = 3;
-
-export const getTextColorForBackground = (backgroundColor: string) => {
-  const whiteTextContrast =
-    Color(color(backgroundColor)).contrast(Color(color("white"))) *
-    whiteTextColorPriorityFactor;
-  const darkTextContrast = Color(color(backgroundColor)).contrast(
-    Color(color("text-dark")),
-  );
-
-  return whiteTextContrast > darkTextContrast
-    ? color("white")
-    : color("text-dark");
-};

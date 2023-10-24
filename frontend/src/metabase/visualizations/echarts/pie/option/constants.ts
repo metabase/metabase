@@ -1,17 +1,22 @@
 import type { RegisteredSeriesOption } from "echarts";
 import { t } from "ttag";
 
+import { DIMENSIONS } from "../constants";
+
 export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
   type: "sunburst",
   sort: undefined,
+  radius: [DIMENSIONS.innerRadius, DIMENSIONS.outerRadius],
   label: {
     rotate: 0,
     overflow: "none",
-    lineHeight: 50, // TODO update this later
-    fontSize: 16, // TODO update this later
+    fontSize: 20,
+    fontWeight: 700,
     color: "white", // TODO select color dynamically based on contrast with slice color
   },
-  radius: ["60%", "90%"], // TODO compute this dynamically based on side length like in PieChart.jsx
+  itemStyle: {
+    borderWidth: DIMENSIONS.slice.borderWidth,
+  },
 };
 
 export const TOTAL_GRAPHIC_OPTION = {
@@ -34,7 +39,7 @@ export const TOTAL_GRAPHIC_OPTION = {
     {
       type: "text",
       cursor: "text",
-      top: 25, // TODO confirm this and other style values later
+      top: 24,
       style: {
         fontSize: "14px",
         fontWeight: "700",
