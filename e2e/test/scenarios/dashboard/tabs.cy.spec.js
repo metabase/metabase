@@ -194,6 +194,10 @@ describe("scenarios > dashboard > tabs", () => {
 
     goToTab("Tab 1");
 
+    getDashboardCard()
+      .findByText(/you don't have permission/)
+      .should("exist");
+
     moveDashCardToTab({ tabName: "Tab 2" });
 
     saveDashboard();
