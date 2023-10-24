@@ -155,13 +155,115 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
-
           cy.get("@targetDashboardId").then(targetDashboardId => {
             cy.location().should(location => {
               expect(location.pathname).to.equal(
                 `/dashboard/${targetDashboardId}`,
               );
-              expect(location.query).to.be.undefined;
+              expect(location.search).to.equal("");
+            });
+          });
+        },
+      );
+    });
+
+    it("allows setting dashboard with single parameter as custom destination", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+          modal().findByText(TARGET_DASHBOARD.name).click();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
+          popover().within(() => {
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(location => {
+              expect(location.pathname).to.equal(
+                `/dashboard/${targetDashboardId}`,
+              );
+              expect(location.search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}`,
+              );
+            });
+          });
+        },
+      );
+    });
+
+    it("allows setting dashboard with multiple parameters as custom destination", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+          modal().findByText(TARGET_DASHBOARD.name).click();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
+          popover().within(() => {
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(location => {
+              expect(location.pathname).to.equal(
+                `/dashboard/${targetDashboardId}`,
+              );
+              expect(location.search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.name}=${POINT_CREATED_AT}`,
+              );
             });
           });
         },
