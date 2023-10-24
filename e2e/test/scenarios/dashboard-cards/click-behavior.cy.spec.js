@@ -117,8 +117,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     it("does not allow to set click behavior for object detail dashcard", () => {
       cy.createQuestionAndDashboard({
         questionDetails: OBJECT_DETAIL_CHART,
-      }).then(({ body: dashboard }) => {
-        visitDashboard(dashboard.id);
+      }).then(({ body: card }) => {
+        visitDashboard(card.dashboard_id);
         editDashboard();
 
         getDashboardCard().realHover().icon("click").should("not.exist");
@@ -131,8 +131,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows setting saved question as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -159,8 +159,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows setting saved question with single parameter as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -199,8 +199,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows setting saved question with multiple parameters as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -267,8 +267,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.signInAsNormalUser();
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -283,8 +283,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows setting URL as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -321,8 +321,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -361,8 +361,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("does not allow updating dashboard filters if there are none", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -380,8 +380,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
@@ -413,8 +413,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       };
 
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-        ({ body: dashboard }) => {
-          visitDashboard(dashboard.id);
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
