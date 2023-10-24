@@ -48,8 +48,8 @@ export const DashboardCardActionsPanel = styled.div<{ leftAlign: boolean }>`
   transform: translateY(-50%);
   top: 0;
 
-  right: ${props => (props.leftAlign ? "unset" : "20px")};
-  left: ${props => (props.leftAlign ? "10px" : "unset")};
+  right: ${props => (props.leftAlign ? "initial" : "20px")};
+  left: ${props => (props.leftAlign ? "10px" : "initial")};
 
   border-radius: 8px;
   box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
