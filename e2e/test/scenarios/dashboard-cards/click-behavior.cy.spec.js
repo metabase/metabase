@@ -162,6 +162,65 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
+    it("allows setting saved question with multiple parameters as custom destination", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Saved question").click();
+          modal().findByText(LINE_CHART.name).click();
+          cy.get("aside").findByText("Orders → Created At").click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").findByText("Orders → Quantity").click();
+          popover().within(() => {
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
+            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          cy.findByText("Count by Created At: Month").should("exist");
+          cy.findByTestId("qb-filters-panel").should(
+            "contain.text",
+            "Created At is April 1–30, 2026",
+          );
+          cy.findByTestId("qb-filters-panel").should(
+            "contain.text",
+            "Quantity is equal to 344",
+          );
+          cy.location().should(location => {
+            expect(location.pathname).to.equal("/question");
+
+            const card = deserializeCardFromUrl(location.hash);
+            console.log(card);
+            expect(card.name).to.deep.equal(LINE_CHART.name);
+            expect(card.display).to.deep.equal(LINE_CHART.display);
+            expect(card.dataset_query.query).to.deep.equal({
+              ...LINE_CHART.query,
+              filter: [
+                "and",
+                [
+                  "between",
+                  ["field", ORDERS.CREATED_AT, null],
+                  "2026-04-01",
+                  "2026-04-30",
+                ],
+                ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT],
+              ],
+            });
+          });
+        },
+      );
+    });
+
     it("allows setting URL as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: dashboard }) => {
