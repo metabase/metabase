@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.filters :as filters]
+   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
@@ -104,8 +105,8 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              filters/collect-field-references
-                              (map filters/field-reference->id))
+                              magic.util/collect-field-references
+                              (map magic.util/field-reference->id))
                          aggregation)]
         {:graph.colors (map-to-colors color-keys)}))))
 

@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.core :as magic]
@@ -24,47 +23,12 @@
    [metabase.test :as mt]
    [metabase.test.automagic-dashboards :as automagic-dashboards.test]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------- `->field` -------------------
-(deftest ->field-test
-  (testing "Demonstrate the stated methods in which ->fields works"
-    (mt/with-test-user :rasta
-      (mt/dataset sample-dataset
-        (testing "->field checks for a table-based context"
-          (let [table (t2/select-one :model/Table :id (mt/id :orders))
-                root  (#'magic/->root table)]
-            (testing "Looking up the field by name does not work"
-              (is (nil? (magic/->field root "DISCOUNT"))))
-            (testing "Looking up the field by id or id-field ref works."
-              (is (=? {:id (mt/id :orders :discount)}
-                      (magic/->field root (mt/id :orders :discount))))
-              (is (=? {:id (mt/id :orders :discount)}
-                      (magic/->field root [:field (mt/id :orders :discount) nil]))))))
-        (testing "->field checks for a model-based context"
-          (let [query (mt/native-query {:query "select * from orders"})]
-            (t2.with-temp/with-temp [Card card (mt/card-with-source-metadata-for-query query)]
-              (let [root (#'magic/->root card)]
-                (testing "Looking up the field by id or id-field ref works"
-                  (is (=? {:id (mt/id :orders :discount)}
-                          (magic/->field root (mt/id :orders :discount))))
-                  (is (=? {:id (mt/id :orders :discount)}
-                          (magic/->field root [:field (mt/id :orders :discount) nil]))))
-                (testing "Looking up the field by name or named field ref works,
-                          returning the metadata description of the field."
-                  (is (=? {:name      "DISCOUNT"
-                           :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
-                          (magic/->field root "DISCOUNT"))))
-                (is (=? {:name      "DISCOUNT"
-                         :field_ref [:field "DISCOUNT" {:base-type :type/Float}]}
-                        (magic/->field root [:field "DISCOUNT" {:base-type :type/Float}])))))))))))
 
 
 ;;; ------------------- Dashboard template matching  -------------------
@@ -1068,71 +1032,6 @@
     (testing (format "fingerprint = %s" (pr-str fingerprint))
       (is (= expected
              (#'interesting/optimal-datetime-resolution {:fingerprint fingerprint}))))))
-
-
-;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
-
-(deftest ^:parallel temporal-humanization-test
-  (let [dt    #t "1990-09-09T12:30"
-        t-str "1990-09-09T12:30:00"]
-    (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
-                             :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
-                             :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
-                             :week            (tru "in {0} week - {1}" (#'magic/pluralize (u.date/extract dt :week-of-year)) (str (u.date/extract dt :year)))
-                             :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
-                             :quarter         (tru "in Q{0} - {1}" (u.date/extract dt :quarter-of-year) (str (u.date/extract dt :year)))
-                             :year            (t/format "YYYY" dt)
-                             :day-of-week     (t/format "EEEE" dt)
-                             :hour-of-day     (tru "at {0}" (t/format "h a" dt))
-                             :month-of-year   (t/format "MMMM" dt)
-                             :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
-                             :minute-of-hour  (u.date/extract dt :minute-of-hour)
-                             :day-of-month    (u.date/extract dt :day-of-month)
-                             :week-of-year    (u.date/extract dt :week-of-year)}]
-      (testing (format "unit = %s" unit)
-        (is (= (str expected)
-               (str (#'magic/humanize-datetime t-str unit))))))))
-
-(deftest ^:parallel pluralize-test
-  (are [expected n] (= (str expected)
-                       (str (#'magic/pluralize n)))
-    (tru "{0}st" 1)   1
-    (tru "{0}nd" 22)  22
-    (tru "{0}rd" 303) 303
-    (tru "{0}th" 0)   0
-    (tru "{0}th" 8)   8))
-
-(deftest ^:parallel handlers-test
-  (testing "Make sure we have handlers for all the units available"
-    (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
-                       :iso-day-of-year :second-of-minute :millisecond)]
-      (testing unit
-        (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))
-
-;;; ------------------- Cell titles -------------------
-(deftest ^:parallel cell-title-test
-  (mt/$ids venues
-    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
-                                               :aggregation  [:count]}
-                                    :type     :query
-                                    :database (mt/id)})
-          root  (magic/->root query)]
-      (testing "Should humanize equal filter"
-        (is (= "number of Venues where Name is Test"
-               ;; Test specifically the un-normalized form (metabase#15737)
-               (magic/cell-title root ["=" ["field" %name nil] "Test"]))))
-      (testing "Should humanize and filter"
-        (is (= "number of Venues where Name is Test and Price is 0"
-               (magic/cell-title root ["and"
-                                       ["=" $name "Test"]
-                                       ["=" $price 0]]))))
-      (testing "Should humanize between filter"
-        (is (= "number of Venues where Name is between A and J"
-               (magic/cell-title root ["between" $name "A", "J"]))))
-      (testing "Should humanize inside filter"
-        (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
-               (magic/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
-
 
 ;;; -------------------- Filters --------------------
 

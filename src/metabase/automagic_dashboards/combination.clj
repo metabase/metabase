@@ -138,11 +138,11 @@
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
               :and (mapcat collect-dimensions args)
-              :=   (filters/collect-field-references args)
+              :=   (magic.util/collect-field-references args)
               nil))]
     (->> cell-query
          collect-dimensions
-         (map filters/field-reference->id)
+         (map magic.util/field-reference->id)
          set)))
 
 (defn- valid-breakout-dimension?
