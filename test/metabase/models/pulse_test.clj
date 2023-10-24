@@ -303,7 +303,7 @@
                                         :last_name   "Corv"
                                         :email       "crowberto@metabase.com"
                                         :common_name "Crowberto Corv"
-                                        :id          2}]]}}
+                                        :id          (mt/user->id :crowberto)}]]}}
            (audit-log-test/event :subscription-update (u/the-id pulse))))))
 
 (deftest dashboard-subscription-update-test
