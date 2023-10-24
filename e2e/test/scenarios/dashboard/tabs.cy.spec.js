@@ -31,6 +31,8 @@ import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ADMIN_PERSONAL_COLLECTION_ID,
+  NORMAL_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > dashboard > tabs", () => {
@@ -173,6 +175,39 @@ describe("scenarios > dashboard > tabs", () => {
       getDashboardCards().should("have.length", cards.length);
     },
   );
+
+  it("should allow moving dashcard even if we don't have permission on that underlying query", () => {
+    const questionDetails = {
+      native: {
+        query: "select 42",
+      },
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    };
+    cy.createNativeQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.signInAsNormalUser();
+      visitDashboard(dashboard_id);
+    });
+
+    editDashboard();
+    createNewTab();
+
+    // TODO: create navigateToTab helper
+    cy.findByRole("tab", { name: "Tab 1" }).click();
+
+    // TODO: create moveDashcardToTab helper
+    getDashboardCard(0).realHover();
+    cy.icon("move_card").eq(0).click();
+    menu().findByText("Tab 2").click();
+
+    saveDashboard();
+
+    getDashboardCards().should("have.length", 0);
+  });
 
   it("should leave dashboard if navigating back after initial load", () => {
     visitDashboardAndCreateTab({ dashboardId: ORDERS_DASHBOARD_ID });
