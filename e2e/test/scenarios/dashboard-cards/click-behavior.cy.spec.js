@@ -32,6 +32,10 @@ const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
+const TARGET_DASHBOARD = {
+  name: "Target dashboard",
+};
+
 const LINE_CHART = {
   name: "Line chart",
   display: "line",
@@ -128,6 +132,41 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("line chart", () => {
     const questionDetails = LINE_CHART;
+
+    it("allows setting dashboard as custom destination", () => {
+      cy.createDashboard(TARGET_DASHBOARD, {
+        wrapId: true,
+        idAlias: "targetDashboardId",
+      });
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+          modal().findByText(TARGET_DASHBOARD.name).click();
+          cy.get("aside").findByText("No available targets").should("exist");
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          cy.findByText(TARGET_DASHBOARD.name).should("exist");
+
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(location => {
+              expect(location.pathname).to.equal(
+                `/dashboard/${targetDashboardId}`,
+              );
+              expect(location.query).to.be.undefined;
+            });
+          });
+        },
+      );
+    });
 
     it("allows setting saved question as custom destination", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
