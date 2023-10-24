@@ -53,6 +53,11 @@ const OBJECT_DETAIL_CHART = {
   },
 };
 
+const TARGET_QUESTION = {
+  ...LINE_CHART,
+  name: "Target question",
+};
+
 const SECRET_QUESTION = {
   name: "Secret question",
   query: {
@@ -267,6 +272,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting saved question as custom destination", () => {
+      cy.createQuestion(TARGET_QUESTION);
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -275,7 +282,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Saved question").click();
-          modal().findByText(LINE_CHART.name).click();
+          modal().findByText(TARGET_QUESTION.name).click();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -286,15 +293,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(location.pathname).to.equal("/question");
 
             const card = deserializeCardFromUrl(location.hash);
-            expect(card.name).to.deep.equal(LINE_CHART.name);
-            expect(card.display).to.deep.equal(LINE_CHART.display);
-            expect(card.dataset_query.query).to.deep.equal(LINE_CHART.query);
+            expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+            expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+            expect(card.dataset_query.query).to.deep.equal(
+              TARGET_QUESTION.query,
+            );
           });
         },
       );
     });
 
     it("allows setting saved question with single parameter as custom destination", () => {
+      cy.createQuestion(TARGET_QUESTION);
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -303,7 +314,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Saved question").click();
-          modal().findByText(LINE_CHART.name).click();
+          modal().findByText(TARGET_QUESTION.name).click();
           cy.get("aside").findByText("Orders → Created At").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
@@ -323,10 +334,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(location.pathname).to.equal("/question");
 
             const card = deserializeCardFromUrl(location.hash);
-            expect(card.name).to.deep.equal(LINE_CHART.name);
-            expect(card.display).to.deep.equal(LINE_CHART.display);
+            expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+            expect(card.display).to.deep.equal(TARGET_QUESTION.display);
             expect(card.dataset_query.query).to.deep.equal({
-              ...LINE_CHART.query,
+              ...TARGET_QUESTION.query,
               filter: QUERY_FILTER_CREATED_AT,
             });
           });
@@ -335,6 +346,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting saved question with multiple parameters as custom destination", () => {
+      cy.createQuestion(TARGET_QUESTION);
+
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -343,7 +356,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Saved question").click();
-          modal().findByText(LINE_CHART.name).click();
+          modal().findByText(TARGET_QUESTION.name).click();
           cy.get("aside").findByText("Orders → Created At").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
@@ -373,10 +386,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
             const card = deserializeCardFromUrl(location.hash);
             console.log(card);
-            expect(card.name).to.deep.equal(LINE_CHART.name);
-            expect(card.display).to.deep.equal(LINE_CHART.display);
+            expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+            expect(card.display).to.deep.equal(TARGET_QUESTION.display);
             expect(card.dataset_query.query).to.deep.equal({
-              ...LINE_CHART.query,
+              ...TARGET_QUESTION.query,
               filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
             });
           });
