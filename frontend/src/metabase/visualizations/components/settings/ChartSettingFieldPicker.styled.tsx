@@ -33,15 +33,14 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     margin-left: 0;
     color: ${color("text-dark")};
     height: 0.625rem;
-
     ${props => props.disabled && "display: none;"}
+    flex-shrink: 0;
   }
 
   ${SelectButton.Content} {
     font-size: 0.875rem;
     line-height: 1rem;
     margin-right: 0.25rem;
-    text-overflow: ellipsis;
     max-width: 100%;
     overflow-wrap: anywhere;
     text-align: left;
