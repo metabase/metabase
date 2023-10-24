@@ -147,7 +147,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    it("does not not allow setting dashboard as custom destination if user has no permissions to it", () => {
+    it("does not allow setting dashboard as custom destination if user has no permissions to it", () => {
       cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
           cy.updateCollectionGraph({
@@ -440,7 +440,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    it("does not not allow setting saved question as custom destination if user has no permissions to it", () => {
+    it("does not allow setting saved question as custom destination if user has no permissions to it", () => {
       cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
         ({ body: restrictedCollection }) => {
           cy.updateCollectionGraph({
