@@ -58,7 +58,7 @@ const FILTER_COUNT = ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT];
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
   describe("dashcards without click behavior", () => {
