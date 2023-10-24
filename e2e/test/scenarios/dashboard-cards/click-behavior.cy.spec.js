@@ -191,11 +191,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.get("aside")
             .findByText("No available targets")
             .should("not.exist");
-          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
+          addTextParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -240,16 +236,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.get("aside")
             .findByText("No available targets")
             .should("not.exist");
-          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
-          cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
-          popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
-          });
+          addTextParameter();
+          addTimeParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -527,11 +515,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Update a dashboard filter").click();
-          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
+          addTextParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -560,16 +544,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           cy.get("aside").findByText("Update a dashboard filter").click();
-          cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
-          cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
-          popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
-          });
+          addTextParameter();
+          addTimeParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -625,3 +601,19 @@ const onNextAnchorClick = callback => {
  */
 const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
+
+const addTextParameter = () => {
+  cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
+  popover().within(() => {
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+    cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+  });
+};
+
+const addTimeParameter = () => {
+  cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
+  popover().within(() => {
+    cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
+  });
+};
