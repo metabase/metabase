@@ -71,7 +71,6 @@ describe("scenarios > question > relative-datetime", () => {
 
       cy.wait("@dataset");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByTestId("qb-filters-panel")
         .findByText("Created At is in the previous 30 days")
         .click();

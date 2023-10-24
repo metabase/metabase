@@ -45,7 +45,6 @@ describe("issue 25990", () => {
   it("should allow to filter by a column in a joined table (metabase#25990)", () => {
     visitQuestionAdhoc(questionDetails);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     queryBuilderHeader().button("Filter").click();
 
     cy.get(".Modal").within(() => {
