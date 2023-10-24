@@ -25,6 +25,7 @@ import {
   updateDashboardCards,
   goToTab,
   moveDashCardToTab,
+  addTextBoxWhileEditing,
 } from "e2e/support/helpers";
 
 import {
@@ -91,45 +92,76 @@ describe("scenarios > dashboard > tabs", () => {
     });
   });
 
-  it("should allow moving dashcards between tabs", () => {
-    visitDashboardAndCreateTab({
-      dashboardId: ORDERS_DASHBOARD_ID,
-      save: false,
-    });
+  it(
+    "should allow moving dashcards between tabs",
+    { scrollBehavior: false },
+    () => {
+      visitDashboardAndCreateTab({
+        dashboardId: ORDERS_DASHBOARD_ID,
+        save: false,
+      });
 
-    goToTab("Tab 1");
+      goToTab("Tab 1");
 
-    cy.log("should stay on the same tab");
-    cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
+      cy.log("add second card");
+      addTextBoxWhileEditing("Text card");
 
-    getDashboardCard(0).then(element => {
-      cy.wrap({
-        width: element.outerWidth(),
-        height: element.outerHeight(),
-      }).as("originalSize");
-    });
+      cy.log("should stay on the same tab");
+      cy.findByRole("tab", { selected: true }).should("have.text", "Tab 1");
 
-    cy.log("move card to second tab");
-
-    moveDashCardToTab({ tabName: "Tab 2" });
-
-    getDashboardCards().should("have.length", 0);
-
-    goToTab("Tab 2");
-
-    getDashboardCards().should("have.length", 1);
-
-    cy.log("size should stay the same");
-
-    getDashboardCard(0).then(element => {
-      cy.get("@originalSize").then(originalSize => {
-        expect({
+      getDashboardCard(0).then(element => {
+        cy.wrap({
           width: element.outerWidth(),
           height: element.outerHeight(),
-        }).to.deep.eq(originalSize);
+        }).as("card1OriginalSize");
       });
-    });
-  });
+
+      getDashboardCard(1).then(element => {
+        cy.wrap(element.offset()).as("card2OriginalPosition");
+      });
+
+      cy.log("move second to second tab first, then the first one");
+      // moving the second card first to invert their position, this allows us
+      // to check if the position is restored when undoing the movement of the second one
+      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 1 });
+      moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 0 });
+
+      cy.log("fist tab should be empty");
+      cy.findAllByTestId("toast-undo").should("have.length", 2);
+      getDashboardCards().should("have.length", 0);
+
+      cy.log("cards should be in second tab");
+      goToTab("Tab 2");
+      getDashboardCards().should("have.length", 2);
+
+      cy.log("size should stay the same");
+
+      getDashboardCard(1).then(element => {
+        cy.get("@card1OriginalSize").then(originalSize => {
+          expect({
+            width: element.outerWidth(),
+            height: element.outerHeight(),
+          }).to.deep.eq(originalSize);
+        });
+      });
+
+      cy.log("undoing movement of second card");
+      cy.findAllByTestId("toast-undo").eq(0).findByRole("button").click();
+      goToTab("Tab 1");
+
+      getDashboardCards().should("have.length", 1);
+
+      cy.log("second card should be in the original position");
+      getDashboardCard().then(element => {
+        cy.get("@card2OriginalPosition").then(originalPosition => {
+          const position = element.offset();
+          // approximately to avoid possibly flakyness, we just want it to be in the same grid cell
+          expect(position.left).to.approximately(originalPosition.left, 10);
+          expect(position.top).to.approximately(originalPosition.top, 10);
+        });
+      });
+    },
+  );
 
   it(
     "should allow moving different types of dashcards to other tabs",
