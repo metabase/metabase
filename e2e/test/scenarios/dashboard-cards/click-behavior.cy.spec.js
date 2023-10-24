@@ -1,3 +1,4 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createActionCard,
@@ -28,6 +29,7 @@ const POINT_COUNT = 344;
 const POINT_CREATED_AT = "2026-04";
 const POINT_CREATED_AT_FORMATTED = "April 2026";
 const POINT_INDEX = 48;
+const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -48,6 +50,14 @@ const OBJECT_DETAIL_CHART = {
   },
 };
 
+const SECRET_QUESTION = {
+  name: "Secret question",
+  query: {
+    "source-table": ORDERS_ID,
+    limit: 5,
+  },
+};
+
 const FILTER_CREATED_AT = [
   "between",
   ["field", ORDERS.CREATED_AT, null],
@@ -60,7 +70,7 @@ const FILTER_QUANTITY = ["=", ["field", ORDERS.QUANTITY, null], POINT_COUNT];
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   describe("dashcards without click behavior", () => {
@@ -214,6 +224,40 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               filter: ["and", FILTER_CREATED_AT, FILTER_QUANTITY],
             });
           });
+        },
+      );
+    });
+
+    it("does not not allow setting saved question as custom destination if user has no permissions to that question", () => {
+      cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
+        ({ body: restrictedCollection }) => {
+          cy.updateCollectionGraph({
+            [USER_GROUPS.COLLECTION_GROUP]: {
+              [restrictedCollection.id]: "none",
+            },
+          });
+
+          cy.createQuestion({
+            ...SECRET_QUESTION,
+            collection_id: restrictedCollection.id,
+          });
+        },
+      );
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: dashboard }) => {
+          visitDashboard(dashboard.id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Saved question").click();
+
+          modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
+          modal().findByText(SECRET_QUESTION.name).should("not.exist");
         },
       );
     });
