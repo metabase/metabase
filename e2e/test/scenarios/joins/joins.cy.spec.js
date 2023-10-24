@@ -105,16 +105,10 @@ describe("scenarios > question > joined questions", () => {
       native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },
     });
 
-    cy.createNativeQuestion(
-      {
-        name: "question b",
-        native: { query: "select * from products" },
-      },
-      {
-        wrapId: true,
-        idAlias: "joinedQuestionId",
-      },
-    );
+    cy.createNativeQuestion({
+      name: "question b",
+      native: { query: "select * from products" },
+    });
 
     startNewQuestion();
     selectSavedQuestionsToJoin("question a", "question b");
@@ -123,13 +117,11 @@ describe("scenarios > question > joined questions", () => {
 
     visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      assertJoinValid({
-        lhsTable: "question a",
-        rhsTable: "question b",
-        lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} - PRODUCT_ID → ID`,
-      });
+    assertJoinValid({
+      lhsTable: "question a",
+      rhsTable: "question b",
+      lhsSampleColumn: "TOTAL",
+      rhsSampleColumn: "question b - PRODUCT_ID → ID",
     });
 
     openNotebook();
@@ -142,31 +134,27 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("CREATED_AT").click();
     });
     visualize();
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      assertJoinValid({
-        lhsTable: "question a",
-        rhsTable: "question b",
-        lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} - PRODUCT_ID → Rating`,
-      });
+    assertJoinValid({
+      lhsTable: "question a",
+      rhsTable: "question b",
+      lhsSampleColumn: "TOTAL",
+      rhsSampleColumn: "question b - PRODUCT_ID → Rating",
     });
     queryBuilderMain().findByText("EAN").should("not.exist");
 
     openNotebook();
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      filter({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
-        cy.findByText("CATEGORY").click();
-        cy.findByPlaceholderText("Enter some text").type("Gadget");
-        cy.button("Add filter").click();
-      });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("question b").click();
+      cy.findByText("CATEGORY").click();
+      cy.findByPlaceholderText("Enter some text").type("Gadget");
+      cy.button("Add filter").click();
+    });
 
-      summarize({ mode: "notebook" });
-      addSummaryGroupingField({
-        table: `Question ${joinedQuestionId}`,
-        field: "CATEGORY",
-      });
+    summarize({ mode: "notebook" });
+    addSummaryGroupingField({
+      table: "question b",
+      field: "CATEGORY",
     });
     visualize();
 
@@ -196,32 +184,24 @@ describe("scenarios > question > joined questions", () => {
       },
     });
 
-    cy.createQuestion(
-      {
-        name: "Q2",
-        query: {
-          aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
-          breakout: [["field", PRODUCTS.ID, null]],
-          "source-table": PRODUCTS_ID,
-        },
+    cy.createQuestion({
+      name: "Q2",
+      query: {
+        aggregation: ["sum", ["field", PRODUCTS.RATING, null]],
+        breakout: [["field", PRODUCTS.ID, null]],
+        "source-table": PRODUCTS_ID,
       },
-      {
-        wrapId: true,
-        idAlias: "joinedQuestionId",
-      },
-    );
+    });
 
     startNewQuestion();
     selectSavedQuestionsToJoin("Q1", "Q2");
     visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      assertJoinValid({
-        lhsTable: "Q1",
-        rhsTable: "Q2",
-        lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} - Product → ID`,
-      });
+    assertJoinValid({
+      lhsTable: "Q1",
+      rhsTable: "Q2",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Q2 - Product → ID",
     });
 
     openNotebook();
@@ -229,36 +209,30 @@ describe("scenarios > question > joined questions", () => {
     popover().findByText("ID").click();
     visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      assertJoinValid({
-        lhsTable: "Q1",
-        rhsTable: "Q2",
-        lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} - Product → Sum of Total`,
-      });
-      queryBuilderMain()
-        .findByText(`Question ${joinedQuestionId} → ID`)
-        .should("not.exist");
+    assertJoinValid({
+      lhsTable: "Q1",
+      rhsTable: "Q2",
+      lhsSampleColumn: "Product ID",
+      rhsSampleColumn: "Q2 - Product → Sum of Total",
     });
+    queryBuilderMain().findByText("Q2 → ID").should("not.exist");
 
     openNotebook();
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      // add a custom column on top of the steps from the #13000 repro which was simply asserting
-      // that a question could be made by joining two previously saved questions
-      addCustomColumn();
-      enterCustomColumnDetails({
-        formula: `[Question ${joinedQuestionId} - Product → Sum of Rating] / [Sum of Total]`,
-        name: "Sum Divide",
-      });
-      popover().button("Done").click();
+    // add a custom column on top of the steps from the #13000 repro which was simply asserting
+    // that a question could be made by joining two previously saved questions
+    addCustomColumn();
+    enterCustomColumnDetails({
+      formula: "[Q2 - Product → Sum of Rating] / [Sum of Total]",
+      name: "Sum Divide",
+    });
+    popover().button("Done").click();
 
-      filter({ mode: "notebook" });
-      popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
-        cy.findByText("ID").click();
-        cy.findByPlaceholderText("Enter an ID").type("12");
-        cy.button("Add filter").click();
-      });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Q2").click();
+      cy.findByText("ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("12");
+      cy.button("Add filter").click();
     });
 
     visualize();

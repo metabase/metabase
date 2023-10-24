@@ -181,6 +181,7 @@ const AGGREGATED_ORDERS_COLUMNS = {
         "temporal-unit": "month",
       },
     ],
+    unit: "month",
   }),
 
   count: createMockColumn({
