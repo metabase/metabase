@@ -198,6 +198,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.findAllByTestId("field-set").should("have.length", 1);
+          cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.get("@targetDashboardId").then(targetDashboardId => {
             cy.location().should(location => {
               expect(location.pathname).to.equal(
@@ -244,6 +246,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.findAllByTestId("field-set").should("have.length", 2);
+          cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
+          cy.findAllByTestId("field-set").should(
+            "contain.text",
+            POINT_CREATED_AT_FORMATTED,
+          );
           cy.get("@targetDashboardId").then(targetDashboardId => {
             cy.location().should(location => {
               expect(location.pathname).to.equal(
