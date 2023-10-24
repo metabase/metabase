@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import Calendar from "metabase/components/Calendar";
 import type Filter from "metabase-lib/queries/structured/Filter";
