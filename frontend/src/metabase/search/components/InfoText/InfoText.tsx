@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
 import moment from "moment-timezone";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import { isNull } from "underscore";
+import { UserApi } from "metabase/services";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import {
   browseDatabase,
@@ -12,7 +14,6 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/core/utils/types";
 import type { UserListResult } from "metabase-types/api";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
@@ -148,11 +149,13 @@ export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
 };
 
 export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
-  const { data: users = [], isLoading, error } = useUserListQuery();
+  const {
+    loading: isLoading,
+    value,
+    error: userQueryError,
+  } = useAsync<() => Promise<{ data: UserListResult[] }>>(UserApi.list);
 
-  if (error) {
-    return null;
-  }
+  const users = value?.data ?? [];
 
   const isUpdated =
     isNotNull(result.last_edited_at) &&
@@ -170,7 +173,10 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
         userId: result.creator_id,
       };
 
-  const user = users.find((user: UserListResult) => user.id === userId);
+  let user = null;
+  if (!userQueryError) {
+    user = users.find((user: UserListResult) => user.id === userId);
+  }
 
   const lastEditedInfoData = {
     item: {
