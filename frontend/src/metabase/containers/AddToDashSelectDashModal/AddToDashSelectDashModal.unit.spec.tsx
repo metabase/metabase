@@ -16,9 +16,8 @@ import {
 } from "metabase-types/api/mocks";
 import type { Card, Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import { isNotNull } from "metabase/core/utils/types";
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
-
-const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
 
 const CURRENT_USER = createMockUser({
   id: 1,
@@ -88,6 +87,15 @@ const COLLECTIONS = [
   PERSONAL_SUBCOLLECTION,
 ];
 
+const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
+
+const CARD_IN_PERSONAL_COLLECTION = createMockCard({
+  id: 2,
+  name: "Card in a personal collection",
+  dataset: true,
+  collection: PERSONAL_COLLECTION,
+});
+
 interface SetupOpts {
   card?: Card;
   collections?: Collection[];
@@ -105,9 +113,13 @@ const setup = async ({
   error,
   waitForContent = true,
 }: SetupOpts = {}) => {
+  const dashboardSet = new Set(
+    [dashboard, mostRecentlyViewedDashboard].filter(isNotNull),
+  );
+
   setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
-  setupDashboardCollectionItemsEndpoint([dashboard]);
+  setupDashboardCollectionItemsEndpoint(Array.from(dashboardSet));
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
 
@@ -208,6 +220,102 @@ describe("AddToDashSelectDashModal", () => {
           expect(screen.getByText(DASHBOARD_AT_ROOT.name)).toBeInTheDocument();
         });
       });
+
+      describe("when last visited dashboard belongs to public subcollections", () => {
+        const dashboardInPublicSubcollection = createMockDashboard({
+          id: 5,
+          name: "Dashboard in public subcollection",
+          collection: SUBCOLLECTION,
+          collection_id: SUBCOLLECTION.id as number,
+          model: "dashboard",
+        });
+
+        // XXX: #7
+        it("should show most recently visited dashboard if the question is in a public collection", async () => {
+          await setup({
+            mostRecentlyViewedDashboard: dashboardInPublicSubcollection,
+          });
+
+          // breadcrumbs
+          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+          expect(screen.getByText(COLLECTION.name)).toBeInTheDocument();
+          expect(screen.getByText(SUBCOLLECTION.name)).toBeInTheDocument();
+
+          // dashboard item
+          expect(
+            screen.getByText(dashboardInPublicSubcollection.name),
+          ).toBeInTheDocument();
+        });
+
+        // XXX: #9
+        it("should show the root collection if the question is in a personal collection", async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            mostRecentlyViewedDashboard: dashboardInPublicSubcollection,
+          });
+
+          // breadcrumbs
+          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+
+          // Showing personal collection means we're viewing the root collection
+          expect(
+            screen.getByRole("heading", { name: PERSONAL_COLLECTION.name }),
+          ).toBeInTheDocument();
+        });
+      });
+
+      describe("when last visited dashboard belongs to personal subcollections", () => {
+        const dashboardInPersonalSubcollection = createMockDashboard({
+          id: 5,
+          name: "Dashboard in personal subcollection",
+          collection: PERSONAL_SUBCOLLECTION,
+          collection_id: PERSONAL_SUBCOLLECTION.id as number,
+          model: "dashboard",
+        });
+
+        // XXX: #8
+        it("should show most recently visited dashboard if the question is in a public collection", async () => {
+          await setup({
+            mostRecentlyViewedDashboard: dashboardInPersonalSubcollection,
+          });
+
+          // breadcrumbs
+          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+          expect(
+            screen.getByText(PERSONAL_COLLECTION.name),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(PERSONAL_SUBCOLLECTION.name),
+          ).toBeInTheDocument();
+
+          // dashboard item
+          expect(
+            await screen.findByText(dashboardInPersonalSubcollection.name),
+          ).toBeInTheDocument();
+        });
+
+        // XXX: #10
+        it("should show most recently visited dashboard if the question is in a personal collection", async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            mostRecentlyViewedDashboard: dashboardInPersonalSubcollection,
+          });
+
+          // breadcrumbs
+          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+          expect(
+            screen.getByText(PERSONAL_COLLECTION.name),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(PERSONAL_SUBCOLLECTION.name),
+          ).toBeInTheDocument();
+
+          // dashboard item
+          expect(
+            await screen.findByText(dashboardInPersonalSubcollection.name),
+          ).toBeInTheDocument();
+        });
+      });
     });
 
     describe("when user didn't visit any dashboard during last 24hrs", () => {
@@ -297,7 +405,7 @@ describe("AddToDashSelectDashModal", () => {
           it("should render dashboards when opening the root collection (public collection)", async () => {
             // no `collection` and `collection_id` means it's in the root collection
             const dashboardInRootCollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in root collection",
               model: "dashboard",
             });
@@ -316,7 +424,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #1
           it("should render dashboards when opening public subcollections", async () => {
             const dashboardInPublicSubcollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in public subcollection",
               collection_id: COLLECTION.id as number,
               model: "dashboard",
@@ -342,7 +450,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #1
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in personal collection",
               collection_id: PERSONAL_COLLECTION.id as number,
               model: "dashboard",
@@ -368,7 +476,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #1
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in personal subcollection",
               collection_id: PERSONAL_SUBCOLLECTION.id as number,
               model: "dashboard",
@@ -399,13 +507,6 @@ describe("AddToDashSelectDashModal", () => {
       });
 
       describe("question is in a personal collection", () => {
-        const CARD_IN_PERSONAL_COLLECTION = createMockCard({
-          id: 2,
-          name: "Card in a personal collection",
-          dataset: true,
-          collection: PERSONAL_COLLECTION,
-        });
-
         describe('"Create a new dashboard" option', () => {
           // XXX: #5
           it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
@@ -456,7 +557,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #2
           it("should not render dashboards when opening the root collection (public collection)", async () => {
             const dashboardInPublicCollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in public collection",
               // `null` means it's in the root collection
               collection_id: null,
@@ -482,7 +583,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #2
           it("should render dashboards when opening personal collections", async () => {
             const dashboardInPersonalCollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in personal collection",
               collection_id: PERSONAL_COLLECTION.id as number,
               model: "dashboard",
@@ -509,7 +610,7 @@ describe("AddToDashSelectDashModal", () => {
           // XXX: #2
           it("should render dashboards when opening personal subcollections", async () => {
             const dashboardInPersonalSubcollection = createMockDashboard({
-              id: 3,
+              id: 5,
               name: "Dashboard in personal subcollection",
               collection_id: PERSONAL_SUBCOLLECTION.id as number,
               model: "dashboard",
