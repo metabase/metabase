@@ -6,6 +6,10 @@ import TooltipPopover from "metabase/components/TooltipPopover";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";
 
+import {
+  isStartWithDoubleUnderscore
+} from "metabase/visualizations/lib/table";
+
 export default class ChartTooltip extends Component {
   static propTypes = {
     hovered: PropTypes.object,
@@ -19,7 +23,9 @@ export default class ChartTooltip extends Component {
     }
     if (Array.isArray(hovered.data)) {
       // Array of key, value, col: { data: [{ key, value, col }], element, event }
-      return hovered.data.map(d => ({
+      return hovered.data.filter(d => {
+        return !isStartWithDoubleUnderscore(d.col);
+      }).map(d => ({
         ...d,
         key: d.key || getFriendlyName(d.col),
       }));
