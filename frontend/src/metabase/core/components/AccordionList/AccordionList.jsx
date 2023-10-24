@@ -636,8 +636,8 @@ export default class AccordionList extends Component {
         overscanRowCount={100}
         scrollToIndex={scrollToIndex}
         scrollToAlignment={scrollToAlignment}
+        containerRole={role}
         containerProps={{
-          role,
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,
         }}
