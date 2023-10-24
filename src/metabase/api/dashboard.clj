@@ -817,18 +817,17 @@
     (get resolved-params param-key)))
 
 (defn- chain-filter-constraints [dashboard constraint-param-key->value]
-  (into {} (for [[param-key value] constraint-param-key->value
-                 :let              [param      (param-key->param dashboard param-key)
-                                    param-type (:type param)
-                                    op         (if (qualified-keyword? param-type)
-                                                 (keyword (name param-type))
-                                                 :=)]
-                 field             (mappings->fields (:mappings param))]
-             [(:field-id field)
-              (cond-> [op]
-                (vector? value)        (into value)
-                (not (vector? value))  (conj value)
-                (seq (:options field)) (conj (:options field)))])))
+  (vec (for [[param-key value] constraint-param-key->value
+             :let              [param      (param-key->param dashboard param-key)
+                                param-type (:type param)
+                                op         (if (qualified-keyword? param-type)
+                                             (keyword (name param-type))
+                                             :=)]
+             field             (mappings->fields (:mappings param))]
+         {:field-id (:field-id field)
+          :op       op
+          :value    value
+          :options  (:options field)})))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!

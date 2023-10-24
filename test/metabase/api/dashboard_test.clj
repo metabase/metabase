@@ -2954,12 +2954,12 @@
 (deftest chain-filter-constraints-test
   (testing "Chain filter should return correct results when :string/!= type is used"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (is (= [:= "ood"]
+      (is (= {:op := :value "ood"}
              (-> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})
-                 first second)))
-      (is (= [:!= "ood"]
+                 first (select-keys [:op :value]))))
+      (is (= {:op :!= :value "ood"}
              (-> (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"})
-                 first second))))))
+                 first (select-keys [:op :value])))))))
 
 (defn- card-fields-from-table-metadata
   [card-id]

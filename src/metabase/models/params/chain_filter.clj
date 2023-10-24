@@ -115,26 +115,21 @@
 
 (defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
-  [source-table-id field-id value]
+  [source-table-id {:keys [field-id op value options]
+                    :or   {op :=}}]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (when-not (= this-field-table-id source-table-id)
                                           {:join-alias (joined-table-alias this-field-table-id)})])]
-    (cond
-      ;; e.g. {$$venues.price [:between 2 3]} -> [:between $venues.price 2 3]
-      ;; this is not really supported by the API directly
-      (and (sequential? value) (keyword? (first value)))
-      (into [(first value) field-clause] (rest value))
-      ;; e.g. {$$venues.price #{2 3}} -> [:= $$venues.price 2 3]
-      (and (coll? value) (not (map? value)))
-      (into [:= field-clause] value)
-      :else
-      ;; e.g. {$$venues.price "past32weeks"} -> [:time-interval $checkins.date -32 :week]
-      (or (when (and (temporal-field? field-id)
-                     (string? value))
-            (u/ignore-exceptions
-              (params.dates/date-string->filter value field-id)))
-          ;; e.g. {$$venues.price 2} -> [:= $$venues.price 2]
-          [:= field-clause value]))))
+    (if (and (temporal-field? field-id)
+             (string? value))
+      (u/ignore-exceptions
+        (params.dates/date-string->filter value field-id))
+      (cond-> [op field-clause]
+        true          (into (if (or (sequential? value)
+                                    (set? value))
+                              value
+                              [value]))
+        (seq options) (conj options)))))
 
 (defn- name-for-logging [model id]
   (format "%s %d %s" (name model) id (u/format-color 'blue (pr-str (t2/select-one-fn :name model :id id)))))
@@ -154,14 +149,14 @@
 
 (defn- add-filters [query source-table-id joined-table-ids constraints]
   (reduce
-   (fn [query [field-id value]]
+   (fn [query {:keys [field-id] :as constraint}]
      ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
      ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
      ;; it.
      (let [field-table-id (field/field-id->table-id field-id)]
        (if (or (= field-table-id source-table-id)
                (contains? joined-table-ids field-table-id))
-         (let [clause (filter-clause source-table-id field-id value)]
+         (let [clause (filter-clause source-table-id constraint)]
            (log/tracef "Added filter clause for %s %s: %s"
                        (name-for-logging Table field-table-id)
                        (name-for-logging Field field-id)
@@ -363,19 +358,23 @@
 
 (def ^:private max-results 1000)
 
-(def ^:private ConstraintsMap
+(def Constraints
   "Schema for map of (other) Field ID -> value for additional constraints for the `chain-filter` results."
-  [:map-of ms/PositiveInt :any])
+  [:sequential [:map
+                [:field-id ms/PositiveInt]
+                [:op {:optional true} :keyword]
+                [:value :any]
+                [:options {:optional true} [:maybe map?]]]])
 
 (mu/defn ^:private chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
   [field-id                          :- ms/PositiveInt
-   constraints                       :- [:maybe ConstraintsMap]
+   constraints                       :- [:maybe Constraints]
    {:keys [original-field-id limit]} :- [:maybe Options]]
   {:database (field/field-id->database-id field-id)
    :type     :query
    :query    (let [source-table-id       (field/field-id->table-id field-id)
-                   joins                 (find-all-joins source-table-id (cond-> (set (keys constraints))
+                   joins                 (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
                                                                            original-field-id (conj original-field-id)))
                    joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
                    original-field-clause (when original-field-id
@@ -423,7 +422,7 @@
 (mu/defn ^:private unremapped-chain-filter :- ms/FieldValuesResult
   "Chain filtering without all the fancy remapping stuff on top of it."
   [field-id    :- ms/PositiveInt
-   constraints :- [:maybe ConstraintsMap]
+   constraints :- [:maybe Constraints]
    options     :- [:maybe Options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
@@ -545,7 +544,7 @@
 
   For remapped columns, this returns results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ms/PositiveInt
-   constraints :- [:maybe ConstraintsMap]
+   constraints :- [:maybe Constraints]
    & options]
   (assert (even? (count options)))
   (let [{:as options}         options
@@ -591,12 +590,14 @@
 
 (mu/defn ^:private unremapped-chain-filter-search
   [field-id    :- ms/PositiveInt
-   constraints :- [:maybe ConstraintsMap]
+   constraints :- [:maybe Constraints]
    query       :- ms/NonBlankString
    options     :- [:maybe Options]]
   (check-valid-search-field field-id)
-  (let [query-constraint {field-id [:contains query {:case-sensitive false}]}
-        constraints      (merge constraints query-constraint)]
+  (let [constraints (conj constraints {:field-id field-id
+                                       :op       :contains
+                                       :value    query
+                                       :options  {:case-sensitive false}})]
     (unremapped-chain-filter field-id constraints options)))
 
 (defn- matching-unremapped-values [query v->human-readable]
@@ -612,13 +613,15 @@
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."
   [field-id          :- ms/PositiveInt
    v->human-readable :- HumanReadableRemappingMap
-   constraints       :- [:maybe ConstraintsMap]
+   constraints       :- [:maybe Constraints]
    query             :- ms/NonBlankString
    options           :- [:maybe Options]]
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
-        (let [query-constraint  {field-id (set unremapped-values)}
-              constraints       (merge constraints query-constraint)
-              result            (unremapped-chain-filter field-id constraints options)]
+        (let [constraints (conj constraints {:field-id field-id
+                                             :op       :=
+                                             :value    (set unremapped-values)
+                                             :options  nil})
+              result      (unremapped-chain-filter field-id constraints options)]
           (update result :values add-human-readable-values v->human-readable)))
       {:values          []
        :has_more_values false}))
@@ -656,7 +659,7 @@
   "Convenience version of `chain-filter` that adds a constraint to only return values of Field with `field-id`
   containing String `query`. Powers the `search/:query` version of the chain filter endpoint."
   [field-id          :- ms/PositiveInt
-   constraints       :- [:maybe ConstraintsMap]
+   constraints       :- [:maybe Constraints]
    query             :- [:maybe ms/NonBlankString]
    & options]
   (assert (even? (count options)))
@@ -691,7 +694,11 @@
    filter-field-ids :- [:maybe [:set ms/PositiveInt]]]
   (when (seq filter-field-ids)
     (let [mbql-query (chain-filter-mbql-query field-id
-                                              (into {} (for [id filter-field-ids] [id nil]))
+                                              (for [id filter-field-ids]
+                                                {:field-id id
+                                                 :op       :=
+                                                 :value    nil
+                                                 :options  nil})
                                               nil)]
       (set (mbql.u/match (-> mbql-query :query :filter)
              [:field (id :guard integer?) _] id)))))
