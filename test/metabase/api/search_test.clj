@@ -911,8 +911,8 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :dataset true}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/Metric     {rasta-metric-id :id} {:name search-term}
-       :model/Metric     {lucky-metric-id :id} {:name search-term}]
+       :model/Metric     {rasta-metric-id :id} {:name search-term :table_id (data/id :checkins)}
+       :model/Metric     {lucky-metric-id :id} {:name search-term :table_id (data/id :checkins)}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
@@ -1050,7 +1050,7 @@
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :dataset true}
        :model/Dashboard  {dash-id :id}   {:name search-term}
-       :model/Metric     {metric-id :id} {:name search-term}
+       :model/Metric     {metric-id :id} {:name search-term :table_id (data/id :checkins)}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
@@ -1141,7 +1141,8 @@
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
          :model/Metric     {_metric-new :id}  {:name       search-term
-                                               :created_at new}]
+                                               :created_at new
+                                               :table_id (data/id :checkins)}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [test-search (fn [created-at expected]
                            (testing (format "searching with created-at = %s" created-at)
@@ -1198,8 +1199,8 @@
                                                 :dataset    true}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :dataset    true}
-         :model/Metric     {metric-new :id}    {:name       search-term}
-         :model/Metric     {metric-old :id}    {:name       search-term}
+         :model/Metric     {metric-new :id}    {:name       search-term :table_id (data/id :checkins)}
+         :model/Metric     {metric-old :id}    {:name       search-term :table_id (data/id :checkins)}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
