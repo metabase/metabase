@@ -199,7 +199,7 @@ function testOfficialBadgeInSearch({
   cy.findByTestId("search-results-list").within(() => {
     assertSearchResultBadge(collection, {
       expectBadge,
-      selector: "h3",
+      selector: "[data-testid='search-result-item-name']",
     });
     assertSearchResultBadge(question, { expectBadge });
     assertSearchResultBadge(dashboard, { expectBadge });
@@ -283,7 +283,8 @@ function assertSearchResultBadge(itemName, opts) {
   const { expectBadge } = opts;
   cy.findByText(itemName, opts)
     .parentsUntil("[data-testid=search-result-item]")
-    .last()
+    .parent()
+    .first()
     .within(() => {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });

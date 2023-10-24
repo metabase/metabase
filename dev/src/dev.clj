@@ -16,7 +16,7 @@
 ;;
 ;; ## Important Parts of the Codebase
 ;;
-;; - [API Endpoints](file:///home/tmacdonald/src/metabase/backend-docs/uberdoc.html#metabase.api.common)
+;; - [API Endpoints](#metabase.api.common)
 ;; - [Drivers](#metabase.driver)
 ;; - [Permissions](#metabase.models.permissions)
 ;; - [The Query Processor](#metabase.query-processor)
