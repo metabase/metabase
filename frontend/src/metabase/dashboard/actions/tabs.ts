@@ -325,9 +325,11 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         const dashboard = state.dashboards[dashId];
+
         if (!dashboard.dashCardTabMovements) {
           dashboard.dashCardTabMovements = {};
         }
+
         dashboard.dashCardTabMovements[dashCardId] = {
           originalRow: dashCard.row,
           originalCol: dashCard.col,
