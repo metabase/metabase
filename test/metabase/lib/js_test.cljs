@@ -1,6 +1,7 @@
 (ns metabase.lib.js-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [goog.object :as gobject]
    [metabase.lib.js :as lib.js]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -87,23 +88,47 @@
     (is (= ["collection"]
            (js->clj extras)))))
 
+(defn- add-undefined-params
+  "This simulates the FE setting some parameters to js/undefined."
+  [template-tags param-name]
+  (doto (gobject/get template-tags param-name)
+    (gobject/add "options" js/undefined)
+    (gobject/add "default" js/undefined))
+  template-tags)
+
 (deftest ^:parallel template-tags-test
   (testing "Snippets in template tags round trip correctly (#33546)"
     (let [db meta/database
-          snippets {"snippet: my snippet"
+          snippet-name "snippet: my snippet"
+          snippets {snippet-name
                     {:type :snippet
-                     :name "snippet: my snippet",
-                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4",
-                     :display-name "Snippet: My Snippet",
-                     :snippet-name "my snippet",
+                     :name "snippet: my snippet"
+                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+                     :display-name "Snippet: My Snippet"
+                     :snippet-name "my snippet"
                      :snippet-id 1}}
           query (lib.js/with-template-tags
                   (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
-                  (clj->js snippets))]
+                  (add-undefined-params (clj->js snippets) snippet-name))]
       (is (= snippets
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
+
+(deftest ^:parallel extract-template-tags-test
+  (testing "Undefined parameters are ignored (#34729)"
+    (let [tag-name "foo"
+          tags {tag-name {:type         :text
+                          :name         tag-name
+                          :display-name "Foo"
+                          :id           (str (random-uuid))}}]
+      (is (= {"bar" {"type"         "text"
+                     "name"         "bar"
+                     "display-name" "Bar"
+                     "id"           (get-in tags [tag-name :id])}}
+             (-> (lib.js/extract-template-tags "SELECT * FROM table WHERE {{bar}}"
+                                               (add-undefined-params (clj->js tags) tag-name))
+                 js->clj))))))
 
 (deftest ^:parallel is-column-metadata-test
   (is (true? (lib.js/is-column-metadata (meta/field-metadata :venues :id))))

@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru.object-details
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -24,8 +25,7 @@
            (empty? (lib.aggregation/aggregations query stage-number)))
       (let [[pk-column] (lib.metadata.calculation/primary-keys query) ; Already know there's only one.
             pk-value    (->> row
-                             (filter #(= (:column-name %) (:name pk-column)))
-                             first
+                             (m/find-first #(-> % :column :name (= (:name pk-column))))
                              :value)]
         (when (and pk-value
                    ;; Only recurse if this is a different column - otherwise it's an infinite loop.

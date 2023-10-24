@@ -102,7 +102,6 @@ export interface IFieldValuesWidgetProps {
   className?: string;
   prefix?: string;
   placeholder?: string;
-  forceTokenField?: boolean;
   checkedColor?: string;
 
   valueRenderer?: (value: string | number) => JSX.Element;
@@ -135,7 +134,6 @@ export function FieldValuesWidgetInner({
   className,
   prefix,
   placeholder,
-  forceTokenField = false,
   checkedColor,
   valueRenderer,
   optionRenderer,
@@ -387,7 +385,7 @@ export function FieldValuesWidgetInner({
         );
   }
 
-  const isListMode = !disableList && valuesMode === "list" && !forceTokenField;
+  const isListMode = !disableList && valuesMode === "list";
   const isLoading = loadingState === "LOADING";
 
   const parseFreeformValue = (value: string | number) => {
