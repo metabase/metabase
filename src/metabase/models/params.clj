@@ -118,7 +118,7 @@
         (try
           (if (mbql.u/is-clause? :template-tag dimension)
             (find-template-tag dimension card)
-            {:dimension dimension})
+            {:dimension    (unwrap-field-or-expression-clause dimension)})
           (catch Throwable e
             (log/error e (tru "Could not find matching Field ID for target:") target)))))))
 
