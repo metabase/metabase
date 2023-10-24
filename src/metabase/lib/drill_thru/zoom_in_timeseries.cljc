@@ -75,6 +75,13 @@
          :dimension    dimension
          :next-unit    next-unit}))))
 
+(mu/defn has-zoom-in-timeseries-drill :- :boolean
+  "True if the clicked value can be zoomed in."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (boolean (zoom-in-timeseries-drill query stage-number context)))
+
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.timeseries
   [query                         :- ::lib.schema/query
    stage-number                  :- :int

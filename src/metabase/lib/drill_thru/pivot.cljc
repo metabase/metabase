@@ -10,92 +10,75 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private pivot-drill-pred :- [:sequential lib.metadata/ColumnMetadata]
-  "Implementation for pivoting on various kinds of fields.
-
-  Don't call this directly; call [[pivot-drill]]."
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context
-   field-pred             :- [:=> [:cat lib.metadata/ColumnMetadata] boolean?]]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (= (:lib/source column) :source/aggregations))
-    (->> (lib.breakout/breakoutable-columns query stage-number)
-         (filter field-pred))))
-
-(mu/defn ^:private pivot-by-time-drill :- [:sequential lib.metadata/ColumnMetadata]
-  "Pivots this column and value on a time dimension."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   context      :- ::lib.schema.drill-thru/context]
-  (pivot-drill-pred query stage-number context lib.types.isa/temporal?))
-
-(mu/defn ^:private pivot-by-location-drill :- [:sequential lib.metadata/ColumnMetadata]
-  "Pivots this column and value on an address dimension."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   context      :- ::lib.schema.drill-thru/context]
-  (pivot-drill-pred query stage-number context lib.types.isa/address?))
-
-(mu/defn ^:private pivot-by-category-drill :- [:sequential lib.metadata/ColumnMetadata]
-  "Pivots this column and value on an category dimension."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   context      :- ::lib.schema.drill-thru/context]
-  (pivot-drill-pred query stage-number context
-                    (every-pred lib.types.isa/category?
-                                (complement lib.types.isa/address?))))
+(def ^:private pivot-predicates
+  {:category (every-pred lib.types.isa/category?
+                         (complement lib.types.isa/address?))
+   :location lib.types.isa/address?
+   :time     lib.types.isa/temporal?})
 
 (defn- breakout-type [query stage-number breakout]
   (let [column (lib.metadata.calculation/metadata query stage-number breakout)]
     (cond
       (lib.types.isa/temporal? column) :date
-      (lib.types.isa/address? column) :address
+      (lib.types.isa/address? column)  :address
       (lib.types.isa/category? column) :category)))
+
+(defn- breakout-pivot-types [query stage-number]
+  (case (mapv #(breakout-type query stage-number %)
+              (lib.breakout/breakouts query stage-number))
+    ([:date] [:date :category])
+    #{:category :location}
+
+    [:address]
+    #{:category :time}
+
+    ([]
+     [:category]
+     [:category :category])
+    #{:category :location :time}
+
+    #{}))
+
+(mu/defn ^:private pivot-drill-options :- [:maybe [:map-of
+                                                   ::lib.schema.drill-thru/pivot-types
+                                                   [:sequential lib.metadata/ColumnMetadata]]]
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
+             column
+             (some? value)
+             (= (:lib/source column) :source/aggregations)
+             (-> (lib.aggregation/aggregations query stage-number) count pos?))
+    (let [available-pivots (breakout-pivot-types query stage-number)
+          breakoutable     (lib.breakout/breakoutable-columns query stage-number)]
+      (->> (for [[pivot-type pred] pivot-predicates
+                 :when (available-pivots pivot-type)
+                 :let  [pivots (not-empty (filter pred breakoutable))]
+                 :when pivots]
+             [pivot-type pivots])
+           (into {})
+           not-empty))))
+
+(mu/defn has-pivot-drill :- :boolean
+  "Return true if there are legal pivoting options for the given column and value."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (boolean (pivot-drill-options query stage-number context)))
 
 (mu/defn pivot-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.pivot]
   "Return all possible pivoting options on the given column and value.
 
   See `:pivots` key, which holds a map `{t [breakouts...]}` where `t` is `:category`, `:location`, or `:time`.
   If a key is missing, there are no breakouts of that kind."
-  [query                              :- ::lib.schema/query
-   stage-number                       :- :int
-   {:keys [column value] :as context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (= (:lib/source column) :source/aggregations)
-             (-> (lib.aggregation/aggregations query stage-number) count pos?))
-    (let [breakout-pivot-types (case (mapv #(breakout-type query stage-number %)
-                                           (lib.breakout/breakouts query stage-number))
-                                 ([:date] [:date :category])
-                                 #{:category :location}
-
-                                 [:address]
-                                 #{:category :time}
-
-                                 ([]
-                                  [:category]
-                                  [:category :category])
-                                 #{:category :location :time}
-
-                                 #{})
-          by-category (when (breakout-pivot-types :category)
-                        (pivot-by-category-drill query stage-number context))
-          by-location (when (breakout-pivot-types :location)
-                        (pivot-by-location-drill query stage-number context))
-          by-time     (when (breakout-pivot-types :time)
-                        (pivot-by-time-drill     query stage-number context))
-          pivots      (merge (when (seq by-category) {:category by-category})
-                             (when (seq by-location) {:location by-location})
-                             (when (seq by-time)     {:time by-time}))]
-      ;; TODO: Do dimensions need to be attached? How is clicked.dimensions calculated in the FE?
-      (when-not (empty? pivots)
-        {:lib/type :metabase.lib.drill-thru/drill-thru
-         :type     :drill-thru/pivot
-         :pivots   pivots}))))
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (when-let [pivots (pivot-drill-options query stage-number context)]
+    {:lib/type :metabase.lib.drill-thru/drill-thru
+     :type     :drill-thru/pivot
+     :pivots   pivots}))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/pivot
   [_query _stage-number drill-thru]

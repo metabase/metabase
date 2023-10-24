@@ -36,6 +36,18 @@
                                               {:name   label
                                                :filter (operator op field-ref value)}))))
 
+(mu/defn has-quick-filter-drill :- :boolean
+  "Returns true if the quick filter drill can apply based on this click."
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  (and (lib.drill-thru.common/mbql-stage? query stage-number)
+       ;; (editable? query stage-number)
+       column
+       (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
+       (not (lib.types.isa/primary-key? column))
+       (not (lib.types.isa/foreign-key? column))))
+
 (mu/defn quick-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.quick-filter]
   "Filter the current query based on the value clicked.
 
@@ -46,15 +58,10 @@
 
   Note that this returns a single `::drill-thru` value with 1 or more `:operators`; these are rendered as a set of small
   buttons in a single row of the drop-down."
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             ;; (editable? query stage-number)
-             column
-             (some? value) ; Deliberately allows value :null, only a missing value should fail this test.
-             (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/foreign-key? column)))
+  [query                              :- ::lib.schema/query
+   stage-number                       :- :int
+   {:keys [column value] :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-quick-filter-drill query stage-number context)
     ;; for aggregate columns, we want to introduce a new stage when applying the drill-thru, `:new-stage?` is used to
     ;; track this. (#34346)
     (let [{:keys [column new-stage?]} (if (= (:lib/source column) :source/aggregations)

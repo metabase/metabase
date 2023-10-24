@@ -8,18 +8,25 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.summarize-column]
-  "A set of possible aggregations that can summarize this column: distinct values, sum, average.
-  Separate from [[summarize-column-by-time-drill]] which breaks out a column over time."
+(mu/defn has-summarize-column-drill :- :boolean
+  "Returns true if the [[summarize-column-drill]] applies."
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (nil? value)
-             (not (lib.types.isa/structured? column))
-             (not= (:lib/source column) :source/aggregations)
-             (not (lib.breakout/breakout-column? query stage-number column)))
+  (boolean (and (lib.drill-thru.common/mbql-stage? query stage-number)
+                column
+                (nil? value)
+                (not (lib.types.isa/structured? column))
+                (not= (:lib/source column) :source/aggregations)
+                (not (lib.breakout/breakout-column? query stage-number column)))))
+
+(mu/defn summarize-column-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.summarize-column]
+  "A set of possible aggregations that can summarize this column: distinct values, sum, average.
+  Separate from [[summarize-column-by-time-drill]] which breaks out a column over time."
+  [query                        :- ::lib.schema/query
+   stage-number                 :- :int
+   {:keys [column] :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-summarize-column-drill query stage-number context)
     ;; I'm not really super clear on how the FE is supposed to be able to display these.
     (let [aggregation-ops (concat [:distinct]
                                   (when (lib.types.isa/summable? column)

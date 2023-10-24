@@ -28,6 +28,17 @@ export function availableDrillThrus(
   );
 }
 
+export function hasDrillThrus(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata | DatasetColumn | undefined,
+  value: RowValue | undefined,
+  row: DataRow | undefined,
+  dimensions: Dimension[] | undefined,
+): boolean {
+  return ML.has_drill_thrus(query, stageIndex, column, value, row, dimensions);
+}
+
 // TODO: Precise types for each of the various extra args?
 export function drillThru(
   query: Query,

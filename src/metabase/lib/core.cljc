@@ -106,7 +106,8 @@
   database-id]
  [lib.drill-thru
   available-drill-thrus
-  drill-thru]
+  drill-thru
+  has-drill-thrus]
  [lib.drill-thru.pivot
   pivot-columns-for-type
   pivot-types]

@@ -11,6 +11,23 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
+(mu/defn has-distribution-drill :- :boolean
+  "Select a column and see a histogram of how many rows fall into an automatic set of bins/buckets.
+
+  Column click, and column cannot be: an aggregation, breakout, PK, structured, or a comment/description."
+  [query                  :- ::lib.schema/query
+   stage-number           :- :int
+   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  (and (lib.drill-thru.common/mbql-stage? query stage-number)
+       column
+       (nil? value)
+       (not= (:lib/source column) :source/aggregations)
+       (not (lib.types.isa/primary-key? column))
+       (not (lib.types.isa/structured?  column))
+       (not (lib.types.isa/comment?     column))
+       (not (lib.types.isa/description? column))
+       (not (lib.breakout/breakout-column? query stage-number column))))
+
 ;; TODO: The original `Question.distribution()` sets the display to `bar`, but that's out of scope for MLv2.
 ;; Make sure the FE does this on the question after evolving the query.
 (mu/defn distribution-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.distribution]
@@ -18,18 +35,10 @@
   - For dates, breaks out by month by default.
   - For numeric values, by an auto-selected set of bins
   - For strings, by each distinct value (which might be = the number of rows)"
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (nil? value)
-             (not= (:lib/source column) :source/aggregations)
-             (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/structured?  column))
-             (not (lib.types.isa/comment?     column))
-             (not (lib.types.isa/description? column))
-             (not (lib.breakout/breakout-column? query stage-number column)))
+  [query                        :- ::lib.schema/query
+   stage-number                 :- :int
+   {:keys [column] :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-distribution-drill query stage-number context)
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/distribution
      :column    column}))

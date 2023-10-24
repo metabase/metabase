@@ -25,6 +25,7 @@
    [metabase.mbql.js :as mbql.js]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
+   [metabase.util.memoize :as memoize]
    [metabase.util.log :as log]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
@@ -849,6 +850,19 @@
     ;; We have the UUID for the aggregation in its ref, so use that here.
     (some-> a-ref first (= :aggregation)) (assoc :lib/source-uuid (last a-ref))))
 
+(def ^:private parse-column
+  (memoize/lru js.metadata/parse-column :lru/threshold 256))
+
+(defn- base-dimension* [^js js-column]
+  (let [column     (parse-column js-column)
+        column-ref (when-let [a-ref (:field-ref column)]
+                     (legacy-ref->pMBQL a-ref))]
+    {:column     (fix-column-with-ref column-ref column)
+     :column-ref column-ref}))
+
+(def ^{:arglists '([js-column]) :private true} base-dimension
+  (memoize/lru base-dimension* :lru/threshold 256))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
   `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
@@ -862,15 +876,20 @@
   (`col` on data rows, `column` on dimensions), etc., hence the abstraction."
   [col-fn]
   (fn [^js cell]
-    (let [column     (js.metadata/parse-column (col-fn cell))
-          column-ref (when-let [a-ref (:field-ref column)]
-                       (legacy-ref->pMBQL a-ref))]
-      {:column     (fix-column-with-ref column-ref column)
-       :column-ref column-ref
-       :value      (.-value cell)})))
+    (assoc (base-dimension (col-fn cell)) :value (.-value cell))))
 
 (def ^:private row-cell       (js-cells-by #(.-col ^js %)))
 (def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
+
+(defn- drill-thru-context [a-query stage-number column value row dimensions]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (-> (base-dimension column)
+        (assoc :value (cond
+                        (undefined? value) nil   ; Missing a value, ie. a column click
+                        (nil? value)       :null ; Provided value is null, ie. database NULL
+                        :else              value))
+        (merge (when row                    {:row        (mapv row-cell row)})
+               (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)})))))
 
 (defn ^:export available-drill-thrus
   "Return an array (possibly empty) of drill-thrus given:
@@ -879,19 +898,21 @@
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
   - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
   [a-query stage-number column value row dimensions]
-  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [column-ref (when-let [a-ref (.-field_ref ^js column)]
-                       (legacy-ref->pMBQL a-ref))]
-      (->> (merge {:column     (fix-column-with-ref column-ref (js.metadata/parse-column column))
-                   :column-ref column-ref
-                   :value      (cond
-                                 (undefined? value) nil   ; Missing a value, ie. a column click
-                                 (nil? value)       :null ; Provided value is null, ie. database NULL
-                                 :else              value)}
-                  (when row                    {:row        (mapv row-cell       row)})
-                  (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
-           (lib.core/available-drill-thrus a-query stage-number)
-           to-array))))
+  (->> (drill-thru-context a-query stage-number column value row dimensions)
+       (lib.core/available-drill-thrus a-query stage-number)
+       to-array))
+
+(defn ^:export has-drill-thrus
+  "Return true if this column/cell has drill-thru actions available.
+  Full details are available with [[available-drill-thrus]], but this is useful to check for clickability without
+  expensively computing every drill-thru's details.
+  - Required column
+  - Nullable value
+  - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
+  [a-query stage-number column value row dimensions]
+  (lib.core/has-drill-thrus a-query stage-number
+                            (drill-thru-context a-query stage-number column value row dimensions)))
 
 (defn ^:export drill-thru
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.

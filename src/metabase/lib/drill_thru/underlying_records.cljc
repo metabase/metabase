@@ -9,10 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
-  "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
-  bucket. Eg. distribution of People by State, then click New York and see the table of all People filtered by
-  `STATE = 'New York'`."
+(mu/defn has-underlying-records-drill :- :boolean
+  "True if the [[underlying-records]] drill applies."
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column dimensions value]} :- ::lib.schema.drill-thru/context]
@@ -23,12 +21,28 @@
   ;; - dimensions which is [{column: STATE, value: "MN"}]
   ;; - value: the count.
   ;; So dimensions is exactly what we want.
+  (boolean (and (lib.drill-thru.common/mbql-stage? query stage-number)
+                column
+                (some? value)
+                (not-empty dimensions)
+                (not (lib.types.isa/structured? column)))))
+
+(mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
+  "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this
+  bucket. Eg. distribution of People by State, then click New York and see the table of all People filtered by
+  `STATE = 'New York'`."
+  [query                       :- ::lib.schema/query
+   stage-number                :- :int
+   {:keys [value] :as context} :- ::lib.schema.drill-thru/context]
+  ;; Clicking on breakouts is weird. Clicking on Count(People) by State: Minnesota yields a FE `clicked` with:
+  ;; - column is COUNT
+  ;; - row[0] has col: STATE, value: "Minnesota"
+  ;; - row[1] has col: count (source: "aggregation")
+  ;; - dimensions which is [{column: STATE, value: "MN"}]
+  ;; - value: the count.
+  ;; So dimensions is exactly what we want.
   ;; It returns the table name and row count, since that's used for pluralization of the name.
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (not-empty dimensions)
-             (not (lib.types.isa/structured? column)))
+  (when (has-underlying-records-drill query stage-number context)
     {:lib/type   :metabase.lib.drill-thru/drill-thru
      :type       :drill-thru/underlying-records
      ;; TODO: This is a bit confused for non-COUNT aggregations. Perhaps it should just always be 10 or something?

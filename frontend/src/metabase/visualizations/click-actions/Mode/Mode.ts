@@ -25,6 +25,23 @@ export class Mode {
     return this._queryMode.name;
   }
 
+  hasActionsForClick(
+    clicked: ClickObject | undefined,
+    settings: Record<string, any>,
+    extraData?: Record<string, any>,
+  ): boolean {
+    return (
+      Lib.hasDrillThrus(
+        this._question._getMLv2Query(),
+        /* stageIndex */ -1,
+        clicked?.column,
+        clicked?.value,
+        clicked?.data,
+        clicked?.dimensions,
+      ) || this._queryMode.clickActions.length > 0
+    );
+  }
+
   actionsForClick(
     clicked: ClickObject | undefined,
     settings: Record<string, any>,

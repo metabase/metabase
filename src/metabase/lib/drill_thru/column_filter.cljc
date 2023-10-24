@@ -8,17 +8,25 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn column-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-filter]
-  "Filtering at the column level, based on its type. Displays a submenu of eg. \"Today\", \"This Week\", etc. for date
-  columns."
+(mu/defn has-column-filter-drill :- :boolean
+  "Filtering at the column level, based on its type.
+  Column click, not a structured column."
   [query                  :- ::lib.schema/query
    stage-number           :- :int
    {:keys [column value]} :- ::lib.schema.drill-thru/context]
   ;; Note: original code uses an addition `clicked.column.field_ref != null` condition.
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (nil? value)
-             (not (lib.types.isa/structured? column)))
+  (and (lib.drill-thru.common/mbql-stage? query stage-number)
+       column
+       (nil? value)
+       (not (lib.types.isa/structured? column))))
+
+(mu/defn column-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-filter]
+  "Filtering at the column level, based on its type. Displays a submenu of eg. \"Today\", \"This Week\", etc. for date
+  columns."
+  [query                        :- ::lib.schema/query
+   stage-number                 :- :int
+   {:keys [column] :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-column-filter-drill query stage-number context)
     (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
                        (-> (lib.filter.operator/filter-operators column)
                            first

@@ -9,7 +9,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
-(mu/defn foreign-key-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-filter]
+(mu/defn has-foreign-key-drill :- :boolean
   "When clicking on a foreign key value, filter this query by that column.
 
   This has the same effect as the `=` filter on a generic field (ie. not a key), but renders differently.
@@ -18,11 +18,22 @@
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (not (lib.types.isa/primary-key? column))
-             (lib.types.isa/foreign-key? column))
+  (and (lib.drill-thru.common/mbql-stage? query stage-number)
+       column
+       (some? value)
+       (not (lib.types.isa/primary-key? column))
+       (lib.types.isa/foreign-key? column)))
+
+(mu/defn foreign-key-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-filter]
+  "When clicking on a foreign key value, filter this query by that column.
+
+  This has the same effect as the `=` filter on a generic field (ie. not a key), but renders differently.
+
+  Contrast [[object-detail-drill]], which shows the details of the foreign object."
+  [query                               :- ::lib.schema/query
+   stage-number                        :- :int
+   {:keys [column value], :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-foreign-key-drill query stage-number context)
     {:lib/type  :metabase.lib.drill-thru/drill-thru
      :type      :drill-thru/fk-filter
      :filter    (lib.options/ensure-uuid [:= {} (lib.ref/ref column) value])}))

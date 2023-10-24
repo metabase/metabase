@@ -50,3 +50,14 @@
              (some? value))
     (object-detail-drill-for query stage-number context
                              (> (count (lib.metadata.calculation/primary-keys query)) 1))))
+
+(mu/defn has-object-detail-drill :- :boolean
+  "When clicking a foreign key or primary key value, drill through to the details for that specific object.
+
+  Contrast [[foreign-key-drill]], which filters this query to only those rows with a specific value for a FK column.
+
+  Calls the original [[object-detail-drill]] since its conditions are too intricate to extract."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (boolean (object-detail-drill query stage-number context)))

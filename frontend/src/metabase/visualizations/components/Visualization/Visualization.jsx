@@ -223,6 +223,26 @@ class Visualization extends PureComponent {
     }
   }
 
+  hasClickActions(clicked) {
+    if (!clicked) {
+      return false;
+    }
+    const { metadata, getExtraDataForClick = () => ({}) } = this.props;
+
+    const seriesIndex = clicked.seriesIndex || 0;
+    const card = this.state.series[seriesIndex].card;
+    const question = this._getQuestionForCardCached(metadata, card);
+    const mode = this.getMode(this.props.mode, question);
+
+    return (
+      mode &&
+      mode.hasActionsForClick(
+        { ...clicked, extraData: getExtraDataForClick(clicked) },
+        {},
+      )
+    );
+  }
+
   getClickActions(clicked) {
     if (!clicked) {
       return [];
@@ -248,7 +268,7 @@ class Visualization extends PureComponent {
       return false;
     }
     try {
-      return this.getClickActions(clicked).length > 0;
+      return this.hasClickActions(clicked);
     } catch (e) {
       console.warn(e);
       return false;
@@ -342,10 +362,8 @@ class Visualization extends PureComponent {
     let { series, hovered, clicked } = this.state;
     let { style } = this.props;
 
-    const clickActions = this.getClickActions(clicked);
-    const regularClickActions = clickActions.filter(isRegularClickAction);
     // disable hover when click action is active
-    if (clickActions.length > 0) {
+    if (this.hasClickActions(clicked)) {
       hovered = null;
     }
 
@@ -525,7 +543,9 @@ class Visualization extends PureComponent {
           {this.props.onChangeCardAndRun && (
             <ConnectedClickActionsPopover
               clicked={clicked}
-              clickActions={regularClickActions}
+              clickActions={this.getClickActions(clicked).filter(
+                isRegularClickAction,
+              )}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}

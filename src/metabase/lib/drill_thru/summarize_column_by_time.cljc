@@ -38,6 +38,13 @@
              :breakout breakout-column
              :unit     (lib.temporal-bucket/raw-temporal-bucket bucketing-unit)}))))))
 
+(mu/defn has-summarize-column-by-time-drill :- :boolean
+  "Returns true if this column can be summarized by time."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   context      :- ::lib.schema.drill-thru/context]
+  (boolean (summarize-column-by-time-drill query stage-number context)))
+
 (defmethod lib.drill-thru.common/drill-thru-method :drill-thru/summarize-column-by-time
   [query stage-number {:keys [breakout column unit] :as _drill-thru} & _]
   (let [bucketed (lib.temporal-bucket/with-temporal-bucket breakout unit)]

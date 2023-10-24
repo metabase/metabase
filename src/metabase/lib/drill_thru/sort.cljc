@@ -31,29 +31,36 @@
   (when-let [[direction _opts _expr] (existing-order-by-clause query stage-number column)]
     direction))
 
-(mu/defn sort-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.sort]
-  "Sorting on a clicked column."
+(mu/defn has-sort-drill :- :boolean
+  "Whether the clicked column can be sorted."
   [query                                :- ::lib.schema/query
    stage-number                         :- :int
    {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
   ;; if we have a context with a `:column`, but no `:value`...
-  (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (nil? value)
-             (not (lib.types.isa/structured? column)))
-    ;; ...and the column is orderable, we can return a sort drill-thru.
-    (when (orderable-column? query stage-number column)
-      ;; check and see if there is already a sort on this column. If there is, we should only suggest flipping the
-      ;; direction to the opposite of what it is now. If there is no existing sort, then return both directions as
-      ;; options.
-      (let [existing-direction (existing-order-by-direction query stage-number column)]
-        {:lib/type        :metabase.lib.drill-thru/drill-thru
-         :type            :drill-thru/sort
-         :column          column
-         :sort-directions (case existing-direction
-                            :asc  [:desc]
-                            :desc [:asc]
-                            [:asc :desc])}))))
+  (boolean (and (lib.drill-thru.common/mbql-stage? query stage-number)
+                column
+                (nil? value)
+                (not (lib.types.isa/structured? column))
+                ;; ...and the column is orderable, we can return a sort drill-thru.
+                (orderable-column? query stage-number column))))
+
+(mu/defn sort-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.sort]
+  "Sorting on a clicked column."
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   {:keys [column], :as context} :- ::lib.schema.drill-thru/context]
+  (when (has-sort-drill query stage-number context)
+    ;; check and see if there is already a sort on this column. If there is, we should only suggest flipping the
+    ;; direction to the opposite of what it is now. If there is no existing sort, then return both directions as
+    ;; options.
+    (let [existing-direction (existing-order-by-direction query stage-number column)]
+      {:lib/type        :metabase.lib.drill-thru/drill-thru
+       :type            :drill-thru/sort
+       :column          column
+       :sort-directions (case existing-direction
+                          :asc  [:desc]
+                          :desc [:asc]
+                          [:asc :desc])})))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/sort
   ([query stage-number drill]

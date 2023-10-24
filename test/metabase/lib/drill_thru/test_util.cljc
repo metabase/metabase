@@ -1,9 +1,22 @@
 (ns metabase.lib.drill-thru.test-util
   "Adapted from frontend/src/metabase-lib/drills.unit.spec.ts"
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.drill-thru :as lib.drill-thru]
+   [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
+   [metabase.lib.drill-thru.distribution :as lib.drill-thru.distribution]
+   [metabase.lib.drill-thru.foreign-key :as lib.drill-thru.foreign-key]
+   [metabase.lib.drill-thru.object-details :as lib.drill-thru.object-details]
+   [metabase.lib.drill-thru.pivot :as lib.drill-thru.pivot]
+   [metabase.lib.drill-thru.quick-filter :as lib.drill-thru.quick-filter]
+   [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
+   [metabase.lib.drill-thru.summarize-column :as lib.drill-thru.summarize-column]
+   [metabase.lib.drill-thru.summarize-column-by-time :as lib.drill-thru.summarize-column-by-time]
+   [metabase.lib.drill-thru.underlying-records :as lib.drill-thru.underlying-records]
+   [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.test-metadata :as meta]
@@ -121,6 +134,23 @@
     [:expected [:sequential [:map
                              [:type ::lib.schema.drill-thru/drill-thru.type]]]]]])
 
+(def ^:private has-drills-direct
+  [[#{:drill-thru/fk-filter}          lib.drill-thru.foreign-key/has-foreign-key-drill]
+   [#{:drill-thru/pk
+      :drill-thru/zoom
+      :drill-thru/fk-details}         lib.drill-thru.object-details/has-object-detail-drill]
+   [#{:drill-thru/pivot}              lib.drill-thru.pivot/has-pivot-drill]
+   [#{:drill-thru/quick-filter}       lib.drill-thru.quick-filter/has-quick-filter-drill]
+   [#{:drill-thru/underlying-records} lib.drill-thru.underlying-records/has-underlying-records-drill]
+   [#{:drill-thru/zoom-in.timeseries} lib.drill-thru.zoom-in-timeseries/has-zoom-in-timeseries-drill]])
+
+(def ^:private has-drills-dimensions
+  [[#{:drill-thru/distribution}             lib.drill-thru.distribution/has-distribution-drill]
+   [#{:drill-thru/column-filter}            lib.drill-thru.column-filter/has-column-filter-drill]
+   [#{:drill-thru/sort}                     lib.drill-thru.sort/has-sort-drill]
+   [#{:drill-thru/summarize-column}         lib.drill-thru.summarize-column/has-summarize-column-drill]
+   [#{:drill-thru/summarize-column-by-time} lib.drill-thru.summarize-column-by-time/has-summarize-column-by-time-drill]])
+
 (mu/defn test-available-drill-thrus
   [{:keys [column-name click-type query-type query-table expected]
     :or   {query-table "ORDERS"}
@@ -132,7 +162,25 @@
       (testing (str "\nQuery = \n"   (u/pprint-to-str query)
                     "\nContext =\n" (u/pprint-to-str context))
         (is (=? expected
-                (lib/available-drill-thrus query -1 context)))))))
+                (lib/available-drill-thrus query -1 context)))
+        (let [exp-types    (set (map :type expected))
+              dim-contexts (#'lib.drill-thru/dimension-contexts context)]
+          (testing "all `expected` drills are part of the has-drill-thrus test"
+            (let [known-drills (->> (concat has-drills-direct has-drills-dimensions)
+                                    (map first)
+                                    (reduce set/union #{}))]
+              (doseq [exp-type exp-types]
+                (is (contains? known-drills exp-type)))))
+
+          (testing (str "has-drill-thrus for " (seq exp-types))
+            (doseq [[types has?] has-drills-direct]
+              (is (= (boolean (seq (set/intersection exp-types types)))
+                     (has? query -1 context))
+                  (str "failed for " types)))
+            (doseq [[types has?] has-drills-dimensions]
+              (is (= (boolean (seq (set/intersection exp-types types)))
+                     (boolean (some #(has? query -1 %) dim-contexts)))
+                  (str "failed for " types)))))))))
 
 (def ^:private TestCaseWithDrillType
   [:merge
