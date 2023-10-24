@@ -1,18 +1,18 @@
 import { jt, t } from "ttag";
+
+import type { TokenStatus } from "metabase-types/api";
+
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 
 interface PaymentBannerProps {
   isAdmin: boolean;
-  tokenStatusStatus: string | undefined;
+  tokenStatus: TokenStatus;
 }
 
-export const PaymentBanner = ({
-  isAdmin,
-  tokenStatusStatus,
-}: PaymentBannerProps) => {
-  if (isAdmin && tokenStatusStatus === "past-due") {
+export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
+  if (isAdmin && tokenStatus.status === "past-due") {
     return (
       <Banner>
         {jt`⚠️ We couldn't process payment for your account. Please ${(
@@ -26,7 +26,7 @@ export const PaymentBanner = ({
         )} to avoid service interruptions.`}
       </Banner>
     );
-  } else if (isAdmin && tokenStatusStatus === "unpaid") {
+  } else if (isAdmin && tokenStatus.status === "unpaid") {
     return (
       <Banner>
         {jt`⚠️ Pro features won’t work right now due to lack of payment. ${(
@@ -40,6 +40,12 @@ export const PaymentBanner = ({
         )} to restore Pro functionality.`}
       </Banner>
     );
+  } else if (isAdmin && tokenStatus.status === "invalid") {
+    return (
+      <Banner>
+        {jt`⚠️ Pro features error. ` + (tokenStatus["error-details"] || "")}
+      </Banner>
+    );
   }
 
   return null;
@@ -47,8 +53,12 @@ export const PaymentBanner = ({
 
 export function shouldRenderPaymentBanner({
   isAdmin,
-  tokenStatusStatus,
+  tokenStatus,
 }: PaymentBannerProps) {
-  const shouldRenderStatuses: (string | undefined)[] = ["past-due", "unpaid"];
-  return isAdmin && shouldRenderStatuses.includes(tokenStatusStatus);
+  const shouldRenderStatuses: (string | undefined)[] = [
+    "past-due",
+    "unpaid",
+    "invalid",
+  ];
+  return isAdmin && shouldRenderStatuses.includes(tokenStatus?.status);
 }

@@ -19,7 +19,7 @@ export interface Dashboard {
   description: string | null;
   model?: string;
   dashcards: (DashboardCard | ActionDashboardCard)[];
-  ordered_tabs?: DashboardOrderedTab[];
+  tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
@@ -70,7 +70,7 @@ export type DashboardCard = BaseDashboardCard & {
 
 export type DashboardTabId = number;
 
-export type DashboardOrderedTab = {
+export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
   entity_id: string;

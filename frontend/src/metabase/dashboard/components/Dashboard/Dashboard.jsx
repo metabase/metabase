@@ -196,7 +196,7 @@ class Dashboard extends Component {
         addCardToDashboard({
           dashId: dashboardId,
           cardId: addCardOnLoad,
-          tabId: this.props.dashboard.ordered_tabs[0]?.id ?? null,
+          tabId: this.props.dashboard.tabs[0]?.id ?? null,
         });
       }
     } catch (error) {

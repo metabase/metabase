@@ -217,7 +217,7 @@
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
-                  :ordered_tabs
+                  :tabs
                   :collection_authority_level
                   :can_write
                   :param_fields
@@ -273,6 +273,7 @@
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
+                           @api/*current-user*
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
@@ -364,7 +365,7 @@
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))
 
-                              id->new-tab-id (when-let [existing-tabs (seq (:ordered_tabs existing-dashboard))]
+                              id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                (duplicate-tabs dash existing-tabs))]
                           (reset! new-cards (vals id->new-card))
                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
@@ -641,19 +642,19 @@
                      :series             [{:id 123
                                            ...}]}
                      ...]
-     :ordered_tabs [{:id       ... ; DashboardTab ID
+     :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [id :as {{:keys [cards ordered_tabs]} :body}]
+  [id :as {{:keys [cards tabs]} :body}]
   {id           ms/PositiveInt
    cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
-   ;; ordered_tabs should be required in production, making it optional because lots of
+   ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
-   ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+   tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
-                      (t2/hydrate [:dashcards :series :card] :ordered_tabs))
-        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs)]
-    (when (and (seq (:ordered_tabs dashboard))
+                      (t2/hydrate [:dashcards :series :card] :tabs))
+        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)]
+    (when (and (seq (:tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
@@ -662,7 +663,7 @@
         (t2/with-transaction [_conn]
           (let [{:keys [old->new-tab-id
                         deleted-tab-ids]
-                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
+                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
                 deleted-tab-ids          (set deleted-tab-ids)
                 current-cards            (cond->> (:dashcards dashboard)
                                            (seq deleted-tab-ids)
@@ -683,8 +684,8 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
-   {:cards        (t2/hydrate (dashboard/dashcards id) :series)
-    :ordered_tabs (dashboard/ordered-tabs id)}))
+   {:cards (t2/hydrate (dashboard/dashcards id) :series)
+    :tabs  (dashboard/tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."

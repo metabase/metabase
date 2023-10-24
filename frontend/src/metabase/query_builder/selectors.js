@@ -617,6 +617,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getIsSavedQuestionChanged,
     getOriginalQuestion,
+    getUiControls,
   ],
   (
     queryBuilderMode,
@@ -625,23 +626,29 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     isSavedQuestionChanged,
     originalQuestion,
+    uiControls,
   ) => {
     const isEditingModel = queryBuilderMode === "dataset";
-    const isNewQuestion = !originalQuestion;
 
-    const shouldShowUnsavedChangesWarningForModels =
-      isEditingModel && (isDirty || isMetadataDirty);
-    const isNewNonEmptyQuestion =
-      question && isNewQuestion && !question.isEmpty();
-    const shouldShowUnsavedChangesWarningForSqlQuery =
-      question != null &&
-      question.isNative() &&
-      (isSavedQuestionChanged || isNewNonEmptyQuestion);
+    if (isEditingModel) {
+      return isDirty || isMetadataDirty;
+    }
 
-    return (
-      shouldShowUnsavedChangesWarningForModels ||
-      shouldShowUnsavedChangesWarningForSqlQuery
-    );
+    if (question?.isNative()) {
+      const isNewQuestion = !originalQuestion;
+
+      if (isNewQuestion) {
+        return !question.isEmpty();
+      }
+
+      return isSavedQuestionChanged;
+    }
+
+    if (originalQuestion?.isStructured()) {
+      return uiControls.isModifiedFromNotebook;
+    }
+
+    return false;
   },
 );
 
@@ -649,20 +656,8 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [
-    getQuestion,
-    getQueryResults,
-    getIsObjectDetail,
-    getLastRunDatasetQuery,
-    getIsShowingRawTable,
-  ],
-  (
-    question,
-    results,
-    isObjectDetail,
-    lastRunDatasetQuery,
-    isShowingRawTable,
-  ) => {
+  [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
+  (question, results, lastRunDatasetQuery, isShowingRawTable) => {
     let display = question && question.display();
     let settings = question && question.settings();
 
