@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import reactAnsiStyle from "react-ansi-style";
 
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
 

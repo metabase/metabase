@@ -1,6 +1,8 @@
 import { Component } from "react";
 import cx from "classnames";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { Icon } from "metabase/core/components/Icon";
 import {

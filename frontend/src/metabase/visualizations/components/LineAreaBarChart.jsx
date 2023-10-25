@@ -97,6 +97,7 @@ export default class LineAreaBarChart extends Component {
     showTitle: PropTypes.bool,
     isDashboard: PropTypes.bool,
     headerIcon: PropTypes.object,
+    width: PropTypes.number,
   };
 
   static defaultProps = {};
@@ -262,6 +263,7 @@ export default class LineAreaBarChart extends Component {
       onRemoveSeries,
       settings,
       canRemoveSeries,
+      width,
     } = this.props;
 
     // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
@@ -296,6 +298,7 @@ export default class LineAreaBarChart extends Component {
             icon={headerIcon}
             actionButtons={actionButtons}
             onSelectTitle={canSelectTitle ? this.handleSelectTitle : undefined}
+            width={width}
           />
         )}
         <LegendLayout
