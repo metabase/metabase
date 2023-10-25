@@ -16,7 +16,7 @@ export const getCardSeriesModels = (
   columns: ChartColumns,
   datasetIndex: number,
 ): CardSeriesModel => {
-  let metrics;
+  let metrics: SeriesModel[];
   if ("breakout" in columns) {
     const { metric, breakout } = columns;
     const breakoutValues = getBreakoutDistinctValues(data, breakout.index);

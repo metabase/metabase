@@ -24,6 +24,7 @@ import {
 } from "metabase/visualizations";
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { getDefaultStackingValue } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   isDimension,
   isMetric,
@@ -360,23 +361,14 @@ export const STACKABLE_SETTINGS = {
       return true;
     },
     getDefault: ([{ card, data }], settings) => {
-      // legacy setting and default for D-M-M+ charts
-      if (settings["stackable.stacked"]) {
-        return settings["stackable.stacked"];
-      }
-
-      const shouldStack =
-        card.display === "area" &&
-        (settings["graph.metrics"].length > 1 ||
-          settings["graph.dimensions"].length > 1);
-
-      return shouldStack ? "stacked" : null;
+      return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
         STACKABLE_DISPLAY_TYPES.has(display),
       );
+
       return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],

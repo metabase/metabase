@@ -60,6 +60,10 @@ export type SeriesSettings = {
   color?: string;
   show_series_values?: boolean;
   display?: string;
+  axis?: string;
+  "line.interpolate"?: string;
+  "line.marker_enabled"?: boolean;
+  "line.missing"?: string;
 };
 
 export type SeriesOrderSetting = {

@@ -7,6 +7,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { CardSeriesModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import { isNumeric } from "metabase-lib/types/utils/isa";
 
 const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
@@ -58,8 +59,12 @@ export const buildDimensionAxis = (
     return renderingContext.formatValue(value, {
       column,
       ...(settings.column?.(column) ?? {}),
+      jsx: false,
     });
   };
+
+  const boundaryGap =
+    axisType === "value" ? undefined : ([0.02, 0.02] as [number, number]);
 
   return {
     ...getAxisNameDefaultOption(
@@ -70,20 +75,24 @@ export const buildDimensionAxis = (
     axisTick: {
       show: false,
     },
-    boundaryGap: [0.02, 0.02] as [number, number],
+    boundaryGap,
     splitLine: {
       show: false,
     },
     type: axisType,
     axisLabel: {
       ...getTicksDefaultOption(renderingContext),
+      // Value is always converted to a string by ECharts
       formatter: (value: string) => {
-        const formatted = formatter(
-          // TODO: replace hardcoded date format
-          axisType === "time"
-            ? moment(value).format("YYYY-MM-DDTHH:mm:ss")
-            : value,
-        );
+        let valueToFormat: string | number = value;
+
+        if (axisType === "time") {
+          valueToFormat = moment(value).format("YYYY-MM-DDTHH:mm:ss");
+        } else if (isNumeric(column)) {
+          valueToFormat = parseInt(value, 10);
+        }
+
+        const formatted = formatter(valueToFormat);
 
         // Spaces force having padding between ticks
         return ` ${formatted} `;

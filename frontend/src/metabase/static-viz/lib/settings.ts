@@ -23,7 +23,7 @@ const getColumnSettings = (
     return null;
   }
 
-  return settings.column_settings?.[columnKey];
+  return { ...(settings.column_settings?.[columnKey] ?? {}), column };
 };
 
 export const getCommonStaticVizSettings = (
@@ -38,5 +38,5 @@ export const getCommonStaticVizSettings = (
       getColumnSettings(column, settings),
   };
 
-  return { settings, ...dashcardSettings };
+  return { ...settings, ...dashcardSettings };
 };
