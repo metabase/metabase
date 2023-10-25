@@ -60,7 +60,7 @@ const TARGET_QUESTION = {
 
 const DASHBOARD_FILTER_TEXT = createMockActionParameter({
   id: "1",
-  name: "filter-text",
+  name: "Text filter",
   slug: "filter-text",
   type: "string/=",
   sectionId: "string",
@@ -68,7 +68,7 @@ const DASHBOARD_FILTER_TEXT = createMockActionParameter({
 
 const DASHBOARD_FILTER_TIME = createMockActionParameter({
   id: "2",
-  name: "filter-time",
+  name: "Time filter",
   slug: "filter-time",
   type: "date/month-year",
   sectionId: "date",
@@ -249,7 +249,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
               expect(search).to.equal(
-                `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}`,
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
               );
             });
           });
@@ -299,7 +299,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
               expect(search).to.equal(
-                `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.name}=${POINT_CREATED_AT}`,
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
               );
             });
           });
@@ -492,12 +492,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${DASHBOARD_FILTER_TEXT.name}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
+      const urlWithParams = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
       const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
       const expectedUrlWithParams = urlWithParams
         .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
         .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
-        .replace(`{{${DASHBOARD_FILTER_TEXT.name}}}`, FILTER_VALUE);
+        .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
@@ -579,7 +579,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.location("search").should(
             "eq",
-            `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}`,
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
           );
         },
       );
@@ -612,7 +612,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
           cy.location("search").should(
             "eq",
-            `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.name}=${POINT_CREATED_AT}`,
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
           );
         },
       );
