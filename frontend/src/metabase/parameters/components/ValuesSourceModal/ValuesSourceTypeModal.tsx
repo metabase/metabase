@@ -26,6 +26,7 @@ import type Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
 import type { UiParameter } from "metabase-lib/parameters/types";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
@@ -420,7 +421,7 @@ const getSourceTypeOptions = (
   parameter: UiParameter,
 ): RadioOption<ValuesSourceType>[] => {
   return [
-    ...("fields" in parameter && parameter.fields.length > 0
+    ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
     { name: t`From another model or question`, value: "card" },

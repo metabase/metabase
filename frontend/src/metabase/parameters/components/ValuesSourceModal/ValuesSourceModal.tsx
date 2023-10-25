@@ -6,6 +6,7 @@ import {
   getSourceType,
 } from "metabase-lib/parameters/utils/parameter-source";
 import type { UiParameter } from "metabase-lib/parameters/types";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 import ValuesSourceCardModal from "./ValuesSourceCardModal";
 
@@ -67,10 +68,7 @@ const ValuesSourceModal = ({
 const getInitialSourceType = (parameter: UiParameter) => {
   const sourceType = getSourceType(parameter);
 
-  return sourceType === null &&
-    !("fields" in parameter && parameter.fields.length > 0)
-    ? "card"
-    : sourceType;
+  return sourceType === null && !hasFields(parameter) ? "card" : sourceType;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
