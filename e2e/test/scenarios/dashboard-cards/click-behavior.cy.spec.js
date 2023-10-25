@@ -47,6 +47,14 @@ const QUESTION_LINE_CHART = {
   },
 };
 
+const QUESTION_TABLE = {
+  name: "Table",
+  display: "table",
+  query: {
+    ...QUESTION_LINE_CHART.query,
+  },
+};
+
 const OBJECT_DETAIL_CHART = {
   display: "object",
   query: {
@@ -137,12 +145,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           visitDashboard(card.dashboard_id);
 
           clickLastLineChartPoint();
-          popover()
-            .should("contain", "See these Orders")
-            .and("contain", "See this month by week")
-            .and("contain", "Break out by…")
-            .and("contain", "Automatic insights…")
-            .and("contain", "Filter by this value");
+          assertDrillThroughMenuOpen();
         },
       );
     });
@@ -503,12 +506,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           saveDashboard();
 
           clickLastLineChartPoint();
-          popover()
-            .should("contain", "See these Orders")
-            .and("contain", "See this month by week")
-            .and("contain", "Break out by…")
-            .and("contain", "Automatic insights…")
-            .and("contain", "Filter by this value");
+          assertDrillThroughMenuOpen();
         },
       );
     });
@@ -640,6 +638,26 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
   });
+
+  describe("table", () => {
+    const questionDetails = QUESTION_TABLE;
+
+    it("should open drill-through menu as a default click-behavior", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+
+          cy.findAllByTestId("table-row")
+            .eq(POINT_INDEX)
+            .findAllByTestId("cell-data")
+            .last()
+            .click();
+
+          assertDrillThroughMenuOpen();
+        },
+      );
+    });
+  });
 });
 
 /**
@@ -710,4 +728,13 @@ const addTimeParameter = () => {
     cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
     cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
   });
+};
+
+const assertDrillThroughMenuOpen = () => {
+  popover()
+    .should("contain", "See these Orders")
+    .and("contain", "See this month by week")
+    .and("contain", "Break out by…")
+    .and("contain", "Automatic insights…")
+    .and("contain", "Filter by this value");
 };
