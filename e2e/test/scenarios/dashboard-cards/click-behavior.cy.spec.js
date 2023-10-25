@@ -214,6 +214,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           addDashboardDestination();
+          cy.get("aside").findByText("No available targets").should("exist");
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -249,6 +250,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           addDashboardDestination();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
           addTextParameter();
           cy.get("aside").button("Done").click();
 
@@ -289,6 +293,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           addDashboardDestination();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
           addTextParameter();
           addTimeParameter();
           cy.get("aside").button("Done").click();
@@ -658,6 +665,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
           addDashboardDestination();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
           addTextParameter();
           addTimeParameter();
 
@@ -692,7 +702,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               ),
             )
             .should("exist");
-          cy.pause();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -811,7 +820,6 @@ const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
   modal().findByText(TARGET_DASHBOARD.name).click();
-  cy.get("aside").findByText("No available targets").should("not.exist");
 };
 
 const addSavedQuestionDestination = () => {
