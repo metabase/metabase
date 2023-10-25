@@ -634,7 +634,7 @@
 
 (defn- offset-datetime->unoffset-datetime
   "Remove the offset from a datetime, returning a string represnetation in whatever timezone the `database` is configured
-  to use. This is necessary since MariaDB doesn't support timezone offsets and so we need to calculate one by hand."
+  to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need to calculate one by hand."
    [driver database ^OffsetDateTime offset-time]
   (let [zone-id     (t/zone-id (driver/db-default-timezone driver database))]
     (t/local-date-time offset-time zone-id )))
@@ -645,17 +645,17 @@
   (fn [_ val] (type val)))
 
 (defmethod value->string :default
-  [_ val]
+  [_driver val]
   (str val))
 
 (defmethod value->string Boolean
-  [_ val]
+  [_driver val]
   (if val
     "1"
     "0"))
 
 (defmethod value->string LocalDateTime
-  [_ val]
+  [_driver val]
   (t/format :iso-local-date-time val))
 
 (let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
@@ -684,11 +684,11 @@
                                  "\t" "\\t"}))
 
 (defn- row->tsv
-  [column-count row]
+  [driver column-count row]
   (when (not= column-count (count row))
     (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
-       (map (comp sanitize-value value->string))
+       (map (comp sanitize-value (partial value->string driver)))
        (str/join "\t")))
 
 (defn- get-global-variable
@@ -710,7 +710,7 @@
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs (map (partial row->tsv (count column-names)) values)
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
                                 :columns (map keyword column-names)}
                                :quoted  true
