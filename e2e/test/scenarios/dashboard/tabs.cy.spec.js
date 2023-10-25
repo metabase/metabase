@@ -158,7 +158,7 @@ describe("scenarios > dashboard > tabs", () => {
       getDashboardCard().then(element => {
         cy.get("@card2OriginalPosition").then(originalPosition => {
           const position = element.offset();
-          // approximately to avoid possibly flakyness, we just want it to be in the same grid cell
+          // approximately to avoid possibly flakiness, we just want it to be in the same grid cell
           expect(position.left).to.approximately(originalPosition.left, 10);
           expect(position.top).to.approximately(originalPosition.top, 10);
         });
