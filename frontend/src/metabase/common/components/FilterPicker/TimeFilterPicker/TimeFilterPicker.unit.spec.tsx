@@ -1,4 +1,4 @@
-import moment from "moment";
+import dayjs from "dayjs";
 import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
@@ -159,7 +159,7 @@ describe("TimeFilterPicker", () => {
 
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([moment("11:15", "HH:mm").toDate()]);
+      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
     });
 
     it("should add a filter with two values", async () => {
@@ -176,8 +176,8 @@ describe("TimeFilterPicker", () => {
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe("between");
       expect(filterParts?.values).toEqual([
-        moment("11:15", "HH:mm").toDate(),
-        moment("12:30", "HH:mm").toDate(),
+        dayjs("11:15", "HH:mm").toDate(),
+        dayjs("12:30", "HH:mm").toDate(),
       ]);
     });
 
@@ -205,7 +205,7 @@ describe("TimeFilterPicker", () => {
     it("should render a filter with one value", () => {
       const opts = createFilteredQuery({
         operator: ">",
-        values: [moment("11:15", "HH:mm").toDate()],
+        values: [dayjs("11:15", "HH:mm").toDate()],
       });
       setup(opts);
 
@@ -224,15 +224,15 @@ describe("TimeFilterPicker", () => {
 
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([moment("20:45", "HH:mm").toDate()]);
+      expect(filterParts?.values).toEqual([dayjs("20:45", "HH:mm").toDate()]);
     });
 
     it("should render a filter with two values", () => {
       const opts = createFilteredQuery({
         operator: "between",
         values: [
-          moment("11:15", "HH:mm").toDate(),
-          moment("13:00", "HH:mm").toDate(),
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("13:00", "HH:mm").toDate(),
         ],
       });
       setup(opts);
@@ -248,8 +248,8 @@ describe("TimeFilterPicker", () => {
       const opts = createFilteredQuery({
         operator: "between",
         values: [
-          moment("11:15", "HH:mm").toDate(),
-          moment("13:00", "HH:mm").toDate(),
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("13:00", "HH:mm").toDate(),
         ],
       });
       const { getNextFilterParts } = setup(opts);
@@ -260,8 +260,8 @@ describe("TimeFilterPicker", () => {
       let filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe("between");
       expect(filterParts?.values).toEqual([
-        moment("08:00", "HH:mm").toDate(),
-        moment("13:00", "HH:mm").toDate(),
+        dayjs("08:00", "HH:mm").toDate(),
+        dayjs("13:00", "HH:mm").toDate(),
       ]);
 
       userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
@@ -270,8 +270,8 @@ describe("TimeFilterPicker", () => {
       filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe("between");
       expect(filterParts?.values).toEqual([
-        moment("08:00", "HH:mm").toDate(),
-        moment("17:31", "HH:mm").toDate(),
+        dayjs("08:00", "HH:mm").toDate(),
+        dayjs("17:31", "HH:mm").toDate(),
       ]);
     });
 
@@ -314,7 +314,7 @@ describe("TimeFilterPicker", () => {
     it("should change an operator", async () => {
       const opts = createFilteredQuery({
         operator: "<",
-        values: [moment("11:15", "HH:mm").toDate()],
+        values: [dayjs("11:15", "HH:mm").toDate()],
       });
       const { getNextFilterParts } = setup(opts);
 
