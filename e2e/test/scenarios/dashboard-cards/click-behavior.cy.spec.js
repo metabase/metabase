@@ -686,7 +686,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
 
-          cy.log("it allows to set click behavior for 'Count' column");
+          cy.log(
+            "it allows to set custom destination (dashboard) click behavior for 'Count' column",
+          );
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Dashboard").click();
@@ -699,7 +701,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.icon("chevronleft").click();
 
-          cy.log("it allows to set click behavior for 'Created at' column");
+          cy.log(
+            "it allows to set custom destination (question) click behavior for 'Created at' column",
+          );
           cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
           /**
            * TODO: remove the next line when metabase#34845 is fixed
