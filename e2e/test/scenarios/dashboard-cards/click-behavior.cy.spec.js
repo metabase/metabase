@@ -213,10 +213,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Dashboard").click();
-          modal().findByText(TARGET_DASHBOARD.name).click();
-          cy.get("aside").findByText("No available targets").should("exist");
+          addDashboardDestination();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -357,11 +354,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           addSavedQuestionDestination();
-          cy.get("aside").findByText("Orders → Created At").click();
-          popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
-          });
+          addSavedQuestionCreatedAtParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -397,16 +390,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getDashboardCard().realHover().icon("click").click();
           addSavedQuestionDestination();
-          cy.get("aside").findByText("Orders → Created At").click();
-          popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
-          });
-          cy.get("aside").findByText("Orders → Quantity").click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
+          addSavedQuestionCreatedAtParameter();
+          addSavedQuestionQuantityParameter();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -688,16 +673,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
            */
           cy.get("aside").findByText("Unknown").click();
           addSavedQuestionDestination();
-          cy.get("aside").findByText("Orders → Created At").click();
-          popover().within(() => {
-            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
-          });
-          cy.get("aside").findByText("Orders → Quantity").click();
-          popover().within(() => {
-            cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
-            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
-          });
+          addSavedQuestionCreatedAtParameter();
+          addSavedQuestionQuantityParameter();
 
           cy.icon("chevronleft").click();
 
@@ -841,6 +818,22 @@ const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
   modal().findByText(TARGET_QUESTION.name).click();
+};
+
+const addSavedQuestionCreatedAtParameter = () => {
+  cy.get("aside").findByText("Orders → Created At").click();
+  popover().within(() => {
+    cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
+  });
+};
+
+const addSavedQuestionQuantityParameter = () => {
+  cy.get("aside").findByText("Orders → Quantity").click();
+  popover().within(() => {
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
+    cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+  });
 };
 
 const addTextParameter = () => {
