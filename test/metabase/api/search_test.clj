@@ -374,6 +374,9 @@
 (deftest moderated-status-test
   (let [search-term "moderated-status-test"]
     (mt/with-temp [:model/Card {card-id :id} {:name "moderated-status-test"}]
+      ;; an item could have multiple moderation-review, and it's current status is defined as
+      ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
+      ;; test result return the most recent status and don't duplicate the result
       (doseq [status ["verified" nil "verified"]]
         (moderation-review/create-review! {:moderated_item_id   card-id
                                            :moderated_item_type "card"

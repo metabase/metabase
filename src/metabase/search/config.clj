@@ -245,7 +245,8 @@
    [:table.description :table_description]])
 
 (defmulti columns-for-model
-  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically."
+  "The columns that will be returned by the query for `model`, excluding `:model`, which is added automatically.
+  This is not guaranteed to be the final list of columns, new columns can be added by calling [[api.search/replace-select]]"
   {:arglists '([model])}
   (fn [model] model))
 
