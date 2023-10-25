@@ -30,11 +30,7 @@ export const getSeriesColors = (
 };
 
 export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {
-  if (
-    cardDisplay === "combo" ||
-    // TODO: remove before merging
-    cardDisplay === "combo-echart"
-  ) {
+  if (cardDisplay === "combo") {
     return index === 0 ? "line" : "bar";
   }
 

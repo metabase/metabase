@@ -54,9 +54,8 @@ export function seriesSetting({
       getHidden: (single, settings, { series }) => {
         return (
           // TODO: remove before merging
-          !["line", "area", "bar", "combo", "combo-echart"].includes(
-            single.card.display,
-          ) || settings["stackable.stack_type"] != null
+          !["line", "area", "bar", "combo"].includes(single.card.display) ||
+          settings["stackable.stack_type"] != null
         );
       },
 

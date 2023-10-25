@@ -78,8 +78,8 @@ const getSeriesFunction = (
 // settings computation code in the static rendering environment
 export const computeStaticComboChartSettings = (
   rawSeries: RawSeries,
-  renderingContext: RenderingContext,
   dashcardSettings: VisualizationSettings,
+  renderingContext: RenderingContext,
 ): ComputedVisualizationSettings => {
   const mainCard = rawSeries[0].card;
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);

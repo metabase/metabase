@@ -25,7 +25,6 @@ import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import { Heading } from "./visualizations/Heading";
-import { ComboChartPlayground } from "./visualizations/ComboChartPlayground";
 
 export default function () {
   registerVisualization(Scalar);
@@ -49,6 +48,5 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(ActionViz);
   registerVisualization(Heading);
-  registerVisualization(ComboChartPlayground);
   setDefaultVisualization(Table);
 }

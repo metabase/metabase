@@ -1,5 +1,4 @@
 import { init } from "echarts";
-
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
@@ -11,8 +10,8 @@ const HEIGHT = 360;
 
 export const ComboChart = ({
   rawSeries,
-  renderingContext,
   dashcardSettings,
+  renderingContext,
 }: IsomorphicStaticChartProps) => {
   const chart = init(null, null, {
     renderer: "svg",
@@ -23,8 +22,8 @@ export const ComboChart = ({
 
   const computedVisualizationSettings = computeStaticComboChartSettings(
     rawSeries,
-    renderingContext,
     dashcardSettings,
+    renderingContext,
   );
 
   const chartModel = getCartesianChartModel(
