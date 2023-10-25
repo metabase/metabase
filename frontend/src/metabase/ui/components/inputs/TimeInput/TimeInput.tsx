@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import type { ChangeEvent } from "react";
-import moment from "moment-timezone";
+import dayjs from "dayjs";
 import { TimeInput as MantineTimeInput } from "@mantine/dates";
 import type { TimeInputProps as MantineTimeInputProps } from "@mantine/dates";
 
@@ -52,10 +52,10 @@ export function TimeInput({
 }
 
 function formatTime(time: Date) {
-  return moment(time).format(TIME_FORMAT);
+  return dayjs(time).format(TIME_FORMAT);
 }
 
 function parseTime(value: string) {
-  const time = moment(value, TIME_FORMAT, true);
+  const time = dayjs(value, TIME_FORMAT, true);
   return time.isValid() ? time.toDate() : undefined;
 }
