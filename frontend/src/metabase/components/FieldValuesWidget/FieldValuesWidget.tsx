@@ -168,28 +168,33 @@ export function FieldValuesWidgetInner({
     setLoadingState("LOADING");
     setOptions([]);
 
-    let values: FieldValue[] = [];
-    let has_more_values = false;
+    let newValues: FieldValue[] = [];
+    let hasMoreValues = false;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
-        ({ values, has_more_values } =
-          await dispatchFetchDashboardParameterValues(query));
+        const { values, has_more_values } =
+          await dispatchFetchDashboardParameterValues(query);
+        newValues = values;
+        hasMoreValues = has_more_values;
       } else if (canUseCardEndpoints(question)) {
-        ({ values, has_more_values } = await dispatchFetchCardParameterValues(
-          query,
-        ));
+        const { values, has_more_values } =
+          await dispatchFetchCardParameterValues(query);
+        newValues = values;
+        hasMoreValues = has_more_values;
       } else if (canUseParameterEndpoints(parameter)) {
-        ({ values, has_more_values } = await dispatchFetchParameterValues(
+        const { values, has_more_values } = await dispatchFetchParameterValues(
           query,
-        ));
+        );
+        newValues = values;
+        hasMoreValues = has_more_values;
       } else {
-        values = await fetchFieldValues(query);
+        newValues = await fetchFieldValues(query);
       }
     } finally {
-      updateRemappings(values);
-      setOptions(values);
+      updateRemappings(newValues);
+      setOptions(newValues);
       setLoadingState("LOADED");
-      if (has_more_values) {
+      if (hasMoreValues) {
         setValuesMode("search");
       }
     }
