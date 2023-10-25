@@ -137,19 +137,16 @@
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-add-cards event))))
-        (is (= {:topic       :dashboard-add-cards
-                :user_id     (mt/user->id :rasta)
-                :model       "dashboard"
-                :model_id    (:id dashboard)
-                :database_id nil
-                :table_id    nil
-                :details     {:name        "My Cool Dashboard"
-                              :description nil
-                              :dashcards   [{:description (:description card)
-                                             :name        (:name card)
-                                             :id          (:id dashcard)
-                                             :card_id     (:id card)}]}}
-               (activity "dashboard-add-cards" (:id dashboard))))))))
+        (is (=? {:topic       :dashboard-add-cards
+                 :user_id     (mt/user->id :rasta)
+                 :model       "dashboard"
+                 :model_id    (:id dashboard)
+                 :database_id nil
+                 :table_id    nil
+                 :details     {:name        "My Cool Dashboard"
+                               :description nil
+                               :dashcards   [(dissoc dashcard :created_at :updated_at)]}}
+                (activity "dashboard-add-cards" (:id dashboard))))))))
 
 (deftest dashboard-remove-cards-event-test
   (testing :dashboard-remove-cards
@@ -162,18 +159,15 @@
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-remove-cards event))))
-       (is (= {:topic       :dashboard-remove-cards
-               :user_id     (mt/user->id :rasta)
-               :model       "dashboard"
-               :model_id    (:id dashboard)
-               :database_id nil
-               :table_id    nil
-               :details     {:name        "My Cool Dashboard"
-                             :description nil
-                             :dashcards   [{:description (:description card)
-                                            :name        (:name card)
-                                            :id          (:id dashcard)
-                                            :card_id     (:id card)}]}}
+       (is (=? {:topic       :dashboard-remove-cards
+                :user_id     (mt/user->id :rasta)
+                :model       "dashboard"
+                :model_id    (:id dashboard)
+                :database_id nil
+                :table_id    nil
+                :details     {:name        "My Cool Dashboard"
+                              :description nil
+                              :dashcards   [(dissoc dashcard :created_at :updated_at)]}}
               (activity "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test

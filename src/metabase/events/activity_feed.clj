@@ -3,8 +3,6 @@
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
-   [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -57,15 +55,8 @@
         #(select-keys (:object %) [:description :name])
 
         add-remove-card-details
-        (fn [{:keys [dashcards] :as _event}]
-          ;; TODO this schema require a dashcards so we don't have to fetch it twice here
-          ;; we expect that the object has just a dashboard :id at the top level
-          ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (t2/select-one [Dashboard :description :name], :id (get-in event [:object :id]))
-              (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (t2/select-one [Card :name :description], :id card_id)
-                                      (assoc :id id)
-                                      (assoc :card_id card_id))))))]
+        (fn [{:keys [object dashcards] :as _event}]
+          (assoc (select-keys object [:name :description]) :dashcards dashcards))]
     (activity/record-activity!
      {:topic    topic
       :model    "dashboard"
