@@ -204,11 +204,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.get("@targetDashboardId").then(targetDashboardId => {
-            cy.location().should(location => {
-              expect(location.pathname).to.equal(
-                `/dashboard/${targetDashboardId}`,
-              );
-              expect(location.search).to.equal("");
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal("");
             });
           });
         },
@@ -249,11 +247,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.get("@targetDashboardId").then(targetDashboardId => {
-            cy.location().should(location => {
-              expect(location.pathname).to.equal(
-                `/dashboard/${targetDashboardId}`,
-              );
-              expect(location.search).to.equal(
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
                 `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}`,
               );
             });
@@ -301,11 +297,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             POINT_CREATED_AT_FORMATTED,
           );
           cy.get("@targetDashboardId").then(targetDashboardId => {
-            cy.location().should(location => {
-              expect(location.pathname).to.equal(
-                `/dashboard/${targetDashboardId}`,
-              );
-              expect(location.search).to.equal(
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
                 `?${DASHBOARD_FILTER_TEXT.name}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.name}=${POINT_CREATED_AT}`,
               );
             });
@@ -332,10 +326,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
           cy.findByText("Count by Created At: Month").should("exist");
-          cy.location().should(location => {
-            expect(location.pathname).to.equal("/question");
+          cy.location().should(({ hash, pathname }) => {
+            expect(pathname).to.equal("/question");
 
-            const card = deserializeCardFromUrl(location.hash);
+            const card = deserializeCardFromUrl(hash);
             expect(card.name).to.deep.equal(TARGET_QUESTION.name);
             expect(card.display).to.deep.equal(TARGET_QUESTION.display);
             expect(card.dataset_query.query).to.deep.equal(
@@ -373,10 +367,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             "have.text",
             "Created At is April 1–30, 2026",
           );
-          cy.location().should(location => {
-            expect(location.pathname).to.equal("/question");
+          cy.location().should(({ hash, pathname }) => {
+            expect(pathname).to.equal("/question");
 
-            const card = deserializeCardFromUrl(location.hash);
+            const card = deserializeCardFromUrl(hash);
             expect(card.name).to.deep.equal(TARGET_QUESTION.name);
             expect(card.display).to.deep.equal(TARGET_QUESTION.display);
             expect(card.dataset_query.query).to.deep.equal({
@@ -424,10 +418,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             "contain.text",
             "Quantity is equal to 344",
           );
-          cy.location().should(location => {
-            expect(location.pathname).to.equal("/question");
+          cy.location().should(({ hash, pathname }) => {
+            expect(pathname).to.equal("/question");
 
-            const card = deserializeCardFromUrl(location.hash);
+            const card = deserializeCardFromUrl(hash);
             console.log(card);
             expect(card.name).to.deep.equal(TARGET_QUESTION.name);
             expect(card.display).to.deep.equal(TARGET_QUESTION.display);
