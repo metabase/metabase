@@ -461,7 +461,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    it("allows setting URL as custom destination and change it back to default click behavior", () => {
+    it("allows setting URL as custom destination and changing it back to default click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
