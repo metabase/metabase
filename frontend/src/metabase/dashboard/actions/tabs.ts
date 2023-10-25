@@ -334,9 +334,7 @@ export const tabsReducer = createReducer<DashboardState>(
         const dashboardId = checkNotNull(state.dashboardId);
         const dashboard = state.dashboards[dashboardId];
 
-        if (!dashboard.dashCardTabMovements) {
-          dashboard.dashCardTabMovements = {};
-        }
+        dashboard.dashCardTabMovements ??= {};
 
         dashboard.dashCardTabMovements[dashCardId] = {
           originalRow: dashCard.row,
