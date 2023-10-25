@@ -671,6 +671,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
+
+          cy.log("it allows set click behavior for 'Count' column");
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Dashboard").click();
@@ -679,7 +681,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             .findByText("No available targets")
             .should("not.exist");
           addTextParameter();
+
           cy.icon("chevronleft").click();
+
+          cy.log("it allows set click behavior for 'Created at' column");
           cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
           /**
            * TODO: remove the next line when metabase#34845 is fixed
@@ -693,11 +698,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             .findByText("No available targets")
             .should("not.exist");
           addTimeParameter();
+
           cy.get("aside").button("Done").click();
 
           saveDashboard();
 
-          cy.log("it handles count column click");
+          cy.log("it handles 'Count' column click");
           clickLastTableCountCell();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 2);
@@ -717,7 +723,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.go("back");
 
-          cy.log("it handles created at column click");
+          cy.log("it handles 'Created at' column click");
           clickLastTableCreatedAtCell();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 2);
