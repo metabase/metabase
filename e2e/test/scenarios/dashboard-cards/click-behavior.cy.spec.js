@@ -808,8 +808,7 @@ const clickLineChartPoint = () => {
 };
 
 const clickTableCell = index => {
-  return cy
-    .findAllByTestId("table-row")
+  cy.findAllByTestId("table-row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")
     .eq(index)
