@@ -1453,23 +1453,34 @@
                 {template-dimensions :dimensions
                  template-metrics    :metrics
                  template-cards      :cards
+                 template-filters    :filters
+                 :keys [dashboard_filters]
                  :as                 template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
                 metric-templates            (interesting/normalize-seq-of-maps :metric template-metrics)
                 {{user-defined-metrics :linked-metrics :as root} :root
                  :as                                             base-context} (#'magic/make-base-context (magic/->root entity))
                 ;; A mapping of dimension (by name) to dimension definition + matches (a seq of matching fields)
-                ground-dimensions           (interesting/find-dimensions base-context template-dimensions)
+                ground-dimensions           (->> (interesting/find-dimensions base-context template-dimensions)
+                                                 (#'interesting/add-field-self-reference base-context))
+                template-grounded-metrics   (interesting/grounded-metrics metric-templates ground-dimensions)
+                set-score                   (fn [score metrics]
+                                              (map #(assoc % :metric-score score) metrics))
                 ;; Grounded metrics come in two flavors -- those satisfiable by the template, and user-defined metrics.
-                grounded-metrics            (concat
-                                              (interesting/grounded-metrics metric-templates ground-dimensions)
-                                              user-defined-metrics)
+                grounded-metrics            (concat (set-score 50 template-grounded-metrics) (set-score 95 user-defined-metrics)
+                                                    (let [entity (-> base-context :root :entity)]
+                                                      ;; metric x-rays talk about "this" in the template
+                                                      (when (mi/instance-of? :model/Metric entity)
+                                                        [{:metric-name       "this"
+                                                          :metric-title      (:name entity)
+                                                          :metric-definition {:aggregation [(interesting/->reference :mbql entity)]}
+                                                          :metric-score      dashboard-templates/max-score}])))
+                ground-filters              (interesting/grounded-filters template-filters ground-dimensions)
                 ;; Card templates come in two flavors -- generic templates from the dashboard template and user-defined
                 card-templates              (interesting/normalize-seq-of-maps :card template-cards)
                 user-defined-card-templates (magic/user-defined-metrics->card-templates
                                               (magic/affinities->viz-types card-templates ground-dimensions)
                                               user-defined-metrics)
                 all-cards                   (into card-templates user-defined-card-templates)
-                ground-filters              (interesting/grounded-filters (:filters template) ground-dimensions)
                 dashcards                   (combination/grounded-metrics->dashcards
                                               base-context
                                               all-cards
@@ -1477,9 +1488,19 @@
                                               ground-filters
                                               grounded-metrics)
                 template-with-user-groups   (update template :groups into (#'magic/user-defined-groups user-defined-metrics))
-                empty-dashboard             (#'magic/make-dashboard root template-with-user-groups)]
-            (is (= (count (:ordered_cards (populate/create-dashboard (assoc empty-dashboard :cards dashcards) :all)))
-                   (count (:ordered_cards (#'magic/generate-dashboard base-context template
-                                            {:dimensions ground-dimensions
-                                             :metrics grounded-metrics
-                                             :filters ground-filters})))))))))))
+                empty-dashboard             (#'magic/make-dashboard root template-with-user-groups)
+                show                        @#'magic/max-cards ;(or show max-cards)
+                base-dashboard              (assoc empty-dashboard
+                                              ;; Adds the filters that show at the top of the dashboard
+                                              ;; Why do we need (or do we) the last remove form?
+                                              :filters (->> dashboard_filters
+                                                            (mapcat (comp :matches ground-dimensions))
+                                                            (remove (comp (#'magic/singular-cell-dimensions root) #'magic/id-or-name)))
+                                              :cards dashcards)
+                final-dashboard             (populate/create-dashboard base-dashboard show)]
+            (is (pos? (count (:dashcards final-dashboard))))
+            (is (= (count (:dashcards final-dashboard))
+                   (count (:dashcards (#'magic/generate-dashboard base-context template
+                                        {:dimensions ground-dimensions
+                                         :metrics    grounded-metrics
+                                         :filters    ground-filters})))))))))))
