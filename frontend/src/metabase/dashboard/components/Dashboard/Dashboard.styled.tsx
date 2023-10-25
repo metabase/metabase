@@ -117,6 +117,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   top: 0;
   left: 0;
 
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
+
   ${({ isEditing }) =>
     isEditing &&
     css`
@@ -130,10 +134,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       position: sticky;
       border-bottom: 1px solid ${color("border")};
     `}
-
-    ${breakpointMaxSmall} {
-    flex-direction: column;
-  }
 `;
 
 export const CardsContainer = styled(FullWidthContainer)<{
