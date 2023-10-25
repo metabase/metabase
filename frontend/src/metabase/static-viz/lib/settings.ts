@@ -39,5 +39,5 @@ export const getCommonStaticVizSettings = (
       getColumnSettings(column, settings),
   };
 
-  return { settings, ...dashcardSettings };
+  return { ...settings, ...dashcardSettings };
 };
