@@ -9,9 +9,13 @@ const HEIGHT = 360;
 
 export function PieChart({
   rawSeries,
+  dashcardSettings,
   renderingContext,
 }: IsomorphicStaticChartProps) {
-  const computedVizSettings = computeStaticPieChartSettings(rawSeries);
+  const computedVizSettings = computeStaticPieChartSettings(
+    rawSeries,
+    dashcardSettings,
+  );
   //eslint-disable-next-line no-console
   console.log("computedVizSettings", JSON.stringify(computedVizSettings));
 

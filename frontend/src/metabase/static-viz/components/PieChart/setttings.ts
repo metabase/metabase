@@ -1,5 +1,9 @@
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { PieChartSettings, RawSeries } from "metabase-types/api";
+import type {
+  PieChartSettings,
+  RawSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { getDefaultDimensionAndMetric } from "metabase/visualizations/lib/utils";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
@@ -25,8 +29,9 @@ function getPieChartColors(
 
 export function computeStaticPieChartSettings(
   rawSeries: RawSeries,
+  dashcardSettings: VisualizationSettings,
 ): ComputedVisualizationSettings {
-  const settings = getCommonStaticVizSettings(rawSeries);
+  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
   if (!settings["pie.dimension"] || !settings["pie.metric"]) {
     const defaults = getDefaultDimensionAndMetric(rawSeries);
