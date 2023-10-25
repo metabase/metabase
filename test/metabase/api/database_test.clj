@@ -441,21 +441,17 @@
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (t2.with-temp/with-temp [Database {db-id :id}]
       (with-redefs [driver/can-connect? (constantly true)]
-        (is (= "Cam's Awesome multimethod Database" (:name (api-update-database! 200 db-id {:name "Cam's Awesome multimethod Database"})))
+        (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
             "A db update occured")
-        (is (= "Sam's Awesome multimethod Database" (:name (api-update-database! 200 db-id {:name "Sam's Awesome multimethod Database"})))
+        (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
             "A db update occured")
         (let [audit-log-entry (mt/latest-audit-log-entry)]
           (is (=?
-               {:previous {:name "Cam's Awesome multimethod Database"
+               {:previous {:name "Original Database Name"
                            :updated_at #hawk/malli :string},
-                :new {:name "Sam's Awesome multimethod Database"
+                :new {:name "Updated Database Name"
                       :updated_at #hawk/malli :string}}
-               (:details audit-log-entry)))
-          (is (= (get-in audit-log-entry [:details :previous_value :name])
-                 "Cam's Awesome multimethod Database"))
-          (is (= (get-in audit-log-entry [:details :new_value :name])
-                 "Sam's Awesome multimethod Database")))))))
+               (:details audit-log-entry))))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"
