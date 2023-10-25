@@ -2,39 +2,47 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SearchSidebarFilterComponent } from "metabase/search/types";
-import type { SearchSidebarFilterProps } from "./SidebarFilter";
-import { SidebarFilter } from "./SidebarFilter";
+import type { SearchFilterComponent } from "metabase/search/types";
+import type { DropdownSidebarFilterProps } from "./DropdownSidebarFilter";
+import { DropdownSidebarFilter } from "./DropdownSidebarFilter";
 
-const mockFilter: SearchSidebarFilterComponent = {
-  title: "Mock Filter",
+const mockFilter: SearchFilterComponent = {
+  label: () => "Mock Filter",
   iconName: "filter",
+  type: "dropdown",
   DisplayComponent: ({ value }) => (
     <div data-testid="mock-display-component">
       {!value || value.length === 0 ? "Display" : value}
     </div>
   ),
-  ContentComponent: ({ value, onChange }) => (
-    <div data-testid="mock-content-component">
-      <button onClick={() => onChange(["new value"])}>Update</button>
-      <div>{value}</div>
-    </div>
-  ),
+  ContentComponent: ({ value, onChange }) => {
+    const [filterValue, setFilterValue] = useState(value);
+
+    return (
+      <div data-testid="mock-content-component">
+        <button onClick={() => setFilterValue(["new value"])}>Update</button>
+        <div>{filterValue}</div>
+        <button onClick={() => onChange(filterValue)}>Apply</button>
+      </div>
+    );
+  },
+  fromUrl: value => value,
+  toUrl: value => value,
 };
 
 const MockSearchSidebarFilter = ({
   filter,
   value,
   onChange,
-}: SearchSidebarFilterProps) => {
+}: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
-  const onFilterChange = (elem: SearchSidebarFilterProps["value"]) => {
+  const onFilterChange = (elem: DropdownSidebarFilterProps["value"]) => {
     setSelectedValues(elem);
     onChange(elem);
   };
 
   return (
-    <SidebarFilter
+    <DropdownSidebarFilter
       filter={filter}
       value={selectedValues}
       onChange={onFilterChange}
@@ -42,14 +50,14 @@ const MockSearchSidebarFilter = ({
   );
 };
 
-const setup = (options: Partial<SearchSidebarFilterProps> = {}) => {
-  const defaultProps: SearchSidebarFilterProps = {
+const setup = (options: Partial<DropdownSidebarFilterProps> = {}) => {
+  const defaultProps: DropdownSidebarFilterProps = {
     filter: mockFilter,
     value: [],
     onChange: jest.fn(),
   };
 
-  const props: SearchSidebarFilterProps = { ...defaultProps, ...options };
+  const props: DropdownSidebarFilterProps = { ...defaultProps, ...options };
 
   renderWithProviders(<MockSearchSidebarFilter {...props} />);
 
@@ -58,7 +66,7 @@ const setup = (options: Partial<SearchSidebarFilterProps> = {}) => {
   };
 };
 
-describe("SidebarFilter", () => {
+describe("DropdownSidebarFilter", () => {
   it("should render filter title, filter icon, chevrondown, but no legend text when no value is selected", () => {
     setup();
 
@@ -73,7 +81,7 @@ describe("SidebarFilter", () => {
     setup({ value: ["value1"] });
 
     expect(screen.getByTestId("field-set-legend")).toHaveTextContent(
-      mockFilter.title,
+      mockFilter.label(),
     );
 
     expect(screen.getByTestId("mock-display-component")).toBeInTheDocument();
@@ -97,7 +105,8 @@ describe("SidebarFilter", () => {
     userEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByText("new value")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
     expect(onChange).toHaveBeenCalledWith(["new value"]);
 
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
@@ -112,12 +121,17 @@ describe("SidebarFilter", () => {
   it("should revert filter selections when popover is closed", async () => {
     const { onChange } = setup({ value: ["old value"] });
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    userEvent.click(screen.getByText("old value"));
     userEvent.click(screen.getByRole("button", { name: "Update" }));
     expect(screen.getByText("new value")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Mock Filter"));
+    userEvent.click(screen.getByText("old value"));
     expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
+      "old value",
+    );
+
+    userEvent.click(screen.getByText("old value"));
     expect(screen.getByTestId("mock-display-component")).toHaveTextContent(
       "old value",
     );
@@ -125,9 +139,15 @@ describe("SidebarFilter", () => {
 
   it("should reset filter selections when clear button is clicked", async () => {
     const { onChange } = setup({ value: ["old value"] });
-    userEvent.click(screen.getByTestId("sidebar-filter-dropdown-button"));
+    userEvent.click(
+      screen.getByTestId("sidebar-filter-dropdown-button"),
+      undefined,
+      // There's a problem with buttons in fieldsets so we have to skip pointer events check for now
+      // https://github.com/testing-library/user-event/issues/662
+      { skipPointerEventsCheck: true },
+    );
 
-    expect(onChange).toHaveBeenCalledWith(undefined);
+    expect(onChange).toHaveBeenCalledWith(null);
     expect(screen.getByText("Mock Filter")).toBeInTheDocument();
     expect(screen.getByLabelText("filter icon")).toBeInTheDocument();
     expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
