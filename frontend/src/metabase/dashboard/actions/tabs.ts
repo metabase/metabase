@@ -32,12 +32,12 @@ type UndoDeleteTabPayload = {
 type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
 type MoveTabPayload = {
   sourceTabId: DashboardTabId;
-  destTabId: DashboardTabId;
+  destinationTabId: DashboardTabId;
 };
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
-  destTabId: DashboardTabId;
+  destinationTabId: DashboardTabId;
 };
 type UndoMoveDashCardToTabPayload = {
   dashCardId: DashCardId;
@@ -284,12 +284,14 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       moveTab,
-      (state, { payload: { sourceTabId, destTabId } }) => {
+      (state, { payload: { sourceTabId, destinationTabId } }) => {
         const { prevDash, prevTabs } = getPrevDashAndTabs({ state });
         const sourceTabIndex = prevTabs.findIndex(
           ({ id }) => id === sourceTabId,
         );
-        const destTabIndex = prevTabs.findIndex(({ id }) => id === destTabId);
+        const destTabIndex = prevTabs.findIndex(
+          ({ id }) => id === destinationTabId,
+        );
 
         if (!prevDash || sourceTabIndex === -1 || destTabIndex === -1) {
           throw Error(
@@ -309,7 +311,7 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       moveDashCardToTab,
-      (state, { payload: { dashCardId, destTabId } }) => {
+      (state, { payload: { dashCardId, destinationTabId } }) => {
         const { dashId } = getPrevDashAndTabs({ state });
         if (dashId === null) {
           throw Error(
@@ -337,14 +339,14 @@ export const tabsReducer = createReducer<DashboardState>(
         };
 
         const { row, col } = getPositionForNewDashCard(
-          getExistingDashCards(state, dashId, destTabId),
+          getExistingDashCards(state, dashId, destinationTabId),
           dashCard.size_x,
           dashCard.size_y,
         );
         dashCard.row = row;
         dashCard.col = col;
 
-        dashCard.dashboard_tab_id = destTabId;
+        dashCard.dashboard_tab_id = destinationTabId;
         dashCard.isDirty = true;
       },
     );

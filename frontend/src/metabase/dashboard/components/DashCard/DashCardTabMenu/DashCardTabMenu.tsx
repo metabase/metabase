@@ -28,11 +28,13 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
   }, [selectedTabId, tabs]);
 
   const moveDashcard = useCallback(
-    (destTabId: number) => {
-      dispatch(moveDashCardToTab({ dashCardId, destTabId }));
+    (destinationTabId: number) => {
+      dispatch(moveDashCardToTab({ dashCardId, destinationTabId }));
       dispatch(
         addUndo({
-          message: t`Card moved to ${tabs.find(tab => tab.id === destTabId)?.name}`,
+          message: t`Card moved to ${
+            tabs.find(tab => tab.id === destinationTabId)?.name
+          }`,
           undo: true,
           action: () => {
             dispatch(undoMoveDashCardToTab({ dashCardId }));
