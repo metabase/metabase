@@ -251,12 +251,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Dashboard").click();
-          modal().findByText(TARGET_DASHBOARD.name).click();
-          cy.get("aside")
-            .findByText("No available targets")
-            .should("not.exist");
+          addCustomDashboardDestination();
           addTextParameter();
           cy.get("aside").button("Done").click();
 
@@ -296,12 +291,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Dashboard").click();
-          modal().findByText(TARGET_DASHBOARD.name).click();
-          cy.get("aside")
-            .findByText("No available targets")
-            .should("not.exist");
+          addCustomDashboardDestination();
           addTextParameter();
           addTimeParameter();
           cy.get("aside").button("Done").click();
@@ -688,12 +678,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             "it allows to set custom destination (dashboard) click behavior for 'Count' column",
           );
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Dashboard").click();
-          modal().findByText(TARGET_DASHBOARD.name).click();
-          cy.get("aside")
-            .findByText("No available targets")
-            .should("not.exist");
+          addCustomDashboardDestination();
           addTextParameter();
           addTimeParameter();
 
@@ -726,14 +711,19 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.get("aside")
             .findByText(
-              getBrokenUpTextMatcher('Created At goes to "Target question"'),
+              getBrokenUpTextMatcher(
+                `Created At goes to "${TARGET_QUESTION.name}"`,
+              ),
             )
             .should("exist");
           cy.get("aside")
             .findByText(
-              getBrokenUpTextMatcher('Count goes to "Target dashboard"'),
+              getBrokenUpTextMatcher(
+                `Count goes to "${TARGET_DASHBOARD.name}"`,
+              ),
             )
             .should("exist");
+          cy.pause();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -846,6 +836,13 @@ const clickTableCell = index => {
     .findAllByTestId("cell-data")
     .eq(index)
     .click();
+};
+
+const addCustomDashboardDestination = () => {
+  cy.get("aside").findByText("Go to a custom destination").click();
+  cy.get("aside").findByText("Dashboard").click();
+  modal().findByText(TARGET_DASHBOARD.name).click();
+  cy.get("aside").findByText("No available targets").should("not.exist");
 };
 
 const addTextParameter = () => {
