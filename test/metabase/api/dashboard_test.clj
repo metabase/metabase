@@ -2508,8 +2508,8 @@
   ([dashboard-values f]
    (mt/with-temp
      [Card          {source-card-id :id} (merge (mt/card-with-source-metadata-for-query (mt/mbql-query categories {:limit 5}))
-                                                {:database_id     (mt/id)
-                                                 :table_id        (mt/id :categories)})
+                                                {:database_id (mt/id)
+                                                 :table_id    (mt/id :categories)})
       Dashboard     dashboard (merge {:parameters [{:name "Category Name"
                                                     :slug "category_name"
                                                     :id   "_CATEGORY_NAME_"
@@ -2526,17 +2526,17 @@
                                                     :slug "id"
                                                     :id   "_ID_"
                                                     :type "category"}
-                                                   {:name                  "Static Category"
-                                                    :slug                  "static_category"
-                                                    :id                    "_STATIC_CATEGORY_"
-                                                    :type                  "category"
-                                                    :values_source_type    "static-list"
+                                                   {:name                 "Static Category"
+                                                    :slug                 "static_category"
+                                                    :id                   "_STATIC_CATEGORY_"
+                                                    :type                 "category"
+                                                    :values_source_type   "static-list"
                                                     :values_source_config {:values ["African" "American" "Asian"]}}
-                                                   {:name                  "Static Category label"
-                                                    :slug                  "static_category_label"
-                                                    :id                    "_STATIC_CATEGORY_LABEL_"
-                                                    :type                  "category"
-                                                    :values_source_type    "static-list"
+                                                   {:name                 "Static Category label"
+                                                    :slug                 "static_category_label"
+                                                    :id                   "_STATIC_CATEGORY_LABEL_"
+                                                    :type                 "category"
+                                                    :values_source_type   "static-list"
                                                     :values_source_config {:values [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}}
                                                    {:id                   "_CARD_"
                                                     :type                 "category"
@@ -2547,7 +2547,12 @@
                                                    {:name "Not Category Name"
                                                     :slug "not_category_name"
                                                     :id   "_NOT_CATEGORY_NAME_"
-                                                    :type "string/!="}]}
+                                                    :type :string/!=}
+                                                   {:name    "Category Contains"
+                                                    :slug    "category_contains"
+                                                    :id      "_CATEGORY_CONTAINS_"
+                                                    :type    :string/contains
+                                                    :options {:case-sensitive false}}]}
                                      dashboard-values)
       Card          card {:database_id   (mt/id)
                           :table_id      (mt/id :venues)
@@ -2577,6 +2582,9 @@
                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                                    {:parameter_id "_NOT_CATEGORY_NAME_"
                                                     :card_id      (:id card)
+                                                    :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                   {:parameter_id "_CATEGORY_CONTAINS_"
+                                                    :card_id      (:id card)
                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]
      (f {:dashboard  dashboard
          :card       card
@@ -2587,7 +2595,9 @@
                       :id                    "_ID_"
                       :static-category       "_STATIC_CATEGORY_"
                       :static-category-label "_STATIC_CATEGORY_LABEL_"
-                      :card                  "_CARD_"}}))))
+                      :card                  "_CARD_"
+                      :not-category-name     "_NOT_CATEGORY_NAME_"
+                      :category-contains     "_CATEGORY_CONTAINS_"}}))))
 
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
@@ -2930,6 +2940,27 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
+(deftest chain-filter-multiple-test
+  (testing "Chain filtering works when a few filters are specified"
+    (with-chain-filter-fixtures [{:keys [dashboard]}]
+      (testing "GET /api/dashboard/:id/params/:param-key/values"
+        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
+                                                  "_NOT_CATEGORY_NAME_" "American")]
+          (is (= {:values          [["African"] ["Artisan"] ["Asian"]]
+                  :has_more_values false}
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
+                                                  "_CATEGORY_CONTAINS_" "m")]
+          (is (= {:values          [["American"] ["Comedy Club"] ["Dim Sum"]]
+                  :has_more_values false}
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
+                                                  "_NOT_CATEGORY_NAME_" "American"
+                                                  "_CATEGORY_CONTAINS_" "m")]
+          (is (= {:values          [["Comedy Club"] ["Dim Sum"] ["Entertainment"]]
+                  :has_more_values false}
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
@@ -2954,12 +2985,20 @@
 (deftest chain-filter-constraints-test
   (testing "Chain filter should return correct results when :string/!= type is used"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (is (= {:op := :value "ood"}
+      (is (= {:op := :value "ood" :options nil}
              (-> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})
-                 first (select-keys [:op :value]))))
-      (is (= {:op :!= :value "ood"}
+                 first (dissoc :field-id))))
+      (is (= {:op :!= :value "ood" :options nil}
              (-> (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"})
-                 first (select-keys [:op :value])))))))
+                 first (dissoc :field-id))))
+      (is (= #{{:op := :value "foo" :options nil}
+               {:op :!= :value "bar" :options nil}
+               {:op :contains :value "buzz" :options {:case-sensitive false}}}
+             (->> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_"     "foo"
+                                                                       "_NOT_CATEGORY_NAME_" "bar"
+                                                                       "_CATEGORY_CONTAINS_" "buzz"})
+                  (map #(dissoc % :field-id))
+                  set))))))
 
 (defn- card-fields-from-table-metadata
   [card-id]

@@ -827,7 +827,8 @@
          {:field-id (:field-id field)
           :op       op
           :value    value
-          :options  (:options field)})))
+          :options  (merge (:options field)
+                           (:options param))})))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
