@@ -1,11 +1,13 @@
 import _ from "underscore";
 
-import type { SearchAwareLocation, SearchFilters } from "metabase/search/types";
+import type {
+  SearchAwareLocation,
+  URLSearchFilterQueryParams,
+} from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
-export function isSearchPageLocation(location: SearchAwareLocation): boolean {
-  const components = location.pathname.split("/");
-  return components[components.length - 1] === "search";
+export function isSearchPageLocation(location?: SearchAwareLocation): boolean {
+  return location ? /^\/?search$/.test(location.pathname) : false;
 }
 
 export function getSearchTextFromLocation(
@@ -19,7 +21,7 @@ export function getSearchTextFromLocation(
 
 export function getFiltersFromLocation(
   location: SearchAwareLocation,
-): SearchFilters {
+): URLSearchFilterQueryParams {
   if (isSearchPageLocation(location)) {
     return _.pick(location.query, Object.values(SearchFilterKeys));
   }

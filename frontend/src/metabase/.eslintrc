@@ -17,6 +17,10 @@
           {
             "name": "@mantine/core",
             "message": "Please import from `metabase/ui` instead."
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
           }
         ]
       }

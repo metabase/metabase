@@ -8,20 +8,28 @@ import type { SearchAwareLocation } from "metabase/search/types";
 import { SearchFilterKeys } from "metabase/search/constants";
 
 describe("isSearchPageLocation", () => {
-  it('should return true when the last component of pathname is "search"', () => {
-    const location = {
-      pathname: "/search",
-      query: {},
-    };
-    expect(isSearchPageLocation(location as SearchAwareLocation)).toBe(true);
+  it("should return true for a search page location", () => {
+    const location = { pathname: "/search" };
+    const result = isSearchPageLocation(location as SearchAwareLocation);
+    expect(result).toBe(true);
   });
 
-  it('should return false when the last component of pathname is not "search"', () => {
-    const location = {
-      pathname: "/collection/root",
-      query: {},
-    };
-    expect(isSearchPageLocation(location as SearchAwareLocation)).toBe(false);
+  it("should return true for a search page location with query params", () => {
+    const location = { pathname: "/search", search: "?q=test" };
+    const result = isSearchPageLocation(location as SearchAwareLocation);
+    expect(result).toBe(true);
+  });
+
+  it('should return false for non-search location that might have "search" in the path', () => {
+    const location = { pathname: "/collection/1-search" };
+    const result = isSearchPageLocation(location as SearchAwareLocation);
+    expect(result).toBe(false);
+  });
+
+  it("should return false for non-search location", () => {
+    const location = { pathname: "/some-page" };
+    const result = isSearchPageLocation(location as SearchAwareLocation);
+    expect(result).toBe(false);
   });
 });
 
