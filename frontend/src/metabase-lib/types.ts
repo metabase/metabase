@@ -137,6 +137,7 @@ export type ColumnDisplayInfo = {
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;
+  filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
 };
@@ -146,6 +147,7 @@ export type SegmentDisplayInfo = {
   displayName: string;
   longDisplayName: string;
   description: string;
+  filterPositions?: number[];
 };
 
 export type AggregationOperatorDisplayInfo = {

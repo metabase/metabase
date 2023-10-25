@@ -1,7 +1,10 @@
 import type {
+  ColumnDisplayInfo,
   ColumnMetadata,
   FilterClause,
   ExpressionClause,
+  SegmentDisplayInfo,
+  SegmentMetadata,
   Query,
 } from "metabase-lib/types";
 
@@ -21,3 +24,11 @@ export interface PickerOperatorOption<Operator> {
   // but widgets can overwrite it with a custom name.
   name?: string;
 }
+
+export type ColumnListItem = ColumnDisplayInfo & {
+  column: ColumnMetadata;
+};
+
+export type SegmentListItem = SegmentDisplayInfo & {
+  segment: SegmentMetadata;
+};

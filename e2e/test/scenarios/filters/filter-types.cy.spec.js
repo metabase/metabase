@@ -2,20 +2,15 @@ import {
   assertQueryBuilderRowCount,
   filter,
   getNotebookStep,
+  openProductsTable,
   popover,
   restore,
-  visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PRODUCTS_ID } = SAMPLE_DATABASE;
-
-const TABLE_CASES = [
+const STRING_CASES = [
   {
-    title: "string, is",
-    tableId: PRODUCTS_ID,
+    title: "is",
     columnName: "Category",
     operator: "Is",
     options: ["Widget"],
@@ -23,8 +18,7 @@ const TABLE_CASES = [
     expectedRowCount: 54,
   },
   {
-    title: "string, is, multiple options",
-    tableId: PRODUCTS_ID,
+    title: "is, multiple options",
     columnName: "Category",
     operator: "Is",
     options: ["Widget", "Gadget"],
@@ -32,8 +26,7 @@ const TABLE_CASES = [
     expectedRowCount: 107,
   },
   {
-    title: "string, is not",
-    tableId: PRODUCTS_ID,
+    title: "is not",
     columnName: "Category",
     operator: "Is not",
     options: ["Widget"],
@@ -41,8 +34,7 @@ const TABLE_CASES = [
     expectedRowCount: 146,
   },
   {
-    title: "string, contains",
-    tableId: PRODUCTS_ID,
+    title: "contains",
     columnName: "Title",
     operator: "Contains",
     values: ["Al"],
@@ -50,8 +42,7 @@ const TABLE_CASES = [
     expectedRowCount: 47,
   },
   {
-    title: "string, contains, case sensitive",
-    tableId: PRODUCTS_ID,
+    title: "contains, case sensitive",
     columnName: "Title",
     operator: "Contains",
     values: ["Al"],
@@ -60,8 +51,7 @@ const TABLE_CASES = [
     expectedRowCount: 16,
   },
   {
-    title: "string, does not contain",
-    tableId: PRODUCTS_ID,
+    title: "does not contain",
     columnName: "Title",
     operator: "Does not contain",
     values: ["Al"],
@@ -69,8 +59,7 @@ const TABLE_CASES = [
     expectedRowCount: 153,
   },
   {
-    title: "string, does not contain, case sensitive",
-    tableId: PRODUCTS_ID,
+    title: "does not contain, case sensitive",
     columnName: "Title",
     operator: "Does not contain",
     values: ["Al"],
@@ -79,8 +68,7 @@ const TABLE_CASES = [
     expectedRowCount: 184,
   },
   {
-    title: "string, starts with",
-    tableId: PRODUCTS_ID,
+    title: "starts with",
     columnName: "Title",
     operator: "Starts with",
     values: ["sm"],
@@ -88,8 +76,7 @@ const TABLE_CASES = [
     expectedRowCount: 11,
   },
   {
-    title: "string, starts with, case sensitive",
-    tableId: PRODUCTS_ID,
+    title: "starts with, case sensitive",
     columnName: "Title",
     operator: "Starts with",
     values: ["Sm"],
@@ -98,8 +85,7 @@ const TABLE_CASES = [
     expectedRowCount: 11,
   },
   {
-    title: "string, ends with",
-    tableId: PRODUCTS_ID,
+    title: "ends with",
     columnName: "Title",
     operator: "Ends with",
     values: ["At"],
@@ -107,8 +93,7 @@ const TABLE_CASES = [
     expectedRowCount: 22,
   },
   {
-    title: "string, ends with, case sensitive",
-    tableId: PRODUCTS_ID,
+    title: "ends with, case sensitive",
     columnName: "Title",
     operator: "Ends with",
     values: ["At"],
@@ -117,24 +102,24 @@ const TABLE_CASES = [
     expectedRowCount: 0,
   },
   {
-    title: "string, is empty",
-    tableId: PRODUCTS_ID,
+    title: "is empty",
     columnName: "Title",
     operator: "Is empty",
     expectedDisplayName: "Title is empty",
     expectedRowCount: 0,
   },
   {
-    title: "string, is not empty",
-    tableId: PRODUCTS_ID,
+    title: "is not empty",
     columnName: "Title",
     operator: "Not empty",
     expectedDisplayName: "Title is not empty",
     expectedRowCount: 200,
   },
+];
+
+const NUMBER_CASES = [
   {
-    title: "number, equal to",
-    tableId: PRODUCTS_ID,
+    title: "equal to",
     columnName: "Rating",
     operator: "Equal to",
     values: ["4"],
@@ -142,8 +127,7 @@ const TABLE_CASES = [
     expectedRowCount: 37,
   },
   {
-    title: "number, equal to, multiple values",
-    tableId: PRODUCTS_ID,
+    title: "equal to, multiple values",
     columnName: "Rating",
     operator: "Equal to",
     values: ["4", "5"],
@@ -151,8 +135,7 @@ const TABLE_CASES = [
     expectedRowCount: 40,
   },
   {
-    title: "number, not equal to",
-    tableId: PRODUCTS_ID,
+    title: "not equal to",
     columnName: "Rating",
     operator: "Not equal to",
     values: ["4"],
@@ -160,8 +143,7 @@ const TABLE_CASES = [
     expectedRowCount: 163,
   },
   {
-    title: "number, greater than",
-    tableId: PRODUCTS_ID,
+    title: "greater than",
     columnName: "Price",
     operator: "Greater than",
     values: ["47.5"],
@@ -169,8 +151,7 @@ const TABLE_CASES = [
     expectedRowCount: 111,
   },
   {
-    title: "number, less than",
-    tableId: PRODUCTS_ID,
+    title: "less than",
     columnName: "Price",
     operator: "Less than",
     values: ["47.5"],
@@ -178,8 +159,7 @@ const TABLE_CASES = [
     expectedRowCount: 89,
   },
   {
-    title: "number, greater than or equal to",
-    tableId: PRODUCTS_ID,
+    title: "greater than or equal to",
     columnName: "Price",
     operator: "Greater than or equal to",
     values: ["47.5"],
@@ -187,8 +167,7 @@ const TABLE_CASES = [
     expectedRowCount: 111,
   },
   {
-    title: "number, less than or equal to",
-    tableId: PRODUCTS_ID,
+    title: "less than or equal to",
     columnName: "Price",
     operator: "Less than or equal to",
     values: ["47.5"],
@@ -196,16 +175,14 @@ const TABLE_CASES = [
     expectedRowCount: 89,
   },
   {
-    title: "number, is empty",
-    tableId: PRODUCTS_ID,
+    title: "is empty",
     columnName: "Price",
     operator: "Is empty",
     expectedDisplayName: "Price is empty",
     expectedRowCount: 0,
   },
   {
-    title: "number, not empty",
-    tableId: PRODUCTS_ID,
+    title: "not empty",
     columnName: "Price",
     operator: "Not empty",
     expectedDisplayName: "Price is not empty",
@@ -213,13 +190,119 @@ const TABLE_CASES = [
   },
 ];
 
-const tableQuestion = tableId => ({
-  dataset_query: {
-    type: "query",
-    query: { "source-table": tableId },
-    database: SAMPLE_DB_ID,
+const DATE_SHORTCUT_CASES = [
+  {
+    title: "today",
+    shortcut: "Today",
+    expectedDisplayName: "Created At is today",
   },
-});
+  {
+    title: "yesterday",
+    shortcut: "Yesterday",
+    expectedDisplayName: "Created At is yesterday",
+  },
+  {
+    title: "last week",
+    shortcut: "Last week",
+    expectedDisplayName: "Created At is in the previous week",
+  },
+  {
+    title: "last 7 days",
+    shortcut: "Last 7 days",
+    expectedDisplayName: "Created At is in the previous 7 days",
+  },
+  {
+    title: "last 30 days",
+    shortcut: "Last 30 days",
+    expectedDisplayName: "Created At is in the previous 30 days",
+  },
+  {
+    title: "last month",
+    shortcut: "Last month",
+    expectedDisplayName: "Created At is in the previous month",
+  },
+  {
+    title: "last 3 months",
+    shortcut: "Last 3 months",
+    expectedDisplayName: "Created At is in the previous 3 months",
+  },
+  {
+    title: "last 12 months",
+    shortcut: "Last 12 months",
+    expectedDisplayName: "Created At is in the previous 12 months",
+  },
+];
+
+const EXCLUDE_DATE_CASES = [
+  {
+    title: "day of week",
+    label: "Days of the week…",
+    options: ["Monday"],
+    expectedDisplayName: "Created At excludes Mondays",
+    expectedRowCount: 166,
+  },
+  {
+    title: "day of week, multiple",
+    label: "Days of the week…",
+    options: ["Monday", "Wednesday"],
+    expectedDisplayName: "Created At excludes 2 day of week selections",
+    expectedRowCount: 132,
+  },
+  {
+    title: "month of year",
+    label: "Months of the year…",
+    options: ["July"],
+    expectedDisplayName: "Created At excludes each Jul",
+    expectedRowCount: 182,
+  },
+  {
+    title: "month of year, multiple",
+    label: "Months of the year…",
+    options: ["July", "May"],
+    expectedDisplayName: "Created At excludes 2 month of year selections",
+    expectedRowCount: 163,
+  },
+  {
+    title: "quarter of year",
+    label: "Quarters of the year…",
+    options: ["1st"],
+    expectedDisplayName: "Created At excludes Q1 each year",
+    expectedRowCount: 154,
+  },
+  {
+    title: "quarter of year, multiple",
+    label: "Quarters of the year…",
+    options: ["1st", "4th"],
+    expectedDisplayName: "Created At excludes 2 quarter of year selections",
+    expectedRowCount: 102,
+  },
+  {
+    title: "hour of day",
+    label: "Hours of the day…",
+    options: ["1 AM"],
+    expectedDisplayName: "Created At excludes the hour of 1 AM",
+    expectedRowCount: 191,
+  },
+  {
+    title: "quarter of year, multiple",
+    label: "Hours of the day…",
+    options: ["1 AM", "10 AM", "5 PM"],
+    expectedDisplayName: "Created At excludes 3 hour of day selections",
+    expectedRowCount: 183,
+  },
+  {
+    title: "is empty",
+    label: "Is empty",
+    expectedDisplayName: "Created At is not empty",
+    expectedRowCount: 200,
+  },
+  {
+    title: "not empty",
+    label: "Is not empty",
+    expectedDisplayName: "Created At is empty",
+    expectedRowCount: 0,
+  },
+];
 
 describe("scenarios > filters > filter types", () => {
   beforeEach(() => {
@@ -227,11 +310,10 @@ describe("scenarios > filters > filter types", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("table source", () => {
-    TABLE_CASES.forEach(
+  describe("string filters", () => {
+    STRING_CASES.forEach(
       ({
         title,
-        tableId,
         columnName,
         operator,
         values = [],
@@ -240,14 +322,11 @@ describe("scenarios > filters > filter types", () => {
         expectedRowCount,
       }) => {
         it(title, () => {
-          visitQuestionAdhoc(tableQuestion(tableId), { mode: "notebook" });
+          openProductsTable({ mode: "notebook" });
           filter({ mode: "notebook" });
 
-          popover().within(() => {
-            cy.findByText(columnName).click();
-            cy.findByLabelText("Filter operator").click();
-          });
-          cy.findByRole("listbox").findByText(operator).click();
+          popover().findByText(columnName).click();
+          selectOperator(operator);
           popover().within(() => {
             values.forEach((value, index) => {
               if (index !== 0) {
@@ -259,13 +338,105 @@ describe("scenarios > filters > filter types", () => {
             cy.button("Add filter").click();
           });
 
-          getNotebookStep("filter")
-            .findByText(expectedDisplayName)
-            .should("be.visible");
+          assertFilterName(expectedDisplayName);
           visualize();
           assertQueryBuilderRowCount(expectedRowCount);
         });
       },
     );
   });
+
+  describe("number filters", () => {
+    NUMBER_CASES.forEach(
+      ({
+        title,
+        columnName,
+        operator,
+        values = [],
+        expectedDisplayName,
+        expectedRowCount,
+      }) => {
+        it(title, () => {
+          openProductsTable({ mode: "notebook" });
+          filter({ mode: "notebook" });
+
+          popover().findByText(columnName).click();
+          selectOperator(operator);
+          popover().within(() => {
+            values.forEach((value, index) => {
+              if (index !== 0) {
+                cy.findByRole("textbox").type("{enter}");
+              }
+              cy.findByRole("textbox").type(value);
+            });
+            cy.button("Add filter").click();
+          });
+
+          assertFilterName(expectedDisplayName);
+          visualize();
+          assertQueryBuilderRowCount(expectedRowCount);
+        });
+      },
+    );
+  });
+
+  describe("date filters", () => {
+    describe("shortcuts", () => {
+      DATE_SHORTCUT_CASES.forEach(
+        ({ title, shortcut, expectedDisplayName }) => {
+          it(title, () => {
+            openProductsTable({ mode: "notebook" });
+            filter({ mode: "notebook" });
+
+            popover().within(() => {
+              cy.findByText("Created At").click();
+              cy.findByText(shortcut).click();
+            });
+            assertFilterName(expectedDisplayName);
+            visualize();
+            assertFiltersExist();
+          });
+        },
+      );
+    });
+
+    describe("exclude dates", () => {
+      EXCLUDE_DATE_CASES.forEach(
+        ({ title, label, options, expectedDisplayName, expectedRowCount }) => {
+          it(title, () => {
+            openProductsTable({ mode: "notebook" });
+            filter({ mode: "notebook" });
+
+            popover().within(() => {
+              cy.findByText("Created At").click();
+              cy.findByText("Exclude…").click();
+              cy.findByText(label).click();
+              if (options) {
+                options.forEach(option => cy.findByText(option).click());
+                cy.button("Add filter").click();
+              }
+            });
+            assertFilterName(expectedDisplayName);
+            visualize();
+            assertQueryBuilderRowCount(expectedRowCount);
+          });
+        },
+      );
+    });
+  });
 });
+
+function selectOperator(operatorName) {
+  cy.findByLabelText("Filter operator").click();
+  cy.findByRole("listbox").findByText(operatorName).click();
+}
+
+function assertFilterName(filterName, options) {
+  getNotebookStep("filter", options)
+    .findByText(filterName)
+    .should("be.visible");
+}
+
+function assertFiltersExist() {
+  cy.findByTestId("qb-filters-panel").should("be.visible");
+}

@@ -13,6 +13,8 @@ import { isExpression as isLegacyExpression } from "metabase-lib/expressions";
 import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
+import type { ColumnListItem, SegmentListItem } from "./types";
+
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
 import { DateFilterPicker } from "./DateFilterPicker";
 import { NumberFilterPicker } from "./NumberFilterPicker";
@@ -25,6 +27,7 @@ export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  filterIndex?: number;
 
   legacyQuery: LegacyQuery;
   legacyFilter?: LegacyFilter;
@@ -40,25 +43,37 @@ export function FilterPicker({
   query,
   stageIndex,
   filter,
+  filterIndex,
   legacyQuery,
   legacyFilter,
   onSelect,
   onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
+  const [column, setColumn] = useState(
+    getInitialColumn(query, stageIndex, filter),
+  );
+
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(filter && Lib.isCustomFilter(query, stageIndex, filter));
-
-  const [column, setColumn] = useState<Lib.ColumnMetadata | undefined>(
-    getInitialColumn(query, stageIndex, filter),
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
   );
 
   const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
     onClose?.();
   };
+
+  const checkItemIsSelected = useCallback(
+    (item: ColumnListItem | SegmentListItem) => {
+      return Boolean(
+        filterIndex != null && item.filterPositions?.includes?.(filterIndex),
+      );
+    },
+    [filterIndex],
+  );
 
   const handleExpressionChange = useCallback(
     (name: string, expression: LegacyExpressionClause) => {
@@ -73,17 +88,19 @@ export function FilterPicker({
     [legacyQuery, legacyFilter, onSelectLegacy, onClose],
   );
 
+  const renderExpressionEditor = () => (
+    <ExpressionWidget
+      query={legacyQuery}
+      expression={legacyFilter?.raw() as LegacyExpressionClause}
+      startRule="boolean"
+      header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+      onChangeExpression={handleExpressionChange}
+      onClose={closeExpressionEditor}
+    />
+  );
+
   if (isEditingExpression) {
-    return (
-      <ExpressionWidget
-        query={legacyQuery}
-        expression={legacyFilter?.raw() as LegacyExpressionClause}
-        startRule="boolean"
-        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-        onChangeExpression={handleExpressionChange}
-        onClose={closeExpressionEditor}
-      />
-    );
+    return renderExpressionEditor();
   }
 
   if (!column) {
@@ -92,6 +109,7 @@ export function FilterPicker({
         <FilterColumnPicker
           query={query}
           stageIndex={stageIndex}
+          checkItemIsSelected={checkItemIsSelected}
           onColumnSelect={setColumn}
           onSegmentSelect={handleChange}
           onExpressionSelect={openExpressionEditor}
@@ -102,18 +120,24 @@ export function FilterPicker({
 
   const FilterWidget = getFilterWidget(column);
 
-  return (
-    <Box miw={MIN_WIDTH}>
-      <FilterWidget
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        filter={filter}
-        onChange={handleChange}
-        onBack={() => setColumn(undefined)}
-      />
-    </Box>
-  );
+  if (FilterWidget) {
+    return (
+      <Box miw={MIN_WIDTH}>
+        <FilterWidget
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          filter={filter}
+          onChange={handleChange}
+          onBack={() => setColumn(undefined)}
+        />
+      </Box>
+    );
+  }
+
+  // This codepath should never be hit,
+  // but is here to make TypeScript happy
+  return renderExpressionEditor();
 }
 
 function getInitialColumn(
@@ -126,7 +150,18 @@ function getInitialColumn(
     : undefined;
 }
 
-const NotImplementedPicker = () => <div />;
+function isExpressionEditorInitiallyOpen(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata | undefined,
+  filter?: Lib.FilterClause,
+) {
+  if (!filter || Lib.isSegmentFilter(query, stageIndex, filter)) {
+    return false;
+  }
+  const hasWidget = column && getFilterWidget(column) != null;
+  return Lib.isCustomFilter(query, stageIndex, filter) || !hasWidget;
+}
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isBoolean(column)) {
@@ -147,5 +182,5 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isNumeric(column)) {
     return NumberFilterPicker;
   }
-  return NotImplementedPicker;
+  return null;
 }

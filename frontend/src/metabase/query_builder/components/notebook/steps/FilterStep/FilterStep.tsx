@@ -73,6 +73,7 @@ export function FilterStep({
             query={topLevelQuery}
             stageIndex={stageIndex}
             filter={filter}
+            filterIndex={index}
             legacyQuery={legacyQuery}
             legacyFilter={
               typeof index === "number"
@@ -95,6 +96,7 @@ interface FilterPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  filterIndex?: number;
   legacyQuery: LegacyQuery;
   legacyFilter?: LegacyFilter;
   onAddFilter: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
@@ -110,6 +112,7 @@ function FilterPopover({
   query,
   stageIndex,
   filter,
+  filterIndex,
   legacyQuery,
   legacyFilter,
   onAddFilter,
@@ -122,6 +125,7 @@ function FilterPopover({
       query={query}
       stageIndex={stageIndex}
       filter={filter}
+      filterIndex={filterIndex}
       legacyQuery={legacyQuery}
       legacyFilter={legacyFilter}
       onSelect={newFilter => {
