@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 import { renderWithProviders, screen } from "__support__/ui";
-import RecentsList from "./RecentsList";
+import { RecentsList } from "./RecentsList";
 
 const recentsData = [
   {
@@ -59,7 +59,7 @@ describe("RecentsList", () => {
     expect(screen.getByText("Recently viewed")).toBeInTheDocument();
 
     const [questionType, dashboardType, tableType] = screen.queryAllByTestId(
-      "recently-viewed-item-type",
+      "result-link-wrapper",
     );
 
     expect(screen.getByText("Question I visited")).toBeInTheDocument();
