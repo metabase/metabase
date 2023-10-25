@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -152,14 +153,18 @@
 (derive ::database-update-event ::event)
 (derive :event/database-update ::database-update-event)
 
-(methodical/defmethod events/publish-event! ::database-update-event
-  [topic {:keys [previous new]}]
+(mu/defn narrow-to-changed-keys :- [:map [:previous :map] [:new :map]]
+  "Keeps only keys that changed between previous and new."
+  [{:keys [previous new]}]
   (let [[previous-only new-only _both] (data/diff previous new)
         updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-    (audit-log/record-event!
-     topic
-     {:previous_value (select-keys previous updated-keys)
-      :new_value (select-keys new updated-keys)}
-     api/*current-user-id*
-     :model/Database
-     (:id new))))
+    {:previous (select-keys previous updated-keys)
+     :new (select-keys new updated-keys)}))
+
+(methodical/defmethod events/publish-event! ::database-update-event
+  [topic event]
+  (audit-log/record-event! topic
+                           (narrow-to-changed-keys event)
+                           api/*current-user-id*
+                           :model/Database
+                           (some-> event :new :id)))
