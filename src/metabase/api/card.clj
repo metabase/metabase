@@ -608,20 +608,6 @@ saved later when it is ready."
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(defn- publish-card-update!
-  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
-  events)."
-  [card archived?]
-  (let [event (cond
-                ;; card was archived
-                (and archived?
-                     (not (:archived card))) :event/card-archive
-                ;; card was unarchived
-                (and (false? archived?)
-                     (:archived card))       :event/card-unarchive
-                :else                        :event/card-update)]
-    (events/publish-event! event card)))
-
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
        (:archived new-card)))
@@ -745,7 +731,7 @@ saved later when it is ready."
 (defn- update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+  [{:keys [id], :as card-before-update} card-updates]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
@@ -771,7 +757,7 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (publish-card-update! card archived)
+    (events/publish-event! :event/card-update (assoc card :actor_id api/*current-user-id*))
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
