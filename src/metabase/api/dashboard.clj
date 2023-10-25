@@ -13,6 +13,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -820,7 +821,8 @@
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param      (param-key->param dashboard param-key)
                                 param-type (:type param)
-                                op         (if (qualified-keyword? param-type)
+                                operator?  (get-in lib.schema.parameter/types [param-type :operator])
+                                op         (if operator?
                                              (keyword (name param-type))
                                              :=)]
              field             (mappings->fields (:mappings param))]
