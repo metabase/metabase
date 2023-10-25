@@ -21,6 +21,7 @@ import { INITIALIZE } from "metabase/dashboard/actions/core";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
 import { addUndo } from "metabase/redux/undo";
+import { checkNotNull } from "metabase/core/utils/types";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getExistingDashCards } from "./utils";
 
@@ -333,21 +334,9 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       _moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
-        const { dashId } = getPrevDashAndTabs({ state });
-        if (dashId === null) {
-          throw Error(
-            `MOVE_DASHCARD_TO_TAB was dispatched but dashId (${dashId}) is null`,
-          );
-        }
         const dashCard = state.dashcards[dashCardId];
-
-        if (!dashCard.dashboard_tab_id) {
-          throw Error(
-            `MOVE_DASHCARD_TO_TAB was dispatched but dashCard.dashboard_tab_id (${dashCard.dashboard_tab_id}) is null`,
-          );
-        }
-
-        const dashboard = state.dashboards[dashId];
+        const dashboardId = checkNotNull(state.dashboardId);
+        const dashboard = state.dashboards[dashboardId];
 
         if (!dashboard.dashCardTabMovements) {
           dashboard.dashCardTabMovements = {};
@@ -356,11 +345,11 @@ export const tabsReducer = createReducer<DashboardState>(
         dashboard.dashCardTabMovements[dashCardId] = {
           originalRow: dashCard.row,
           originalCol: dashCard.col,
-          originalTabId: dashCard.dashboard_tab_id,
+          originalTabId: checkNotNull(dashCard.dashboard_tab_id),
         };
 
         const { row, col } = getPositionForNewDashCard(
-          getExistingDashCards(state, dashId, destinationTabId),
+          getExistingDashCards(state, dashboardId, destinationTabId),
           dashCard.size_x,
           dashCard.size_y,
         );
@@ -375,10 +364,8 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       undoMoveDashCardToTab,
       (state, { payload: { dashCardId } }) => {
-        if (!state.dashboardId) {
-          throw Error(`state.dashboardId is null in undoMoveDashCardToTab`);
-        }
-        const dashboard = state.dashboards[state.dashboardId];
+        const dashboardId = checkNotNull(state.dashboardId);
+        const dashboard = state.dashboards[dashboardId];
 
         const dashCard = state.dashcards[dashCardId];
         const movement = dashboard.dashCardTabMovements?.[dashCardId];
