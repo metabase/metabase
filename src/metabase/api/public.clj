@@ -231,7 +231,7 @@
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters], :archived false, conditions))
-        (t2/hydrate [:dashcards :card :series :dashcard/action] :ordered_tabs :param_values :param_fields)
+        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
@@ -575,22 +575,22 @@
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
-  [uuid param-key :as {:keys [query-params]}]
+  [uuid param-key :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
-  [uuid param-key query :as {:keys [query-params]}]
+  [uuid param-key query :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params query))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

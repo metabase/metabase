@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import dayjs from "dayjs";
-import { DatesProvider as MantineDatesProvider } from "@mantine/dates";
 import type { DatesProviderSettings, DayOfWeek } from "@mantine/dates";
+import { DatesProvider as MantineDatesProvider } from "@mantine/dates";
 
 interface DatesProviderProps {
   children?: ReactNode;
@@ -9,8 +9,8 @@ interface DatesProviderProps {
 
 export function DatesProvider({ children }: DatesProviderProps) {
   const settings: DatesProviderSettings = {
-    locale: dayjs.locale(),
-    firstDayOfWeek: dayjs.localeData().firstDayOfWeek() as DayOfWeek,
+    locale: dayjs().locale(),
+    firstDayOfWeek: dayjs().startOf("week").day() as DayOfWeek,
   };
 
   return (

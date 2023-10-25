@@ -7,7 +7,7 @@ export function getDashboardId(state: State) {
 export function getTabs(state: State) {
   const dashboardId = getDashboardId(state);
   return dashboardId
-    ? state.dashboard.dashboards[dashboardId].ordered_tabs?.filter(
+    ? state.dashboard.dashboards[dashboardId].tabs?.filter(
         tab => !tab.isRemoved,
       ) ?? []
     : [];

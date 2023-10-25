@@ -368,10 +368,10 @@
                     :name "A look at Reviews" :position 0}
                    {:id   #hawk/malli Tab-Id-Schema
                     :name "A look at Orders" :position 1}]
-                  (:ordered_tabs dash)))
+                  (:tabs dash)))
           (testing "The first card for each tab is a linked model card to the source model"
             (is (=? (repeat
-                     (count (:ordered_tabs dash))
+                     (count (:tabs dash))
                      {:visualization_settings
                       {:virtual_card {:display "link", :archived false}
                        :link         {:entity {:id      (:id model)
@@ -438,7 +438,7 @@
                         :name "A look at Reviews" :position 0}
                        {:id   #hawk/malli Tab-Id-Schema
                         :name "A look at Orders" :position 1}]
-                      (:ordered_tabs dash)))
+                      (:tabs dash)))
               (testing "All query cards have the correct filters"
                 (let [pk-filters (expected-filters {:model             model
                                                     :model-index       model-index
@@ -461,7 +461,7 @@
           ;; FE has a bug where it doesn't fire off queries for cards if there's only a single tab. So we hack around
           ;; that by not creating tabs if there would only be one.
           (testing "Has no tabs"
-            (is (empty? (:ordered_tabs dash))))
+            (is (empty? (:tabs dash))))
           (testing "The first card for each tab is a linked model card to the source model"
             (is (=? {:visualization_settings
                      {:virtual_card {:display "link", :archived false}

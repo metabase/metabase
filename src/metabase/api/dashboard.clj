@@ -217,12 +217,12 @@
                    :series
                    :dashcard/action
                    :dashcard/linkcard-info]
-                  :ordered_tabs
+                  :tabs
                   :collection_authority_level
                   :can_write
                   :param_fields
                   :param_values
-                  :collection)
+                  [:collection :is_personal])
       collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
@@ -273,6 +273,7 @@
                            (cond-> (assoc card :collection_id dest-coll-id)
                              same-collection?
                              (update :name #(str % " - " (tru "Duplicate"))))
+                           @api/*current-user*
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
@@ -300,9 +301,9 @@
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
   (let [dashcards (if (seq id->new-tab-id)
-                        (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             dashcards)
-                        dashcards)]
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
     (if-not deep?
       dashcards
       (keep (fn [dashboard-card]
@@ -364,7 +365,7 @@
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))
 
-                              id->new-tab-id (when-let [existing-tabs (seq (:ordered_tabs existing-dashboard))]
+                              id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                (duplicate-tabs dash existing-tabs))]
                           (reset! new-cards (vals id->new-card))
                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
@@ -441,7 +442,7 @@
                                                                    :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/select-one :model/Dashboard :id id)]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal])]
     (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -641,19 +642,19 @@
                      :series             [{:id 123
                                            ...}]}
                      ...]
-     :ordered_tabs [{:id       ... ; DashboardTab ID
+     :tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
-  [id :as {{:keys [cards ordered_tabs]} :body}]
+  [id :as {{:keys [cards tabs]} :body}]
   {id           ms/PositiveInt
    cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
-   ;; ordered_tabs should be required in production, making it optional because lots of
+   ;; tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
-   ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+   tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
-                      (t2/hydrate [:dashcards :series :card] :ordered_tabs))
-        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs)]
-    (when (and (seq (:ordered_tabs dashboard))
+                      (t2/hydrate [:dashcards :series :card] :tabs))
+        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)]
+    (when (and (seq (:tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
@@ -662,7 +663,7 @@
         (t2/with-transaction [_conn]
           (let [{:keys [old->new-tab-id
                         deleted-tab-ids]
-                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:ordered_tabs dashboard) new-tabs)
+                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
                 deleted-tab-ids          (set deleted-tab-ids)
                 current-cards            (cond->> (:dashcards dashboard)
                                            (seq deleted-tab-ids)
@@ -683,8 +684,8 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
         (track-dashcard-and-tab-events!  id @changes-stats)
         true))
-   {:cards        (t2/hydrate (dashboard/dashcards id) :series)
-    :ordered_tabs (dashboard/ordered-tabs id)}))
+   {:cards (t2/hydrate (dashboard/dashcards id) :series)
+    :tabs  (dashboard/tabs id)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
@@ -861,8 +862,8 @@
   - static-list: user defined values list
   - card: values is result of running a card
   - nil: chain-filter"
-  ([dashboard param-key query-params]
-   (param-values dashboard param-key query-params nil))
+  ([dashboard param-key constraint-param-key->value]
+   (param-values dashboard param-key constraint-param-key->value nil))
 
   ([dashboard                   :- :map
     param-key                   :- ms/NonBlankString
@@ -882,12 +883,12 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [id param-key :as {:keys [query-params]}]
+  [id param-key :as {constraint-param-key->value :query-params}]
   {id ms/PositiveInt}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key query-params))))
+      (param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -898,13 +899,13 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  [id param-key query :as {:keys [query-params]}]
+  [id param-key query :as {constraint-param-key->value :query-params}]
   {id    ms/PositiveInt
    query ms/NonBlankString}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key query-params query))))
+      (param-values dashboard param-key constraint-param-key->value query))))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in

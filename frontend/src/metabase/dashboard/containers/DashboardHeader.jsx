@@ -436,9 +436,7 @@ class DashboardHeader extends Component {
 
       extraButtons.push({
         title:
-          dashboard.ordered_tabs?.length > 1
-            ? t`Export tab as PDF`
-            : t`Export as PDF`,
+          dashboard.tabs?.length > 1 ? t`Export tab as PDF` : t`Export as PDF`,
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
