@@ -102,9 +102,9 @@ const TestInnerComponent = () => {
   );
 };
 
-const setup = ({ databases = [TEST_DB], tables = [TEST_TABLE] } = {}) => {
-  setupDatabasesEndpoints(databases);
-  setupTablesEndpoints(tables);
+const setup = () => {
+  setupDatabasesEndpoints([TEST_DB]);
+  setupTablesEndpoints([TEST_TABLE]);
   return renderWithProviders(<TestComponent />);
 };
 
@@ -179,10 +179,11 @@ describe("useEntityListQuery", () => {
   });
 
   it("should not remove loader in case second api call is cached", async () => {
-    const dbsResponse = [TEST_DB];
     fetchMock.get(
       "path:/api/database",
-      delay(100).then(() => dbsResponse),
+      delay(100).then(() => {
+        return [TEST_DB];
+      }),
       { overwriteRoutes: true },
     );
 
@@ -204,12 +205,9 @@ describe("useEntityListQuery", () => {
       within(screen.getByTestId("test2")).getByTestId("loading-spinner"),
     ).toBeInTheDocument();
 
-    await delay(100);
+    await delay(100); // trigger fetch request to be resolved
 
-    expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
-
-    await delay(0); // trigger delay to make sure state has been updated
+    await delay(0); // trigger extra event loop to make sure React state has been updated
 
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
     expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();

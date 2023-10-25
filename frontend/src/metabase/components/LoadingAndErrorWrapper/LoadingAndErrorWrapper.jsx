@@ -117,6 +117,8 @@ export default class LoadingAndErrorWrapper extends Component {
       showSpinner,
       loadingMessages,
       loadingScenes,
+      style,
+      className,
       "data-testid": testId,
     } = this.props;
 
@@ -136,11 +138,7 @@ export default class LoadingAndErrorWrapper extends Component {
       return Children.only(children);
     }
     return (
-      <div
-        className={this.props.className}
-        style={this.props.style}
-        data-testid={testId}
-      >
+      <div className={className} style={style} data-testid={testId}>
         {error ? (
           this.renderError(contentClassName)
         ) : loading ? (
