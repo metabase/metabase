@@ -103,6 +103,7 @@ describe("FieldValuesWidget", () => {
         });
         expect(fetchFieldValues).toHaveBeenCalledWith({
           id: PRODUCTS.CATEGORY,
+          table_id: field?.table_id,
         });
       });
 
@@ -263,9 +264,11 @@ describe("FieldValuesWidget", () => {
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
       expect(fetchFieldValues).toHaveBeenCalledWith({
         id: LISTABLE_PK_FIELD_ID,
+        table_id: valuesField.table_id,
       });
       expect(fetchFieldValues).not.toHaveBeenCalledWith({
         id: EXPRESSION_FIELD_ID,
+        table_id: expressionField.table_id,
       });
     });
   });
