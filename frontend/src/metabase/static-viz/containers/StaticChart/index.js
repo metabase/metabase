@@ -1,1 +1,1 @@
-export { default, IsomorphicChartProps } from "./StaticChart";
+export { default } from "./StaticChart";

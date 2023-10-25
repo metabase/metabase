@@ -1,11 +1,11 @@
 import { init } from "echarts";
-import type { IsomorphicChartProps } from "metabase/static-viz/containers/StaticChart";
+import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 
 const WIDTH = 540;
 const HEIGHT = 360;
 
-export function PieChart(props: IsomorphicChartProps) {
+export function PieChart(props: IsomorphicStaticChartProps) {
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
