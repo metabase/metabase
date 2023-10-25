@@ -69,7 +69,7 @@ export function getPieChartOption(
   // "Show percentages: On the chart" setting
   const formatPercent = (value: unknown) =>
     renderingContext.formatValue(value, {
-      column: chartModel.colDescs.metricDesc.column,
+      column: metricColSettings.column,
       number_separators: metricColSettings.number_separators,
       number_style: "percent",
       jsx: true,
