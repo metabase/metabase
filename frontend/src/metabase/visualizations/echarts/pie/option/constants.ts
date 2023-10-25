@@ -12,7 +12,6 @@ export const SUNBURST_SERIES_OPTION: RegisteredSeriesOption["sunburst"] = {
     overflow: "none",
     fontSize: 20,
     fontWeight: 700,
-    color: "white", // TODO select color dynamically based on contrast with slice color
   },
   itemStyle: {
     borderWidth: DIMENSIONS.slice.borderWidth,
