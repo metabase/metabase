@@ -12,7 +12,7 @@ describe("issue 34794", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should not crash when navigating to filter popover's custom expression section", () => {
+  it("should not crash when navigating to filter popover's custom expression section (metabase#34794)", () => {
     openOrdersTable({ mode: "notebook" });
 
     filter({ mode: "notebook" });
