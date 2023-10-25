@@ -585,7 +585,7 @@
   "Updates the given `alert` and returns it"
   [alert]
   (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse and return it
+  ;; fetch the fully updated pulse, log an update event, and return it
   (events/publish-event! :event/alert-update (retrieve-alert (u/the-id alert))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
