@@ -647,13 +647,96 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
 
-          cy.findAllByTestId("table-row")
-            .eq(POINT_INDEX)
-            .findAllByTestId("cell-data")
-            .last()
-            .click();
-
+          clickLastTableCountCell();
           assertDrillThroughMenuOpen();
+        },
+      );
+    });
+
+    it("allows setting dashboard with multiple parameters as custom destination for multiple columns", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+          modal().findByText(TARGET_DASHBOARD.name).click();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          addTextParameter();
+          cy.icon("chevronleft").click();
+          cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+          /**
+           * TODO: remove the next line when metabase#34845 is fixed
+           * @see https://github.com/metabase/metabase/issues/34845
+           */
+          cy.get("aside").findByText("Unknown").click();
+          cy.get("aside").findByText("Go to a custom destination").click();
+          cy.get("aside").findByText("Dashboard").click();
+          modal().findByText(TARGET_DASHBOARD.name).click();
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          addTimeParameter();
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.log("it handles count column click");
+          clickLastTableCountCell();
+          cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.findAllByTestId("field-set").should("have.length", 2);
+          cy.findAllByTestId("field-set").should(
+            "contain.text",
+            DASHBOARD_FILTER_TIME.name,
+          );
+          cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
+              );
+            });
+          });
+
+          cy.go("back");
+
+          cy.log("it handles created at column click");
+          clickLastTableCreatedAtCell();
+          cy.findByText(TARGET_DASHBOARD.name).should("exist");
+          cy.findAllByTestId("field-set").should("have.length", 2);
+          cy.findAllByTestId("field-set").should(
+            "contain.text",
+            DASHBOARD_FILTER_TEXT.name,
+          );
+          cy.findAllByTestId("field-set").should(
+            "contain.text",
+            POINT_CREATED_AT_FORMATTED,
+          );
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+              );
+            });
+          });
         },
       );
     });
@@ -712,6 +795,22 @@ const clickLastLineChartPoint = () => {
       const { left, top } = circle.getBoundingClientRect();
       cy.get("body").click(left, top);
     });
+};
+
+const clickLastTableCreatedAtCell = () => {
+  cy.findAllByTestId("table-row")
+    .eq(POINT_INDEX)
+    .findAllByTestId("cell-data")
+    .first()
+    .click();
+};
+
+const clickLastTableCountCell = () => {
+  cy.findAllByTestId("table-row")
+    .eq(POINT_INDEX)
+    .findAllByTestId("cell-data")
+    .last()
+    .click();
 };
 
 const addTextParameter = () => {
