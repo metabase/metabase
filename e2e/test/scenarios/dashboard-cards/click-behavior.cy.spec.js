@@ -251,7 +251,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          addCustomDashboardDestination();
+          addDashboardDestination();
           addTextParameter();
           cy.get("aside").button("Done").click();
 
@@ -291,7 +291,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          addCustomDashboardDestination();
+          addDashboardDestination();
           addTextParameter();
           addTimeParameter();
           cy.get("aside").button("Done").click();
@@ -327,9 +327,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Saved question").click();
-          modal().findByText(TARGET_QUESTION.name).click();
+          addSavedQuestionDestination();
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -358,9 +356,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Saved question").click();
-          modal().findByText(TARGET_QUESTION.name).click();
+          addSavedQuestionDestination();
           cy.get("aside").findByText("Orders → Created At").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
@@ -400,9 +396,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Saved question").click();
-          modal().findByText(TARGET_QUESTION.name).click();
+          addSavedQuestionDestination();
           cy.get("aside").findByText("Orders → Created At").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
@@ -678,7 +672,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             "it allows to set custom destination (dashboard) click behavior for 'Count' column",
           );
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
-          addCustomDashboardDestination();
+          addDashboardDestination();
           addTextParameter();
           addTimeParameter();
 
@@ -693,9 +687,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
            * @see https://github.com/metabase/metabase/issues/34845
            */
           cy.get("aside").findByText("Unknown").click();
-          cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Saved question").click();
-          modal().findByText(TARGET_QUESTION.name).click();
+          addSavedQuestionDestination();
           cy.get("aside").findByText("Orders → Created At").click();
           popover().within(() => {
             cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
@@ -838,11 +830,17 @@ const clickTableCell = index => {
     .click();
 };
 
-const addCustomDashboardDestination = () => {
+const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
   modal().findByText(TARGET_DASHBOARD.name).click();
   cy.get("aside").findByText("No available targets").should("not.exist");
+};
+
+const addSavedQuestionDestination = () => {
+  cy.get("aside").findByText("Go to a custom destination").click();
+  cy.get("aside").findByText("Saved question").click();
+  modal().findByText(TARGET_QUESTION.name).click();
 };
 
 const addTextParameter = () => {
