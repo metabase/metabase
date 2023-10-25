@@ -182,7 +182,7 @@ export const tabsReducer = createReducer<DashboardState>(
       (state, { payload: { tabId } }) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
-          throw Error(
+          throw new Error(
             `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
           );
         }
@@ -236,7 +236,7 @@ export const tabsReducer = createReducer<DashboardState>(
         });
         const tabToRemove = prevTabs.find(({ id }) => id === tabId);
         if (!prevDash || !tabToRemove) {
-          throw Error(
+          throw new Error(
             `DELETE_TAB was dispatched but either prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
           );
         }
@@ -276,7 +276,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
       const removedTab = prevTabs.find(({ id }) => id === tabId);
       if (!removedTab) {
-        throw Error(
+        throw new Error(
           `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
         );
       }
@@ -296,7 +296,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const tabToRenameIndex = prevTabs.findIndex(({ id }) => id === tabId);
 
       if (tabToRenameIndex === -1) {
-        throw Error(
+        throw new Error(
           `RENAME_TAB was dispatched but tabToRenameIndex (${tabToRenameIndex}) is invalid`,
         );
       }
@@ -316,7 +316,7 @@ export const tabsReducer = createReducer<DashboardState>(
         );
 
         if (!prevDash || sourceTabIndex === -1 || destTabIndex === -1) {
-          throw Error(
+          throw new Error(
             `MOVE_TAB was dispatched but either prevDash (${JSON.stringify(
               prevDash,
             )}), sourceTabIndex (${sourceTabIndex}) or destTabIndex (${destTabIndex}) is invalid`,
@@ -371,7 +371,7 @@ export const tabsReducer = createReducer<DashboardState>(
         const movement = dashboard.dashCardTabMovements?.[dashCardId];
 
         if (!movement) {
-          throw Error(`cannot find movement to undo undoMoveDashCardToTab`);
+          throw new Error(`cannot find movement to undo undoMoveDashCardToTab`);
         }
 
         dashCard.row = movement.originalRow;
@@ -389,7 +389,7 @@ export const tabsReducer = createReducer<DashboardState>(
           filterRemovedTabs: true,
         });
         if (!prevDash) {
-          throw Error(
+          throw new Error(
             `SAVE_CARDS_AND_TABS was dispatched but prevDash (${prevDash}) is null`,
           );
         }
