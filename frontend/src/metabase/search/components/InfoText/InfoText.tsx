@@ -26,6 +26,7 @@ import { LastEditedInfoText, LastEditedInfoTooltip } from "./InfoText.styled";
 export type InfoTextProps = {
   result: WrappedResult;
   isCompact?: boolean;
+  isEnabled?: boolean;
 };
 
 const LinkSeparator = (
@@ -50,7 +51,7 @@ const LoadingText = ({ "data-testid": dataTestId = "loading-text" }) => (
   >{t`Loading…`}</Text>
 );
 
-export const InfoTextTableLink = ({ result }: InfoTextProps) => {
+export const InfoTextTableLink = ({ result, isEnabled }: InfoTextProps) => {
   const { data: table, isLoading } = useTableQuery({
     id: result.table_id,
   });
@@ -63,18 +64,34 @@ export const InfoTextTableLink = ({ result }: InfoTextProps) => {
   }
 
   return (
-    <SearchResultLink key={label} href={link}>
+    <SearchResultLink isEnabled={isEnabled} key={label} href={link}>
       {label}
     </SearchResultLink>
   );
 };
 
-export const DatabaseLink = ({ database }: { database: Database }) => (
-  <SearchResultLink key={database.name} href={browseDatabase(database)}>
+export const DatabaseLink = ({
+  database,
+  isEnabled,
+}: {
+  database: Database;
+  isEnabled: boolean;
+}) => (
+  <SearchResultLink
+    key={database.name}
+    href={browseDatabase(database)}
+    isEnabled={isEnabled}
+  >
     {database.name}
   </SearchResultLink>
 );
-export const TableLink = ({ result }: { result: WrappedResult }) => {
+export const TableLink = ({
+  result,
+  isEnabled,
+}: {
+  result: WrappedResult;
+  isEnabled: boolean;
+}) => {
   const link = browseSchema({
     db: { id: result.database_id },
     schema_name: result.table_schema,
@@ -82,14 +99,21 @@ export const TableLink = ({ result }: { result: WrappedResult }) => {
 
   return (
     <>
-      <SearchResultLink key={result.table_schema} href={link}>
+      <SearchResultLink
+        isEnabled={isEnabled}
+        key={result.table_schema}
+        href={link}
+      >
         {result.table_schema}
       </SearchResultLink>
     </>
   );
 };
 
-export const InfoTextTablePath = ({ result }: InfoTextProps) => {
+export const InfoTextTablePath = ({
+  result,
+  isEnabled = true,
+}: InfoTextProps) => {
   const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
     id: result.database_id,
   });
@@ -104,30 +128,37 @@ export const InfoTextTablePath = ({ result }: InfoTextProps) => {
 
   return (
     <>
-      {showDatabaseLink && <DatabaseLink database={database} />}
+      {showDatabaseLink && (
+        <DatabaseLink isEnabled={isEnabled} database={database} />
+      )}
       {showTableLink && (
         <>
           {LinkSeparator}
-          <TableLink result={result} />
+          <TableLink isEnabled={isEnabled} result={result} />
         </>
       )}
     </>
   );
 };
 
-export const InfoTextAssetLink = ({ result }: InfoTextProps) => {
+export const InfoTextAssetLink = ({ result, isEnabled }: InfoTextProps) => {
   if (result.model === "table") {
-    return <InfoTextTablePath result={result} />;
+    return <InfoTextTablePath isEnabled={isEnabled} result={result} />;
   }
 
   if (result.model === "segment" || result.model === "metric") {
-    return <InfoTextTableLink result={result} />;
+    return <InfoTextTableLink isEnabled={isEnabled} result={result} />;
   }
 
   const { label, link, icon }: InfoTextData = getInfoText(result);
 
   return label ? (
-    <SearchResultLink key={label} href={link} leftIcon={icon}>
+    <SearchResultLink
+      isEnabled={isEnabled}
+      key={label}
+      href={link}
+      leftIcon={icon}
+    >
       {label}
     </SearchResultLink>
   ) : null;
@@ -202,9 +233,13 @@ export const InfoTextEditedInfo = ({ result, isCompact }: InfoTextProps) => {
   );
 };
 
-export const InfoText = ({ result, isCompact }: InfoTextProps) => (
+export const InfoText = ({
+  result,
+  isCompact,
+  isEnabled = true,
+}: InfoTextProps) => (
   <Group noWrap spacing="xs">
-    <InfoTextAssetLink result={result} />
+    <InfoTextAssetLink isEnabled={isEnabled} result={result} />
     <InfoTextEditedInfo result={result} isCompact={isCompact} />
   </Group>
 );
