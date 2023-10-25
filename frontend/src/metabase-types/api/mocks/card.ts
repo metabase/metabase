@@ -10,6 +10,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -17,7 +18,7 @@ import {
 import { createMockCollection } from "./collection";
 
 export const createMockCard = (opts?: Partial<Card>): Card => {
-  const collection = createMockCollection();
+  const rootCollection = createMockCollection(ROOT_COLLECTION);
   return {
     id: 1,
     name: "Question",
@@ -30,8 +31,8 @@ export const createMockCard = (opts?: Partial<Card>): Card => {
     dataset: false,
     can_write: true,
     cache_ttl: null,
-    collection,
-    collection_id: collection.id as number,
+    collection: rootCollection,
+    collection_id: null,
     last_query_start: null,
     average_query_time: null,
     archived: false,
