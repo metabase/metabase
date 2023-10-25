@@ -111,13 +111,13 @@ const setup = async ({
   error,
   waitForContent = true,
 }: SetupOpts = {}) => {
-  const dashboardSet = new Set(
-    [dashboard, mostRecentlyViewedDashboard].filter(isNotNull),
+  const dashboards = Array.from(
+    new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
 
   setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
-  setupDashboardCollectionItemsEndpoint(Array.from(dashboardSet));
+  setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
 
