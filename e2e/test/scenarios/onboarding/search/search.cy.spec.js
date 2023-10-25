@@ -465,30 +465,42 @@ describe("scenarios > search", () => {
         });
       });
 
-      it("should remove created_by filter when `X` is clicked on filter", () => {
-        cy.visit(`/search?q=reviews&created_by=${NORMAL_USER_ID}`);
+      ["normal", "sandboxed"].forEach(userType => {
+        it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
+          cy.signIn(userType);
+          cy.visit("/");
 
-        expectSearchResultContent({
-          expectedSearchResults: [
+          getSearchBar().clear();
+          getSearchBar().type("reviews{enter}");
+          cy.wait("@search");
+
+          expectSearchResultItemNameContent(
             {
-              name: NORMAL_USER_TEST_QUESTION.name,
-              timestamp: "Created a few seconds ago by Robert Tableton",
-              collection: "Our analytics",
+              itemNames: [
+                NORMAL_USER_TEST_QUESTION.name,
+                ADMIN_TEST_QUESTION.name,
+              ],
             },
-          ],
-        });
+            { strict: false },
+          );
 
-        cy.findByTestId("created_by-search-filter").within(() => {
-          cy.findByText("Robert Tableton").should("exist");
-          cy.findByLabelText("close icon").click();
-        });
+          cy.findByTestId("created_by-search-filter").click();
 
-        expectSearchResultItemNameContent({
-          itemNames: [
-            NORMAL_USER_TEST_QUESTION.name,
-            ADMIN_TEST_QUESTION.name,
-            REVIEWS_TABLE_NAME,
-          ],
+          popover().within(() => {
+            cy.findByText("Bobby Tables").click();
+            cy.findByText("Apply").click();
+          });
+          cy.url().should("contain", "created_by");
+
+          expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: NORMAL_USER_TEST_QUESTION.name,
+                timestamp: "Created a few seconds ago by Bobby Tables",
+                collection: "Our analytics",
+              },
+            ],
+          });
         });
       });
     });
@@ -694,6 +706,45 @@ describe("scenarios > search", () => {
             LAST_EDITED_BY_ADMIN_QUESTION.name,
             REVIEWS_TABLE_NAME,
           ],
+        });
+      });
+
+      ["normal", "sandboxed"].forEach(userType => {
+        it(`should allow ${userType} (non-admin) user to see users and filter by last_edited_by`, () => {
+          cy.signIn(userType);
+          cy.visit("/");
+
+          getSearchBar().clear();
+          getSearchBar().type("reviews{enter}");
+          cy.wait("@search");
+
+          expectSearchResultItemNameContent(
+            {
+              itemNames: [
+                NORMAL_USER_TEST_QUESTION.name,
+                ADMIN_TEST_QUESTION.name,
+              ],
+            },
+            { strict: false },
+          );
+
+          cy.findByTestId("last_edited_by-search-filter").click();
+
+          popover().within(() => {
+            cy.findByText("Bobby Tables").click();
+            cy.findByText("Apply").click();
+          });
+          cy.url().should("contain", "last_edited_by");
+
+          expectSearchResultContent({
+            expectedSearchResults: [
+              {
+                name: LAST_EDITED_BY_ADMIN_QUESTION.name,
+                timestamp: "Updated a few seconds ago by Bobby Tables",
+                collection: "Our analytics",
+              },
+            ],
+          });
         });
       });
     });
