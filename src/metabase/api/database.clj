@@ -950,7 +950,7 @@
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update {:old existing-database :new db})
+          (events/publish-event! :event/database-update {:previous existing-database :new db})
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 

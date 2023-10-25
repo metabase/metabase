@@ -147,14 +147,19 @@
 
 (methodical/defmethod events/publish-event! ::database-event
   [topic database]
-  (def topic topic)
-  (def database database)
   (audit-log/record-event! topic database))
 
 (derive ::database-update-event ::event)
 (derive :event/database-update ::database-update-event)
 
 (methodical/defmethod events/publish-event! ::database-update-event
-  [topic {:keys [old new]}]
-  (let [[_old-only new-only _both] (data/diff old new)]
-    (audit-log/record-event! topic (assoc new-only :raw? true))))
+  [topic {:keys [previous new]}]
+  (let [[previous-only new-only _both] (data/diff previous new)
+        updated-keys (into #{} (concat (keys previous-only) (keys new-only)))]
+    (audit-log/record-event!
+     topic
+     {:previous_value (select-keys previous updated-keys)
+      :new_value (select-keys new updated-keys)}
+     api/*current-user-id*
+     :model/Database
+     (:id new))))
