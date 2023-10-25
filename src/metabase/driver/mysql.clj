@@ -37,7 +37,8 @@
   (:import
    (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
 
@@ -646,13 +647,20 @@
     "1"
     "0"))
 
-(defmethod value->string java.time.LocalDateTime
+(defmethod value->string LocalDateTime
   [val]
   (t/format :iso-local-date-time val))
 
-(defmethod value->string java.time.OffsetDateTime
-  [val]
-  (t/format :iso-offset-date-time val))
+(let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
+      offset-fmt       "XXX"
+      zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
+      offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
+  (defmethod value->string OffsetDateTime
+    [^OffsetDateTime val]
+    (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
+                zulu-formatter
+                offset-formatter)
+              val)))
 
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling

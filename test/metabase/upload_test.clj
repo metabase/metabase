@@ -341,7 +341,8 @@
              (upload/detect-schema
               (csv-file-with ["Offset Datetime,Not Datetime"
                               "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
-                              "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"])))))))
+                              "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
+                              "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"])))))))
 
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -446,24 +447,31 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (with-mysql-local-infile-activated
-          (upload/load-from-csv!
-           driver/*driver*
-           (mt/id)
-           "upload_test"
-           (csv-file-with ["offset_datetime"
-                           "2022-01-01T01:00:00-07:00"])))
-        (testing "Fields exists after sync"
-          (sync/sync-database! (mt/db))
-          (let [table (t2/select-one Table :db_id (mt/id))]
-            (is (=? {:name #"(?i)upload_test"} table))
-            (testing "Check the offset datetime column the correct base_type"
-              (is (=? {:name      #"(?i)offset_datetime"
-                       :base_type :type/DateTimeWithLocalTZ}
-                      ;; db position is 1; 0 is for the auto-inserted ID
-                      (t2/select-one Field :database_position 1 :table_id (:id table)))))
-            (is (= "2022-01-01T08:00:00Z"
-                   (second (first (rows-for-table table)))))))))))
+        (let [datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
+                              ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
+                              ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
+                              ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
+                              ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
+                              ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
+                              ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
+                              ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
+          (with-mysql-local-infile-activated
+            (upload/load-from-csv!
+             driver/*driver*
+             (mt/id)
+             "upload_test"
+             (csv-file-with (into ["offset_datetime"] (map first datetime-pairs)))))
+          (testing "Fields exists after sync"
+            (sync/sync-database! (mt/db))
+            (let [table (t2/select-one Table :db_id (mt/id))]
+              (is (=? {:name #"(?i)upload_test"} table))
+              (testing "Check the offset datetime column the correct base_type"
+                (is (=? {:name      #"(?i)offset_datetime"
+                         :base_type :type/DateTimeWithLocalTZ}
+                        ;; db position is 1; 0 is for the auto-inserted ID
+                        (t2/select-one Field :database_position 1 :table_id (:id table)))))
+              (is (= (map second datetime-pairs)
+                     (map second (rows-for-table table)))))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"
