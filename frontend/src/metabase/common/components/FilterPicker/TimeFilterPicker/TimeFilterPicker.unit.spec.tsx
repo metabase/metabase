@@ -337,6 +337,22 @@ describe("TimeFilterPicker", () => {
       expect(filterParts?.values).toEqual([getDefaultValue()]);
     });
 
+    it("should handle invalid filter value", () => {
+      const opts = createFilteredQuery({
+        values: [dayjs("32:66", "HH:mm").toDate()],
+      });
+      const { getNextFilterParts } = setup(opts);
+
+      // There's no particular reason why 32:66 becomes 09:06
+      // We trust the TimeInput to turn it into a valid time value
+      const input = screen.getByDisplayValue("09:06");
+      userEvent.type(input, "11:00");
+      userEvent.click(screen.getByText("Update filter"));
+
+      const filterParts = getNextFilterParts();
+      expect(filterParts?.values).toEqual([dayjs("11:00", "HH:mm").toDate()]);
+    });
+
     it("should go back", () => {
       const opts = createFilteredQuery({ operator: "<" });
       const { onBack, onChange } = setup(opts);
