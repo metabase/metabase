@@ -227,6 +227,15 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
+(defn is-audit-db-sync-job?
+  "Returns true when the job is a sync job, and the database is an audit database.
+
+  This is in [[check-and-schedule-tasks-for-db!]] to skip the creation of the sync job test for audit databases."
+  [database {:keys [key db-schedule-column]}]
+  (and (:is_audit database)
+       (= key :sync-and-analyze)
+       (= db-schedule-column :metadata_sync_schedule)))
+
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
@@ -242,27 +251,34 @@
                                     (:triggers sync-job))
         existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
                                                     trigger))
-                                    (:triggers fv-job))]
-
-    (doseq [{:keys [existing-trigger existing-schedule ti trigger description]}
-            [{:existing-trigger  existing-sync-trigger
-              :existing-schedule (:metadata_sync_schedule database)
-              :ti                sync-analyze-task-info
-              :trigger           sync-trigger
-              :description       "sync/analyze"}
-             {:existing-trigger  existing-fv-trigger
-              :existing-schedule (:cache_field_values_schedule database)
-              :ti                field-values-task-info
-              :trigger           fv-trigger
-              :description       "field-values"}]]
-      (when (or (not existing-trigger)
-                (not= (:schedule existing-trigger) existing-schedule))
-        (delete-task! database ti)
-        (log/info
-         (u/format-color 'green "Scheduling %s for database %d: trigger: %s"
-                         description (u/the-id database) (.. ^org.quartz.Trigger trigger getKey getName)))
-        ;; now (re)schedule the task
-        (task/add-trigger! trigger)))))
+                                    (:triggers fv-job))
+        job-data [{:existing-trigger  existing-sync-trigger
+                   :existing-schedule (:metadata_sync_schedule database)
+                   :ti                sync-analyze-task-info
+                   :trigger           sync-trigger
+                   :description       "sync/analyze"}
+                  {:existing-trigger  existing-fv-trigger
+                   :existing-schedule (:cache_field_values_schedule database)
+                   :ti                field-values-task-info
+                   :trigger           fv-trigger
+                   :description       "field-values"}]
+        {:keys [jobs-to-create
+                jobs-to-skip]} (group-by (fn [{:keys [ti]}]
+                                           (if (is-audit-db-sync-job? database ti)
+                                             :jobs-to-skip
+                                             :jobs-to-create))
+                                         job-data)]
+    (doseq [{:keys [description]} jobs-to-skip]
+      (log/info (u/format-color :red "Not scheduling %s for database %d" description (:id database))))
+    (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} jobs-to-create
+            :when (or (not existing-trigger)
+                      (not= (:schedule existing-trigger) existing-schedule))]
+      (delete-task! database ti)
+      (log/info
+       (u/format-color :green "Scheduling %s for database %d: trigger: %s"
+                       description (:id database) (.. ^org.quartz.Trigger trigger getKey getName)))
+      ;; now (re)schedule the task
+      (task/add-trigger! trigger))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
