@@ -83,3 +83,11 @@
                   (cond-> %
                     pos (assoc :breakout-position pos)))
                cols))))))
+
+(defn breakout-column?
+  "Returns if `column` is a breakout column of stage with `stage-number` of `query`."
+  [query stage-number column]
+  (some?
+   (some (fn [a-breakout]
+           (lib.equality/find-matching-column query stage-number a-breakout [column] {:generous? true}))
+         (breakouts query stage-number))))

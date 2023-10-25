@@ -27,6 +27,7 @@ const MULTI_SELECT_OPTIONS = [
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
+  isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
@@ -38,6 +39,7 @@ export interface ParameterSettingsProps {
 
 const ParameterSettings = ({
   parameter,
+  isParameterSlugUsed,
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
@@ -46,31 +48,29 @@ const ParameterSettings = ({
   onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
-  const [internalValue, setInternalValue] = useState(parameter.name);
+  const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
 
   useLayoutEffect(() => {
-    setInternalValue(parameter.name);
+    setTempLabelValue(parameter.name);
   }, [parameter.name]);
 
-  const handleLabelChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInternalValue(event.target.value);
-    },
-    [],
-  );
+  const labelError = getLabelError({
+    labelValue: tempLabelValue,
+    isParameterSlugUsed,
+  });
 
-  const labelError = internalValue ? null : t`Required`;
+  const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTempLabelValue(event.target.value);
+  };
 
-  const handleLabelBlur = useCallback(
-    (event: { target: HTMLInputElement }) => {
-      if (labelError) {
-        setInternalValue(parameter.name);
-      } else {
-        onChangeName(event.target.value);
-      }
-    },
-    [onChangeName, parameter.name, labelError],
-  );
+  const handleLabelBlur = (event: { target: HTMLInputElement }) => {
+    if (labelError) {
+      // revert to the value before editing
+      setTempLabelValue(parameter.name);
+    } else {
+      onChangeName(event.target.value);
+    }
+  };
 
   const handleSourceSettingsChange = useCallback(
     (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
@@ -86,7 +86,7 @@ const ParameterSettings = ({
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
           onChange={handleLabelChange}
-          value={internalValue}
+          value={tempLabelValue}
           onBlur={handleLabelBlur}
           error={labelError}
           aria-label={t`Label`}
@@ -129,6 +129,22 @@ const ParameterSettings = ({
     </SettingsRoot>
   );
 };
+
+function getLabelError({
+  labelValue,
+  isParameterSlugUsed,
+}: {
+  labelValue: string;
+  isParameterSlugUsed: (value: string) => boolean;
+}) {
+  if (!labelValue) {
+    return t`Required`;
+  }
+  if (isParameterSlugUsed(labelValue)) {
+    return t`This label is already in use`;
+  }
+  return null;
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSettings;

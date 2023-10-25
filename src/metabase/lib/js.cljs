@@ -9,6 +9,7 @@
    [filter])
   (:require
    [clojure.walk :as walk]
+   [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -22,17 +23,26 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
 ;;; this is mostly to ensure all the relevant namespaces with multimethods impls get loaded.
 (comment lib.core/keep-me)
 
+(defn- remove-undefined-properties
+  [obj]
+  (cond-> obj
+    (object? obj) (gobject/filter (fn [e _ _] (not (undefined? e))))))
+
 (defn- convert-js-template-tags [tags]
-  (update-vals (js->clj tags) #(-> %
-                                   (update-keys keyword)
-                                   (update :type keyword))))
+  (-> tags
+      (gobject/map (fn [e _ _]
+                     (remove-undefined-properties e)))
+      js->clj
+      (update-vals #(-> %
+                        (update-keys keyword)
+                        (update :type keyword)))))
 
 (defn ^:export extract-template-tags
   "Extract the template tags from a native query's text.
@@ -58,15 +68,6 @@
   [query]
   (lib.core/suggested-name query))
 
-(defn- pMBQL [query-map]
-  (as-> query-map <>
-    (js->clj <> :keywordize-keys true)
-    (if (:type <>)
-      <>
-      (assoc <> :type :query))
-    (mbql.normalize/normalize <>)
-    (lib.convert/->pMBQL <>)))
-
 (defn ^:export metadataProvider
   "Convert metadata to a metadata provider if it is not one already."
   [database-id metadata]
@@ -77,7 +78,7 @@
 (defn ^:export query
   "Coerce a plain map `query` to an actual query object that you can use with MLv2."
   [database-id metadata query-map]
-  (let [query-map (pMBQL query-map)]
+  (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
     (lib.core/query (metadataProvider database-id metadata) query-map)))
 
@@ -389,7 +390,7 @@
 
 (defn ^:export expression-clause
   "Returns a standalone clause for an `operator`, `options`, and arguments."
-  [an-operator options args]
+  [an-operator args options]
   (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
 
 (defn ^:export expression-parts
@@ -794,8 +795,8 @@
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."
-  [a-query]
-  (to-array (lib.core/available-segments a-query)))
+  [a-query stage-number]
+  (to-array (lib.core/available-segments a-query stage-number)))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
@@ -842,16 +843,31 @@
   [a-query stage-number join-condition bucketing-option]
   (lib.core/join-condition-update-temporal-bucketing a-query stage-number join-condition bucketing-option))
 
+(defn- fix-column-with-ref [a-ref column]
+  (cond-> column
+    ;; Sometimes the FE has result metadata from the QP, without the required :lib/source-uuid on it.
+    ;; We have the UUID for the aggregation in its ref, so use that here.
+    (some-> a-ref first (= :aggregation)) (assoc :lib/source-uuid (last a-ref))))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
-  `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like `{:column-name \"ID\", :value 12}`.
+  `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
+  ```
+  {:column     {:lib/type :metadata/column ...}
+   :column-ref [:field ...]
+   :value 12}
+  ```
 
   The spelling of the column key differs between multiple JS objects of this same general shape
   (`col` on data rows, `column` on dimensions), etc., hence the abstraction."
   [col-fn]
   (fn [^js cell]
-    {:column-name (.-name (col-fn cell))
-     :value       (.-value cell)}))
+    (let [column     (js.metadata/parse-column (col-fn cell))
+          column-ref (when-let [a-ref (:field-ref column)]
+                       (legacy-ref->pMBQL a-ref))]
+      {:column     (fix-column-with-ref column-ref column)
+       :column-ref column-ref
+       :value      (.-value cell)})))
 
 (def ^:private row-cell       (js-cells-by #(.-col ^js %)))
 (def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
@@ -863,15 +879,19 @@
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
   - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
   [a-query stage-number column value row dimensions]
-  (->> (merge {:column (js.metadata/parse-column column)
-               :value  (cond
-                         (undefined? value) nil   ; Missing a value, ie. a column click
-                         (nil? value)       :null ; Provided value is null, ie. database NULL
-                         :else              value)}
-              (when row                    {:row        (mapv row-cell       row)})
-              (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
-       (lib.core/available-drill-thrus a-query stage-number)
-       to-array))
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (let [column-ref (when-let [a-ref (.-field_ref ^js column)]
+                       (legacy-ref->pMBQL a-ref))]
+      (->> (merge {:column     (fix-column-with-ref column-ref (js.metadata/parse-column column))
+                   :column-ref column-ref
+                   :value      (cond
+                                 (undefined? value) nil   ; Missing a value, ie. a column click
+                                 (nil? value)       :null ; Provided value is null, ie. database NULL
+                                 :else              value)}
+                  (when row                    {:row        (mapv row-cell       row)})
+                  (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
+           (lib.core/available-drill-thrus a-query stage-number)
+           to-array))))
 
 (defn ^:export drill-thru
   "Applies the given `drill-thru` to the specified query and stage. Returns the updated query.
@@ -895,3 +915,15 @@
    Can be passed an integer table id or a legacy `card__<id>` string."
   [a-query table-id]
   (lib.core/with-different-table a-query table-id))
+
+(defn ^:export format-relative-date-range
+  "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
+   Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
+   `options` is a map and supports `:include-current` to include the current given unit of time in the range."
+  [n unit offset-n offset-unit options]
+  (shared.ut/format-relative-date-range
+    n
+    (keyword unit)
+    offset-n
+    (some-> offset-unit keyword)
+    (js->clj options :keywordize-keys true)))

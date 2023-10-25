@@ -31,6 +31,12 @@
             "2019-04-01"
             "2019-04-03"]
            (params.dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "datetime range"
+    (is (= [:between
+            [:field "field" {:base-type :type/DateTime, :temporal-unit :default}]
+            "2019-04-01T12:30:00"
+            "2019-04-03T16:30:00"]
+           (params.dates/date-string->filter "2019-04-01T12:30~2019-04-03T16:30" [:field "field" {:base-type :type/DateTime}]))))
   (testing "after day"
     (is (= [:>
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
@@ -157,6 +163,11 @@
                              {:start "2016-04-17" :end "2016-04-23"}
                              {:start "2016-04-18" :end "2016-04-24"}
                              {:start "2016-04-17" :end "2016-04-24"}]
+    "2016-04-18T10:30:00~2016-04-23T10:30:00" [{:start "2016-04-18T10:30:00" :end "2016-04-23T10:30:00"}
+                                               {:start "2016-04-18T10:29:00" :end "2016-04-23T10:30:00"}
+                                               {:start "2016-04-18T10:30:00" :end "2016-04-23T10:31:00"}
+                                               {:start "2016-04-18T10:29:00" :end "2016-04-23T10:31:00"}]
+
     "2016-04-18~"           [{:start "2016-04-18"}
                              {:start "2016-04-17"}
                              {:start "2016-04-18"}

@@ -212,7 +212,7 @@ jobs:
       fail-fast: false
       matrix:
         edition: [oss, ee]
-        java-version: [11, 17]
+        java-version: [11, 17, 21]
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -234,6 +234,11 @@ jobs:
           path: resources/frontend_client/app/dist
 
       - name: Run tests
+        if: matrix.java-version != 21
+        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+
+      - name: Run tests using Java 21 on `master` only
+        if: matrix.java-version == 21 && github.ref_name == 'master'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
       - name: Publish Test Report (JUnit)
@@ -260,7 +265,7 @@ jobs:
       fail-fast: false
       matrix:
         edition: [oss, ee]
-        java-version: [11, 17]
+        java-version: [11, 17, 21]
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
@@ -278,7 +283,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [11, 17, 19]
+        java-version: [11, 17, 21]
     steps:
       - uses: actions/checkout@v3
       - name: Prepare backend
@@ -299,7 +304,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        java-version: [11, 17, 19]
+        java-version: [11, 17, 21]
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"

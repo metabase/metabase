@@ -2,7 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase.models
@@ -404,7 +404,7 @@
         (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one 'Dashboard :id other-dash-id))]
           (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
                    :entity_id              other-dash
-                   :ordered_cards
+                   :dashcards
                    [{:visualization_settings {:table.pivot_column "SOURCE"
                                               :table.cell_column "sum"
                                               :table.columns

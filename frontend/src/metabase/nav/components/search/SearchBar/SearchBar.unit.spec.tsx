@@ -5,15 +5,19 @@ import {
   screen,
   within,
   waitForLoaderToBeRemoved,
+  waitFor,
 } from "__support__/ui";
 import {
+  setupCollectionsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   createMockCollectionItem,
   createMockModelObject,
   createMockRecentItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -61,6 +65,8 @@ const setup = ({
 
   setupSearchEndpoints(searchResultItems);
   setupRecentViewsEndpoints(recentViewsItems);
+  setupUsersEndpoints([createMockUser()]);
+  setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
     <Route path="*" component={SearchBar} />,
@@ -120,8 +126,18 @@ describe("SearchBar", () => {
       userEvent.click(getSearchBar());
       userEvent.type(getSearchBar(), "BC");
 
+      // wait for dropdown to open
+      await waitForLoaderToBeRemoved();
+
       const resultItems = await screen.findAllByTestId("search-result-item");
       expect(resultItems.length).toBe(2);
+
+      // wait for all of the elements of the search result to load
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("info-text-collection-loading-text"),
+        ).not.toBeInTheDocument();
+      });
 
       // There are two search results, each with a link to `Our analytics`,
       // so we want to navigate to the search result, then the collection link.
@@ -133,7 +149,7 @@ describe("SearchBar", () => {
         );
 
         expect(filteredElement).not.toBeUndefined();
-        expect(filteredElement).toHaveFocus();
+        expect(screen.getByText(cardName)).toHaveFocus();
 
         userEvent.tab();
 

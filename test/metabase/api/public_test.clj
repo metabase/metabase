@@ -389,7 +389,7 @@
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/with-temporary-setting-values [enable-public-sharing true]
-    (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [client/*url-prefix* ""]
         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
@@ -435,25 +435,25 @@
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
-      (select-keys [:name :ordered_cards :ordered_tabs])
+      (select-keys [:name :dashcards :tabs])
       (update :name boolean)
-      (update :ordered_cards count)
-      (update :ordered_tabs count)))
+      (update :dashcards count)
+      (update :tabs count)))
 
 (deftest get-public-dashboard-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash card]
-        (is (= {:name true, :ordered_cards 1, :ordered_tabs 0}
+        (is (= {:name true, :dashcards 1, :tabs 0}
                (fetch-public-dashboard dash)))
         (testing "We shouldn't see Cards that have been archived"
           (t2/update! Card (u/the-id card) {:archived true})
-          (is (= {:name true, :ordered_cards 0, :ordered_tabs 0}
+          (is (= {:name true, :dashcards 0, :tabs 0}
                  (fetch-public-dashboard dash)))))
-      (testing "dashboard with tabs should return ordered_tabs"
+      (testing "dashboard with tabs should return tabs"
        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
-         (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
+         (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
@@ -476,7 +476,7 @@
                                                      :action_id    action-id
                                                      :card_id      card-id}]
                 (testing "Dashcard should only have id and name params"
-                  (is (partial= {:ordered_cards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                  (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "public/dashboard/%s" dashboard-uuid)))))
                 (let [execute-path (format "public/dashboard/%s/dashcard/%s/execute" dashboard-uuid (:id dashcard))]
                   (testing "Prefetch should only return non-hidden fields"
@@ -501,7 +501,7 @@
                                             :action_id action-id
                                             :card_id model-id}]
               (let [public-action (-> (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))
-                                      :ordered_cards first :action)]
+                                      :dashcards first :action)]
                 (testing "hidden action fields should not be included in the response"
                   (is (partial= [:name] ; id is hidden
                                 (-> public-action :visualization_settings :fields keys))))

@@ -23,7 +23,6 @@
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -51,6 +50,7 @@
    :creator_id                 false
    :dashboardcard_count        nil
    :database_id                false
+   :dataset_query              nil
    :description                nil
    :id                         true
    :initial_sync_status        nil
@@ -104,9 +104,10 @@
   (sorted-results
    [(make-result "dashboard test dashboard", :model "dashboard", :bookmark false :creator_id true :creator_common_name "Rasta Toucan")
     test-collection
-    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan")
-    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true, :database_id true :creator_id true :creator_common_name "Rasta Toucan")
+    (make-result "card test card", :model "card", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "dataset test dataset", :model "dataset", :bookmark false, :dashboardcard_count 0 :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil)
+    (make-result "action test action", :model "action", :model_name (:name action-model-params), :model_id true,
+                 :database_id true :creator_id true :creator_common_name "Rasta Toucan" :dataset_query (update (mt/query venues) :type name))
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry" :creator_id true :creator_common_name "Rasta Toucan")
      (table-search-results))
@@ -243,6 +244,7 @@
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
+             [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -336,12 +338,18 @@
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card"}
                (set (mt/user-http-request :crowberto :get 200 "search/models"
                                           :q search-term
-                                          :created_at "today"))))))))
+                                          :created_at "today")))))
+
+      (testing "return a subset of model for search_native_query filter"
+        (is (= #{"dataset" "action" "card"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models"
+                                          :q search-term
+                                          :search_native_query true))))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
             (make-result (str "dashboard-count " dashboard-count) :dashboardcard_count dashboard-count,
-                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan"))]
+                         :model "card", :bookmark false :creator_id true :creator_common_name "Rasta Toucan" :dataset_query nil))]
     (set [(make-card 5)
           (make-card 3)
           (make-card 0)])))
@@ -564,16 +572,16 @@
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
             (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
-              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Rome"
-                                 :model_id      (:id model)
+              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Rome"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}
-                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
-                                 :name          "Tromsø"
-                                 :model_id      (:id model)
+                                 :model_index_id #hawk/malli :int}
+                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Tromsø"
+                                 :model_id       (:id model)
                                  :model_name     (:name model)
-                                 :model_index_id #hawk/schema s/Int}}
+                                 :model_index_id #hawk/malli :int}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
 
@@ -1287,6 +1295,45 @@
 
         (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+
+(deftest search-native-query-test
+  (let [search-term "search-native-query"]
+    (mt/with-temp
+      [:model/Card {mbql-card :id}             {:name search-term}
+       :model/Card {native-card-in-name :id}   {:name search-term}
+       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:name search-term :dataset true}
+       :model/Card {native-model-in-name :id}  {:name search-term :dataset true}
+       :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :dataset true}]
+      (mt/with-actions
+        [_                         {:dataset true :dataset_query (mt/mbql-query venues)}
+         {http-action :action-id}  {:type :http :name search-term}
+         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
+        (testing "by default do not search for native content"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term)
+                    :data
+                    (map (juxt :model :id))
+                    set))))
+
+        (testing "if search-native-query is true, search both dataset_query and the name"
+          (is (= #{["card" mbql-card]
+                   ["card" native-card-in-name]
+                   ["dataset" mbql-model]
+                   ["dataset" native-model-in-name]
+                   ["action" http-action]
+
+                   ["card" native-card-in-query]
+                   ["dataset" native-model-in-query]
+                   ["action" query-action]}
+               (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :search_native_query true)
+                    :data
+                    (map (juxt :model :id))
+                    set))))))))
 
 (deftest search-result-with-user-metadata-test
   (let [search-term "with-user-metadata"]

@@ -38,7 +38,6 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-  cacheCompression: true
 };
 
 const CSS_CONFIG = {
@@ -164,7 +163,7 @@ const config = (module.exports = {
       __support__: TEST_SUPPORT_PATH,
       e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
-      ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
+      ace: __dirname + "/node_modules/ace-builds/src-noconflict",
       // NOTE @kdoh - 7/24/18
       // icepick 2.x is es6 by defalt, to maintain backwards compatability
       // with ie11 point to the minified version

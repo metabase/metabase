@@ -12,7 +12,7 @@ import { TypeFilterDisplay } from "./TypeFilterDisplay";
 
 export const TypeFilter: SearchFilterComponent<"type"> = {
   iconName: "dashboard",
-  label: t`Content type`,
+  label: () => t`Content type`,
   type: "dropdown",
   DisplayComponent: TypeFilterDisplay,
   ContentComponent: TypeFilterContent,
@@ -22,7 +22,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = {
     }
     return isEnabledSearchModelType(value) ? [value] : [];
   },
-  toUrl: (value?: TypeFilterProps) => {
+  toUrl: (value: TypeFilterProps | null) => {
     return value && value.length > 0 ? value : null;
   },
 };

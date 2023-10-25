@@ -1,6 +1,7 @@
 (ns metabase.lib.join-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -881,6 +882,24 @@
                                (lib/with-join-alias "Venues"))))
              (meta/table-metadata :categories))))))
 
+(deftest ^:parallel suggested-join-condition-fk-from-implicitly-joinable-test
+  (testing "DON'T suggest join conditions for a FK -> implicitly joinable PK relationship (#34526)"
+    (let [orders (meta/table-metadata :orders)
+          card-query (as-> (lib/query meta/metadata-provider orders) q
+                       (lib/breakout q (m/find-first #(= (:id %) (meta/id :orders :user-id))
+                                                     (lib/returned-columns q)))
+                       (lib/aggregate q (lib/count)))
+          metadata-provider (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             {:cards [{:id            1
+                                       :name          "Q1"
+                                       :database-id   (meta/id)
+                                       :dataset-query (lib/query meta/metadata-provider card-query)
+                                       :fields        (lib/returned-columns card-query)}]})
+          card (lib.metadata/card metadata-provider 1)
+          query (lib/query metadata-provider orders)]
+      (is (nil? (lib/suggested-join-condition query card))))))
+
 (deftest ^:parallel join-conditions-test
   (let [joins (lib/joins lib.tu/query-with-join)]
     (is (= 1
@@ -1170,8 +1189,8 @@
                                                     (if broken-refs?
                                                       [:field {} (meta/id :products :category)]
                                                       [:field {:base-type :type/Text} "Products__CATEGORY"])
-                                                    [:field {:join-alias "Question 2 - Category"} (meta/id :products :category)]]]
-                                      :alias      "Question 2 - Category"}]
+                                                    [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
+                                      :alias      "Card 2 - Category"}]
                              :limit 2}]}
                   (lib.tu.mocks-31769/query))))))))
 

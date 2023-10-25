@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models.query-cache :refer [QueryCache]]

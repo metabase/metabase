@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -13,7 +13,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,8 +28,16 @@
 
 (defsetting slack-app-token
   (deferred-tru
-    (str "Bot user OAuth token for connecting the Metabase Slack app. "
-         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+   (str "Bot user OAuth token for connecting the Metabase Slack app. "
+        "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :visibility :settings-manager
+  :getter (fn []
+            (-> (setting/get-value-of-type :string :slack-app-token)
+                (u.str/mask 9))))
+
+(defn- unobfuscated-slack-app-token
+  []
+  (setting/get-value-of-type :string :slack-app-token))
 
 (defsetting slack-token-valid?
   (deferred-tru
@@ -115,7 +124,7 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (slack-app-token)
+                  (unobfuscated-slack-app-token)
                   (slack-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))

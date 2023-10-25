@@ -48,7 +48,7 @@ Create a new [[TimelineEvent]].
 
 *  **`source`** value may be nil, or if non-nil, value must be one of: `collections`, `question`.
 
-*  **`icon`** value may be nil, or if non-nil, value must be one of: `balloons`, `bell`, `cloud`, `mail`, `star`, `warning`.
+*  **`icon`** value may be nil, or if non-nil, value must be one of: `cake`, `bell`, `cloud`, `mail`, `star`, `warning`.
 
 ## `PUT /api/timeline-event/:id`
 
@@ -70,7 +70,7 @@ Update a [[TimelineEvent]].
 
 *  **`timeline_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`icon`** value may be nil, or if non-nil, value must be one of: `balloons`, `bell`, `cloud`, `mail`, `star`, `warning`.
+*  **`icon`** value may be nil, or if non-nil, value must be one of: `cake`, `bell`, `cloud`, `mail`, `star`, `warning`.
 
 *  **`id`** 
 

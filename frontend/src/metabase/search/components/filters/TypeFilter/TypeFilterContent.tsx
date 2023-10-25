@@ -10,7 +10,7 @@ import { filterEnabledSearchTypes } from "metabase/search/utils";
 
 const EMPTY_SEARCH_QUERY = { models: "dataset", limit: 1 } as const;
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =
-  ({ value, onChange }) => {
+  ({ value, onChange, width }) => {
     const { metadata, isLoading } = useSearchListQuery({
       query: EMPTY_SEARCH_QUERY,
     });
@@ -26,6 +26,7 @@ export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"]
       <SearchFilterPopoverWrapper
         isLoading={isLoading}
         onApply={() => onChange(selectedTypes)}
+        w={width}
       >
         <Checkbox.Group
           data-testid="type-filter-checkbox-group"

@@ -1,18 +1,26 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
+import { SearchUserPickerContainer } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import type { SearchFilterDropdown } from "metabase/search/types";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay/UserNameDisplay";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
-import { stringifyUserId, parseUserId } from "metabase/search/utils";
+import { stringifyUserIdArray, parseUserIdArray } from "metabase/search/utils";
 
 export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   iconName: "person",
-  label: t`Last edited by`,
+  label: () => t`Last editor`,
   type: "dropdown",
-  DisplayComponent: ({ value: userId }) => (
-    <UserNameDisplay userId={userId} label={LastEditedByFilter.label} />
+  DisplayComponent: ({ value: userIdList }) => (
+    <UserNameDisplay
+      userIdList={userIdList}
+      label={LastEditedByFilter.label()}
+    />
   ),
-  ContentComponent: SearchUserPicker,
-  fromUrl: parseUserId,
-  toUrl: stringifyUserId,
+  ContentComponent: ({ value, onChange, width }) => (
+    <SearchUserPickerContainer w={width}>
+      <SearchUserPicker value={value} onChange={onChange} />
+    </SearchUserPickerContainer>
+  ),
+  fromUrl: parseUserIdArray,
+  toUrl: stringifyUserIdArray,
 };

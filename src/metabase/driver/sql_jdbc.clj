@@ -120,7 +120,9 @@
 (defn- create-table-sql
   [driver table-name col->type]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [kv] (map keyword kv)) col->type)}
+                      :with-columns (map (fn [[name type-spec]]
+                                           (vec (cons name type-spec)))
+                                         col->type)}
                      :quoted true
                      :dialect (sql.qp/quote-style driver))))
 

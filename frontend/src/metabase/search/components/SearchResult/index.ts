@@ -1,1 +1,3 @@
-export { SearchResult, ItemIcon } from "./SearchResult";
+export { SearchResult } from "./SearchResult";
+export * from "./components";
+export * from "./SearchResult.styled";

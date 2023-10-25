@@ -1,211 +1,141 @@
-import { Button } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import type { LocationDescriptorObject } from "history";
+import type { MouseEvent } from "react";
+import { useCallback } from "react";
+import { push } from "react-router-redux";
+
+import { useDispatch } from "metabase/lib/redux";
+import { Group, Text, Loader } from "metabase/ui";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Icon } from "metabase/core/components/Icon";
-import Text from "metabase/components/type/Text";
-
-import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
-
-import type { SearchScore, SearchModelType } from "metabase-types/api";
 
 import type { WrappedResult } from "metabase/search/types";
-import Link from "metabase/core/components/Link/Link";
 import { InfoText } from "../InfoText";
+import { ItemIcon } from "./components";
+
 import {
-  IconWrapper,
-  ResultButton,
-  ResultLink,
-  Title,
-  TitleWrapper,
-  Description,
-  ContextText,
-  ContextContainer,
-  ResultSpinner,
-  ResultLinkContent,
-  ResultInner,
+  DescriptionDivider,
+  DescriptionSection,
+  LoadingSection,
+  ModerationIcon,
+  ResultNameSection,
+  ResultTitle,
+  SearchResultContainer,
 } from "./SearchResult.styled";
-
-const DEFAULT_ICON_SIZE = 20;
-
-function TableIcon() {
-  return <Icon name="database" />;
-}
-
-function CollectionIcon({ item }: { item: WrappedResult }) {
-  const iconProps = { ...item.getIcon() };
-  const isRegular = PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
-  if (isRegular) {
-    iconProps.size = DEFAULT_ICON_SIZE;
-  } else {
-    iconProps.width = 20;
-    iconProps.height = 24;
-  }
-  return <Icon {...iconProps} tooltip={null} />;
-}
-
-const ModelIconComponentMap = {
-  table: TableIcon,
-  collection: CollectionIcon,
-};
-
-function DefaultIcon({ item }: { item: WrappedResult }) {
-  return <Icon {...item.getIcon()} size={DEFAULT_ICON_SIZE} />;
-}
-
-export function ItemIcon({
-  item,
-  type,
-  active,
-}: {
-  item: WrappedResult;
-  type: SearchModelType;
-  active: boolean;
-}) {
-  const IconComponent =
-    type in Object.keys(ModelIconComponentMap)
-      ? ModelIconComponentMap[type as keyof typeof ModelIconComponentMap]
-      : DefaultIcon;
-
-  return (
-    <IconWrapper item={item} type={type} active={active}>
-      <IconComponent item={item} />
-    </IconWrapper>
-  );
-}
-
-function Score({ scores }: { scores: SearchScore[] }) {
-  return (
-    <pre className="hide search-score">{JSON.stringify(scores, null, 2)}</pre>
-  );
-}
-
-// I think it's very likely that this is a dead codepath: RL 2023-06-21
-function Context({ context }: { context: any[] }) {
-  if (!context) {
-    return null;
-  }
-
-  return (
-    <ContextContainer>
-      <ContextText>
-        {context.map(({ is_match, text }, i: number) => {
-          if (!is_match) {
-            return <span key={i}> {text}</span>;
-          }
-
-          return (
-            <strong key={i} style={{ color: color("brand") }}>
-              {" "}
-              {text}
-            </strong>
-          );
-        })}
-      </ContextText>
-    </ContextContainer>
-  );
-}
 
 export function SearchResult({
   result,
   compact = false,
-  hasDescription = true,
-  onClick = undefined,
+  showDescription = true,
   isSelected = false,
+  onClick,
 }: {
   result: WrappedResult;
   compact?: boolean;
-  hasDescription?: boolean;
+  showDescription?: boolean;
   onClick?: (result: WrappedResult) => void;
   isSelected?: boolean;
 }) {
-  const active = isItemActive(result);
-  const loading = isItemLoading(result);
+  const { name, model, description, moderated_status }: WrappedResult = result;
 
-  // we want to remove link behavior if we have an onClick handler
-  const ResultContainer = onClick ? ResultButton : ResultLink;
+  const isActive = isItemActive(result);
+  const isLoading = isItemLoading(result);
 
-  const showXRayButton =
-    result.model === "indexed-entity" &&
-    result.id !== undefined &&
-    result.model_index_id !== null;
+  const dispatch = useDispatch();
+
+  const onChangeLocation = useCallback(
+    (nextLocation: LocationDescriptorObject | string) =>
+      dispatch(push(nextLocation)),
+    [dispatch],
+  );
+
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (!isActive) {
+      return;
+    }
+
+    if (onClick) {
+      onClick(result);
+      return;
+    }
+
+    onChangeLocation(result.getUrl());
+  };
 
   return (
-    <ResultContainer
-      data-is-selected={isSelected}
-      isSelected={isSelected}
-      active={active}
-      compact={compact}
-      to={!onClick ? result.getUrl() : ""}
-      onClick={onClick && active ? () => onClick(result) : undefined}
+    <SearchResultContainer
       data-testid="search-result-item"
+      component="button"
+      onClick={handleClick}
+      isActive={isActive}
+      isSelected={isSelected}
+      data-model-type={model}
+      data-is-selected={isSelected}
+      w="100%"
+      aria-label={`${name} ${model}`}
     >
-      <ResultInner>
-        <ResultLinkContent>
-          <ItemIcon item={result} type={result.model} active={active} />
-          <div>
-            <TitleWrapper>
-              <Title active={active} data-testid="search-result-item-name">
-                {result.name}
-              </Title>
-              <PLUGIN_MODERATION.ModerationStatusIcon
-                status={result.moderated_status}
-                size={12}
-              />
-            </TitleWrapper>
-            <Text data-testid="result-link-info-text">
-              <InfoText result={result} />
-            </Text>
-            {hasDescription && result.description && (
-              <Description>{result.description}</Description>
-            )}
-            <Score scores={result.scores} />
-          </div>
-          {loading && (
-            // SearchApp also uses `loading-spinner`, using a different test ID
-            // to not confuse unit tests waiting for loading-spinner to disappear
-            <ResultSpinner
-              data-testid="search-result-loading-spinner"
-              size={24}
-              borderWidth={3}
-            />
-          )}
-        </ResultLinkContent>
-        {showXRayButton && (
-          <Button
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
-              e.stopPropagation()
-            }
-            variant="outline"
-            p="sm"
+      <ItemIcon
+        data-testid="search-result-item-icon"
+        active={isActive}
+        item={result}
+        type={model}
+      />
+      <ResultNameSection justify="center" spacing="xs">
+        <Group spacing="xs" align="center" noWrap>
+          <ResultTitle
+            role="heading"
+            data-testid="search-result-item-name"
+            truncate
+            href={!onClick ? result.getUrl() : undefined}
           >
-            <Link
-              to={`/auto/dashboard/model_index/${result.model_index_id}/primary_key/${result.id}`}
+            {name}
+          </ResultTitle>
+          <ModerationIcon status={moderated_status} filled size={14} />
+        </Group>
+        <InfoText result={result} isCompact={compact} />
+      </ResultNameSection>
+      {isLoading && (
+        <LoadingSection px="xs">
+          <Loader />
+        </LoadingSection>
+      )}
+      {description && showDescription && (
+        <DescriptionSection>
+          <Group noWrap spacing="sm">
+            <DescriptionDivider
+              size="md"
+              color="focus.0"
+              orientation="vertical"
+            />
+            <Text
+              data-testid="result-description"
+              color="text.1"
+              align="left"
+              size="sm"
+              lineClamp={2}
             >
-              <Icon name="bolt" />
-            </Link>
-          </Button>
-        )}
-      </ResultInner>
-      {compact || <Context context={result.context} />}
-    </ResultContainer>
+              {description}
+            </Text>
+          </Group>
+        </DescriptionSection>
+      )}
+    </SearchResultContainer>
   );
 }
 
 const isItemActive = (result: WrappedResult) => {
-  switch (result.model) {
-    case "table":
-      return isSyncCompleted(result);
-    default:
-      return true;
+  if (result.model !== "table") {
+    return true;
   }
+
+  return isSyncCompleted(result);
 };
 
 const isItemLoading = (result: WrappedResult) => {
-  switch (result.model) {
-    case "database":
-    case "table":
-      return !isSyncCompleted(result);
-    default:
-      return false;
+  if (result.model !== "database" && result.model !== "table") {
+    return false;
   }
+
+  return !isSyncCompleted(result);
 };

@@ -2,7 +2,6 @@ import type { Location } from "history";
 import type { ComponentType } from "react";
 
 import type {
-  Collection,
   EnabledSearchModelType,
   SearchResult,
   UserId,
@@ -18,19 +17,25 @@ export interface WrappedResult extends SearchResult {
     width?: number;
     height?: number;
   };
-  getCollection: () => Partial<Collection>;
+  getCollection: () => SearchResult["collection"];
 }
 
 export type TypeFilterProps = EnabledSearchModelType[];
-export type CreatedByFilterProps = UserId;
-export type LastEditedByProps = UserId;
-export type VerifiedFilterProps = true;
+export type CreatedByFilterProps = UserId[];
+export type CreatedAtFilterProps = string | null;
+export type LastEditedByProps = UserId[];
+export type LastEditedAtFilterProps = string | null;
+export type VerifiedFilterProps = true | null;
+export type NativeQueryFilterProps = true | null;
 
 export type SearchFilterPropTypes = {
   [SearchFilterKeys.Type]: TypeFilterProps;
   [SearchFilterKeys.Verified]: VerifiedFilterProps;
   [SearchFilterKeys.CreatedBy]: CreatedByFilterProps;
+  [SearchFilterKeys.CreatedAt]: CreatedAtFilterProps;
   [SearchFilterKeys.LastEditedBy]: LastEditedByProps;
+  [SearchFilterKeys.LastEditedAt]: LastEditedAtFilterProps;
+  [SearchFilterKeys.NativeQuery]: NativeQueryFilterProps;
 };
 
 export type FilterTypeKeys = keyof SearchFilterPropTypes;
@@ -48,16 +53,17 @@ export type SearchAwareLocation = Location<
 export type SearchFilters = Partial<SearchFilterPropTypes>;
 
 export type SearchFilterComponentProps<T extends FilterTypeKeys = any> = {
-  value: SearchFilterPropTypes[T] | null;
-  onChange: (value: SearchFilterPropTypes[T] | null) => void;
+  value: SearchFilterPropTypes[T];
+  onChange: (value: SearchFilterPropTypes[T]) => void;
   "data-testid"?: string;
+  width?: string;
 } & Record<string, unknown>;
 
 type SidebarFilterType = "dropdown" | "toggle";
 
 interface SearchFilter<T extends FilterTypeKeys = any> {
   type: SidebarFilterType;
-  label: string;
+  label: () => string;
   iconName?: IconName;
 
   // parses the string value of a URL query parameter to the filter value

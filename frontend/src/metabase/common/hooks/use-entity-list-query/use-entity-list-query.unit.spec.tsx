@@ -165,6 +165,8 @@ describe("useEntityListQuery", () => {
     await waitFor(() => {
       expect(fetchMock.calls("path:/api/table")).toHaveLength(2);
     });
+    await waitForLoaderToBeRemoved();
+
     expect(screen.getByText(TEST_TABLE.name)).toBeInTheDocument();
   });
 });
