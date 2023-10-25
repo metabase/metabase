@@ -120,7 +120,7 @@ describe("scenarios > dashboard > tabs", () => {
         cy.wrap(element.offset()).as("card2OriginalPosition");
       });
 
-      cy.log("move second to second tab first, then the first one");
+      cy.log("move second card to second tab first, then the first card");
       // moving the second card first to invert their position, this allows us
       // to check if the position is restored when undoing the movement of the second one
       moveDashCardToTab({ tabName: "Tab 2", dashcardIndex: 1 });

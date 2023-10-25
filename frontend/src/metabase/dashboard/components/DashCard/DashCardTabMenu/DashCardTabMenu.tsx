@@ -32,7 +32,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
       dispatch(moveDashCardToTab({ dashCardId, destTabId }));
       dispatch(
         addUndo({
-          message: t`Card moved to ${tabs.find(c => c.id === destTabId)?.name}`,
+          message: t`Card moved to ${tabs.find(tab => tab.id === destTabId)?.name}`,
           undo: true,
           action: () => {
             dispatch(undoMoveDashCardToTab({ dashCardId }));
