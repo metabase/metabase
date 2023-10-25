@@ -35,7 +35,6 @@ const COLUMN_INDEX = {
   COUNT: 1,
   MONTH: 2,
   QUARTER: 3,
-  YEAR: 4,
 };
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -69,7 +68,6 @@ const QUESTION_TABLE = {
     expressions: {
       Month: ["get-month", CREATED_AT_FIELD],
       Quarter: ["get-quarter", CREATED_AT_FIELD],
-      Year: ["get-year", CREATED_AT_FIELD],
     },
   },
 };
