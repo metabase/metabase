@@ -176,7 +176,7 @@
   [query :- :map
    model :- [:enum "card" "dataset"]]
   (-> query
-      (replace-select :moderated_status [:mr.status])
+      (replace-select :moderated_status [:mr.status :moderated_status])
       (sql.helpers/left-join [:moderation_review :mr]
                              [:and
                               [:= :mr.moderated_item_type "card"]

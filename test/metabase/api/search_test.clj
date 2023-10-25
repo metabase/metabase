@@ -375,15 +375,14 @@
   (let [search-term "moderated-status-test"]
     (mt/with-temp [:model/Card {card-id :id} {:name "moderated-status-test"}]
       (doseq [status ["verified" nil "verified"]]
-        (moderation-review/create-review! {:moderated_item_id card-id
+        (moderation-review/create-review! {:moderated_item_id   card-id
                                            :moderated_item_type "card"
-                                           :moderator_id         (mt/user->id :crowberto)
-                                           :status                status}))
-      (is (= [[card-id "card" "verified"]]
-             (->> (mt/user-http-request :crowberto :get 200 "search"
-                                        :q search-term)
-                  :data
-                  (map (juxt :id :model :moderated_status))))))))
+                                           :moderator_id        (mt/user->id :crowberto)
+                                           :status              status}))
+      (is (=? [{:id               card-id
+                :model            "card"
+                :moderated_status "verified"}]
+              (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
