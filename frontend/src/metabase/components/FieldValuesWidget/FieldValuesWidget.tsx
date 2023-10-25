@@ -431,17 +431,15 @@ export function FieldValuesWidgetInner({
             prefix={prefix}
             value={value.filter(v => v != null)}
             onChange={onChange}
-            placeholder={
-              placeholder ??
-              getTokenFieldPlaceholder({
-                fields,
-                parameter,
-                disableSearch,
-                disablePKRemappingForSearch,
-                options,
-                valuesMode,
-              })
-            }
+            placeholder={getTokenFieldPlaceholder({
+              fields,
+              parameter,
+              placeholder,
+              disableSearch,
+              disablePKRemappingForSearch,
+              options,
+              valuesMode,
+            })}
             updateOnInputChange
             // forwarded props
             multi={multi}

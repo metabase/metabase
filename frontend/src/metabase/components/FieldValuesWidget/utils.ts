@@ -220,6 +220,7 @@ export function getTokenFieldPlaceholder({
   fields,
   parameter,
   disableSearch,
+  placeholder,
   disablePKRemappingForSearch,
   options,
   valuesMode,
@@ -232,6 +233,10 @@ export function getTokenFieldPlaceholder({
   options: FieldValue[];
   valuesMode: ValuesMode;
 }) {
+  if (placeholder) {
+    return placeholder;
+  }
+
   if (shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)) {
     return SEARCH_THE_LIST_PLACEHOLDER;
   }
