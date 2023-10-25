@@ -439,14 +439,25 @@
 
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
-    (mt/with-model-cleanup [:model/AuditLog :model/Activity]
-      (t2.with-temp/with-temp [Database {db-id :id}]
-        (with-redefs [driver/can-connect? (constantly true)]
-          (is (= "Cam's Awesome multimethod Database"
-                 (:name (api-update-database! 200 db-id {:name "Cam's Awesome multimethod Database"}))))
-          (let [audit-log-entry (mt/latest-audit-log-entry)]
-            (is (= db-id (:model_id audit-log-entry)))
-            (is (= db-id (-> audit-log-entry :details :id)))))))))
+    (t2.with-temp/with-temp [Database {db-id :id}]
+      (with-redefs [driver/can-connect? (constantly true)]
+        (is (= "Cam's Awesome multimethod Database" (:name (api-update-database! 200 db-id {:name "Cam's Awesome multimethod Database"})))
+            "A db update occured")
+        (is (= "Sam's Awesome multimethod Database" (:name (api-update-database! 200 db-id {:name "Sam's Awesome multimethod Database"})))
+            "A db update occured")
+        (let [audit-log-entry (mt/latest-audit-log-entry)]
+          (is (=?
+               {:previous_value
+                {:name "Cam's Awesome multimethod Database"
+                 :updated_at #hawk/malli :string},
+                :new_value
+                {:name "Sam's Awesome multimethod Database"
+                 :updated_at #hawk/malli :string}}
+               (:details audit-log-entry)))
+          (is (= (get-in audit-log-entry [:details :previous_value :name])
+                 "Cam's Awesome multimethod Database"))
+          (is (= (get-in audit-log-entry [:details :new_value :name])
+                 "Sam's Awesome multimethod Database")))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"

@@ -155,7 +155,7 @@
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic {:keys [previous new]}]
   (let [[previous-only new-only _both] (data/diff previous new)
-        updated-keys (into #{} (concat (keys previous-only) (keys new-only)))]
+        updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
     (audit-log/record-event!
      topic
      {:previous_value (select-keys previous updated-keys)
