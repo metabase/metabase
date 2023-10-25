@@ -157,7 +157,7 @@
 
 (mr/def ::drill-thru.zoom-in.timeseries
   [:merge
-   ::drill-thru.common.with-column
+   ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/zoom-in.timeseries]]
     [:dimension [:ref ::context.row.value]]
@@ -264,6 +264,9 @@
    [:column-ref [:ref ::lib.schema.ref/ref]]
    [:value      :any]])
 
+;;; Sequence of maps with keys `:column`, `:column-ref`, and `:value`
+;;;
+;;; These are presumably in the same order as the returned columns for the query stage
 (mr/def ::context.row
   [:sequential [:ref ::context.row.value]])
 

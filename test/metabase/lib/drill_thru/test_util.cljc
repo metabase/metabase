@@ -108,7 +108,11 @@
      (when (= click-type :cell)
        {:value      value
         :row        (for [[column-name value] row
-                          :let [column (by-name column-name)]]
+                          :let [column (or (by-name column-name)
+                                           (throw (ex-info
+                                                   (lib.util/format "Invalid row: no column named %s in query returned-columns"
+                                                                    (pr-str column-name))
+                                                   {:column-name column-name, :returned-columns (keys by-name)})))]]
                       {:column     column
                        :column-ref (get refs column-name)
                        :value      value})

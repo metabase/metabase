@@ -60,10 +60,14 @@
   (let [columns (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number))]
     (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
       (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
-        (letfn [(column-value [column]
+        (letfn [(same-column? [col-x col-y]
+                  (if (:id col-x)
+                    (= (:id col-x) (:id col-y))
+                    (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
+                (column-value [column]
                   (some
-                   (fn [{:keys [column-name], :as row-value}]
-                     (when (= column-name (:name column))
+                   (fn [row-value]
+                     (when (same-column? column (:column row-value))
                        (:value row-value)))
                    row))]
           (assoc context
