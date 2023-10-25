@@ -21,8 +21,10 @@ const STORED_SETTINGS = {
 
 describe("computeStaticPieChartSettings", () => {
   it("should replace empty values in stored settings with defaults", () => {
-    const { column, ...computedSettings } =
-      computeStaticPieChartSettings(MOCK_RAW_SERIES);
+    const { column, ...computedSettings } = computeStaticPieChartSettings(
+      MOCK_RAW_SERIES,
+      {},
+    );
 
     expect(typeof column).toBe("function");
     expect(computedSettings).toStrictEqual(DEFAULT_SETTINGS);
@@ -32,8 +34,10 @@ describe("computeStaticPieChartSettings", () => {
     const rawSeries = [{ ...MOCK_RAW_SERIES[0] }];
     rawSeries[0].card.visualization_settings = { ...STORED_SETTINGS };
 
-    const { column, ...computedSettings } =
-      computeStaticPieChartSettings(rawSeries);
+    const { column, ...computedSettings } = computeStaticPieChartSettings(
+      rawSeries,
+      {},
+    );
 
     expect(typeof column).toBe("function");
     expect(computedSettings).toStrictEqual(STORED_SETTINGS);
