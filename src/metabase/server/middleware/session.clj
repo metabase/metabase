@@ -71,16 +71,12 @@
 (def ^:private possible-session-cookie-samesite-values
   #{:lax :none :strict nil})
 
-(defn- valid-session-cookie-samesite!
-  [value & [added-ex-data]]
-  (let [normalized-value (some-> value name u/lower-case-en keyword)]
-    (when-not (contains? possible-session-cookie-samesite-values normalized-value)
-      (throw (ex-info "Invalid value for session cookie samesite"
-                      (merge
-                       {:session-cookie-samesite normalized-value
-                        :possible-values possible-session-cookie-samesite-values}
-                       added-ex-data))))
-    normalized-value))
+(defn- normalized-session-cookie-samesite [value]
+  (some-> value name u/lower-case-en keyword))
+
+(defn- valid-session-cookie-samesite?
+  [normalized-value]
+  (contains? possible-session-cookie-samesite-values normalized-value))
 
 (defsetting session-cookie-samesite
   (deferred-tru "Value for the session cookie's `SameSite` directive.")
@@ -88,17 +84,25 @@
   :visibility :settings-manager
   :default :lax
   :getter (fn session-cookie-samesite-getter []
-            (valid-session-cookie-samesite!
-             ;; we get the raw value here, and normalize to a keyword in `valid-session-cookie-samesite!`, so that the
-             ;; env var value can be case insensitive
-             (setting/get-raw-value :session-cookie-samesite)))
+            (let [value (normalized-session-cookie-samesite
+                         (setting/get-raw-value :session-cookie-samesite))]
+              (if (valid-session-cookie-samesite? value)
+                value
+                (throw (ex-info "Invalid value for session cookie samesite"
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite value})))))
   :setter (fn session-cookie-samesite-setter
             [new-value]
-            (setting/set-value-of-type!
-             :keyword
-             :session-cookie-samesite
-             (valid-session-cookie-samesite! new-value
-                                             {:status-code 400}))))
+            (let [normalized-value (normalized-session-cookie-samesite new-value)]
+              (if (valid-session-cookie-samesite? normalized-value)
+                (setting/set-value-of-type!
+                 :keyword
+                 :session-cookie-samesite
+                 normalized-value)
+                (throw (ex-info (tru "Invalid value for session cookie samesite")
+                                {:possible-values possible-session-cookie-samesite-values
+                                 :session-cookie-samesite normalized-value
+                                 :http-status 400}))))))
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
