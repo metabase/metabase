@@ -93,8 +93,10 @@ const Fields = createEntity({
         ...params,
       });
 
+      const table_id = params.table_id;
+
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual
-      return { id, values, has_more_values, table_id: params.table_id };
+      return { id, values, has_more_values, ...(table_id && { table_id }) };
     }),
 
     updateField(field, values, opts) {
