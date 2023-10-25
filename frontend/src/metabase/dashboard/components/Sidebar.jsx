@@ -14,7 +14,6 @@ const propTypes = {
 function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
   return (
     <aside
-      data-testid="dumb-change-to-trigger-jar-rebuild"
       style={{ width: WIDTH, minWidth: WIDTH }}
       className="flex flex-column border-left bg-white"
     >
