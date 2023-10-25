@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { MetabaseApi } from "metabase/services";
 import { stripId } from "metabase/lib/formatting";
@@ -222,7 +221,7 @@ export function getTokenFieldPlaceholder({
   disableSearch,
   placeholder,
   disablePKRemappingForSearch,
-  options,
+  hasOptions,
   valuesMode,
 }: {
   fields: Field[];
@@ -230,14 +229,14 @@ export function getTokenFieldPlaceholder({
   disableSearch: boolean;
   placeholder?: string;
   disablePKRemappingForSearch?: boolean;
-  options: FieldValue[];
+  hasOptions: boolean;
   valuesMode: ValuesMode;
 }) {
   if (placeholder) {
     return placeholder;
   }
 
-  if (shouldList({ parameter, fields, disableSearch }) && !_.isEmpty(options)) {
+  if (shouldList({ parameter, fields, disableSearch }) && hasOptions) {
     return SEARCH_THE_LIST_PLACEHOLDER;
   }
 

@@ -386,6 +386,7 @@ export function FieldValuesWidgetInner({
   }
 
   const isListMode = !disableList && valuesMode === "list";
+  const hasOptions = !_.isEmpty(options);
   const isLoading = loadingState === "LOADING";
 
   const parseFreeformValue = (value: string | number) => {
@@ -406,7 +407,7 @@ export function FieldValuesWidgetInner({
       >
         {isListMode && isLoading ? (
           <LoadingState />
-        ) : isListMode && !_.isEmpty(options) && multi ? (
+        ) : isListMode && hasOptions && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
@@ -416,7 +417,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
-        ) : isListMode && !_.isEmpty(options) && !multi ? (
+        ) : isListMode && hasOptions && !multi ? (
           <SingleSelectListField
             isDashboardFilter={!!parameter}
             placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
@@ -435,9 +436,9 @@ export function FieldValuesWidgetInner({
               fields,
               parameter,
               placeholder,
+              hasOptions,
               disableSearch,
               disablePKRemappingForSearch,
-              options,
               valuesMode,
             })}
             updateOnInputChange
