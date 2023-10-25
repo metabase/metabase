@@ -1267,11 +1267,10 @@
         (testing "simple hydration and batched hydration should return correctly"
           (is (= [true true false false]
                  (map check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])
-                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll])))))
-
-      (testing "root collection shouldn't be hydrated"
-        (is (= nil (t2/hydrate nil :is_personal)))
-        (is (= [nil] (t2/hydrate [nil] :is_personal)))))))
+                 (check-is-personal [personal-coll nested-personal-coll top-level-coll nested-top-level-coll]))))
+        (testing "root collection shouldn't be hydrated"
+          (is (= nil (t2/hydrate nil :is_personal)))
+          (is (= [nil true] (map :is_personal (t2/hydrate [nil (t2/select-one :model/Collection personal-coll)] :is_personal)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Moving Collections "Across the Boundary"                                    |

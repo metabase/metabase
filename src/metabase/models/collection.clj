@@ -673,14 +673,14 @@
   [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
    (or
-     ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
-     (:personal_owner_id collection)
-     ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
-     ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
-     ;; Collection.)
-     (t2/exists? Collection
-                 :id                (first (location-path->ids (:location collection)))
-                 :personal_owner_id [:not= nil]))))
+    ;; If collection has an owner ID we're already done here, we know it's a Personal Collection
+    (:personal_owner_id collection)
+    ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
+    ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
+    ;; Collection.)
+    (t2/exists? Collection
+                :id                (first (location-path->ids (:location collection)))
+                :personal_owner_id [:not= nil]))))
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
@@ -1160,8 +1160,10 @@
                                      (and (string? location)
                                           (some #(str/starts-with? location (format "/%d/" %)) personal-collection-ids))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
-             (assoc coll :is_personal (or (some? personal_owner_id)
-                                          (location-is-personal location))))
+             (if (some? coll)
+               (assoc coll :is_personal (or (some? personal_owner_id)
+                                            (location-is-personal location)))
+               nil))
            collections))))
 
 (defmulti allowed-namespaces
