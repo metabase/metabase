@@ -181,7 +181,7 @@ describe("TimeFilterPicker", () => {
       ]);
     });
 
-    it("should add an filter with no values", async () => {
+    it("should add a filter with no values", async () => {
       const { getNextFilterParts } = setup();
 
       userEvent.click(screen.getByDisplayValue("Before"));
