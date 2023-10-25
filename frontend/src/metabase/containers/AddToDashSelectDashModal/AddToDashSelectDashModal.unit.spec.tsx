@@ -47,8 +47,6 @@ const COLLECTION = createMockCollection({
   location: "/",
 });
 
-// Do not remove. This is being used by `DASHBOARD`
-// because its `collection_id` is `2` (this collection's ID)
 const SUBCOLLECTION = createMockCollection({
   id: 2,
   name: "Nested collection",
