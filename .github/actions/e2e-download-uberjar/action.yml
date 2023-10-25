@@ -55,10 +55,17 @@ runs:
             const [artifact] = artifacts;
 
             if (!artifact) {
+              // If we didn't find the artifact on the latest HEAD commit, we try again
+              // looking up the commit tree. `github.event.before` keeps the info about
+              // the predecessor commit even in the case of a rebase or a force-commit.
               const parentCommit = getCommit(`${commit}^`);
+              const predecessorCommit = '${{ github.event.before }}' || parentCommit;
+              const targetCommit = depth === 1 ? predecessorCommit : parentCommit;
+
+
               console.log(`Didn't find ${artifactName}.\n`);
-              console.log(`Switching to the parent commit: ${parentCommit}`);
-              return getArtifact(parentCommit, depth + 1);
+              console.log(`Trying to find the previously built artifact at commit: ${targetCommit}`);
+              return getArtifact(targetCommit, depth + 1);
             } else {
               return artifact;
             }
