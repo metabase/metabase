@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef, useState, useMemo } from "react";
 import { t } from "ttag";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
@@ -19,7 +19,11 @@ import { getSetting } from "metabase/selectors/settings";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
 import type { SearchAwareLocation, WrappedResult } from "metabase/search/types";
-import { getSearchTextFromLocation } from "metabase/search/utils";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+  isSearchPageLocation,
+} from "metabase/search/utils";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import {
   SearchInputContainer,
@@ -50,6 +54,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
 
   const [searchText, setSearchText] = useState<string>(
     getSearchTextFromLocation(location),
+  );
+
+  const searchFilters = useMemo(
+    () => getFiltersFromLocation(location),
+    [location],
   );
 
   const [isActive, { turnOn: setActive, turnOff: setInactive }] =
@@ -136,11 +145,18 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [previousLocation, location, setInactive]);
 
   const goToSearchApp = useCallback(() => {
+    const shouldPersistFilters = isSearchPageLocation(previousLocation);
+    const filters = shouldPersistFilters ? searchFilters : {};
+
+    const query = {
+      q: searchText.trim(),
+      ...filters,
+    };
     onChangeLocation({
       pathname: "search",
-      query: { q: searchText.trim() },
+      query,
     });
-  }, [onChangeLocation, searchText]);
+  }, [onChangeLocation, previousLocation, searchFilters, searchText]);
 
   const handleInputKeyPress = useCallback(
     e => {

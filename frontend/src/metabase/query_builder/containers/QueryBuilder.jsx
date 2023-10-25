@@ -92,6 +92,7 @@ import {
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
   query: { include: "events" },
@@ -195,6 +196,7 @@ const mapDispatchToProps = {
 function QueryBuilder(props) {
   const {
     question,
+    originalQuestion,
     location,
     params,
     fromUrl,
@@ -278,6 +280,7 @@ function QueryBuilder(props) {
       const createdQuestion = await apiCreateQuestion(
         newQuestion.setPinned(shouldBePinned),
       );
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         await updateUrl(createdQuestion, { dirty: false });
@@ -285,12 +288,19 @@ function QueryBuilder(props) {
         setRecentlySaved("created");
       });
     },
-    [apiCreateQuestion, setRecentlySaved, updateUrl, scheduleCallback],
+    [
+      apiCreateQuestion,
+      setRecentlySaved,
+      setUIControls,
+      updateUrl,
+      scheduleCallback,
+    ],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
+      await setUIControls({ isModifiedFromNotebook: false });
 
       scheduleCallback(async () => {
         if (!rerunQuery) {
@@ -310,6 +320,7 @@ function QueryBuilder(props) {
       updateUrl,
       onChangeLocation,
       setRecentlySaved,
+      setUIControls,
       scheduleCallback,
     ],
   );
@@ -421,19 +432,15 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
   const isLocationAllowed = useCallback(
-    location => {
-      if (!question?.isNative() || question?.isDataset()) {
-        return true;
-      }
-
-      const isTryingToRunModifiedSavedQuestion = Boolean(
-        location?.pathname === "/question" && location?.hash,
-      );
-
-      return isTryingToRunModifiedSavedQuestion;
-    },
-    [question],
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
   );
 
   return (

@@ -19,11 +19,11 @@ export interface PermissionsSidebarContentProps {
   description?: string;
   filterPlaceholder: string;
   onSelect: (item: ITreeNodeItem) => void;
-  onBack: () => void;
-  selectedId: ITreeNodeItem["id"];
+  onBack?: () => void;
+  selectedId?: ITreeNodeItem["id"];
   entityGroups: ITreeNodeItem[][];
-  onEntityChange: (entity: string) => void;
-  entityViewFocus: "database" | "group";
+  onEntityChange?: (entity: string) => void;
+  entityViewFocus?: "database" | "group";
 }
 
 export const PermissionsSidebarContent = memo<PermissionsSidebarContentProps>(
@@ -50,7 +50,7 @@ export const PermissionsSidebarContent = memo<PermissionsSidebarContentProps>(
             <SidebarContentTitle>{title}</SidebarContentTitle>
           )}
           {description && <Text color="text-dark">{description}</Text>}
-          {entityViewFocus && (
+          {entityViewFocus && onEntityChange && (
             <EntityViewSwitch
               value={entityViewFocus}
               onChange={onEntityChange}

@@ -1,3 +1,4 @@
+import type { UserId } from "metabase-types/api/user";
 import type { CardId } from "./card";
 import type { Collection } from "./collection";
 import type { DatabaseId, InitialSyncStatus } from "./database";
@@ -61,7 +62,7 @@ export interface SearchResult {
   table_schema: string | null;
   collection_authority_level: "official" | null;
   updated_at: string;
-  moderated_status: boolean | null;
+  moderated_status: string | null;
   model_id: CardId | null;
   model_name: string | null;
   model_index_id: number | null;
@@ -71,6 +72,12 @@ export interface SearchResult {
   dashboard_count: number | null;
   context: any; // this might be a dead property
   scores: SearchScore[];
+  last_edited_at: string | null;
+  last_editor_id: UserId | null;
+  last_editor_common_name: string | null;
+  creator_id: UserId | null;
+  creator_common_name: string | null;
+  created_at: string | null;
 }
 
 export interface SearchListQuery {

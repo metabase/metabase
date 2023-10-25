@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import { renderWithProviders, within, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  within,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   createMockDatabase,
   createMockSearchResult,
@@ -86,9 +91,8 @@ const setup = async ({
       initialValue={initialValue}
     />,
   );
-  await waitFor(() =>
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument(),
-  );
+
+  await waitForLoaderToBeRemoved();
 
   return {
     onChangeFilters,
@@ -142,10 +146,10 @@ describe("TypeFilterContent", () => {
 
     for (let i = 0; i < options.length; i++) {
       userEvent.click(options[i]);
-      expect(onChangeFilters).toHaveReturnedTimes(i + 1);
     }
 
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
 
@@ -157,8 +161,8 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });
 });

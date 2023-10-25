@@ -29,7 +29,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.initialize :as initialize]
    [metabase.test.persistence :as test.persistence]
-   [metabase.test.redefs]
+   [metabase.test.redefs :as test.redefs]
    [metabase.test.util :as tu]
    [metabase.test.util.async :as tu.async]
    [metabase.test.util.i18n :as i18n.tu]
@@ -64,7 +64,7 @@
   lib.metadata.jvm/keep-me
   mb.hawk.init/keep-me
   mb.hawk.parallel/keep-me
-  metabase.test.redefs/keep-me
+  test.redefs/keep-me
   mw.session/keep-me
   qp.store/keep-me
   qp.test-util/keep-me
@@ -209,6 +209,10 @@
   with-temp
   with-temp-defaults]
 
+ [test.redefs
+  with-temp!
+  with-ensure-with-temp-no-transaction!]
+
  [tu
   boolean-ids-and-timestamps
   call-with-paused-query
@@ -240,7 +244,8 @@
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values
-  with-user-in-groups]
+  with-user-in-groups
+  with-verified-cards]
 
  [tu.async
   wait-for-result
@@ -287,3 +292,5 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
+
+(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))

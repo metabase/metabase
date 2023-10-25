@@ -49,14 +49,14 @@ class DashboardGrid extends Component {
     super(props, context);
 
     const visibleCardIds = getVisibleCardIds(
-      props.dashboard.ordered_cards,
+      props.dashboard.dashcards,
       props.dashcardData,
     );
 
     this.state = {
       visibleCardIds,
-      initialCardSizes: this.getInitialCardSizes(props.dashboard.ordered_cards),
-      layouts: this.getLayouts(props.dashboard.ordered_cards),
+      initialCardSizes: this.getInitialCardSizes(props.dashboard.dashcards),
+      layouts: this.getLayouts(props.dashboard.dashcards),
       addSeriesModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
@@ -107,14 +107,14 @@ class DashboardGrid extends Component {
 
     const visibleCardIds = !isEditing
       ? getVisibleCardIds(
-          dashboard.ordered_cards,
+          dashboard.dashcards,
           dashcardData,
           this.state.visibleCardIds,
         )
-      : new Set(dashboard.ordered_cards.map(card => card.id));
+      : new Set(dashboard.dashcards.map(card => card.id));
 
     const cards = this.getVisibleCards(
-      dashboard.ordered_cards,
+      dashboard.dashcards,
       visibleCardIds,
       isEditing,
       selectedTabId,
@@ -218,7 +218,7 @@ class DashboardGrid extends Component {
   };
 
   getVisibleCards = (
-    cards = this.props.dashboard.ordered_cards,
+    cards = this.props.dashboard.dashcards,
     visibleCardIds = this.state.visibleCardIds,
     isEditing = this.props.isEditing,
     selectedTabId = this.props.selectedTabId,

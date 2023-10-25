@@ -89,8 +89,9 @@
                  :can_write           true
                  :name                "Our analytics"
                  :authority_level     nil
+                 :is_personal         false
                  :id                  "root"}
-                (assoc (into {} collection) :can_write true)]
+                (assoc (into {:is_personal false} collection) :can_write true)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -649,21 +650,22 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (t2.with-temp/with-temp [Collection {collection-id :id}      {:name "Collection with Items"}
-                             User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-                             User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-                             Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-                             Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-                             Card       _                        {:name "ZZ" :collection_id collection-id}
-                             Card       _                        {:name "AA" :collection_id collection-id}
-                             Revision   revision1                {:model    "Card"
-                                                                  :model_id card1-id
-                                                                  :user_id  user2-id
-                                                                  :object   (revision/serialize-instance card1 card1-id card1)}
-                             Revision   _revision2               {:model    "Card"
-                                                                  :model_id card2-id
-                                                                  :user_id  user1-id
-                                                                  :object   (revision/serialize-instance card2 card2-id card2)}]
+    (mt/with-temp!
+      [Collection {collection-id :id}      {:name "Collection with Items"}
+       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+       Card       _                        {:name "ZZ" :collection_id collection-id}
+       Card       _                        {:name "AA" :collection_id collection-id}
+       Revision   revision1                {:model    "Card"
+                                            :model_id card1-id
+                                            :user_id  user2-id
+                                            :object   (revision/serialize-instance card1 card1-id card1)}
+       Revision   _revision2               {:model    "Card"
+                                            :model_id card2-id
+                                            :user_id  user1-id
+                                            :object   (revision/serialize-instance card2 card2-id card2)}]
       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
       (is (= 1
              (t2/query-one {:update :revision
@@ -903,10 +905,12 @@
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
-                           :can_write                                true}]
+                           :can_write                                true
+                           :is_personal                              false}]
     :effective_location  "/"
     :parent_id           nil
-    :location            "/"}
+    :location            "/"
+    :is_personal         true}
    (select-keys (collection/user->personal-collection (mt/user->id :lucky))
                 [:id :entity_id :created_at])))
 
@@ -1093,7 +1097,8 @@
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
-                 :can_write                                true}
+                 :can_write                                true
+                 :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
                  :personal_owner_id root-owner-id,
@@ -1113,7 +1118,8 @@
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
-              :parent_id           nil}
+              :parent_id           nil
+              :is_personal         false}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 

@@ -47,13 +47,14 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-(mu/defn ^:private resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+  "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
    column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
-  (or (m/find-first #(= (:lib/desired-column-alias %) column-name)
-                    column-metadatas)
-      (m/find-first #(= (:name %) column-name)
-                    column-metadatas)
+  (or (some (fn [k]
+              (m/find-first #(= (get % k) column-name)
+                            column-metadatas))
+            [:lib/desired-column-alias :name])
       (do
         (log/warn (i18n/tru "Invalid :field clause: column {0} does not exist. Found: {1}"
                             (pr-str column-name)
@@ -312,8 +313,10 @@
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
   (if unit
-    (assoc metadata ::temporal-unit unit)
-    (dissoc metadata ::temporal-unit)))
+    (assoc metadata
+           ::temporal-unit unit
+           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
+    (dissoc metadata ::temporal-unit ::original-effective-type)))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -417,6 +420,8 @@
                                    {:join-alias join-alias})
                                  (when-let [temporal-unit (::temporal-unit metadata)]
                                    {:temporal-unit temporal-unit})
+                                 (when-let [original-effective-type (::original-effective-type metadata)]
+                                   {::original-effective-type original-effective-type})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (:fk-field-id metadata)]

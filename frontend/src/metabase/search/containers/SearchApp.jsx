@@ -7,7 +7,6 @@ import _ from "underscore";
 import { push } from "react-router-redux";
 import Search from "metabase/entities/search";
 
-import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
 import { Box, Text, Group, Paper } from "metabase/ui";
 
@@ -19,9 +18,8 @@ import {
   getSearchTextFromLocation,
 } from "metabase/search/utils";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { SearchResult } from "metabase/search/components/SearchResult";
 import { SearchFilterKeys } from "metabase/search/constants";
-import { SearchSidebar } from "metabase/search/components/SearchSidebar/SearchSidebar";
+import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { useDispatch } from "metabase/lib/redux";
 import {
   SearchControls,
@@ -29,6 +27,7 @@ import {
   SearchMain,
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
+import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -79,17 +78,14 @@ function SearchApp({ location }) {
       <Text size="xl" weight={700}>
         {jt`Results for "${searchText}"`}
       </Text>
-      <Search.ListLoader query={query} wrapped>
-        {({ list, metadata }) => (
-          <SearchBody direction="column" justify="center">
-            <SearchControls>
-              <SearchSidebar
-                value={searchFilters}
-                onChangeFilters={onFilterChange}
-              />
-            </SearchControls>
-            <SearchResultContainer>
-              {list.length === 0 ? (
+      <SearchBody direction="column" justify="center">
+        <SearchControls pb="lg">
+          <SearchSidebar value={searchFilters} onChange={onFilterChange} />
+        </SearchControls>
+        <SearchResultContainer>
+          <Search.ListLoader query={query} wrapped>
+            {({ list, metadata }) =>
+              list.length === 0 ? (
                 <Paper shadow="lg" p="2rem">
                   <EmptyState
                     title={t`Didn't find anything`}
@@ -103,7 +99,10 @@ function SearchApp({ location }) {
                 </Paper>
               ) : (
                 <Box>
-                  <SearchResultSection items={list} />
+                  <SearchResultSection
+                    totalResults={metadata.total}
+                    results={list}
+                  />
                   <Group justify="flex-end" align="center" my="1rem">
                     <PaginationControls
                       showTotal
@@ -116,11 +115,11 @@ function SearchApp({ location }) {
                     />
                   </Group>
                 </Box>
-              )}
-            </SearchResultContainer>
-          </SearchBody>
-        )}
-      </Search.ListLoader>
+              )
+            }
+          </Search.ListLoader>
+        </SearchResultContainer>
+      </SearchBody>
     </SearchMain>
   );
 }
@@ -130,15 +129,3 @@ SearchApp.propTypes = {
 };
 
 export default SearchApp;
-
-const SearchResultSection = ({ items }) => (
-  <Card className="pt2">
-    {items.map(item => {
-      return <SearchResult key={`${item.id}__${item.model}`} result={item} />;
-    })}
-  </Card>
-);
-
-SearchResultSection.propTypes = {
-  items: PropTypes.array,
-};

@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
@@ -17,9 +18,16 @@
 (mr/def ::pivot-types
   [:enum :category :location :time])
 
+(mr/def ::drill-thru.type
+  [:fn
+   {:error/message "valid drill-thru :type keyword"}
+   (fn [k]
+     (and (qualified-keyword? k)
+          (= (namespace k) "drill-thru")))])
+
 (mr/def ::drill-thru.common
   [:map
-   [:type     keyword?]
+   [:type     ::drill-thru.type]
    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]])
 
 (mr/def ::drill-thru.object-details
@@ -64,8 +72,11 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type      [:= :drill-thru/quick-filter]]
-    [:operators [:sequential ::drill-thru.quick-filter.operator]]]])
+    [:type       [:= :drill-thru/quick-filter]]
+    [:operators  [:sequential ::drill-thru.quick-filter.operator]]
+    ;; whether applying this drill thru should introduce a new stage to the query. Filters on aggregate columns should
+    ;; introduce a new stage.
+    [:new-stage? :boolean]]])
 
 (mr/def ::drill-thru.fk-filter
   [:merge
@@ -147,8 +158,7 @@
    ::drill-thru.common
    [:map
     [:type      [:= :drill-thru/zoom-in.timeseries]]
-    [:column    [:ref ::lib.schema.metadata/column]]
-    [:value     some?]
+    [:dimension [:ref ::context.row.value]]
     [:next-unit [:ref ::drill-thru.zoom-in.timeseries.next-unit]]]])
 
 (mr/def ::drill-thru
@@ -172,10 +182,19 @@
     [:drill-thru/automatic-insights       ::drill-thru.automatic-insights]
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]]])
 
+(mr/def ::context.row.value
+  [:map
+   [:column     [:ref ::lib.schema.metadata/column]]
+   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:value      :any]])
+
+(mr/def ::context.row
+  [:sequential [:ref ::context.row.value]])
+
 (mr/def ::context
   [:map
-   [:column [:ref ::lib.schema.metadata/column]]
-   [:value  [:maybe :any]]
-   [:row    {:optional true} [:sequential [:map
-                                           [:column-name string?]
-                                           [:value       :any]]]]])
+   [:column     [:ref ::lib.schema.metadata/column]]
+   [:column-ref [:ref ::lib.schema.ref/ref]]
+   [:value      [:maybe :any]]
+   [:row        {:optional true} [:ref ::context.row]]
+   [:dimensions {:optional true} [:maybe [:ref ::context.row]]]])

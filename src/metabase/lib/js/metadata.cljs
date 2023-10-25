@@ -211,7 +211,8 @@
 
 (defmethod rename-key-fn :field
   [_object-type]
-  {:source :lib/source})
+  {:source :lib/source
+   :unit   :metabase.lib.field/temporal-unit})
 
 (defn- parse-field-id
   [id]
@@ -224,19 +225,20 @@
   [_object-type]
   (fn [k v]
     (case k
-      :base-type         (keyword v)
-      :coercion-strategy (keyword v)
-      :effective-type    (keyword v)
-      :fingerprint       (if (map? v)
-                           (walk/keywordize-keys v)
-                           (js->clj v :keywordize-keys true))
-      :has-field-values  (keyword v)
-      :lib/source        (if (= v "aggregation")
-                           :source/aggregations
-                           (keyword "source" v))
-      :semantic-type     (keyword v)
-      :visibility-type   (keyword v)
-      :id                (parse-field-id v)
+      :base-type                        (keyword v)
+      :coercion-strategy                (keyword v)
+      :effective-type                   (keyword v)
+      :fingerprint                      (if (map? v)
+                                          (walk/keywordize-keys v)
+                                          (js->clj v :keywordize-keys true))
+      :has-field-values                 (keyword v)
+      :lib/source                       (if (= v "aggregation")
+                                          :source/aggregations
+                                          (keyword "source" v))
+      :metabase.lib.field/temporal-unit (keyword v)
+      :semantic-type                    (keyword v)
+      :visibility-type                  (keyword v)
+      :id                               (parse-field-id v)
       v)))
 
 (defmethod parse-objects :field

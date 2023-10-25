@@ -353,6 +353,19 @@ export function xValueForWaterfallTotal({ settings, series }) {
   return TOTAL_ORDINAL_VALUE;
 }
 
+const uniqueCards = series => _.uniq(series.map(({ card }) => card.id)).length;
+
+const aggregateColumns = series => {
+  return _.uniq(
+    series
+      .map(({ data: { cols } }) => {
+        return cols.filter(col => col.source === "aggregation");
+      })
+      .flat()
+      .map(({ name }) => name),
+  ).length;
+};
+
 export function shouldSplitYAxis(
   { settings, chartType, isScalarSeries, series },
   datas,
@@ -362,6 +375,7 @@ export function shouldSplitYAxis(
     isScalarSeries ||
     chartType === "scatter" ||
     settings["graph.y_axis.auto_split"] === false ||
+    (uniqueCards(series) < 2 && aggregateColumns(series) < 2) ||
     isStacked(settings, datas)
   ) {
     return false;
