@@ -1,3 +1,5 @@
+// Expect uberjar not to build
+// Expect the script to find and download the `metabase-ee-86554e400f2ac560018e5fa5a59e3bcc135f9b43-uberjar`
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   restore,
