@@ -651,7 +651,7 @@ const escapeCypressCurlyBraces = value => value.replaceAll("{", "{{}");
 
 /**
  * This function exists to work around custom dynamic anchor creation.
- * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L310
+ * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L312
  *
  * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
  */
