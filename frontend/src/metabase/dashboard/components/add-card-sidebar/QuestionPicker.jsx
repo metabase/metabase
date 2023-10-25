@@ -50,9 +50,8 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   const handleSearchTextChange = e => setSearchText(e.target.value);
 
   const allCollections = (collection && collection.children) || [];
-  const isDashboardInPublicCollection = !dashboardCollection.is_personal;
-  const collections = isDashboardInPublicCollection
-    ? allCollections.filter(collection => !collection.is_personal)
+  const collections = isPublicCollection(dashboardCollection)
+    ? allCollections.filter(isPublicCollection)
     : allCollections;
 
   return (
@@ -113,6 +112,9 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   );
 }
 
+function isPublicCollection(collection) {
+  return !collection.is_personal;
+}
 export default _.compose(
   entityObjectLoader({
     id: () => "root",
