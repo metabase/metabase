@@ -136,7 +136,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           visitDashboard(card.dashboard_id);
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
-
           popover()
             .should("contain", "See these Orders")
             .and("contain", "See this month by week")
@@ -328,7 +327,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByText("Count by Created At: Month").should("exist");
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
-
             const card = deserializeCardFromUrl(hash);
             expect(card.name).to.deep.equal(TARGET_QUESTION.name);
             expect(card.display).to.deep.equal(TARGET_QUESTION.display);
@@ -420,9 +418,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
-
             const card = deserializeCardFromUrl(hash);
-            console.log(card);
             expect(card.name).to.deep.equal(TARGET_QUESTION.name);
             expect(card.display).to.deep.equal(TARGET_QUESTION.display);
             expect(card.dataset_query.query).to.deep.equal({
@@ -579,7 +575,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           saveDashboard();
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
-
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.location("search").should(
@@ -609,7 +604,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           saveDashboard();
 
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
-
           cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.findAllByTestId("field-set").should(
