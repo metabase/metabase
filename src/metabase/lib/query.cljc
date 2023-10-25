@@ -123,9 +123,11 @@
                         (opts :guard (complement (some-fn :base-type :effective-type)))
                         expression-name]
                        (let [found-ref (try
-                                         (-> (lib.expression/expression-ref query stage-number expression-name)
-                                           second
-                                           (select-keys [:base-type :effective-type]))
+                                         (m/remove-vals
+                                           #(= :type/* %)
+                                           (-> (lib.expression/expression-ref query stage-number expression-name)
+                                               second
+                                               (select-keys [:base-type :effective-type])))
                                          (catch #?(:clj Exception :cljs :default) _
                                            ;; This currently does not find expressions defined in join stages
                                            nil))]
