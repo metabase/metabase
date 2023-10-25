@@ -193,6 +193,16 @@ describe("TimeFilterPicker", () => {
       expect(filterParts?.values).toEqual([]);
     });
 
+    it("should handle invalid input", () => {
+      const { getNextFilterParts } = setup();
+
+      userEvent.type(screen.getByDisplayValue("00:00"), "32:71");
+      userEvent.click(screen.getByText("Add filter"));
+
+      const filterParts = getNextFilterParts();
+      expect(filterParts?.values).toEqual([dayjs("03:59", "HH:mm").toDate()]);
+    });
+
     it("should go back", () => {
       const { onBack, onChange } = setup();
       userEvent.click(screen.getByLabelText("Back"));
