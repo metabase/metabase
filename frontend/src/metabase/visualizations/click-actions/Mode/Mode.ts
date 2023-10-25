@@ -25,31 +25,37 @@ export class Mode {
     return this._queryMode.name;
   }
 
-  hasActionsForClick(
-    clicked: ClickObject | undefined,
-    settings: Record<string, any>,
-    extraData?: Record<string, any>,
-  ): boolean {
-    return (
-      Lib.hasDrillThrus(
-        this._question._getMLv2Query(),
-        /* stageIndex */ -1,
-        clicked?.column,
-        clicked?.value,
-        clicked?.data,
-        clicked?.dimensions,
-      ) || this._queryMode.clickActions.length > 0
+  hasActionsForClick(clicked: ClickObject | undefined): boolean {
+    if (!clicked) {
+      return false;
+    }
+
+    const stageIndex = -1;
+
+    const hasDrillThrus = Lib.hasDrillThrus(
+      this._question._getMLv2Query(),
+      stageIndex,
+      clicked.column,
+      clicked.value,
+      clicked.data,
+      clicked.dimensions,
     );
+
+    if (hasDrillThrus) {
+      return true;
+    }
+
+    const hasLegacyDrillThrus = this._queryMode.clickActions?.some(drill =>
+      drill({ question: this._question }),
+    );
+
+    return hasLegacyDrillThrus;
   }
 
-  actionsForClick(
-    clicked: ClickObject | undefined,
-    settings: Record<string, any>,
-    extraData?: Record<string, any>,
-  ): ClickAction[] {
+  actionsForClick(clicked: ClickObject | undefined): ClickAction[] {
     const mode = this._queryMode;
     const question = this._question;
-    const props = { question, settings, clicked, extraData };
+    const props = { question, clicked };
 
     let drills: ClickAction[] = [];
 
@@ -66,7 +72,7 @@ export class Mode {
         return question.setDatasetQuery(Lib.toLegacyQuery(updatedQuery));
       };
 
-      // TODO: those calculations are really expensive and must be memoized at some level
+      // those calculations are really expensive and must be memoized at some level
       // check `_visualizationIsClickableCached` from TableInteractive
       const availableDrillThrus = Lib.availableDrillThrus(
         query,

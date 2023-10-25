@@ -470,6 +470,9 @@ class Visualization extends PureComponent {
         (loading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
+    const clickActions =
+      this.getClickActions(clicked).filter(isRegularClickAction);
+
     return (
       <ErrorBoundary>
         <VisualizationRoot
@@ -543,9 +546,7 @@ class Visualization extends PureComponent {
           {this.props.onChangeCardAndRun && (
             <ConnectedClickActionsPopover
               clicked={clicked}
-              clickActions={this.getClickActions(clicked).filter(
-                isRegularClickAction,
-              )}
+              clickActions={clickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}

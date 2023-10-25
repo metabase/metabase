@@ -43,7 +43,7 @@ describe("Mode", function () {
       const mode = getMode(question);
 
       it("has PivotDrill action", () => {
-        const actions = mode?.actionsForClick(undefined, {});
+        const actions = mode?.actionsForClick(undefined);
 
         expect(
           actions?.find(({ name }) => name === "breakout-by"),
@@ -101,15 +101,13 @@ function setup({
     column: createOrdersIdDatasetColumn(),
     value: undefined,
   },
-  settings = {},
 }: Partial<{
   question: Question;
   clicked: ClickObject | undefined;
-  settings: Record<string, any>;
 }> = {}) {
   const mode = checkNotNull(getMode(question));
 
-  return mode.actionsForClick(clicked, settings);
+  return mode.actionsForClick(clicked);
 }
 
 function getActionsByType(actions: ClickAction[], type: string): ClickAction[] {

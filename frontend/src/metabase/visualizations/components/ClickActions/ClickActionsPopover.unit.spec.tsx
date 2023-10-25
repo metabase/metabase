@@ -387,12 +387,7 @@ async function setup({
     dimension: dimension || undefined,
   };
 
-  const clickActions = mode.actionsForClick(
-    {
-      ...clicked,
-    },
-    settings,
-  ) as RegularClickAction[];
+  const clickActions = mode.actionsForClick(clicked) as RegularClickAction[];
 
   const dispatch = jest.fn();
   const onChangeCardAndRun = jest.fn();

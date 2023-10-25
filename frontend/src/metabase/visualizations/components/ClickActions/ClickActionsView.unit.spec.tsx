@@ -103,10 +103,7 @@ function setup(
     ],
   };
 
-  const clickActions = mode.actionsForClick(
-    clicked,
-    {},
-  ) as RegularClickAction[];
+  const clickActions = mode.actionsForClick(clicked) as RegularClickAction[];
   const onClick = jest.fn();
 
   render(<ClickActionsView clickActions={clickActions} onClick={onClick} />);
