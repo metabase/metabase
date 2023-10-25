@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { ComponentPropsWithoutRef } from "react";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
@@ -130,6 +130,10 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       position: sticky;
       border-bottom: 1px solid ${color("border")};
     `}
+
+    ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
 `;
 
 export const CardsContainer = styled(FullWidthContainer)<{
