@@ -6,6 +6,7 @@ import {
   createLinkCard,
   createTextCard,
   editDashboard,
+  getBrokenUpTextMatcher,
   getDashboardCard,
   modal,
   popover,
@@ -29,6 +30,13 @@ const POINT_CREATED_AT = "2022-08";
 const POINT_CREATED_AT_FORMATTED = "August 2022";
 const POINT_INDEX = 4;
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
+const COLUMN_INDEX = {
+  CREATED_AT: 0,
+  COUNT: 1,
+  MONTH: 2,
+  QUARTER: 3,
+  YEAR: 4,
+};
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -47,11 +55,22 @@ const QUESTION_LINE_CHART = {
   },
 };
 
+const CREATED_AT_FIELD = [
+  "field",
+  CREATED_AT_COLUMN_ID,
+  { "base-type": "type/DateTime" },
+];
+
 const QUESTION_TABLE = {
   name: "Table",
   display: "table",
   query: {
-    ...QUESTION_LINE_CHART.query,
+    "source-query": QUESTION_LINE_CHART.query,
+    expressions: {
+      Month: ["get-month", CREATED_AT_FIELD],
+      Quarter: ["get-quarter", CREATED_AT_FIELD],
+      Year: ["get-year", CREATED_AT_FIELD],
+    },
   },
 };
 
@@ -144,7 +163,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           assertDrillThroughMenuOpen();
         },
       );
@@ -204,7 +223,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.get("@targetDashboardId").then(targetDashboardId => {
             cy.location().should(({ pathname, search }) => {
@@ -245,7 +264,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
@@ -291,7 +310,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
@@ -327,7 +346,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
@@ -363,7 +382,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.findByTestId("qb-filters-panel").should(
             "have.text",
@@ -410,7 +429,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.findByTestId("qb-filters-panel").should(
             "contain.text",
@@ -490,7 +509,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          clickLastLineChartPoint();
+          clickLineChartPoint();
 
           cy.log("allows to change click behavior back to the default");
 
@@ -505,7 +524,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           assertDrillThroughMenuOpen();
         },
       );
@@ -557,7 +576,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          clickLastLineChartPoint();
+          clickLineChartPoint();
         },
       );
     });
@@ -594,7 +613,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.location("search").should(
@@ -623,7 +642,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          clickLastLineChartPoint();
+          clickLineChartPoint();
           cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.findAllByTestId("field-set").should(
@@ -642,18 +661,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   describe("table", () => {
     const questionDetails = QUESTION_TABLE;
 
-    it("should open drill-through menu as a default click-behavior", () => {
-      cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
-
-          clickLastTableCountCell();
-          assertDrillThroughMenuOpen();
-        },
-      );
-    });
-
-    it("allows setting dashboard with multiple parameters as custom destination for multiple columns", () => {
+    it("allows setting custom destination for multiple columns", () => {
+      cy.createQuestion(TARGET_QUESTION);
       cy.createDashboard(
         {
           ...TARGET_DASHBOARD,
@@ -668,11 +677,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+
+          cy.log("should open drill-through menu as a default click-behavior");
+          clickTableCell(COLUMN_INDEX.COUNT);
+          popover().should("contain.text", "Filter by this value");
+
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
 
-          cy.log("it allows set click behavior for 'Count' column");
+          cy.log("it allows to set click behavior for 'Count' column");
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
           cy.get("aside").findByText("Go to a custom destination").click();
           cy.get("aside").findByText("Dashboard").click();
@@ -681,10 +695,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             .findByText("No available targets")
             .should("not.exist");
           addTextParameter();
+          addTimeParameter();
 
           cy.icon("chevronleft").click();
 
-          cy.log("it allows set click behavior for 'Created at' column");
+          cy.log("it allows to set click behavior for 'Created at' column");
           cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
           /**
            * TODO: remove the next line when metabase#34845 is fixed
@@ -692,45 +707,40 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
            */
           cy.get("aside").findByText("Unknown").click();
           cy.get("aside").findByText("Go to a custom destination").click();
-          cy.get("aside").findByText("Dashboard").click();
-          modal().findByText(TARGET_DASHBOARD.name).click();
-          cy.get("aside")
-            .findByText("No available targets")
-            .should("not.exist");
-          addTimeParameter();
+          cy.get("aside").findByText("Saved question").click();
+          modal().findByText(TARGET_QUESTION.name).click();
+          cy.get("aside").findByText("Orders → Created At").click();
+          popover().within(() => {
+            cy.findByText(COUNT_COLUMN_NAME).should("not.exist");
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("exist").click();
+          });
+          cy.get("aside").findByText("Orders → Quantity").click();
+          popover().within(() => {
+            cy.findByText(CREATED_AT_COLUMN_NAME).should("not.exist");
+            cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+          });
 
+          cy.icon("chevronleft").click();
+
+          cy.get("aside")
+            .findByText(
+              getBrokenUpTextMatcher('Created At goes to "Target question"'),
+            )
+            .should("exist");
+          cy.get("aside")
+            .findByText(
+              getBrokenUpTextMatcher('Count goes to "Target dashboard"'),
+            )
+            .should("exist");
           cy.get("aside").button("Done").click();
 
           saveDashboard();
 
           cy.log("it handles 'Count' column click");
-          clickLastTableCountCell();
+          clickTableCell(COLUMN_INDEX.COUNT);
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 2);
-          cy.findAllByTestId("field-set").should(
-            "contain.text",
-            DASHBOARD_FILTER_TIME.name,
-          );
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
-          cy.get("@targetDashboardId").then(targetDashboardId => {
-            cy.location().should(({ pathname, search }) => {
-              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-              expect(search).to.equal(
-                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
-              );
-            });
-          });
-
-          cy.go("back");
-
-          cy.log("it handles 'Created at' column click");
-          clickLastTableCreatedAtCell();
-          cy.findByText(TARGET_DASHBOARD.name).should("exist");
-          cy.findAllByTestId("field-set").should("have.length", 2);
-          cy.findAllByTestId("field-set").should(
-            "contain.text",
-            DASHBOARD_FILTER_TEXT.name,
-          );
           cy.findAllByTestId("field-set").should(
             "contain.text",
             POINT_CREATED_AT_FORMATTED,
@@ -739,8 +749,32 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
               expect(search).to.equal(
-                `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
               );
+            });
+          });
+
+          cy.go("back");
+
+          cy.log("it handles 'Created at' column click");
+          clickTableCell(COLUMN_INDEX.CREATED_AT);
+          cy.findByText(TARGET_QUESTION.name).should("exist");
+          cy.findByTestId("qb-filters-panel").should(
+            "contain.text",
+            "Created At is August 1–31, 2022",
+          );
+          cy.findByTestId("qb-filters-panel").should(
+            "contain.text",
+            "Quantity is equal to 79",
+          );
+          cy.location().should(({ hash, pathname }) => {
+            expect(pathname).to.equal("/question");
+            const card = deserializeCardFromUrl(hash);
+            expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+            expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+            expect(card.dataset_query.query).to.deep.equal({
+              ...TARGET_QUESTION.query,
+              filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
             });
           });
         },
@@ -783,7 +817,7 @@ const onNextAnchorClick = callback => {
 const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
 
-const clickLastLineChartPoint = () => {
+const clickLineChartPoint = () => {
   cy.findByTestId("dashcard")
     .get("circle.dot")
     .eq(POINT_INDEX)
@@ -803,19 +837,12 @@ const clickLastLineChartPoint = () => {
     });
 };
 
-const clickLastTableCreatedAtCell = () => {
-  cy.findAllByTestId("table-row")
+const clickTableCell = index => {
+  return cy
+    .findAllByTestId("table-row")
     .eq(POINT_INDEX)
     .findAllByTestId("cell-data")
-    .first()
-    .click();
-};
-
-const clickLastTableCountCell = () => {
-  cy.findAllByTestId("table-row")
-    .eq(POINT_INDEX)
-    .findAllByTestId("cell-data")
-    .last()
+    .eq(index)
     .click();
 };
 
