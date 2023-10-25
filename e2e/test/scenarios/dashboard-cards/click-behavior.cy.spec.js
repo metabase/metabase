@@ -24,10 +24,10 @@ const COUNT_COLUMN_NAME = "Count";
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
 const FILTER_VALUE = "123";
-const POINT_COUNT = 344;
-const POINT_CREATED_AT = "2026-04";
-const POINT_CREATED_AT_FORMATTED = "April 2026";
-const POINT_INDEX = 48;
+const POINT_COUNT = 79;
+const POINT_CREATED_AT = "2022-08";
+const POINT_CREATED_AT_FORMATTED = "August 2022";
+const POINT_INDEX = 4;
 const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -36,13 +36,14 @@ const TARGET_DASHBOARD = {
   name: "Target dashboard",
 };
 
-const LINE_CHART = {
+const QUESTION_LINE_CHART = {
   name: "Line chart",
   display: "line",
   query: {
     aggregation: [["count"]],
     breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
     "source-table": ORDERS_ID,
+    limit: 5,
   },
 };
 
@@ -54,7 +55,7 @@ const OBJECT_DETAIL_CHART = {
 };
 
 const TARGET_QUESTION = {
-  ...LINE_CHART,
+  ...QUESTION_LINE_CHART,
   name: "Target question",
 };
 
@@ -77,8 +78,8 @@ const DASHBOARD_FILTER_TIME = createMockActionParameter({
 const QUERY_FILTER_CREATED_AT = [
   "between",
   ["field", ORDERS.CREATED_AT, null],
-  "2026-04-01",
-  "2026-04-30",
+  "2022-08-01",
+  "2022-08-31",
 ];
 
 const QUERY_FILTER_QUANTITY = [
@@ -128,14 +129,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   });
 
   describe("line chart", () => {
-    const questionDetails = LINE_CHART;
+    const questionDetails = QUESTION_LINE_CHART;
 
     it("should open drill-through menu as a default click-behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           popover()
             .should("contain", "See these Orders")
             .and("contain", "See this month by week")
@@ -200,7 +201,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.get("@targetDashboardId").then(targetDashboardId => {
             cy.location().should(({ pathname, search }) => {
@@ -241,7 +242,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
@@ -287,7 +288,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText(TARGET_DASHBOARD.name).should("exist");
           cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
@@ -323,7 +324,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
@@ -359,11 +360,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.findByTestId("qb-filters-panel").should(
             "have.text",
-            "Created At is April 1–30, 2026",
+            "Created At is August 1–31, 2022",
           );
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
@@ -406,15 +407,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findByText("Count by Created At: Month").should("exist");
           cy.findByTestId("qb-filters-panel").should(
             "contain.text",
-            "Created At is April 1–30, 2026",
+            "Created At is August 1–31, 2022",
           );
           cy.findByTestId("qb-filters-panel").should(
             "contain.text",
-            "Quantity is equal to 344",
+            "Quantity is equal to 79",
           );
           cy.location().should(({ hash, pathname }) => {
             expect(pathname).to.equal("/question");
@@ -486,7 +487,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
 
           cy.log("allows to change click behavior back to the default");
 
@@ -501,7 +502,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           popover()
             .should("contain", "See these Orders")
             .and("contain", "See this month by week")
@@ -558,7 +559,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("rel", "noopener");
             expect(anchor).to.have.attr("target", "_blank");
           });
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
         },
       );
     });
@@ -595,7 +596,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findAllByTestId("field-set").should("have.length", 1);
           cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.location("search").should(
@@ -624,7 +625,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           saveDashboard();
 
-          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          clickLastLineChartPoint();
           cy.findAllByTestId("field-set").should("have.length", 2);
           cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
           cy.findAllByTestId("field-set").should(
@@ -674,6 +675,13 @@ const onNextAnchorClick = callback => {
  */
 const deserializeCardFromUrl = serialized =>
   JSON.parse(b64hash_to_utf8(serialized));
+
+const clickLastLineChartPoint = () => {
+  cy.findByTestId("dashcard")
+    .get("circle.dot")
+    .eq(POINT_INDEX)
+    .click({ force: true });
+};
 
 const addTextParameter = () => {
   cy.get("aside").findByText(DASHBOARD_FILTER_TEXT.name).click();
