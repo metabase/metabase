@@ -103,9 +103,9 @@
         :query-type     :aggregated
         :custom-query   query
         :custom-row     {"count"    100
-                         "Name"     "Niblet Cockatiel"
+                         "NAME"     "Niblet Cockatiel"
                          "STATE"    "California"
-                         "Latitude" 100}
+                         "LATITUDE" 100}
         :column-name    "STATE"
         :drill-type     :drill-thru/zoom-in.geographic
         :expected       {:type      :drill-thru/zoom-in.geographic

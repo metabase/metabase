@@ -1,10 +1,12 @@
 (ns metabase.lib.drill-thru.zoom-in-geographic
-  "Geographic zooms are of the following flavors. All geographic zooms require both a `:type/Latitude` and a
-  `:type/Longitude` column in [[metabase.lib.metadata.calculation/visible-columns]], not necessarily in the
+  "All geographic zooms require both a `:type/Latitude` and a `:type/Longitude` column
+  in [[metabase.lib.metadata.calculation/visible-columns]], not necessarily in the
   query's [[metabase.lib.metadata.calculation/returned-columns]]. E.g. 'count broken out by state' query should still
   get presented this drill.
 
   These drills are only for 'cell' context for specific values.
+
+  Geographic zooms are of the following flavors:
 
   1. Country, State, or City => Binned LatLon
 
@@ -58,19 +60,21 @@
   (let [columns (lib.metadata.calculation/visible-columns query stage-number (lib.util/query-stage query stage-number))]
     (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
       (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
-        (assoc context
-               :lat-column lat-column
-               :lon-column lon-column
-               :lat-value (some
-                           (fn [{:keys [column-name], :as row-value}]
-                             (when (= column-name (:name lat-column))
-                               (:value row-value)))
-                           row)
-               :lon-value (some
-                           (fn [{:keys [column-name], :as row-value}]
-                             (when (= column-name (:name lon-column))
-                               (:value row-value)))
-                           row))))))
+        (letfn [(same-column? [col-x col-y]
+                  (if (:id col-x)
+                    (= (:id col-x) (:id col-y))
+                    (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
+                (column-value [column]
+                  (some
+                   (fn [row-value]
+                     (when (same-column? column (:column row-value))
+                       (:value row-value)))
+                   row))]
+          (assoc context
+                 :lat-column lat-column
+                 :lon-column lon-column
+                 :lat-value (column-value lat-column)
+                 :lon-value (column-value lon-column)))))))
 
 ;;;
 ;;; available-drill-thrus
@@ -155,7 +159,7 @@
    bin-width    :- pos?]
   (let [binning {:strategy  :bin-width
                  :bin-width bin-width}]
-    (if-let [existing-breakout (lib.breakout/existing-breakout query stage-number column)]
+    (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
       (let [new-breakout (lib.binning/with-binning existing-breakout binning)]
         (lib.remove-replace/replace-clause query stage-number existing-breakout new-breakout))
       (lib.breakout/breakout query stage-number (lib.binning/with-binning column binning)))))

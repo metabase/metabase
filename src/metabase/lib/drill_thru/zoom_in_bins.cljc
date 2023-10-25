@@ -59,7 +59,7 @@
    stage-number                        :- :int
    {:keys [column value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and column value)
-    (when-let [existing-breakout (lib.breakout/existing-breakout query stage-number column)]
+    (when-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
       (when-let [binning (lib.binning/binning existing-breakout)]
         (case (:strategy binning)
           :num-bins
@@ -95,7 +95,7 @@
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
    new-binning  :- ::lib.schema.binning/binning]
-  (if-let [existing-breakout (lib.breakout/existing-breakout query stage-number column)]
+  (if-let [existing-breakout (first (lib.breakout/existing-breakouts query stage-number column))]
     (lib.remove-replace/replace-clause query stage-number existing-breakout (lib.binning/with-binning column new-binning))
     (lib.breakout/breakout query stage-number (lib.binning/with-binning column new-binning))))
 
