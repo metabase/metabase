@@ -29,6 +29,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
@@ -293,7 +294,9 @@ export function DashCardCardParameterMapper({
       )}
       {isVariableTarget(target) && (
         <Warning>
-          {t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
+          {isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+            ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
       )}
     </Container>

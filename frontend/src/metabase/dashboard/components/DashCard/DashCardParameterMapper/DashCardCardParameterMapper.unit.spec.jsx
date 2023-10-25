@@ -7,6 +7,7 @@ import {
   createMockDashboardCard,
   createMockActionDashboardCard,
   createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
   createMockNativeDatasetQuery,
@@ -197,7 +198,38 @@ describe("DashCardParameterMapper", () => {
       target: ["variable", ["template-tag", "source"]],
     });
     expect(
-      screen.getByText(/Native question variables only accept a single value/i),
+      screen.getByText(
+        /Native question variables only accept a single value\. They do not support dropdown lists/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should show native question variable warning without single value explanation if parameter is date type", () => {
+    const card = createMockCard({
+      dataset_query: createMockNativeDatasetQuery({
+        dataset_query: {
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
+            "template-tags": [
+              createMockTemplateTag({
+                name: "created_at",
+                type: "date/month-year",
+              }),
+            ],
+          }),
+        },
+      }),
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({ card }),
+      target: ["variable", ["template-tag", "created_at"]],
+      editingParameter: createMockParameter({ type: "date/month-year" }),
+    });
+    expect(
+      screen.getByText(
+        /Native question variables do not support dropdown lists/i,
+      ),
     ).toBeInTheDocument();
   });
 
