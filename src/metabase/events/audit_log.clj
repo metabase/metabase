@@ -17,8 +17,8 @@
 
   If `:audit-db/previous` is missing, this is a noop."
   [event]
-  (if-let [previous (:audit-db/previous event)]
-    (let [new (dissoc event :audit-db/previous)
+  (if-let [previous (:audit-log/previous event)]
+    (let [new (dissoc event :audit-log/previous)
           [previous-only new-only _both] (data/diff previous new)
           updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
       {:previous (select-keys previous updated-keys)
@@ -169,7 +169,6 @@
 
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
-  (def event event)
   (audit-log/record-event! topic
                            (maybe-prepare-update-event-data event)
                            api/*current-user-id*
