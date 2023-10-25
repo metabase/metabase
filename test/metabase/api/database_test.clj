@@ -447,12 +447,10 @@
             "A db update occured")
         (let [audit-log-entry (mt/latest-audit-log-entry)]
           (is (=?
-               {:previous_value
-                {:name "Cam's Awesome multimethod Database"
-                 :updated_at #hawk/malli :string},
-                :new_value
-                {:name "Sam's Awesome multimethod Database"
-                 :updated_at #hawk/malli :string}}
+               {:previous {:name "Cam's Awesome multimethod Database"
+                           :updated_at #hawk/malli :string},
+                :new {:name "Sam's Awesome multimethod Database"
+                      :updated_at #hawk/malli :string}}
                (:details audit-log-entry)))
           (is (= (get-in audit-log-entry [:details :previous_value :name])
                  "Cam's Awesome multimethod Database"))

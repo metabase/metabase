@@ -11,6 +11,20 @@
 
 (derive ::event :metabase/event)
 
+(defn maybe-prepare-update-event-data
+  "When `:audit-db/previous` is present in the event-data, we return a map with previous and new versions of the
+  objects, _keeping only fields that changed_.
+
+  If `:audit-db/previous` is missing, this is a noop."
+  [event]
+  (if-let [previous (:audit-db/previous event)]
+    (let [new (dissoc event :audit-db/previous)
+          [previous-only new-only _both] (data/diff previous new)
+          updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
+      {:previous (select-keys previous updated-keys)
+       :new (select-keys new updated-keys)})
+    event))
+
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
 (derive :event/card-update ::card-event)
@@ -153,18 +167,11 @@
 (derive ::database-update-event ::event)
 (derive :event/database-update ::database-update-event)
 
-(mu/defn narrow-to-changed-keys :- [:map [:previous :map] [:new :map]]
-  "Keeps only keys that changed between previous and new."
-  [{:keys [previous new]}]
-  (let [[previous-only new-only _both] (data/diff previous new)
-        updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-    {:previous (select-keys previous updated-keys)
-     :new (select-keys new updated-keys)}))
-
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
+  (def event event)
   (audit-log/record-event! topic
-                           (narrow-to-changed-keys event)
+                           (maybe-prepare-update-event-data event)
                            api/*current-user-id*
                            :model/Database
-                           (some-> event :new :id)))
+                           (:id event)))
