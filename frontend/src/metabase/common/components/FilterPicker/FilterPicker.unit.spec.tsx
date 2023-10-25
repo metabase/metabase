@@ -156,9 +156,14 @@ describe("FilterPicker", () => {
     });
 
     it("should open the expression editor when column type isn't supported", () => {
-      jest.spyOn(Lib_ColumnTypes, "isNumeric").mockReturnValue(false);
+      const spy = jest
+        .spyOn(Lib_ColumnTypes, "isNumeric")
+        .mockReturnValue(false);
+
       setup(createQueryWithFilter());
       expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+
+      spy.mockRestore();
     });
   });
 });
