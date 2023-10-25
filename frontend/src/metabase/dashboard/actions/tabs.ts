@@ -13,7 +13,6 @@ import type {
 import type {
   DashboardState,
   Dispatch,
-  GetState,
   SelectedTabId,
   TabDeletionId,
 } from "metabase-types/store";
@@ -103,14 +102,11 @@ export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 
 export const moveDashCardToTab =
   ({ destinationTabId, dashCardId }: MoveDashCardToTabPayload) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    const tabs = getPrevDashAndTabs({ state: getState().dashboard }).prevTabs;
+  (dispatch: Dispatch) => {
     dispatch(_moveDashCardToTab({ destinationTabId, dashCardId }));
     dispatch(
       addUndo({
-        message: t`Card moved to ${
-          tabs.find(tab => tab.id === destinationTabId)?.name
-        }`,
+        message: t`Card moved`,
         undo: true,
         action: () => {
           dispatch(undoMoveDashCardToTab({ dashCardId }));
