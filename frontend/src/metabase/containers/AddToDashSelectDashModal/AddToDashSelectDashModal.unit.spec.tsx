@@ -314,6 +314,23 @@ describe("AddToDashSelectDashModal", () => {
       });
 
       describe("question is in a public collection", () => {
+        it("should render all collections", async () => {
+          await setup({
+            collections: COLLECTIONS,
+          });
+
+          expect(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByRole("heading", {
+              name: COLLECTION.name,
+            }),
+          ).toBeInTheDocument();
+        });
+
         describe('"Create a new dashboard" option', () => {
           it('should render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup();
@@ -485,6 +502,24 @@ describe("AddToDashSelectDashModal", () => {
       });
 
       describe("question is in a personal collection", () => {
+        it("should not render public collections", async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+            collections: COLLECTIONS,
+          });
+
+          expect(
+            screen.getByRole("heading", {
+              name: PERSONAL_COLLECTION.name,
+            }),
+          ).toBeInTheDocument();
+          expect(
+            screen.queryByRole("heading", {
+              name: COLLECTION.name,
+            }),
+          ).not.toBeInTheDocument();
+        });
+
         describe('"Create a new dashboard" option', () => {
           it('should not render "Create a new dashboard" option when opening the root collection (public collection)', async () => {
             await setup({
