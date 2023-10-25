@@ -8,7 +8,6 @@
                {:source-field 5}]]
      :value [3 5]}"
   (:require
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -18,7 +17,7 @@
 
 (s/defn ^:private operator-arity :- (s/maybe (s/enum :unary :binary :variadic))
   [param-type]
-  (get-in lib.schema.parameter/types [param-type :operator]))
+  (get-in mbql.s/parameter-types [param-type :operator]))
 
 (defn operator?
   "Returns whether param-type is an \"operator\" type."
