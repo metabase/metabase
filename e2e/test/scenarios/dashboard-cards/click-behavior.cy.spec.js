@@ -680,7 +680,20 @@ const clickLastLineChartPoint = () => {
   cy.findByTestId("dashcard")
     .get("circle.dot")
     .eq(POINT_INDEX)
-    .click({ force: true });
+    /**
+     * calling .click() here will result in clicking both
+     *     g.voronoi > path[POINT_INDEX]
+     * and
+     *     circle.dot[POINT_INDEX]
+     * To make it worse, clicks count won't be deterministic.
+     * Sometimes we'll get an error that one element covers the other.
+     * This problem prevails when updating dashboard filter,
+     * where the 2 clicks will cancel each other out.
+     **/
+    .then(([circle]) => {
+      const { left, top } = circle.getBoundingClientRect();
+      cy.get("body").click(left, top);
+    });
 };
 
 const addTextParameter = () => {
