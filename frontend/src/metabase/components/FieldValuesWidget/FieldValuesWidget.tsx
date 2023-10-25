@@ -169,34 +169,38 @@ export function FieldValuesWidgetInner({
     setOptions([]);
 
     let newValues: FieldValue[] = [];
-    let hasMoreValues = false;
+    let newValuesMode = valuesMode;
     try {
       if (canUseDashboardEndpoints(dashboard)) {
         const { values, has_more_values } =
           await dispatchFetchDashboardParameterValues(query);
         newValues = values;
-        hasMoreValues = has_more_values;
+        newValuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseCardEndpoints(question)) {
         const { values, has_more_values } =
           await dispatchFetchCardParameterValues(query);
         newValues = values;
-        hasMoreValues = has_more_values;
+        newValuesMode = has_more_values ? "search" : valuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
         const { values, has_more_values } = await dispatchFetchParameterValues(
           query,
         );
         newValues = values;
-        hasMoreValues = has_more_values;
+        newValuesMode = has_more_values ? "search" : valuesMode;
       } else {
         newValues = await fetchFieldValues(query);
+        newValuesMode = getValuesMode({
+          parameter,
+          fields,
+          disableSearch,
+          disablePKRemappingForSearch,
+        });
       }
     } finally {
       updateRemappings(newValues);
       setOptions(newValues);
       setLoadingState("LOADED");
-      if (hasMoreValues) {
-        setValuesMode("search");
-      }
+      setValuesMode(newValuesMode);
     }
   };
 
@@ -390,8 +394,12 @@ export function FieldValuesWidgetInner({
         );
   }
 
-  const isListMode = !disableList && valuesMode === "list";
   const hasOptions = !_.isEmpty(options);
+  const showListField =
+    !disableList &&
+    valuesMode === "list" &&
+    shouldList({ parameter, fields, disableSearch }) &&
+    hasOptions;
   const isLoading = loadingState === "LOADING";
 
   const parseFreeformValue = (value: string | number) => {
@@ -410,9 +418,9 @@ export function FieldValuesWidgetInner({
           maxWidth: maxWidth,
         }}
       >
-        {isListMode && isLoading ? (
+        {showListField && isLoading ? (
           <LoadingState />
-        ) : isListMode && hasOptions && multi ? (
+        ) : showListField && multi ? (
           <ListField
             isDashboardFilter={!!parameter}
             placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
@@ -422,7 +430,7 @@ export function FieldValuesWidgetInner({
             optionRenderer={optionRenderer}
             checkedColor={checkedColor}
           />
-        ) : isListMode && hasOptions && !multi ? (
+        ) : showListField && !multi ? (
           <SingleSelectListField
             isDashboardFilter={!!parameter}
             placeholder={placeholder ?? SEARCH_THE_LIST_PLACEHOLDER}
