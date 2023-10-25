@@ -1,6 +1,7 @@
 (ns metabase.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -139,7 +140,6 @@
 
 (derive ::database-event ::event)
 (derive :event/database-create ::database-event)
-(derive :event/database-update ::database-event)
 (derive :event/database-delete ::database-event)
 (derive :event/database-manual-sync ::database-event)
 (derive :event/database-manual-scan ::database-event)
@@ -147,4 +147,14 @@
 
 (methodical/defmethod events/publish-event! ::database-event
   [topic database]
+  (def topic topic)
+  (def database database)
   (audit-log/record-event! topic database))
+
+(derive ::database-update-event ::event)
+(derive :event/database-update ::database-update-event)
+
+(methodical/defmethod events/publish-event! ::database-update-event
+  [topic {:keys [old new]}]
+  (let [[_old-only new-only _both] (data/diff old new)]
+    (audit-log/record-event! topic (assoc new-only :raw? true))))
