@@ -464,7 +464,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    it("allows setting URL as custom destination", () => {
+    it("allows setting URL as custom destination and change it back to default click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
@@ -487,6 +487,27 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             expect(anchor).to.have.attr("target", "_blank");
           });
           cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+
+          cy.log("allows to change click behavior back to the default");
+
+          editDashboard();
+
+          getDashboardCard().realHover().icon("click").click();
+          cy.get("aside").icon("close").first().click();
+          cy.get("aside")
+            .findByText("Open the Metabase drill-through menu")
+            .click();
+          cy.get("aside").button("Done").click();
+
+          saveDashboard();
+
+          cy.findByTestId("dashcard").get("circle.dot").eq(POINT_INDEX).click();
+          popover()
+            .should("contain", "See these Orders")
+            .and("contain", "See this month by week")
+            .and("contain", "Break out by…")
+            .and("contain", "Automatic insights…")
+            .and("contain", "Filter by this value");
         },
       );
     });
