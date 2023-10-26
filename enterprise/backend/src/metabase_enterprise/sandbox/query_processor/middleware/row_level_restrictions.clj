@@ -386,3 +386,9 @@
     (fn merge-sandboxing-metadata-rff* [metadata]
       (rff (merge-metadata original-metadata metadata)))
     rff))
+
+(defenterprise ee-middleware-merge-sandboxing-metadata
+  "EE-only: merge in column metadata from the original, unsandboxed version of the query."
+  :feature :sandboxes
+  [query rff]
+  (merge-sandboxing-metadata query rff))

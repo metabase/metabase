@@ -5,7 +5,8 @@
   those when overriding individual functions. Some wiring for the [[clojure.core.async]] channels takes place in
   [[metabase.query-processor.reducible]]."
   (:require
-   [metabase.async.util :as async.u]))
+   [metabase.async.util :as async.u]
+   [metabase.query-processor.error-type :as qp.error-type]))
 
 (defn raisef
   "Raise an Exception."
@@ -57,7 +58,14 @@
   {:arglists '([driver query context respond])}
   [driver query {executef* :executef, :as context} respond]
   {:pre [(ifn? executef*)]}
-  (executef* driver query context respond)
+  (try
+    (executef* driver query context respond)
+    (catch Throwable e
+      (throw (ex-info (format "Error executing query: %s" (ex-message e))
+                      {:type   qp.error-type/driver
+                       :driver driver
+                       :query  query}
+                      e))))
   nil)
 
 (defn reducef

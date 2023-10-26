@@ -3,26 +3,32 @@
    so the query can then be executed."
   (:require
    [metabase.driver :as driver]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.lib.convert :as lib.convert]
+   [metabase.query-processor.error-type :as qp.error-type]))
 
 (defn query->native-form
   "Return a `:native` query form for `query`, converting it from MBQL if needed."
-  [{query-type :type, :as query}]
-  (if-not (= :query query-type)
-    (:native query)
-    (driver/mbql->native driver/*driver* query)))
+  [query]
+  (case ((some-fn :lib/type :type) query)
+    ;; MLv2 pMBQL query, convert to legacy and recur
+    :mbql/query
+    (recur (lib.convert/->legacy-MBQL query))
 
-(defn mbql->native
-  "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries
-   can be executed. For queries that are already native, this function is effectively a no-op."
-  [qp]
-  (fn [query rff context]
-    (let [native-query (query->native-form query)]
-      (log/trace (u/format-color 'yellow "\nPreprocessed:\n%s" (u/pprint-to-str query)))
-      (log/trace (u/format-color 'green "Native form: \n%s" (u/pprint-to-str native-query)))
-      (qp
-       (assoc query :native native-query)
-       (fn [metadata]
-         (rff (assoc metadata :native_form native-query)))
-       context))))
+    ;; legacy MBQL query
+    :query
+    (try
+      (driver/mbql->native driver/*driver* query)
+      (catch Throwable e
+        (throw (ex-info (format "Error compiling MBQL query to native: %s" (ex-message e))
+                        {:type qp.error-type/driver, :driver driver/*driver*, :query query}
+                        e))))
+
+    ;; legacy native query
+    :native
+    (:native query)))
+
+(defn add-native-query-to-metadata
+  "Post-processing middleware. Add native query to result metadata."
+  [query rff]
+  (fn add-native-query-to-metadata-rff [metadata]
+    (rff (assoc metadata :native_form (:native query)))))

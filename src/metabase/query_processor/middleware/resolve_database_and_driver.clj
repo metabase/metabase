@@ -15,17 +15,7 @@
 
 (declare resolve-database-id)
 
-(defn- bootstrap-metadata-provider []
-  (if (qp.store/initialized?)
-    (qp.store/metadata-provider)
-    (reify lib.metadata.protocols/MetadataProvider
-      (card [_this card-id]
-        (t2/select-one-fn
-         (fn [card]
-           {:lib/type    :metadata/card
-            :database-id (:database_id card)})
-         [:model/Card :database_id]
-         :id card-id)))))
+
 
 (mu/defn ^:private resolve-database-id-for-source-card :- ::lib.schema.id/database
   [source-card-id :- ::lib.schema.id/card]

@@ -2,6 +2,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
@@ -37,6 +39,7 @@
    [metabase.query-processor.normalize :as qp.normalize]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util.i18n :refer [tru]]))
 
 (defenterprise ee-middleware-apply-download-limit
@@ -51,79 +54,81 @@
   [query]
   query)
 
+(defn- ^:deprecated legacy-middleware [f]
+  (fn [mlv2-query]
+    (let [legacy-query (lib.convert/->legacy-MBQL mlv2-query)
+          legacy-query' (f legacy-query)]
+      (if (= legacy-query legacy-query')
+        mlv2-query
+        (lib/query mlv2-query (lib.convert/->pMBQL legacy-query'))))))
+
 (def ^:private middleware
   "Pre-processing middleware. Has the form
 
     (f query) -> query"
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'qp.perms/remove-permissions-key
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  [#'qp.normalize/normalize
+   #'qp.perms/remove-permissions-key
    #'validate/validate-query
-   #_#'expand-macros/expand-macros
-   #_#'qp.resolve-referenced/resolve-referenced-card-resources
-   #_#'parameters/substitute-parameters
-   #_#'qp.resolve-source-table/resolve-source-tables
-   #_#'qp.auto-bucket-datetimes/auto-bucket-datetimes
-   #_#'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #_#'qp.add-source-metadata/add-source-metadata-for-source-queries
-   #_#'upgrade-field-literals/upgrade-field-literals
-   #_#'ee-middleware-apply-sandboxing
-   #_#'qp.persistence/substitute-persisted-query
+   (legacy-middleware #'expand-macros/expand-macros)
+   (legacy-middleware #'qp.resolve-referenced/resolve-referenced-card-resources)
+   (legacy-middleware #'parameters/substitute-parameters)
+   (legacy-middleware #'qp.resolve-source-table/resolve-source-tables)
+   (legacy-middleware #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
+   (legacy-middleware #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
+   (legacy-middleware #'qp.add-source-metadata/add-source-metadata-for-source-queries)
+   (legacy-middleware #'upgrade-field-literals/upgrade-field-literals)
+   (legacy-middleware #'ee-middleware-apply-sandboxing)
+   (legacy-middleware #'qp.persistence/substitute-persisted-query)
    #'qp.add-implicit-clauses/add-implicit-mbql-clauses
-   #_#'qp.add-dimension-projections/add-remapped-columns
+   (legacy-middleware #'qp.add-dimension-projections/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields
-   #_#'binning/update-binning-strategy
-   #_#'desugar/desugar
-   #_#'qp.add-default-temporal-unit/add-default-temporal-unit
-   #_#'qp.add-implicit-joins/add-implicit-joins
-   #_#'resolve-joins/resolve-joins
-   #_#'resolve-joined-fields/resolve-joined-fields
-   #_#'fix-bad-refs/fix-bad-references
-   #_#'escape-join-aliases/escape-join-aliases
+   (legacy-middleware #'binning/update-binning-strategy)
+   (legacy-middleware #'desugar/desugar)
+   (legacy-middleware #'qp.add-default-temporal-unit/add-default-temporal-unit)
+   (legacy-middleware #'qp.add-implicit-joins/add-implicit-joins)
+   (legacy-middleware #'resolve-joins/resolve-joins)
+   (legacy-middleware #'resolve-joined-fields/resolve-joined-fields)
+   (legacy-middleware #'fix-bad-refs/fix-bad-references)
+   (legacy-middleware #'escape-join-aliases/escape-join-aliases)
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   #_#'ee-middleware-apply-sandboxing
-   #_#'qp.cumulative-aggregations/rewrite-cumulative-aggregations
-   #_#'qp.pre-alias-aggregations/pre-alias-aggregations
-   #_#'qp.wrap-value-literals/wrap-value-literals
-   #_#'auto-parse-filter-values/auto-parse-filter-values
-   #_#'validate-temporal-bucketing/validate-temporal-bucketing
-   #_#'optimize-temporal-filters/optimize-temporal-filters
+   (legacy-middleware #'ee-middleware-apply-sandboxing)
+   (legacy-middleware #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
+   (legacy-middleware #'qp.pre-alias-aggregations/pre-alias-aggregations)
+   (legacy-middleware #'qp.wrap-value-literals/wrap-value-literals)
+   (legacy-middleware #'auto-parse-filter-values/auto-parse-filter-values)
+   (legacy-middleware #'validate-temporal-bucketing/validate-temporal-bucketing)
+   (legacy-middleware #'optimize-temporal-filters/optimize-temporal-filters)
    #'limit/add-default-limit
-   #_#'ee-middleware-apply-download-limit
-   #_#'check-features/check-features])
-
-;; NOCOMMIT
-(comment
-  (defn x []
-    (metabase.query-processor.preprocess/preprocess
-     (metabase.test/mbql-query checkins))))
+   (legacy-middleware #'ee-middleware-apply-download-limit)
+   (legacy-middleware #'check-features/check-features)])
 
 (def ^:private ^:dynamic *preprocessing-level* 1)
 
 (def ^:private ^:const max-preprocessing-level 20)
+
+(defn- do-with-max-preprocessing-level [thunk]
+  (binding [*preprocessing-level* (inc *preprocessing-level*)]
+    (when (>= *preprocessing-level* max-preprocessing-level)
+      (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
+                                max-preprocessing-level))
+                      {:type qp.error-type/qp})))
+    (thunk)))
 
 (defn preprocess
   "All [[middleware]] combined into a single function. This still needs to be ran in the context
   of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
   this with the [[around-middleware]]."
   [query]
-  (let [{database-id :database, :as query} (qp.normalize/normalize query)]
-    (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                       (qp.store/metadata-provider)
-                                       (or (:lib/metadata query)
-                                           database-id))
-      (let [query (if (:lib/metadata query)
-                    query
-                    (assoc query :lib/metadata (qp.store/metadata-provider)))]
-        (driver/with-driver (or driver/*driver* (driver.u/database->driver database-id))
-          (binding [*preprocessing-level* (inc *preprocessing-level*)]
-            (when (>= *preprocessing-level* max-preprocessing-level)
-              (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
-                                        max-preprocessing-level))
-                              {:type qp.error-type/qp})))
-            (reduce
-             (fn [query middleware]
-               (u/prog1 (cond-> query
-                          middleware middleware)
-                 (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
-             query
-             middleware)))))))
+  (qp.setup/do-with-qp-setup
+   query
+   (^:once fn* [query]
+    (do-with-max-preprocessing-level
+     (^:once fn* []
+      (reduce
+       (fn [query middleware-fn]
+         (u/prog1 (middleware-fn query)
+           (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
+       query
+       middleware))))))

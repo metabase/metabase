@@ -57,8 +57,8 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  qp.error-type/invalid-query
-            :query query})))
+                  {:type  qp.error-type/invalid-query
+                   :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
