@@ -397,14 +397,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Created At is August 1–31, 2022",
-      );
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Quantity is equal to 79",
-      );
+      cy.findByTestId("qb-filters-panel")
+        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Quantity is equal to 79");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
         const card = deserializeCardFromUrl(hash);
@@ -702,12 +697,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "have.text",
         TARGET_DASHBOARD.name,
       );
-      cy.findAllByTestId("field-set").should("have.length", 2);
-      cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
-      cy.findAllByTestId("field-set").should(
-        "contain.text",
-        POINT_CREATED_AT_FORMATTED,
-      );
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -721,14 +714,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.log("it handles 'Created at' column click");
       clickTableCell(COLUMN_INDEX.CREATED_AT);
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Created At is August 1–31, 2022",
-      );
-      cy.findByTestId("qb-filters-panel").should(
-        "contain.text",
-        "Quantity is equal to 79",
-      );
+      cy.findByTestId("qb-filters-panel")
+        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Quantity is equal to 79");
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
         const card = deserializeCardFromUrl(hash);
