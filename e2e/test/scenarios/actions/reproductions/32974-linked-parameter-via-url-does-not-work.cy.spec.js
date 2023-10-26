@@ -1,5 +1,5 @@
 import {
-  createActionCard,
+  getActionCardDetails,
   getNextUnsavedDashboardCardId,
   restore,
   modal,
@@ -142,7 +142,7 @@ function setupDashboard() {
             },
           ],
         },
-        createActionCard({
+        getActionCardDetails({
           label: QUERY_ACTION.name,
           action_id: this.actionId,
           // Map action's ID parameter to dashboard parameter

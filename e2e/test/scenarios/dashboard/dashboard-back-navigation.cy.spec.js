@@ -2,7 +2,7 @@ import {
   appBar,
   collectionTable,
   createAction,
-  createActionCard,
+  getActionCardDetails,
   createTextCard,
   getDashboardCard,
   getDashboardCardMenu,
@@ -407,7 +407,7 @@ const createDashboardWithCards = () => {
                   ...questionDashcardDetails,
                 },
                 createTextCard(),
-                createActionCard({ action_id }),
+                getActionCardDetails({ action_id }),
               ],
             });
           },
