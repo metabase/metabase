@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import dayjs from "dayjs";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import { isNull } from "underscore";
+import { UserApi } from "metabase/services";
 import type { UserListResult } from "metabase-types/api";
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import Tooltip from "metabase/core/components/Tooltip";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import { getRelativeTime } from "metabase/lib/time";
 import type { WrappedResult } from "metabase/search/types";
 import { Text } from "metabase/ui";
@@ -37,7 +38,21 @@ export const InfoTextEditedInfo = ({
   result: WrappedResult;
   isCompact?: boolean;
 }) => {
-  const { data: users = [], isLoading } = useUserListQuery();
+  const {
+    loading: isLoading,
+    value,
+    error,
+  } = useAsync<() => Promise<{ data: UserListResult[] }>>(UserApi.list);
+  const users = value?.data ?? [];
+
+  if (isLoading) {
+    return (
+      <>
+        {InfoTextSeparator}
+        <LoadingText />
+      </>
+    );
+  }
 
   const isUpdated =
     isNotNull(result.last_edited_at) &&
@@ -55,8 +70,11 @@ export const InfoTextEditedInfo = ({
         userId: result.creator_id,
       };
 
-  const user = users.find((user: UserListResult) => user.id === userId);
+  if (error || (isNull(timestamp) && isNull(userId))) {
+    return null;
+  }
 
+  const user = users.find((user: UserListResult) => user.id === userId);
   const lastEditedInfoData = {
     item: {
       "last-edit-info": {
@@ -69,19 +87,6 @@ export const InfoTextEditedInfo = ({
     },
     prefix,
   };
-
-  if (isLoading) {
-    return (
-      <>
-        {InfoTextSeparator}
-        <LoadingText />
-      </>
-    );
-  }
-
-  if (isNull(timestamp) && isNull(userId)) {
-    return null;
-  }
 
   const getEditedInfoText = () => {
     if (isCompact) {

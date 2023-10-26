@@ -39,16 +39,24 @@ export const InfoTextTableLink = ({
   result,
   showLinks,
 }: InfoTextAssetLinkProps) => {
-  const { data: table, isLoading } = useTableQuery({
+  const {
+    data: table,
+    isLoading,
+    error,
+  } = useTableQuery({
     id: result.table_id,
   });
 
-  const link = tableRowsQuery(result.database_id, result.table_id);
-  const label = table?.display_name ?? null;
+  if (error) {
+    return null;
+  }
 
   if (isLoading) {
     return <LoadingText />;
   }
+
+  const link = tableRowsQuery(result.database_id, result.table_id);
+  const label = table?.display_name ?? null;
 
   return (
     <SearchResultLink href={showLinks ? link : undefined}>
@@ -86,17 +94,24 @@ export const InfoTextTablePath = ({
   result,
   showLinks,
 }: InfoTextAssetLinkProps) => {
-  const { data: database, isLoading: isDatabaseLoading } = useDatabaseQuery({
+  const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useDatabaseQuery({
     id: result.database_id,
   });
 
-  const showDatabaseLink =
-    !isDatabaseLoading && database && database.name !== null;
-  const showTableLink = showDatabaseLink && !!result.table_schema;
+  if (databaseError) {
+    return null;
+  }
 
   if (isDatabaseLoading) {
     return <LoadingText />;
   }
+
+  const showDatabaseLink = database && database.name !== null;
+  const showTableLink = showDatabaseLink && !!result.table_schema;
 
   return (
     <>
