@@ -105,6 +105,7 @@ export const removeParameter = createThunkAction(
     updateParameters(dispatch, getState, parameters =>
       parameters.filter(p => p.id !== parameterId),
     );
+    return { id: parameterId };
   },
 );
 

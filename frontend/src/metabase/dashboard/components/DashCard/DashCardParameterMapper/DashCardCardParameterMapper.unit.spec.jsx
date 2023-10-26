@@ -3,11 +3,15 @@ import { getIcon } from "__support__/ui";
 
 import {
   createMockCard,
-  createMockDashboardOrderedCard,
+  createMockTemplateTag,
+  createMockDashboardCard,
   createMockActionDashboardCard,
   createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
 } from "metabase-types/api/mocks";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -32,7 +36,7 @@ const setup = options => {
   render(
     <DashCardCardParameterMapper
       card={createMockCard()}
-      dashcard={createMockDashboardOrderedCard()}
+      dashcard={createMockDashboardCard()}
       editingParameter={{}}
       target={null}
       mappingOptions={[]}
@@ -67,7 +71,7 @@ describe("DashCardParameterMapper", () => {
     const linkCard = createMockCard({ dataset_query: {}, display: "link" });
     setup({
       card: linkCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         visualization_settings: {
           virtual_card: linkCard,
         },
@@ -112,7 +116,7 @@ describe("DashCardParameterMapper", () => {
     const textCard = createMockCard({ dataset_query: {}, display: "text" });
     setup({
       card: textCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: textCard,
         size_y: 3,
         visualization_settings: {
@@ -135,7 +139,7 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card,
       }),
       mappingOptions: [["dimension", ["field", 1]]],
@@ -152,7 +156,7 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card: numberCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: numberCard,
         size_y: 3,
       }),
@@ -168,13 +172,65 @@ describe("DashCardParameterMapper", () => {
     });
     setup({
       card: numberCard,
-      dashcard: createMockDashboardOrderedCard({
+      dashcard: createMockDashboardCard({
         card: numberCard,
         size_y: 2,
       }),
       mappingOptions: ["foo", "bar"],
     });
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
+  });
+
+  it("should show native question variable warning if a native question variable is used", () => {
+    const card = createMockCard({
+      dataset_query: createMockNativeDatasetQuery({
+        dataset_query: {
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
+            "template-tags": [createMockTemplateTag({ name: "source" })],
+          }),
+        },
+      }),
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({ card }),
+      target: ["variable", ["template-tag", "source"]],
+    });
+    expect(
+      screen.getByText(
+        /Native question variables only accept a single value\. They do not support dropdown lists/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should show native question variable warning without single value explanation if parameter is date type", () => {
+    const card = createMockCard({
+      dataset_query: createMockNativeDatasetQuery({
+        dataset_query: {
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
+            "template-tags": [
+              createMockTemplateTag({
+                name: "created_at",
+                type: "date/month-year",
+              }),
+            ],
+          }),
+        },
+      }),
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({ card }),
+      target: ["variable", ["template-tag", "created_at"]],
+      editingParameter: createMockParameter({ type: "date/month-year" }),
+    });
+    expect(
+      screen.getByText(
+        /Native question variables do not support dropdown lists/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   describe("mobile", () => {
@@ -185,7 +241,7 @@ describe("DashCardParameterMapper", () => {
       });
       setup({
         card: numberCard,
-        dashcard: createMockDashboardOrderedCard({
+        dashcard: createMockDashboardCard({
           card: numberCard,
           size_y: 2,
         }),
@@ -199,7 +255,7 @@ describe("DashCardParameterMapper", () => {
       const textCard = createMockCard({ dataset_query: {}, display: "text" });
       setup({
         card: textCard,
-        dashcard: createMockDashboardOrderedCard({
+        dashcard: createMockDashboardCard({
           card: textCard,
           size_y: 3,
           visualization_settings: {

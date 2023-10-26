@@ -51,11 +51,11 @@
       (testing "Dashboard should have a name"
         (is (some? (:name dashboard))))
       (testing "Cards should have correct cardinality"
-        (is (= cardinality (-> dashboard :ordered_cards count))))
+        (is (= cardinality (-> dashboard :dashcards count))))
       (testing "URLs should be valid"
         (test-urls-are-valid dashboard))
       (testing "Dashboard's cards should be valid"
-        (doseq [card (keep :card (:ordered_cards dashboard))]
+        (doseq [card (keep :card (:dashcards dashboard))]
           (test-card-is-valid card)))
       (testing "Dashboard should have `auto_apply_filters` set to true"
         (is (true? (:auto_apply_filters dashboard)))))))

@@ -11,6 +11,7 @@
    [metabase.query-processor.middleware.resolve-database-and-driver
     :as qp.resolve-database-and-driver]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]))
@@ -121,7 +122,7 @@
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
-  [{{all-breakouts :breakout} :query, :keys [pivot-rows pivot-cols query], :as outer-query}]
+  [{{all-breakouts :breakout} :query, :keys [query], :as outer-query} {:keys [pivot-rows pivot-cols]}]
   (try
     (for [breakout-indices (u/prog1 (breakout-combinations (count all-breakouts) pivot-rows pivot-cols)
                              (log/tracef "Using breakout combinations: %s" (pr-str <>)))
@@ -211,6 +212,20 @@
       (qp/process-query-and-save-with-max-results-constraints! first-query info context)
       (qp/process-query (dissoc first-query :info) context))))
 
+(defn pivot-options
+  "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
+  settings and generates pivot-rows and pivot-cols to use for generating subqueries."
+  [query viz-settings]
+  (let [column-split      (:pivot_table.column_split viz-settings)
+        breakout          (mapv qp.util/field-ref->key
+                                (-> query :query :breakout))
+        index-in-breakout (fn [field-ref]
+                            (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref)))
+        pivot-rows        (mapv index-in-breakout (:rows column-split))
+        pivot-cols        (mapv index-in-breakout (:columns column-split))]
+    {:pivot-rows pivot-rows
+     :pivot-cols pivot-cols}))
+
 (defn run-pivot-query
   "Run the pivot query. Unlike many query execution functions, this takes `context` as the first parameter to support
    its application via `partial`.
@@ -225,10 +240,13 @@
      (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
        (let [context                 (merge (context.default/default-context) context)
              query                   (mbql.normalize/normalize query)
+             pivot-options           (or
+                                      (not-empty (select-keys query [:pivot-rows :pivot-cols]))
+                                      (pivot-options query (get info :visualization-settings)))
              main-breakout           (:breakout (:query query))
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp/query->expected-cols col-determination-query)
-             all-queries             (generate-queries query)]
+             all-queries             (generate-queries query pivot-options)]
          (process-multiple-queries
           all-queries
           info

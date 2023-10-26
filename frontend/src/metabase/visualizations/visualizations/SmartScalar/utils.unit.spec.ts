@@ -1,12 +1,10 @@
 import * as measureText from "metabase/lib/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
-import { TITLE_2_LINES_HEIGHT_THRESHOLD } from "./constants";
 import {
   formatChange,
   formatChangeAutoPrecision,
   getChangeWidth,
-  getValueHeight,
   getValueWidth,
 } from "./utils";
 
@@ -23,38 +21,6 @@ const getAutoPrecisionOptions = (width: number) => {
 };
 
 describe("SmartScalar > utils", () => {
-  describe("getValueHeight", () => {
-    const titleHeight2Lines = TITLE_2_LINES_HEIGHT_THRESHOLD + 1;
-    const titleHeight1Line = TITLE_2_LINES_HEIGHT_THRESHOLD - 1;
-
-    const height2LinesNoPreviousValue = getValueHeight(
-      titleHeight2Lines,
-      false,
-    );
-    const height2LinesPreviousValue = getValueHeight(titleHeight2Lines, true);
-    const height1LineNoPreviousValue = getValueHeight(titleHeight1Line, false);
-    const height1LinePreviousValue = getValueHeight(titleHeight1Line, true);
-
-    it("should give greater height there is no previous value", () => {
-      expect(height2LinesNoPreviousValue).toBeGreaterThan(
-        height2LinesPreviousValue,
-      );
-      expect(height1LineNoPreviousValue).toBeGreaterThan(
-        height1LinePreviousValue,
-      );
-    });
-
-    it("should not return negative values", () => {
-      expect(height2LinesNoPreviousValue).toBeGreaterThanOrEqual(0);
-      expect(height2LinesPreviousValue).toBeGreaterThanOrEqual(0);
-      expect(height1LineNoPreviousValue).toBeGreaterThanOrEqual(0);
-      expect(height1LinePreviousValue).toBeGreaterThanOrEqual(0);
-
-      expect(getValueHeight(1, false)).toBeGreaterThanOrEqual(0);
-      expect(getValueHeight(1, true)).toBeGreaterThanOrEqual(0);
-    });
-  });
-
   describe("getValueWidth", () => {
     it("should not return negative values", () => {
       expect(getValueWidth(1)).toBeGreaterThanOrEqual(0);

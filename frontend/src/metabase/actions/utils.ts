@@ -7,7 +7,7 @@ import type {
   ActionDashboardCard,
   ActionFormOption,
   ActionFormSettings,
-  BaseDashboardOrderedCard,
+  BaseDashboardCard,
   Card,
   FieldType,
   FieldSettings,
@@ -152,7 +152,7 @@ export function isSavedAction(
 }
 
 export function isActionDashCard(
-  dashCard: BaseDashboardOrderedCard,
+  dashCard: BaseDashboardCard,
 ): dashCard is ActionDashboardCard {
   const virtualCard = dashCard?.visualization_settings?.virtual_card;
   return isActionCard(virtualCard as Card);

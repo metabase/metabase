@@ -1,5 +1,6 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
 

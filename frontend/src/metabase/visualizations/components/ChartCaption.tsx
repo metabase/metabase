@@ -13,6 +13,7 @@ interface ChartCaptionProps {
   settings: VisualizationSettings;
   icon?: IconProps;
   actionButtons?: ReactNode;
+  width: number;
   onChangeCardAndRun: (data: Record<string, unknown>) => void;
 }
 
@@ -22,6 +23,7 @@ const ChartCaption = ({
   icon,
   actionButtons,
   onChangeCardAndRun,
+  width,
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
@@ -48,6 +50,7 @@ const ChartCaption = ({
       icon={icon}
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
+      width={width}
     />
   );
 };

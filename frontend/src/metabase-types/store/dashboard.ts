@@ -1,12 +1,12 @@
 import type {
   Dashboard,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   DashCardDataMap,
   ParameterId,
   ParameterValueOrArray,
-  DashboardOrderedTab,
+  DashboardTab,
   DashboardTabId,
 } from "metabase-types/api";
 
@@ -18,19 +18,16 @@ export type DashboardSidebarName =
   | "sharing"
   | "info";
 
-export type StoreDashboardTab = DashboardOrderedTab & {
+export type StoreDashboardTab = DashboardTab & {
   isRemoved?: boolean;
 };
 
-export type StoreDashboard = Omit<
-  Dashboard,
-  "ordered_cards" | "ordered_tabs"
-> & {
-  ordered_cards: DashCardId[];
-  ordered_tabs?: StoreDashboardTab[];
+export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
+  dashcards: DashCardId[];
+  tabs?: StoreDashboardTab[];
 };
 
-export type StoreDashcard = DashboardOrderedCard & {
+export type StoreDashcard = DashboardCard & {
   isDirty?: boolean;
   isRemoved?: boolean;
 };

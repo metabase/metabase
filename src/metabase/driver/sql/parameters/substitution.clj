@@ -40,7 +40,7 @@
   "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
   specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
   inlcusion in the query, such as what's needed for SQLite and timestamps."
-  {:arglists '([driver x])}
+  {:added "0.34.0" :arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
@@ -106,7 +106,7 @@
   `:prepared-statement-args`.
 
     (->replacement-snippet-info :h2 \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"
-  {:arglists '([driver value])}
+  {:added "0.33.4" :arglists '([driver value])}
   (fn [driver v] [(driver/the-initialized-driver driver) (class v)])
   :hierarchy #'driver/hierarchy)
 
