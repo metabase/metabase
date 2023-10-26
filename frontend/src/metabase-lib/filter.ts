@@ -661,7 +661,7 @@ function serializeTime(value: Date): string {
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, [TIME_FORMAT_MS], true);
+  const time = moment(value, TIME_FORMAT_MS, true);
   if (!time.isValid()) {
     return null;
   }
