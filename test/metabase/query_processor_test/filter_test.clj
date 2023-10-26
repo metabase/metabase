@@ -155,7 +155,7 @@
         (doseq [offset-unit   [:year :day]
                 interval-unit [:year :day]
                 compare-op    [:between := :< :<= :> :>=]
-                add-op        [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
+                add-op        [:+ :-]
                 compare-order (cond-> [:field-first]
                                 (not= compare-op :between) (conj :value-first))]
           (let [add-fn (fn [field interval]
