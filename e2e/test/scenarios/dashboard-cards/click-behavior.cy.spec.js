@@ -1,12 +1,12 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  createActionCard,
-  createHeadingCard,
-  createLinkCard,
-  createTextCard,
   editDashboard,
+  getActionCardDetails,
   getDashboardCard,
+  getHeadingCardDetails,
+  getLinkCardDetails,
+  getTextCardDetails,
   modal,
   popover,
   restore,
@@ -18,7 +18,7 @@ import {
 import { createMockActionParameter } from "metabase-types/api/mocks";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
-const URL = "https://example.com/";
+const URL = "https://metabase.com/";
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
@@ -96,10 +96,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("dashcards without click behavior", () => {
     it("does not allow to set click behavior for virtual dashcards", () => {
-      const textCard = createTextCard({ size_y: 1 });
-      const headingCard = createHeadingCard();
-      const actionCard = createActionCard();
-      const linkCard = createLinkCard();
+      const textCard = getTextCardDetails({ size_y: 1 });
+      const headingCard = getHeadingCardDetails({ text: "Heading card" });
+      const actionCard = getActionCardDetails();
+      const linkCard = getLinkCardDetails();
       const cards = [textCard, headingCard, actionCard, linkCard];
 
       cy.createDashboard().then(({ body: dashboard }) => {
