@@ -450,8 +450,11 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! User id changes)
-          (events/publish-event! :event/user-update (assoc (t2/select-one User :id id) :changes changes)))
+          (let [raw-user-before-update (t2/select-one User :id id)]
+            (t2/update! User id changes)
+            (events/publish-event! :event/user-update (assoc (t2/select-one User :id id)
+                                                             :changes changes
+                                                             :audit-log/previous raw-user-before-update))))
         (maybe-update-user-personal-collection-name! user-before-update body))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)

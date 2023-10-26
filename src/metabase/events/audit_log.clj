@@ -146,7 +146,7 @@
 (derive ::user-event ::event)
 (derive :event/user-joined ::user-event)
 (derive :event/user-invited ::user-event)
-(derive :event/user-update ::user-event)
+
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)
@@ -158,6 +158,16 @@
            (or (nil? id)
                (pos-int? id)))]}
   (audit-log/record-event! topic object))
+
+(derive ::user-update-event ::event)
+(derive :event/user-update ::user-update-event)
+(methodical/defmethod events/publish-event! ::user-update-event
+  [topic event]
+  (audit-log/record-event! topic
+                           (-> event (dissoc :changes) maybe-prepare-update-event-data)
+                           api/*current-user-id*
+                           :model/User
+                           (:id event)))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
