@@ -146,8 +146,21 @@ function DashCardVisualization({
   }, [dashcard.card, metadata]);
 
   const dispatch = useDispatch();
+  const setMapping = (editingParameterId, dashcardId, cardId, target) => {
+    console.log("setMapping: ", editingParameterId, dashcardId, cardId, target);
+
+    return dispatch(
+      setParameterMapping(
+        editingParameterId,
+        dashcardId,
+        cardId,
+        target,
+      ),
+    );
+  };
 
   const onDashcardParameterMappingChange = ({ editingParameterId, target }) => {
+    const matchedCards = [];
     for (const dashcard of Object.values(dashboard.dashcards)) {
       const mappingOptions = getParameterMappingOptions(
         metadata,
@@ -162,15 +175,22 @@ function DashCardVisualization({
         );
 
       if (matchingMappedOption) {
-        dispatch(
-          setParameterMapping({
-            editingParameterId,
-            dashcardId: dashcard.id,
-            cardId: dashcard.card_id,
-            target: matchingMappedOption,
-          }),
-        );
+        matchedCards.push({ dashcard, mappingOptions, matchingMappedOption });
       }
+    }
+
+    for (const {
+      dashcard,
+      mappingOptions,
+      matchingMappedOption,
+    } of matchedCards) {
+      console.log(dashcard, matchingMappedOption, target, mappingOptions);
+      setMapping(
+        editingParameterId,
+        dashcard.id,
+        dashcard.card.id,
+        matchingMappedOption,
+      );
     }
   };
 

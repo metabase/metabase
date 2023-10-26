@@ -119,6 +119,8 @@ export const setParameterMapping = createThunkAction(
     const isVirtual = isVirtualDashCard(dashcard);
     const isAction = isActionDashCard(dashcard);
 
+    console.log(dashcard, dashcard_id, getState().dashboard.dashcards);
+
     let parameter_mappings = dashcard.parameter_mappings || [];
 
     // allow mapping the same parameter to multiple action targets
