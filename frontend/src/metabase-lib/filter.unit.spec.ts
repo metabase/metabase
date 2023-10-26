@@ -436,9 +436,9 @@ describe("filter", () => {
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = filterByNumberColumn(
         query,
-        Lib.expressionClause("starts-with", [
+        Lib.expressionClause("+", [
           findColumn(query, tableName, columnName),
-          "A",
+          10,
         ]),
       );
 
@@ -454,7 +454,7 @@ describe("filter", () => {
       expect(filterParts).toBeNull();
     });
 
-    it("should ignore expressions with non-string arguments", () => {
+    it("should ignore expressions with non-numeric arguments", () => {
       const { filterParts } = filterByNumberColumn(
         query,
         Lib.expressionClause("=", [column, column]),
@@ -585,9 +585,9 @@ describe("filter", () => {
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = filterByCoordinateColumn(
         query,
-        Lib.expressionClause("starts-with", [
+        Lib.expressionClause("+", [
           findColumn(query, tableName, columnName),
-          "A",
+          10,
         ]),
       );
 
@@ -603,7 +603,7 @@ describe("filter", () => {
       expect(filterParts).toBeNull();
     });
 
-    it("should ignore expressions with non-string arguments", () => {
+    it("should ignore expressions with non-numeric arguments", () => {
       const { filterParts } = filterByCoordinateColumn(
         query,
         Lib.expressionClause("=", [column, column]),
@@ -663,9 +663,9 @@ describe("filter", () => {
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = filterByBooleanColumn(
         query,
-        Lib.expressionClause("starts-with", [
+        Lib.expressionClause("!=", [
           findColumn(query, tableName, columnName),
-          "A",
+          true,
         ]),
       );
 
@@ -681,7 +681,7 @@ describe("filter", () => {
       expect(filterParts).toBeNull();
     });
 
-    it("should ignore expressions with non-string arguments", () => {
+    it("should ignore expressions with non-boolean arguments", () => {
       const { filterParts } = filterByBooleanColumn(
         query,
         Lib.expressionClause("=", [column, column]),
@@ -721,5 +721,50 @@ describe("filter", () => {
         expect(columnInfo?.name).toBe(columnName);
       },
     );
+
+    it('should be able to create and destructure a time filter with "between" operator and 2 values', () => {
+      const { filterParts, columnInfo } = filterByTimeColumn(
+        query,
+        Lib.timeFilterClause({
+          operator: "between",
+          column,
+          values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
+        }),
+      );
+
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
+      });
+      expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = filterByTimeColumn(
+        query,
+        Lib.expressionClause("=", [column, "10:20:00.000"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = filterByTimeColumn(
+        query,
+        Lib.expressionClause(">", ["10:20:00.000", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-time arguments", () => {
+      const { filterParts } = filterByTimeColumn(
+        query,
+        Lib.expressionClause(">", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 });
