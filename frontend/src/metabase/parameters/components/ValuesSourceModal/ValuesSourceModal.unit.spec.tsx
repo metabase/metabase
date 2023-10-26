@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
