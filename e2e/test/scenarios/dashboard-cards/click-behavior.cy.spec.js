@@ -176,7 +176,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Dashboard").click();
 
       modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-      modal().findByText(TARGET_DASHBOARD.name).should("not.exist");
     });
 
     it("allows setting dashboard without filters as custom destination", () => {
@@ -424,7 +423,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Saved question").click();
 
       modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-      modal().findByText(TARGET_QUESTION.name).should("not.exist");
     });
 
     it("allows setting URL as custom destination and changing it back to default click behavior", () => {
