@@ -38,7 +38,7 @@ export const TOTAL_GRAPHIC_OPTION = {
     {
       type: "text",
       cursor: "text",
-      top: 24,
+      top: 26,
       style: {
         fontSize: "14px",
         fontWeight: "700",
