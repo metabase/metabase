@@ -120,7 +120,7 @@ class QueryModals extends Component<QueryModalsProps> {
     switch (modal) {
       case MODAL_TYPES.SAVE:
         return (
-          <Modal form onClose={onCloseModal}>
+          <Modal form onClose={onCloseModal} key={MODAL_TYPES.SAVE}>
             <SaveQuestionModal
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
@@ -145,7 +145,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.SAVED:
         return (
-          <Modal small onClose={onCloseModal}>
+          <Modal small onClose={onCloseModal} key={MODAL_TYPES.SAVED}>
             <QuestionSavedModal
               onClose={onCloseModal}
               addToDashboard={() => {
@@ -156,7 +156,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.ADD_TO_DASHBOARD_SAVE:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.ADD_TO_DASHBOARD_SAVE}>
             <SaveQuestionModal
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
@@ -176,7 +176,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.ADD_TO_DASHBOARD:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.ADD_TO_DASHBOARD}>
             <AddToDashSelectDashModal
               card={this.props.card}
               onClose={onCloseModal}
@@ -195,7 +195,10 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal
+            onClose={onCloseModal}
+            key={MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT}
+          >
             <SaveQuestionModal
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
@@ -215,7 +218,10 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal
+            onClose={onCloseModal}
+            key={MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED}
+          >
             <SaveQuestionModal
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
@@ -235,7 +241,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.FILTERS:
         return (
-          <Modal fit onClose={onCloseModal}>
+          <Modal fit onClose={onCloseModal} key={MODAL_TYPES.FILTERS}>
             <BulkFilterModal
               question={question}
               onQueryChange={this.onQueryChange}
@@ -246,7 +252,7 @@ class QueryModals extends Component<QueryModalsProps> {
 
       case MODAL_TYPES.MOVE:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.MOVE}>
             <CollectionMoveModal
               title={t`Which collection should this be in?`}
               initialCollectionId={question.collectionId()}
@@ -274,13 +280,13 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.ARCHIVE:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.ARCHIVE}>
             <ArchiveQuestionModal question={question} onClose={onCloseModal} />
           </Modal>
         );
       case MODAL_TYPES.EMBED:
         return (
-          <Modal full onClose={onCloseModal}>
+          <Modal full onClose={onCloseModal} key={MODAL_TYPES.EMBED}>
             <QuestionEmbedWidget
               card={this.props.card}
               onClose={onCloseModal}
@@ -289,7 +295,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.CLONE:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.CLONE}>
             <EntityCopyModal
               entityType="questions"
               entityObject={{
@@ -315,19 +321,23 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.TURN_INTO_DATASET:
         return (
-          <Modal small onClose={onCloseModal}>
+          <Modal
+            small
+            onClose={onCloseModal}
+            key={MODAL_TYPES.TURN_INTO_DATASET}
+          >
             <NewDatasetModal onClose={onCloseModal} />
           </Modal>
         );
       case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.CAN_NOT_CREATE_MODEL}>
             <ImpossibleToCreateModelModal onClose={onCloseModal} />
           </Modal>
         );
       case MODAL_TYPES.NEW_EVENT:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.NEW_EVENT}>
             <NewEventModal
               cardId={question.id()}
               collectionId={question.collectionId()}
@@ -337,13 +347,13 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.EDIT_EVENT:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.EDIT_EVENT}>
             <EditEventModal eventId={modalContext} onClose={onCloseModal} />
           </Modal>
         );
       case MODAL_TYPES.MOVE_EVENT:
         return (
-          <Modal onClose={onCloseModal}>
+          <Modal onClose={onCloseModal} key={MODAL_TYPES.MOVE_EVENT}>
             <MoveEventModal
               eventId={modalContext}
               collectionId={question.collectionId()}
@@ -353,13 +363,13 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.PREVIEW_QUERY:
         return (
-          <Modal fit onClose={onCloseModal}>
+          <Modal fit onClose={onCloseModal} key={MODAL_TYPES.PREVIEW_QUERY}>
             <PreviewQueryModal onClose={onCloseModal} />
           </Modal>
         );
       case MODAL_TYPES.CONVERT_QUERY:
         return (
-          <Modal fit onClose={onCloseModal}>
+          <Modal fit onClose={onCloseModal} key={MODAL_TYPES.CONVERT_QUERY}>
             <ConvertQueryModal
               onUpdateQuestion={updateQuestion}
               onSetUIControls={setUIControls}
