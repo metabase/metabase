@@ -548,6 +548,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
         },
       );
 
@@ -564,10 +567,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
-      cy.location("search").should(
-        "eq",
-        `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
-      );
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
     });
 
     it("allows updating multiple dashboard filters", () => {
@@ -578,6 +585,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
         },
       );
 
@@ -596,10 +606,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.location("search").should(
-        "eq",
-        `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
-      );
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+          );
+        });
+      });
     });
   });
 });
