@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { createMockMetadata } from "__support__/metadata";
-import { render, screen } from "__support__/ui";
+import { act, render, screen, waitFor } from "__support__/ui";
 
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -105,6 +105,21 @@ function createQueryWithSegmentFilter() {
   return { query, filter };
 }
 
+function createQueryWithCustomFilter() {
+  const initialQuery = createQuery({ metadata });
+  const columns = Lib.filterableColumns(initialQuery, 0);
+  const findColumn = columnFinder(initialQuery, columns);
+
+  const totalColumn = findColumn("ORDERS", "TOTAL");
+  const discountColumn = findColumn("ORDERS", "DISCOUNT");
+  const clause = Lib.expressionClause(">", [totalColumn, discountColumn], null);
+
+  const query = Lib.filter(initialQuery, 0, clause);
+  const [filter] = Lib.filters(query, 0);
+
+  return { query, filter };
+}
+
 type SetupOpts = {
   query?: Lib.Query;
   filter?: Lib.FilterClause;
@@ -136,7 +151,7 @@ function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
     return filter;
   }
 
-  return { query, getNextFilter };
+  return { query, getNextFilter, onSelect, onSelectLegacy };
 }
 
 describe("FilterPicker", () => {
@@ -225,6 +240,55 @@ describe("FilterPicker", () => {
       expect(Lib.displayInfo(query, 0, column).longDisplayName).toBe(
         TIME_FIELD.display_name,
       );
+    });
+  });
+
+  describe("custom expression", () => {
+    async function editExpressionAndSubmit(text: string) {
+      const input = screen.getByLabelText("Expression");
+      const button = screen.getByRole("button", { name: "Done" });
+
+      // The expression editor applies changes on blur,
+      // but for some reason it doesn't work without `act`.
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      await act(async () => {
+        await userEvent.type(input, text);
+        await userEvent.tab();
+      });
+
+      await waitFor(() => expect(button).toBeEnabled());
+      userEvent.click(button);
+    }
+
+    it("should create a filter with a custom expression", async () => {
+      const { onSelect, onSelectLegacy } = setup();
+
+      userEvent.click(screen.getByText(/Custom expression/i));
+      await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
+
+      await waitFor(() =>
+        expect(onSelectLegacy).toHaveBeenCalledWith([
+          ">",
+          ["field", ORDERS.TOTAL, null],
+          ["field", ORDERS.DISCOUNT, null],
+        ]),
+      );
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it("should update a filter with a custom expression", async () => {
+      const { onSelect, onSelectLegacy } = setup(createQueryWithCustomFilter());
+
+      await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100");
+
+      await waitFor(() =>
+        expect(onSelectLegacy).toHaveBeenCalledWith([
+          ">",
+          ["field", ORDERS.TOTAL, null],
+          100,
+        ]),
+      );
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 });
