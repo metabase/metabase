@@ -145,7 +145,10 @@
                  :table_id    nil
                  :details     {:name        "My Cool Dashboard"
                                :description nil
-                               :dashcards   [(dissoc dashcard :created_at :updated_at)]}}
+                               :dashcards   [{:description (:description card)
+                                              :name        (:name card)
+                                              :id          (:id dashcard)
+                                              :card_id     (:id card)}]}}
                 (activity "dashboard-add-cards" (:id dashboard))))))))
 
 (deftest dashboard-remove-cards-event-test
@@ -167,7 +170,10 @@
                 :table_id    nil
                 :details     {:name        "My Cool Dashboard"
                               :description nil
-                              :dashcards   [(dissoc dashcard :created_at :updated_at)]}}
+                              :dashcards   [{:description (:description card)
+                                             :name        (:name card)
+                                             :id          (:id dashcard)
+                                             :card_id     (:id card)}]}}
               (activity "dashboard-remove-cards" (:id dashboard))))))))
 
 (deftest install-event-test

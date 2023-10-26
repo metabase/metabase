@@ -1,5 +1,6 @@
 (ns metabase.events.activity-feed
   (:require
+   [clojure.set :as set]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
@@ -56,7 +57,17 @@
 
         add-remove-card-details
         (fn [{:keys [object dashcards] :as _event}]
-          (assoc (select-keys object [:name :description]) :dashcards dashcards))]
+          (let [card-ids             (map :card_id dashcards)
+                card-id->dashcard-id (into {} (map (juxt :card_id :id) dashcards))
+                dashboard            (select-keys object [:name :description])
+                ;; TODO: do we still even use this information? if not let just save dashcards as is
+                dashcards            (if (seq card-ids)
+                                       (->> (t2/select [:model/Card :id :name :description] :id [:in card-ids])
+                                            (map #(set/rename-keys % {:id :card_id}))
+                                            (map #(assoc % :id (get card-id->dashcard-id (:card_id %)))))
+                                       [])]
+            (assoc dashboard :dashcards dashcards)))]
+
     (activity/record-activity!
      {:topic    topic
       :model    "dashboard"
