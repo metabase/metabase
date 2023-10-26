@@ -662,9 +662,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
-      getCountMapping().should("not.exist");
-      getCreatedAtMapping().should("not.exist");
-      getMonthMapping().should("not.exist");
       getDashboardCard()
         .button()
         .should("have.text", "Open the drill-through menu");
@@ -672,6 +669,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function addCustomUrlDestination() {
         cy.log("custom destination (URL) behavior for 'Month' column");
 
+        getMonthMapping().should("not.exist");
         cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
         addUrlDestination();
         modal().within(() => {
@@ -692,6 +690,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function addCustomDashboardDestination() {
         cy.log("custom destination (dashboard) behavior for 'Count' column");
 
+        getCountMapping().should("not.exist");
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
         /**
          * TODO: remove the next line when metabase#34845 is fixed
@@ -716,6 +715,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           "custom destination (question) behavior for 'Created at' column",
         );
 
+        getCreatedAtMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         /**
          * TODO: remove the next line when metabase#34845 is fixed
