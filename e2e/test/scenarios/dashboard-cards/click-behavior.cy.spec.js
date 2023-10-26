@@ -179,7 +179,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       modal().findByText(TARGET_DASHBOARD.name).should("not.exist");
     });
 
-    it("allows setting dashboard as custom destination", () => {
+    it("allows setting dashboard without filters as custom destination", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
