@@ -80,23 +80,19 @@ const Fields = createEntity({
           const uniqueId = getUniqueFieldId({ id, table_id });
           return [...Fields.getObjectStatePath(uniqueId), "values"];
         },
-        entityQuery => Fields.getQueryKey(entityQuery),
+        field => {
+          return Fields.getQueryKey({ id: field.id });
+        },
       ),
       withNormalize(FieldSchema),
-    )(({ id: fieldId, ...params }) => async () => {
-      const {
-        field_id: id,
-        values,
-        has_more_values,
-      } = await MetabaseApi.field_values({
-        fieldId,
-        ...params,
+    )(field => async () => {
+      const { field_id, ...data } = await MetabaseApi.field_values({
+        fieldId: field.id,
       });
-
-      const table_id = params.table_id;
+      const table_id = field.table_id;
 
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual
-      return { id, values, has_more_values, ...(table_id && { table_id }) };
+      return { id: field_id, ...data, ...(table_id && { table_id }) };
     }),
 
     updateField(field, values, opts) {
@@ -111,7 +107,7 @@ const Fields = createEntity({
 
         // field values needs to be fetched again once the field is updated metabase#16322
         await dispatch(
-          Fields.actions.fetchFieldValues({ id: field.id }, { reload: true }),
+          Fields.actions.fetchFieldValues(field, { reload: true }),
         );
 
         return result;

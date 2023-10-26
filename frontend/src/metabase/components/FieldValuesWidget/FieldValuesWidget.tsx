@@ -212,12 +212,7 @@ export function FieldValuesWidgetInner({
 
       const results = await Promise.all(
         nonVirtualFields.map(field =>
-          dispatch(
-            Fields.objectActions.fetchFieldValues({
-              id: field.id,
-              table_id: field.table_id,
-            }),
-          ),
+          dispatch(Fields.objectActions.fetchFieldValues(field)),
         ),
       );
 
