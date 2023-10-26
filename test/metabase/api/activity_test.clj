@@ -44,7 +44,7 @@
                                         {:topic :event/table-read :item table-1}]]
             (events/publish-event!
              topic
-             ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+             ;; view log entries look for the `:actor-id` in the item being viewed to set that view's :user_id
              {:object item :actor-id (mt/user->id :crowberto)}))
           (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
             (is (= (assoc dash-3 :collection nil) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
@@ -77,7 +77,7 @@
         (testing "view a dashboard in a personal collection"
           (mt/with-temporary-setting-values [user-recent-views              []
                                              most-recently-viewed-dashboard nil]
-            (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :crowberto)))
+            (events/publish-event! :event/dashboard-read {:object dash-1 :actor-id (mt/user->id :crowberto)})
             (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
               (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true))
                      (mt/user-http-request :crowberto :get 200
@@ -86,7 +86,7 @@
         (testing "view a dashboard in a public collection"
           (mt/with-temporary-setting-values [user-recent-views              []
                                              most-recently-viewed-dashboard nil]
-            (events/publish-event! :event/dashboard-read (assoc dash-2 :actor_id (mt/user->id :crowberto)))
+            (events/publish-event! :event/dashboard-read {:object dash-2 :actor-id (mt/user->id :crowberto)})
             (is (= (assoc dash-2 :collection (assoc coll :is_personal false))
                    (mt/user-http-request :crowberto :get 200
                                          "activity/most_recently_viewed_dashboard")))))))))
@@ -129,7 +129,7 @@
                                           {:topic :event/table-read :item hidden-table}]]
               (events/publish-event!
                topic
-               ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+               ;; view log entries look for the `:actor-id` in the item being viewed to set that view's :user_id
                {:object item :actor-id (mt/user->id :crowberto)}))
            (testing "No duplicates or archived items are returned."
              (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]

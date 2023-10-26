@@ -273,11 +273,11 @@
 
     (testing "should include creator info and last edited info"
       (revision/push-revision!
-       :entity      :model/Dashboard
-       :id          crowberto-dash
-       :user-id     (mt/user->id :crowberto)
-       :is_creation true
-       :object      {:id crowberto-dash})
+       {:entity       :model/Dashboard
+        :id           crowberto-dash
+        :user-id      (mt/user->id :crowberto)
+        :is-creation? true
+        :object       {:id crowberto-dash}})
       (is (=? (merge (t2/select-one :model/Dashboard crowberto-dash)
                      {:creator        {:id          (mt/user->id :crowberto)
                                        :email       "crowberto@metabase.com"
