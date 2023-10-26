@@ -75,12 +75,14 @@ export function DateOffsetIntervalPicker({
         <Text>{directionText}</Text>
         <NumberInput
           value={interval}
+          aria-label={t`Interval`}
           w="4rem"
           onChange={handleIntervalChange}
         />
         <Select
           data={unitOptions}
           value={value.unit}
+          aria-label={t`Unit`}
           withinPortal={false}
           onChange={handleUnitChange}
         />
@@ -88,12 +90,14 @@ export function DateOffsetIntervalPicker({
         <Text>{t`Starting from`}</Text>
         <NumberInput
           value={offsetInterval}
+          aria-label={t`Starting from interval`}
           w="4rem"
           onChange={handleOffsetIntervalChange}
         />
         <Select
           data={offsetUnitOptions}
           value={value.offsetUnit}
+          aria-label={t`Starting from unit`}
           withinPortal={false}
           onChange={handleOffsetUnitChange}
         />
