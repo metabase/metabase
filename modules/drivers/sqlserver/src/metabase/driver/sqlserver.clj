@@ -20,6 +20,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs]]
@@ -479,13 +480,15 @@
   [driver [_ arg power]]
   (hx/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
 
+(defmethod hformat/fn-handler (u/qualified-name ::approx-percentile-cont)
+  [_ field p]
+  (str "APPROX_PERCENTILE_CONT(" (hformat/to-sql p) ") WITHIN GROUP (ORDER BY " (hformat/to-sql field) ")"))
+
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
   [driver [_ arg val]]
-  (hx/raw (apply format "APPROX_PERCENTILE_CONT (%s) WITHIN GROUP (ORDER BY %s)"
-                 (map (comp first
-                            hformat/format
-                            (partial sql.qp/->honeysql driver))
-                      [val arg]))))
+  (hx/call (u/qualified-name ::approx-percentile-cont)
+           (sql.qp/->honeysql driver arg)
+           (sql.qp/->honeysql driver val)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
