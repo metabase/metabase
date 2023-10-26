@@ -7,6 +7,9 @@ on:
       - 'release-**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [External Trigger Filter]
+    types: [completed]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -30,7 +33,9 @@ jobs:
 
   be-tests-athena-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -50,7 +55,9 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -72,7 +79,9 @@ jobs:
 
   be-tests-druid-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -95,7 +104,9 @@ jobs:
 
   be-tests-googleanalytics-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -111,7 +122,9 @@ jobs:
 
   be-google-related-drivers-classpath-test:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -133,7 +146,9 @@ jobs:
 
   be-tests-mariadb-10-2-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -159,7 +174,9 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -185,7 +202,9 @@ jobs:
 
   be-tests-mongo-4-4-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -208,7 +227,9 @@ jobs:
 
   be-tests-mongo-4-4-ssl-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -243,7 +264,9 @@ jobs:
 
   be-tests-mongo-5-0-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -266,7 +289,9 @@ jobs:
 
   be-tests-mongo-5-0-ssl-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -301,7 +326,9 @@ jobs:
 
   be-tests-mongo-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -327,7 +354,9 @@ jobs:
 
   be-tests-mysql-8-0-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -353,7 +382,9 @@ jobs:
 
   be-tests-mysql-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -391,7 +422,9 @@ jobs:
 
   be-tests-oracle-18-4-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -418,7 +451,9 @@ jobs:
 
   be-tests-oracle-21-3-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -454,7 +489,9 @@ jobs:
 
   be-tests-postgres-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -484,7 +521,9 @@ jobs:
 
   be-tests-postgres-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -517,7 +556,9 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -567,7 +608,9 @@ jobs:
 
   be-tests-redshift-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -587,7 +630,9 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -609,7 +654,9 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -630,7 +677,9 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -646,7 +695,9 @@ jobs:
 
   be-tests-sqlserver-2017-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -674,7 +725,9 @@ jobs:
 
   be-tests-sqlserver-2022-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
@@ -702,7 +755,9 @@ jobs:
 
   be-tests-vertica-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:

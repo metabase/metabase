@@ -8,7 +8,7 @@ import {
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
 import { createMockMetadata } from "__support__/metadata";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { ClickAction } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";

@@ -11,7 +11,7 @@ import {
 } from "metabase/lib/urls";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getRelativeTime } from "metabase/lib/time";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type { UserListResult } from "metabase-types/api";
 import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import { Icon } from "metabase/core/components/Icon";

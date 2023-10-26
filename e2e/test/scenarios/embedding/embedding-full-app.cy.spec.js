@@ -7,7 +7,7 @@ import {
   describeEE,
   navigationSidebar,
   getDashboardCard,
-  createTextCard,
+  getTextCardDetails,
   closeNavigationSidebar,
   updateDashboardCards,
 } from "e2e/support/helpers";
@@ -347,7 +347,7 @@ describeEE("scenarios > embedding > full app", () => {
       };
       cy.createDashboard(dashboardDetails).then(
         ({ body: { id: dashboardId } }) => {
-          const card = createTextCard({
+          const card = getTextCardDetails({
             col: 0,
             row: 0,
             size_x: 6,
