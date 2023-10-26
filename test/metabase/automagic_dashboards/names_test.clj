@@ -61,6 +61,18 @@
         (is (= "number of Venues where Name is Test"
                ;; Test specifically the un-normalized form (metabase#15737)
                (names/cell-title root ["=" ["field" %name nil] "Test"]))))
+      (testing "Should humanize greater than filter"
+        (is (= "number of Venues where Name is greater than Test"
+               (names/cell-title root [">" ["field" %name nil] "Test"]))))
+      (testing "Should humanize at least filter"
+        (is (= "number of Venues where Name is at least Test"
+               (names/cell-title root [">=" ["field" %name nil] "Test"]))))
+      (testing "Should humanize less than filter"
+        (is (= "number of Venues where Name is less than Test"
+               (names/cell-title root ["<" ["field" %name nil] "Test"]))))
+      (testing "Should humanize at most filter"
+        (is (= "number of Venues where Name is at most Test"
+               (names/cell-title root ["<=" ["field" %name nil] "Test"]))))
       (testing "Should humanize and filter"
         (is (= "number of Venues where Name is Test and Price is 0"
                (names/cell-title root ["and"

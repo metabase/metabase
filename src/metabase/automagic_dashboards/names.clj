@@ -139,6 +139,38 @@
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 
+(defmethod humanize-filter-value :>=
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is at least {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is at least {1}" field-name value))))
+
+(defmethod humanize-filter-value :>
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is greater than {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is greater than {1}" field-name value))))
+
+(defmethod humanize-filter-value :<=
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is at most {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is at most {1}" field-name value))))
+
+(defmethod humanize-filter-value :<
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is less than {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is less than {1}" field-name value))))
+
 (defmethod humanize-filter-value :between
   [root [_ field-reference min-value max-value]]
   (tru "{0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
