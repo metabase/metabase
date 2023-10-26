@@ -3,7 +3,7 @@ import {
   collectionTable,
   createAction,
   getActionCardDetails,
-  createTextCard,
+  getTextCardDetails,
   getDashboardCard,
   getDashboardCardMenu,
   getDashboardCards,
@@ -406,7 +406,7 @@ const createDashboardWithCards = () => {
                   card_id: question_id,
                   ...questionDashcardDetails,
                 },
-                createTextCard(),
+                getTextCardDetails(),
                 getActionCardDetails({ action_id }),
               ],
             });
