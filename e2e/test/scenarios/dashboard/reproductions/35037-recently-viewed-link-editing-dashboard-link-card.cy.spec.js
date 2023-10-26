@@ -1,9 +1,4 @@
-import {
-  createLinkCard,
-  editDashboard,
-  restore,
-  visitDashboard,
-} from "e2e/support/helpers";
+import { editDashboard, restore, visitDashboard } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const TEST_DASHBOARD_NAME = "Orders in a dashboard";
@@ -19,21 +14,23 @@ describe("should not redirect users to other pages when linking an entity (metab
 
   it("should not redirect users to recent item", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    // get the URL of page and store it in a variable
-    const initialUrl = cy.url();
-
     editDashboard();
-    createLinkCard();
 
+    cy.url().then(url => {
+      cy.wrap(url).as("originUrl");
+    });
+
+    cy.icon("link").click();
     cy.wait("@recentViews");
 
     cy.findByTestId("recents-list-container").within(() => {
       cy.findByText(TEST_DASHBOARD_NAME).click();
     });
 
-    initialUrl.then(url => {
-      cy.url().should("eq", url);
+    cy.url().then(currentURL => {
+      cy.get("@originUrl").should("eq", currentURL);
     });
+
     cy.findByTestId("recents-list-container").should("not.exist");
 
     cy.findByTestId("entity-edit-display-link")
@@ -42,22 +39,25 @@ describe("should not redirect users to other pages when linking an entity (metab
   });
 
   it("should not redirect users to search item", () => {
-    const initialUrl = cy.url();
-
     cy.createNativeQuestion({
       name: TEST_QUESTION_NAME,
       native: { query: "SELECT 1" },
     });
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    createLinkCard();
+
+    cy.url().then(url => {
+      cy.wrap(url).as("originUrl");
+    });
+
+    cy.icon("link").click();
     cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();
     });
 
-    initialUrl.then(url => {
-      cy.url().should("eq", url);
+    cy.url().then(currentURL => {
+      cy.get("@originUrl").should("eq", currentURL);
     });
 
     cy.findByTestId("search-results-list").should("not.exist");
