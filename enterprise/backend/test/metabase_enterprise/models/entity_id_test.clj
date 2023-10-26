@@ -7,7 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.models]
    [metabase.models.revision-test]
@@ -73,7 +73,7 @@
     :model/ConnectionImpersonation})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+  (doseq [model (->> (v2.entity-ids/toucan-models)
                      (remove (fn [model]
                                (not= (namespace model) "model")))
                      (remove entities-not-exported)
@@ -84,7 +84,7 @@
       (is (serdes.backfill/has-entity-id? model)))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
+  (doseq [model (->> (v2.entity-ids/toucan-models)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try
