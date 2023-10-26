@@ -9,7 +9,7 @@ export const hasFields = (
 ): parameter is FieldFilterUiParameter => {
   return (
     "fields" in parameter &&
-    parameter.fields != null &&
+    Array.isArray(parameter.fields) &&
     parameter.fields.length > 0
   );
 };
