@@ -1,12 +1,20 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import { createMockMetadata } from "__support__/metadata";
 import { render, screen } from "__support__/ui";
 
 import type { StructuredDatasetQuery } from "metabase-types/api";
-import { createMockSegment } from "metabase-types/api/mocks";
+import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createAdHocCard,
   createOrdersTable,
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersUserIdField,
+  createOrdersTotalField,
+  createOrdersDiscountField,
+  createOrdersQuantityField,
+  createOrdersCreatedAtField,
   createProductsTable,
   createSampleDatabase,
   ORDERS,
@@ -14,12 +22,23 @@ import {
 } from "metabase-types/api/mocks/presets";
 
 import * as Lib from "metabase-lib";
+import { TYPE } from "metabase-lib/types/constants";
 import * as Lib_ColumnTypes from "metabase-lib/column_types";
 import Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
 import { FilterPicker } from "./FilterPicker";
+
+const TIME_FIELD = createMockField({
+  id: 100,
+  name: "TIME",
+  display_name: "Time",
+  table_id: ORDERS_ID,
+  base_type: TYPE.Time,
+  effective_type: TYPE.Time,
+  semantic_type: null,
+});
 
 const SEGMENT_1 = createMockSegment({
   id: 1,
@@ -47,7 +66,19 @@ const metadata = createMockMetadata({
   databases: [
     createSampleDatabase({
       tables: [
-        createOrdersTable({ segments: [SEGMENT_1, SEGMENT_2] }),
+        createOrdersTable({
+          fields: [
+            createOrdersIdField(),
+            createOrdersProductIdField(),
+            createOrdersUserIdField(),
+            createOrdersTotalField(),
+            createOrdersDiscountField(),
+            createOrdersQuantityField(),
+            createOrdersCreatedAtField(),
+            TIME_FIELD,
+          ],
+          segments: [SEGMENT_1, SEGMENT_2],
+        }),
         createProductsTable(),
       ],
     }),
@@ -98,6 +129,14 @@ function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
       onSelectLegacy={onSelectLegacy}
     />,
   );
+
+  function getNextFilter() {
+    const lastCall = onSelect.mock.calls[onSelect.mock.calls.length - 1];
+    const [filter] = lastCall;
+    return filter;
+  }
+
+  return { query, getNextFilter };
 }
 
 describe("FilterPicker", () => {
@@ -156,9 +195,36 @@ describe("FilterPicker", () => {
     });
 
     it("should open the expression editor when column type isn't supported", () => {
-      jest.spyOn(Lib_ColumnTypes, "isNumeric").mockReturnValue(false);
+      const spy = jest
+        .spyOn(Lib_ColumnTypes, "isNumeric")
+        .mockReturnValue(false);
+
       setup(createQueryWithFilter());
       expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+
+      spy.mockRestore();
+    });
+  });
+
+  describe("time filter picker", () => {
+    it("should initialize correctly after changing a column", () => {
+      const { query, getNextFilter } = setup(createQueryWithFilter());
+
+      userEvent.click(screen.getByLabelText("Back"));
+      userEvent.click(screen.getByText(TIME_FIELD.display_name));
+
+      expect(screen.getByLabelText("Filter operator")).toHaveValue("Before");
+      expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Update filter"));
+
+      const filterParts = Lib.timeFilterParts(query, 0, getNextFilter());
+      const column = filterParts?.column as Lib.ColumnMetadata;
+      expect(filterParts?.operator).toBe("<");
+      expect(filterParts?.values).toEqual([dayjs("00:00", "HH:mm").toDate()]);
+      expect(Lib.displayInfo(query, 0, column).longDisplayName).toBe(
+        TIME_FIELD.display_name,
+      );
     });
   });
 });

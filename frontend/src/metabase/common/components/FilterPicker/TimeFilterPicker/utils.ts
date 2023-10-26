@@ -1,9 +1,9 @@
-import moment from "moment";
+import dayjs from "dayjs";
 import type { TimeFilterOperatorName } from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
 
 export function getDefaultValue() {
-  return moment().startOf("day").toDate(); // 00:00:00
+  return dayjs().startOf("day").toDate(); // 00:00:00
 }
 
 export function getDefaultValuesForOperator(
