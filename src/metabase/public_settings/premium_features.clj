@@ -388,7 +388,7 @@
 
 (define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
   "Enable restrict email recipients?"
-  :serialization)
+  :email-restrict-recipients)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"

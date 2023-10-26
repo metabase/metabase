@@ -675,7 +675,7 @@
                       card-defaults
                       {:name                   (:name card)
                        :collection_id          true
-                       :collection             true
+                       :collection             (assoc collection :is_personal false)
                        :creator_id             (mt/user->id :rasta)
                        :parameters             [{:id "abc123", :name "test", :type "date"}]
                        :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
@@ -705,7 +705,6 @@
                          (update :database_id integer?)
                          (update :collection_id integer?)
                          (update :dataset_query map?)
-                         (update :collection map?)
                          (update :entity_id string?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)
@@ -1090,7 +1089,7 @@
                    :database_id            (mt/id) ; these should be inferred from the dataset_query
                    :table_id               (mt/id :venues)
                    :collection_id          (u/the-id collection)
-                   :collection             (into {} collection)
+                   :collection             (into {:is_personal false} collection)
                    :result_metadata        (mt/obj->json->obj (:result_metadata card))
                    :metabase_version       config/mb-version-string})
                  (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card))))))
