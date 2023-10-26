@@ -27,10 +27,10 @@ describe("filter", () => {
   const query = createQuery();
 
   describe("string filters", () => {
-    it("should be able to create and destructure a string filter", () => {
-      const tableName = "PRODUCTS";
-      const columnName = "CATEGORY";
+    const tableName = "PRODUCTS";
+    const columnName = "CATEGORY";
 
+    it("should be able to create and destructure a string filter", () => {
       const { filterParts, columnInfo } = filterByStringColumn(query, {
         operator: "=",
         column: findColumn(query, tableName, columnName),
@@ -42,6 +42,57 @@ describe("filter", () => {
         operator: "=",
         column: expect.anything(),
         values: ["Gadget", "Widget"],
+        options: {},
+      });
+      expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should fill defaults for case sensitivity options", () => {
+      const { filterParts, columnInfo } = filterByStringColumn(query, {
+        operator: "starts-with",
+        column: findColumn(query, tableName, columnName),
+        values: ["Gadget"],
+        options: {},
+      });
+
+      expect(filterParts).toMatchObject({
+        operator: "starts-with",
+        column: expect.anything(),
+        values: ["Gadget"],
+        options: { "case-sensitive": false },
+      });
+      expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should use provided case sensitivity options", () => {
+      const { filterParts, columnInfo } = filterByStringColumn(query, {
+        operator: "starts-with",
+        column: findColumn(query, tableName, columnName),
+        values: ["Gadget"],
+        options: { "case-sensitive": true },
+      });
+
+      expect(filterParts).toMatchObject({
+        operator: "starts-with",
+        column: expect.anything(),
+        values: ["Gadget"],
+        options: { "case-sensitive": true },
+      });
+      expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should ignore case sensitivity options when they are not supported by the operator", () => {
+      const { filterParts, columnInfo } = filterByStringColumn(query, {
+        operator: "=",
+        column: findColumn(query, tableName, columnName),
+        values: ["Gadget"],
+        options: { "case-sensitive": true },
+      });
+
+      expect(filterParts).toMatchObject({
+        operator: "=",
+        column: expect.anything(),
+        values: ["Gadget"],
         options: {},
       });
       expect(columnInfo?.name).toBe(columnName);
