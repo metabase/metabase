@@ -1,4 +1,5 @@
 import { addLocale, useLocale } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import dayjs from "dayjs";
 import updateLocalePlugin from "dayjs/plugin/updateLocale";
