@@ -12,7 +12,7 @@ import User from "metabase/entities/users";
 import type { Group, Member, User as IUser } from "metabase-types/api";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import type { State } from "metabase-types/store";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import AddMemberRow from "../AddMemberRow";
 
 const canEditMembership = (group: Group) =>
