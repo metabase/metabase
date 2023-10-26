@@ -23,8 +23,6 @@ const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
-const MONTH_COLUMN_NAME = "Month";
-const QUARTER_COLUMN_NAME = "Quarter";
 const FILTER_VALUE = "123";
 const POINT_COUNT = 79;
 const POINT_CREATED_AT = "2022-08";
@@ -34,8 +32,6 @@ const RESTRICTED_COLLECTION_NAME = "Restricted collection";
 const COLUMN_INDEX = {
   CREATED_AT: 0,
   COUNT: 1,
-  MONTH: 2,
-  QUARTER: 3,
 };
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -55,22 +51,10 @@ const QUESTION_LINE_CHART = {
   },
 };
 
-const CREATED_AT_FIELD = [
-  "field",
-  CREATED_AT_COLUMN_ID,
-  { "base-type": "type/DateTime" },
-];
-
 const QUESTION_TABLE = {
   name: "Table",
   display: "table",
-  query: {
-    "source-query": QUESTION_LINE_CHART.query,
-    expressions: {
-      [MONTH_COLUMN_NAME]: ["get-month", CREATED_AT_FIELD],
-      [QUARTER_COLUMN_NAME]: ["get-quarter", CREATED_AT_FIELD],
-    },
-  },
+  query: QUESTION_LINE_CHART.query,
 };
 
 const OBJECT_DETAIL_CHART = {
@@ -637,7 +621,28 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       parameters: [DASHBOARD_FILTER_TEXT],
     };
 
-    it("allows setting custom destination for multiple columns", () => {
+    it("should open drill-through menu as a default click-behavior", () => {
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      clickTableCell(COLUMN_INDEX.COUNT);
+      popover().should("contain.text", "Filter by this value");
+
+      clickTableCell(COLUMN_INDEX.CREATED_AT);
+      popover().should("contain.text", "Filter by this date");
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      getDashboardCard()
+        .button()
+        .should("have.text", "Open the drill-through menu");
+    });
+
+    it("should allow setting dashboard and saved question as custom destination for different columns", () => {
       cy.createQuestion(TARGET_QUESTION);
       cy.createDashboard(
         {
@@ -649,54 +654,21 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       );
-      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
         },
       );
 
-      cy.log("should open drill-through menu as a default click-behavior");
-      clickTableCell(COLUMN_INDEX.COUNT);
-      popover().should("contain.text", "Filter by this value");
-
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
-      getDashboardCard()
-        .button()
-        .should("have.text", "Open the drill-through menu");
-
-      (function addCustomUrlDestination() {
-        cy.log("custom destination (URL) behavior for 'Month' column");
-
-        getMonthMapping().should("not.exist");
-        cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
-        addUrlDestination();
-        modal().within(() => {
-          cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
-            parseSpecialCharSequences: false,
-          });
-          cy.button("Done").click();
-        });
-
-        cy.icon("chevronleft").click();
-
-        getMonthMapping().should("exist");
-        getDashboardCard()
-          .button()
-          .should("have.text", "1 column has custom behavior");
-      })();
 
       (function addCustomDashboardDestination() {
         cy.log("custom destination (dashboard) behavior for 'Count' column");
 
-        getCountMapping().should("not.exist");
+        getCountToDashboardMapping().should("not.exist");
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
         addDashboardDestination();
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
@@ -704,10 +676,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.icon("chevronleft").click();
 
-        getCountMapping().should("exist");
+        getCountToDashboardMapping().should("exist");
         getDashboardCard()
           .button()
-          .should("have.text", "2 columns have custom behavior");
+          .should("have.text", "1 column has custom behavior");
       })();
 
       (function addCustomQuestionDestination() {
@@ -715,7 +687,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           "custom destination (question) behavior for 'Created at' column",
         );
 
-        getCreatedAtMapping().should("not.exist");
+        getCreatedAtToQuestionMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
         /**
          * TODO: remove the next line when metabase#34845 is fixed
@@ -728,30 +700,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.icon("chevronleft").click();
 
-        getCreatedAtMapping().should("exist");
+        getCreatedAtToQuestionMapping().should("exist");
         getDashboardCard()
           .button()
-          .should("have.text", "3 columns have custom behavior");
+          .should("have.text", "2 columns have custom behavior");
       })();
 
       cy.get("aside").button("Done").click();
       saveDashboard();
-
-      (function testCustomUrlDestinationClick() {
-        cy.log("it handles 'Month' column click");
-
-        cy.findByTestId("field-set").click();
-        popover().within(() => {
-          cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
-          cy.button("Add filter").click();
-        });
-        onNextAnchorClick(anchor => {
-          expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
-          expect(anchor).to.have.attr("rel", "noopener");
-          expect(anchor).to.have.attr("target", "_blank");
-        });
-        clickTableCell(COLUMN_INDEX.MONTH);
-      })();
 
       (function testDashboardDestinationClick() {
         cy.log("it handles 'Count' column click");
@@ -790,6 +746,113 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
           });
         });
+      })();
+    });
+
+    it("should allow setting URL as custom destination and updating dashboard filters for different columns", () => {
+      cy.createQuestion(TARGET_QUESTION);
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+
+      (function addUpdateDashboardFilters() {
+        cy.log("update dashboard filters behavior for 'Count' column");
+
+        getCountToDashboardFilterMapping().should("not.exist");
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+        cy.get("aside").findByText("Update a dashboard filter").click();
+        addTextParameter();
+
+        cy.icon("chevronleft").click();
+
+        getCountToDashboardFilterMapping().should("exist");
+      })();
+
+      getDashboardCard()
+        .button()
+        .should("have.text", "1 column has custom behavior");
+
+      (function addCustomUrlDestination() {
+        cy.log("custom destination (URL) behavior for 'Created At' column");
+
+        getCreatedAtToUrlMapping().should("not.exist");
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+        /**
+         * TODO: remove the next line when metabase#34845 is fixed
+         * @see https://github.com/metabase/metabase/issues/34845
+         */
+        cy.get("aside").findByText("Unknown").click();
+        addUrlDestination();
+        modal().within(() => {
+          cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
+            parseSpecialCharSequences: false,
+          });
+          cy.button("Done").click();
+        });
+
+        cy.icon("chevronleft").click();
+
+        getCreatedAtToUrlMapping().should("exist");
+      })();
+
+      getDashboardCard()
+        .button()
+        .should("have.text", "2 columns have custom behavior");
+
+      cy.get("aside").button("Done").click();
+      saveDashboard();
+
+      (function testUpdateDashboardFiltersClick() {
+        cy.log("it handles 'Count' column click");
+
+        clickTableCell(COLUMN_INDEX.COUNT);
+        cy.findAllByTestId("field-set")
+          .should("have.length", 1)
+          .should("contain.text", POINT_COUNT);
+        cy.get("@originalPathname").then(originalPathname => {
+          cy.location().should(({ pathname, search }) => {
+            expect(pathname).to.equal(originalPathname);
+            expect(search).to.equal(
+              `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+            );
+          });
+        });
+      })();
+
+      (function testCustomUrlDestinationClick() {
+        cy.log("it handles 'Created at' column click");
+
+        cy.findByTestId("field-set").click();
+        popover().within(() => {
+          cy.icon("close").click();
+          cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+          cy.button("Update filter").click();
+        });
+        onNextAnchorClick(anchor => {
+          expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+          expect(anchor).to.have.attr("rel", "noopener");
+          expect(anchor).to.have.attr("target", "_blank");
+        });
+        clickTableCell(COLUMN_INDEX.CREATED_AT);
       })();
     });
   });
@@ -926,7 +989,7 @@ const testChangingBackToDefaultBehavior = () => {
   assertDrillThroughMenuOpen();
 };
 
-const getCreatedAtMapping = () => {
+const getCreatedAtToQuestionMapping = () => {
   return cy
     .get("aside")
     .findByText(
@@ -936,7 +999,7 @@ const getCreatedAtMapping = () => {
     );
 };
 
-const getCountMapping = () => {
+const getCountToDashboardMapping = () => {
   return cy
     .get("aside")
     .findByText(
@@ -946,8 +1009,18 @@ const getCountMapping = () => {
     );
 };
 
-const getMonthMapping = () => {
+const getCreatedAtToUrlMapping = () => {
   return cy
     .get("aside")
-    .findByText(getBrokenUpTextMatcher(`${MONTH_COLUMN_NAME} goes to URL`));
+    .findByText(
+      getBrokenUpTextMatcher(`${CREATED_AT_COLUMN_NAME} goes to URL`),
+    );
+};
+
+const getCountToDashboardFilterMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(`${COUNT_COLUMN_NAME} updates 1 filter`),
+    );
 };
