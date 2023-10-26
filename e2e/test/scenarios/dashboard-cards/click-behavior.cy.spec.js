@@ -657,6 +657,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           editDashboard();
 
           getDashboardCard().realHover().icon("click").click();
+          getDashboardCard()
+            .button()
+            .should("have.text", "Open the drill-through menu");
 
           cy.log("custom destination (dashboard) for 'Count' column");
           cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
@@ -668,6 +671,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           addTimeParameter();
 
           cy.icon("chevronleft").click();
+
+          getCountMapping().should("exist");
+          getCreatedAtMapping().should("not.exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "1 column has custom behavior");
 
           cy.log("custom destination (question) for 'Created at' column");
           cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
@@ -682,20 +691,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.icon("chevronleft").click();
 
-          cy.get("aside")
-            .findByText(
-              getBrokenUpTextMatcher(
-                `Created At goes to "${TARGET_QUESTION.name}"`,
-              ),
-            )
-            .should("exist");
-          cy.get("aside")
-            .findByText(
-              getBrokenUpTextMatcher(
-                `Count goes to "${TARGET_DASHBOARD.name}"`,
-              ),
-            )
-            .should("exist");
+          getCountMapping().should("exist");
+          getCreatedAtMapping().should("exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "2 columns have custom behavior");
+
           cy.get("aside").button("Done").click();
 
           saveDashboard();
@@ -865,4 +866,20 @@ const assertDrillThroughMenuOpen = () => {
     .and("contain", "Break out by…")
     .and("contain", "Automatic insights…")
     .and("contain", "Filter by this value");
+};
+
+const getCreatedAtMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(`Created At goes to "${TARGET_QUESTION.name}"`),
+    );
+};
+
+const getCountMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(
+      getBrokenUpTextMatcher(`Count goes to "${TARGET_DASHBOARD.name}"`),
+    );
 };
