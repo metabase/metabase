@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import dayjs from "dayjs";
 import { useAsync } from "react-use";
 import { t } from "ttag";

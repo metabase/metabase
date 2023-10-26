@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import type { WrappedResult } from "metabase/search/types";
 import { Group } from "metabase/ui";
 import { InfoTextAssetLink } from "./InfoTextAssetLink";
