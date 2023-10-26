@@ -636,7 +636,7 @@
   "Remove the offset from a datetime, returning a string represnetation in whatever timezone the `database` is configured
   to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need to calculate one by hand."
    [driver database ^OffsetDateTime offset-time]
-  (let [zone-id     (t/zone-id (driver/db-default-timezone driver database))]
+  (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
     (t/local-date-time offset-time zone-id )))
 
 (defmulti ^:private value->string
@@ -666,7 +666,7 @@
     [driver ^OffsetDateTime val]
     (let [uploads-db (upload/current-database)]
       (if (mariadb? uploads-db)
-        (offset-datetime->unoffset-datetime driver val uploads-db)
+        (offset-datetime->unoffset-datetime driver uploads-db val)
         (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
                     zulu-formatter
                     offset-formatter)
