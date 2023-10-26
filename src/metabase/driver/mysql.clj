@@ -633,9 +633,10 @@
 (sql/register-clause! ::load format-load :insert-into)
 
 (defn- offset-datetime->unoffset-datetime
-  "Remove the offset from a datetime, returning a string represnetation in whatever timezone the `database` is configured
-  to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need to calculate one by hand."
-   [driver database ^OffsetDateTime offset-time]
+  "Remove the offset from a datetime, returning a string representation in whatever timezone the `database` is
+  configured to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need
+  to calculate one by hand."
+  [driver database ^OffsetDateTime offset-time]
   (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
     (t/local-date-time offset-time zone-id )))
 
