@@ -101,6 +101,7 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
+  width,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -266,6 +267,7 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
+          width={width}
         />
       )}
       <RowChartLegendLayout
