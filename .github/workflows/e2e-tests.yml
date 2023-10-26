@@ -1,9 +1,6 @@
 name: E2E Tests
 
 on:
-  # We'll record runs using Replay.io and their browser on a schedule as an experiment
-  schedule:
-    - cron: '0 22 * * *'
   push:
     branches:
       - "master"
@@ -16,13 +13,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-run-id:
-    runs-on: ubuntu-22.04
-    outputs:
-      testRunId: ${{ steps.testRunId.outputs.testRunId }}
-    steps:
-      - id: testRunId
-        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
@@ -93,7 +83,7 @@ jobs:
             ./SHA256.sum
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id, e2e-matrix-builder]
+    needs: [build, files-changed, e2e-matrix-builder]
     if: |
       !cancelled() &&
       (needs.files-changed.outputs.e2e_specs == 'true' || needs.build.result == 'success')
@@ -153,8 +143,6 @@ jobs:
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
-        with:
-          is-replay-browser: ${{ github.event_name == 'schedule' }}
 
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
@@ -193,40 +181,6 @@ jobs:
         env:
           CYPRESS_QA_DB_MONGO: true
 
-      # REPLAY.IO specific jobs
-      - name: Install Replay.io browser
-        if: ${{ github.event_name == 'schedule' }}
-        run: npx @replayio/cypress install
-
-      - name: Run OSS-specific Cypress tests using Replay.io browser
-        if: matrix.edition == 'oss' && github.event_name == 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS,grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser "replay-chromium"
-          CYPRESS_REPLAYIO_ENABLED: 1
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-
-      - name: Run EE Cypress tests on ${{ matrix.name }} using Replay.io browser
-        if: matrix.context == 'folder' && github.event_name == 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo --@quarantine,grepOmitFiltered=true" \
-          --folder ${{ matrix.name }} \
-          --browser "replay-chromium"
-          CYPRESS_REPLAYIO_ENABLED: 1
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
-
-      - name: Upload Replay.io recordings
-        if: github.event_name == 'schedule' && !cancelled()
-        uses: replayio/action-upload@v0.5.1
-        with:
-          api-key: ${{ secrets.REPLAY_IO_TOKEN }}
-          public: false
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
@@ -238,7 +192,7 @@ jobs:
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [e2e-tests]
+    needs: [e2e-tests, e2e-matrix-builder]
     if: |
       !cancelled() &&
       needs.e2e-tests.result == 'skipped'

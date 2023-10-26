@@ -18,9 +18,7 @@ describe("parameters/utils/parameter-fields", () => {
       fields: [field],
     });
     const parameterWithoutFields = createMockUiParameter();
-    const parameterWithoutFieldsKey = createMockUiParameter();
     expect(hasFields(parameterWithFields)).toBe(true);
     expect(hasFields(parameterWithoutFields)).toBe(false);
-    expect(hasFields(parameterWithoutFieldsKey)).toBe(false);
   });
 });
