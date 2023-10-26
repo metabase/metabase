@@ -72,13 +72,13 @@ describe("scenarios > question > new", () => {
       );
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Saved question in Our analytics");
+      cy.contains("Our analytics");
       cy.findAllByRole("link", { name: "Our analytics" })
         .should("have.attr", "href")
         .and("eq", "/collection/root");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Table in Sample Database");
+      cy.contains("Sample Database");
       cy.findAllByRole("link", { name: "Sample Database" })
         .should("have.attr", "href")
         .and("eq", `/browse/${SAMPLE_DB_ID}-sample-database`);

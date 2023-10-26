@@ -12,9 +12,7 @@
 (def moderated-item-type->model
   "Maps DB name of the moderated item type to the model symbol (used for t2/select and such)"
   {"card" 'Card
-   :card       'Card
-   "dashboard" 'Dashboard
-   :dashboard  'Dashboard})
+   :card  'Card})
 
 (defn- object->type
   "Convert a moderated item instance to the keyword stored in the database"

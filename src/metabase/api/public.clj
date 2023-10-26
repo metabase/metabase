@@ -575,22 +575,22 @@
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
-  [uuid param-key :as {:keys [query-params]}]
+  [uuid param-key :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
-  [uuid param-key query :as {:keys [query-params]}]
+  [uuid param-key query :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params query))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
