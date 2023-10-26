@@ -1,36 +1,35 @@
-import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import { createMockField } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
+  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
+const TEST_PEOPLE_TABLE = createPeopleTable();
+
+const TEST_BOOLEAN_FIELD = createMockField({
+  id: 101,
+  table_id: PEOPLE_ID,
+  name: "ACTIVE_SUBSCRIPTION",
+  display_name: "Active Subscription",
+  base_type: "type/Boolean",
+  effective_type: "type/Boolean",
+  semantic_type: "type/Category",
+});
 
 const TEST_DB = createSampleDatabase({
   tables: [
     createOrdersTable(),
     createProductsTable(),
     createReviewsTable(),
-    createPeopleTable(),
-    createMockTable({
-      id: 100,
-      name: "ACCOUNTS",
-      display_name: "Accounts",
-      fields: [
-        createMockField({
-          id: 101,
-          table_id: 100,
-          name: "ACTIVE_SUBSCRIPTION",
-          display_name: "Active Subscription",
-          base_type: "type/Boolean",
-          effective_type: "type/Boolean",
-          semantic_type: "type/Category",
-        }),
-      ],
+    createPeopleTable({
+      fields: [...(TEST_PEOPLE_TABLE.fields ?? []), TEST_BOOLEAN_FIELD],
     }),
   ],
 });
@@ -79,6 +78,13 @@ function filterByNumberColumn(
   filterClause: Lib.ExpressionClause,
 ) {
   return filterByColumn(query, filterClause, Lib.numberFilterParts);
+}
+
+function filterByBooleanColumn(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return filterByColumn(query, filterClause, Lib.booleanFilterParts);
 }
 
 describe("filter", () => {
@@ -396,6 +402,84 @@ describe("filter", () => {
 
     it("should ignore expressions with non-string arguments", () => {
       const { filterParts } = filterByNumberColumn(
+        query,
+        Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("boolean filters", () => {
+    const tableName = "PEOPLE";
+    const columnName = "ACTIVE_SUBSCRIPTION";
+    const column = findColumn(query, tableName, columnName);
+
+    it.each([true, false])(
+      'should be able to create and destructure a boolean filter with "=" operator and a "%s" value',
+      value => {
+        const { filterParts, columnInfo } = filterByBooleanColumn(
+          query,
+          Lib.booleanFilterClause({
+            operator: "=",
+            column,
+            values: [value],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: [value],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.BooleanFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure a boolean filter with "%s" operator without values',
+      operator => {
+        const { filterParts, columnInfo } = filterByBooleanColumn(
+          query,
+          Lib.booleanFilterClause({
+            operator,
+            column,
+            values: [],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = filterByBooleanColumn(
+        query,
+        Lib.expressionClause("starts-with", [
+          findColumn(query, tableName, columnName),
+          "A",
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = filterByBooleanColumn(
+        query,
+        Lib.expressionClause("=", [true, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-string arguments", () => {
+      const { filterParts } = filterByBooleanColumn(
         query,
         Lib.expressionClause("=", [column, column]),
       );
