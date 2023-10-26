@@ -1,6 +1,7 @@
 import * as Lib from "metabase-lib";
 import type { DrillThru } from "metabase-lib";
 import type Question from "metabase-lib/Question";
+import { columnFinder } from "metabase-lib/test-helpers";
 import type {
   ClickAction,
   ClickObject,
@@ -49,12 +50,37 @@ export class Mode {
         return question.setDatasetQuery(Lib.toLegacyQuery(updatedQuery));
       };
 
+      const getMetadataColumns = (query: Lib.Query): Lib.ColumnMetadata[] => {
+        const aggregations = Lib.aggregations(query, stageIndex);
+        const breakouts = Lib.breakouts(query, stageIndex);
+
+        return aggregations.length === 0 && breakouts.length === 0
+          ? Lib.visibleColumns(query, stageIndex)
+          : [
+              ...Lib.breakoutableColumns(query, stageIndex),
+              ...Lib.orderableColumns(query, stageIndex),
+            ];
+      };
+
+      let column;
+
+      if (clicked?.column) {
+        const metadataColumns = getMetadataColumns(query);
+        const tableName =
+          question.metadata().table(clicked.column.table_id)?.name || "Some";
+
+        column = columnFinder(query, metadataColumns)(
+          tableName,
+          clicked.column.name,
+        );
+      }
+
       // TODO: those calculations are really expensive and must be memoized at some level
       // check `_visualizationIsClickableCached` from TableInteractive
       const availableDrillThrus = Lib.availableDrillThrus(
         query,
         stageIndex,
-        clicked?.column,
+        column,
         clicked?.value,
         clicked?.data,
         clicked?.dimensions,
