@@ -196,13 +196,13 @@
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  (t2/hydrate :creator
-                          :dashboard_count
-                          :parameter_usage_count
-                          :can_write
-                          :average_query_time
-                          :last_query_start
-                          :collection
-                          [:moderation_reviews :moderator_details])
+                             :dashboard_count
+                             :parameter_usage_count
+                             :can_write
+                             :average_query_time
+                             :last_query_start
+                             [:collection :is_personal]
+                             [:moderation_reviews :moderator_details])
                  collection.root/hydrate-root-collection
                  (cond-> ;; card
                    (:dataset raw-card) (t2/hydrate :persisted))
@@ -548,11 +548,12 @@ saved later when it is ready."
      ;; returned one -- See #4283
      (u/prog1 (-> card
                   (t2/hydrate :creator
-                           :dashboard_count
-                           :can_write
-                           :average_query_time
-                           :last_query_start
-                           :collection [:moderation_reviews :moderator_details])
+                              :dashboard_count
+                              :can_write
+                              :average_query_time
+                              :last_query_start
+                              [:collection :is_personal]
+                              [:moderation_reviews :moderator_details])
                   (assoc :last-edit-info (last-edit/edit-information-for-user creator)))
        (when timed-out?
          (schedule-metadata-saving result-metadata-chan <>))))))
@@ -779,7 +780,8 @@ saved later when it is ready."
                  :can_write
                  :average_query_time
                  :last_query_start
-                 :collection [:moderation_reviews :moderator_details])
+                 [:collection :is_personal]
+                 [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
