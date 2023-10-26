@@ -18,7 +18,6 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
       - uses: actions/checkout@v3
@@ -67,26 +66,13 @@ jobs:
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
-      - name: Mark with the commit hash
-        run: echo ${{ github.sha }} > COMMIT-ID
-        shell: bash
-      - name: Calculate SHA256 checksum
-        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
-        shell: bash
-      - name: Upload JARs as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-          path: |
-            ./target/uberjar/metabase.jar
-            ./COMMIT-ID
-            ./SHA256.sum
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed, e2e-matrix-builder]
+    needs: [build, e2e-matrix-builder]
     if: |
-      !cancelled() &&
-      (needs.files-changed.outputs.e2e_specs == 'true' || needs.build.result == 'success')
+      !cancelled() && needs.build.result == 'success'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
@@ -111,9 +97,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          # Important in case we need to download uberjar from previous commits!
-          fetch-depth: ${{ needs.build.result == 'success' && '' || 20 }}
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -126,14 +109,19 @@ jobs:
           mysql: ${{ matrix.name != 'mongo'}}
           mongo: ${{ matrix.name == 'mongo'}}
 
-      - name: Download Metabase ${{ matrix.edition }} uberjar
-        uses: ./.github/actions/e2e-download-uberjar
+      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        uses: actions/download-artifact@v3
         with:
-          edition: ${{ matrix.edition }}
-          was-built: ${{ needs.build.result == 'success' }}
+          name: metabase-${{ matrix.edition }}-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+
       - name: Prepare JDK ${{ matrix.java-version }}
         uses: actions/setup-java@v3
         with:
@@ -211,15 +199,10 @@ jobs:
     timeout-minutes: 60
     needs: [build]
     if: |
-      !cancelled() &&
-      (needs.files-changed.outputs.e2e_specs == 'true' || needs.build.result == 'success') &&
-      github.event_name != 'schedule'
+      !cancelled() && needs.build.result == 'success'
     name: percy-visual-regression-tests
     steps:
       - uses: actions/checkout@v3
-        with:
-          # Important in case we need to download uberjar from previous commits!
-          fetch-depth: ${{ needs.build.result == 'success' && '' || 20 }}
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -228,19 +211,25 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
 
-      - name: Download Metabase enterprise uberjar
-        uses: ./.github/actions/e2e-download-uberjar
+      - name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        uses: actions/download-artifact@v3
         with:
-          edition: 'ee'
-          was-built: ${{ needs.build.result == 'success' }}
+          name: metabase-${{ matrix.edition }}-uberjar
+
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+
       - name: Prepare JDK 11
         uses: actions/setup-java@v3
         with:
           java-version: 11
           distribution: 'temurin'
+
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
