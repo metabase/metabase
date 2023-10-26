@@ -12,6 +12,7 @@
 .eastwood
 .idea/
 .nrepl-port
+.portal
 .vscode
 /*.h2.db
 /*.lock.db
