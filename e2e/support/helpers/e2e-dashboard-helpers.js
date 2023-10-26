@@ -263,7 +263,7 @@ export function getHeadingCardDetails({
   row = 0,
   size_x = 24,
   size_y = 1,
-  text = "Heading text example dto",
+  text = "Heading text details",
 }) {
   return {
     id,
