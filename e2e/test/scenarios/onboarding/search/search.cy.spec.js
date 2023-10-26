@@ -522,7 +522,7 @@ describe("scenarios > search", () => {
           expectSearchResultContent({
             expectedSearchResults: [
               {
-                name: NORMAL_USER_TEST_QUESTION.name,
+                name: ADMIN_TEST_QUESTION.name,
                 timestamp: "Created a few seconds ago by Bobby Tables",
                 collection: "Our analytics",
               },
