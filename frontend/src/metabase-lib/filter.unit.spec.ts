@@ -13,8 +13,9 @@ function filterByStringColumn(
   const newQuery = Lib.filter(query, 0, filterClause);
   const [newFilterClause] = Lib.filters(newQuery, 0);
   const newFilterParts = Lib.stringFilterParts(newQuery, 0, newFilterClause);
-  const newColumnInfo =
-    newFilterParts && Lib.displayInfo(newQuery, 0, newFilterParts.column);
+  const newColumnInfo = newFilterParts
+    ? Lib.displayInfo(newQuery, 0, newFilterParts.column)
+    : null;
 
   return {
     newQuery,
@@ -29,13 +30,14 @@ describe("filter", () => {
   describe("string filters", () => {
     const tableName = "PRODUCTS";
     const columnName = "CATEGORY";
+    const column = findColumn(query, tableName, columnName);
 
     it("should be able to create and destructure a string filter", () => {
       const { filterParts, columnInfo } = filterByStringColumn(
         query,
         Lib.stringFilterClause({
           operator: "=",
-          column: findColumn(query, tableName, columnName),
+          column,
           values: ["Gadget", "Widget"],
           options: {},
         }),
@@ -55,7 +57,7 @@ describe("filter", () => {
         query,
         Lib.stringFilterClause({
           operator: "starts-with",
-          column: findColumn(query, tableName, columnName),
+          column,
           values: ["Gadget"],
           options: {},
         }),
@@ -75,7 +77,7 @@ describe("filter", () => {
         query,
         Lib.stringFilterClause({
           operator: "starts-with",
-          column: findColumn(query, tableName, columnName),
+          column,
           values: ["Gadget"],
           options: { "case-sensitive": true },
         }),
@@ -95,7 +97,7 @@ describe("filter", () => {
         query,
         Lib.stringFilterClause({
           operator: "=",
-          column: findColumn(query, tableName, columnName),
+          column,
           values: ["Gadget"],
           options: { "case-sensitive": true },
         }),
@@ -108,6 +110,36 @@ describe("filter", () => {
         options: {},
       });
       expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = filterByStringColumn(
+        query,
+        Lib.expressionClause("concat", [
+          findColumn(query, tableName, columnName),
+          "A",
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = filterByStringColumn(
+        query,
+        Lib.expressionClause("=", ["A", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-string arguments", () => {
+      const { filterParts } = filterByStringColumn(
+        query,
+        Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
     });
   });
 });

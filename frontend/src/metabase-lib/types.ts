@@ -202,6 +202,7 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-datetime"
   | "inside"
+  | "concat"
   | "segment";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
