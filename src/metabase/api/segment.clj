@@ -70,8 +70,15 @@
     (when changes
       (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
-      (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
-        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
+      (let [topic (if archive? :event/segment-delete :event/segment-update)]
+        (events/publish-event! topic
+                               (cond->
+                                   (assoc <>
+                                          :actor_id api/*current-user-id*
+                                          :revision_message revision_message)
+
+                                 (= topic :event/segment-update)
+                                 (assoc :audit-log/previous existing)))))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Segment` with ID."

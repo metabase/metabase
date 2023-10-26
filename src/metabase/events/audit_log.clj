@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,8 +21,8 @@
     (let [new (dissoc event :audit-log/previous)
           [previous-only new-only _both] (data/diff previous new)
           updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-      {:previous (select-keys previous updated-keys)
-       :new (select-keys new updated-keys)})
+      {:new-value (select-keys new updated-keys)
+       :previous-value (select-keys previous updated-keys)})
     event))
 
 (derive ::card-event ::event)
@@ -136,12 +137,26 @@
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
-(derive :event/segment-update ::segment-event)
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
   [topic segment]
   (audit-log/record-event! topic segment))
+
+(derive ::segment-update-event ::event)
+(derive :event/segment-update ::segment-update-event)
+
+(methodical/defmethod events/publish-event! ::segment-update-event
+  [topic segment]
+  (def topic topic)
+  (def segment segment)
+  (log/fatal (apply str (repeat 500 "X")))
+  (audit-log/record-event! topic
+                           (maybe-prepare-update-event-data
+                            (dissoc segment  :revision_message :actor_id :creator))
+                           api/*current-user-id*
+                           :model/Segment
+                           (:id segment)))
 
 (derive ::user-event ::event)
 (derive :event/user-joined ::user-event)

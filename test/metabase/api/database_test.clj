@@ -446,9 +446,11 @@
         (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
             "A db update occured")
         (let [audit-log-entry (mt/latest-audit-log-entry)]
-          (is (partial=
-               {:previous {:name "Original Database Name"}
-                :new      {:name "Updated Database Name"}}
+          (is (=?
+               {:previous-value {:name "Original Database Name"
+                                 :updated_at #hawk/malli :string},
+                :new-value {:name "Updated Database Name"
+                            :updated_at #hawk/malli :string}}
                (:details audit-log-entry))))))))
 
 (deftest disallow-updating-h2-database-details-test
