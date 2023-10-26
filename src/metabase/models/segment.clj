@@ -172,7 +172,7 @@
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
 
 
-;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+;;; ---------------------------------------------- Audit Log Table ----------------------------------------------------
 
 (defmethod audit-log/model-details :model/Segment
   [metric _event-type]

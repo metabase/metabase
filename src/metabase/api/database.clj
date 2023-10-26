@@ -950,7 +950,7 @@
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update {:object db})
+          (events/publish-event! :event/database-update {:object db :audit-log/previous existing-database})
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 
@@ -977,6 +977,7 @@
   {id ms/PositiveInt}
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
+    (events/publish-event! :event/database-manual-sync db)
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -1012,6 +1013,7 @@
   {id ms/PositiveInt}
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
+    (events/publish-event! :event/database-manual-scan db)
     ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1040,7 +1042,9 @@
   "Discards all saved field values for this `Database`."
   [id]
   {id ms/PositiveInt}
-  (delete-all-field-values-for-database! (api/write-check (t2/select-one Database :id id)))
+  (let [db (api/write-check (t2/select-one Database :id id))]
+    (events/publish-event! :event/database-discard-field-values db)
+    (delete-all-field-values-for-database! db))
   {:status :ok})
 
 

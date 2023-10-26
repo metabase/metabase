@@ -1153,7 +1153,7 @@
                           :new-value      "GETTER VALUE"}}
                (last-audit-event-fn)))))
 
-    (testing "Sensative settings have their values obfuscated automatically"
+    (testing "Sensitive settings have their values obfuscated automatically"
       (mt/with-temporary-setting-values [test-sensitive-setting-audit nil]
         (test-sensitive-setting-audit! "old password")
         (test-sensitive-setting-audit! "new password")
