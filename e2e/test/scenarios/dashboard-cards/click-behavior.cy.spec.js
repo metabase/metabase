@@ -473,7 +473,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     it("allows setting URL with parameters as custom destination", () => {
       const urlWithParams = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
-      const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
       const expectedUrlWithParams = urlWithParams
         .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
         .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
@@ -502,7 +501,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.realPress("Escape");
       });
       modal().within(() => {
-        cy.findByRole("textbox").type(escapedUrlWithParams);
+        cy.findByRole("textbox").type(urlWithParams, {
+          parseSpecialCharSequences: false,
+        });
         cy.button("Done").click();
       });
       cy.get("aside").button("Done").click();
@@ -602,14 +603,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 });
-
-/**
- * @param {string} value
- * @returns string
- *
- * @see https://docs.cypress.io/api/commands/type#Arguments
- */
-const escapeCypressCurlyBraces = value => value.replaceAll("{", "{{}");
 
 /**
  * This function exists to work around custom dynamic anchor creation.
