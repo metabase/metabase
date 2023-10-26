@@ -1504,3 +1504,41 @@
                                         {:dimensions ground-dimensions
                                          :metrics    grounded-metrics
                                          :filters    ground-filters})))))))))))
+
+(deftest adhoc-query-with-explicit-joins-14793-test
+  (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
+            X-rays fails on explicit joins, when metric is for the joined table"
+    (mt/dataset sample-dataset
+      (mt/with-test-user :rasta
+        (automagic-dashboards.test/with-dashboard-cleanup
+          (let [query-with-joins {:database   (mt/id)
+                                  :type       :query
+                                  :query      {:source-table (mt/id :reviews)
+                                               :joins        [{:strategy     :left-join
+                                                               :alias        "Products"
+                                                               :condition    [:=
+                                                                              [:field (mt/id :reviews :product_id)
+                                                                               {:base-type :type/Integer}]
+                                                                              [:field (mt/id :products :id)
+                                                                               {:base-type :type/BigInteger :join-alias "Products"}]]
+                                                               :source-table (mt/id :products)}]
+                                               :aggregation  [[:sum [:field (mt/id :products :price)
+                                                                     {:base-type :type/Float :join-alias "Products"}]]]
+                                               :breakout     [[:field (mt/id :reviews :created_at)
+                                                               {:base-type :type/DateTime :temporal-unit :year}]]
+                                               ;; The filter is what is added with the "Click any point and select X-Ray" stage of the bug repro
+                                               :filter       [:= [:field (mt/id :reviews :created_at)
+                                                                  {:base-type :type/DateTime :temporal-unit :year}]
+                                                              "2018"]}
+                                  :parameters []}
+                q                (query/adhoc-query query-with-joins)
+                section-headings (->> (magic/automagic-analysis q {:show :all})
+                                      :dashcards
+                                      (keep (comp :text :visualization_settings))
+                                      set)
+                expected-section "## How this metric is distributed across different numbers"]
+            (testing "A dashboard is produced -- prior to the bug fix, this would not produce a dashboard"
+              (is (some? section-headings)))
+            (testing "An expectation check -- this dashboard should produce this group heading"
+              (is (= expected-section
+                     (section-headings expected-section))))))))))

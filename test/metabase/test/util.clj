@@ -170,10 +170,11 @@
             :timestamp          (t/zoned-date-time)})
 
    :model/Metric
-   (fn [_] {:creator_id  (rasta-id)
-            :definition  {}
-            :description "Lookin' for a blueberry"
-            :name        "Toucans in the rainforest"})
+   (fn [_] (default-timestamped
+             {:creator_id  (rasta-id)
+              :definition  {}
+              :description "Lookin' for a blueberry"
+              :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
@@ -184,10 +185,10 @@
    :model/PersistedInfo
    (fn [_] {:question_slug (tu.random/random-name)
             :query_hash    (tu.random/random-hash)
-            :definition    {:table-name (tu.random/random-name)
+            :definition    {:table-name        (tu.random/random-name)
                             :field-definitions (repeatedly
-                                                4
-                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+                                                 4
+                                                 #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
             :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
