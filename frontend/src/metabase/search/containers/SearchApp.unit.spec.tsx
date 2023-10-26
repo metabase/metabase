@@ -8,19 +8,23 @@ import {
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Route } from "metabase/hoc/Title";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSearchResult,
   createMockTable,
+  createMockUserListResult,
 } from "metabase-types/api/mocks";
 import type { EnabledSearchModelType, SearchResult } from "metabase-types/api";
 
 import type { SearchFilters } from "metabase/search/types";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({
@@ -53,6 +57,8 @@ const TEST_SEARCH_RESULTS: SearchResult[] = TEST_ITEMS.map((metadata, index) =>
 
 const TEST_DATABASE = createMockDatabase();
 const TEST_TABLE = createMockTable();
+const TEST_USER_LIST = [createMockUserListResult()];
+const TEST_COLLECTION = createMockCollection();
 
 const setup = async ({
   searchText,
@@ -66,6 +72,10 @@ const setup = async ({
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupSearchEndpoints(searchItems);
   setupTableEndpoints(TEST_TABLE);
+  setupUsersEndpoints(TEST_USER_LIST);
+  setupCollectionByIdEndpoint({
+    collections: [TEST_COLLECTION],
+  });
 
   // for testing the hydration of search text and filters on page load
   const params = {
@@ -158,7 +168,12 @@ describe("SearchApp", () => {
           searchText: "Test",
         });
 
-        userEvent.click(screen.getByTestId("sidebar-filter-dropdown-button"));
+        userEvent.click(
+          within(screen.getByTestId("type-search-filter")).getByTestId(
+            "sidebar-filter-dropdown-button",
+          ),
+        );
+
         await waitForLoaderToBeRemoved();
 
         const popover = within(screen.getByTestId("popover"));
@@ -169,7 +184,7 @@ describe("SearchApp", () => {
             ] as EnabledSearchModelType,
           }),
         );
-        userEvent.click(popover.getByRole("button", { name: "Apply filters" }));
+        userEvent.click(popover.getByRole("button", { name: "Apply" }));
 
         const url = history.getCurrentLocation();
         expect(url.query.type).toEqual(model);
@@ -194,17 +209,12 @@ describe("SearchApp", () => {
           name,
         );
 
-        const fieldSetContent = within(screen.getByTestId("field-set-content"));
+        const typeFilter = within(screen.getByTestId("type-search-filter"));
+        const fieldSetContent = typeFilter.getByTestId("field-set-content");
 
-        expect(
-          fieldSetContent.getByText(
-            TYPE_FILTER_LABELS[model as EnabledSearchModelType],
-          ),
-        ).toBeInTheDocument();
-
-        expect(
-          fieldSetContent.getByLabelText("close icon"),
-        ).toBeInTheDocument();
+        expect(fieldSetContent).toHaveTextContent(
+          TYPE_FILTER_LABELS[model as EnabledSearchModelType],
+        );
       },
     );
   });

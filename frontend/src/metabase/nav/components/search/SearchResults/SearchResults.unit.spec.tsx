@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 import {
@@ -5,23 +6,29 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { setupSearchEndpoints } from "__support__/server-mocks";
-import type {
-  SearchResult,
-  SearchResults as SearchResultsType,
-} from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import {
+  setupCollectionByIdEndpoint,
+  setupSearchEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import type { SearchResult } from "metabase-types/api";
+import {
+  createMockCollection,
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { checkNotNull } from "metabase/lib/types";
+import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 
 type SearchResultsSetupProps = {
   searchResults?: SearchResult[];
   forceEntitySelect?: boolean;
   searchText?: string;
-  footer?: ((metadata: Omit<SearchResultsType, "data">) => JSX.Element) | null;
+  footer?: SearchResultsFooter;
 };
 
-const TEST_FOOTER = (metadata: Omit<SearchResultsType, "data">) => (
+const TEST_FOOTER: SearchResultsFooter = ({ metadata }) => (
   <div data-testid="footer">
     <div data-testid="test-total">{metadata.total}</div>
   </div>
@@ -41,6 +48,10 @@ const setup = async ({
   footer = null,
 }: SearchResultsSetupProps = {}) => {
   setupSearchEndpoints(searchResults);
+  setupUsersEndpoints([createMockUser()]);
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection()],
+  });
 
   const onEntitySelect = jest.fn();
 
