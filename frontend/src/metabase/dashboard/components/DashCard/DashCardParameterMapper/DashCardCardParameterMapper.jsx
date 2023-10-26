@@ -84,6 +84,7 @@ DashCardCardParameterMapper.propTypes = {
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
   isMobile: PropTypes.bool,
+  onDashcardParameterMappingChange: PropTypes.func,
 };
 
 export function DashCardCardParameterMapper({
@@ -95,6 +96,7 @@ export function DashCardCardParameterMapper({
   metadata,
   setParameterMapping,
   isMobile,
+  onDashcardParameterMappingChange,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
@@ -106,9 +108,21 @@ export function DashCardCardParameterMapper({
 
   const handleChangeTarget = useCallback(
     target => {
+      if (target) {
+        onDashcardParameterMappingChange({
+          editingParameterId: editingParameter.id,
+          target,
+        });
+      }
       setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
     },
-    [card.id, dashcard.id, editingParameter.id, setParameterMapping],
+    [
+      card.id,
+      dashcard.id,
+      editingParameter.id,
+      onDashcardParameterMappingChange,
+      setParameterMapping,
+    ],
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
@@ -152,6 +166,7 @@ export function DashCardCardParameterMapper({
           buttonIcon: (
             <CloseIconButton
               onClick={e => {
+                console.log("hello world");
                 handleChangeTarget(null);
                 e.stopPropagation();
               }}
@@ -159,6 +174,9 @@ export function DashCardCardParameterMapper({
           ),
         };
       } else if (target != null) {
+        console.log(target);
+        console.log(mappingOptions);
+
         return {
           buttonVariant: "invalid",
           buttonText: t`Unknown Field`,
@@ -272,7 +290,8 @@ export function DashCardCardParameterMapper({
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}
-                onClick={() => {
+                onClick={e => {
+                  e.preventDefault();
                   setIsDropdownVisible(true);
                 }}
                 onKeyDown={e => {

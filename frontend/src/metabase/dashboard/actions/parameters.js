@@ -33,6 +33,8 @@ import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getMetadata } from "metabase/selectors/metadata";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());

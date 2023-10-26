@@ -1,8 +1,15 @@
+import {
+  setDashCardAttributes,
+  setParameterMapping,
+} from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { useCallback, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
+import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 
@@ -44,6 +51,7 @@ import {
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
 import { shouldShowParameterMapper } from "./utils";
+import _ from "underscore";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -78,7 +86,10 @@ interface DashCardVisualizationProps {
   isPublic?: boolean;
   isXray?: boolean;
 
-  error?: { message?: string; icon?: IconName };
+  error?: {
+    message?: string;
+    icon?: IconName;
+  };
   headerIcon?: IconProps;
 
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
@@ -134,6 +145,35 @@ function DashCardVisualization({
     return new Question(dashcard.card, metadata);
   }, [dashcard.card, metadata]);
 
+  const dispatch = useDispatch();
+
+  const onDashcardParameterMappingChange = ({ editingParameterId, target }) => {
+    for (const dashcard of Object.values(dashboard.dashcards)) {
+      const mappingOptions = getParameterMappingOptions(
+        metadata,
+        null,
+        dashcard.card,
+      );
+
+      const matchingMappedOption = mappingOptions
+        .map(opt => opt.target)
+        .find(optTarget =>
+          _.isEqual(optTarget[1].slice(0, 2), target[1].slice(0, 2)),
+        );
+
+      if (matchingMappedOption) {
+        dispatch(
+          setParameterMapping({
+            editingParameterId,
+            dashcardId: dashcard.id,
+            cardId: dashcard.card_id,
+            target: matchingMappedOption,
+          }),
+        );
+      }
+    }
+  };
+
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
@@ -171,7 +211,11 @@ function DashCardVisualization({
 
     if (shouldShowParameterMapper({ dashcard, isEditingParameter })) {
       return (
-        <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
+        <DashCardParameterMapper
+          dashcard={dashcard}
+          isMobile={isMobile}
+          onDashcardParameterMappingChange={onDashcardParameterMappingChange}
+        />
       );
     }
 
