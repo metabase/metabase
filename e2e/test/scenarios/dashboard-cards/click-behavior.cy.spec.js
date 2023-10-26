@@ -669,114 +669,134 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .button()
         .should("have.text", "Open the drill-through menu");
 
-      cy.log("custom destination (URL) behavior for 'Month' column");
-      cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
-      addUrlDestination();
-      modal().within(() => {
-        cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
-          parseSpecialCharSequences: false,
+      (function addCustomUrlDestination() {
+        cy.log("custom destination (URL) behavior for 'Month' column");
+
+        cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
+        addUrlDestination();
+        modal().within(() => {
+          cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
+            parseSpecialCharSequences: false,
+          });
+          cy.button("Done").click();
         });
-        cy.button("Done").click();
-      });
 
-      cy.icon("chevronleft").click();
+        cy.icon("chevronleft").click();
 
-      getMonthMapping().should("exist");
-      getCountMapping().should("not.exist");
-      getCreatedAtMapping().should("not.exist");
-      getDashboardCard()
-        .button()
-        .should("have.text", "1 column has custom behavior");
+        getMonthMapping().should("exist");
+        getCountMapping().should("not.exist");
+        getCreatedAtMapping().should("not.exist");
+        getDashboardCard()
+          .button()
+          .should("have.text", "1 column has custom behavior");
+      })();
 
-      cy.log("custom destination (dashboard) behavior for 'Count' column");
-      cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
-      /**
-       * TODO: remove the next line when metabase#34845 is fixed
-       * @see https://github.com/metabase/metabase/issues/34845
-       */
-      cy.get("aside").findByText("Unknown").click();
-      addDashboardDestination();
-      cy.get("aside").findByText("No available targets").should("not.exist");
-      addTextParameter();
-      addTimeParameter();
+      (function addCustomDashboardDestination() {
+        cy.log("custom destination (dashboard) behavior for 'Count' column");
 
-      cy.icon("chevronleft").click();
-      getMonthMapping().should("exist");
-      getCountMapping().should("exist");
-      getCreatedAtMapping().should("not.exist");
-      getDashboardCard()
-        .button()
-        .should("have.text", "2 columns have custom behavior");
+        cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+        /**
+         * TODO: remove the next line when metabase#34845 is fixed
+         * @see https://github.com/metabase/metabase/issues/34845
+         */
+        cy.get("aside").findByText("Unknown").click();
+        addDashboardDestination();
+        cy.get("aside").findByText("No available targets").should("not.exist");
+        addTextParameter();
+        addTimeParameter();
 
-      cy.log("custom destination (question) behavior for 'Created at' column");
-      cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-      /**
-       * TODO: remove the next line when metabase#34845 is fixed
-       * @see https://github.com/metabase/metabase/issues/34845
-       */
-      cy.get("aside").findByText("Unknown").click();
-      addSavedQuestionDestination();
-      addSavedQuestionCreatedAtParameter();
-      addSavedQuestionQuantityParameter();
+        cy.icon("chevronleft").click();
 
-      cy.icon("chevronleft").click();
+        getMonthMapping().should("exist");
+        getCountMapping().should("exist");
+        getCreatedAtMapping().should("not.exist");
+        getDashboardCard()
+          .button()
+          .should("have.text", "2 columns have custom behavior");
+      })();
 
-      getMonthMapping().should("exist");
-      getCountMapping().should("exist");
-      getCreatedAtMapping().should("exist");
-      getDashboardCard()
-        .button()
-        .should("have.text", "3 columns have custom behavior");
+      (function addCustomQuestionDestination() {
+        cy.log(
+          "custom destination (question) behavior for 'Created at' column",
+        );
+
+        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+        /**
+         * TODO: remove the next line when metabase#34845 is fixed
+         * @see https://github.com/metabase/metabase/issues/34845
+         */
+        cy.get("aside").findByText("Unknown").click();
+        addSavedQuestionDestination();
+        addSavedQuestionCreatedAtParameter();
+        addSavedQuestionQuantityParameter();
+
+        cy.icon("chevronleft").click();
+
+        getMonthMapping().should("exist");
+        getCountMapping().should("exist");
+        getCreatedAtMapping().should("exist");
+        getDashboardCard()
+          .button()
+          .should("have.text", "3 columns have custom behavior");
+      })();
 
       cy.get("aside").button("Done").click();
-
       saveDashboard();
 
-      cy.log("it handles 'Month' column click");
-      cy.findByTestId("field-set").click();
-      popover().within(() => {
-        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
-        cy.button("Add filter").click();
-      });
-      onNextAnchorClick(anchor => {
-        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
-        expect(anchor).to.have.attr("rel", "noopener");
-        expect(anchor).to.have.attr("target", "_blank");
-      });
-      clickTableCell(COLUMN_INDEX.MONTH);
+      (function testCustomUrlDestinationClick() {
+        cy.log("it handles 'Month' column click");
 
-      cy.log("it handles 'Count' column click");
-      clickTableCell(COLUMN_INDEX.COUNT);
-      cy.findAllByTestId("field-set")
-        .should("have.length", 2)
-        .should("contain.text", POINT_COUNT)
-        .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.get("@targetDashboardId").then(targetDashboardId => {
-        cy.location().should(({ pathname, search }) => {
-          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
-          );
+        cy.findByTestId("field-set").click();
+        popover().within(() => {
+          cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+          cy.button("Add filter").click();
         });
-      });
+        onNextAnchorClick(anchor => {
+          expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+          expect(anchor).to.have.attr("rel", "noopener");
+          expect(anchor).to.have.attr("target", "_blank");
+        });
+        clickTableCell(COLUMN_INDEX.MONTH);
+      })();
+
+      (function testDashboardDestinationClick() {
+        cy.log("it handles 'Count' column click");
+
+        clickTableCell(COLUMN_INDEX.COUNT);
+        cy.findAllByTestId("field-set")
+          .should("have.length", 2)
+          .should("contain.text", POINT_COUNT)
+          .should("contain.text", POINT_CREATED_AT_FORMATTED);
+        cy.get("@targetDashboardId").then(targetDashboardId => {
+          cy.location().should(({ pathname, search }) => {
+            expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+            expect(search).to.equal(
+              `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+            );
+          });
+        });
+      })();
 
       cy.go("back");
 
-      cy.log("it handles 'Created at' column click");
-      clickTableCell(COLUMN_INDEX.CREATED_AT);
-      cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is August 1–31, 2022")
-        .should("contain.text", "Quantity is equal to 79");
-      cy.location().should(({ hash, pathname }) => {
-        expect(pathname).to.equal("/question");
-        const card = deserializeCardFromUrl(hash);
-        expect(card.name).to.deep.equal(TARGET_QUESTION.name);
-        expect(card.display).to.deep.equal(TARGET_QUESTION.display);
-        expect(card.dataset_query.query).to.deep.equal({
-          ...TARGET_QUESTION.query,
-          filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
+      (function testQuestionDestinationClick() {
+        cy.log("it handles 'Created at' column click");
+
+        clickTableCell(COLUMN_INDEX.CREATED_AT);
+        cy.findByTestId("qb-filters-panel")
+          .should("contain.text", "Created At is August 1–31, 2022")
+          .should("contain.text", "Quantity is equal to 79");
+        cy.location().should(({ hash, pathname }) => {
+          expect(pathname).to.equal("/question");
+          const card = deserializeCardFromUrl(hash);
+          expect(card.name).to.deep.equal(TARGET_QUESTION.name);
+          expect(card.display).to.deep.equal(TARGET_QUESTION.display);
+          expect(card.dataset_query.query).to.deep.equal({
+            ...TARGET_QUESTION.query,
+            filter: ["and", QUERY_FILTER_CREATED_AT, QUERY_FILTER_QUANTITY],
+          });
         });
-      });
+      })();
     });
   });
 });
