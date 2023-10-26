@@ -100,7 +100,6 @@ describe("dashboard/selectors", () => {
           id: 1,
           type: "string/=",
           hasVariableTemplateTagTarget: true,
-          fields: [],
         },
       ]);
     });

@@ -364,12 +364,10 @@ class TagEditorParamInner extends Component<Props> {
               parameter={
                 tag.type === "text" || tag.type === "dimension"
                   ? parameter || {
-                      fields: [],
                       ...tag,
                       type: tag["widget-type"] || null,
                     }
                   : {
-                      fields: [],
                       hasVariableTemplateTagTarget: true,
                       type:
                         tag["widget-type"] ||

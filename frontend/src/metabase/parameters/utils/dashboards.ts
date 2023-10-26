@@ -12,9 +12,9 @@ import type {
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
-  UiParameter,
   FieldFilterUiParameter,
   ParameterWithTarget,
+  UiParameter,
 } from "metabase-lib/parameters/types";
 import {
   getTargetFieldFromCard,
@@ -166,7 +166,9 @@ function buildFieldFilterUiParameter(
 
   return {
     ...parameter,
-    fields: uniqueFields,
+    ...(uniqueFields.length > 0 && {
+      fields: uniqueFields,
+    }),
     hasVariableTemplateTagTarget,
   };
 }

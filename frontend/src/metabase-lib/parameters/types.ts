@@ -5,13 +5,21 @@ interface ValuePopulatedParameter extends ParameterWithTemplateTagTarget {
   value?: any;
 }
 
-export interface FieldFilterUiParameter extends ValuePopulatedParameter {
-  fields: Field[];
+export interface UiParameterWithFields extends ValuePopulatedParameter {
+  fields: [Field, ...Field[]];
 }
 
-export type UiParameter = (FieldFilterUiParameter | ValuePopulatedParameter) & {
+export type UiParameter = (
+  | UiParameterWithFields
+  | ValuePopulatedParameter
+  | Parameter
+) & {
   hidden?: boolean;
 };
+
+export type FieldFilterUiParameter =
+  | UiParameterWithFields
+  | ValuePopulatedParameter;
 
 export interface ParameterWithTarget extends Parameter {
   target: ParameterTarget;

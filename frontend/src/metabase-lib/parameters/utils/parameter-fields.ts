@@ -1,12 +1,12 @@
 import type Field from "metabase-lib/metadata/Field";
 import type {
-  FieldFilterUiParameter,
+  UiParameterWithFields,
   UiParameter,
 } from "metabase-lib/parameters/types";
 
 export const hasFields = (
   parameter: UiParameter,
-): parameter is FieldFilterUiParameter => {
+): parameter is UiParameterWithFields => {
   return (
     "fields" in parameter &&
     Array.isArray(parameter.fields) &&

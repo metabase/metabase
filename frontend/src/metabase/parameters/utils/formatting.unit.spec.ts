@@ -95,13 +95,11 @@ describe("metabase/parameters/utils/formatting", () => {
         type: "number/>=",
         value: 1.111111111111,
         expected: "1.111111111111",
-        fields: [],
       },
       {
         type: "number/>=",
         value: 1.111111111111,
         expected: 1.111111111111,
-        fields: [],
         hasVariableTemplateTagTarget: true,
       },
       {
@@ -120,7 +118,6 @@ describe("metabase/parameters/utils/formatting", () => {
         type: "location/city",
         value: "foo",
         expected: "foo",
-        fields: [],
       },
       {
         type: "number/=",

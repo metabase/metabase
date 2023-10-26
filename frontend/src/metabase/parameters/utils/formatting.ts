@@ -6,7 +6,11 @@ import {
   getParameterType,
 } from "metabase-lib/parameters/utils/parameter-type";
 
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type {
+  FieldFilterUiParameter,
+  UiParameter,
+} from "metabase-lib/parameters/types";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { formatDateValue } from "./date-formatting";
 
 function inferValueType(parameter: UiParameter) {
@@ -45,13 +49,15 @@ export function formatParameterValue(
   }
 
   if (isFieldFilterParameter(parameter)) {
+    // we assume the parameter has been modified to be of type FieldFilterUiParameter
+
     // skip formatting field filter parameters mapped to native query variables
-    if (parameter.hasVariableTemplateTagTarget) {
+    if ((parameter as FieldFilterUiParameter).hasVariableTemplateTagTarget) {
       return value;
     }
 
     // format using the parameter's first targeted field
-    if (parameter.fields?.length > 0) {
+    if (hasFields(parameter)) {
       const [firstField] = parameter.fields;
       // when a parameter targets multiple fields we won't know
       // which parameter the value is associated with, meaning we

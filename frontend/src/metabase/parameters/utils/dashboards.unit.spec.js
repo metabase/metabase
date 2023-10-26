@@ -691,7 +691,6 @@ describe("metabase/parameters/utils/dashboards", () => {
           id: "c",
           slug: "slug-c",
           type: "string/=",
-          fields: [],
           hasVariableTemplateTagTarget: false,
         },
         {
@@ -706,7 +705,6 @@ describe("metabase/parameters/utils/dashboards", () => {
           id: "e",
           slug: "slug-e",
           type: "category",
-          fields: [],
           hasVariableTemplateTagTarget: true,
         },
         {

@@ -2,7 +2,6 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockField, createMockParameter } from "metabase-types/api/mocks";
 import { renderWithProviders } from "__support__/ui";
-import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
 import Field from "metabase-lib/metadata/Field";
 
 import { ParameterWidget } from "./ParameterWidget";
@@ -12,14 +11,16 @@ interface SetupOpts {
 }
 
 function setup({ connectedField }: SetupOpts = {}) {
-  const parameter: FieldFilterUiParameter = {
+  const parameter = {
     ...createMockParameter({
       id: "1fe8ce3",
       type: "string/contains",
       slug: "text_contains",
       name: "Text contains",
     }),
-    fields: connectedField ? [connectedField] : [],
+    ...(connectedField && {
+      fields: [connectedField],
+    }),
   };
 
   const setValue = jest.fn();

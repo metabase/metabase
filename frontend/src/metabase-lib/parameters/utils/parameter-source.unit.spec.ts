@@ -48,10 +48,7 @@ describe("canListParameterValues", () => {
   });
 
   it("should not list when there are no fields", () => {
-    const parameter = createMockUiParameter({
-      fields: [],
-    });
-
+    const parameter = createMockUiParameter();
     expect(canListParameterValues(parameter)).toBeFalsy();
   });
 
