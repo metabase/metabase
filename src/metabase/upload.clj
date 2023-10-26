@@ -11,7 +11,7 @@
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
-   [metabase.search.util :as search-util]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]])
   (:import
@@ -154,7 +154,7 @@
 
 (defn- row->types
   [row]
-  (map (comp value->type search-util/normalize) row))
+  (map (comp value->type search.util/normalize) row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond

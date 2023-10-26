@@ -47,7 +47,7 @@
              ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
              (assoc item :actor_id (mt/user->id :crowberto))))
           (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
-            (is (= dash-3 #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
+            (is (= (assoc dash-3 :collection nil) #_dash-2 ;; TODO: this should be dash-2, because dash-3 is archived
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard"))))))
       (mt/with-test-user :rasta
         (mt/with-temporary-setting-values [user-recent-views              []
@@ -57,7 +57,7 @@
                                             "activity/most_recently_viewed_dashboard"))))
           (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :rasta)))
           (testing "Only the user's own views are returned."
-            (is (= dash-1
+            (is (= (assoc dash-1 :collection nil)
                    (mt/user-http-request :rasta :get 200
                                          "activity/most_recently_viewed_dashboard")))))
         (mt/with-temporary-setting-values [user-recent-views              []
@@ -67,6 +67,29 @@
             (mt/with-non-admin-groups-no-root-collection-perms
               (is (nil? (mt/user-http-request :rasta :get 204
                                               "activity/most_recently_viewed_dashboard"))))))))))
+
+(deftest most-recently-viewed-dashboard-views-include-colllection-test
+  (mt/with-temp [:model/Collection coll   {:name "Analytics"}
+                 :model/Dashboard  dash-1 {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))}
+                 :model/Dashboard  dash-2 {:collection_id (:id coll)}]
+    (mt/with-model-cleanup [ViewLog]
+      (mt/with-test-user :crowberto
+        (testing "view a dashboard in a personal collection"
+          (mt/with-temporary-setting-values [user-recent-views              []
+                                             most-recently-viewed-dashboard nil]
+            (events/publish-event! :event/dashboard-read (assoc dash-1 :actor_id (mt/user->id :crowberto)))
+            (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+              (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true))
+                     (mt/user-http-request :crowberto :get 200
+                                           "activity/most_recently_viewed_dashboard"))))))
+
+        (testing "view a dashboard in a public collection"
+          (mt/with-temporary-setting-values [user-recent-views              []
+                                             most-recently-viewed-dashboard nil]
+            (events/publish-event! :event/dashboard-read (assoc dash-2 :actor_id (mt/user->id :crowberto)))
+            (is (= (assoc dash-2 :collection (assoc coll :is_personal false))
+                   (mt/user-http-request :crowberto :get 200
+                                         "activity/most_recently_viewed_dashboard")))))))))
 
 (deftest recent-views-test
   (mt/with-temp [Card      card1 {:name                   "rand-name"

@@ -89,8 +89,9 @@
                  :can_write           true
                  :name                "Our analytics"
                  :authority_level     nil
+                 :is_personal         false
                  :id                  "root"}
-                (assoc (into {} collection) :can_write true)]
+                (assoc (into {:is_personal false} collection) :can_write true)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -904,10 +905,12 @@
                            :name                                     "Our analytics"
                            :id                                       "root"
                            :authority_level                          nil
-                           :can_write                                true}]
+                           :can_write                                true
+                           :is_personal                              false}]
     :effective_location  "/"
     :parent_id           nil
-    :location            "/"}
+    :location            "/"
+    :is_personal         true}
    (select-keys (collection/user->personal-collection (mt/user->id :lucky))
                 [:id :entity_id :created_at])))
 
@@ -1094,7 +1097,8 @@
                  :authority_level                          nil,
                  :name                                     "Our analytics",
                  :id                                       false,
-                 :can_write                                true}
+                 :can_write                                true
+                 :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
                  :personal_owner_id root-owner-id,
@@ -1114,7 +1118,8 @@
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
-              :parent_id           nil}
+              :parent_id           nil
+              :is_personal         false}
              (with-some-children-of-collection nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 

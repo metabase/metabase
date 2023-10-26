@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
-import { breakpointMaxMedium, space } from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 
 export const Variation = styled.div`
   color: ${props => props.color};
@@ -42,15 +42,10 @@ export const PreviousValueContainer = styled.div`
   margin: ${space(0)} ${space(1)};
   gap: ${space(0)};
   line-height: 1.2rem;
-
-  ${breakpointMaxMedium} {
-    margin: ${space(1)};
-    flex-direction: column;
-  }
 `;
 
 export const PreviousValue = styled.h4`
-  color: ${color("text-light")};
+  color: ${color("text-medium")};
 `;
 
 export const Separator = styled.span`
@@ -60,8 +55,13 @@ export const Separator = styled.span`
 
 export const PreviousValueSeparator = styled(Separator)`
   color: ${color("text-light")};
-
-  ${breakpointMaxMedium} {
-    display: none;
-  }
+`;
+export const PreviousValueLabel = styled.span`
+  color: ${color("text-light")};
+`;
+export const ScalarPeriodContent = styled.h3`
+  text-align: center;
+  overflow: hidden;
+  cursor: ${props => props.onClick && "pointer"};
+  font-size: 0.875rem;
 `;
