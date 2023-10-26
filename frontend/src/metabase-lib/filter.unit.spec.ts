@@ -712,7 +712,7 @@ describe("filter", () => {
 
     beforeEach(() => {
       jest.useFakeTimers();
-      jest.setSystemTime(new Date(2015, 0, 1));
+      jest.setSystemTime(new Date(2020, 0, 1));
     });
 
     it.each<Lib.TimeFilterOperatorName>([">", "<"])(
@@ -723,14 +723,14 @@ describe("filter", () => {
           Lib.timeFilterClause({
             operator,
             column,
-            values: [new Date(2020, 0, 1, 10, 20)],
+            values: [new Date(2015, 0, 1, 10, 20)],
           }),
         );
 
         expect(filterParts).toMatchObject({
           operator,
           column: expect.anything(),
-          values: [new Date(2015, 0, 1, 10, 20)],
+          values: [new Date(2020, 0, 1, 10, 20)],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
@@ -742,14 +742,14 @@ describe("filter", () => {
         Lib.timeFilterClause({
           operator: "between",
           column,
-          values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
+          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
         }),
       );
 
       expect(filterParts).toMatchObject({
         operator: "between",
         column: expect.anything(),
-        values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
+        values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
       });
       expect(columnInfo?.name).toBe(columnName);
     });
