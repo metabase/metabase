@@ -11,31 +11,41 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
-const TEST_PEOPLE_TABLE = createPeopleTable();
+const PEOPLE_TABLE = createPeopleTable();
 
-const TEST_BOOLEAN_FIELD = createMockField({
+const BOOLEAN_FIELD = createMockField({
   id: 101,
   table_id: PEOPLE_ID,
-  name: "ACTIVE_SUBSCRIPTION",
-  display_name: "Active Subscription",
+  name: "IS_TRIAL",
+  display_name: "Is Trial",
   base_type: "type/Boolean",
   effective_type: "type/Boolean",
   semantic_type: "type/Category",
 });
 
-const TEST_DB = createSampleDatabase({
+const TIME_FIELD = createMockField({
+  id: 102,
+  table_id: PEOPLE_ID,
+  name: "START_AT",
+  display_name: "Start At",
+  base_type: "type/Time",
+  effective_type: "type/Time",
+  semantic_type: null,
+});
+
+const DATABASE = createSampleDatabase({
   tables: [
     createOrdersTable(),
     createProductsTable(),
     createReviewsTable(),
     createPeopleTable({
-      fields: [...(TEST_PEOPLE_TABLE.fields ?? []), TEST_BOOLEAN_FIELD],
+      fields: [...(PEOPLE_TABLE.fields ?? []), BOOLEAN_FIELD, TIME_FIELD],
     }),
   ],
 });
 
-const TEST_METADATA = createMockMetadata({
-  databases: [TEST_DB],
+const METADATA = createMockMetadata({
+  databases: [DATABASE],
 });
 
 function findColumn(query: Lib.Query, tableName: string, columnName: string) {
@@ -103,8 +113,15 @@ function filterByBooleanColumn(
   return filterByColumn(query, filterClause, Lib.booleanFilterParts);
 }
 
+function filterByTimeColumn(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return filterByColumn(query, filterClause, Lib.timeFilterParts);
+}
+
 describe("filter", () => {
-  const query = createQuery({ metadata: TEST_METADATA });
+  const query = createQuery({ metadata: METADATA });
 
   describe("string filters", () => {
     const tableName = "PRODUCTS";
@@ -245,20 +262,13 @@ describe("filter", () => {
       expect(columnInfo?.name).toBe(columnName);
     });
 
-    it.each<Lib.StringFilterOperatorName>([
-      "=",
-      "!=",
-      "is-null",
-      "not-null",
-      "is-empty",
-      "not-empty",
-    ])(
-      'should ignore case sensitivity options as they are not supported by "%s" operator',
-      () => {
+    it.each<Lib.StringFilterOperatorName>(["=", "!="])(
+      'should ignore case sensitivity options as they are not supported by "%s" operator and 1 value',
+      operator => {
         const { filterParts, columnInfo } = filterByStringColumn(
           query,
           Lib.stringFilterClause({
-            operator: "=",
+            operator,
             column,
             values: ["Gadget"],
             options: { "case-sensitive": true },
@@ -266,9 +276,37 @@ describe("filter", () => {
         );
 
         expect(filterParts).toMatchObject({
-          operator: "=",
+          operator,
           column: expect.anything(),
           values: ["Gadget"],
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.StringFilterOperatorName>([
+      "is-null",
+      "not-null",
+      "is-empty",
+      "not-empty",
+    ])(
+      'should ignore case sensitivity options as they are not supported by "%s" operator without values',
+      operator => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator,
+            column,
+            values: [],
+            options: { "case-sensitive": true },
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [],
           options: {},
         });
         expect(columnInfo?.name).toBe(columnName);
@@ -577,7 +615,7 @@ describe("filter", () => {
 
   describe("boolean filters", () => {
     const tableName = "PEOPLE";
-    const columnName = "ACTIVE_SUBSCRIPTION";
+    const columnName = BOOLEAN_FIELD.name;
     const column = findColumn(query, tableName, columnName);
 
     it.each([true, false])(
@@ -651,5 +689,37 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+  });
+
+  describe("time filters", () => {
+    const tableName = "PEOPLE";
+    const columnName = TIME_FIELD.name;
+    const column = findColumn(query, tableName, columnName);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2015, 0, 1));
+    });
+
+    it.each<Lib.TimeFilterOperatorName>([">", "<"])(
+      'should be able to create and destructure a time filter with "%s" operator and 1 value',
+      operator => {
+        const { filterParts, columnInfo } = filterByTimeColumn(
+          query,
+          Lib.timeFilterClause({
+            operator,
+            column,
+            values: [new Date(2020, 0, 1, 10, 20)],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [new Date(2015, 0, 1, 10, 20)],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
   });
 });

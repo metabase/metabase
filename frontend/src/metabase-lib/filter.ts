@@ -657,11 +657,11 @@ function deserializeDateTime(value: string): Date | null {
 }
 
 function serializeTime(value: Date): string {
-  return moment(value).format(TIME_FORMAT);
+  return moment(value).format(TIME_FORMAT_MS);
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, [TIME_FORMAT, TIME_FORMAT_MS], true);
+  const time = moment(value, [TIME_FORMAT_MS], true);
   if (!time.isValid()) {
     return null;
   }
