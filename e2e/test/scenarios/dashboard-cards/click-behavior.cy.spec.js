@@ -662,25 +662,51 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").click();
+      getCountMapping().should("not.exist");
+      getCreatedAtMapping().should("not.exist");
+      getMonthMapping().should("not.exist");
       getDashboardCard()
         .button()
         .should("have.text", "Open the drill-through menu");
 
+      cy.log("custom destination (URL) behavior for 'Month' column");
+      cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
+      addUrlDestination();
+      modal().within(() => {
+        cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
+          parseSpecialCharSequences: false,
+        });
+        cy.button("Done").click();
+      });
+
+      cy.icon("chevronleft").click();
+
+      getMonthMapping().should("exist");
+      getCountMapping().should("not.exist");
+      getCreatedAtMapping().should("not.exist");
+      getDashboardCard()
+        .button()
+        .should("have.text", "1 column has custom behavior");
+
       cy.log("custom destination (dashboard) behavior for 'Count' column");
       cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+      /**
+       * TODO: remove the next line when metabase#34845 is fixed
+       * @see https://github.com/metabase/metabase/issues/34845
+       */
+      cy.get("aside").findByText("Unknown").click();
       addDashboardDestination();
       cy.get("aside").findByText("No available targets").should("not.exist");
       addTextParameter();
       addTimeParameter();
 
       cy.icon("chevronleft").click();
-
+      getMonthMapping().should("exist");
       getCountMapping().should("exist");
       getCreatedAtMapping().should("not.exist");
-      getMonthMapping().should("not.exist");
       getDashboardCard()
         .button()
-        .should("have.text", "1 column has custom behavior");
+        .should("have.text", "2 columns have custom behavior");
 
       cy.log("custom destination (question) behavior for 'Created at' column");
       cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
@@ -695,33 +721,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       cy.icon("chevronleft").click();
 
-      getCountMapping().should("exist");
-      getCreatedAtMapping().should("exist");
-      getMonthMapping().should("not.exist");
-      getDashboardCard()
-        .button()
-        .should("have.text", "2 columns have custom behavior");
-
-      cy.log("custom destination (URL) behavior for 'Month' column");
-      cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
-      /**
-       * TODO: remove the next line when metabase#34845 is fixed
-       * @see https://github.com/metabase/metabase/issues/34845
-       */
-      cy.get("aside").findByText("Unknown").click();
-      addUrlDestination();
-      modal().within(() => {
-        cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
-          parseSpecialCharSequences: false,
-        });
-        cy.button("Done").click();
-      });
-
-      cy.icon("chevronleft").click();
-
-      getCountMapping().should("exist");
-      getCreatedAtMapping().should("exist");
       getMonthMapping().should("exist");
+      getCountMapping().should("exist");
+      getCreatedAtMapping().should("exist");
       getDashboardCard()
         .button()
         .should("have.text", "3 columns have custom behavior");
