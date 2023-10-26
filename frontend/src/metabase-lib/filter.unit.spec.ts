@@ -24,6 +24,24 @@ function filterByStringColumn(
   };
 }
 
+function filterByNumberColumn(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  const newQuery = Lib.filter(query, 0, filterClause);
+  const [newFilterClause] = Lib.filters(newQuery, 0);
+  const newFilterParts = Lib.numberFilterParts(newQuery, 0, newFilterClause);
+  const newColumnInfo = newFilterParts
+    ? Lib.displayInfo(newQuery, 0, newFilterParts.column)
+    : null;
+
+  return {
+    newQuery,
+    filterParts: newFilterParts,
+    columnInfo: newColumnInfo,
+  };
+}
+
 describe("filter", () => {
   const query = createQuery();
 
@@ -219,6 +237,126 @@ describe("filter", () => {
 
     it("should ignore expressions with non-string arguments", () => {
       const { filterParts } = filterByStringColumn(
+        query,
+        Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("number filters", () => {
+    const tableName = "ORDERS";
+    const columnName = "TOTAL";
+    const column = findColumn(query, tableName, columnName);
+
+    it.each<Lib.NumberFilterOperatorName>(["=", "!=", ">", ">", ">=", "<="])(
+      'should be able to create and destructure a number filter with "%s" operator and a single value',
+      operator => {
+        const { filterParts, columnInfo } = filterByNumberColumn(
+          query,
+          Lib.numberFilterClause({
+            operator,
+            column,
+            values: [10],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [10],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.NumberFilterOperatorName>(["=", "!="])(
+      'should be able to create and destructure a number filter with "%s" operator and multiple values',
+      operator => {
+        const { filterParts, columnInfo } = filterByNumberColumn(
+          query,
+          Lib.numberFilterClause({
+            operator,
+            column,
+            values: [1, 2, 3],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [1, 2, 3],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.NumberFilterOperatorName>(["between"])(
+      'should be able to create and destructure a number filter with "%s" operator and exactly 2 values',
+      operator => {
+        const { filterParts, columnInfo } = filterByNumberColumn(
+          query,
+          Lib.numberFilterClause({
+            operator,
+            column,
+            values: [1, 2],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [1, 2],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.NumberFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure a number filter with "%s" operator without values',
+      operator => {
+        const { filterParts, columnInfo } = filterByNumberColumn(
+          query,
+          Lib.numberFilterClause({
+            operator,
+            column,
+            values: [],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = filterByNumberColumn(
+        query,
+        Lib.expressionClause("starts-with", [
+          findColumn(query, tableName, columnName),
+          "A",
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = filterByNumberColumn(
+        query,
+        Lib.expressionClause("=", [10, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-string arguments", () => {
+      const { filterParts } = filterByNumberColumn(
         query,
         Lib.expressionClause("=", [column, column]),
       );
