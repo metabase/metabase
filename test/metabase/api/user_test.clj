@@ -1253,16 +1253,14 @@
 
 (deftest user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
-    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
-      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
-                                                  :last_name  "Cena"}]
-          (testing "PUT /api/user/:id"
-            (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
-                                  {:first_name "Johnny" :last_name "Appleseed"})
-            (is (= {:topic    :user-update
-                    :user_id  (mt/user->id :crowberto)
-                    :model    "User"
-                    :model_id id
-                    :details  {:first_name "Johnny"
-                               :last_name "Appleseed"}}
-                   (audit-log-test/event :user-update id))))))))
+    (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John" :last_name  "Cena"}]
+      (testing "PUT /api/user/:id"
+        (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                              {:first_name "Johnny" :last_name "Appleseed"})
+        (is (= {:topic    :user-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "User"
+                :model_id id
+                :details  {:previous-value {:common_name "John Cena", :last_name "Cena", :first_name "John"},
+                           :new-value {:common_name "Johnny Appleseed", :last_name "Appleseed", :first_name "Johnny"}}}
+               (audit-log-test/event :user-update id)))))))
