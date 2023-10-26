@@ -8,28 +8,25 @@ export const SearchResultLink = ({
   children,
   leftIcon = null,
   href = null,
-  isEnabled = true,
 }: {
   children: JSX.Element | string | null;
   leftIcon?: JSX.Element | null;
   href?: string | null;
-  isEnabled?: boolean;
 }) => {
   const { isTruncated, ref: truncatedRef } =
     useIsTruncated<HTMLAnchorElement>();
 
-  const componentProps =
-    href && isEnabled
-      ? {
-          as: Anchor,
-          href,
-          td: "underline",
-          onClick: (e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation(),
-        }
-      : {
-          as: Text,
-          td: "none",
-        };
+  const componentProps = href
+    ? {
+        as: Anchor,
+        href,
+        td: "underline",
+        onClick: (e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation(),
+      }
+    : {
+        as: Text,
+        td: "none",
+      };
 
   return (
     <Tooltip isEnabled={isTruncated} tooltip={children}>
