@@ -32,9 +32,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
       dispatch(moveDashCardToTab({ dashCardId, destinationTabId }));
       dispatch(
         addUndo({
-          message: t`Card moved to ${
-            tabs.find(tab => tab.id === destinationTabId)?.name
-          }`,
+          message: t`Card moved`,
           undo: true,
           action: () => {
             dispatch(undoMoveDashCardToTab({ dashCardId }));
@@ -42,7 +40,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
         }),
       );
     },
-    [dashCardId, dispatch, tabs],
+    [dashCardId, dispatch],
   );
 
   if (!showMenu) {
