@@ -236,8 +236,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set").should("have.length", 1);
-      cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_COUNT);
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -277,12 +278,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set").should("have.length", 2);
-      cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
-      cy.findAllByTestId("field-set").should(
-        "contain.text",
-        POINT_CREATED_AT_FORMATTED,
-      );
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -561,8 +560,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set").should("have.length", 1);
-      cy.findByTestId("field-set").should("contain.text", POINT_COUNT);
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_COUNT);
       cy.location("search").should(
         "eq",
         `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
@@ -591,12 +591,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       saveDashboard();
 
       clickLineChartPoint();
-      cy.findAllByTestId("field-set").should("have.length", 2);
-      cy.findAllByTestId("field-set").should("contain.text", POINT_COUNT);
-      cy.findAllByTestId("field-set").should(
-        "contain.text",
-        POINT_CREATED_AT_FORMATTED,
-      );
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
       cy.location("search").should(
         "eq",
         `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
