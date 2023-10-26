@@ -145,6 +145,9 @@ const dashboards = handleActions(
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {
         return produce(state, draftState => {
+          if (draftState[payload.dashboard.id] == null) {
+            draftState[payload.dashboard.id] = {};
+          }
           const draftDashboard = draftState[payload.dashboard.id];
           draftDashboard.collection_id = payload.dashboard.collection_id;
           draftDashboard.collection = payload.dashboard.collection;
