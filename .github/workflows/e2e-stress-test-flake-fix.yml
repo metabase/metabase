@@ -47,6 +47,7 @@ jobs:
         uses: ./.github/actions/e2e-download-uberjar
         with:
           edition: 'ee'
+          was-built: false
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -66,7 +67,7 @@ jobs:
           yarn run test-cypress-run \
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }} \
-          --config-file e2e/support/cypress-stress-test.config.js
+          --config-file e2e/support/cypress-stress-test.config.js \
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Cypress Artifacts upon failure

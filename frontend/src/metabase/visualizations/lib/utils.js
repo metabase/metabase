@@ -3,7 +3,7 @@ import d3 from "d3";
 import { t } from "ttag";
 import crossfilter from "crossfilter";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import { isDimension, isMetric, isDate } from "metabase-lib/types/utils/isa";
 
 export const MAX_SERIES = 100;
