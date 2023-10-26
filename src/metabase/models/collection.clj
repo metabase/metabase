@@ -575,6 +575,9 @@
   ;; Make sure we're not trying to archive the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
+  ;; Make sure we're not trying to archive the Custom Reports Collection...
+  (when (= (perms/default-custom-reports-collection) collection)
+    (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
