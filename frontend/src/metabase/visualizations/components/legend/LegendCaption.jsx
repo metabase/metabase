@@ -19,7 +19,13 @@ const propTypes = {
   icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
+  width: PropTypes.number,
 };
+
+function shouldHideDescription(width) {
+  const HIDE_DESCRIPTION_THRESHOLD = 100;
+  return width != null && width < HIDE_DESCRIPTION_THRESHOLD;
+}
 
 const LegendCaption = ({
   className,
@@ -28,6 +34,7 @@ const LegendCaption = ({
   icon,
   actionButtons,
   onSelectTitle,
+  width,
 }) => {
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
@@ -39,7 +46,7 @@ const LegendCaption = ({
         <Ellipsified>{title}</Ellipsified>
       </LegendLabel>
       <LegendRightContent>
-        {description && (
+        {description && !shouldHideDescription(width) && (
           <Tooltip
             tooltip={
               <Markdown dark disallowHeading unstyleLinks>
