@@ -25,7 +25,10 @@ import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import type { UiParameter } from "metabase-lib/parameters/types";
+import type {
+  FieldFilterUiParameter,
+  UiParameter,
+} from "metabase-lib/parameters/types";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
@@ -94,7 +97,8 @@ const ValuesSourceTypeModal = ({
     >
       {sourceType === null ? (
         <FieldSourceModal
-          parameter={parameter}
+          // if sourceType === null the parameter must have fields
+          parameter={parameter as FieldFilterUiParameter}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
@@ -169,7 +173,7 @@ const SourceTypeOptions = ({
 };
 
 interface FieldSourceModalProps {
-  parameter: UiParameter;
+  parameter: FieldFilterUiParameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
@@ -417,6 +421,10 @@ const getSupportedFields = (question: Question) => {
   return fields.filter(field => field.isString());
 };
 
+/**
+ * if !hasFields(parameter) then exclude the option to set the source type to
+ * "From connected fields" i.e. values_source_type=null
+ */
 const getSourceTypeOptions = (
   parameter: UiParameter,
 ): RadioOption<ValuesSourceType>[] => {
