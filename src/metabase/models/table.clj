@@ -3,6 +3,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
@@ -251,3 +252,9 @@
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))
           [(:name table)]))
+
+;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
+
+(defmethod audit-log/model-details Table
+  [table _event-type]
+  (select-keys table [:id :name :db_id]))

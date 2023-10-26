@@ -1,6 +1,7 @@
 (ns metabase.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
+   [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -8,6 +9,20 @@
    [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
+
+(defn maybe-prepare-update-event-data
+  "When `:audit-db/previous` is present in the event-data, we return a map with previous and new versions of the
+  objects, _keeping only fields that changed_.
+
+  If `:audit-db/previous` is missing, this is a noop."
+  [event]
+  (if-let [previous (:audit-log/previous event)]
+    (let [new (dissoc event :audit-log/previous)
+          [previous-only new-only _both] (data/diff previous new)
+          updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
+      {:previous (select-keys previous updated-keys)
+       :new (select-keys new updated-keys)})
+    event))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -64,10 +79,11 @@
   [topic dashboard]
   (audit-log/record-event! topic dashboard))
 
-(derive ::table-read-event ::event)
-(derive :event/table-read ::table-read-event)
+(derive ::table-event ::event)
+(derive :event/table-read ::table-event)
+(derive :event/table-manual-scan ::table-event)
 
-(methodical/defmethod events/publish-event! ::table-read-event
+(methodical/defmethod events/publish-event! ::table-event
   [topic table]
   (audit-log/record-event! topic table))
 
@@ -135,3 +151,25 @@
   [topic _event]
   (when-not (t2/exists? :model/AuditLog :topic "install")
     (audit-log/record-event! topic {})))
+
+(derive ::database-event ::event)
+(derive :event/database-create ::database-event)
+(derive :event/database-delete ::database-event)
+(derive :event/database-manual-sync ::database-event)
+(derive :event/database-manual-scan ::database-event)
+(derive :event/database-discard-field-values ::database-event)
+
+(methodical/defmethod events/publish-event! ::database-event
+  [topic database]
+  (audit-log/record-event! topic database))
+
+(derive ::database-update-event ::event)
+(derive :event/database-update ::database-update-event)
+
+(methodical/defmethod events/publish-event! ::database-update-event
+  [topic event]
+  (audit-log/record-event! topic
+                           (maybe-prepare-update-event-data event)
+                           api/*current-user-id*
+                           :model/Database
+                           (:id event)))

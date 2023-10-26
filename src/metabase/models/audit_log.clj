@@ -59,9 +59,10 @@
   ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))
          model-name        (model-name model)
-         details           (if (t2/model object)
-                             (model-details object unqualified-topic)
-                             (or object {}))]
+         details           (cond
+                             (:raw? object) (dissoc object :raw?)
+                             (t2/model object) (model-details object unqualified-topic)
+                             :else (or object {}))]
      (t2/insert! :model/AuditLog
                  :topic    unqualified-topic
                  :details  details
