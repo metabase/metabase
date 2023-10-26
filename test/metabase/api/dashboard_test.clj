@@ -548,6 +548,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
+(deftest fetch-dashboard-in-personal-collection-test
+  (testing "GET /api/dashboard/:id"
+    (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
+      (mt/with-temp
+        [:model/Dashboard {dash-id :id} {:collection_id (:id crowberto-personal-coll)}]
+        (is (= (assoc crowberto-personal-coll :is_personal true)
+               (:collection (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id)))))))))
+
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
@@ -619,7 +627,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
-                                            :collection     false
+                                            :collection     true
                                             :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -672,7 +680,7 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
-                                            :collection              false
+                                            :collection              true
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""

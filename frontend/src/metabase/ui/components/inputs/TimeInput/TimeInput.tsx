@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import type { ChangeEvent } from "react";
+// eslint-disable-next-line no-restricted-imports
 import moment from "moment-timezone";
 import { TimeInput as MantineTimeInput } from "@mantine/dates";
 import type { TimeInputProps as MantineTimeInputProps } from "@mantine/dates";

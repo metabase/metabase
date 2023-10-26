@@ -18,6 +18,10 @@
       {
         "paths": [
           {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
             "name": "moment-timezone",
             "message": "Moment is deprecated, please use dayjs"
           }
