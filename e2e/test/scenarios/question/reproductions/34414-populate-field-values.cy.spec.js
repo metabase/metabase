@@ -1,22 +1,35 @@
-import { popover, restore, startNewQuestion } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { popover, restore, visitQuestionAdHoc } from "e2e/support/helpers";
+import {
+  SAMPLE_DATABASE,
+  SAMPLE_DATABASE_ID,
+} from "e2e/support/cypress_sample_database";
 
 const { INVOICES_ID } = SAMPLE_DATABASE;
+
+const INVOICE_MODEL_DETAILS = {
+  name: "Invoices Model",
+  query: { "source-table": INVOICES_ID },
+  dataset: true,
+};
 
 describe("issue 34414", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
-  it("Populate field values after re-adding filter on virtual table field (metabase#33079)", () => {
-    cy.createQuestion({
-      name: "Invoices Model",
-      query: { "source-table": INVOICES_ID },
-      dataset: true,
-    });
+  it("populate field values after re-adding filter on virtual table field (metabase#34414)", () => {
+    cy.createQuestion(INVOICE_MODEL_DETAILS).then(response => {
+      const modelId = response.body.id;
 
-    startNewQuestion();
+      visitQuestionAdHoc({
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DATABASE_ID,
+          query: { "source-table": `card__${modelId}` },
+        },
+      });
+    });
 
     popover().within(() => {
       cy.findByText("Models").click();
@@ -41,7 +54,7 @@ describe("issue 34414", () => {
 });
 
 function assertPlanFieldValues() {
-  cy.contains("Basic");
-  cy.contains("Business");
-  cy.contains("Premium");
+  cy.findByText("Basic").should("be.visible");
+  cy.findByText("Business").should("be.visible");
+  cy.findByText("Premium").should("be.visible");
 }
