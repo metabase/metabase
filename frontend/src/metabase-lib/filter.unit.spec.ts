@@ -9,7 +9,12 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import { temporalBucket } from "metabase-lib";
+import {
+  columnFinder,
+  createQuery,
+  findTemporalBucket,
+} from "metabase-lib/test-helpers";
 
 const PEOPLE_TABLE = createPeopleTable();
 
@@ -117,7 +122,16 @@ function filterByTimeColumn(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
 ) {
-  return filterByColumn(query, filterClause, Lib.timeFilterParts);
+  const { filterParts, columnInfo } = filterByColumn(
+    query,
+    filterClause,
+    Lib.timeFilterParts,
+  );
+  const bucket = filterParts?.column
+    ? temporalBucket(filterParts.column)
+    : null;
+
+  return { filterParts, columnInfo, bucket };
 }
 
 describe("filter", () => {
@@ -738,6 +752,23 @@ describe("filter", () => {
         values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
       });
       expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should remove temporal bucket", () => {
+      const { filterParts, bucket } = filterByTimeColumn(
+        query,
+        Lib.timeFilterClause({
+          operator: ">",
+          column: Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Minute"),
+          ),
+          values: [new Date(2020, 0, 1, 10, 20)],
+        }),
+      );
+
+      expect(filterParts?.column).toBeDefined();
+      expect(bucket).toBeNull();
     });
 
     it("should ignore expressions with not supported operators", () => {
