@@ -81,8 +81,13 @@
     (when changes
       (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
-      (events/publish-event! (if archive? :event/metric-delete :event/metric-update)
-        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
+      (let [topic (if archive? :event/metric-delete :event/metric-update)]
+        (events/publish-event! topic
+                               (cond-> (assoc <>
+                                              :actor_id api/*current-user-id*
+                                              :revision_message revision_message)
+                                 (= topic :event/metric-update)
+                                 (assoc :audit-log/previous existing)))))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Metric` with ID."

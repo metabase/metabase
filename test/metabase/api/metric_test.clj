@@ -159,6 +159,18 @@
                 :definition              {:database 2
                                           :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}})))))))
 
+(deftest audit-log-update-test
+  (mt/with-temp [Database {database-id :id} {}
+                 Table    {table-id :id} {:db_id database-id}
+                 Metric   {:keys [id]} {:table_id table-id}]
+    (mt/user-http-request
+     :crowberto :put 200 (format "metric/%d" id)
+     {:revision_message "meow"
+      :name             "Kitty Neeko"})
+    (is (=? {:new-value {:name "Kitty Neeko" :updated_at #hawk/malli :string}
+             :previous-value {:name "Toucans in the rainforest" :updated_at #hawk/malli :string}}
+            (:details (mt/latest-audit-log-entry "metric-update"))))) )
+
 (deftest archive-test
   (testing "Can we archive a Metric with the PUT endpoint?"
     (t2.with-temp/with-temp [Metric {:keys [id]} {:table_id (mt/id :checkins)}]

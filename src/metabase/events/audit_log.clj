@@ -89,12 +89,25 @@
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
-(derive :event/metric-update ::metric-event)
 (derive :event/metric-delete ::metric-event)
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic object]
   (audit-log/record-event! topic object))
+
+(derive ::metric-update-event ::event)
+(derive :event/metric-update ::metric-update-event)
+(methodical/defmethod events/publish-event! ::metric-update-event
+  [topic metric]
+  (def topic topic)
+  (def metric metric)
+  (log/fatal (apply str (repeat 500 "X")))
+  (audit-log/record-event! topic
+                           (maybe-prepare-update-event-data
+                            (dissoc metric  :revision_message :actor_id :creator))
+                           api/*current-user-id*
+                           :model/Metric
+                           (:id metric)))
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
@@ -148,9 +161,6 @@
 
 (methodical/defmethod events/publish-event! ::segment-update-event
   [topic segment]
-  (def topic topic)
-  (def segment segment)
-  (log/fatal (apply str (repeat 500 "X")))
   (audit-log/record-event! topic
                            (maybe-prepare-update-event-data
                             (dissoc segment  :revision_message :actor_id :creator))
