@@ -632,6 +632,7 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
+const TIME_FORMAT_MS = "HH:mm:SS.sss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function hasTimeParts(date: Date): boolean {
@@ -660,7 +661,7 @@ function serializeTime(value: Date): string {
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMAT, true);
+  const time = moment(value, [TIME_FORMAT, TIME_FORMAT_MS], true);
   if (!time.isValid()) {
     return null;
   }
