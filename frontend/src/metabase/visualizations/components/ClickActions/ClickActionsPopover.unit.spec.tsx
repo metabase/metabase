@@ -23,7 +23,7 @@ import {
 import { ClickActionsPopover } from "metabase/visualizations/components/ClickActions/ClickActionsPopover";
 import type { RegularClickAction } from "metabase/visualizations/types";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   DatasetQuery,
   Filter,

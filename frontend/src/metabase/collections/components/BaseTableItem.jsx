@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import PropTypes from "prop-types";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";

@@ -7,7 +7,7 @@ import {
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { getMode } from "metabase/visualizations/click-actions/lib/modes";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const metadata = createMockMetadata({

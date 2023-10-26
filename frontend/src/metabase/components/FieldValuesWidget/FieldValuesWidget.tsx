@@ -38,7 +38,7 @@ import type {
 } from "metabase-types/api";
 
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/metadata/Field";
 import type Question from "metabase-lib/Question";
 
