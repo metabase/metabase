@@ -41,6 +41,8 @@
 
 (defsetting user-visibility
   (deferred-tru "Note: Sandboxed users will never see suggestions.")
+  ;; we could specify `:values` here, but that would result in invalid options falling back to the default (`:all`),
+  ;; where currently they fall back to `:none`.
   :visibility   :authenticated
   :feature      :email-restrict-recipients
   :type         :keyword

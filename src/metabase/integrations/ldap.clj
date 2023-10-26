@@ -36,10 +36,7 @@
   :type    :keyword
   :default :none
   :audit   :raw-value
-  :setter  (fn [new-value]
-             (when (some? new-value)
-               (assert (#{:none :ssl :starttls} (keyword new-value))))
-             (setting/set-value-of-type! :keyword :ldap-security new-value)))
+  :values #{:none :ssl :starttls})
 
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")

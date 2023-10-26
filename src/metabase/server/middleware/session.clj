@@ -69,40 +69,14 @@
                                                        metabase-session-timeout-cookie]))
 
 (def ^:private possible-session-cookie-samesite-values
-  #{:lax :none :strict nil})
-
-(defn- normalized-session-cookie-samesite [value]
-  (some-> value name u/lower-case-en keyword))
-
-(defn- valid-session-cookie-samesite?
-  [normalized-value]
-  (contains? possible-session-cookie-samesite-values normalized-value))
+  #{:lax :none :strict})
 
 (defsetting session-cookie-samesite
   (deferred-tru "Value for the session cookie's `SameSite` directive.")
   :type :keyword
   :visibility :settings-manager
   :default :lax
-  :getter (fn session-cookie-samesite-getter []
-            (let [value (normalized-session-cookie-samesite
-                         (setting/get-raw-value :session-cookie-samesite))]
-              (if (valid-session-cookie-samesite? value)
-                value
-                (throw (ex-info "Invalid value for session cookie samesite"
-                                {:possible-values possible-session-cookie-samesite-values
-                                 :session-cookie-samesite value})))))
-  :setter (fn session-cookie-samesite-setter
-            [new-value]
-            (let [normalized-value (normalized-session-cookie-samesite new-value)]
-              (if (valid-session-cookie-samesite? normalized-value)
-                (setting/set-value-of-type!
-                 :keyword
-                 :session-cookie-samesite
-                 normalized-value)
-                (throw (ex-info (tru "Invalid value for session cookie samesite")
-                                {:possible-values possible-session-cookie-samesite-values
-                                 :session-cookie-samesite normalized-value
-                                 :http-status 400}))))))
+  :values possible-session-cookie-samesite-values)
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."

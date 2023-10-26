@@ -279,6 +279,7 @@
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
+   :values      (s/maybe #{s/Any})
    :munged-name s/Str
    :namespace   s/Symbol
    :description s/Any            ; description is validated via the macro, not schema
@@ -622,7 +623,7 @@
 
 (defmethod get-value-of-type :keyword
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name keyword? keyword))
+  (get-raw-value setting-definition-or-name keyword? #(keyword (u/lower-case-en %))))
 
 (defmethod get-value-of-type :timestamp
   [_setting-type setting-definition-or-name]
@@ -636,8 +637,21 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
 
-(defn- default-getter-for-type [setting-type]
-  (partial get-value-of-type (keyword setting-type)))
+(defn- getter-for-type [setting-type setting-definition-or-name]
+  (fn []
+    (let [setting (resolve-setting setting-definition-or-name)
+          values (:values setting)
+          value (get-value-of-type (keyword setting-type) setting-definition-or-name)]
+      (cond
+        (nil? values) value
+        (contains? values value) value
+        :else (u/prog1 (:default setting)
+                (log/warn
+                 (format "Invalid value `%s` for setting `%s`. Defaulting to `%s`. Permitted values: `%s`"
+                         value
+                         (setting-name setting)
+                         (:default setting)
+                         values)))))))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -822,8 +836,17 @@
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type! :string setting-definition-or-name (serialize-csv new-value)))
 
-(defn- default-setter-for-type [setting-type]
-  (partial set-value-of-type! (keyword setting-type)))
+(defn- setter-for-type [setting-type setting-definition-or-name]
+  (fn [value]
+    (let [setting (resolve-setting setting-definition-or-name)
+          values (:values setting)]
+      (when-not (or (nil? value)
+                    (nil? values)
+                    (contains? values value))
+        (throw (ex-info (format "Invalid value for %s" (setting-name setting))
+                        {:allowed-values values
+                         :value value})))
+      (set-value-of-type! (keyword setting-type) setting-definition-or-name value))))
 
 (defn- audit-setting-change!
   [{:keys [name audit sensitive?]} previous-value new-value]
@@ -886,11 +909,12 @@
 (defn register-setting!
   "Register a new Setting with a map of [[SettingDefinition]] attributes. Returns the map it was passed. This is used
   internally by [[defsetting]]; you shouldn't need to use it yourself."
-  [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
+  [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, values :values, :as setting}]
   (let [munged-name (munge-setting-name (name setting-name))]
     (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
                (merge
                 {:name           setting-name
+                 :values         values
                  :munged-name    munged-name
                  :namespace      setting-ns
                  :description    nil
@@ -898,8 +922,8 @@
                  :type           setting-type
                  :default        default
                  :on-change      nil
-                 :getter         (partial (default-getter-for-type setting-type) setting-name)
-                 :setter         (partial (default-setter-for-type setting-type) setting-name)
+                 :getter         (getter-for-type setting-type setting-name)
+                 :setter         (setter-for-type setting-type setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
                  :sensitive?     false
@@ -1046,6 +1070,17 @@
 
   The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
   `:integer` setting must be some sort of integer. (default: `nil`)
+
+  ###### `:values`
+
+  An optional set of possible values for the setting. The values must be of the same type as the Setting type, e.g.
+  all possible values of an `:integer` setting must be an integer.
+
+  This affects the default getter and setter for this setting:
+
+  - on *get*, invalid values will be logged, and the *default* value will be returned.
+
+  - on *set*, invalid values will be rejected with an exception.
 
   ###### `:type`
 
