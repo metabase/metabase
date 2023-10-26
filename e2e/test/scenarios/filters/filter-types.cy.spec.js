@@ -4,6 +4,7 @@ import {
   getNotebookStep,
   openProductsTable,
   popover,
+  relativeDatePicker,
   restore,
   visualize,
 } from "e2e/support/helpers";
@@ -304,6 +305,92 @@ const EXCLUDE_DATE_CASES = [
   },
 ];
 
+const RELATIVE_DATE_CASES = [
+  // Past
+  {
+    title: "yesterday",
+    offset: "Past",
+    unit: "day",
+    value: 1,
+    expectedDisplayName: "Created At is yesterday",
+    includeCurrent: true,
+  },
+  {
+    title: "previous 7 days",
+    offset: "Past",
+    unit: "days",
+    value: 7,
+    expectedDisplayName: "Created At is in the previous 7 days",
+  },
+  {
+    title: "previous 3 weeks starting a quarter ago",
+    offset: "Past",
+    unit: "weeks",
+    value: 3,
+    offsetUnit: "quarter",
+    offsetValue: 1,
+    expectedDisplayName:
+      "Created At is in the previous 3 weeks, starting 1 quarter ago",
+  },
+  {
+    title: "previous month",
+    offset: "Past",
+    unit: "month",
+    value: 1,
+    expectedDisplayName: "Created At is in the previous month",
+    includeCurrent: true,
+  },
+  {
+    title: "previous 3 months",
+    offset: "Past",
+    unit: "months",
+    value: 3,
+    expectedDisplayName: "Created At is in the previous 3 months",
+  },
+  {
+    title: "previous two quarters",
+    offset: "Past",
+    unit: "quarters",
+    value: 2,
+    expectedDisplayName: "Created At is in the previous 2 quarters",
+    includeCurrent: true,
+  },
+
+  // Next
+  {
+    title: "next 6 hours",
+    offset: "Next",
+    unit: "hours",
+    value: 6,
+    expectedDisplayName: "Created At is in the next 6 hours",
+    includeCurrent: true,
+  },
+  {
+    title: "tomorrow",
+    offset: "Next",
+    unit: "day",
+    value: 1,
+    expectedDisplayName: "Created At is tomorrow",
+  },
+  {
+    title: "next 7 days starting next month",
+    offset: "Next",
+    unit: "days",
+    value: 7,
+    offsetUnit: "month",
+    offsetValue: 1,
+    expectedDisplayName:
+      "Created At is in the next 7 days, starting 1 month from now",
+  },
+  {
+    title: "next year",
+    offset: "Next",
+    unit: "year",
+    value: 1,
+    expectedDisplayName: "Created At is in the next year",
+  },
+];
+
 describe("scenarios > filters > filter types", () => {
   beforeEach(() => {
     restore();
@@ -392,6 +479,49 @@ describe("scenarios > filters > filter types", () => {
               cy.findByText("Created At").click();
               cy.findByText(shortcut).click();
             });
+            assertFilterName(expectedDisplayName);
+            visualize();
+            assertFiltersExist();
+          });
+        },
+      );
+    });
+
+    describe("relative filters", () => {
+      RELATIVE_DATE_CASES.forEach(
+        ({
+          title,
+          offset,
+          value,
+          unit,
+          offsetUnit,
+          offsetValue,
+          includeCurrent,
+          expectedDisplayName,
+        }) => {
+          it(title, () => {
+            openProductsTable({ mode: "notebook" });
+            filter({ mode: "notebook" });
+
+            popover().within(() => {
+              cy.findByText("Created At").click();
+              cy.findByText("Relative dates…").click();
+              cy.findByRole("tab", { name: offset }).click();
+            });
+
+            relativeDatePicker.setValue({ value, unit });
+
+            if (includeCurrent) {
+              relativeDatePicker.toggleCurrentInterval();
+            } else if (offsetUnit && offsetValue) {
+              relativeDatePicker.addStartingFrom({
+                value: offsetValue,
+                unit: offsetUnit,
+              });
+            }
+
+            popover().button("Add filter").click();
+
             assertFilterName(expectedDisplayName);
             visualize();
             assertFiltersExist();
