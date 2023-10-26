@@ -24,7 +24,7 @@ import {
 import type { EnabledSearchModelType, SearchResult } from "metabase-types/api";
 
 import type { SearchFilters } from "metabase/search/types";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 // Mock PAGE_SIZE so we don't have to generate a ton of elements for the pagination test
 jest.mock("metabase/search/containers/constants", () => ({

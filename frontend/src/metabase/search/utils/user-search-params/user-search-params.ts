@@ -1,6 +1,6 @@
 import type { UserId } from "metabase-types/api";
 import type { SearchQueryParamValue } from "metabase/search/types";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 
 export const parseUserIdArray = (value: SearchQueryParamValue): UserId[] => {
   if (!value) {

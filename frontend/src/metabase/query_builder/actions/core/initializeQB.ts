@@ -22,7 +22,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
