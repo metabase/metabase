@@ -41,7 +41,7 @@
        (keyword? (first x))))
 
 (defn is-clause?
-  "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
+  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
     (is-clause? :count [:count 10])        ; -> true
     (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
@@ -51,6 +51,12 @@
    (if (coll? k-or-ks)
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
+
+(defn get-clause
+  "If `(is-clause? x)` is correct, get the value of `x`."
+  [k-or-ks x]
+  (when (is-clause? k-or-ks x)
+    (rest x)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |

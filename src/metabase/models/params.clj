@@ -100,14 +100,14 @@
        field-ids->param-field-values-ignoring-current-user
        params.field-values/field-id->field-values-for-current-user) param-field-ids)))
 
-(defn- find-template-tag
+(defn- template-tag->field-form
   "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
-    (find-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [[_ tag] card]
-  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)]))
+  (get-in card [:dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(mu/defn param-target->template-tag :- [:maybe mbql.s/TemplateTag]
+(mu/defn param-target->field-clause :- [:maybe mbql.s/Field]
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target card]
@@ -115,18 +115,12 @@
     (when (mbql.u/is-clause? :dimension target)
       (let [[_ dimension] target]
         (try
-          (cond
-            (mbql.u/is-clause? :template-tag dimension)
-            (find-template-tag dimension card)
-
-            (mbql.u/is-clause? :field dimension)
-            {:name         "generated"
-             :display-name "generated"
-             :type         :dimension
-             :widget-type  :string/=
-             :dimension    (unwrap-field-or-expression-clause dimension)})
+          (unwrap-field-or-expression-clause
+           (if (mbql.u/is-clause? :template-tag dimension)
+             (template-tag->field-form dimension card)
+             dimension))
           (catch Throwable e
-            (log/error e (tru "Could not find matching Field ID for target:") target)))))))
+            (log/error e "Could not find matching Field ID for target:" target)))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
@@ -233,8 +227,7 @@
   [dashcards]
   (when-let [fields (seq (for [dashcard dashcards
                                param    (:parameter_mappings dashcard)
-                               :let     [field-clause (:dimension
-                                                       (param-target->template-tag (:target param) (:card dashcard)))]
+                               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
                                :when    field-clause]
                            field-clause))]
     (set fields)))

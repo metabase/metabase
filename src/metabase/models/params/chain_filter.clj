@@ -695,10 +695,7 @@
   (when (seq filter-field-ids)
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (for [id filter-field-ids]
-                                                {:field-id id
-                                                 :op       :=
-                                                 :value    nil
-                                                 :options  nil})
+                                                {:field-id id :value nil})
                                               nil)]
       (set (mbql.u/match (-> mbql-query :query :filter)
              [:field (id :guard integer?) _] id)))))

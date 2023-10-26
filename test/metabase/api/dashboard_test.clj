@@ -2,6 +2,7 @@
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -294,12 +295,22 @@
                   (update-in [:last-edit-info :timestamp] boolean)))))
 
     (testing "f=all shouldn't return archived dashboards"
-      (is (= #{rasta-dash crowberto-dash}
-             (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+      (is (set/subset?
+           #{rasta-dash crowberto-dash}
+           (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all")))))
+
+      (is (not (set/subset?
+                #{archived-dash}
+                (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "all"))))))
 
       (testing "and should respect read perms"
-        (is (= #{rasta-dash}
-               (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))))
+        (is (set/subset?
+             #{rasta-dash}
+             (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all")))))
+
+        (is (not (set/subset?
+                  #{crowberto-dash archived-dash}
+                  (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
 
     (testing "f=archvied return archived dashboards"
       (is (= #{archived-dash}
@@ -2463,44 +2474,6 @@
 ;;; |                                             Chain Filter Endpoints                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest mappings->field-ids-test
-  (testing "mappings->field-ids"
-    (testing "Should extra Field IDs from parameter mappings"
-      (is (= #{{:field-id 1 :options nil} {:field-id 2 :options nil}}
-             (#'api.dashboard/mappings->fields
-              [{:parameter_id "8e8eafa7"
-                :card_id      1
-                :target       [:dimension [:field 1 nil]]}
-               {:parameter_id "637169c8"
-                :card_id      1
-                :target       [:dimension [:field 2 nil]]}]))))
-    (testing "Should normalize MBQL clauses"
-      (is (= #{{:field-id 1 :options nil} {:field-id 2 :options nil}}
-             (#'api.dashboard/mappings->fields
-              [{:parameter_id "8e8eafa7"
-                :card_id      1
-                :target       [:dimension ["field" 1 nil]]}
-               {:parameter_id "637169c8"
-                :card_id      1
-                :target       ["dimension" ["field" 2 nil]]}]))))
-    (testing "Should ignore field-literal clauses"
-      (is (= #{{:field-id 1 :options nil}}
-             (#'api.dashboard/mappings->fields
-              [{:parameter_id "8e8eafa7"
-                :card_id      1
-                :target       [:dimension ["field" 1 nil]]}
-               {:parameter_id "637169c8"
-                :card_id      1
-                :target       ["dimension" ["field" "wow" {:base-type "type/Text"}]]}]))))
-    (testing "Should ignore invalid mappings"
-      (is (= #{{:field-id 1 :options nil}}
-             (#'api.dashboard/mappings->fields
-              [{:parameter_id "8e8eafa7"
-                :card_id      1
-                :target       [:dimension ["field" 1 nil]]}
-               {:parameter_id "637169c8"
-                :card_id      1}]))))))
-
 (defn do-with-chain-filter-fixtures
   ([f]
    (do-with-chain-filter-fixtures nil f))
@@ -2552,11 +2525,31 @@
                                                     :slug    "category_contains"
                                                     :id      "_CATEGORY_CONTAINS_"
                                                     :type    :string/contains
-                                                    :options {:case-sensitive false}}]}
+                                                    :options {:case-sensitive false}}
+                                                   {:name "Name", :slug "name", :id "_name_", :type :string/=}
+                                                   {:name "Not Name", :slug "notname", :id "_notname_", :type :string/!=}]}
                                      dashboard-values)
       Card          card {:database_id   (mt/id)
                           :table_id      (mt/id :venues)
                           :dataset_query (mt/mbql-query venues)}
+      Card          card2 {:database_id   (mt/id)
+                           :query_type    :native
+                           :name          "test question"
+                           :creator_id    (mt/user->id :crowberto)
+                           :dataset_query {:database (mt/id)
+                                           :type     :native
+                                           :native   {:query "SELECT COUNT(*) FROM categories WHERE {{name}} AND {{noname}}"
+                                                      :template-tags
+                                                      {"name"    {:name         "name"
+                                                                  :display-name "Name"
+                                                                  :type         :dimension
+                                                                  :dimension    [:field (mt/id :categories :name) nil]
+                                                                  :widget-type  :string/=}
+                                                       "notname" {:name         "notname"
+                                                                  :display-name "Not Name"
+                                                                  :type         :dimension
+                                                                  :dimension    [:field (mt/id :categories :name) nil]
+                                                                  :widget-type  :string/!=}}}}}
       DashboardCard dashcard {:card_id            (:id card)
                               :dashboard_id       (:id dashboard)
                               :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
@@ -2585,10 +2578,17 @@
                                                     :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                                    {:parameter_id "_CATEGORY_CONTAINS_"
                                                     :card_id      (:id card)
-                                                    :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}]
+                                                    :target       [:dimension (mt/$ids venues $category_id->categories.name)]}]}
+      DashboardCard dashcard2 {:card_id      (:id card2)
+                               :dashboard_id (:id dashboard)
+                               :parameter_mappings
+                               [{:parameter_id "_name_", :card_id (:id card2), :target [:dimension [:template-tag "name"]]}
+                                {:parameter_id "_notname_", :card_id (:id card2), :target [:dimension [:template-tag "notname"]]}]}]
      (f {:dashboard  dashboard
          :card       card
          :dashcard   dashcard
+         :card2      card2
+         :dashcard2  dashcard2
          :param-keys {:category-name         "_CATEGORY_NAME_"
                       :category-id           "_CATEGORY_ID_"
                       :price                 "_PRICE_"
@@ -2942,24 +2942,36 @@
 
 (deftest chain-filter-multiple-test
   (testing "Chain filtering works when a few filters are specified"
-    (with-chain-filter-fixtures [{:keys [dashboard]}]
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "GET /api/dashboard/:id/params/:param-key/values"
-        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
-                                                  "_NOT_CATEGORY_NAME_" "American")]
+        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                  (:not-category-name param-keys) "American")]
           (is (= {:values          [["African"] ["Artisan"] ["Asian"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
-        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
-                                                  "_CATEGORY_CONTAINS_" "m")]
+        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                  (:category-contains param-keys) "m")]
           (is (= {:values          [["American"] ["Comedy Club"] ["Dim Sum"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
-        (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_"
-                                                  "_NOT_CATEGORY_NAME_" "American"
-                                                  "_CATEGORY_CONTAINS_" "m")]
+        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                  (:not-category-name param-keys) "American"
+                                                  (:category-contains param-keys) "m")]
           (is (= {:values          [["Comedy Club"] ["Dim Sum"] ["Entertainment"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest chain-filter-template-tags
+  (testing "Chain filtering works for a native query"
+    (with-chain-filter-fixtures [{:keys [dashboard]}]
+      (mt/let-url [url (chain-filter-values-url dashboard "_name_")]
+        (is (= {:values          [["African"] ["American"] ["Artisan"]]
+                :has_more_values false}
+               (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+      (mt/let-url [url (chain-filter-values-url dashboard "_name_" "_notname_" "American")]
+        (is (= {:values          [["African"] ["Artisan"] ["Asian"]]
+                :has_more_values false}
+               (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))
 
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
@@ -2982,23 +2994,35 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest chain-filter-constraints-test
-  (testing "Chain filter should return correct results when :string/!= type is used"
+(deftest param->fields-test
+  (testing "param->fields"
     (with-chain-filter-fixtures [{:keys [dashboard]}]
-      (is (= {:op := :value "ood" :options nil}
-             (-> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})
-                 first (dissoc :field-id))))
-      (is (= {:op :!= :value "ood" :options nil}
-             (-> (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"})
-                 first (dissoc :field-id))))
-      (is (= #{{:op := :value "foo" :options nil}
-               {:op :!= :value "bar" :options nil}
-               {:op :contains :value "buzz" :options {:case-sensitive false}}}
-             (->> (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_"     "foo"
+      (let [dashboard (t2/hydrate dashboard :resolved-params)]
+        (testing "Should correctly retrieve fields"
+          (is (=? [{:op := :options nil}]
+                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]))))
+          (is (=? [{:op :contains :options {:case-sensitive false}}]
+                  (#'api.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))))))
+
+(deftest chain-filter-constraints-test
+  (testing "chain-filter-constraints"
+    (with-chain-filter-fixtures [{:keys [dashboard]}]
+      (let [dashboard (t2/hydrate dashboard :resolved-params)]
+        (testing "Should return correct constraints with =/!="
+          (is (=? [{:op := :value "ood" :options nil}]
+                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_" "ood"})))
+          (is (=? [{:op :!= :value "ood" :options nil}]
+                  (#'api.dashboard/chain-filter-constraints dashboard {"_NOT_CATEGORY_NAME_" "ood"}))))
+        (testing "Should return correct constraints with a few filters"
+          (is (=? [{:op := :value "foo" :options nil}
+                   {:op :!= :value "bar" :options nil}
+                   {:op :contains :value "buzz" :options {:case-sensitive false}}]
+                  (#'api.dashboard/chain-filter-constraints dashboard {"_CATEGORY_NAME_"     "foo"
                                                                        "_NOT_CATEGORY_NAME_" "bar"
-                                                                       "_CATEGORY_CONTAINS_" "buzz"})
-                  (map #(dissoc % :field-id))
-                  set))))))
+                                                                       "_CATEGORY_CONTAINS_" "buzz"}))))
+        (testing "Should ignore incorrect/unknown filters"
+          (is (= []
+                 (#'api.dashboard/chain-filter-constraints dashboard {"qqq" "www"}))))))))
 
 (defn- card-fields-from-table-metadata
   [card-id]

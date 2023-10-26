@@ -13,6 +13,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.card :refer [Card]]
@@ -463,8 +464,7 @@
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
-  (when-let [field-clause (:dimension
-                           (params/param-target->template-tag target {:dataset_query query}))]
+  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
@@ -786,51 +786,51 @@
   "How many results to return when chain filtering"
   1000)
 
-(mu/defn ^:private mappings->fields :- [:maybe [:set [:map
-                                                         [:field-id ms/PositiveInt]
-                                                         [:options [:maybe map?]]]]]
-  [parameter-mappings :- [:maybe [:or [:set dashboard-card/ParamMapping] [:sequential dashboard-card/ParamMapping]]]]
-  (set (for [{{:keys [card]} :dashcard :keys [target]} parameter-mappings
-             :let  [ttag (params/param-target->template-tag target card)]
-             :when ttag
-             :let  [{:keys [result_metadata]} card
-                    options  (:options ttag)
-                    field-id (or
-                              ;; Get the field id from the field-clause if it contains it. This is the common case for
-                              ;; mbql queries.
-                              (mbql.u/match-one (:dimension ttag) [:field (id :guard integer?) _] id)
-                              ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                              ;; This is the common case for native queries in which mappings from original columns
-                              ;; have been performed using model metadata.
-                              (:id (qp.util/field->field-info (:dimension ttag) result_metadata)))]
-             :when field-id]
-         {:field-id field-id
-          :options  options})))
+(defn- find-template-tag
+  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
 
-(defn- param-key->param
-  "Get Field ID(s) associated with a parameter in a Dashboard.
+    (find-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+  [dimension card]
+  (when-let [tag (first (mbql.u/get-clause :template-tag dimension))]
+    (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
-    (param-key->param (t2/select-one Dashboard :id 62) \"ee876336\")
-    ;; -> #{276}"
-  [dashboard param-key]
-  {:pre [(string? param-key)]}
-  (let [{:keys [resolved-params]} (t2/hydrate dashboard :resolved-params)]
-    (get resolved-params param-key)))
+(defn- param->op [{:keys [type]}]
+  (if (get-in mbql.s/parameter-types [type :operator])
+    (keyword (name type))
+    :=))
 
-(defn- chain-filter-constraints [dashboard constraint-param-key->value]
+(mu/defn ^:private param->fields
+  [{:keys [mappings] :as param} :- mbql.s/Parameter]
+  (for [{:keys [target] {:keys [card]} :dashcard} mappings
+        :let  [dimension (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                              (mbql.u/get-clause :dimension)
+                              first)]
+        :when dimension
+        :let  [ttag      (find-template-tag dimension card)
+               dimension (if ttag
+                           (:dimension ttag)
+                           dimension)
+               field-id  (or
+                          ;; Get the field id from the field-clause if it contains it. This is the common case
+                          ;; for mbql queries.
+                          (mbql.u/match-one dimension [:field (id :guard integer?) _] id)
+                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                          ;; This is the common case for native queries in which mappings from original columns
+                          ;; have been performed using model metadata.
+                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
+        :when field-id]
+    {:field-id field-id
+     :op       (param->op param)
+     :options  (merge (:options ttag)
+                      (:options param))}))
+
+(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
+  [dashboard constraint-param-key->value]
   (vec (for [[param-key value] constraint-param-key->value
-             :let              [param      (param-key->param dashboard param-key)
-                                param-type (:type param)
-                                operator?  (get-in mbql.s/parameter-types [param-type :operator])
-                                op         (if operator?
-                                             (keyword (name param-type))
-                                             :=)]
-             field             (mappings->fields (:mappings param))]
-         {:field-id (:field-id field)
-          :op       op
-          :value    value
-          :options  (merge (:options field)
-                           (:options param))})))
+             :let              [param (get-in dashboard [:resolved-params param-key])]
+             :when             param
+             field             (param->fields param)]
+         (assoc field :value value))))
 
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
@@ -843,9 +843,10 @@
     param-key                   :- ms/NonBlankString
     constraint-param-key->value :- ms/Map
     query                       :- [:maybe ms/NonBlankString]]
-   (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
-         param       (param-key->param dashboard param-key)
-         field-ids   (map :field-id (mappings->fields (:mappings param)))]
+   (let [dashboard   (t2/hydrate dashboard :resolved-params)
+         constraints (chain-filter-constraints dashboard constraint-param-key->value)
+         param       (get-in dashboard [:resolved-params param-key])
+         field-ids   (map :field-id (param->fields param))]
      (when (empty? field-ids)
        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                        {:param       (get (:resolved-params dashboard) param-key)
@@ -853,11 +854,11 @@
      ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
      ;; separate query for each Field (for parameters that are mapped to more than one Field)
      (try
-       (let [results (map (if (seq query)
-                            #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                            #(chain-filter/chain-filter % constraints :limit result-limit))
-                          field-ids)
-             values (distinct (mapcat :values results))
+       (let [results         (map (if (seq query)
+                                    #(chain-filter/chain-filter-search % constraints query :limit result-limit)
+                                    #(chain-filter/chain-filter % constraints :limit result-limit))
+                                  field-ids)
+             values          (distinct (mapcat :values results))
              has_more_values (boolean (some true? (map :has_more_values results)))]
          ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
          {:values          (cond->> values
