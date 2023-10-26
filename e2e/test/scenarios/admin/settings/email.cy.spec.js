@@ -9,8 +9,16 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to save email settings (metabase#17615)", () => {
+  it("should be able to save email settings", () => {
+    // first time SMTP setup should redirect user to SMTP connection form
+    // at "/admin/settings/email/smtp"
     cy.visit("/admin/settings/email");
+    cy.url().should(
+      "equal",
+      Cypress.config().baseUrl + "/admin/settings/email/smtp",
+    );
+
+    // SMTP connection setup
     cy.findByLabelText("SMTP Host").type("localhost").blur();
     cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
     cy.findByLabelText("SMTP Username").type("admin").blur();
@@ -22,6 +30,13 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.findByText("Save changes").click();
     });
     cy.wait("@smtpSaved");
+
+    // after first time setup, user is redirected top-level page
+    // which contains additional email settings
+    cy.url().should(
+      "equal",
+      Cypress.config().baseUrl + "/admin/settings/email",
+    );
     cy.findByTestId("smtp-connection-card").should("exist");
 
     // Non SMTP-settings should save automatically
@@ -34,8 +49,18 @@ describe("scenarios > admin > settings > email settings", () => {
     // Refresh page to confirm changes persist
     cy.reload();
 
-    // This part was added as a repro for metabase#17615
-    // navigate to SMTP connection form
+    // validate that there is no-redirect after initial setup
+    cy.url().should(
+      "equal",
+      Cypress.config().baseUrl + "/admin/settings/email",
+    );
+
+    // validate additional settings
+    cy.findByDisplayValue("mailer@metabase.test");
+    cy.findByDisplayValue("Sender Name");
+    cy.findByDisplayValue("reply-to@metabase.test");
+
+    // validate SMTP connection settings
     cy.findByTestId("smtp-connection-card")
       .findByText("Edit Configuration")
       .click();
@@ -43,11 +68,8 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue(SMTP_PORT);
     cy.findAllByDisplayValue("admin");
 
-    // navigate to additional settings
+    // breadcrumbs should now show up since it is not a first time configuration
     cy.findByTestId("breadcrumbs").findByText("Email").click();
-    cy.findByDisplayValue("mailer@metabase.test");
-    cy.findByDisplayValue("Sender Name");
-    cy.findByDisplayValue("reply-to@metabase.test");
   });
 
   it("should show an error if test email fails", () => {
