@@ -465,6 +465,33 @@ describe("scenarios > search", () => {
         });
       });
 
+      it("should remove created_by filter when `X` is clicked on filter", () => {
+        cy.visit(`/search?q=reviews&created_by=${NORMAL_USER_ID}`);
+
+        expectSearchResultContent({
+          expectedSearchResults: [
+            {
+              name: NORMAL_USER_TEST_QUESTION.name,
+              timestamp: "Created a few seconds ago by Robert Tableton",
+              collection: "Our analytics",
+            },
+          ],
+        });
+
+        cy.findByTestId("created_by-search-filter").within(() => {
+          cy.findByText("Robert Tableton").should("exist");
+          cy.findByLabelText("close icon").click();
+        });
+
+        expectSearchResultItemNameContent({
+          itemNames: [
+            NORMAL_USER_TEST_QUESTION.name,
+            ADMIN_TEST_QUESTION.name,
+            REVIEWS_TABLE_NAME,
+          ],
+        });
+      });
+
       ["normal", "sandboxed"].forEach(userType => {
         it(`should allow ${userType} (non-admin) user to see users and filter by created_by`, () => {
           cy.signIn(userType);
