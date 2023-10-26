@@ -1,18 +1,61 @@
+import { createMockField, createMockTable } from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+
+const TEST_DB = createSampleDatabase({
+  tables: [
+    createOrdersTable(),
+    createProductsTable(),
+    createReviewsTable(),
+    createPeopleTable(),
+    createMockTable({
+      id: 100,
+      name: "ACCOUNTS",
+      display_name: "Accounts",
+      fields: [
+        createMockField({
+          id: 101,
+          table_id: 100,
+          name: "ACTIVE_SUBSCRIPTION",
+          display_name: "Active Subscription",
+          base_type: "type/Boolean",
+          effective_type: "type/Boolean",
+          semantic_type: "type/Category",
+        }),
+      ],
+    }),
+  ],
+});
+
+const TEST_METADATA = createMockMetadata({
+  databases: [TEST_DB],
+});
 
 function findColumn(query: Lib.Query, tableName: string, columnName: string) {
   const columns = Lib.filterableColumns(query, 0);
   return columnFinder(query, columns)(tableName, columnName);
 }
 
-function filterByStringColumn(
+function filterByColumn<T extends Lib.FilterParts>(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
+  getFilterParts: (
+    query: Lib.Query,
+    stageIndex: number,
+    clause: Lib.FilterClause,
+  ) => T | null,
 ) {
   const newQuery = Lib.filter(query, 0, filterClause);
   const [newFilterClause] = Lib.filters(newQuery, 0);
-  const newFilterParts = Lib.stringFilterParts(newQuery, 0, newFilterClause);
+  const newFilterParts = getFilterParts(newQuery, 0, newFilterClause);
   const newColumnInfo = newFilterParts
     ? Lib.displayInfo(newQuery, 0, newFilterParts.column)
     : null;
@@ -22,28 +65,24 @@ function filterByStringColumn(
     filterParts: newFilterParts,
     columnInfo: newColumnInfo,
   };
+}
+
+function filterByStringColumn(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return filterByColumn(query, filterClause, Lib.stringFilterParts);
 }
 
 function filterByNumberColumn(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
 ) {
-  const newQuery = Lib.filter(query, 0, filterClause);
-  const [newFilterClause] = Lib.filters(newQuery, 0);
-  const newFilterParts = Lib.numberFilterParts(newQuery, 0, newFilterClause);
-  const newColumnInfo = newFilterParts
-    ? Lib.displayInfo(newQuery, 0, newFilterParts.column)
-    : null;
-
-  return {
-    newQuery,
-    filterParts: newFilterParts,
-    columnInfo: newColumnInfo,
-  };
+  return filterByColumn(query, filterClause, Lib.numberFilterParts);
 }
 
 describe("filter", () => {
-  const query = createQuery();
+  const query = createQuery({ metadata: TEST_METADATA });
 
   describe("string filters", () => {
     const tableName = "PRODUCTS";
