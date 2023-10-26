@@ -1,4 +1,4 @@
-(ns metabase.mbql.schema
+(ns ^{:deprecated "0.48.0"} metabase.mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   (:require
@@ -1411,10 +1411,13 @@
    {:error/message "Distinct, non-empty sequence of Field clauses"}
    (helpers/distinct [:sequential {:min 1} Field])])
 
-(def ^:private Page
+(mr/def ::Page
   [:map
    [:page  PositiveInt]
    [:items PositiveInt]])
+
+(def ^:private Page
+  [:ref ::Page])
 
 (mr/def ::MBQLQuery
   [:and
@@ -1857,7 +1860,7 @@
   "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
   (mr/validator Query))
 
-(def ^{:arglists '([query])} validate-query
+(def ^{:arglists '([query])} ^:deprecated validate-query
   "Validator for an outer query; throw an Exception explaining why the query is invalid if it is."
   (let [explainer (mr/explainer Query)]
     (fn [query]

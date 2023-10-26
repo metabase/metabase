@@ -21,6 +21,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -356,6 +357,12 @@
               gtapped-query)))
         query)
     query))
+
+(defenterprise ee-middleware-apply-sandboxing
+  "EE-only: apply sandboxing to the current query."
+  :feature :sandboxes
+  [query]
+  (apply-sandboxing query))
 
 
 ;;;; Post-processing

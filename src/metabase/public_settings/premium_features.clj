@@ -523,14 +523,14 @@
 
 (s/def ::defenterprise-args
   (s/cat :docstr  (s/? string?)
-            :ee-ns   (s/? symbol?)
-            :options (s/? ::defenterprise-options)
-            :fn-tail (s/* any?)))
+         :ee-ns   (s/? symbol?)
+         :options (s/? ::defenterprise-options)
+         :fn-tail (s/* any?)))
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
                                              :schema any?))
-            :defenterprise-args (s/? ::defenterprise-args)))
+         :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
@@ -568,7 +568,7 @@
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
-(defmacro defenterprise-schema
+(defmacro ^:deprecated defenterprise-schema
   "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
   the same as when using `mu/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
   usage details."

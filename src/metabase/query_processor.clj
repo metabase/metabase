@@ -13,84 +13,29 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-default-temporal-unit
-    :as qp.add-default-temporal-unit]
-   [metabase.query-processor.middleware.add-dimension-projections
-    :as qp.add-dimension-projections]
-   [metabase.query-processor.middleware.add-implicit-clauses
-    :as qp.add-implicit-clauses]
-   [metabase.query-processor.middleware.add-implicit-joins
-    :as qp.add-implicit-joins]
-   [metabase.query-processor.middleware.add-rows-truncated
-    :as qp.add-rows-truncated]
-   [metabase.query-processor.middleware.add-source-metadata
-    :as qp.add-source-metadata]
-   [metabase.query-processor.middleware.add-timezone-info
-    :as qp.add-timezone-info]
+   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-rows-truncated :as qp.add-rows-truncated]
+   [metabase.query-processor.middleware.add-timezone-info :as qp.add-timezone-info]
    [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.auto-bucket-datetimes
-    :as qp.auto-bucket-datetimes]
-   [metabase.query-processor.middleware.auto-parse-filter-values
-    :as auto-parse-filter-values]
-   [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.catch-exceptions
-    :as catch-exceptions]
-   [metabase.query-processor.middleware.check-features :as check-features]
+   [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.middleware.cumulative-aggregations
-    :as qp.cumulative-aggregations]
-   [metabase.query-processor.middleware.desugar :as desugar]
-   [metabase.query-processor.middleware.escape-join-aliases
-    :as escape-join-aliases]
-   [metabase.query-processor.middleware.expand-macros :as expand-macros]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
-   [metabase.query-processor.middleware.fix-bad-references
-    :as fix-bad-refs]
+   [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.middleware.large-int-id :as large-int-id]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
    [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.optimize-temporal-filters
-    :as optimize-temporal-filters]
-   [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.persistence :as qp.persistence]
-   [metabase.query-processor.middleware.pre-alias-aggregations
-    :as qp.pre-alias-aggregations]
-   [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses
-    :as prevent-infinite-recursive-preprocesses]
-   [metabase.query-processor.middleware.process-userland-query
-    :as process-userland-query]
-   [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing
-    :as reconcile-bucketing]
-   [metabase.query-processor.middleware.resolve-database-and-driver
-    :as qp.resolve-database-and-driver]
-   [metabase.query-processor.middleware.resolve-fields
-    :as qp.resolve-fields]
-   [metabase.query-processor.middleware.resolve-joined-fields
-    :as resolve-joined-fields]
-   [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-   [metabase.query-processor.middleware.resolve-referenced
-    :as qp.resolve-referenced]
-   [metabase.query-processor.middleware.resolve-source-table
-    :as qp.resolve-source-table]
-   [metabase.query-processor.middleware.results-metadata
-    :as results-metadata]
-   [metabase.query-processor.middleware.splice-params-in-response
-    :as splice-params-in-response]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+   [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
+   [metabase.query-processor.middleware.results-metadata :as results-metadata]
+   [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
    [metabase.query-processor.middleware.store :as store]
-   [metabase.query-processor.middleware.upgrade-field-literals
-    :as upgrade-field-literals]
-   [metabase.query-processor.middleware.validate :as validate]
-   [metabase.query-processor.middleware.validate-temporal-bucketing
-    :as validate-temporal-bucketing]
-   [metabase.query-processor.middleware.visualization-settings
-    :as viz-settings]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.visualization-settings :as viz-settings]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -116,60 +61,6 @@
 ;;; without even knowing about it. So it's better to have this actually error if in cases where it SHOULD be working.
 (when config/tests-available?
   (classloader/require 'metabase.query-processor-test.test-mlv2))
-
-(def ^:private pre-processing-middleware
-  "Pre-processing middleware. Has the form
-
-    (f query) -> query"
-  ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'qp.perms/remove-permissions-key
-   #'validate/validate-query
-   #'expand-macros/expand-macros
-   #'qp.resolve-referenced/resolve-referenced-card-resources
-   #'parameters/substitute-parameters
-   #'qp.resolve-source-table/resolve-source-tables
-   #'qp.auto-bucket-datetimes/auto-bucket-datetimes
-   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'qp.add-source-metadata/add-source-metadata-for-source-queries
-   #'upgrade-field-literals/upgrade-field-literals
-   (resolve 'ee.sandbox.rows/apply-sandboxing)
-   #'qp.persistence/substitute-persisted-query
-   #'qp.add-implicit-clauses/add-implicit-clauses
-   #'qp.add-dimension-projections/add-remapped-columns
-   #'qp.resolve-fields/resolve-fields
-   #'binning/update-binning-strategy
-   #'desugar/desugar
-   #'qp.add-default-temporal-unit/add-default-temporal-unit
-   #'qp.add-implicit-joins/add-implicit-joins
-   #'resolve-joins/resolve-joins
-   #'resolve-joined-fields/resolve-joined-fields
-   #'fix-bad-refs/fix-bad-references
-   #'escape-join-aliases/escape-join-aliases
-   ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'ee.sandbox.rows/apply-sandboxing)
-   #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
-   #'qp.pre-alias-aggregations/pre-alias-aggregations
-   #'qp.wrap-value-literals/wrap-value-literals
-   #'auto-parse-filter-values/auto-parse-filter-values
-   #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'optimize-temporal-filters/optimize-temporal-filters
-   #'limit/add-default-limit
-   (resolve 'ee.perms/apply-download-limit)
-   #'check-features/check-features])
-
-(defn- preprocess*
-  "All [[pre-processing-middleware]] combined into a single function. This still needs to be ran in the context
-  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
-  this with the [[around-middleware]]."
-  [query]
-  (reduce
-   (fn [query middleware]
-     (u/prog1 (cond-> query
-                middleware middleware)
-       (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
-   query
-   pre-processing-middleware))
-
 (def ^:private compile-middleware
   "Middleware for query compilation. Happens after pre-processing. Has the form
 
@@ -255,7 +146,7 @@
   so that [[dev.debug-qp/process-query-debug]] still works as expected."
   (letfn [(combined-pre-process [qp]
             (fn combined-pre-process* [query rff context]
-              (qp (preprocess* query) rff context)))
+              (qp (qp.preprocess/preprocess query) rff context)))
           (combined-post-process [qp]
             (fn combined-post-process* [query rff context]
               (qp query (apply-post-processing-middleware query rff) context)))]
@@ -297,16 +188,13 @@
          query
          args))
 
-(defn preprocess
+(defn ^:deprecated preprocess
   "Return the fully preprocessed form for `query`, the way it would look immediately
-  before [[mbql-to-native/mbql->native]] is called."
+  before [[mbql-to-native/mbql->native]] is called.
+
+  DEPRECATED: use [[qp.preprocess/preprocess]] directly instead."
   [query]
-  (let [qp (qp.reducible/combine-middleware
-            (conj (vec around-middleware)
-                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
-            (fn [query _rff _context]
-              (preprocess* query)))]
-    (qp query nil nil)))
+  (qp.preprocess/preprocess query))
 
 (defn- restore-join-aliases [preprocessed-query]
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
@@ -323,7 +211,7 @@
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
+    (let [preprocessed (-> query qp.preprocess/preprocess restore-join-aliases)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
         (->> (annotate/merged-column-info preprocessed nil)
              ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
@@ -334,13 +222,12 @@
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
+  SQL form). Like [[preprocess]], this function will throw an Exception if preprocessing was not successful."
   [query]
   (let [qp (qp.reducible/combine-middleware
-            (conj (vec around-middleware)
-                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
+            around-middleware
             (fn [query _rff _context]
-              (mbql-to-native/query->native-form (preprocess* query))))]
+              (mbql-to-native/query->native-form (qp.preprocess/preprocess query))))]
     (qp query nil nil)))
 
 (defn compile-and-splice-parameters
@@ -352,7 +239,7 @@
   [query]
   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
   ;; ID is the virtual DB identifier
-  (let [driver (driver.u/database->driver (:database (preprocess query)))]
+  (let [driver (driver.u/database->driver (:database (qp.preprocess/preprocess query)))]
     (driver/splice-parameters-into-native-query driver (compile query))))
 
 

@@ -4,7 +4,9 @@
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]))
 
@@ -91,6 +93,12 @@
               [:query :limit]
               (apply min (filter some? [original-limit max-rows-in-limited-downloads])))
     query))
+
+(defenterprise ee-middleware-apply-download-limit
+  "EE-only: apply a limit to the number of rows for downloads based on EE user perms."
+  :feature :advanced-permissions
+  [query]
+  (apply-download-limit query))
 
 (defn limit-download-result-rows
   "Post-processing middleware to limit the number of rows included in downloads if the user has `limited` download

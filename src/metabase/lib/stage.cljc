@@ -132,7 +132,7 @@
          [breakouts-columns
           aggregations-columns])))
 
-(mu/defn ^:private previous-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn previous-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata for the previous stage, if there is one."
   [query          :- ::lib.schema/query
    stage-number   :- :int
@@ -211,7 +211,7 @@
    (or
     ;; 1a. columns returned by previous stage
     (previous-stage-metadata query stage-number unique-name-fn)
-    ;; 1b or 1c
+    ;; 1b or 1c or 1d
     (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)]
       (or
        ;; 1b: default visible Fields for the source Table
@@ -226,10 +226,12 @@
        (for [col (:columns (:lib/stage-metadata this-stage))]
          (assoc col
                 :lib/source :source/native
-                :lib/source-column-alias  (:name col)
+                ;; TODO -- should these be using `:lib/source-column-alias` or `:lib/desired-column-alias` in
+                ;; preference to `:name`?
+                :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) col)
                 ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
                 ;; that gets added later gets deduplicated from these.
-                :lib/desired-column-alias (unique-name-fn (:name col)))))))))
+                :lib/desired-column-alias (unique-name-fn ((some-fn :lib/desired-column-alias :name) col)))))))))
 
 (mu/defn ^:private existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query
