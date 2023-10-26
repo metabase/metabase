@@ -167,11 +167,10 @@
 (deftest audit-log-segment-test
   (testing "Audit log records updates to segments accurately"
     (t2.with-temp/with-temp [Segment segment]
-      ;; just make sure API call doesn't barf
-      (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
-                                       {:name             "Cool name"
-                                        :revision_message "WOW HOW COOL"
-                                        :definition       {}})))
+      (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
+                            {:name             "Cool name"
+                             :revision_message "WOW HOW COOL"
+                             :definition       {}})
       (is (=? {:new-value {:name "Cool name" :updated_at #hawk/malli :string},
                :previous-value {:name "Toucans in the rainforest" :updated_at #hawk/malli :string}}
               (:details (mt/latest-audit-log-entry "segment-update")))))))
