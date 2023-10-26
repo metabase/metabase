@@ -4,7 +4,11 @@ import type { DashCardId } from "metabase-types/api";
 import { Divider, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";
-import { moveDashCardToTab } from "metabase/dashboard/actions";
+import {
+  moveDashCardToTab,
+  undoMoveDashCardToTab,
+} from "metabase/dashboard/actions";
+import { addUndo } from "metabase/redux/undo";
 import DashCardActionButton from "../DashCardActionButtons/DashCardActionButton";
 import { MoveDashCardActionContainer } from "./DashCardTabMenu.styled";
 
@@ -26,8 +30,19 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
   const moveDashcard = useCallback(
     (destinationTabId: number) => {
       dispatch(moveDashCardToTab({ dashCardId, destinationTabId }));
+      dispatch(
+        addUndo({
+          message: t`Card moved to ${
+            tabs.find(tab => tab.id === destinationTabId)?.name
+          }`,
+          undo: true,
+          action: () => {
+            dispatch(undoMoveDashCardToTab({ dashCardId }));
+          },
+        }),
+      );
     },
-    [dashCardId, dispatch],
+    [dashCardId, dispatch, tabs],
   );
 
   if (!showMenu) {

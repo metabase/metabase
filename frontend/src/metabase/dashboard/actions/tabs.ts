@@ -12,14 +12,12 @@ import type {
 } from "metabase-types/api";
 import type {
   DashboardState,
-  Dispatch,
   SelectedTabId,
   TabDeletionId,
 } from "metabase-types/store";
 import { INITIALIZE } from "metabase/dashboard/actions/core";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-import { addUndo } from "metabase/redux/undo";
 import { checkNotNull } from "metabase/core/utils/types";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getExistingDashCards } from "./utils";
@@ -101,21 +99,6 @@ export const renameTab = createAction<RenameTabPayload>(RENAME_TAB);
 export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 
 export const moveDashCardToTab =
-  ({ destinationTabId, dashCardId }: MoveDashCardToTabPayload) =>
-  (dispatch: Dispatch) => {
-    dispatch(_moveDashCardToTab({ destinationTabId, dashCardId }));
-    dispatch(
-      addUndo({
-        message: t`Card moved`,
-        undo: true,
-        action: () => {
-          dispatch(undoMoveDashCardToTab({ dashCardId }));
-        },
-      }),
-    );
-  };
-
-export const _moveDashCardToTab =
   createAction<MoveDashCardToTabPayload>(MOVE_DASHCARD_TO_TAB);
 
 export const undoMoveDashCardToTab = createAction<UndoMoveDashCardToTabPayload>(
@@ -131,7 +114,7 @@ function getPrevDashAndTabs({
   state,
   filterRemovedTabs = false,
 }: {
-  state: Draft<DashboardState> | DashboardState;
+  state: Draft<DashboardState>;
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
@@ -328,7 +311,7 @@ export const tabsReducer = createReducer<DashboardState>(
     });
 
     builder.addCase(
-      _moveDashCardToTab,
+      moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
         const dashCard = state.dashcards[dashCardId];
         const dashboardId = checkNotNull(state.dashboardId);
