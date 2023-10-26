@@ -40,21 +40,12 @@
                               :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defn- dbms-major-version
-  [db]
-  ;;;; Using try-catch as either destructuring can throw, or returned could be a non number. Happened previously with
-  ;;;; mongo. See issue #29678.
-  (try
-    (let [{[major-version] :semantic-version} (driver/dbms-version :sqlserver db)]
-      (assert (integer? major-version))
-      major-version)
-    (catch Throwable _
-      (log/warn (trs "Unable to determine sqlserver dbms major version. Fallback to 0."))
-      0)))
-
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
-  (>= (dbms-major-version db) 16))
+  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+    (when (zero? major-version)
+      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+    (>= major-version 16)))
 
 (defmethod driver/db-start-of-week :sqlserver
   [_]
