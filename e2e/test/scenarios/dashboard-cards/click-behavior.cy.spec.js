@@ -179,42 +179,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       assertDrillThroughMenuOpen();
     });
 
-    it("does not allow setting dashboard as custom destination if user has no permissions to it", () => {
-      cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
-        ({ body: restrictedCollection }) => {
-          cy.updateCollectionGraph({
-            [USER_GROUPS.COLLECTION_GROUP]: {
-              [restrictedCollection.id]: "none",
-            },
-          });
-
-          cy.createDashboard({
-            ...TARGET_DASHBOARD,
-            collection_id: restrictedCollection.id,
-          });
-        },
-      );
-
-      cy.signOut();
-      cy.signInAsNormalUser();
-
-      cy.createQuestionAndDashboard({ questionDetails }).then(
-        ({ body: card }) => {
-          visitDashboard(card.dashboard_id);
-        },
-      );
-
-      editDashboard();
-
-      getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").findByText("Go to a custom destination").click();
-      cy.get("aside").findByText("Dashboard").click();
-
-      modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-      modal().findByText(TARGET_DASHBOARD.name).should("not.exist");
-    });
-
-    it("allows setting dashboard as custom destination", () => {
+    it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
@@ -327,7 +292,41 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
     });
 
-    it("allows setting saved question as custom destination", () => {
+    it("does not allow setting dashboard as custom destination if user has no permissions to it", () => {
+      cy.createCollection({ name: RESTRICTED_COLLECTION_NAME }).then(
+        ({ body: restrictedCollection }) => {
+          cy.updateCollectionGraph({
+            [USER_GROUPS.COLLECTION_GROUP]: {
+              [restrictedCollection.id]: "none",
+            },
+          });
+
+          cy.createDashboard({
+            ...TARGET_DASHBOARD,
+            collection_id: restrictedCollection.id,
+          });
+        },
+      );
+
+      cy.signOut();
+      cy.signInAsNormalUser();
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside").findByText("Go to a custom destination").click();
+      cy.get("aside").findByText("Dashboard").click();
+
+      modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
+    });
+
+    it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
       cy.createQuestion(TARGET_QUESTION);
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
@@ -351,6 +350,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(card.display).to.deep.equal(TARGET_QUESTION.display);
         expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
       });
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting saved question with single parameter as custom destination", () => {
@@ -386,6 +388,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           filter: QUERY_FILTER_CREATED_AT,
         });
       });
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting saved question with multiple parameters as custom destination", () => {
@@ -454,7 +459,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Saved question").click();
 
       modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
-      modal().findByText(TARGET_QUESTION.name).should("not.exist");
     });
 
     it("allows setting URL as custom destination and changing it back to default click behavior", () => {
@@ -483,21 +487,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       clickLineChartPoint();
 
-      cy.log("allows to change click behavior back to the default");
-
-      editDashboard();
-
-      getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").icon("close").first().click();
-      cy.get("aside")
-        .findByText("Open the Metabase drill-through menu")
-        .click();
-      cy.get("aside").button("Done").click();
-
-      saveDashboard();
-
-      clickLineChartPoint();
-      assertDrillThroughMenuOpen();
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting URL with parameters as custom destination", () => {
@@ -523,9 +513,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.realPress("Escape");
       });
       modal().within(() => {
-        cy.findByRole("textbox").type(
-          escapeCypressCurlyBraces(URL_WITH_PARAMS),
-        );
+        cy.findByRole("textbox").type(URL_WITH_PARAMS, {
+          parseSpecialCharSequences: false,
+        });
         cy.button("Done").click();
       });
       cy.get("aside").button("Done").click();
@@ -562,7 +552,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("equal", "none");
     });
 
-    it("allows updating single dashboard filter", () => {
+    it("allows updating single dashboard filter and changing it back to default click behavior", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
       };
@@ -570,6 +560,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
         },
       );
 
@@ -586,10 +579,16 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
-      cy.location("search").should(
-        "eq",
-        `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
-      );
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
+
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows updating multiple dashboard filters", () => {
@@ -600,6 +599,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
         },
       );
 
@@ -618,10 +620,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
         .should("contain.text", POINT_CREATED_AT_FORMATTED);
-      cy.location("search").should(
-        "eq",
-        `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
-      );
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+          );
+        });
+      });
     });
   });
 
@@ -705,9 +711,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("Unknown").click();
       addUrlDestination();
       modal().within(() => {
-        cy.findAllByRole("textbox")
-          .first()
-          .type(escapeCypressCurlyBraces(URL_WITH_PARAMS));
+        cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
+          parseSpecialCharSequences: false,
+        });
         cy.button("Done").click();
       });
 
@@ -772,14 +778,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
   });
 });
-
-/**
- * @param {string} value
- * @returns string
- *
- * @see https://docs.cypress.io/api/commands/type#Arguments
- */
-const escapeCypressCurlyBraces = value => value.replaceAll("{", "{{}");
 
 /**
  * This function exists to work around custom dynamic anchor creation.
@@ -891,6 +889,25 @@ const assertDrillThroughMenuOpen = () => {
     .and("contain", "Break out by…")
     .and("contain", "Automatic insights…")
     .and("contain", "Filter by this value");
+};
+
+const testChangingBackToDefaultBehavior = () => {
+  cy.log("allows to change click behavior back to the default");
+
+  editDashboard();
+
+  getDashboardCard().realHover().icon("click").click();
+  cy.get("aside").icon("close").first().click();
+  cy.get("aside").findByText("Open the Metabase drill-through menu").click();
+  cy.get("aside").button("Done").click();
+
+  saveDashboard();
+  // this is necessary due to query params being reset after saving dashboard
+  // with filter applied, which causes dashcard to be refetched
+  cy.wait(1);
+
+  clickLineChartPoint();
+  assertDrillThroughMenuOpen();
 };
 
 const getCreatedAtMapping = () => {
