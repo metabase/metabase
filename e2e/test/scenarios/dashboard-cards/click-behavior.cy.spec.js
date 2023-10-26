@@ -19,11 +19,12 @@ import {
 import { createMockActionParameter } from "metabase-types/api/mocks";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
-const URL = "https://example.com/";
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
+const MONTH_COLUMN_NAME = "Month";
+const QUARTER_COLUMN_NAME = "Quarter";
 const FILTER_VALUE = "123";
 const POINT_COUNT = 79;
 const POINT_CREATED_AT = "2022-08";
@@ -66,8 +67,8 @@ const QUESTION_TABLE = {
   query: {
     "source-query": QUESTION_LINE_CHART.query,
     expressions: {
-      Month: ["get-month", CREATED_AT_FIELD],
-      Quarter: ["get-quarter", CREATED_AT_FIELD],
+      [MONTH_COLUMN_NAME]: ["get-month", CREATED_AT_FIELD],
+      [QUARTER_COLUMN_NAME]: ["get-quarter", CREATED_AT_FIELD],
     },
   },
 };
@@ -112,6 +113,15 @@ const QUERY_FILTER_QUANTITY = [
   ["field", ORDERS.QUANTITY, null],
   POINT_COUNT,
 ];
+
+const URL = "https://example.com/";
+const URL_WITH_PARAMS = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
+const URL_WITH_FILLED_PARAMS = URL_WITH_PARAMS.replace(
+  `{{${COUNT_COLUMN_ID}}}`,
+  POINT_COUNT,
+)
+  .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
+  .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -491,13 +501,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows setting URL with parameters as custom destination", () => {
-      const urlWithParams = `${URL}{{${DASHBOARD_FILTER_TEXT.slug}}}/{{${COUNT_COLUMN_ID}}}/{{${CREATED_AT_COLUMN_ID}}}`;
-      const escapedUrlWithParams = escapeCypressCurlyBraces(urlWithParams);
-      const expectedUrlWithParams = urlWithParams
-        .replace(`{{${COUNT_COLUMN_ID}}}`, POINT_COUNT)
-        .replace(`{{${CREATED_AT_COLUMN_ID}}}`, POINT_CREATED_AT)
-        .replace(`{{${DASHBOARD_FILTER_TEXT.slug}}}`, FILTER_VALUE);
-
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
       };
@@ -520,7 +523,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.realPress("Escape");
       });
       modal().within(() => {
-        cy.findByRole("textbox").type(escapedUrlWithParams);
+        cy.findByRole("textbox").type(
+          escapeCypressCurlyBraces(URL_WITH_PARAMS),
+        );
         cy.button("Done").click();
       });
       cy.get("aside").button("Done").click();
@@ -534,7 +539,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       onNextAnchorClick(anchor => {
-        expect(anchor).to.have.attr("href", expectedUrlWithParams);
+        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
       });
@@ -622,6 +627,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
   describe("table", () => {
     const questionDetails = QUESTION_TABLE;
+    const dashboardDetails = {
+      parameters: [DASHBOARD_FILTER_TEXT],
+    };
 
     it("allows setting custom destination for multiple columns", () => {
       cy.createQuestion(TARGET_QUESTION);
@@ -635,8 +643,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           idAlias: "targetDashboardId",
         },
       );
-
-      cy.createQuestionAndDashboard({ questionDetails }).then(
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
         },
@@ -653,7 +660,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .button()
         .should("have.text", "Open the drill-through menu");
 
-      cy.log("custom destination (dashboard) for 'Count' column");
+      cy.log("custom destination (dashboard) behavior for 'Count' column");
       cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
       addDashboardDestination();
       cy.get("aside").findByText("No available targets").should("not.exist");
@@ -664,11 +671,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getCountMapping().should("exist");
       getCreatedAtMapping().should("not.exist");
+      getMonthMapping().should("not.exist");
       getDashboardCard()
         .button()
         .should("have.text", "1 column has custom behavior");
 
-      cy.log("custom destination (question) for 'Created at' column");
+      cy.log("custom destination (question) behavior for 'Created at' column");
       cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
       /**
        * TODO: remove the next line when metabase#34845 is fixed
@@ -683,20 +691,54 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getCountMapping().should("exist");
       getCreatedAtMapping().should("exist");
+      getMonthMapping().should("not.exist");
       getDashboardCard()
         .button()
         .should("have.text", "2 columns have custom behavior");
+
+      cy.log("custom destination (URL) behavior for 'Month' column");
+      cy.get("aside").findByText(MONTH_COLUMN_NAME).click();
+      /**
+       * TODO: remove the next line when metabase#34845 is fixed
+       * @see https://github.com/metabase/metabase/issues/34845
+       */
+      cy.get("aside").findByText("Unknown").click();
+      addUrlDestination();
+      modal().within(() => {
+        cy.findAllByRole("textbox")
+          .first()
+          .type(escapeCypressCurlyBraces(URL_WITH_PARAMS));
+        cy.button("Done").click();
+      });
+
+      cy.icon("chevronleft").click();
+
+      getCountMapping().should("exist");
+      getCreatedAtMapping().should("exist");
+      getMonthMapping().should("exist");
+      getDashboardCard()
+        .button()
+        .should("have.text", "3 columns have custom behavior");
 
       cy.get("aside").button("Done").click();
 
       saveDashboard();
 
+      cy.log("it handles 'Month' column click");
+      cy.findByTestId("field-set").click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.button("Add filter").click();
+      });
+      onNextAnchorClick(anchor => {
+        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+      clickTableCell(COLUMN_INDEX.MONTH);
+
       cy.log("it handles 'Count' column click");
       clickTableCell(COLUMN_INDEX.COUNT);
-      cy.findByTestId("dashboard-name-heading").should(
-        "have.text",
-        TARGET_DASHBOARD.name,
-      );
       cy.findAllByTestId("field-set")
         .should("have.length", 2)
         .should("contain.text", POINT_COUNT)
@@ -855,7 +897,9 @@ const getCreatedAtMapping = () => {
   return cy
     .get("aside")
     .findByText(
-      getBrokenUpTextMatcher(`Created At goes to "${TARGET_QUESTION.name}"`),
+      getBrokenUpTextMatcher(
+        `${CREATED_AT_COLUMN_NAME} goes to "${TARGET_QUESTION.name}"`,
+      ),
     );
 };
 
@@ -863,6 +907,14 @@ const getCountMapping = () => {
   return cy
     .get("aside")
     .findByText(
-      getBrokenUpTextMatcher(`Count goes to "${TARGET_DASHBOARD.name}"`),
+      getBrokenUpTextMatcher(
+        `${COUNT_COLUMN_NAME} goes to "${TARGET_DASHBOARD.name}"`,
+      ),
     );
+};
+
+const getMonthMapping = () => {
+  return cy
+    .get("aside")
+    .findByText(getBrokenUpTextMatcher(`${MONTH_COLUMN_NAME} goes to URL`));
 };
