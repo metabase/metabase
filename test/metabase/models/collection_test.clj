@@ -734,13 +734,23 @@
 
 (deftest perms-for-archiving-exceptions-test
   (testing "If you try to calculate permissions to archive the Root Collection, throw an Exception!"
-    (is (thrown?
+    (is (thrown-with-msg?
          Exception
+         #"You cannot archive the Root Collection."
          (collection/perms-for-archiving collection/root-collection))))
 
+  (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
+    (t2.with-temp/with-temp [Collection cr-collection {}]
+      (with-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
+        (is (thrown-with-msg?
+             Exception
+             #"You cannot archive the Custom Reports Collection."
+             (collection/perms-for-archiving cr-collection))))))
+
   (testing "Let's make sure we get an Exception when we try to archive a Personal Collection"
-    (is (thrown?
+    (is (thrown-with-msg?
          Exception
+         #"You cannot archive a Personal Collection."
          (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
 
   (testing "invalid input"
