@@ -10,6 +10,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -357,3 +358,49 @@
                   [nil nil 3 607]]
                  (mt/rows
                    (qp.pivot/run-pivot-query query)))))))))
+
+(deftest pivot-with-ids-or-named-fields-in-breakout
+  (mt/dataset sample-dataset
+    (testing "Query works when breakout includes field refs with IDs"
+      (let [query        (mt/mbql-query products
+                           {:breakout [$category
+                                       [:field
+                                        (mt/id :products :created_at)
+                                        {:base-type :type/DateTime :temporal-unit :month}]]
+                            :aggregation [[:count]]})
+            viz-settings (select-keys
+                          (mt/query reviews
+                                    {:pivot_table.column_split
+                                     {:rows [$rating]
+                                      :cols [$created_at]}})
+                          [:pivot_table.column_split])]
+
+        (is (schema=
+             {:status    (s/eq :completed)
+              :row_count (s/eq 156)
+              s/Keyword  s/Any}
+             (qp.pivot/run-pivot-query query
+                                       {:visualization-settings viz-settings}
+                                       (context.default/default-context))))))
+
+    (testing "If pivot_table.column_split includes includes field refs that include with field names, query still works"
+      (let [query        (mt/mbql-query products
+                           {:breakout [*category
+                                       [:field
+                                        "CREATED_AT"
+                                        {:base-type :type/DateTime :temporal-unit :month}]]
+                            :aggregation [[:count]]})
+            viz-settings (select-keys
+                          (mt/query reviews
+                                    {:pivot_table.column_split
+                                     {:rows [$rating]
+                                      :cols [$created_at]}})
+                          [:pivot_table.column_split])]
+
+        (is (schema=
+             {:status    (s/eq :completed)
+              :row_count (s/eq 156)
+              s/Keyword  s/Any}
+             (qp.pivot/run-pivot-query query
+                                       {:visualization-settings viz-settings}
+                                       (context.default/default-context))))))))

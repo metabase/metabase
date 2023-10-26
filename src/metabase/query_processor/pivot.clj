@@ -220,7 +220,13 @@
         breakout          (mapv qp.util/field-ref->key
                                 (-> query :query :breakout))
         index-in-breakout (fn [field-ref]
-                            (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref)))
+                            (u/prog1 (.indexOf ^clojure.lang.PersistentVector breakout (qp.util/field-ref->key field-ref))
+                             (when (< <> 0)
+                               (throw (ex-info
+                                       (tru (str "Visualization settings for pivot table is corrupted: "
+                                                 "contains a field reference not in the breakouts"))
+                                       {:query query
+                                        :viz-settings viz-settings})))))
         pivot-rows        (mapv index-in-breakout (:rows column-split))
         pivot-cols        (mapv index-in-breakout (:columns column-split))]
     {:pivot-rows pivot-rows
