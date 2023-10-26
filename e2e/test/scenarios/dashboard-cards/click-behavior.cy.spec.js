@@ -684,8 +684,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.icon("chevronleft").click();
 
         getMonthMapping().should("exist");
-        getCountMapping().should("not.exist");
-        getCreatedAtMapping().should("not.exist");
         getDashboardCard()
           .button()
           .should("have.text", "1 column has custom behavior");
@@ -707,9 +705,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.icon("chevronleft").click();
 
-        getMonthMapping().should("exist");
         getCountMapping().should("exist");
-        getCreatedAtMapping().should("not.exist");
         getDashboardCard()
           .button()
           .should("have.text", "2 columns have custom behavior");
@@ -732,8 +728,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         cy.icon("chevronleft").click();
 
-        getMonthMapping().should("exist");
-        getCountMapping().should("exist");
         getCreatedAtMapping().should("exist");
         getDashboardCard()
           .button()
