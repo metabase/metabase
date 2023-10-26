@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { Icon } from "metabase/core/components/Icon";
