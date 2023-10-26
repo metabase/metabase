@@ -198,12 +198,12 @@ export type ExpressionOperatorName =
   | "not-empty"
   | "starts-with"
   | "ends-with"
+  | "concat"
   | "interval"
   | "time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment"
-  | "concat";
+  | "segment";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
