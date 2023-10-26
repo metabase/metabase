@@ -32,47 +32,121 @@ describe("filter", () => {
     const columnName = "CATEGORY";
     const column = findColumn(query, tableName, columnName);
 
-    it("should be able to create and destructure a string filter", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(
-        query,
-        Lib.stringFilterClause({
-          operator: "=",
-          column,
-          values: ["Gadget", "Widget"],
-          options: {},
-        }),
-      );
+    it.each<Lib.StringFilterOperatorName>([
+      "=",
+      "!=",
+      "contains",
+      "does-not-contain",
+      "starts-with",
+      "ends-with",
+    ])(
+      'should be able to create and destructure a string filter with "%s" operator and a single value',
+      operator => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator,
+            column,
+            values: ["Gadget"],
+            options: {},
+          }),
+        );
 
-      expect(filterParts).toMatchObject({
-        operator: "=",
-        column: expect.anything(),
-        values: ["Gadget", "Widget"],
-        options: {},
-      });
-      expect(columnInfo?.name).toBe(columnName);
-    });
-
-    it("should fill defaults for case sensitivity options", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(
-        query,
-        Lib.stringFilterClause({
-          operator: "starts-with",
-          column,
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
           values: ["Gadget"],
           options: {},
-        }),
-      );
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
 
-      expect(filterParts).toMatchObject({
-        operator: "starts-with",
-        column: expect.anything(),
-        values: ["Gadget"],
-        options: { "case-sensitive": false },
-      });
-      expect(columnInfo?.name).toBe(columnName);
-    });
+    it.each<Lib.StringFilterOperatorName>(["=", "!="])(
+      'should be able to create and destructure a string filter with "%s" operator and multiple values',
+      operator => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator,
+            column,
+            values: ["Gadget", "Widget"],
+            options: {},
+          }),
+        );
 
-    it("should use provided case sensitivity options", () => {
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: ["Gadget", "Widget"],
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.StringFilterOperatorName>([
+      "is-null",
+      "not-null",
+      "is-empty",
+      "not-empty",
+    ])(
+      'should be able to create and destructure a string filter with "%s" operator without values',
+      operator => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator,
+            column,
+            values: [],
+            options: {},
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [],
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.StringFilterOperatorName>([
+      "contains",
+      "does-not-contain",
+      "starts-with",
+      "ends-with",
+    ])(
+      'should fill defaults for case sensitivity options for "%s" operator',
+      () => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator: "starts-with",
+            column,
+            values: ["Gadget"],
+            options: {},
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator: "starts-with",
+          column: expect.anything(),
+          values: ["Gadget"],
+          options: { "case-sensitive": false },
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.StringFilterOperatorName>([
+      "contains",
+      "does-not-contain",
+      "starts-with",
+      "ends-with",
+    ])('should use provided case sensitivity options for "%s" operator', () => {
       const { filterParts, columnInfo } = filterByStringColumn(
         query,
         Lib.stringFilterClause({
@@ -92,25 +166,35 @@ describe("filter", () => {
       expect(columnInfo?.name).toBe(columnName);
     });
 
-    it("should ignore case sensitivity options when they are not supported by the operator", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(
-        query,
-        Lib.stringFilterClause({
-          operator: "=",
-          column,
-          values: ["Gadget"],
-          options: { "case-sensitive": true },
-        }),
-      );
+    it.each<Lib.StringFilterOperatorName>([
+      "=",
+      "!=",
+      "is-null",
+      "not-null",
+      "is-empty",
+      "not-empty",
+    ])(
+      'should ignore case sensitivity options as they are not supported by "%s" operator',
+      () => {
+        const { filterParts, columnInfo } = filterByStringColumn(
+          query,
+          Lib.stringFilterClause({
+            operator: "=",
+            column,
+            values: ["Gadget"],
+            options: { "case-sensitive": true },
+          }),
+        );
 
-      expect(filterParts).toMatchObject({
-        operator: "=",
-        column: expect.anything(),
-        values: ["Gadget"],
-        options: {},
-      });
-      expect(columnInfo?.name).toBe(columnName);
-    });
+        expect(filterParts).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: ["Gadget"],
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
 
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = filterByStringColumn(
