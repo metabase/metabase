@@ -7,7 +7,6 @@
    [java-time :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -570,7 +569,7 @@
   "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (t2/exists? 'Database, :is_sample true))
+  :getter     (fn [] (t2/exists? :model/Database, :is_sample true))
   :doc        false)
 
 (defsetting password-complexity
@@ -693,7 +692,7 @@
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (t2/exists? 'Database
+                    (not (t2/exists? :model/Database
                                      :is_sample false
                                      :is_audit false
                                      :initial_sync_status "complete"))
@@ -715,7 +714,7 @@
   "Sets the :uploads-database-id setting, with an appropriate permission check."
   [new-id]
   (if (or (not-handling-api-request?)
-          (mi/can-write? Database new-id))
+          (mi/can-write? :model/Database new-id))
     (setting/set-value-of-type! :integer :uploads-database-id new-id)
     (api/throw-403)))
 
