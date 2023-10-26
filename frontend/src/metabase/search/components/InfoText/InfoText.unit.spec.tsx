@@ -1,4 +1,5 @@
 import { waitFor } from "@testing-library/react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment";
 import {
   setupCollectionByIdEndpoint,
