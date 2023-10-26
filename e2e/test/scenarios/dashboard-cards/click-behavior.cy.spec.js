@@ -628,10 +628,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         },
       );
 
-      clickTableCell(COLUMN_INDEX.COUNT);
+      getTableCell(COLUMN_INDEX.COUNT).click();
       popover().should("contain.text", "Filter by this value");
 
-      clickTableCell(COLUMN_INDEX.CREATED_AT);
+      getTableCell(COLUMN_INDEX.CREATED_AT).click();
       popover().should("contain.text", "Filter by this date");
 
       editDashboard();
@@ -712,7 +712,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testDashboardDestinationClick() {
         cy.log("it handles 'Count' column click");
 
-        clickTableCell(COLUMN_INDEX.COUNT);
+        getTableCell(COLUMN_INDEX.COUNT).click();
         cy.findAllByTestId("field-set")
           .should("have.length", 2)
           .should("contain.text", POINT_COUNT)
@@ -732,7 +732,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testQuestionDestinationClick() {
         cy.log("it handles 'Created at' column click");
 
-        clickTableCell(COLUMN_INDEX.CREATED_AT);
+        getTableCell(COLUMN_INDEX.CREATED_AT).click();
         cy.findByTestId("qb-filters-panel")
           .should("contain.text", "Created At is August 1–31, 2022")
           .should("contain.text", "Quantity is equal to 79");
@@ -824,7 +824,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testUpdateDashboardFiltersClick() {
         cy.log("it handles 'Count' column click");
 
-        clickTableCell(COLUMN_INDEX.COUNT);
+        getTableCell(COLUMN_INDEX.COUNT).click();
         cy.findAllByTestId("field-set")
           .should("have.length", 1)
           .should("contain.text", POINT_COUNT);
@@ -852,7 +852,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("rel", "noopener");
           expect(anchor).to.have.attr("target", "_blank");
         });
-        clickTableCell(COLUMN_INDEX.CREATED_AT);
+        getTableCell(COLUMN_INDEX.CREATED_AT).click();
       })();
     });
   });
@@ -902,14 +902,6 @@ const clickLineChartPoint = () => {
       const { left, top } = circle.getBoundingClientRect();
       cy.get("body").click(left, top);
     });
-};
-
-const clickTableCell = index => {
-  cy.findAllByTestId("table-row")
-    .eq(POINT_INDEX)
-    .findAllByTestId("cell-data")
-    .eq(index)
-    .click();
 };
 
 const addDashboardDestination = () => {
@@ -987,6 +979,14 @@ const testChangingBackToDefaultBehavior = () => {
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();
+};
+
+const getTableCell = index => {
+  return cy
+    .findAllByTestId("table-row")
+    .eq(POINT_INDEX)
+    .findAllByTestId("cell-data")
+    .eq(index);
 };
 
 const getCreatedAtToQuestionMapping = () => {
