@@ -144,7 +144,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       assertDrillThroughMenuOpen();
     });
 
-    it("allows setting dashboard without filters as custom destination", () => {
+    it("allows setting dashboard without filters as custom destination and changing it back to default click behavior", () => {
       cy.createDashboard(TARGET_DASHBOARD, {
         wrapId: true,
         idAlias: "targetDashboardId",
@@ -291,7 +291,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       modal().findByText(RESTRICTED_COLLECTION_NAME).should("not.exist");
     });
 
-    it("allows setting saved question as custom destination", () => {
+    it("allows setting saved question as custom destination and changing it back to default click behavior", () => {
       cy.createQuestion(TARGET_QUESTION);
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
@@ -315,6 +315,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(card.display).to.deep.equal(TARGET_QUESTION.display);
         expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
       });
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting saved question with single parameter as custom destination", () => {
@@ -350,6 +353,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           filter: QUERY_FILTER_CREATED_AT,
         });
       });
+
+      cy.go("back");
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting saved question with multiple parameters as custom destination", () => {
@@ -452,21 +458,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       clickLineChartPoint();
 
-      cy.log("allows to change click behavior back to the default");
-
-      editDashboard();
-
-      getDashboardCard().realHover().icon("click").click();
-      cy.get("aside").icon("close").first().click();
-      cy.get("aside")
-        .findByText("Open the Metabase drill-through menu")
-        .click();
-      cy.get("aside").button("Done").click();
-
-      saveDashboard();
-
-      clickLineChartPoint();
-      assertDrillThroughMenuOpen();
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows setting URL with parameters as custom destination", () => {
@@ -538,7 +530,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("equal", "none");
     });
 
-    it("allows updating single dashboard filter", () => {
+    it("allows updating single dashboard filter and changing it back to default click behavior", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
       };
@@ -573,6 +565,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           );
         });
       });
+
+      testChangingBackToDefaultBehavior();
     });
 
     it("allows updating multiple dashboard filters", () => {
@@ -713,4 +707,23 @@ const assertDrillThroughMenuOpen = () => {
     .and("contain", "Break out by…")
     .and("contain", "Automatic insights…")
     .and("contain", "Filter by this value");
+};
+
+const testChangingBackToDefaultBehavior = () => {
+  cy.log("allows to change click behavior back to the default");
+
+  editDashboard();
+
+  getDashboardCard().realHover().icon("click").click();
+  cy.get("aside").icon("close").first().click();
+  cy.get("aside").findByText("Open the Metabase drill-through menu").click();
+  cy.get("aside").button("Done").click();
+
+  saveDashboard();
+  // this is necessary due to query params being reset after saving dashboard
+  // with filter applied, which causes dashcard to be refetched
+  cy.wait(1);
+
+  clickLineChartPoint();
+  assertDrillThroughMenuOpen();
 };
