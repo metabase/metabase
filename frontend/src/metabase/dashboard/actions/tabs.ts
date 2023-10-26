@@ -17,8 +17,8 @@ import type {
 } from "metabase-types/store";
 import { INITIALIZE } from "metabase/dashboard/actions/core";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { checkNotNull } from "metabase/lib/types";
 
-import { checkNotNull } from "metabase/core/utils/types";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getExistingDashCards } from "./utils";
 
