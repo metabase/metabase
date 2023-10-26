@@ -22,9 +22,7 @@
    [metabase.util.i18n :as i18n]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,9 +46,10 @@
            (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "NONE")]
              (mw.session/session-cookie-samesite))))
 
-    (is (thrown-with-msg? ExceptionInfo #"Invalid value for session cookie samesite"
-          (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-            (mw.session/session-cookie-samesite))))))
+    (testing "defaults to `:lax` if set to an invalid value"
+      (is (= :lax
+           (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
+             (mw.session/session-cookie-samesite)))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]

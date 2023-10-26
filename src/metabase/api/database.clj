@@ -590,14 +590,8 @@
          " or turn autocompletions off."))
   :visibility :public
   :type       :keyword
-  :default    :substring
-  :setter     (fn [v]
-                (let [v (cond-> v (string? v) keyword)]
-                  (if (autocomplete-matching-options v)
-                    (setting/set-value-of-type! :keyword :native-query-autocomplete-match-style v)
-                    (throw (ex-info (tru "Invalid `native-query-autocomplete-match-style` option")
-                                    {:option v
-                                     :valid-options autocomplete-matching-options}))))))
+  :values     autocomplete-matching-options
+  :default    :substring)
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but

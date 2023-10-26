@@ -73,10 +73,7 @@
   :type       :keyword
   :default    :none
   :visibility :settings-manager
-  :setter  (fn [new-value]
-             (when (some? new-value)
-               (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-             (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+  :values #{:tls :ssl :none :starttls})
 
 ;; ## PUBLIC INTERFACE
 

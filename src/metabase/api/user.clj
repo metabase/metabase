@@ -36,6 +36,8 @@
   :visibility   :authenticated
   :feature      :email-restrict-recipients
   :type         :keyword
+  ;; we could specify `:values` here, but that would result in invalid options falling back to the default (`:all`),
+  ;; where currently they fall back to `:none`.
   :default      :all)
 
 (set! *warn-on-reflection* true)

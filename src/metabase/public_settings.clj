@@ -593,18 +593,8 @@
          "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
-  :default    :sunday
-  :getter     (fn []
-                ;; if something invalid is somehow in the DB just fall back to Sunday
-                (when-let [value (setting/get-value-of-type :keyword :start-of-week)]
-                  (if (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} value)
-                    value
-                    :sunday)))
-  :setter      (fn [new-value]
-                 (when new-value
-                   (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
-                           (trs "Invalid day of week: {0}" (pr-str new-value))))
-                 (setting/set-value-of-type! :keyword :start-of-week new-value)))
+  :values     #{:monday :tuesday :wednesday :thursday :friday :saturday :sunday}
+  :default    :sunday)
 
 (defsetting cloud-gateway-ips-url
   "Store URL for fetching the list of Cloud gateway IP addresses"
