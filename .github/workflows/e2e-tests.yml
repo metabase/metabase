@@ -216,7 +216,7 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
         uses: actions/download-artifact@v3
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Get the version info
         run: |
