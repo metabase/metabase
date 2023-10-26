@@ -68,6 +68,8 @@ jobs:
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
   e2e-tests:
     needs: [build, e2e-matrix-builder]
@@ -112,7 +114,7 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
         uses: actions/download-artifact@v3
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Get the version info
         run: |
@@ -214,7 +216,7 @@ jobs:
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
         uses: actions/download-artifact@v3
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
 
       - name: Get the version info
         run: |
