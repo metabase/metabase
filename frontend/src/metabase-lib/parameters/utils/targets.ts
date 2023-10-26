@@ -1,4 +1,8 @@
-import type { Card, ParameterTarget } from "metabase-types/api";
+import type {
+  Card,
+  ParameterDimensionTarget,
+  ParameterTarget,
+} from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -55,4 +59,18 @@ export function getTargetFieldFromCard(
   const question = new Question(card, metadata);
   const field = getParameterTargetField(target, metadata, question);
   return field ?? null;
+}
+
+export function compareMappingOptionTargets(
+  mappingOption1: ParameterDimensionTarget,
+  mappingOption2: ParameterDimensionTarget,
+  metadata: Metadata,
+) {
+  const [, fieldReference1] = mappingOption1;
+  const [, fieldReference2] = mappingOption2;
+
+  const dimension1 = Dimension.parseMBQL(fieldReference1, metadata);
+  const dimension2 = Dimension.parseMBQL(fieldReference2, metadata);
+
+  return dimension1 && dimension2 && dimension1.isSameBaseDimension(dimension2);
 }

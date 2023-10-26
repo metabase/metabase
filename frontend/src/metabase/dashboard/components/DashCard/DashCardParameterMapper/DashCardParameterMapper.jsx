@@ -6,11 +6,7 @@ import { color } from "metabase/lib/colors";
 import DashCardCardParameterMapper from "./DashCardCardParameterMapper";
 import { MapperSettingsContainer } from "./DashCardParameterMapper.styled";
 
-const DashCardParameterMapper = ({
-  dashcard,
-  isMobile,
-  onDashcardParameterMappingChange,
-}) => (
+const DashCardParameterMapper = ({ dashcard, isMobile }) => (
   <div className="relative flex-full flex flex-column layout-centered">
     {dashcard.series && dashcard.series.length > 0 && (
       <div
@@ -27,7 +23,6 @@ const DashCardParameterMapper = ({
     <MapperSettingsContainer>
       {[dashcard.card].concat(dashcard.series || []).map(card => (
         <DashCardCardParameterMapper
-          onDashcardParameterMappingChange={onDashcardParameterMappingChange}
           key={`${dashcard.id},${card.id}`}
           dashcard={dashcard}
           card={card}

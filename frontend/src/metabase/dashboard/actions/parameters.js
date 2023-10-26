@@ -33,8 +33,6 @@ import { trackAutoApplyFiltersDisabled } from "../analytics";
 
 import { setDashboardAttributes, setDashCardAttributes } from "./core";
 import { setSidebar, closeSidebar } from "./ui";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
-import { getMetadata } from "metabase/selectors/metadata";
 
 function updateParameter(dispatch, getState, id, parameterUpdater) {
   const dashboard = getDashboard(getState());
@@ -118,8 +116,6 @@ export const setParameterMapping = createThunkAction(
     const dashcard = getState().dashboard.dashcards[dashcard_id];
     const isVirtual = isVirtualDashCard(dashcard);
     const isAction = isActionDashCard(dashcard);
-
-    console.log(dashcard, dashcard_id, getState().dashboard.dashcards);
 
     let parameter_mappings = dashcard.parameter_mappings || [];
 

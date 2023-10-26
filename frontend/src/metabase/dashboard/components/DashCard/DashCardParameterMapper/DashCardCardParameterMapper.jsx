@@ -1,22 +1,13 @@
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { t } from "ttag";
 
-import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
-  MOBILE_DEFAULT_CARD_HEIGHT,
-} from "metabase/visualizations/shared/utils/sizes";
-
 import { Icon } from "metabase/core/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
@@ -26,29 +17,25 @@ import {
 } from "metabase/dashboard/utils";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Question from "metabase-lib/Question";
-import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
-
-import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getParameterTarget,
   getParameterMappingOptions,
-} from "../../../selectors";
-import { setParameterMapping } from "../../../actions";
+  getDashcards,
+} from "metabase/dashboard/selectors";
+import { getParameterMappingOptions as getDashcardParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { DashCardCardParameterMapperButton } from "metabase/dashboard/components/DashCard/DashCardParameterMapperButton/DashCardCardParameterMapperButton";
+import { setParameterMapping } from "metabase/dashboard/actions";
+import {
+  compareMappingOptionTargets,
+  isVariableTarget,
+} from "metabase-lib/parameters/utils/targets";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import {
   Container,
   CardLabel,
-  Header,
-  TargetButton,
-  TargetButtonText,
   TextCardDefault,
-  CloseIconButton,
-  ChevrondownIcon,
-  KeyIcon,
   Warning,
   NativeCardDefault,
   NativeCardIcon,
@@ -56,12 +43,16 @@ import {
   NativeCardLink,
 } from "./DashCardCardParameterMapper.styled";
 
-function formatSelected({ name, sectionName }) {
-  if (sectionName == null) {
-    // for native question variables or field literals we just display the name
-    return name;
-  }
-  return `${sectionName}.${name}`;
+function findMatchingMappedOption({
+  dashcardMappingOptions,
+  target,
+  metadata,
+}) {
+  return dashcardMappingOptions
+    .map(mappingOption => mappingOption.target)
+    .find(mappingOptionTarget =>
+      compareMappingOptionTargets(mappingOptionTarget, target, metadata),
+    );
 }
 
 const mapStateToProps = (state, props) => ({
@@ -69,6 +60,7 @@ const mapStateToProps = (state, props) => ({
   target: getParameterTarget(state, props),
   mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
+  dashcards: getDashcards(state),
 });
 
 const mapDispatchToProps = {
@@ -84,7 +76,7 @@ DashCardCardParameterMapper.propTypes = {
   metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
   isMobile: PropTypes.bool,
-  onDashcardParameterMappingChange: PropTypes.func,
+  dashcards: PropTypes.object.isRequired,
 };
 
 export function DashCardCardParameterMapper({
@@ -96,23 +88,59 @@ export function DashCardCardParameterMapper({
   metadata,
   setParameterMapping,
   isMobile,
-  onDashcardParameterMappingChange,
+  dashcards,
 }) {
-  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
-  const selectedMappingOption = _.find(mappingOptions, option =>
-    _.isEqual(normalize(option.target), normalize(target)),
+
+  const availableCardsWithoutEditingParameter = useMemo(
+    () =>
+      Object.values(dashcards).filter(
+        dashcard =>
+          !dashcard.parameter_mappings?.some(
+            mapping => mapping.parameter_id === editingParameter.id,
+          ),
+      ),
+    [dashcards, editingParameter.id],
+  );
+
+  const setParameterMappingsForMatchingCards = useCallback(
+    target => {
+      for (const otherDashcard of availableCardsWithoutEditingParameter) {
+        const otherDashcardMappingOptions = getDashcardParameterMappingOptions(
+          metadata,
+          null,
+          otherDashcard.card,
+        );
+
+        const matchingMappedOption = findMatchingMappedOption({
+          dashcardMappingOptions: otherDashcardMappingOptions,
+          target,
+          metadata,
+        });
+
+        if (matchingMappedOption) {
+          setParameterMapping(
+            editingParameter.id,
+            otherDashcard.id,
+            otherDashcard.card.id,
+            matchingMappedOption,
+          );
+        }
+      }
+    },
+    [
+      availableCardsWithoutEditingParameter,
+      editingParameter.id,
+      metadata,
+      setParameterMapping,
+    ],
   );
 
   const handleChangeTarget = useCallback(
     target => {
       if (target) {
-        onDashcardParameterMappingChange({
-          editingParameterId: editingParameter.id,
-          target,
-        });
+        setParameterMappingsForMatchingCards(target);
       }
       setParameterMapping(editingParameter.id, dashcard.id, card.id, target);
     },
@@ -120,107 +148,14 @@ export function DashCardCardParameterMapper({
       card.id,
       dashcard.id,
       editingParameter.id,
-      onDashcardParameterMappingChange,
       setParameterMapping,
+      setParameterMappingsForMatchingCards,
     ],
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
-
-  const hasPermissionsToMap = useMemo(() => {
-    if (isVirtual) {
-      return true;
-    }
-
-    if (!card.dataset_query) {
-      return false;
-    }
-
-    const question = new Question(card, metadata);
-    return question.query().isEditable();
-  }, [card, metadata, isVirtual]);
-
-  const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
-    useMemo(() => {
-      if (!hasPermissionsToMap) {
-        return {
-          buttonVariant: "unauthed",
-          buttonTooltip: t`You don’t have permission to see this question’s columns.`,
-          buttonText: null,
-          buttonIcon: <KeyIcon />,
-        };
-      } else if (isDisabled && !isVirtual) {
-        return {
-          buttonVariant: "disabled",
-          buttonTooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
-          buttonText: t`No valid fields`,
-          buttonIcon: null,
-        };
-      } else if (selectedMappingOption) {
-        return {
-          buttonVariant: "mapped",
-          buttonTooltip: null,
-          buttonText: formatSelected(selectedMappingOption),
-          buttonIcon: (
-            <CloseIconButton
-              onClick={e => {
-                console.log("hello world");
-                handleChangeTarget(null);
-                e.stopPropagation();
-              }}
-            />
-          ),
-        };
-      } else if (target != null) {
-        console.log(target);
-        console.log(mappingOptions);
-
-        return {
-          buttonVariant: "invalid",
-          buttonText: t`Unknown Field`,
-          buttonIcon: (
-            <CloseIconButton
-              onClick={e => {
-                handleChangeTarget(null);
-                e.stopPropagation();
-              }}
-            />
-          ),
-        };
-      } else {
-        return {
-          buttonVariant: "default",
-          buttonTooltip: null,
-          buttonText: t`Select…`,
-          buttonIcon: <ChevrondownIcon />,
-        };
-      }
-    }, [
-      hasPermissionsToMap,
-      isDisabled,
-      selectedMappingOption,
-      target,
-      handleChangeTarget,
-      isVirtual,
-    ]);
-
-  const headerContent = useMemo(() => {
-    const layoutHeight = isMobile
-      ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
-        MOBILE_DEFAULT_CARD_HEIGHT
-      : dashcard.size_y;
-
-    if (layoutHeight > 2) {
-      if (!isVirtual && !(isNative && isDisabled)) {
-        return t`Column to filter on`;
-      } else {
-        return t`Variable to map to`;
-      }
-    }
-    return null;
-  }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
   const mappingInfoText =
     {
@@ -262,54 +197,14 @@ export function DashCardCardParameterMapper({
           >{t`Learn how`}</NativeCardLink>
         </NativeCardDefault>
       ) : (
-        <>
-          {headerContent && (
-            <Header>
-              <Ellipsified>{headerContent}</Ellipsified>
-            </Header>
-          )}
-          <Tooltip tooltip={buttonTooltip}>
-            <TippyPopover
-              visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
-              onClickOutside={() => setIsDropdownVisible(false)}
-              placement="bottom-start"
-              content={
-                <ParameterTargetList
-                  onChange={target => {
-                    handleChangeTarget(target);
-                    setIsDropdownVisible(false);
-                  }}
-                  target={target}
-                  mappingOptions={mappingOptions}
-                />
-              }
-            >
-              <TargetButton
-                variant={buttonVariant}
-                aria-label={buttonTooltip}
-                aria-haspopup="listbox"
-                aria-expanded={isDropdownVisible}
-                aria-disabled={isDisabled || !hasPermissionsToMap}
-                onClick={e => {
-                  e.preventDefault();
-                  setIsDropdownVisible(true);
-                }}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    setIsDropdownVisible(true);
-                  }
-                }}
-              >
-                {buttonText && (
-                  <TargetButtonText>
-                    <Ellipsified>{buttonText}</Ellipsified>
-                  </TargetButtonText>
-                )}
-                {buttonIcon}
-              </TargetButton>
-            </TippyPopover>
-          </Tooltip>
-        </>
+        <DashCardCardParameterMapperButton
+          dashcard={dashcard}
+          card={card}
+          isDisabled={isDisabled}
+          isMobile={isMobile}
+          target={target}
+          handleChangeTarget={handleChangeTarget}
+        />
       )}
       {isVariableTarget(target) && (
         <Warning>

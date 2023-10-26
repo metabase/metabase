@@ -1,15 +1,8 @@
-import {
-  setDashCardAttributes,
-  setParameterMapping,
-} from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useCallback, useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
-import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import type { IconName, IconProps } from "metabase/core/components/Icon";
 
@@ -51,7 +44,6 @@ import {
   VirtualDashCardOverlayText,
 } from "./DashCard.styled";
 import { shouldShowParameterMapper } from "./utils";
-import _ from "underscore";
 
 interface DashCardVisualizationProps {
   dashboard: Dashboard;
@@ -145,55 +137,6 @@ function DashCardVisualization({
     return new Question(dashcard.card, metadata);
   }, [dashcard.card, metadata]);
 
-  const dispatch = useDispatch();
-  const setMapping = (editingParameterId, dashcardId, cardId, target) => {
-    console.log("setMapping: ", editingParameterId, dashcardId, cardId, target);
-
-    return dispatch(
-      setParameterMapping(
-        editingParameterId,
-        dashcardId,
-        cardId,
-        target,
-      ),
-    );
-  };
-
-  const onDashcardParameterMappingChange = ({ editingParameterId, target }) => {
-    const matchedCards = [];
-    for (const dashcard of Object.values(dashboard.dashcards)) {
-      const mappingOptions = getParameterMappingOptions(
-        metadata,
-        null,
-        dashcard.card,
-      );
-
-      const matchingMappedOption = mappingOptions
-        .map(opt => opt.target)
-        .find(optTarget =>
-          _.isEqual(optTarget[1].slice(0, 2), target[1].slice(0, 2)),
-        );
-
-      if (matchingMappedOption) {
-        matchedCards.push({ dashcard, mappingOptions, matchingMappedOption });
-      }
-    }
-
-    for (const {
-      dashcard,
-      mappingOptions,
-      matchingMappedOption,
-    } of matchedCards) {
-      console.log(dashcard, matchingMappedOption, target, mappingOptions);
-      setMapping(
-        editingParameterId,
-        dashcard.id,
-        dashcard.card.id,
-        matchingMappedOption,
-      );
-    }
-  };
-
   const renderVisualizationOverlay = useCallback(() => {
     if (isClickBehaviorSidebarOpen) {
       const disableClickBehavior =
@@ -231,11 +174,7 @@ function DashCardVisualization({
 
     if (shouldShowParameterMapper({ dashcard, isEditingParameter })) {
       return (
-        <DashCardParameterMapper
-          dashcard={dashcard}
-          isMobile={isMobile}
-          onDashcardParameterMappingChange={onDashcardParameterMappingChange}
-        />
+        <DashCardParameterMapper dashcard={dashcard} isMobile={isMobile} />
       );
     }
 
