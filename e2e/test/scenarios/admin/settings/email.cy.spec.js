@@ -22,9 +22,7 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.findByText("Save changes").click();
     });
     cy.wait("@smtpSaved");
-    main().within(() => {
-      cy.findByText("Changes saved!");
-    });
+    cy.findByTestId("smtp-connection-card").should("exist");
 
     // Non SMTP-settings should save automatically
     cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
@@ -37,9 +35,16 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.reload();
 
     // This part was added as a repro for metabase#17615
+    // navigate to SMTP connection form
+    cy.findByTestId("smtp-connection-card")
+      .findByText("Edit Configuration")
+      .click();
     cy.findByDisplayValue("localhost");
     cy.findByDisplayValue(SMTP_PORT);
     cy.findAllByDisplayValue("admin");
+
+    // navigate to additional settings
+    cy.findByTestId("breadcrumbs").findByText("Email").click();
     cy.findByDisplayValue("mailer@metabase.test");
     cy.findByDisplayValue("Sender Name");
     cy.findByDisplayValue("reply-to@metabase.test");
@@ -57,7 +62,7 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-security": "none",
       "email-smtp-username": null,
     });
-    cy.visit("/admin/settings/email");
+    cy.visit("/admin/settings/email/smtp");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Send test email").click();
     cy.findAllByText("Wrong host or port").should("have.length", 2);
@@ -69,7 +74,7 @@ describe("scenarios > admin > settings > email settings", () => {
     () => {
       setupSMTP();
 
-      cy.visit("/admin/settings/email");
+      cy.visit("/admin/settings/email/smtp");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send test email").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -85,14 +90,11 @@ describe("scenarios > admin > settings > email settings", () => {
   );
 
   it("should be able to clear email settings", () => {
-    cy.visit("/admin/settings/email");
+    cy.visit("/admin/settings/email/smtp");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Clear").click();
     cy.findByLabelText("SMTP Host").should("have.value", "");
     cy.findByLabelText("SMTP Port").should("have.value", "");
-    cy.findByLabelText("From Name").should("have.value", "");
-    cy.findByLabelText("From Address").should("have.value", "");
-    cy.findByLabelText("Reply-To Address").should("have.value", "");
   });
 
   it(
@@ -102,36 +104,11 @@ describe("scenarios > admin > settings > email settings", () => {
       // Make sure some settings are already there
       setupSMTP();
 
-      cy.visit("/admin/settings/email");
+      cy.visit("/admin/settings/email/smtp");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send test email").scrollIntoView();
       // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
       cy.button("Save changes").should("be.disabled");
     },
   );
-
-  it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
-    cy.intercept("PUT", "/api/email").as("updateSettings");
-
-    cy.visit("/admin/settings/email");
-
-    // First we fill out wrong settings
-    cy.findByLabelText("SMTP Host")
-      .type("foo") // Invalid SMTP host
-      .blur();
-    cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
-    cy.findByLabelText("SMTP Username").type("admin").blur();
-    cy.findByLabelText("SMTP Password").type("admin").blur();
-    cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
-
-    // Trying to save will trigger the error (as it should)
-    cy.button("Save changes").click();
-
-    cy.wait("@updateSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Wrong host or port");
-
-    // But it shouldn't delete field values
-    cy.findByDisplayValue("mailer@metabase.test");
-  });
 });
