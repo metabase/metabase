@@ -86,7 +86,7 @@
     (when event
       (let [object                         (:object event)
             model                          (events/topic->model topic)
-            model-id                       (events/object->model-id topic object)
+            model-id                       (:id object)
             user-id                        (:actor-id event)
             ;; `:context` comes
             ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],

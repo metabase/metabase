@@ -89,9 +89,9 @@
 
    Takes the following kwargs:
      :topic          Required.  The activity topic.
-     :user-id        Required.  ID of the `User` responsible for the activity.  defaults to (events/object->user-id object)
-     :model          Required.  name of the model representing the activity.  defaults to (events/topic->model topic)
-     :model-id       Required.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
+     :user-id        Required.  ID of the `User` responsible for the activity.
+     :model          Required.  name of the model representing the activity.
+     :model-id       Required.  ID of the model representing the activity.
      :object         Optional.  The activity object being saved.
      :database-id    Optional.  ID of the `Database` related to the activity.
      :table-id       Optional.  ID of the `Table` related to the activity.
@@ -117,11 +117,8 @@
                                            ;; strip off the `:event/` namespace of the topic, added in 0.48.0
                                            :topic       (keyword (name topic))
                                            :user_id     user-id
-                                           :model       (or model (events/topic->model topic))
-                                           :model_id    (or model-id (events/object->model-id topic object)
-                                                            ;; should eventually be (:id object) ;; where object is a
-                                                            ;; key of event
-                                                            (events/object->model-id topic (:object object)))
+                                           :model       model
+                                           :model_id    model-id
                                            :database_id database-id
                                            :table_id    table-id
                                            ;; TODO: test if this custom id is tracked
