@@ -80,7 +80,7 @@ export const RecentsListContent = ({
                   <ResultTitle
                     data-testid="recently-viewed-item-title"
                     truncate
-                    href={onClick ? undefined: getItemUrl(item)}
+                    href={onClick ? undefined : getItemUrl(item)}
                   >
                     {getItemName(item)}
                   </ResultTitle>
