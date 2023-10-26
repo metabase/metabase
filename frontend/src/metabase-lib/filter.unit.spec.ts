@@ -80,6 +80,22 @@ function filterByNumberColumn(
   return filterByColumn(query, filterClause, Lib.numberFilterParts);
 }
 
+function filterByCoordinateColumn(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  const { newQuery, filterParts, columnInfo } = filterByColumn(
+    query,
+    filterClause,
+    Lib.coordinateFilterParts,
+  );
+  const longitudeColumnInfo = filterParts?.longitudeColumn
+    ? Lib.displayInfo(newQuery, 0, filterParts.longitudeColumn)
+    : null;
+
+  return { newQuery, filterParts, columnInfo, longitudeColumnInfo };
+}
+
 function filterByBooleanColumn(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
@@ -103,7 +119,7 @@ describe("filter", () => {
       "starts-with",
       "ends-with",
     ])(
-      'should be able to create and destructure a string filter with "%s" operator and a single value',
+      'should be able to create and destructure a string filter with "%s" operator and 1 value',
       operator => {
         const { filterParts, columnInfo } = filterByStringColumn(
           query,
@@ -296,7 +312,7 @@ describe("filter", () => {
     const column = findColumn(query, tableName, columnName);
 
     it.each<Lib.NumberFilterOperatorName>(["=", "!=", ">", ">", ">=", "<="])(
-      'should be able to create and destructure a number filter with "%s" operator and a single value',
+      'should be able to create and destructure a number filter with "%s" operator and 1 value',
       operator => {
         const { filterParts, columnInfo } = filterByNumberColumn(
           query,
@@ -402,6 +418,155 @@ describe("filter", () => {
 
     it("should ignore expressions with non-string arguments", () => {
       const { filterParts } = filterByNumberColumn(
+        query,
+        Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("coordinate filters", () => {
+    const tableName = "PEOPLE";
+    const columnName = "LATITUDE";
+    const column = findColumn(query, tableName, columnName);
+
+    it.each<Lib.CoordinateFilterOperatorName>([
+      "=",
+      "!=",
+      ">",
+      ">",
+      ">=",
+      "<=",
+    ])(
+      'should be able to create and destructure a coordinate filter with "%s" operator and 1 value',
+      operator => {
+        const { filterParts, columnInfo } = filterByCoordinateColumn(
+          query,
+          Lib.coordinateFilterClause({
+            operator,
+            column,
+            values: [10],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [10],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.CoordinateFilterOperatorName>(["=", "!="])(
+      'should be able to create and destructure a coordinate filter with "%s" operator and multiple values',
+      operator => {
+        const { filterParts, columnInfo } = filterByCoordinateColumn(
+          query,
+          Lib.coordinateFilterClause({
+            operator,
+            column,
+            values: [1, 2, 3],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [1, 2, 3],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.CoordinateFilterOperatorName>(["between"])(
+      'should be able to create and destructure a coordinate filter with "%s" operator and exactly 2 values',
+      operator => {
+        const { filterParts, columnInfo } = filterByCoordinateColumn(
+          query,
+          Lib.coordinateFilterClause({
+            operator,
+            column,
+            values: [1, 2],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [1, 2],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it('should be able to create and destructure a coordinate filter with "inside" operator and 1 column', () => {
+      const { filterParts, columnInfo, longitudeColumnInfo } =
+        filterByCoordinateColumn(
+          query,
+          Lib.coordinateFilterClause({
+            operator: "inside",
+            column,
+            values: [1, 2, 3, 4],
+          }),
+        );
+
+      expect(filterParts).toMatchObject({
+        operator: "inside",
+        column: expect.anything(),
+        longitudeColumn: expect.anything(),
+        values: [1, 2, 3, 4],
+      });
+      expect(columnInfo?.name).toBe(columnName);
+      expect(longitudeColumnInfo?.name).toBe(columnName);
+    });
+
+    it('should be able to create and destructure a coordinate filter with "inside" operator and 2 columns', () => {
+      const { filterParts, columnInfo, longitudeColumnInfo } =
+        filterByCoordinateColumn(
+          query,
+          Lib.coordinateFilterClause({
+            operator: "inside",
+            column,
+            longitudeColumn: findColumn(query, tableName, "LONGITUDE"),
+            values: [1, 2, 3, 4],
+          }),
+        );
+
+      expect(filterParts).toMatchObject({
+        operator: "inside",
+        column: expect.anything(),
+        longitudeColumn: expect.anything(),
+        values: [1, 2, 3, 4],
+      });
+      expect(columnInfo?.name).toBe(columnName);
+      expect(longitudeColumnInfo?.name).toBe("LONGITUDE");
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = filterByCoordinateColumn(
+        query,
+        Lib.expressionClause("starts-with", [
+          findColumn(query, tableName, columnName),
+          "A",
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = filterByCoordinateColumn(
+        query,
+        Lib.expressionClause("=", [10, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-string arguments", () => {
+      const { filterParts } = filterByCoordinateColumn(
         query,
         Lib.expressionClause("=", [column, column]),
       );
