@@ -100,17 +100,6 @@
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
 
-;; High-level approach: add a defenterprise with the premise of blocking audit queries that should be
-;; disallowed in all cases.
-;; - OSS implementation always throws — audit DB queries are not allowed
-;;- EE implementation :
-;; IF the database is the audit DB
-;;   - Native query -> throw always
-;;   - Non-native queries
-;;   - Call query->source-table-ids, then fetch the names of the tables from the QP store
-;;      - If they aren't in a hardcoded set of view names, throw an exception
-;;   - Otherwise, do nothing, and let the normal permission checking logic take over (i.e. based on card permissions)
-
 (defenterprise check-audit-db-permissions
   "OSS implementation always throws an exception since queries over the audit DB are not permitted."
   metabase-enterprise.audit-app.permissions
