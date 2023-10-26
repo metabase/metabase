@@ -8,9 +8,9 @@ function findColumn(query: Lib.Query, tableName: string, columnName: string) {
 
 function filterByStringColumn(
   query: Lib.Query,
-  filterParts: Lib.StringFilterParts,
+  filterClause: Lib.ExpressionClause,
 ) {
-  const newQuery = Lib.filter(query, 0, Lib.stringFilterClause(filterParts));
+  const newQuery = Lib.filter(query, 0, filterClause);
   const [newFilterClause] = Lib.filters(newQuery, 0);
   const newFilterParts = Lib.stringFilterParts(newQuery, 0, newFilterClause);
   const newColumnInfo =
@@ -31,12 +31,15 @@ describe("filter", () => {
     const columnName = "CATEGORY";
 
     it("should be able to create and destructure a string filter", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(query, {
-        operator: "=",
-        column: findColumn(query, tableName, columnName),
-        values: ["Gadget", "Widget"],
-        options: {},
-      });
+      const { filterParts, columnInfo } = filterByStringColumn(
+        query,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, columnName),
+          values: ["Gadget", "Widget"],
+          options: {},
+        }),
+      );
 
       expect(filterParts).toMatchObject({
         operator: "=",
@@ -48,12 +51,15 @@ describe("filter", () => {
     });
 
     it("should fill defaults for case sensitivity options", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(query, {
-        operator: "starts-with",
-        column: findColumn(query, tableName, columnName),
-        values: ["Gadget"],
-        options: {},
-      });
+      const { filterParts, columnInfo } = filterByStringColumn(
+        query,
+        Lib.stringFilterClause({
+          operator: "starts-with",
+          column: findColumn(query, tableName, columnName),
+          values: ["Gadget"],
+          options: {},
+        }),
+      );
 
       expect(filterParts).toMatchObject({
         operator: "starts-with",
@@ -65,12 +71,15 @@ describe("filter", () => {
     });
 
     it("should use provided case sensitivity options", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(query, {
-        operator: "starts-with",
-        column: findColumn(query, tableName, columnName),
-        values: ["Gadget"],
-        options: { "case-sensitive": true },
-      });
+      const { filterParts, columnInfo } = filterByStringColumn(
+        query,
+        Lib.stringFilterClause({
+          operator: "starts-with",
+          column: findColumn(query, tableName, columnName),
+          values: ["Gadget"],
+          options: { "case-sensitive": true },
+        }),
+      );
 
       expect(filterParts).toMatchObject({
         operator: "starts-with",
@@ -82,12 +91,15 @@ describe("filter", () => {
     });
 
     it("should ignore case sensitivity options when they are not supported by the operator", () => {
-      const { filterParts, columnInfo } = filterByStringColumn(query, {
-        operator: "=",
-        column: findColumn(query, tableName, columnName),
-        values: ["Gadget"],
-        options: { "case-sensitive": true },
-      });
+      const { filterParts, columnInfo } = filterByStringColumn(
+        query,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: findColumn(query, tableName, columnName),
+          values: ["Gadget"],
+          options: { "case-sensitive": true },
+        }),
+      );
 
       expect(filterParts).toMatchObject({
         operator: "=",
