@@ -43,7 +43,7 @@ const LegendCaption = ({
         className="fullscreen-normal-text fullscreen-night-text"
         onClick={onSelectTitle}
       >
-        <Ellipsified>{title}</Ellipsified>
+        <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       </LegendLabel>
       <LegendRightContent>
         {description && !shouldHideDescription(width) && (

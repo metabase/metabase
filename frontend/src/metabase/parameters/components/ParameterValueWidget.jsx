@@ -25,12 +25,12 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterValueWidget.css";
@@ -315,9 +315,8 @@ function isTextWidget(parameter) {
 
 function isFieldWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
-  const hasFields = getFields(parameter).length > 0;
 
   return parameter.hasVariableTemplateTagTarget
     ? canQuery
-    : canQuery || hasFields;
+    : canQuery || hasFields(parameter);
 }
