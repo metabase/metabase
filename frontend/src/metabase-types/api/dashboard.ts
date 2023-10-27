@@ -15,7 +15,7 @@ export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
-  collection?: DashboardCollection;
+  collection?: Collection | null;
   collection_id: number | null;
   name: string;
   description: string | null;
@@ -35,8 +35,6 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
 }
-
-type DashboardCollection = Pick<Collection, "is_personal">;
 
 export type DashCardId = number;
 
