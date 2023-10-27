@@ -10,7 +10,8 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections";
+// Do not import from "metabase/entities/collections" to avoid circular dependency
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
