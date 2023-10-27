@@ -265,6 +265,7 @@ visualization_settings:
       column_title: Description
   graph.metrics:
   - count
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-15T02:28:28.441363Z'

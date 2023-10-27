@@ -106,6 +106,7 @@ visualization_settings:
     : column_title: Question Name
   graph.metrics:
   - count
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-14T20:04:09.381118Z'

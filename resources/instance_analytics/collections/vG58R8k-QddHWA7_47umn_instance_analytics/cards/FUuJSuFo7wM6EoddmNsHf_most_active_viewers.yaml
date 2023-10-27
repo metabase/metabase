@@ -118,6 +118,7 @@ visualization_settings:
     '["name","count"]':
       column_title: Question views
       show_mini_bar: true
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-15T02:19:04.741672Z'

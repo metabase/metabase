@@ -205,6 +205,7 @@ visualization_settings:
   table.pivot_column: end_timestamp
   table.cell_column: model_id
   column_settings: null
+metabase_version: null
 parameters: []
 dataset: true
 created_at: '2023-06-14T18:39:19.328399Z'

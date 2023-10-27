@@ -1,7 +1,7 @@
 description: Information about dashboards, questions, models, and tables
 archived: false
 collection_position: 3
-ordered_cards:
+dashcards:
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -276,6 +276,7 @@ ordered_cards:
   size_y: 8
   created_at: '2023-09-21T13:30:49.26848Z'
   row: 13
+tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
@@ -285,7 +286,6 @@ creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
 serdes/meta:
 - model: Dashboard
   id: bJEYb0o5CXlfWFcIztDwJ

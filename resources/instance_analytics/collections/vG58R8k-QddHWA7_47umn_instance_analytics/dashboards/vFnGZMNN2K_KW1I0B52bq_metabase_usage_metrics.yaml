@@ -1,7 +1,7 @@
 description: Metrics around active users, content generation, views.
 archived: false
 collection_position: 2
-ordered_cards:
+dashcards:
 - size_x: 6
   dashboard_tab_id: null
   action_id: null
@@ -354,6 +354,7 @@ ordered_cards:
   size_y: 7
   created_at: '2023-06-15T02:23:27.106361Z'
   row: 10
+tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
@@ -363,7 +364,6 @@ creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
 serdes/meta:
 - model: Dashboard
   id: vFnGZMNN2K_KW1I0B52bq

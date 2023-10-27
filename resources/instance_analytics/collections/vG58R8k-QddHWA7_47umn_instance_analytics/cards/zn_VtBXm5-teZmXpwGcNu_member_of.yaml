@@ -73,6 +73,7 @@ visualization_settings:
   table.pivot_column: group_id
   table.cell_column: group_name
   column_settings: null
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-15T02:00:12.773345Z'

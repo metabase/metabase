@@ -108,6 +108,7 @@ visualization_settings:
       link_text: ''
   graph.metrics:
   - count
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-14T20:01:20.69398Z'

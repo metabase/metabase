@@ -1,7 +1,8 @@
 description: null
-archived: false
+archived: true
 collection_position: null
-ordered_cards: []
+dashcards: []
+tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
@@ -11,7 +12,6 @@ creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
 serdes/meta:
 - model: Dashboard
   id: jm7KgY6IuS6pQjkBZ7WUI

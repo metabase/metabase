@@ -1,7 +1,7 @@
 description: Check what a user saw and done
 archived: false
 collection_position: 4
-ordered_cards:
+dashcards:
 - size_x: 5
   dashboard_tab_id: null
   action_id: null
@@ -255,6 +255,16 @@ ordered_cards:
         - v_users
         - is_active
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: 5HQS2xXAPF4hOFudut_Tg
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: 5HQS2xXAPF4hOFudut_Tg
   entity_id: rjbN3tiJO78esor3syTMS
   visualization_settings:
@@ -307,6 +317,16 @@ ordered_cards:
         - v_users
         - is_active
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: ezcT88-OmH-5HFOFNqmX7
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: ezcT88-OmH-5HFOFNqmX7
   entity_id: ZF3MvfX0yADr4LKv33dy3
   visualization_settings:
@@ -495,6 +515,16 @@ ordered_cards:
         - v_users
         - is_active
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: Vm-4GYORvVbGu9jHVLfg1
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: Vm-4GYORvVbGu9jHVLfg1
   entity_id: Ttn9QEiWRHlNEOga_EHEq
   visualization_settings:
@@ -547,6 +577,16 @@ ordered_cards:
         - v_users
         - is_active
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: Z18i0B5CgOe66-YScAZdx
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: Z18i0B5CgOe66-YScAZdx
   entity_id: Hl9iWmzW05hbW9efp0-Ya
   visualization_settings:
@@ -599,6 +639,16 @@ ordered_cards:
         - v_users
         - is_admin
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: lh0sbjKcm9BhiiHPpPxRa
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: lh0sbjKcm9BhiiHPpPxRa
   entity_id: ag9MAUxcnGPdRs6NlANoA
   visualization_settings:
@@ -651,6 +701,16 @@ ordered_cards:
         - v_users
         - is_active
       - join-alias: Question 1
+  - parameter_id: ba4cf986
+    card_id: 9shJ0y29V5o1lOSDL4ImJ
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: default
   card_id: 9shJ0y29V5o1lOSDL4ImJ
   entity_id: qovKiMT2Y5xTOMp1I_Pxr
   visualization_settings:
@@ -658,6 +718,7 @@ ordered_cards:
   size_y: 6
   created_at: '2023-06-15T02:29:55.706733Z'
   row: 9
+tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
@@ -667,7 +728,6 @@ creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
 serdes/meta:
 - model: Dashboard
   id: DHMhMa1FYxiyIgM7_xdgR
@@ -707,6 +767,12 @@ parameters:
   default:
   - true
   isMultiSelect: false
+- name: Date Filter
+  slug: date_filter
+  id: ba4cf986
+  type: date/all-options
+  sectionId: date
+  default: past52weeks
 auto_apply_filters: true
 created_at: '2023-06-15T01:31:06.523478Z'
 public_uuid: null

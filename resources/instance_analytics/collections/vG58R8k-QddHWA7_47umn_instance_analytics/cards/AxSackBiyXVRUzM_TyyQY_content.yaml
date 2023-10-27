@@ -437,6 +437,7 @@ visualization_settings:
   table.pivot_column: action_type
   table.cell_column: event_timestamp
   column_settings: null
+metabase_version: null
 parameters: []
 dataset: true
 created_at: '2023-06-08T14:33:12.546414Z'

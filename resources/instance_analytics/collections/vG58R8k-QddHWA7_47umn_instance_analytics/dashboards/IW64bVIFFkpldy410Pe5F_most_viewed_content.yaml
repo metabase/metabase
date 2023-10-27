@@ -1,7 +1,7 @@
 description: Look for the most relevant content in your Metabase
 archived: false
 collection_position: 1
-ordered_cards:
+dashcards:
 - size_x: 12
   dashboard_tab_id: null
   action_id: null
@@ -76,6 +76,7 @@ ordered_cards:
   size_y: 6
   created_at: '2023-08-18T19:13:18.392443Z'
   row: 0
+tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
@@ -85,7 +86,6 @@ creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
 cache_ttl: null
-ordered_tabs: []
 serdes/meta:
 - model: Dashboard
   id: IW64bVIFFkpldy410Pe5F

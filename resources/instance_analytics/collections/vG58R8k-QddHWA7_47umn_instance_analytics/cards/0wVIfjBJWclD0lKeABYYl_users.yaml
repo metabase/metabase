@@ -290,6 +290,7 @@ visualization_settings:
   table.pivot_column: sso_source
   table.cell_column: locale
   column_settings: null
+metabase_version: null
 parameters: []
 dataset: true
 created_at: '2023-06-08T14:18:48.912368Z'

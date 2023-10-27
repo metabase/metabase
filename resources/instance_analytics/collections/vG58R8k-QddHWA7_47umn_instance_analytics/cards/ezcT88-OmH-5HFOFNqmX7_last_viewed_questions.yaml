@@ -260,6 +260,7 @@ visualization_settings:
       column_title: Dashboard name
     '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
       column_title: Description
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-15T01:53:38.323579Z'

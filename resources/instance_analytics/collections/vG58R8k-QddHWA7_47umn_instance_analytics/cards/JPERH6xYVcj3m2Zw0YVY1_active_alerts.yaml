@@ -52,6 +52,7 @@ visualization_settings:
   table.pivot_column: name
   table.cell_column: recipient_external
   column_settings: null
+metabase_version: null
 parameters: []
 dataset: false
 created_at: '2023-06-15T01:56:06.29029Z'
