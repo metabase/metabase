@@ -34,32 +34,51 @@
         "null"
       ],
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 1024
       }
     },
     "creator": {
       "description": "Filter for created by a user",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "last_editor": {
       "description": "Filter for last edited by a user",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "creation_date": {
       "description": "Filter for a time when a user creates an entity",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "last_edit_date": {
       "description": "Filter for a time when a user last edited an entity",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "verified_items": {
       "description": "Filter for entities that have been marked as verified",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "search_native_queries": {
       "description": "Toggles whether search should include SQL and/or native queries",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "required": [
