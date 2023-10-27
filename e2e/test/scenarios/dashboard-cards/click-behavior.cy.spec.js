@@ -948,12 +948,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     it.skip("allows opening custom dashboard destination without parameters", () => {
       const dashboardDetails = {
         enable_embedding: true,
+        embedding_params: {},
       };
 
       cy.createDashboard(
         {
           ...TARGET_DASHBOARD,
           enable_embedding: true,
+          embedding_params: {},
         },
         {
           wrapId: true,
@@ -1070,12 +1072,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     it.skip("allows opening custom question destination without parameters", () => {
       const dashboardDetails = {
         enable_embedding: true,
+        embedding_params: {},
       };
 
       cy.createQuestion(
         {
           ...TARGET_QUESTION,
           enable_embedding: true,
+          embedding_params: {},
         },
         {
           wrapId: true,
@@ -1120,12 +1124,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     it.skip("allows opening custom question destination with parameters", () => {
       const dashboardDetails = {
         enable_embedding: true,
+        embedding_params: {},
       };
 
       cy.createQuestion(
         {
           ...TARGET_QUESTION,
           enable_embedding: true,
+          embedding_params: {},
         },
         {
           wrapId: true,
