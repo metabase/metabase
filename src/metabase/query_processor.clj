@@ -7,46 +7,22 @@
   `process-userland-query` (see documentation below)."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.core.async :as a]
    [metabase.config :as config]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
-   [metabase.query-processor.middleware.add-rows-truncated :as qp.add-rows-truncated]
-   [metabase.query-processor.middleware.add-timezone-info :as qp.add-timezone-info]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
-   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-   [metabase.query-processor.middleware.format-rows :as format-rows]
-   [metabase.query-processor.middleware.large-int-id :as large-int-id]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
-   [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-   [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
-   [metabase.query-processor.middleware.results-metadata :as results-metadata]
-   [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
-   [metabase.query-processor.middleware.store :as store]
-   [metabase.query-processor.middleware.visualization-settings :as viz-settings]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [schema.core :as s]
-   [metabase.lib.convert :as lib.convert]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.execute :as qp.execute]
-   [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.postprocess :as qp.postprocess]
-   [clojure.core.async :as a]))
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
+   [metabase.lib.core :as lib]
+   [metabase.driver :as driver]
+   [metabase.async.util :as async.u]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.malli :as mu]
+   [metabase.query-processor.context-2 :as qp.context]
+   [metabase.query-processor.userland :as qp.userland]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -71,28 +47,33 @@
          (vreset! rows (conj! @rows row))
          result)))))
 
-(defn sync-context []
-  {:canceled-chan (a/promise-chan)})
+(mu/defn ^:private default-context :- qp.context/ContextInstance
+  [query :- :map]
+  (if (:async? query)
+    (qp.context/async-context)
+    (qp.context/sync-context)))
 
-(defn async-context []
-  {:canceled-chan (a/promise-chan)})
-
-(defn process-query
+(mu/defn process-query
   ([query]
    (process-query query (default-rff)))
 
   ([query rff]
-   (process-query query rff (sync-context)))
+   (process-query query rff (default-context query)))
 
-  ([query rff context]
+  ([query   :- :map
+    rff     :- fn?
+    context :- qp.context/ContextInstance]
    (qp.setup/do-with-qp-setup
     query
     (^:once fn* [query]
-     (let [preprocessed (qp.preprocess/preprocess query)
-           compiled     (qp.compile/compile preprocessed)
-           rff          (qp.postprocess/postprocessing-rff compiled rff)]
-       (qp.execute/execute compiled rff context))))))
+     (let [preprocessed  (qp.preprocess/preprocess query)
+           compiled      (qp.compile/compile preprocessed)
+           rff           (qp.postprocess/postprocessing-rff compiled rff)
+           execute-thunk (^:once fn* []
+                          (qp.execute/execute compiled rff context))]
+       (qp.context/execute context execute-thunk))))))
 
+;; NOCOMMIT
 (comment
   (defn x []
     (metabase.query-processor.preprocess/preprocess
@@ -113,92 +94,94 @@
 ;;    Execution time upper quantile : 7.888031 ms (97.5%)
 ;;                    Overhead used : 1.471742 ns
 
+(defn ^:deprecated preprocess
+  "DEPRECATED: use [[qp.preprocess/preprocess]] instead."
+  [query]
+  (qp.preprocess/preprocess query))
 
-;; ;;; TODO -- move to [[qp.preprocess]]
-;; (defn query->expected-cols
-;;   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
-;;   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
-;;   queries with native source queries won't work, since we don't need the results."
-;;   [{query-type :type, :as query}]
-;;   (when-not (= (mbql.u/normalize-token query-type) :query)
-;;     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-;;                     {:type qp.error-type/qp})))
-;;   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
-;;   ;; check where this is used.
-;;   (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
-;;     (let [preprocessed (-> query qp.preprocess/preprocess restore-join-aliases)]
-;;       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-;;         (->> (annotate/merged-column-info preprocessed nil)
-;;              ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
-;;              ;; directly we can stop stripping these out
-;;              (mapv (fn [col]
-;;                      (dissoc col :lib/external_remap :lib/internal_remap)))
-;;              not-empty)))))
+;;; TODO -- move to [[qp.preprocess]]
+(defn query->expected-cols
+  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
+  it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
+  queries with native source queries won't work, since we don't need the results."
+  [query]
+  (qp.setup/do-with-qp-setup
+   query
+   (^:once fn* [query]
+    (lib/returned-columns (qp.preprocess/preprocess query))))
+  ;; (when-not (= (mbql.u/normalize-token query-type) :query)
+  ;;   (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
+  ;;                   {:type qp.error-type/qp})))
+  ;; ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
+  ;; ;; check where this is used.
+  ;; (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
+  ;;   (let [preprocessed (-> query qp.preprocess/preprocess restore-join-aliases)]
+  ;;     (driver/with-driver (driver.u/database->driver (:database preprocessed))
+  ;;       (->> (annotate/merged-column-info preprocessed nil)
+  ;;            ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
+  ;;            ;; directly we can stop stripping these out
+  ;;            (mapv (fn [col]
+  ;;                    (dissoc col :lib/external_remap :lib/internal_remap)))
+  ;;            not-empty))))
+  )
 
-;; (defn compile-and-splice-parameters
-;;   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
-;;   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
-;;   (Currently, this function is mostly used by tests and in the
-;;   REPL; [[splice-params-in-response/splice-params-in-response]] middleware handles similar functionality for queries
-;;   that are actually executed.)"
-;;   [query]
-;;   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
-;;   ;; ID is the virtual DB identifier
-;;   (let [driver (driver.u/database->driver (:database (qp.preprocess/preprocess query)))]
-;;     (driver/splice-parameters-into-native-query driver (compile query))))
+(defn ^:deprecated compile
+  [query]
+  (qp.setup/do-with-qp-setup
+   query
+   (^:once fn* [query]
+    (-> query
+        qp.preprocess/preprocess
+        qp.compile/compile
+        :native))))
+
+;;; TODO -- move to [[qp.compile]]
+(defn compile-and-splice-parameters
+  "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
+  itself as literals. This is used to power features such as 'Convert this Question to SQL'.
+  (Currently, this function is mostly used by tests and in the
+  REPL; [[splice-params-in-response/splice-params-in-response]] middleware handles similar functionality for queries
+  that are actually executed.)"
+  [query]
+  (qp.setup/do-with-qp-setup
+   query
+   (^:once fn* [query]
+    (let [preprocessed (qp.preprocess/preprocess query)
+          compiled     (qp.compile/compile preprocessed)]
+      (driver/splice-parameters-into-native-query driver/*driver* (:native compiled))))))
 
 
-;; ;;; +----------------------------------------------------------------------------------------------------------------+
-;; ;;; |                                      Userland Queries (Public Interface)                                       |
-;; ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Userland Queries (Public Interface)                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; ;; The difference between `process-query` and the versions below is that the ones below are meant to power various
-;; ;; things like API endpoints and pulses, while `process-query` is more of a low-level internal function.
-;; ;;
-;; (def userland-middleware
-;;   "The default set of middleware applied to 'userland' queries ran via [[process-query-and-save-execution!]] (i.e., via
-;;   the REST API). This middleware has the pattern
 
-;;     (f (f query rff context)) -> (f query rff context)"
-;;   (concat
-;;    default-middleware
-;;    [#'qp.constraints/add-default-userland-constraints
-;;     #'process-userland-query/process-userland-query
-;;     #'catch-exceptions/catch-exceptions]))
+(defn ^:deprecated process-userland-query
+  "Like [[process-query]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
+  ([query]
+   (process-userland-query query (default-context query)))
 
-;; (def ^{:arglists '([query] [query context])} process-userland-query-async
-;;   "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-;;   (base-qp userland-middleware))
+  ([query context]
+   (process-query query (qp.userland/userland-context context))))
 
-;; (def ^{:arglists '([query] [query context])} process-userland-query-sync
-;;   "Like [[process-query-sync]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-;;   (qp.reducible/sync-qp process-userland-query-async))
+(defn ^:deprecated process-query-and-save-execution!
+  "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, etc). Returns
+  results in a format appropriate for consumption by FE client. Saves QueryExecution row in application DB."
+  ([query info]
+   (process-query-and-save-execution! query info (default-context query)))
 
-;; (defn process-userland-query
-;;   "Like [[process-query]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-;;   {:arglists '([query] [query context])}
-;;   [{:keys [async?], :as query} & args]
-;;   (apply (if async? process-userland-query-async process-userland-query-sync)
-;;          query
-;;          args))
+  ([query info context]
+   (process-query (assoc query :info info) (qp.userland/userland-context context))))
 
-;; (s/defn process-query-and-save-execution!
-;;   "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, etc). Returns
-;;   results in a format appropriate for consumption by FE client. Saves QueryExecution row in application DB."
-;;   ([query info]
-;;    (process-userland-query (assoc query :info info)))
+(defn- add-default-constraints [query]
+  (assoc-in query [:middleware :add-default-userland-constraints?] true))
 
-;;   ([query info context]
-;;    (process-userland-query (assoc query :info info) context)))
+(defn ^:deprecated process-query-and-save-with-max-results-constraints!
+  "Same as [[process-query-and-save-execution!]] but will include the default max rows returned as a constraint. (This
+  function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
+  ([query info]
+   (process-query-and-save-with-max-results-constraints! query info (default-context query)))
 
-;; (defn- add-default-constraints [query]
-;;   (assoc-in query [:middleware :add-default-userland-constraints?] true))
-
-;; (s/defn process-query-and-save-with-max-results-constraints!
-;;   "Same as [[process-query-and-save-execution!]] but will include the default max rows returned as a constraint. (This
-;;   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
-;;   ([query info]
-;;    (process-query-and-save-execution! (add-default-constraints query) info))
-
-;;   ([query info context]
-;;    (process-query-and-save-execution! (add-default-constraints query) info context)))
+  ([query info context]
+   (process-query (add-default-constraints (assoc query :info info))
+                  (qp.userland/userland-context context))))
