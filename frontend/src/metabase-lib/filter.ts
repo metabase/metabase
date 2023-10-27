@@ -399,7 +399,9 @@ export function excludeDateFilterParts(
 
   const bucket = temporalBucket(column);
   if (!bucket) {
-    return { column, operator, bucket, values: [] };
+    return serializedValues.length === 0
+      ? { column, operator, bucket, values: [] }
+      : null;
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);

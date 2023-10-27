@@ -810,7 +810,7 @@ describe("filter", () => {
       [7, "year"],
       ["current", "year"],
     ])(
-      "should be able to create and destructure an exclude date filter without offset",
+      "should be able to create and destructure a relative date filter without offset",
       (value, bucket) => {
         const { filterParts, columnInfo } = addRelativeDateFilter(
           query,
@@ -859,7 +859,7 @@ describe("filter", () => {
       [-7, "year", -70, "year"],
       [7, "year", 70, "year"],
     ])(
-      "should be able to create and destructure an exclude date filter with offset",
+      "should be able to create and destructure a relative date filter with offset",
       (value, bucket, offsetValue, offsetBucket) => {
         const { filterParts, columnInfo } = addRelativeDateFilter(
           query,
@@ -884,6 +884,33 @@ describe("filter", () => {
         expect(columnInfo?.name).toBe(columnName);
       },
     );
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.expressionClause("=", [column, "2020-01-01"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.expressionClause("!=", ["2020-01-01", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-time arguments", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.expressionClause("!=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 
   describe("exclude date filters", () => {
@@ -933,15 +960,15 @@ describe("filter", () => {
             operator,
             column,
             bucket: null,
-            values: [1, 2],
+            values: [],
           }),
         );
 
         expect(filterParts).toMatchObject({
-          operator: "!=",
+          operator,
           column: expect.anything(),
           bucket: null,
-          values: [1, 2],
+          values: [],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
@@ -994,7 +1021,7 @@ describe("filter", () => {
     );
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = addTimeFilter(
+      const { filterParts } = addExcludeDateFilter(
         query,
         Lib.expressionClause("=", [column, "2020-01-01"]),
       );
@@ -1003,7 +1030,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = addTimeFilter(
+      const { filterParts } = addExcludeDateFilter(
         query,
         Lib.expressionClause("!=", ["2020-01-01", column]),
       );
