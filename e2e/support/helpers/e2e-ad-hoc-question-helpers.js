@@ -29,6 +29,7 @@ export function startNewQuestion() {
       },
       type: "query",
     },
+    display: "table",
     visualization_settings: {},
   };
 
