@@ -1013,6 +1013,53 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
     });
+
+    it("allows opening custom URL destination with parameters", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT],
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+        },
+      };
+
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: URL_WITH_PARAMS,
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({ resource: { dashboard: card.dashboard_id } });
+
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      cy.button(DASHBOARD_FILTER_TEXT.name).click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
+        cy.button("Add filter").click();
+      });
+      onNextAnchorClick(anchor => {
+        expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+      clickLineChartPoint();
+    });
   });
 });
 
