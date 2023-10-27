@@ -72,7 +72,6 @@ export function getPieChartOption(
       column: metricColSettings.column,
       number_separators: metricColSettings.number_separators,
       number_style: "percent",
-      jsx: true,
       decimals: computeMaxDecimalsForValues(
         chartModel.slices.map(s => s.normalizedPercentage),
         {
