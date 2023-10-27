@@ -80,9 +80,6 @@
                   :visualization_settings (if (= 1 instance-num) {:column_settings {}}
                                                                  {:click_behavior {}}))
 
-    (isa? model Metric)
-    (assoc entity :table_id (mt/id :checkins))
-
     :else
     entity))
 

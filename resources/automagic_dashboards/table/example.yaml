@@ -93,7 +93,6 @@ dimensions:
 groups:
 - OrderBreakdown:
     title: Some breakdown
-    score: 50
 
 # Cards
 #

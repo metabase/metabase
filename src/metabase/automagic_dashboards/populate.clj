@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.filters :as filters]
-   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.public-settings :as public-settings]
@@ -105,8 +104,8 @@
                                          qp.util/normalize-token
                                          (= :count)))
                          (->> breakout
-                              magic.util/collect-field-references
-                              (map magic.util/field-reference->id))
+                              filters/collect-field-references
+                              (map filters/field-reference->id))
                          aggregation)]
         {:graph.colors (map-to-colors color-keys)}))))
 
@@ -255,16 +254,16 @@
             cards)))
 
 (defn- shown-cards
-  "Pick up to `max-cards` with the highest `:card-score`.
+  "Pick up to `max-cards` with the highest `:score`.
    Keep groups together if possible by pulling all the cards within together and
-   using the same (highest) card-score for all.
-   Among cards with the same card-score those beloning to the largest group are
+   using the same (highest) score for all.
+   Among cards with the same score those beloning to the largest group are
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
   [max-cards cards]
   (->> cards
-       (sort-by :card-score >)
+       (sort-by :score >)
        (take max-cards)
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
@@ -274,22 +273,6 @@
        (mapcat :cards)))
 
 (def ^:private ^:const ^Long max-filters 4)
-
-(defn ordered-group-by-seq
-  "A seq from a group-by in a particular order. If you don't need the map itself, just to get the key value pairs in a
-  particular order. Clojure's `sorted-map-by` doesn't handle distinct keys with the same score. So this just iterates
-  over the groupby in a reasonable order."
-  [f key-order coll]
-  (letfn [(access [ks grouped]
-            (if (seq ks)
-              (let [k (first ks)]
-                (lazy-seq
-                 (if-let [x (find grouped k)]
-                   (cons x (access (next ks) (dissoc grouped k)))
-                   (access (next ks) grouped))))
-              (seq grouped)))]
-    (let [g (group-by f coll)]
-      (access key-order g))))
 
 (defn create-dashboard
   "Create dashboard and populate it with cards."
@@ -306,12 +289,9 @@
                         :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
-                            (ordered-group-by-seq :group
-                                                  (when groups
-                                                    (sort-by (comp (fnil - 0) :score groups)
-                                                             (keys groups))))
-                            (reduce (fn [[dashboard grid] [group-name cards]]
-                                      (let [group (get groups group-name)]
+                            (partition-by :group)
+                            (reduce (fn [[dashboard grid] cards]
+                                      (let [group (some-> cards first :group groups)]
                                         (add-group dashboard grid group cards)))
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
@@ -321,7 +301,7 @@
                      (count cards)
                      title
                      (str/join "; " (map :title cards))))
-     (cond-> (update dashboard :dashcards (partial sort-by (juxt :row :col)))
+     (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
 (defn- downsize-titles

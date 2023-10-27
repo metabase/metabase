@@ -3,14 +3,17 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core
-    :refer [->related-entity
+    :refer [->field
+            ->related-entity
             ->root
             automagic-analysis
-            capitalize-first]]
+            capitalize-first
+            cell-title
+            encode-base64-json
+            metric-name
+            source-name]]
    [metabase.automagic-dashboards.filters :as filters]
-   [metabase.automagic-dashboards.names :as names]
    [metabase.automagic-dashboards.populate :as populate]
-   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
@@ -168,7 +171,7 @@
 (defn- series-labels
   [card]
   (get-in card [:visualization_settings :graph.series_labels]
-          (map (comp capitalize-first names/metric-name)
+          (map (comp capitalize-first metric-name)
                (get-in card [:dataset_query :query :aggregation]))))
 
 (defn- unroll-multiseries
@@ -187,10 +190,10 @@
 (defn- segment-constituents
   [segment]
   (->> (filters/inject-refinement (:query-filter segment) (:cell-query segment))
-       magic.util/collect-field-references
-       (map magic.util/field-reference->id)
+       filters/collect-field-references
+       (map filters/field-reference->id)
        distinct
-       (map (partial magic.util/->field segment))))
+       (map (partial ->field segment))))
 
 (defn- update-related
   [related left right]
@@ -209,7 +212,7 @@
                                           (str (:url left) "/compare/table/"
                                                (-> left :source u/the-id))
                                           (str (:url left) "/compare/adhoc/"
-                                               (magic.util/encode-base64-json
+                                               (encode-base64-json
                                                 {:database (:database left)
                                                  :type     :query
                                                  :query    {:source-table (->> left
@@ -243,7 +246,7 @@
                              (assoc :comparison-name (->> opts
                                                           :left
                                                           :cell-query
-                                                          (names/cell-title left))))
+                                                          (cell-title left))))
         right              (cond-> right
                              (part-vs-whole-comparison? left right)
                              (assoc :comparison-name (condp mi/instance-of? (:entity right)
@@ -252,7 +255,7 @@
 
                                                        (tru "{0}, all {1}"
                                                             (comparison-name right)
-                                                            (names/source-name right)))))
+                                                            (source-name right)))))
         segment-dashboards (->> (concat (segment-constituents left)
                                         (segment-constituents right))
                                 distinct

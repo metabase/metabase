@@ -1,7 +1,7 @@
 (ns metabase.automagic-dashboards.schema
-  (:require [malli.core :as mc]
-            [malli.util :as mut]))
+  (:require [malli.core :as mc]))
 
+;; --
 (def context
   "The big ball of mud data object from which we generate x-rays"
   (mc/schema
@@ -16,23 +16,13 @@
   ;; TODO - Beef these specs up, esp. the any?s
   (mc/schema
     [:map
-     [:dataset_query {:optional true}
-      [:map
-       [:database {:optional true} [:maybe nat-int?]]
-       [:type :keyword]
-       [:query [:map
-                [:aggregation [:sequential any?]]
-                [:breakout {:optional true} [:sequential any?]]
-                [:source-table [:or :int :string]]]]]]
+     [:dataset_query {:optional true} any?]
      [:dimensions {:optional true} [:sequential string?]]
      [:group {:optional true} string?]
      [:height pos-int?]
      [:metrics {:optional true} any?]
      [:position {:optional true} nat-int?]
-     [:card-score {:optional true} number?]
-     [:total-score {:optional true} nat-int?]
-     [:metric-score {:optional true} nat-int?]
-     [:score-components {:optional true} [:sequential nat-int?]]
+     [:score {:optional true} number?]
      [:title {:optional true} string?]
      [:visualization {:optional true} any?]
      [:width pos-int?]
@@ -42,19 +32,15 @@
   "A bunch of dashcards"
   (mc/schema [:maybe [:sequential dashcard]]))
 
-(def field-type
-  "A dimension reference, as either a semantic type or entity type and semantic type."
-  (mc/schema
-    [:or
-     [:tuple :keyword]
-     [:tuple :keyword :keyword]]))
-
 ;;
 (def dimension-value
   "A specification for the basic keys in the value of a dimension template."
   (mc/schema
     [:map
-     [:field_type field-type]
+     [:field_type
+      [:or
+       [:tuple :keyword]
+       [:tuple :keyword :keyword]]]
      [:score {:optional true} nat-int?]
      [:max_cardinality {:optional true} nat-int?]
      [:named {:optional true} [:string {:min 1}]]]))
@@ -111,7 +97,7 @@
                                                 [:aggregation {:optional true} string?]]])]]
      [:metrics {:optional true} [:vector string?]]
      [:filters {:optional true} [:vector string?]]
-     [:card-score {:optional true} nat-int?]]))
+     [:score {:optional true} nat-int?]]))
 
 (def card-template
   "A specification for the basic keys in a card template."
@@ -146,30 +132,7 @@
   "A set of dimensions that belong together. This is the basic unity of affinity."
   [:set string?])
 
-(def semantic-affinity-set
-  "A set of sematic types that belong together. This is the basic unity of semantic affinity."
-  [:set :keyword])
-
 (def affinity
-  "A collection of things that go together. In this case, we're a bit specialized on
-  card affinity, but the key element in the structure is `:base-dims`, which are a
-   set of dimensions which, when satisfied, enable this affinity object."
-  (mc/schema
-    [:map
-     [:affinity-name :string]
-     [:affinity-set [:set :keyword]]
-     [:card-template card-value]
-     [:metric-constituent-names [:sequential :string]]
-     [:metric-field-types [:set :keyword]]
-     [:named-dimensions [:sequential :string]]
-     [:score {:optional true} nat-int?]]))
-
-(def affinities
-  "A sequence of affinity objects."
-  (mc/schema
-    [:sequential affinity]))
-
-(def affinity-old
   "A collection of things that go together. In this case, we're a bit specialized on
   card affinity, but the key element in the structure is `:base-dims`, which are a
    set of dimensions which, when satisfied, enable this affinity object."
@@ -182,11 +145,10 @@
      [:affinity-name string?]
      [:base-dims dimension-set]]))
 
-(def affinities-old
+(def affinities
   "A sequence of affinity objects."
   (mc/schema
-    [:sequential affinity-old]))
-
+    [:sequential affinity]))
 
 (def affinity-matches
   "A map of named affinities to all dimension sets that are associated with this name."
@@ -202,25 +164,12 @@
      [:id {:optional true} nat-int?]
      [:name {:optional true} string?]]))
 
-(def dim-name->dim-def
-  "A map of dimension name to dimension definition."
+(def dimension-bindings
+  "A map of named dimensions to a map containing a sequence of matching items satisfying this dimension"
   (mc/schema
-    [:map-of :string dimension-value]))
-
-(def dim-name->matching-fields
-  "A map of named dimensions to a map containing the dimension data
-   and a sequence of matching items satisfying this dimension"
-  (mc/schema
-    [:map-of :string
-     [:map
-      [:matches [:sequential item]]]]))
-
-(def dim-name->dim-defs+matches
-  "The \"full\" grounded dimensions which matches dimension names
-  to the dimension definition combined with matching fields."
-  (mut/merge
-    dim-name->dim-def
-    dim-name->matching-fields))
+    [:map-of
+     :string
+     [:map [:matches [:sequential item]]]]))
 
 (def dimension-map
   "A map of dimension names to item satisfying that dimensions"
@@ -232,40 +181,9 @@
   (mc/schema
     [:sequential dimension-map]))
 
-(def normalized-metric-template
-  "A \"normalized\" metric template is a map containing the metric name as a key
-   rather than a map of metric name to the map."
-  (mc/schema
-    [:map
-     [:metric-name :string]
-     [:score nat-int?]
-     [:metric vector?]]))
-
-(def grounded-metric
-  "A metric containing a definition with actual field references/ids rather than dimension references."
-  (mc/schema
-    [:map
-     [:metric-name :string]
-     [:metric-title :string]
-     [:metric-score nat-int?]
-     [:metric-definition
-      [:map
-       [:aggregation [:sequential any?]]]]]))
-
-(def combined-metric
-  "A grounded metric in which the metric has been augmented with breakouts."
-  (mut/merge
-    grounded-metric
-    (mc/schema
-      [:map
-       [:metric-definition
-        [:map
-         [:aggregation [:sequential any?]]
-         [:breakout [:sequential any?]]]]])))
 
 (comment
   (require '[malli.generator :as mg])
   (mg/sample dashboard-template)
   (mg/sample affinities)
-  (mg/sample affinity-matches)
-  (mg/sample grounded-metric))
+  (mg/sample affinity-matches))
