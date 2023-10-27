@@ -23,11 +23,11 @@
 ;;;; schemas
 
 (def default-icon
-  "The default icon for Timeline and TimelineEvents."
+  "The default icon for Timeline an TimelineEvents."
   "star")
 
 (def Icon
-  "TimelineEvent icon string Schema"
+  "Schema for Timeline and TimelineEvents `icon`"
   [:enum default-icon "cake" "mail" "warning" "bell" "cloud"])
 
 (def Source
