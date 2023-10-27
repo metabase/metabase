@@ -1,13 +1,11 @@
 import type { StringFilterOperatorName } from "metabase-lib/types";
-import { OPERATOR_OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS_MAP } from "./constants";
 
 export function isFilterValid(
   operatorName: StringFilterOperatorName,
   values: string[],
 ) {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
+  const option = OPERATOR_OPTIONS_MAP[operatorName];
   if (!option) {
     return false;
   }

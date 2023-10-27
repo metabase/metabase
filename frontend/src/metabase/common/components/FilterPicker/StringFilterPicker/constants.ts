@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type { OperatorOption } from "./types";
 
 export const OPERATOR_OPTIONS: OperatorOption[] = [
@@ -38,3 +39,5 @@ export const OPERATOR_OPTIONS: OperatorOption[] = [
     valueCount: 0,
   },
 ];
+
+export const OPERATOR_OPTIONS_MAP = _.indexBy(OPERATOR_OPTIONS, "operator");
