@@ -5,6 +5,7 @@ import type {
   FieldReference,
 } from "metabase-types/api";
 import type { ColumnMetadata, Query } from "./types";
+import { displayInfo } from "./metadata";
 
 export function areLegacyQueriesEqual(
   query1: DatasetQuery,
@@ -12,6 +13,17 @@ export function areLegacyQueriesEqual(
   fieldIds?: number[],
 ): boolean {
   return ML.query_EQ_(query1, query2, fieldIds);
+}
+
+export function isSameColumn(
+  query: Query,
+  stageIndex: number,
+  column1: ColumnMetadata,
+  column2: ColumnMetadata,
+) {
+  const name1 = displayInfo(query, stageIndex, column1).longDisplayName;
+  const name2 = displayInfo(query, stageIndex, column2).longDisplayName;
+  return name1 === name2;
 }
 
 export function findColumnIndexesFromLegacyRefs(
