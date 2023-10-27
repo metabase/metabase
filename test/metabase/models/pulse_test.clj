@@ -244,7 +244,7 @@
 ;;  4. ability to save individual user recipients
 ;;  5. ability to create new channels
 ;;  6. ability to update cards and ensure proper ordering
-;;  7. subsciprtion-update event is called
+;;  7. subscription-update event is called
 (deftest update-pulse-test
   (t2.with-temp/with-temp [Pulse pulse  {}
                            Card  card-1 {:name "Test Card"}
