@@ -117,8 +117,8 @@ function getPrevDashAndTabs({
   state: Draft<DashboardState>;
   filterRemovedTabs?: boolean;
 }) {
-  const dashId = checkNotNull(state.dashboardId);
-  const prevDash = checkNotNull(state.dashboards[dashId]);
+  const dashId = state.dashboardId;
+  const prevDash = dashId ? state.dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter(t => !filterRemovedTabs || !t.isRemoved) ?? [];
 
@@ -314,17 +314,19 @@ export const tabsReducer = createReducer<DashboardState>(
       moveDashCardToTab,
       (state, { payload: { dashCardId, destinationTabId } }) => {
         const dashCard = state.dashcards[dashCardId];
-        const { prevDash } = getPrevDashAndTabs({ state });
-        prevDash.dashCardTabMovements ??= {};
+        const dashboardId = checkNotNull(state.dashboardId);
+        const dashboard = state.dashboards[dashboardId];
 
-        prevDash.dashCardTabMovements[dashCardId] = {
+        dashboard.dashCardTabMovements ??= {};
+
+        dashboard.dashCardTabMovements[dashCardId] = {
           originalRow: dashCard.row,
           originalCol: dashCard.col,
           originalTabId: checkNotNull(dashCard.dashboard_tab_id),
         };
 
         const { row, col } = getPositionForNewDashCard(
-          getExistingDashCards(state, prevDash.id, destinationTabId),
+          getExistingDashCards(state, dashboardId, destinationTabId),
           dashCard.size_x,
           dashCard.size_y,
         );
@@ -339,12 +341,15 @@ export const tabsReducer = createReducer<DashboardState>(
     builder.addCase(
       undoMoveDashCardToTab,
       (state, { payload: { dashCardId } }) => {
-        const { prevDash } = getPrevDashAndTabs({ state });
+        const dashboardId = checkNotNull(state.dashboardId);
+        const dashboard = state.dashboards[dashboardId];
 
         const dashCard = state.dashcards[dashCardId];
-        const movement = checkNotNull(
-          prevDash.dashCardTabMovements?.[dashCardId],
-        );
+        const movement = dashboard.dashCardTabMovements?.[dashCardId];
+
+        if (!movement) {
+          throw new Error(`cannot find movement to undo undoMoveDashCardToTab`);
+        }
 
         dashCard.row = movement.originalRow;
         dashCard.col = movement.originalCol;
