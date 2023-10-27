@@ -506,7 +506,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       saveDashboard();
 
-      cy.findByTestId("field-set-content").click();
+      cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
         cy.button("Add filter").click();
@@ -673,6 +673,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
         addTimeParameter();
+        cy.get("aside")
+          .findByRole("textbox")
+          .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
+            parseSpecialCharSequences: false,
+          });
 
         cy.icon("chevronleft").click();
 
@@ -697,6 +702,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         addSavedQuestionDestination();
         addSavedQuestionCreatedAtParameter();
         addSavedQuestionQuantityParameter();
+        cy.get("aside")
+          .findByRole("textbox")
+          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+            parseSpecialCharSequences: false,
+          });
 
         cy.icon("chevronleft").click();
 
@@ -712,7 +722,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testDashboardDestinationClick() {
         cy.log("it handles 'Count' column click");
 
-        getTableCell(COLUMN_INDEX.COUNT).click();
+        getTableCell(COLUMN_INDEX.COUNT)
+          .should("have.text", `Count: ${POINT_COUNT}`)
+          .click();
         cy.findAllByTestId("field-set")
           .should("have.length", 2)
           .should("contain.text", POINT_COUNT)
@@ -732,7 +744,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testQuestionDestinationClick() {
         cy.log("it handles 'Created at' column click");
 
-        getTableCell(COLUMN_INDEX.CREATED_AT).click();
+        getTableCell(COLUMN_INDEX.CREATED_AT)
+          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+          .click();
         cy.findByTestId("qb-filters-panel")
           .should("contain.text", "Created At is August 1–31, 2022")
           .should("contain.text", "Quantity is equal to 79");
@@ -781,6 +795,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
         cy.get("aside").findByText("Update a dashboard filter").click();
         addTextParameter();
+        cy.get("aside").findByRole("textbox").should("not.exist");
 
         cy.icon("chevronleft").click();
 
@@ -803,7 +818,12 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").findByText("Unknown").click();
         addUrlDestination();
         modal().within(() => {
-          cy.findAllByRole("textbox").first().type(URL_WITH_PARAMS, {
+          const urlInput = cy.findAllByRole("textbox").eq(0);
+          const customLinkTextInput = cy.findAllByRole("textbox").eq(1);
+          urlInput.type(URL_WITH_PARAMS, {
+            parseSpecialCharSequences: false,
+          });
+          customLinkTextInput.type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
             parseSpecialCharSequences: false,
           });
           cy.button("Done").click();
@@ -841,7 +861,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testCustomUrlDestinationClick() {
         cy.log("it handles 'Created at' column click");
 
-        cy.findByTestId("field-set-content").click();
+        cy.button(DASHBOARD_FILTER_TEXT.name).click();
         popover().within(() => {
           cy.icon("close").click();
           cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
@@ -852,7 +872,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(anchor).to.have.attr("rel", "noopener");
           expect(anchor).to.have.attr("target", "_blank");
         });
-        getTableCell(COLUMN_INDEX.CREATED_AT).click();
+        getTableCell(COLUMN_INDEX.CREATED_AT)
+          .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
+          .click();
       })();
     });
   });
