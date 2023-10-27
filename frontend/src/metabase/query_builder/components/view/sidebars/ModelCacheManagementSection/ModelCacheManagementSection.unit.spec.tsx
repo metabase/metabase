@@ -5,7 +5,7 @@ import fetchMock from "fetch-mock";
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import PersistedModels from "metabase/entities/persisted-models";
 
 import type { ModelCacheRefreshStatus } from "metabase-types/api";

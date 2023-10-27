@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 import { DefaultMode } from "metabase/visualizations/click-actions/modes/DefaultMode";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   RegularClickAction,
   QueryClickActionsMode,
