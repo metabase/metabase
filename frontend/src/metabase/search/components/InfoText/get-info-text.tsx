@@ -53,9 +53,9 @@ const getCollectionInfoText = (result: WrappedResult): InfoTextData => {
       label: t`Collection`,
     };
   }
-  const level = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[collection.authority_level];
+  const type = PLUGIN_COLLECTIONS.getCollectionType(collection);
   return {
-    label: `${level.name} ${t`Collection`}`,
+    label: `${type.name} ${t`Collection`}`,
   };
 };
 
