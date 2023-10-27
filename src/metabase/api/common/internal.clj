@@ -280,8 +280,7 @@
 (def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
                                   (mc/type (mc/schema [:maybe ms/PositiveInt]))
                                   (mc/type [:enum "a" "b"])
-                                  :fn
-                                  :string})
+                                  :fn})
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
