@@ -20,7 +20,8 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
-const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -291,7 +292,7 @@ describe("scenarios > models metadata", () => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
-              id: 11,
+              id: ORDERS.USER_ID,
               display_name: "User ID",
               semantic_type: "type/FK",
               fk_target_field_id: PEOPLE.ID,
