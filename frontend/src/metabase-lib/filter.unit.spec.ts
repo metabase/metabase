@@ -111,10 +111,6 @@ function addBooleanFilter(
   return addFilter(query, filterClause, Lib.booleanFilterParts);
 }
 
-function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
-  return addFilter(query, filterClause, Lib.timeFilterParts);
-}
-
 function addRelativeDateFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
@@ -127,6 +123,10 @@ function addExcludeDateFilter(
   filterClause: Lib.ExpressionClause,
 ) {
   return addFilter(query, filterClause, Lib.excludeDateFilterParts);
+}
+
+function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
+  return addFilter(query, filterClause, Lib.timeFilterParts);
 }
 
 describe("filter", () => {
@@ -700,83 +700,6 @@ describe("filter", () => {
     });
   });
 
-  describe("time filters", () => {
-    const tableName = "PEOPLE";
-    const columnName = TIME_FIELD.name;
-    const column = findColumn(query, tableName, columnName);
-
-    beforeEach(() => {
-      jest.useFakeTimers();
-      jest.setSystemTime(new Date(2020, 0, 1));
-    });
-
-    it.each<Lib.TimeFilterOperatorName>([">", "<"])(
-      'should be able to create and destructure a time filter with "%s" operator and 1 value',
-      operator => {
-        const { filterParts, columnInfo } = addTimeFilter(
-          query,
-          Lib.timeFilterClause({
-            operator,
-            column,
-            values: [new Date(2015, 0, 1, 10, 20)],
-          }),
-        );
-
-        expect(filterParts).toMatchObject({
-          operator,
-          column: expect.anything(),
-          values: [new Date(2020, 0, 1, 10, 20)],
-        });
-        expect(columnInfo?.name).toBe(columnName);
-      },
-    );
-
-    it('should be able to create and destructure a time filter with "between" operator and 2 values', () => {
-      const { filterParts, columnInfo } = addTimeFilter(
-        query,
-        Lib.timeFilterClause({
-          operator: "between",
-          column,
-          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
-        }),
-      );
-
-      expect(filterParts).toMatchObject({
-        operator: "between",
-        column: expect.anything(),
-        values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
-      });
-      expect(columnInfo?.name).toBe(columnName);
-    });
-
-    it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause("=", [column, "10:20:00.000"]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-
-    it("should ignore expressions without first column", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause(">", ["10:20:00.000", column]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-
-    it("should ignore expressions with non-time arguments", () => {
-      const { filterParts } = addTimeFilter(
-        query,
-        Lib.expressionClause(">", [column, column]),
-      );
-
-      expect(filterParts).toBeNull();
-    });
-  });
-
   describe("relative date filters", () => {
     const tableName = "PRODUCTS";
     const columnName = "CREATED_AT";
@@ -1088,6 +1011,83 @@ describe("filter", () => {
       const { filterParts } = addExcludeDateFilter(
         query,
         Lib.expressionClause("!=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("time filters", () => {
+    const tableName = "PEOPLE";
+    const columnName = TIME_FIELD.name;
+    const column = findColumn(query, tableName, columnName);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2020, 0, 1));
+    });
+
+    it.each<Lib.TimeFilterOperatorName>([">", "<"])(
+      'should be able to create and destructure a time filter with "%s" operator and 1 value',
+      operator => {
+        const { filterParts, columnInfo } = addTimeFilter(
+          query,
+          Lib.timeFilterClause({
+            operator,
+            column,
+            values: [new Date(2015, 0, 1, 10, 20)],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values: [new Date(2020, 0, 1, 10, 20)],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it('should be able to create and destructure a time filter with "between" operator and 2 values', () => {
+      const { filterParts, columnInfo } = addTimeFilter(
+        query,
+        Lib.timeFilterClause({
+          operator: "between",
+          column,
+          values: [new Date(2015, 0, 1, 10, 20), new Date(2015, 0, 1, 18, 50)],
+        }),
+      );
+
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 18, 50)],
+      });
+      expect(columnInfo?.name).toBe(columnName);
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause("=", [column, "10:20:00.000"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause(">", ["10:20:00.000", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-time arguments", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause(">", [column, column]),
       );
 
       expect(filterParts).toBeNull();
