@@ -541,7 +541,12 @@
     (mt/with-current-user (mt/user->id :rasta)
       (let [event (t2/select-one :model/User (mt/user->id :lucky))
             new-event (assoc event :first_name "When Preperation Meets Opportunity")]
-        (is (= event (:audit-log/previous (events/publish-event! :event/user-update (assoc new-event :audit-log/previous event))))))
+        (is (= event
+               (-> (events/publish-event! :event/user-update (assoc new-event :audit-log/previous event))
+                   :audit-log/previous)))
+        (is (= new-event
+               (-> (events/publish-event! :event/user-update (assoc new-event :audit-log/previous event))
+                   (dissoc :audit-log/previous)))))
       (is (= {:model_id (mt/user->id :lucky)
               :user_id  (mt/user->id :rasta)
               :topic    :user-update
