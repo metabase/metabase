@@ -93,7 +93,7 @@
                                       :type     :query
                                       :database (mt/id)})
             root  (magic/->root query)]
-        ;; The "in" and "on" might read a little odd here, but this would require a larger change to
+        ;; The "on" might read a little odd here, but this would require a larger change to
         ;; humanize-datetime which we probably should not do right now.
         (testing "Should humanize temporal field with = test"
           (is (= "number of Users where Last Login is on September 9, 1990"
