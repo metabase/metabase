@@ -1159,7 +1159,7 @@ describe("filter", () => {
       ["month-of-year", [0, 2], ["2020-01-01", "2020-03-01"]],
       ["quarter-of-year", [1, 4], ["2020-01-01", "2020-10-01"]],
     ])(
-      'should properly format values for "%s" bucket',
+      'should properly serialize values for "%s" bucket',
       (bucket, values, args) => {
         const filter = Lib.excludeDateFilterClause(query, 0, {
           operator: "!=",
