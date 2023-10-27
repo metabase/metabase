@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import type { TimeFilterOperatorName } from "metabase-lib";
-import { OPERATOR_OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS_MAP } from "./constants";
 
 export function getDefaultValue() {
   return dayjs().startOf("day").toDate(); // 00:00:00
@@ -9,24 +9,26 @@ export function getDefaultValue() {
 export function getDefaultValuesForOperator(
   operatorName: TimeFilterOperatorName,
 ): Date[] {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
-  if (!option) {
-    return [];
-  }
-  return Array(option.valueCount)
+  const option = OPERATOR_OPTIONS_MAP[operatorName];
+  const valueCount = option?.valueCount ?? 0;
+  return Array(valueCount)
     .fill(null)
     .map(() => getDefaultValue());
+}
+
+export function getNextValues(values: Date[], valueCount: number): Date[] {
+  const nextValues = values.slice(0, valueCount);
+  while (nextValues.length < valueCount) {
+    nextValues.push(getDefaultValue());
+  }
+  return nextValues;
 }
 
 export function isFilterValid(
   operatorName: TimeFilterOperatorName,
   values: (Date | null)[],
 ) {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
+  const option = OPERATOR_OPTIONS_MAP[operatorName];
   if (!option) {
     return false;
   }
