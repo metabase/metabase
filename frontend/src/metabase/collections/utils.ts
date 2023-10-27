@@ -29,6 +29,12 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
+export function getInstanceAnalyticsCustomCollection(
+  collections: Collection[],
+): Collection | null {
+  return PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection(collections);
+}
+
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
 function preparePersonalCollection(c: Collection): Collection {
