@@ -1,5 +1,5 @@
 import { visitDashboard } from "./e2e-misc-helpers";
-import { popover } from "./e2e-ui-elements-helpers";
+import { menu, popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -167,6 +167,15 @@ export function deleteTab(tabName) {
   });
 }
 
+export function goToTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").click();
+  menu().findByText(tabName).click();
+}
+
 export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   visitDashboard(dashboardId);
   editDashboard();
@@ -220,7 +229,7 @@ export const dashboardGrid = () => {
  * @param {number=} option.size_y
  * @param {string} option.text
  */
-export function createTextCard({
+export function getTextCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
   row = 0,
@@ -245,6 +254,66 @@ export function createTextCard({
       },
       text,
     },
+  };
+}
+
+export function getHeadingCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 24,
+  size_y = 1,
+  text = "Heading text details",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "heading",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "dashcard.background": false,
+      text,
+    },
+  };
+}
+
+export function getLinkCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 1,
+  url = "https://metabase.com",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "link",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      link: {
+        url,
+      },
+    },
+    parameter_mappings: [],
   };
 }
 

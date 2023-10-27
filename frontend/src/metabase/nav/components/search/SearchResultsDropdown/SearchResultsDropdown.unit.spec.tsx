@@ -16,7 +16,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { SearchResultsDropdown } from "./SearchResultsDropdown";
 
 // Mock MIN_RESULTS_FOR_FOOTER_TEXT so we don't have to generate a ton of elements for the footer test

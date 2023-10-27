@@ -11,11 +11,11 @@ export const SearchFilterKeys = {
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModelType[] = [
-  "collection",
   "dashboard",
   "card",
+  "dataset",
+  "collection",
   "database",
   "table",
-  "dataset",
   "action",
 ];
