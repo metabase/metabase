@@ -323,13 +323,19 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
+  const columnWithoutBucket = withTemporalBucket(column, null);
+
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause("time-interval", [column, value, bucket], options);
+    return expressionClause(
+      "time-interval",
+      [columnWithoutBucket, value, bucket],
+      options,
+    );
   }
 
   return expressionClause("between", [
     expressionClause("+", [
-      column,
+      columnWithoutBucket,
       expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
     expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
