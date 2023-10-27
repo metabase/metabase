@@ -60,12 +60,8 @@ export function ArchiveApp() {
       return [];
     }
 
-    if (isAdmin) {
-      return data;
-    }
-
     return data.filter(item => item?.can_write);
-  }, [clear, data, isAdmin]);
+  }, [clear, data]);
 
   const selectAllItems = useCallback(() => {
     selectOnlyTheseItems(writableList);
