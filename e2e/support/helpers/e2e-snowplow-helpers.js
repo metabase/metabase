@@ -36,20 +36,7 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
 };
 
 export const expectGoodSnowplowEvents = count => {
-  retrySnowplowRequest("micro/good", ({ body }) => {
-    console.log("expectGoodSnowplowEvents: ", body);
-    console.log(
-      "eventlist: ",
-      body
-        .map(elem => elem.event?.unstruct_event?.data?.data)
-        .filter(k => !!k)
-        .reduce((acc, cur) => {
-          acc.push(cur);
-          return acc;
-        }, []),
-    );
-    return body.length >= count;
-  })
+  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
     .its("body")
     .should("have.length", count);
 };
