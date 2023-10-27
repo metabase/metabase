@@ -32,6 +32,12 @@ const SEND_TEST_BUTTON_STATES = {
 };
 type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
 
+interface FormRefType {
+  handleFormErrors: (error: Error) => void;
+  setFormErrors: (formErrors: any) => void;
+  setState: ({ formData, dirty }: { formData: object; dirty: boolean }) => void;
+}
+
 interface SMTPConnectionFormProps {
   elements: SettingElement[];
   settingValues: Settings;
@@ -43,7 +49,7 @@ export const SMTPConnectionForm = ({
 }: SMTPConnectionFormProps) => {
   const [sendingEmail, setSendingEmail] = useState<ButtonStateType>("default");
 
-  const formRef = useRef();
+  const formRef = useRef<FormRefType>();
   const isHosted = useSelector(getIsHosted);
   const isPaidPlan = useSelector(getIsPaidPlan);
   const isEmailConfigured = useSelector(getIsEmailConfigured);
@@ -54,7 +60,7 @@ export const SMTPConnectionForm = ({
     await dispatch(clearEmailSettings());
     // NOTE: reaching into form component is not ideal
 
-    formRef.current.setState({ formData: {}, dirty: false });
+    formRef.current?.setState({ formData: {}, dirty: false });
   }, [dispatch]);
 
   const handleUpdateEmailSettings = useCallback(
@@ -74,7 +80,7 @@ export const SMTPConnectionForm = ({
 
       setSendingEmail("working");
       // NOTE: reaching into form component is not ideal
-      formRef.current.setFormErrors(null);
+      formRef.current?.setFormErrors(null);
 
       try {
         await dispatch(sendTestEmail());
@@ -87,7 +93,7 @@ export const SMTPConnectionForm = ({
 
         // show a confirmation for 3 seconds, then return to normal
         setTimeout(() => setSendingEmail("default"), 3000);
-      } catch (error) {
+      } catch (error: any) {
         MetabaseAnalytics.trackStructEvent(
           "Email Settings",
           "Test Email",
@@ -95,7 +101,9 @@ export const SMTPConnectionForm = ({
         );
         setSendingEmail("default");
         // NOTE: reaching into form component is not ideal
-        formRef.current.setFormErrors(formRef.current.handleFormErrors(error));
+        formRef.current?.setFormErrors(
+          formRef.current?.handleFormErrors(error),
+        );
       }
     },
     [dispatch],
@@ -115,9 +123,18 @@ export const SMTPConnectionForm = ({
           ref={formRef}
           elements={elements}
           settingValues={settingValues}
-          disable={sendingEmail !== "default"}
           updateSettings={handleUpdateEmailSettings}
-          renderExtraButtons={({ disabled, valid, pristine, submitting }) => (
+          renderExtraButtons={({
+            disabled,
+            valid,
+            pristine,
+            submitting,
+          }: {
+            disabled: boolean;
+            valid: boolean;
+            pristine: boolean;
+            submitting: ButtonStateType;
+          }) => (
             <>
               {valid && pristine && submitting === "default" ? (
                 <Button

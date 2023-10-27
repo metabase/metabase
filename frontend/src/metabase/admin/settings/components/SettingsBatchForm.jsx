@@ -50,11 +50,14 @@ class SettingsBatchForm extends Component {
   }
 
   static propTypes = {
+    breadcrumbs: PropTypes.array,
     elements: PropTypes.array.isRequired,
-    formErrors: PropTypes.object,
-    updateSettings: PropTypes.func.isRequired,
+    layout: PropTypes.array,
     renderSubmitButton: PropTypes.func,
     renderExtraButtons: PropTypes.func,
+    ref: PropTypes.forwardRef,
+    settingValues: PropTypes.object,
+    updateSettings: PropTypes.func.isRequired,
   };
 
   componentDidMount() {
