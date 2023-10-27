@@ -34,60 +34,6 @@
    [:tuple :any :keyword]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            Columns for each Entity                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:private all-search-columns
-  "All columns that will appear in the search results, and the types of those columns. The generated search query is a
-  `UNION ALL` of the queries for each different entity; it looks something like:
-
-    SELECT 'card' AS model, id, cast(NULL AS integer) AS table_id, ...
-    FROM report_card
-    UNION ALL
-    SELECT 'metric' as model, id, table_id, ...
-    FROM metric
-
-  Columns that aren't used in any individual query are replaced with `SELECT cast(NULL AS <type>)` statements. (These
-  are cast to the appropriate type because Postgres will assume `SELECT NULL` is `TEXT` by default and will refuse to
-  `UNION` two columns of two different types.)"
-  (ordered-map/ordered-map
-   ;; returned for all models. Important to be first for changing model for dataset
-   :model               :text
-   :id                  :integer
-   :name                :text
-   :display_name        :text
-   :description         :text
-   :archived            :boolean
-   ;; returned for Card, Dashboard, and Collection
-   :collection_id       :integer
-   :collection_name     :text
-   :collection_type     :text
-   :collection_authority_level :text
-   ;; returned for Card and Dashboard
-   :collection_position :integer
-   :bookmark            :boolean
-   ;; returned for everything except Collection
-   :updated_at          :timestamp
-   ;; returned for Card only
-   :dashboardcard_count :integer
-   :moderated_status    :text
-   ;; returned for Metric and Segment
-   :table_id            :integer
-   :table_schema        :text
-   :table_name          :text
-   :table_description   :text
-   ;; returned for Metric, Segment, and Action
-   :database_id         :integer
-   ;; returned for Database and Table
-   :initial_sync_status :text
-   ;; returned for Action
-   :model_id            :integer
-   :model_name          :text
-   ;; returned for indexed-entity
-   :pk_ref              :text
-   :model_index_id      :integer))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
