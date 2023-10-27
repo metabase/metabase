@@ -17,6 +17,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -25,10 +26,13 @@
 (set! *warn-on-reflection* true)
 
 (defn spit-yaml
-  "Writes obj to filename and creates parent directories if necessary"
+  "Writes obj to filename and creates parent directories if necessary.
+
+  Writes (even nested) yaml keys in a deterministic fashion."
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false})))
+  (spit filename (yaml/generate-string (u/deep-sort-map obj)
+                                       {:dumper-options {:flow-style :block :split-lines false}})))
 
 (defn- as-file?
   [instance]

@@ -7,11 +7,11 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
-   [metabase.search.util :as search-util]
+   [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]])
   (:import
@@ -28,30 +28,45 @@
 ;;              text
 ;;               |
 ;;               |
-;;          varchar_255
-;;              / \
-;;             /   \
-;;            /     \
-;;         float   datetime
+;;          varchar_255┐
+;;              / \    |
+;;             /   \   └—————————┐
+;;            /     \            |
+;;         float   datetime  string-pk
 ;;           |       |
 ;;           |       |
-;;          int    date
-;;           |
-;;           |
-;;        boolean
+;;          int     date
+;;         /   \
+;;        /     \
+;;  int-pk     boolean
+;;     |
+;;     |
+;;   auto-
+;; incrementing-
+;;  int-pk
 
 (def ^:private type->parent
   ;; listed in depth-first order
-  {::varchar_255 ::text
-   ::float       ::varchar_255
-   ::int         ::float
-   ::boolean     ::int
-   ::datetime    ::varchar_255
-   ::date        ::datetime})
+  {::varchar_255              ::text
+   ::float                    ::varchar_255
+   ::int                      ::float
+   ::int-pk                   ::int
+   ::auto-incrementing-int-pk ::int-pk
+   ::boolean                  ::int
+   ::datetime                 ::varchar_255
+   ::date                     ::datetime
+   ::string-pk                ::varchar_255})
+
+(def ^:private base-type->pk-type
+  {::varchar_255 ::string-pk
+   ::int         ::int-pk})
 
 (def ^:private types
   (set/union (set (keys type->parent))
              (set (vals type->parent))))
+
+(def ^:private pk-base-types
+  (set (keys base-type->pk-type)))
 
 (def ^:private type->ancestors
   (into {} (for [type types]
@@ -117,6 +132,8 @@
     - ::float
     - ::varchar_255
     - ::text
+    - ::date
+    - ::datetime
     - nil, in which case other functions are expected to replace it with ::text as the catch-all type
 
   NB: There are currently the following gotchas:
@@ -137,7 +154,7 @@
 
 (defn- row->types
   [row]
-  (map (comp value->type search-util/normalize) row))
+  (map (comp value->type search.util/normalize) row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
@@ -170,11 +187,28 @@
     "unnamed_column"
     (u/slugify (str/trim raw-name))))
 
+(defn- is-pk?
+  [[col-name type]]
+  (and (#{"id" "pk" "uuid" "guid"} (u/lower-case-en (name col-name)))
+       (pk-base-types type)))
+
+(defn- ->ordered-maps-with-pk-column
+  "Sets appropriate type information on the first PK column it finds, otherwise adds a new one.
+
+  Returns a *map* with two keys: `:extant-columns` and `:generated-columns`."
+  [name-type-pairs]
+  (if-let [[pk-name pk-base-type] (first (filter is-pk? name-type-pairs))]
+    {:extant-columns    (assoc (ordered-map/ordered-map name-type-pairs) pk-name (base-type->pk-type pk-base-type))
+     :generated-columns (ordered-map/ordered-map)}
+    {:extant-columns    (ordered-map/ordered-map name-type-pairs)
+     :generated-columns (ordered-map/ordered-map :id ::auto-incrementing-int-pk)}))
+
 (defn- rows->schema
   [header rows]
   (let [normalized-header (->> header
                                (map normalize-column-name)
-                               (mbql.u/uniquify-names))
+                               (mbql.u/uniquify-names)
+                               (map keyword))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
@@ -182,7 +216,7 @@
          (reduce coalesce-types (repeat column-count nil))
          (map #(or % ::text))
          (map vector normalized-header)
-         (ordered-map/ordered-map))))
+         (->ordered-maps-with-pk-column))))
 
 ;;;; +------------------+
 ;;;; |  Parsing values  |
@@ -243,13 +277,16 @@
 
 (defn- upload-type->parser [upload-type]
   (case upload-type
-    ::varchar_255 identity
-    ::text        identity
-    ::int         (partial parse-number (get-number-separators))
-    ::float       (partial parse-number (get-number-separators))
-    ::boolean     #(parse-bool (str/trim %))
-    ::date        #(parse-date (str/trim %))
-    ::datetime    #(parse-datetime (str/trim %))))
+    ::varchar_255              identity
+    ::text                     identity
+    ::int                      (partial parse-number (get-number-separators))
+    ::float                    (partial parse-number (get-number-separators))
+    ::int-pk                   (partial parse-number (get-number-separators))
+    ::auto-incrementing-int-pk (partial parse-number (get-number-separators))
+    ::string-pk                identity
+    ::boolean                  #(parse-bool (str/trim %))
+    ::date                     #(parse-date (str/trim %))
+    ::datetime                 #(parse-datetime (str/trim %))))
 
 (defn- parsed-rows
   "Returns a lazy seq of parsed rows from the `reader`.
@@ -289,17 +326,14 @@
                                 max-sample-rows)))
                   rows)))
 
-(defn detect-schema
-  "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
-  first row. Supported types are:
+(defn- upload-type->col-specs
+  [driver col->upload-type]
+  (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
-    - ::int
-    - ::float
-    - ::boolean
-    - ::varchar_255
-    - ::text
-    - ::date
-    - ::datetime
+(defn detect-schema
+  "Returns a map with two keys: `:extant-columns` (columns found in the CSV file) and `:generated-columns` (columns we
+  are adding ourselves). The value of each is an ordered map of `normalized-column-name -> type` for the given CSV
+  file. The CSV file *must* have headers as the first row. Supported types include `::int`, `::datetime`, etc.
 
   A column that is completely blank is assumed to be of type ::text."
   [csv-file]
@@ -311,17 +345,22 @@
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
-  (let [col->upload-type   (detect-schema csv-file)
-        col->database-type (update-vals col->upload-type (partial driver/upload-type->database-type driver))
-        column-names       (keys col->upload-type)]
-    (driver/create-table! driver db-id table-name col->database-type)
+  (let [{col-to-insert->upload-type :extant-columns
+         gen-col->upload-type       :generated-columns} (detect-schema csv-file)
+        col-to-create->col-spec                         (upload-type->col-specs driver
+                                                                                (merge gen-col->upload-type col-to-insert->upload-type))
+        csv-col-names                                   (keys col-to-insert->upload-type)]
+    (driver/create-table! driver db-id table-name col-to-create->col-spec)
     (try
       (with-open [reader (io/reader csv-file)]
-        (let [rows (parsed-rows col->upload-type reader)]
-          (driver/insert-into! driver db-id table-name column-names rows)
-          {:num-rows    (count rows)
-           :num-columns (count column-names)
-           :size-mb     (/ (.length csv-file) 1048576.0)}))
+        (let [rows (parsed-rows col-to-insert->upload-type reader)]
+          (driver/insert-into! driver db-id table-name csv-col-names rows)
+          {:num-rows          (count rows)
+           :num-columns       (count csv-col-names)
+           :generated-columns (- (count col-to-create->col-spec)
+                                 (count col-to-insert->upload-type))
+           :size-mb           (/ (.length csv-file)
+                                 1048576.0)}))
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))

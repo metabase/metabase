@@ -9,6 +9,7 @@ import {
   dragField,
   leftSidebar,
   main,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -22,6 +23,8 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
+  ANALYTIC_EVENTS,
+  ANALYTIC_EVENTS_ID,
 } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
@@ -32,10 +35,32 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME },
 ];
 
+/**
+ * Our app registers beforeunload event listener e.g. when editing a native SQL question.
+ * Cypress does not automatically close the browser prompt and does not allow manually
+ * interacting with it (unlike with window.confirm). The test will hang forever with
+ * the prompt displayed and will eventually time out. We need to work around this by
+ * monkey-patching window.addEventListener to ignore beforeunload event handlers.
+ *
+ * @see https://github.com/cypress-io/cypress/issues/2118
+ */
+Cypress.on("window:load", window => {
+  const addEventListener = window.addEventListener;
+
+  window.addEventListener = function (event) {
+    if (event === "beforeunload") {
+      return;
+    }
+
+    return addEventListener.apply(this, arguments);
+  };
+});
+
 describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should be created from an ad-hoc question", () => {
@@ -1076,6 +1101,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     popover().findByText("Address").click();
 
     main().findByText("User → Address").should("be.visible");
+  });
+
+  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
+    const query = {
+      type: "query",
+      query: {
+        "source-table": ANALYTIC_EVENTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ANALYTIC_EVENTS.BUTTON_LABEL, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+          [
+            "field",
+            ANALYTIC_EVENTS.TIMESTAMP,
+            { "base-type": "type/DateTime", "temporal-unit": "day" },
+          ],
+          ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    visitQuestionAdhoc({
+      dataset_query: query,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.BUTTON_LABEL,
+              { "base-type": "type/Text" },
+            ],
+            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.TIMESTAMP,
+              { "base-type": "type/DateTime", "temporal-unit": "day" },
+            ],
+            ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+          ],
+          columns: [
+            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ],
+          values: [["aggregation", 0]],
+        },
+      },
+    });
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
+
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    modal().button("Save").click();
+    cy.wait("@createCard");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery");
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
   });
 });
 

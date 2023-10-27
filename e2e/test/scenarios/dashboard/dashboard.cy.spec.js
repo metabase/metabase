@@ -27,7 +27,7 @@ import {
   dashboardHeader,
   openProductsTable,
   updateDashboardCards,
-  createTextCard,
+  getTextCardDetails,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -336,9 +336,7 @@ describe("scenarios > dashboard", () => {
         cy.log("Should revert the title change if editing is cancelled");
         cy.findByTestId("dashboard-name-heading").clear().type(newTitle).blur();
         cy.findByTestId("edit-bar").button("Cancel").click();
-        modal().within(() => {
-          cy.button("Leave anyway").click();
-        });
+        modal().button("Discard changes").click();
         cy.findByTestId("edit-bar").should("not.exist");
         cy.get("@updateDashboardSpy").should("not.have.been.called");
         cy.findByDisplayValue(originalDashboardName);
@@ -442,13 +440,13 @@ describe("scenarios > dashboard", () => {
         cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
           const cards = [
             // the bottom card intentionally goes first to have unsorted cards coming from the BE
-            createTextCard({
+            getTextCardDetails({
               row: 1,
               size_x: 24,
               size_y: 1,
               text: "bottom",
             }),
-            createTextCard({
+            getTextCardDetails({
               row: 0,
               size_x: 24,
               size_y: 1,

@@ -15,13 +15,19 @@
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.db.setup :as db.setup]
-   [metabase.models :refer [Card Database Revision User]]
+   [metabase.models :refer [Database User]]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting]
    [metabase.task :as task]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   [clojure.lang ExceptionInfo]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,15 +93,16 @@
                                                             :created_at :%now
                                                             :updated_at :%now
                                                             :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :visualization_settings (json/generate-string visualization-settings)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -153,16 +160,17 @@
                                                             :created_at :%now
                                                             :updated_at :%now
                                                             :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :visualization_settings "{}"
-                                                        :result_metadata        (json/generate-string result_metadata)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (let [migrated-result-metadata (:result_metadata (t2/query-one {:select [:result_metadata]
                                                                         :from   [:report_card]
@@ -226,16 +234,17 @@
                                                             :created_at :%now
                                                             :updated_at :%now
                                                             :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :result_metadata        (json/generate-string result_metadata)
-                                                        :visualization_settings (json/generate-string visualization-settings)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})]
         (migrate!)
         (testing "After the migration, column_settings field refs are updated to include join-alias"
           (is (= expected
@@ -374,11 +383,12 @@
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
-          revision-id (first (t2/insert-returning-pks! 'Revision
-                                                        {:object   {:cards cards}
-                                                         :model    "Dashboard"
-                                                         :model_id 1
-                                                         :user_id  user-id}))]
+          revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                       {:object    (json/generate-string {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
 
       (migrate!)
       (testing "forward migration migrate correclty"
@@ -396,9 +406,10 @@
                 {:row 36 :col 0  :size_x 23 :size_y 1}
                 {:row 36 :col 23 :size_x 1  :size_y 1}]
                (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
-     (migrate-down! 46)
-     (testing "downgrade works correctly"
-      (is (= cards (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+      (migrate-down! 46)
+      (testing "downgrade works correctly"
+        (is (= cards (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                         :object (json/parse-string true) :cards)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-handle-faliure-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -415,11 +426,12 @@
                         {:id 3 :row nil :col nil :size_x nil :size_y nil}  ; contains nil fields
                         {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}  ; string values need to be skipped
                         {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]  ; include keys other than size
-          revision-id (first (t2/insert-returning-pks! 'Revision
-                                                       {:object   {:cards cards}
-                                                        :model    "Dashboard"
-                                                        :model_id 1
-                                                        :user_id  user-id}))]
+          revision-id (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                       {:object    (json/generate-string {:cards cards})
+                                                        :model     "Dashboard"
+                                                        :model_id  1
+                                                        :user_id   user-id
+                                                        :timestamp :%now}))]
 
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
@@ -428,7 +440,8 @@
                 {:id 3 :row 0 :col 0 :size_x 5 :size_y 4}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 5 :size_y 4 :series [1 2 3]}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id))))
+               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                   :object (json/parse-string true) :cards))))
       (migrate-down! 46)
 
       (testing "downgrade works correctly and ignore failures"
@@ -437,7 +450,8 @@
                 {:id 3 :size_y 4 :size_x 4 :col 0 :row 0}
                 {:id 4 :row "x" :col "x" :size_x "x" :size_y "x"}
                 {:id 5 :row 0 :col 0 :size_x 4 :size_y 4 :series [1 2 3]}]
-               (t2/select-one-fn (comp :cards :object) :model/Revision :id revision-id)))))))
+               (-> (t2/select-one (t2/table-name :model/Revision) :id revision-id)
+                   :object (json/parse-string true) :cards)))))))
 
 (defn two-cards-overlap? [box1 box2]
   (let [{col1    :col
@@ -541,10 +555,12 @@
                                                         :password    "superstrong"
                                                         :date_joined :%now})
             card        {:visualization_settings visualization-settings}
-            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
-                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
-                                                            :user_id  user-id
-                                                            :object   (json/generate-string card)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -615,10 +631,12 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            revision-id (t2/insert-returning-pks! Revision {:model    "Card"
-                                                            :model_id 1 ;; TODO: this could be a foreign key in the future
-                                                            :user_id  user-id
-                                                            :object   (json/generate-string card)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Card"
+                                                   :model_id  1 ;; TODO: this could be a foreign key in the future
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string card)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "column_settings field refs are updated"
           (is (= expected
@@ -668,15 +686,16 @@
                                                                    :created_at :%now
                                                                    :updated_at :%now
                                                                    :details    "{}"})
-            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
-                                                               :created_at             :%now
-                                                               :updated_at             :%now
-                                                               :creator_id             user-id
-                                                               :display                "table"
-                                                               :dataset_query          "{}"
-                                                               :visualization_settings "{}"
-                                                               :database_id            database-id
-                                                               :collection_id          nil})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
             dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
                                                                      :creator_id          user-id
                                                                      :parameters          []})
@@ -757,16 +776,17 @@
                                                                    :created_at :%now
                                                                    :updated_at :%now
                                                                    :details    "{}"})
-            card-id     (t2/insert-returning-pks! :model/Card {:name                   "My Saved Question"
-                                                               :created_at             :%now
-                                                               :updated_at             :%now
-                                                               :creator_id             user-id
-                                                               :display                "table"
-                                                               :dataset_query          "{}"
-                                                               :result_metadata        (json/generate-string result_metadata)
-                                                               :visualization_settings "{}"
-                                                               :database_id            database-id
-                                                               :collection_id          nil})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
             dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
                                                                      :creator_id          user-id
                                                                      :parameters          []})
@@ -777,22 +797,22 @@
                                                                          :size_y       4
                                                                          :col          1
                                                                          :row          1})]
-        (migrate!)
-        (testing "After the migration, column_settings field refs are updated to include join-alias"
-          (is (= expected
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_dashboardcard]
-                                    :where  [:= :id dashcard-id]})
-                     :visualization_settings
-                     json/parse-string))))
-        (db.setup/migrate! db-type data-source :down 46)
-        (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
-          (is (= visualization-settings
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_dashboardcard]
-                                    :where  [:= :id dashcard-id]})
-                     :visualization_settings
-                     json/parse-string))))))))
+       (migrate!)
+       (testing "After the migration, column_settings field refs are updated to include join-alias"
+         (is (= expected
+                (-> (t2/query-one {:select [:visualization_settings]
+                                   :from   [:report_dashboardcard]
+                                   :where  [:= :id dashcard-id]})
+                    :visualization_settings
+                    json/parse-string))))
+       (db.setup/migrate! db-type data-source :down 46)
+       (testing "After reversing the migration, column_settings field refs are updated to remove join-alias"
+         (is (= visualization-settings
+                (-> (t2/query-one {:select [:visualization_settings]
+                                   :from   [:report_dashboardcard]
+                                   :where  [:= :id dashcard-id]})
+                    :visualization_settings
+                    json/parse-string))))))))
 
 (deftest revision-migrate-legacy-dashboard-card-column-settings-field-refs-test
   (testing "Migrations v47.00-045: update dashboard cards' visualization_settings.column_settings legacy field refs"
@@ -819,10 +839,12 @@
                                                         :password    "superstrong"
                                                         :date_joined :%now})
             dashboard   {:cards [{:visualization_settings visualization-settings}]}
-            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
-                                                                   :model_id 1
-                                                                   :user_id  user-id
-                                                                   :object   (json/generate-string dashboard)})]
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string dashboard)
+                                                   :timestamp :%now})]
         (migrate!)
         (testing "legacy column_settings are updated"
           (is (= expected
@@ -888,8 +910,7 @@
                                                                    :created_at :%now
                                                                    :updated_at :%now
                                                                    :details    "{}"})
-            [card-id]          (t2/insert-returning-pks!
-                                :model/Card
+            [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
                                 {:name                   "My Saved Question"
                                  :created_at             :%now
                                  :updated_at             :%now
@@ -910,29 +931,31 @@
                                  :collection_id          nil})
             dashboard   {:cards [{:card_id                card-id
                                   :visualization_settings visualization-settings}]}
-            revision-id (t2/insert-returning-pks! :model/Revision {:model    "Dashboard"
-                                                                   :model_id 1
-                                                                   :user_id  user-id
-                                                                   :object   (json/generate-string dashboard)})]
-        (migrate!)
-        (testing "column_settings field refs are updated"
-          (is (= expected
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))
-        (db.setup/migrate! db-type data-source :down 46)
-        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
-          (is (= (m/dissoc-in visualization-settings
-                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                 (-> (t2/query-one {:select [:object]
-                                    :from   [:revision]
-                                    :where  [:= :id revision-id]})
-                     :object
-                     json/parse-string
-                     (get-in ["cards" 0 "visualization_settings"])))))))))
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Dashboard"
+                                                   :model_id  1
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string dashboard)
+                                                   :timestamp :%now})]
+       (migrate!)
+       (testing "column_settings field refs are updated"
+         (is (= expected
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))
+       (db.setup/migrate! db-type data-source :down 46)
+       (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+         (is (= (m/dissoc-in visualization-settings
+                             ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                (-> (t2/query-one {:select [:object]
+                                   :from   [:revision]
+                                   :where  [:= :id revision-id]})
+                    :object
+                    json/parse-string
+                    (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
@@ -1014,3 +1037,443 @@
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
+
+(deftest fix-click-through-test
+  (let [migrate (fn [card dash]
+                  (:visualization_settings
+                   (#'custom-migrations/fix-click-through {:id                     1
+                                                           :dashcard_visualization dash
+                                                           :card_visualization     card})))]
+    (testing "toplevel"
+      (let [card {"some_setting:"       {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "link"}
+            dash {"other_setting" {"bar" 123}}]
+        (is (= {"other_setting"  {"bar" 123}
+                "click_behavior" {"type"         "link"
+                                  "linkType"     "url"
+                                  "linkTemplate" "http://example.com/{{col_name}}"}}
+               (migrate card dash)))))
+
+    (testing "top level disabled"
+      (let [card {"some_setting:"       {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "link"}
+            dash {"other_setting"       {"bar" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "menu"}]
+        ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
+        (is (nil? (migrate card dash)))))
+    (testing "column settings"
+      (let [card {"some_setting" {"foo" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"view_as"       "link"
+                    "link_template" "http://example.com/{{id}}"
+                    "link_text"     "here is my id: {{id}}"}}}
+            dash {"other_setting" {"bar" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
+                   "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
+        (is (= {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"fun_formatting" "foo"
+                  "click_behavior" {"type"             "link"
+                                    "linkType"         "url"
+                                    "linkTemplate"     "http://example.com/{{id}}"
+                                    "linkTextTemplate" "here is my id: {{id}}"}}
+                 "[\"ref\",[\"field-id\",2]]"
+                 {"other_fun_formatting" 123}}}
+               (migrate card dash)))))
+    (testing "manually updated new behavior"
+      (let [card {"some_setting"        {"foo" 123}
+                  "click_link_template" "http://example.com/{{col_name}}"
+                  "click"               "link"}
+            dash {"other_setting"  {"bar" 123}
+                  "click_behavior" {"type"         "link"
+                                    "linkType"     "url"
+                                    "linkTemplate" "http://example.com/{{other_col_name}}"}}]
+        (is (nil? (migrate card dash)))))
+    (testing "Manually updated to new behavior on Column"
+      (let [card {"some_setting" {"foo" 123},
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"view_as"                  "link"
+                    "link_template"            "http://example.com/{{id}}"
+                    "other_special_formatting" "currency"}
+                   "[\"ref\",[\"field-id\",2]]"
+                   {"view_as"              "link",
+                    "link_template"        "http://example.com/{{something_else}}",
+                    "other_fun_formatting" 0}}}
+            dash {"other_setting" {"bar" 123}
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",1]]"
+                   {"click_behavior"
+                    {"type"         "link"
+                     "linkType"     "url"
+                     "linkTemplate" "http://example.com/{{id}}"}}
+                   "[\"ref\",[\"field-id\",2]]"
+                   {"other_fun_formatting" 123}}}]
+        (is (= {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"click_behavior"
+                  {"type"         "link",
+                   "linkType"     "url",
+                   "linkTemplate" "http://example.com/{{id}}"}}
+                 "[\"ref\",[\"field-id\",2]]"
+                 {"other_fun_formatting" 123,
+                  "click_behavior"
+                  {"type"         "link",
+                   "linkType"     "url",
+                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
+               (migrate card dash)))))
+    (testing "If there is migration eligible on dash but also new style on dash, new style wins"
+      (let [dash {"column_settings"
+                  {"[\"ref\",[\"field-id\",4]]"
+                   {"view_as"       "link"
+                    "link_template" "http://old" ;; this stuff could be migrated
+                    "link_text"     "old"
+                    "column_title"  "column title"
+                    "click_behavior"
+                    {"type"             "link",
+                     "linkType"         "url", ;; but there is already a new style and it wins
+                     "linkTemplate"     "http://new",
+                     "linkTextTemplate" "new"}}}}]
+        ;; no change
+        (is (nil? (migrate nil dash)))))
+    (testing "flamber case"
+      (let [card {"column_settings"
+                  {"[\"ref\",[\"field-id\",4]]"
+                   {"view_as"       "link"
+                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                    "link_text"     "MyQCDT {{CATEGORY}}"
+                    "column_title"  "QCDT Category"}
+                   "[\"ref\",[\"field-id\",6]]"
+                   {"view_as"       "link"
+                    "column_title"  "QCDT Rating"
+                    "link_text"     "Rating {{RATING}}"
+                    "link_template" "http//localhost/?QCDT&{{RATING}}"
+                    "prefix"        "prefix-"
+                    "suffix"        "-suffix"}
+                   "[\"ref\",[\"field-id\",5]]"
+                   {"view_as"       nil
+                    "link_text"     "QCDT was disabled"
+                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                    "column_title"  "(QCDT disabled) Title"}}
+                  "table.pivot_column" "CATEGORY"
+                  "table.cell_column"  "PRICE"}
+            dash {"table.cell_column"  "PRICE"
+                  "table.pivot_column" "CATEGORY"
+                  "column_settings"
+                  {"[\"ref\",[\"field-id\",5]]"
+                   {"view_as"       nil
+                    "link_text"     "QCDT was disabled"
+                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                    "column_title"  "(QCDT disabled) Title"}
+                   "[\"ref\",[\"field-id\",4]]"
+                   {"view_as"       "link"
+                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                    "link_text"     "MyQCDT {{CATEGORY}}"
+                    "column_title"  "QCDT Category"
+                    "click_behavior"
+                    {"type"             "link"
+                     "linkType"         "url"
+                     "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
+                     "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+                   "[\"ref\",[\"field-id\",6]]"
+                   {"view_as"       "link"
+                    "column_title"  "QCDT Rating"
+                    "link_text"     "Rating {{RATING}}"
+                    "link_template" "http//localhost/?QCDT&{{RATING}}"
+                    "prefix"        "prefix-"
+                    "suffix"        "-suffix"}}
+                  "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
+        (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
+                "column_settings"
+                {"[\"ref\",[\"field-id\",4]]"
+                 {"column_title"  "QCDT Category"
+                  "view_as"       "link"
+                  "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                  "link_text"     "MyQCDT {{CATEGORY}}"
+                  "click_behavior"
+                  {"type"             "link"
+                   "linkType"         "url"
+                   "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
+                   "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+                 "[\"ref\",[\"field-id\",5]]"
+                 {"link_text"     "QCDT was disabled"
+                  "column_title"  "(QCDT disabled) Title"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"}
+                 "[\"ref\",[\"field-id\",6]]"
+                 {"prefix"        "prefix-"
+                  "suffix"        "-suffix"
+                  "column_title"  "QCDT Rating"
+                  "view_as"       "link"
+                  "link_text"     "Rating {{RATING}}"
+                  "link_template" "http//localhost/?QCDT&{{RATING}}"
+                  "click_behavior"
+                  {"type"             "link"
+                   "linkType"         "url"
+                   "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
+                   "linkTextTemplate" "Rating {{RATING}}"}}}
+                "table.cell_column"  "PRICE"
+                "table.pivot_column" "CATEGORY"}
+               (migrate card dash)))))))
+
+(deftest fix-click-through-general-test
+  (testing "general case"
+    (let [card-vis              {"column_settings"
+                                 {"[\"ref\",[\"field-id\",2]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com/{{ID}}",
+                                   "link_text"     "here's an id: {{ID}}"},
+                                  "[\"ref\",[\"field-id\",6]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com//{{id}}",
+                                   "link_text"     "here is my id: {{id}}"}},
+                                 "table.pivot_column"  "QUANTITY",
+                                 "table.cell_column"   "DISCOUNT",
+                                 "click"               "link",
+                                 "click_link_template" "http://example.com/{{count}}",
+                                 "graph.dimensions"    ["CREATED_AT"],
+                                 "graph.metrics"       ["count"],
+                                 "graph.show_values"   true}
+          original-dashcard-vis {"click"            "link",
+                                 "click_link_template"
+                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+                                 "graph.dimensions" ["CREATED_AT" "CATEGORY"],
+                                 "graph.metrics"    ["count"]}
+          fixed                 (#'custom-migrations/fix-click-through {:id                     1,
+                                                                        :card_visualization     card-vis
+                                                                        :dashcard_visualization original-dashcard-vis})]
+      (is (= {:id 1,
+              :visualization_settings
+              {"graph.dimensions"    ["CREATED_AT" "CATEGORY"],
+               "graph.metrics"       ["count"],
+               "click"               "link",
+               "click_link_template" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+               "click_behavior"
+               {"type"         "link",
+                "linkType"     "url",
+                "linkTemplate" "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
+               "column_settings"
+               ;; note none of this keywordizes keys in json parsing since these structures are gross as keywords
+               {"[\"ref\",[\"field-id\",2]]"
+                {"click_behavior"
+                 {"type"             "link",
+                  "linkType"         "url",
+                  "linkTemplate"     "http://example.com/{{ID}}",
+                  "linkTextTemplate" "here's an id: {{ID}}"}},
+                "[\"ref\",[\"field-id\",6]]"
+                {"click_behavior"
+                 {"type"             "link",
+                  "linkType"         "url",
+                  "linkTemplate"     "http://example.com//{{id}}",
+                  "linkTextTemplate" "here is my id: {{id}}"}}}}}
+             fixed))
+      (testing "won't fix if fix is already applied"
+        ;; a customer got a custom script from flamber (for which this is making that fix available for everyone. See
+        ;; #15014)
+        (is (= nil (#'custom-migrations/fix-click-through
+                    {:id                     1
+                     :card_visualization     card-vis
+                     :dashcard_visualization (:visualization_settings fixed)}))))))
+
+  (testing "ignores columns when `view_as` is null"
+    (let [card-viz {"column_settings"
+                    {"normal"
+                     ;; this one is view_as link so we should get it
+                     {"view_as"       "link",
+                      "link_template" "dash",
+                      "link_text"     "here's an id: {{ID}}"}
+                     "null-view-as"
+                     {"view_as"       nil
+                      "link_template" "i should not be present",
+                      "link_text"     "i should not be present"}}}
+          dash-viz {}]
+      (is (= ["normal"]
+             (keys (get-in
+                    (#'custom-migrations/fix-click-through {:id                     1
+                                                            :card_visualization     card-viz
+                                                            :dashcard_visualization dash-viz})
+                    [:visualization_settings "column_settings"])))))))
+
+(deftest migrate-click-through-test
+  (let [expect-correct-settings!
+        (fn [f]
+          (let [card-vis       (json/generate-string
+                                {"column_settings"
+                                 {"[\"ref\",[\"field-id\",2]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com/{{ID}}",
+                                   "link_text"     "here's an id: {{ID}}"},
+                                  "[\"ref\",[\"field-id\",6]]"
+                                  {"view_as"       "link",
+                                   "link_template" "http://example.com//{{id}}",
+                                   "link_text"     "here is my id: {{id}}"}},
+                                 "table.pivot_column"  "QUANTITY",
+                                 "table.cell_column"   "DISCOUNT",
+                                 "click"               "link",
+                                 "click_link_template" "http://example.com/{{count}}",
+                                 "graph.dimensions"    ["CREATED_AT"],
+                                 "graph.metrics"       ["count"],
+                                 "graph.show_values"   true})
+                dashcard-vis   (json/generate-string
+                                {"click"            "link",
+                                 "click_link_template"
+                                 "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}",
+                                 "graph.dimensions" ["CREATED_AT" "CATEGORY"],
+                                 "graph.metrics"    ["count"]})
+                [user-id]      (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                               :last_name   "Hughes"
+                                                               :email       "howard@aircraft.com"
+                                                               :password    "superstrong"
+                                                               :date_joined :%now})
+                [database-id]  (t2/insert-returning-pks! Database {:name       "DB"
+                                                                   :engine     "h2"
+                                                                   :created_at :%now
+                                                                   :updated_at :%now
+                                                                   :details    "{}"})
+                [card-id]      (t2/insert-returning-pks!
+                                :model/Card
+                                {:visualization_settings card-vis
+                                 :display                "table"
+                                 :dataset_query          "{}"
+                                 :creator_id             user-id
+                                 :database_id            database-id
+                                 :name                   "My Card"})
+                [dashboard-id] (t2/insert-returning-pks! :model/Dashboard {:name       "My Dashboard"
+                                                                           :creator_id user-id
+                                                                           :parameters []})
+                [dashcard-id]  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id           dashboard-id
+                                                                               :visualization_settings dashcard-vis
+                                                                               :card_id                card-id
+                                                                               :size_x                 4
+                                                                               :size_y                 4
+                                                                               :col                    1
+                                                                               :row                    1})]
+            (let [expected-settings {:graph.dimensions ["CREATED_AT" "CATEGORY"],
+                                     :graph.metrics    ["count"],
+                                     :click            "link",
+                                     :click_link_template
+                                     "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"
+                                     :click_behavior
+                                     {:type         "link",
+                                      :linkType     "url",
+                                      :linkTemplate "http://localhost:3001/?year={{CREATED_AT}}&cat={{CATEGORY}}&count={{count}}"},
+                                     :column_settings
+                                     ;; the model keywordizes the json parsing yielding this monstrosity below
+                                     {"[\"ref\",[\"field\",2,null]]"
+                                      {:click_behavior
+                                       {:type             "link",
+                                        :linkType         "url",
+                                        :linkTemplate     "http://example.com/{{ID}}",
+                                        :linkTextTemplate "here's an id: {{ID}}"}},
+                                      "[\"ref\",[\"field\",6,null]]"
+                                      {:click_behavior
+                                       {:type             "link",
+                                        :linkType         "url",
+                                        :linkTemplate     "http://example.com//{{id}}",
+                                        :linkTextTemplate "here is my id: {{id}}"}}}}]
+              (f)
+              (is (= expected-settings
+                     (-> (t2/select-one :model/DashboardCard :id dashcard-id)
+                         :visualization_settings))))))]
+    (testing "Running the migration from scratch"
+      (impl/test-migrations ["v48.00-022"] [migrate!]
+        (expect-correct-settings! migrate!)))
+    (testing "Running the migration after a previous data-migration still works"
+      (impl/test-migrations ["v48.00-022"] [migrate!]
+        (expect-correct-settings! (fn []
+                                    (#'custom-migrations/migrate-click-through!)
+                                    (migrate!)))))))
+
+(defn- get-json-setting
+  [setting-k]
+  (json/parse-string (t2/select-one-fn :value :setting :key (name setting-k))))
+
+(defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
+  (mt/with-temporary-raw-setting-values
+    [ldap-group-mappings    (json/generate-string ldap-group-mappings)
+     saml-group-mappings    (json/generate-string sso-group-mappings)
+     jwt-group-mappings     (json/generate-string sso-group-mappings)
+     saml-enabled           "true"
+     ldap-enabled           "true"
+     jwt-enabled            "true"]
+    (f)))
+
+(defmacro ^:private with-ldap-and-sso-configured
+  "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
+  [ldap-group-mappings sso-group-mappings & body]
+  (binding [setting/*allow-retired-setting-names* true]
+    `(call-with-ldap-and-sso-configured ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
+
+;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
+;; even though it might make changes to some enterprise-only settings.
+;; In order to write tests that runs in both OSS and EE, we can't use
+;; [[metabase.models.setting/get]] and [[metabase.test.util/with-temporary-setting-values]]
+;; because they require all settings are defined.
+;; That's why we use a set of helper functions that get setting directly from DB during tests
+(deftest migrate-remove-admin-from-group-mapping-if-needed-test
+  (let [admin-group-id        (u/the-id (perms-group/admin))
+        sso-group-mappings    {"group-mapping-a" [admin-group-id (+ 1 admin-group-id)]
+                               "group-mapping-b" [admin-group-id (+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-group-mappings   {"dc=metabase,dc=com" [admin-group-id (+ 1 admin-group-id)]}
+        sso-expected-mapping  {"group-mapping-a" [(+ 1 admin-group-id)]
+                               "group-mapping-b" [(+ 1 admin-group-id) (+ 2 admin-group-id)]}
+        ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
+
+    (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+        (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
+        (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
+
+    (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-enabled "false"
+           saml-enabled "false"
+           jwt-enabled  "false"]
+          (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
+          (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
+          (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
+
+    (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
+      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+        (mt/with-temporary-raw-setting-values
+          [ldap-sync-admin-group "true"]
+          (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
+          (is (= ldap-group-mappings (get-json-setting :ldap-group-mappings))))))))
+
+(deftest check-data-migrations-rollback
+  (impl/test-migrations ["v48.00-024"] [migrate!]
+    (let [{:keys [db-type ^javax.sql.DataSource
+                  data-source]} mdb.connection/*application-db*
+          migrate-all!          (partial db.setup/migrate! db-type data-source)
+          throw-err             (fn [& _args]
+                                  (throw (ex-info "This shouldn't be called ever" {})))]
+
+      (testing "we can migrate even if data_migrations is empty"
+        ;; 0 because we removed them and fresh db won't trigger any
+        (is (= 0 (t2/count :data_migrations)))
+        (migrate!))
+
+      (testing "no data_migrations table after v.48.00-024"
+        (is (thrown? ExceptionInfo
+                     (t2/count :data_migrations))))
+
+      (testing "rollback causes all known data_migrations to reappear"
+        (migrate-all! :down 47)
+        ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
+        (is (= 34 (t2/count :data_migrations))))
+
+      (testing "when migrating up, migrations won't run since they are in data_migration because of rollback"
+        (is (nil?
+             (with-redefs [custom-migrations/migrate-click-through!                            throw-err
+                           custom-migrations/migrate-remove-admin-from-group-mapping-if-needed throw-err]
+               (migrate!))))))))

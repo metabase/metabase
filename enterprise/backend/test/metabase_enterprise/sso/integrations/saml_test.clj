@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership
@@ -85,12 +86,14 @@
                                (t2/update! User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil}))))))
 
 (defmacro with-saml-default-setup [& body]
-  `(with-sso-saml-token
-     (call-with-login-attributes-cleared!
-      (fn []
-        (call-with-default-saml-config
-         (fn []
-           ~@body))))))
+  ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
+  `(mt/with-ensure-with-temp-no-transaction!
+    (with-sso-saml-token
+      (call-with-login-attributes-cleared!
+       (fn []
+         (call-with-default-saml-config
+          (fn []
+            ~@body)))))))
 
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"
@@ -447,20 +450,32 @@
             (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
             (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                          (saml/str->base64 default-redirect-uri))]
-              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
-              (is (= [{:email        "newuser@metabase.com"
-                       :first_name   "New"
-                       :is_qbnewb    true
-                       :is_superuser false
-                       :id           true
-                       :last_name    "User"
-                       :date_joined  true
-                       :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
-                          (map #(dissoc % :last_login)))))
-              (testing "attributes"
-                (is (= (some-saml-attributes "newuser")
-                       (saml-login-attributes "newuser@metabase.com")))))
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options))))
+            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+              (is (= {:email        "newuser@metabase.com"
+                      :first_name   "New"
+                      :is_qbnewb    true
+                      :is_superuser false
+                      :id           true
+                      :last_name    "User"
+                      :date_joined  true
+                      :common_name  "New User"}
+                     (-> (mt/boolean-ids-and-timestamps new-user)
+                         (dissoc :last_login))))
+              (testing "User Invite Event is logged."
+                (is (= {:details  {:email      "newuser@metabase.com"
+                                   :first_name "New"
+                                   :last_name  "User"
+                                   :user_group_memberships [{:id 1}]
+                                   :sso_source "saml"}
+                        :model    "User"
+                        :model_id (:id new-user)
+                        :topic    :user-invited
+                        :user_id  nil}
+                       (audit-log-test/event :user-invited (:id new-user))))))
+            (testing "attributes"
+              (is (= (some-saml-attributes "newuser")
+                     (saml-login-attributes "newuser@metabase.com"))))
             (finally
               (t2/delete! User :%lower.email "newuser@metabase.com"))))))))
 

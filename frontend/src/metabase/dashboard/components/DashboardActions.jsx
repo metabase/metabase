@@ -39,12 +39,12 @@ export const getDashboardActions = (
   const buttons = [];
 
   const isLoaded = !!dashboard;
-  const hasCards = isLoaded && dashboard.ordered_cards.length > 0;
+  const hasCards = isLoaded && dashboard.dashcards.length > 0;
 
   // dashcardData only contains question cards, text ones don't appear here
   const hasDataCards =
     hasCards &&
-    dashboard.ordered_cards.some(
+    dashboard.dashcards.some(
       dashCard => !["text", "heading"].includes(dashCard.card.display),
     );
 

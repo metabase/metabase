@@ -182,7 +182,11 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
-      (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
+      (qp.pivot/run-pivot-query (assoc query
+                                       :async? true
+                                       :constraints (qp.constraints/default-query-constraints))
+                                info
+                                context))))
 
 (defn- parameter-field-values
   [field-ids query]

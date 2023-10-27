@@ -8,7 +8,6 @@
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
    [metabase.query-processor.context.default :as context.default]
@@ -38,7 +37,7 @@
   DO NOT USE THIS METHOD DIRECTLY UNLESS YOU KNOW WHAT YOU ARE DOING! THIS RETURNS AN UNPOOLED CONNECTION SPEC! IF YOU
   WANT A CONNECTION SPEC FOR RUNNING QUERIES USE [[db->pooled-connection-spec]] INSTEAD WHICH WILL RETURN A *POOLED*
   CONNECTION SPEC."
-  {:arglists '([driver details-map])}
+  {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
 
@@ -57,7 +56,7 @@
   powering Cards and the sync process, which are less sensitive to overhead than something like the application DB.
 
   Drivers that need to override the default properties below can provide custom implementations of this method."
-  {:arglists '([driver database])}
+  {:added "0.33.4" :arglists '([driver database])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -67,7 +66,7 @@
 
   The default method uses the first non-nil value of the keys `:db`, `:dbname`, `:sid`, or `:catalog`; implement a new
   method if your driver does not have any of these keys in its details."
-  {:arglists '([driver details]), :added "0.45.0"}
+  {:changelog-test/ignore true, :arglists '([driver details]), :added "0.45.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -83,8 +82,9 @@
 (setting/defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
   :visibility :internal
-  :type :integer
-  :default 15)
+  :type       :integer
+  :default    15
+  :audit      :getter)
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
@@ -241,7 +241,7 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
+          db          (or (when (mi/instance-of? :model/Database db-or-id-or-spec)
                             (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
                             db-or-id-or-spec)
@@ -266,7 +266,7 @@
                                 ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
                                 ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
                                 ;; our app DB, and see if it STILL doesn't match
-                                (not= curr-hash (-> (t2/select-one [Database :id :engine :details] :id database-id)
+                                (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details] :id database-id)
                                                     jdbc-spec-hash))))
                             (when log-invalidation?
                               (log-jdbc-spec-hash-change-msg! db-id))

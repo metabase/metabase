@@ -1,8 +1,4 @@
-import type {
-  Card,
-  DatasetData,
-  DashboardOrderedCard,
-} from "metabase-types/api";
+import type { Card, DatasetData, DashboardCard } from "metabase-types/api";
 
 import type Table from "metabase-lib/metadata/Table";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
@@ -26,7 +22,7 @@ export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
   card?: Card;
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
   zoomedRow?: unknown[] | undefined;

@@ -16,8 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -58,14 +57,15 @@
       ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-  `(disable-other-sso-types
-    (fn []
-      (with-sso-jwt-token
-        (saml-test/call-with-login-attributes-cleared!
-         (fn []
-           (call-with-default-jwt-config
-            (fn []
-              ~@body))))))))
+  `(mt/with-ensure-with-temp-no-transaction!
+     (disable-other-sso-types
+      (fn []
+        (with-sso-jwt-token
+          (saml-test/call-with-login-attributes-cleared!
+           (fn []
+             (call-with-default-jwt-config
+              (fn []
+                ~@body)))))))))
 
 (deftest sso-prereqs-test
   (with-sso-jwt-token
@@ -202,6 +202,9 @@
                        :common_name  "New User"}]
                      (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
+            (testing "User Invite Event is logged."
+              (is (= "newuser@metabase.com"
+                     (get-in (t2/select-one :model/AuditLog :topic :user-invited) [:details :email]))))
             (testing "attributes"
               (is (= {"more" "stuff"
                       "for"  "the new user"}
@@ -272,7 +275,7 @@
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"
     (with-jwt-default-setup
-      (t2.with-temp/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
+      (mt/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values [jwt-group-sync       true
                                            jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                            jwt-attribute-groups "GrOuPs"]

@@ -3,7 +3,7 @@ import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import {
   createMockDashboard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
@@ -18,14 +18,14 @@ import { getDefaultTab } from "metabase/dashboard/actions";
 import { mockSettings } from "__support__/settings";
 import { DashboardHeader } from "../DashboardHeader";
 
-const DASHCARD = createMockDashboardOrderedCard();
+const DASHCARD = createMockDashboardCard();
 
 export const TEST_DASHBOARD = createMockDashboard({
-  ordered_cards: [DASHCARD],
+  dashcards: [DASHCARD],
 });
 
 export const TEST_DASHBOARD_WITH_TABS = createMockDashboard({
-  ordered_tabs: [
+  tabs: [
     getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),
     getDefaultTab({
       tabId: 2,
@@ -142,7 +142,7 @@ export const setup = async ({
         dashboards: {
           [dashboard.id]: {
             ...dashboard,
-            ordered_cards: dashboard.ordered_cards.map(c => c.id),
+            dashcards: dashboard.dashcards.map(c => c.id),
           },
         },
         dashcards: {

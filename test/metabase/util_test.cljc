@@ -410,7 +410,10 @@
            (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
   (testing "multiple defaults for the same key"
     (is (= {:x nil, :y 1, :z 2}
-           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4)))))
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4))))
+  (testing "preserves metadata"
+    (is (= {:m true}
+           (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
 (deftest ^:parallel classify-changes-test
   (testing "classify correctly"
@@ -435,3 +438,14 @@
     #{1}    true
     [1 2]   true
     [1 2 1] false))
+
+(deftest ^:parallel deep-sort-map-test
+  (is (= (into [] (u/deep-sort-map {:c 3 :a 1 :b 2}))
+         [[:a 1] [:b 2] [:c 3]])
+      "top level map should be sorted.")
+
+  (let [m {:d {:d.c 3 :d.a 1 :d.b 2} :c 3 :a 1 :b 2}
+        deeply-sorted (u/deep-sort-map m)]
+    (is (= (keys deeply-sorted) [:a :b :c :d]) "top level map should be sorted.")
+    (is (= (sort [[:d.c 3] [:d.a 1] [:d.b 2]]) (into [] (:d deeply-sorted)))
+        "submaps should be sorted.")))

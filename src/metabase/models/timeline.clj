@@ -1,6 +1,6 @@
 (ns metabase.models.timeline
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
@@ -26,7 +26,7 @@
 
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
- [:enum "star" "balloons" "mail" "warning" "bell" "cloud"])
+ [:enum "star" "cake" "mail" "warning" "bell" "cloud"])
 
 (def DefaultIcon
   "Timeline default icon"

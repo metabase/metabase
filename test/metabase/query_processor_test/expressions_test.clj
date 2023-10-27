@@ -2,7 +2,7 @@
   "Tests for expressions (calculated columns)."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
@@ -268,30 +268,32 @@
 
 (deftest temporal-arithmetic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
-    (testing "Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions"
-      (is (= (robust-dates
-              ["2014-09-02T13:45:00"
-               "2014-07-02T09:30:00"
-               "2014-07-01T10:30:00"])
-             (mt/with-temporary-setting-values [report-timezone "UTC"]
-               (-> (mt/run-mbql-query users
-                     {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
-                      :fields      [[:expression :prev_month]]
-                      :limit       3
-                      :order-by    [[:asc $name]]})
-                   mt/rows)))))
-    (testing "Test interaction of datetime arithmetics with truncation"
-      (is (= (robust-dates
-              ["2014-09-02T00:00:00"
-               "2014-07-02T00:00:00"
-               "2014-07-01T00:00:00"])
-             (mt/with-temporary-setting-values [report-timezone "UTC"]
-               (-> (mt/run-mbql-query users
-                     {:expressions {:prev_month [:+ !day.last_login [:interval -31 :day]]}
-                      :fields      [[:expression :prev_month]]
-                      :limit       3
-                      :order-by    [[:asc $name]]})
-                   mt/rows)))))))
+    (doseq [[op interval] [[:+ [:interval -31 :day]]
+                           [:- [:interval 31 :day]]]]
+      (testing (str "Test that we can do datetime arithemtics using " op " and MBQL `:interval` clause in expressions")
+        (is (= (robust-dates
+                ["2014-09-02T13:45:00"
+                 "2014-07-02T09:30:00"
+                 "2014-07-01T10:30:00"])
+               (mt/with-temporary-setting-values [report-timezone "UTC"]
+                 (-> (mt/run-mbql-query users
+                       {:expressions {:prev_month [op $last_login interval]}
+                        :fields      [[:expression :prev_month]]
+                        :limit       3
+                        :order-by    [[:asc $name]]})
+                     mt/rows)))))
+      (testing (str "Test interaction of datetime arithmetics with truncation using " op " operator")
+        (is (= (robust-dates
+                ["2014-09-02T00:00:00"
+                 "2014-07-02T00:00:00"
+                 "2014-07-01T00:00:00"])
+               (mt/with-temporary-setting-values [report-timezone "UTC"]
+                 (-> (mt/run-mbql-query users
+                       {:expressions {:prev_month [op !day.last_login interval]}
+                        :fields      [[:expression :prev_month]]
+                        :limit       3
+                        :order-by    [[:asc $name]]})
+                     mt/rows))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

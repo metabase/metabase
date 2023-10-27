@@ -124,7 +124,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "question a",
         rhsTable: "question b",
         lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
+        rhsSampleColumn: `question b - PRODUCT_ID → ID`,
       });
     });
 
@@ -143,7 +143,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "question a",
         rhsTable: "question b",
         lhsSampleColumn: "TOTAL",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Rating`,
+        rhsSampleColumn: `question b - PRODUCT_ID → Rating`,
       });
     });
     queryBuilderMain().findByText("EAN").should("not.exist");
@@ -152,7 +152,7 @@ describe("scenarios > question > joined questions", () => {
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText(`question b - PRODUCT_ID`).click();
         cy.findByText("CATEGORY").click();
         cy.findByPlaceholderText("Enter some text").type("Gadget");
         cy.button("Add filter").click();
@@ -160,7 +160,7 @@ describe("scenarios > question > joined questions", () => {
 
       summarize({ mode: "notebook" });
       addSummaryGroupingField({
-        table: `Question ${joinedQuestionId}`,
+        table: `question b`,
         field: "CATEGORY",
       });
     });
@@ -204,11 +204,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     startNewQuestion();
-
     selectSavedQuestionsToJoin("Q1", "Q2");
-    popover().findByText("Product ID").click();
-    popover().findByText("ID").click();
-
     visualize();
 
     cy.get("@joinedQuestionId").then(joinedQuestionId => {
@@ -216,7 +212,7 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "Q1",
         rhsTable: "Q2",
         lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} → ID`,
+        rhsSampleColumn: `Q2 - Product → ID`,
       });
     });
 
@@ -230,11 +226,9 @@ describe("scenarios > question > joined questions", () => {
         lhsTable: "Q1",
         rhsTable: "Q2",
         lhsSampleColumn: "Product ID",
-        rhsSampleColumn: `Question ${joinedQuestionId} → Sum of Total`,
+        rhsSampleColumn: `Q2 - Product → Sum of Total`,
       });
-      queryBuilderMain()
-        .findByText(`Question ${joinedQuestionId} → ID`)
-        .should("not.exist");
+      queryBuilderMain().findByText(`Q2 → ID`).should("not.exist");
     });
 
     openNotebook();
@@ -243,14 +237,14 @@ describe("scenarios > question > joined questions", () => {
       // that a question could be made by joining two previously saved questions
       addCustomColumn();
       enterCustomColumnDetails({
-        formula: `[Question ${joinedQuestionId} → Sum of Rating] / [Sum of Total]`,
+        formula: `[Q2 - Product → Sum of Rating] / [Sum of Total]`,
         name: "Sum Divide",
       });
       popover().button("Done").click();
 
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText(`Question ${joinedQuestionId}`).click();
+        cy.findByText(`Q2 - Product`).click();
         cy.findByText("ID").click();
         cy.findByPlaceholderText("Enter an ID").type("12");
         cy.button("Add filter").click();
@@ -317,11 +311,11 @@ describe("scenarios > question > joined questions", () => {
 
     // Test LHS column infers RHS column's temporal unit
 
-    cy.findByTestId("parent-dimension").click();
+    cy.findByLabelText("Left column").click();
     popover().findByText("by month").click({ force: true });
     popover().last().findByText("Week").click();
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     popover().findByText("Created At").click();
 
     assertJoinColumnName("left", "Created At: Week");
@@ -329,7 +323,7 @@ describe("scenarios > question > joined questions", () => {
 
     // Test changing a temporal unit on one column would update a second one
 
-    cy.findByTestId("join-dimension").click();
+    cy.findByLabelText("Right column").click();
     popover().findByText("by week").click({ force: true });
     popover().last().findByText("Day").click();
 
@@ -383,11 +377,11 @@ describe("scenarios > question > joined questions", () => {
 });
 
 function selectJoinStrategy(strategy) {
-  cy.icon("join_left_outer").first().click();
+  cy.findByLabelText("Change join type").click();
   popover().findByText(strategy).click();
 }
 
-function assertJoinColumnName(type, name) {
-  const testId = type === "left" ? "parent-dimension" : "join-dimension";
-  cy.findByTestId(testId).findByText(name).should("be.visible");
+function assertJoinColumnName(side, name) {
+  const label = side === "left" ? "Left column" : "Right column";
+  cy.findByLabelText(label).findByText(name).should("exist");
 }

@@ -10,7 +10,7 @@ import {
 import {
   createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockQueryAction,
   createMockCard,
   createMockDatabase,
@@ -25,7 +25,7 @@ import {
 } from "__support__/server-mocks";
 import { ActionSidebarFn } from "./ActionSidebar";
 
-const dashcard = createMockDashboardOrderedCard();
+const dashcard = createMockDashboardCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
 const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
@@ -40,7 +40,7 @@ const actionsDatabase = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 const dashboard = createMockDashboard({
-  ordered_cards: [dashcard, actionDashcard, actionDashcardWithAction],
+  dashcards: [dashcard, actionDashcard, actionDashcardWithAction],
 });
 
 const setup = (

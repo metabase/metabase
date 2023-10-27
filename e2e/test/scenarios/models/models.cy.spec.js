@@ -610,9 +610,38 @@ function testDataPickerSearch({
   cy.findByPlaceholderText(inputPlaceholderText).type(query);
   cy.wait("@search");
 
-  cy.findAllByText(/Model in/i).should(models ? "exist" : "not.exist");
-  cy.findAllByText(/Saved question in/i).should(cards ? "exist" : "not.exist");
-  cy.findAllByText(/Table in/i).should(tables ? "exist" : "not.exist");
+  const searchResultItems = cy.findAllByTestId("search-result-item");
+
+  searchResultItems.then($results => {
+    const modelTypes = {};
+
+    for (const htmlElement of $results.toArray()) {
+      const type = htmlElement.getAttribute("data-model-type");
+      if (type in modelTypes) {
+        modelTypes[type] += 1;
+      } else {
+        modelTypes[type] = 1;
+      }
+    }
+
+    if (models) {
+      expect(modelTypes["dataset"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("dataset");
+    }
+
+    if (cards) {
+      expect(modelTypes["card"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("card");
+    }
+
+    if (tables) {
+      expect(modelTypes["table"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("table");
+    }
+  });
 
   cy.icon("close").click();
 }

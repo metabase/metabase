@@ -89,8 +89,7 @@
     [clojure.walk :as walk]
     [clojure.zip :as zip]
     [flatland.ordered.map :refer [ordered-map]]
-    #_{:clj-kondo/ignore [:deprecated-namespace]}
-    [java-time :as t]
+    [java-time.api :as t]
     [kixi.stats.core :as stats]
     [kixi.stats.math :as math]
     [medley.core :as m]
@@ -1629,7 +1628,7 @@
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
   [entity dashboard]
   (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
-    (update dashboard :ordered_cards #(map (partial splice-in join-statement) %))
+    (update dashboard :dashcards #(map (partial splice-in join-statement) %))
     dashboard))
 
 (defn- query-based-analysis

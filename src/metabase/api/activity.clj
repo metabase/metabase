@@ -137,7 +137,9 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id api/*current-user-id*)]
-    (let [dashboard (api/check-404 (t2/select-one Dashboard :id dashboard-id))]
+    (let [dashboard (-> (t2/select-one Dashboard :id dashboard-id)
+                        api/check-404
+                        (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)
         dashboard
         api/generic-204-no-content))

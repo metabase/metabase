@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.user :as api.user]
    [metabase.config :as config]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Collection Dashboard LoginHistory PermissionsGroup
@@ -599,7 +600,7 @@
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
                   "permissions groups get set after the User is created")
-      (t2.with-temp/with-temp [PermissionsGroup group {:name "Group"}]
+      (mt/with-temp! [PermissionsGroup group {:name "Group"}]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 400 "user"
                                 {:first_name             "Cam"
@@ -932,11 +933,12 @@
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-        (with-preserved-rasta-personal-collection-name
-          (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
-            (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
-                                  {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
-                                   :first_name             "Reggae"})))
+        (mt/with-ensure-with-temp-no-transaction!
+          (with-preserved-rasta-personal-collection-name
+            (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
+              (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
+                                    {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
+                                     :first_name             "Reggae"}))))
         (testing "groups"
           (is (= #{"All Users"}
                  (user-test/user-group-names (mt/user->id :rasta)))))
@@ -968,7 +970,7 @@
 
     (testing (str "if we try to create a new user with is_superuser FALSE but user_group_memberships that includes the Admin group "
                   "ID, the entire call should fail")
-      (t2.with-temp/with-temp [User {:keys [email id]} {:first_name "Old First Name"}]
+      (mt/with-temp! [User {:keys [email id]} {:first_name "Old First Name"}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           false
                                :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])
@@ -979,7 +981,7 @@
 
     (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
-      (t2.with-temp/with-temp [User {:keys [email id]}]
+      (mt/with-temp! [User {:keys [email id]}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           true
                                :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})
@@ -1227,3 +1229,40 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+
+(deftest user-activate-deactivate-event-test
+  (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+          (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
+            (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
+            (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
+            (is (= [{:topic    :user-deactivated
+                     :user_id  (mt/user->id :crowberto)
+                     :model    "User"
+                     :model_id id
+                     :details  {}}
+                    {:topic    :user-reactivated
+                     :user_id  (mt/user->id :crowberto)
+                     :model    "User"
+                     :model_id id
+                     :details  {}}]
+                   [(audit-log-test/event :user-deactivated id)
+                    (audit-log-test/event :user-reactivated id)])))))))
+
+(deftest user-update-event-test
+  (testing "User Updates via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+          (testing "PUT /api/user/:id"
+            (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                                  {:first_name "Johnny" :last_name "Appleseed"})
+            (is (= {:topic    :user-update
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "User"
+                    :model_id id
+                    :details  {:first_name "Johnny"
+                               :last_name "Appleseed"}}
+                   (audit-log-test/event :user-update id))))))))

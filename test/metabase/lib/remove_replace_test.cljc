@@ -409,6 +409,28 @@
                    (first (lib/available-metrics query)))
                   (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
+(deftest ^:parallel replace-segment-test
+  (testing "replacing with segment should work"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                              meta/metadata-provider
+                              {:segments  [{:id          100
+                                            :name        "Price is 4"
+                                            :definition  {:filter
+                                                          [:= [:field (meta/id :venues :price) nil] 4]}
+                                            :table-id    (meta/id :venues)}
+                                           {:id          200
+                                            :name        "Price is 5"
+                                            :definition  {:filter
+                                                          [:= [:field (meta/id :venues :price) nil] 5]}
+                                            :table-id    (meta/id :venues)}]})
+          query (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/segment 100)))]
+      (is (=? {:stages [{:filters [[:segment {:lib/uuid string?} 200]]}]}
+              (lib/replace-clause
+                query
+                (first (lib/filters query))
+                (second (lib/available-segments query))))))))
+
 (deftest ^:parallel replace-clause-expression-test
   (let [query (-> lib.tu/venues-query
                   (lib/expression "a" (meta/field-metadata :venues :id))
@@ -916,3 +938,14 @@
                     first
                     :joins
                     (map :alias))))))))
+
+(deftest ^:parallel remove-first-in-long-series-of-join-test
+  (testing "Recursive join removal (#35049)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+                    (lib/join (meta/table-metadata :products))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders) [(lib/= (lib/with-join-alias (meta/field-metadata :products :id) "Products")
+                                                                                     (lib/with-join-alias (meta/field-metadata :orders :product-id) "Orders"))]))
+                    (lib/join (meta/table-metadata :people)))]
+      (is (=?
+            {:stages [(complement :joins)]}
+            (lib/remove-clause query -1 (first (lib/joins query))))))))

@@ -87,7 +87,8 @@
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
                   (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
-  :default    false)
+  :default    false
+  :audit      :getter)
 
 (defn- update-password-if-needed
   "Do not update password if `new-password` is an obfuscated value of the current password."

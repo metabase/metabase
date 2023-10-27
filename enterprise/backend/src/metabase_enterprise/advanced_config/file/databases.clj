@@ -14,8 +14,9 @@
   "Whether to sync newly created Databases during config-from-file initialization. By default, true, but you can disable
   this behavior if you want to sync it manually or use SerDes to populate its data model."
   :visibility :internal
-  :type :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :audit      :getter)
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
