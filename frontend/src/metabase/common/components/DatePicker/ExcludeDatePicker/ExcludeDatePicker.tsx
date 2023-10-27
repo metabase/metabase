@@ -22,6 +22,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
   availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
+  isNew: boolean;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -30,6 +31,7 @@ export function ExcludeDatePicker({
   value,
   availableOperators,
   availableUnits,
+  isNew,
   onChange,
   onBack,
 }: ExcludeDatePickerProps) {
@@ -47,7 +49,7 @@ export function ExcludeDatePicker({
 
   return unit ? (
     <ExcludeValuePicker
-      isNew={value == null}
+      isNew={isNew}
       unit={unit}
       initialValues={values}
       onChange={onChange}
