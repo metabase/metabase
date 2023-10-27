@@ -115,6 +115,13 @@ function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
   return addFilter(query, filterClause, Lib.timeFilterParts);
 }
 
+function addRelativeDateFilter(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return addFilter(query, filterClause, Lib.relativeDateFilterParts);
+}
+
 function addExcludeDateFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
@@ -768,6 +775,115 @@ describe("filter", () => {
 
       expect(filterParts).toBeNull();
     });
+  });
+
+  describe("relative date filters", () => {
+    const tableName = "PRODUCTS";
+    const columnName = "CREATED_AT";
+    const column = findColumn(query, tableName, columnName);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2020, 0, 1));
+    });
+
+    it.each<[number | "current", Lib.RelativeDateBucketName]>([
+      [-1, "minute"],
+      [1, "minute"],
+      ["current", "minute"],
+      [-2, "hour"],
+      [2, "hour"],
+      ["current", "hour"],
+      [-3, "day"],
+      [3, "day"],
+      ["current", "day"],
+      [-4, "week"],
+      [4, "week"],
+      ["current", "week"],
+      [-5, "month"],
+      [5, "month"],
+      ["current", "month"],
+      [-6, "quarter"],
+      [6, "quarter"],
+      ["current", "quarter"],
+      [-7, "year"],
+      [7, "year"],
+      ["current", "year"],
+    ])(
+      "should be able to create and destructure an exclude date filter without offset",
+      (value, bucket) => {
+        const { filterParts, columnInfo } = addRelativeDateFilter(
+          query,
+          Lib.relativeDateFilterClause({
+            column,
+            value,
+            bucket,
+            offsetValue: null,
+            offsetBucket: null,
+            options: {},
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          column: expect.anything(),
+          value,
+          bucket,
+          offsetValue: null,
+          offsetBucket: null,
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<
+      [
+        number | "current",
+        Lib.RelativeDateBucketName,
+        number,
+        Lib.RelativeDateBucketName,
+      ]
+    >([
+      [-1, "minute", -10, "minute"],
+      [1, "minute", 10, "hour"],
+      [-2, "hour", -20, "hour"],
+      [2, "hour", 20, "day"],
+      [-3, "day", -30, "day"],
+      [3, "day", 30, "week"],
+      [-4, "week", -40, "week"],
+      [4, "week", 40, "quarter"],
+      [-5, "month", -50, "month"],
+      [5, "month", 50, "year"],
+      [-6, "quarter", -60, "quarter"],
+      [6, "quarter", 60, "month"],
+      [-7, "year", -70, "year"],
+      [7, "year", 70, "year"],
+    ])(
+      "should be able to create and destructure an exclude date filter with offset",
+      (value, bucket, offsetValue, offsetBucket) => {
+        const { filterParts, columnInfo } = addRelativeDateFilter(
+          query,
+          Lib.relativeDateFilterClause({
+            column,
+            value,
+            bucket,
+            offsetValue,
+            offsetBucket,
+            options: {},
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          column: expect.anything(),
+          value,
+          bucket,
+          offsetValue,
+          offsetBucket,
+          options: {},
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
   });
 
   describe("exclude date filters", () => {

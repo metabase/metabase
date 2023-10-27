@@ -764,7 +764,7 @@ function relativeDateFilterPartsWithOffset(
     column,
     value: startValue < 0 ? startValue : endValue,
     bucket: startBucket,
-    offsetValue,
+    offsetValue: offsetValue * -1,
     offsetBucket,
     options,
   };
