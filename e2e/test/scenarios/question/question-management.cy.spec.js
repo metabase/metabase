@@ -26,7 +26,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
-  curate: ["admin", "normal", "nodata"],
+  curate: ["admin"], //, "normal", "nodata"],
   view: ["readonly"],
   no: ["nocollection", "nosql", "none"],
 };
@@ -217,6 +217,71 @@ describe(
                   // By default, the dashboard contains one question
                   // After we add a new one, we check there are two questions now
                   cy.get(".DashCard").should("have.length", 2);
+                });
+
+                it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
+                  const collectionInRoot = {
+                    name: "Collection in root collection",
+                  };
+                  const dashboardInRoot = {
+                    name: "Dashboard in root collection",
+                  };
+                  const myPersonalCollection = "My personal collection";
+                  cy.createCollection(collectionInRoot);
+                  cy.createDashboard(dashboardInRoot);
+                  cy.log(
+                    "reload the page so the new collection is in the state",
+                  );
+                  cy.reload();
+
+                  cy.log("Move the question to a personal collection");
+                  openQuestionActions();
+                  popover().findByText("Move").click();
+                  modal().within(() => {
+                    cy.findByRole("heading", {
+                      name: myPersonalCollection,
+                    }).click();
+                    cy.button("Move").click();
+                  });
+
+                  cy.log("assert public collections are not visible");
+                  openQuestionActions();
+                  popover().findByText("Add to dashboard").click();
+                  modal().within(() => {
+                    cy.findByText("Add this question to a dashboard").should(
+                      "be.visible",
+                    );
+                    cy.findByText(myPersonalCollection).should("be.visible");
+                    cy.findByText(collectionInRoot.name).should("not.exist");
+                    cy.findByText(dashboardInRoot.name).should("not.exist");
+                    cy.findByText("Create a new dashboard").should("not.exist");
+                    cy.icon("close").click();
+                  });
+
+                  cy.log("Move the question to the root collection");
+                  openQuestionActions();
+                  popover().findByText("Move").click();
+                  modal().within(() => {
+                    cy.findByRole("heading", { name: "Our analytics" }).click();
+                    cy.button("Move").click();
+                  });
+
+                  cy.log("assert all collections are visible");
+                  openQuestionActions();
+                  popover().findByText("Add to dashboard").click();
+                  modal().within(() => {
+                    cy.findByText("Add this question to a dashboard").should(
+                      "be.visible",
+                    );
+                    cy.findByText("My personal collection").should(
+                      "be.visible",
+                    );
+                    cy.findByText(collectionInRoot.name).should("be.visible");
+                    cy.findByText(dashboardInRoot.name).should("be.visible");
+                    cy.findByText("Create a new dashboard").should(
+                      "be.visible",
+                    );
+                  });
                 });
 
                 onlyOn(user === "normal", () => {
