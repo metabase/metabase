@@ -826,5 +826,32 @@ describe("filter", () => {
         expect(columnInfo?.name).toBe(columnName);
       },
     );
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause("=", [column, "2020-01-01"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = addTimeFilter(
+        query,
+        Lib.expressionClause("!=", ["2020-01-01", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-time arguments", () => {
+      const { filterParts } = addExcludeDateFilter(
+        query,
+        Lib.expressionClause("!=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
   });
 });
