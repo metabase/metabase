@@ -71,12 +71,14 @@ export function DateIntervalPicker({
       <Flex p="md">
         <NumberInput
           value={interval}
+          aria-label={t`Interval`}
           w="4rem"
           onChange={handleIntervalChange}
         />
         <Select
           data={unitOptions}
           value={value.unit}
+          aria-label={t`Unit`}
           withinPortal={false}
           ml="md"
           onChange={handleUnitChange}
@@ -103,6 +105,7 @@ export function DateIntervalPicker({
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
               aria-selected={includeCurrent}
+              data-testid="include-current-interval-option"
             >
               {t`Include ${getIncludeCurrentLabel(value.unit)}`}
             </Menu.Item>
