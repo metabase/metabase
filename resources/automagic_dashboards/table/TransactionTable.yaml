@@ -78,10 +78,13 @@ filters:
 groups:
   - Overview:
       title: Overview
+      score: 90
   - Geographical:
       title: Where these transactions happened
+      score: 70
   - General:
       title: How these transactions are distributed
+      score: 80
 dashboard_filters:
   - Timestamp
   - SourceSmall
