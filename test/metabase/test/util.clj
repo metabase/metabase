@@ -15,17 +15,8 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
-    :refer [Card
-            Collection
-            Dimension
-            Field
-            FieldValues
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            Setting
-            Table
-            User]]
+    :refer [Card Collection Dimension Field FieldValues Permissions
+            PermissionsGroup PermissionsGroupMembership Setting Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -33,7 +24,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline :as timeline]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -54,7 +45,12 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent TimeoutException)
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
+   (org.quartz
+    CronTrigger
+    JobDetail
+    JobKey
+    Scheduler
+    Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
@@ -254,14 +250,14 @@
      (default-timestamped
        {:name       "Timeline of bird squawks"
         :default    false
-        :icon       timeline/DefaultIcon
+        :icon       timeline-event/default-icon
         :creator_id (rasta-id)}))
 
    :model/TimelineEvent
    (fn [_]
      (default-timestamped
        {:name         "default timeline event"
-        :icon         timeline/DefaultIcon
+        :icon         timeline-event/default-icon
         :timestamp    (t/zoned-date-time)
         :timezone     "US/Pacific"
         :time_matters true

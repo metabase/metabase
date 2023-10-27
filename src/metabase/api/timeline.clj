@@ -7,7 +7,7 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.timeline :as timeline :refer [Timeline]]
    [metabase.models.timeline-event
-    :as timeline
+    :as timeline-event
     :refer [TimelineEvent]]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
