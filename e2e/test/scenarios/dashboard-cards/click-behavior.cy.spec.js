@@ -898,7 +898,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         {
           ...TARGET_DASHBOARD,
           enable_embedding: true,
-          parameters: [DASHBOARD_FILTER_TEXT],
         },
         {
           wrapId: true,
@@ -930,7 +929,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             resource: { dashboard: card.dashboard_id },
             params: {},
           });
-
           cy.wait("@dashboard");
           cy.wait("@cardQuery");
         });
@@ -941,7 +939,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByTestId("field-set").should("not.exist");
     });
 
-    it("allows opening custom dashboard destination with parameters", () => {
+    it("allows opening custom dashboard destination with parameter", () => {
       const dashboardDetails = {
         enable_embedding: true,
         embedding_params: {
@@ -1002,7 +1000,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
             resource: { dashboard: card.dashboard_id },
             params: {},
           });
-
           cy.wait("@dashboard");
           cy.wait("@cardQuery");
         });
@@ -1042,8 +1039,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           },
         });
 
-        visitEmbeddedPage({ resource: { dashboard: card.dashboard_id } });
-
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
         cy.wait("@dashboard");
         cy.wait("@cardQuery");
       });
