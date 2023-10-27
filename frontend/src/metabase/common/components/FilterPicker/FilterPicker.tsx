@@ -128,6 +128,7 @@ export function FilterPicker({
           stageIndex={stageIndex}
           column={column}
           filter={filter}
+          isNew={!filter}
           onChange={handleChange}
           onBack={() => setColumn(undefined)}
         />

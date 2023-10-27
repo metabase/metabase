@@ -21,6 +21,7 @@ export function StringFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -109,7 +110,7 @@ export function StringFilterPicker({
           disabled={!isValid}
           onClick={handleFilterChange}
         >
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
     </>

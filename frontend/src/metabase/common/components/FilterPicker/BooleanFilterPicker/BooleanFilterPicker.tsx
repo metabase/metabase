@@ -15,6 +15,7 @@ export function BooleanFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -78,7 +79,7 @@ export function BooleanFilterPicker({
       <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" onClick={handleSubmit}>
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
     </div>
