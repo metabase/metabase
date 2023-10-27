@@ -768,7 +768,56 @@ describe("filter", () => {
     });
 
     it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
-      'should set "minute" bucket with "%s" operator and 1 value if there are time parts',
+      'should remove an existing temporal bucket with "%s" operator and 1 value',
+      operator => {
+        const values = [new Date(2018, 2, 10)];
+        const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
+          query,
+          Lib.specificDateFilterClause(query, 0, {
+            operator,
+            column: Lib.withTemporalBucket(
+              column,
+              findTemporalBucket(query, column, "Day"),
+            ),
+            values,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values,
+        });
+        expect(columnInfo?.name).toBe(columnName);
+        expect(bucketInfo).toBe(null);
+      },
+    );
+
+    it('should remove an existing temporal bucket with "between" operator and 2 values', () => {
+      const values = [new Date(2018, 2, 10), new Date(2019, 10, 20)];
+      const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
+        query,
+        Lib.specificDateFilterClause(query, 0, {
+          operator: "between",
+          column: Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Hour"),
+          ),
+          values,
+        }),
+      );
+
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values,
+      });
+      expect(columnInfo?.name).toBe(columnName);
+      expect(bucketInfo).toBe(null);
+    });
+
+    it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      'should set "minute" temporal bucket with "%s" operator and 1 value if there are time parts',
       operator => {
         const values = [new Date(2018, 2, 10, 30)];
         const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
@@ -790,7 +839,7 @@ describe("filter", () => {
       },
     );
 
-    it('should set "minute" bucket with "between" operator and 1 value if there are time parts', () => {
+    it('should set "minute" temporal bucket with "between" operator and 1 value if there are time parts', () => {
       const values = [new Date(2018, 2, 10), new Date(2019, 10, 20, 15)];
       const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
         query,
@@ -808,6 +857,33 @@ describe("filter", () => {
       });
       expect(columnInfo?.name).toBe(columnName);
       expect(bucketInfo?.shortName).toBe("minute");
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const { filterParts } = addSpecificDateFilter(
+        query,
+        Lib.expressionClause("!=", [column, "2020-01-01"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without first column", () => {
+      const { filterParts } = addSpecificDateFilter(
+        query,
+        Lib.expressionClause("=", ["2020-01-01", column]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with non-time arguments", () => {
+      const { filterParts } = addSpecificDateFilter(
+        query,
+        Lib.expressionClause("=", [column, column]),
+      );
+
+      expect(filterParts).toBeNull();
     });
   });
 
