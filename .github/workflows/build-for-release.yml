@@ -192,3 +192,25 @@ jobs:
           ./metabase.jar
           ./COMMIT-ID
           ./SHA256.sum
+
+  trigger-tests:
+    needs: [build-uberjar-for-release]
+    permissions:
+      actions: write
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: trigger pre-release testing
+        uses: actions/github-script@v6
+        with:
+          script: | # js
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pre-release.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+              }
+            });
