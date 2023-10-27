@@ -9,7 +9,7 @@ import type { SettingElement } from "metabase/admin/settings/types";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
 
-import { Box, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
@@ -22,7 +22,6 @@ import {
 } from "../../settings";
 
 import SettingsBatchForm from "../SettingsBatchForm";
-import { EmailFormRoot } from "./SettingsEmailForm.styled";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
@@ -111,7 +110,7 @@ export const SMTPConnectionForm = ({
       <Box ml="1rem">
         {isEmailConfigured && <Breadcrumbs crumbs={BREADCRUMBS} />}
       </Box>
-      <EmailFormRoot>
+      <Flex justify="space-between">
         <SettingsBatchForm
           ref={formRef}
           elements={elements}
@@ -143,7 +142,7 @@ export const SMTPConnectionForm = ({
         {!isPaidPlan && (
           <MarginHostingCTA tagline={t`Have your email configured for you.`} />
         )}
-      </EmailFormRoot>
+      </Flex>
     </Stack>
   );
 };
