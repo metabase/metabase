@@ -142,7 +142,7 @@
    ::database     "1-0-0"
    ::instance     "1-1-2"
    ::metabot      "1-0-1"
-   ::search       "1-0-0"
+   ::search       "1-0-1"
    ::model        "1-0-0"
    ::timeline     "1-0-0"
    ::task         "1-0-0"

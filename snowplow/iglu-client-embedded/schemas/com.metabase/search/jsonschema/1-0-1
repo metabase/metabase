@@ -1,0 +1,69 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Search events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "search",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "new_search_query",
+        "search_results_filtered"
+      ],
+      "maxLength": 1024
+    },
+    "runtime_milliseconds": {
+      "description": "Number of milliseconds it took to successfully run the search query",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "content_type": {
+      "description": "Filter for entity types (question, database, model, etc.)",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "creator": {
+      "description": "Filter for created by a user",
+      "type": "boolean"
+    },
+    "last_editor": {
+      "description": "Filter for last edited by a user",
+      "type": "boolean"
+    },
+    "creation_date": {
+      "description": "Filter for a time when a user creates an entity",
+      "type": "boolean"
+    },
+    "last_edit_date": {
+      "description": "Filter for a time when a user last edited an entity",
+      "type": "boolean"
+    },
+    "verified_items": {
+      "description": "Filter for entities that have been marked as verified",
+      "type": "boolean"
+    },
+    "search_native_queries": {
+      "description": "Toggles whether search should include SQL and/or native queries",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

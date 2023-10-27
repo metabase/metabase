@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 
 import { jt, t } from "ttag";
@@ -28,6 +28,7 @@ import {
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
+import { trackSearchEvents } from "metabase/search/analytics";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();
@@ -51,6 +52,10 @@ function SearchApp({ location }) {
     limit: PAGE_SIZE,
     offset: PAGE_SIZE * page,
   };
+
+  useEffect(() => {
+    trackSearchEvents({ searchFilters });
+  }, [searchFilters]);
 
   const onChangeLocation = useCallback(
     nextLocation => dispatch(push(nextLocation)),

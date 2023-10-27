@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
 const SNOWPLOW_INTERVAL = 100;
@@ -35,9 +36,57 @@ export const expectGoodSnowplowEvent = (eventData, count = 1) => {
 };
 
 export const expectGoodSnowplowEvents = count => {
-  retrySnowplowRequest("micro/good", ({ body }) => body.length >= count)
+  retrySnowplowRequest("micro/good", ({ body }) => {
+    console.log("expectGoodSnowplowEvents: ", body);
+    console.log(
+      "eventlist: ",
+      body
+        .map(elem => elem.event?.unstruct_event?.data?.data)
+        .filter(k => !!k)
+        .reduce((acc, cur) => {
+          acc.push(cur);
+          return acc;
+        }, []),
+    );
+    return body.length >= count;
+  })
     .its("body")
     .should("have.length", count);
+};
+
+export const expectGoodSnowplowEventCount = expectedEventCounts => {
+  const totalCount = Object.values(expectedEventCounts).reduce(
+    (a, b) => a + b,
+    0,
+  );
+
+  retrySnowplowRequest("micro/good", ({ body }) => {
+    return body.length >= totalCount;
+  })
+    .then(({ body }) => {
+      const pageViewCount = body.filter(
+        event => event.eventType === "page_view",
+      ).length;
+
+      const events = body
+        .filter(event => event.eventType === "unstruct")
+        .map(event => event.event?.unstruct_event?.data?.data)
+        .reduce((acc, cur) => {
+          console.log(cur);
+          if (cur.event in acc) {
+            acc[cur.event] += 1;
+          } else {
+            acc[cur.event] = 1;
+          }
+          return acc;
+        }, {});
+
+      return {
+        page_view: pageViewCount,
+        ...events,
+      };
+    })
+    .should("deep.include", expectedEventCounts);
 };
 
 export const expectNoBadSnowplowEvents = () => {

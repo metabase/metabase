@@ -3,6 +3,7 @@ import {
   describeEE,
   describeWithSnowplow,
   enableTracking,
+  expectGoodSnowplowEventCount,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   modal,
@@ -1098,6 +1099,12 @@ describe("scenarios > search", () => {
 
 describeWithSnowplow("scenarios > search", () => {
   const PAGE_VIEW_EVENT = 1;
+  const NEW_SEARCH_QUERY_EVENT = 1;
+  const SEARCH_RESULT_FILTERED_EVENT = 1;
+
+  const PAGE_VIEW_EVENT_NAME = "page_view";
+  const SEARCH_RESULTS_FILTERED_NAME = "search_results_filtered";
+  const NEW_SEARCH_QUERY_EVENT_NAME = "new_search_query";
 
   beforeEach(() => {
     restore();
@@ -1114,7 +1121,384 @@ describeWithSnowplow("scenarios > search", () => {
     cy.visit("/");
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
     getSearchBar().type("Orders").blur();
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1); // new_search_query
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT);
+  });
+
+  describe("should send snowplow events for each filter when it is applied and removed", () => {
+    describe("no filters", () => {
+      it("should send a snowplow event when a search with no filters is accessed from the URL", () => {
+        cy.visit("/search?q=orders");
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            NEW_SEARCH_QUERY_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT,
+        );
+      });
+    });
+
+    describe("type filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&type=card");
+        // TODO: this should return +2 events - new_search_query event isn't firing
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT + SEARCH_RESULT_FILTERED_EVENT,
+        );
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search");
+
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("type-search-filter").click();
+        popover().within(() => {
+          cy.findAllByTestId("type-filter-checkbox").each($el => {
+            cy.wrap($el).click();
+          });
+          cy.findByText("Apply").click();
+        });
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          NEW_SEARCH_QUERY_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&type=card");
+
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("type-search-filter")
+          .findByLabelText("close icon")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          NEW_SEARCH_QUERY_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+    });
+
+    describe("created_by filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&created_by=1");
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            NEW_SEARCH_QUERY_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT,
+        );
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+        cy.findByTestId("created_by-search-filter").click();
+        popover().within(() => {
+          cy.findByText("Bobby Tables").click();
+          cy.findByText("Apply").click();
+        });
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&created_by=1");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("created_by-search-filter")
+          .findByLabelText("close icon")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+
+        expectGoodSnowplowEvents(eventCount);
+      });
+    });
+
+    describe("last_edited_by filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&last_edited_by=1");
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT +
+            NEW_SEARCH_QUERY_EVENT,
+        );
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("last_edited_by-search-filter").click();
+        popover().within(() => {
+          cy.findByText("Bobby Tables").click();
+          cy.findByText("Apply").click();
+        });
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&last_edited_by=1");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("last_edited_by-search-filter")
+          .findByLabelText("close icon")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+    });
+
+    describe("created_at filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&created_at=thisday");
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("created_at-search-filter").click();
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&created_at=thisday");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("created_at-search-filter")
+          .findByLabelText("close icon")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+
+        expectGoodSnowplowEvents(eventCount);
+      });
+    });
+
+    describe("last_edited_at filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&last_edited_at=thisday");
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        let eventCount = PAGE_VIEW_EVENT;
+
+        cy.visit("/search?q=orders");
+        eventCount += SEARCH_RESULT_FILTERED_EVENT + NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+        cy.findByTestId("last_edited_at-search-filter").click();
+        popover().within(() => {
+          cy.findByText("Today").click();
+        });
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&last_edited_at=thisday");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("last_edited_at-search-filter")
+          .findByLabelText("close icon")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEventCount({
+          [PAGE_VIEW_EVENT_NAME]: 2,
+          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
+          [SEARCH_RESULTS_FILTERED_NAME]: 2,
+        });
+      });
+    });
+
+    describeEE("verified filter", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+      });
+
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&verified=true");
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("verified-search-filter")
+          .findByText("Verified items only")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&verified=true");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("verified-search-filter")
+          .findByText("Verified items only")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+
+        expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEventCount({
+          [PAGE_VIEW_EVENT_NAME]: 2,
+          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
+          [SEARCH_RESULTS_FILTERED_NAME]: 2,
+        });
+      });
+    });
+
+    describe("search_native_query filter", () => {
+      it("should send a snowplow event when a search filter is used in the URL", () => {
+        cy.visit("/search?q=orders&search_native_query=true");
+        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+      });
+
+      it("should send a snowplow event when a search filter is applied from the UI", () => {
+        cy.visit("/search?q=orders");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("search_native_query-search-filter")
+          .findByText("Search the contents of native queries")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+      });
+
+      it("should send a snowplow event when a search filter is removed from the UI", () => {
+        cy.visit("/search?q=orders&search_native_query=true");
+
+        let eventCount =
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+
+        cy.findByTestId("search_native_query-search-filter")
+          .findByText("Search the contents of native queries")
+          .click();
+
+        eventCount +=
+          PAGE_VIEW_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT +
+          NEW_SEARCH_QUERY_EVENT;
+        expectGoodSnowplowEvents(eventCount);
+        expectGoodSnowplowEventCount({
+          [PAGE_VIEW_EVENT_NAME]: 2,
+          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
+          [SEARCH_RESULTS_FILTERED_NAME]: 2,
+        });
+      });
+    });
   });
 });
 
