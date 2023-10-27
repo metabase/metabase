@@ -69,8 +69,8 @@ export const RELATIVE_DATE_BUCKETS = [
   "hour",
   "day",
   "week",
-  "quarter",
   "month",
+  "quarter",
   "year",
 ] as const;
 

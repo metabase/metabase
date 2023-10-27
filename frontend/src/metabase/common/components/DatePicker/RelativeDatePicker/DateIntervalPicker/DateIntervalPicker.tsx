@@ -105,6 +105,7 @@ export function DateIntervalPicker({
               icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
               onClick={handleIncludeCurrentClick}
               aria-selected={includeCurrent}
+              data-testid="include-current-interval-option"
             >
               {t`Include ${getIncludeCurrentLabel(value.unit)}`}
             </Menu.Item>

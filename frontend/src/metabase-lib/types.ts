@@ -198,6 +198,7 @@ export type ExpressionOperatorName =
   | "not-empty"
   | "starts-with"
   | "ends-with"
+  | "concat"
   | "interval"
   | "time-interval"
   | "relative-datetime"

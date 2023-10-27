@@ -90,8 +90,8 @@ export function DateOffsetIntervalPicker({
         <Text>{t`Starting from`}</Text>
         <NumberInput
           value={offsetInterval}
-          w="4rem"
           aria-label={t`Starting from interval`}
+          w="4rem"
           onChange={handleOffsetIntervalChange}
         />
         <Select

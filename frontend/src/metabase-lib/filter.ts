@@ -323,13 +323,19 @@ export function relativeDateFilterClause({
   offsetBucket,
   options,
 }: RelativeDateFilterParts): ExpressionClause {
+  const columnWithoutBucket = withTemporalBucket(column, null);
+
   if (offsetValue == null || offsetBucket == null) {
-    return expressionClause("time-interval", [column, value, bucket], options);
+    return expressionClause(
+      "time-interval",
+      [columnWithoutBucket, value, bucket],
+      options,
+    );
   }
 
   return expressionClause("between", [
     expressionClause("+", [
-      column,
+      columnWithoutBucket,
       expressionClause("interval", [-offsetValue, offsetBucket]),
     ]),
     expressionClause("relative-datetime", [value < 0 ? value : 0, bucket]),
@@ -393,7 +399,9 @@ export function excludeDateFilterParts(
 
   const bucket = temporalBucket(column);
   if (!bucket) {
-    return { column, operator, bucket, values: [] };
+    return serializedValues.length === 0
+      ? { column, operator, bucket, values: [] }
+      : null;
   }
 
   const bucketInfo = displayInfo(query, stageIndex, bucket);
@@ -429,9 +437,8 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const columnWithoutBucket = withTemporalBucket(column, null);
   const serializedValues = values.map(value => serializeTime(value));
-  return expressionClause(operator, [columnWithoutBucket, ...serializedValues]);
+  return expressionClause(operator, [column, ...serializedValues]);
 }
 
 export function timeFilterParts(
@@ -632,6 +639,7 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
+const TIME_FORMAT_MS = "HH:mm:SS.sss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function hasTimeParts(date: Date): boolean {
@@ -656,11 +664,11 @@ function deserializeDateTime(value: string): Date | null {
 }
 
 function serializeTime(value: Date): string {
-  return moment(value).format(TIME_FORMAT);
+  return moment(value).format(TIME_FORMAT_MS);
 }
 
 function deserializeTime(value: string): Date | null {
-  const time = moment(value, TIME_FORMAT, true);
+  const time = moment(value, TIME_FORMAT_MS, true);
   if (!time.isValid()) {
     return null;
   }
@@ -758,7 +766,7 @@ function relativeDateFilterPartsWithOffset(
     column,
     value: startValue < 0 ? startValue : endValue,
     bucket: startBucket,
-    offsetValue,
+    offsetValue: offsetValue * -1,
     offsetBucket,
     options,
   };
