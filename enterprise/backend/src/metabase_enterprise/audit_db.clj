@@ -101,24 +101,21 @@
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
-  - This uses a weird ID because some tests are hardcoded to look for database with ID = 2, and inserting an extra db
+  - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since the IDs are sequential."
   ([engine] (install-database! engine (default-audit-db-id)))
   ([engine id]
-   (if (t2/select-one Database :id id)
-     (install-database! engine (inc id))
-     (do
-       ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-       (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
-       (t2/insert! Database {:is_audit         true
-                             :id               id
-                             :name             "Internal Metabase Database"
-                             :description      "Internal Audit DB used to power metabase analytics."
-                             :engine           engine
-                             :is_full_sync true
-                             :is_on_demand     false
-                             :creator_id       nil
-                             :auto_run_queries true})))))
+   ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+   (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
+   (t2/insert! Database {:is_audit         true
+                         :id               id
+                         :name             "Internal Metabase Database"
+                         :description      "Internal Audit DB used to power metabase analytics."
+                         :engine           engine
+                         :is_full_sync true
+                         :is_on_demand     false
+                         :creator_id       nil
+                         :auto_run_queries true})))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
