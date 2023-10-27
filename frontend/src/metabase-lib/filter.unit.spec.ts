@@ -75,12 +75,15 @@ function addFilter<T extends Lib.FilterParts>(
   const newBucket = newFilterParts
     ? Lib.temporalBucket(newFilterParts?.column)
     : null;
+  const newBucketInfo = newBucket
+    ? Lib.displayInfo(newQuery, 0, newBucket)
+    : null;
 
   return {
     newQuery,
     filterParts: newFilterParts,
     columnInfo: newColumnInfo,
-    bucket: newBucket,
+    bucketInfo: newBucketInfo,
   };
 }
 
@@ -725,7 +728,7 @@ describe("filter", () => {
       'should be able to create and destructure a specific date filter with "%s" operator and 1 value',
       operator => {
         const values = [new Date(2018, 2, 10)];
-        const { filterParts, columnInfo, bucket } = addSpecificDateFilter(
+        const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
           query,
           Lib.specificDateFilterClause(query, 0, {
             operator,
@@ -740,13 +743,13 @@ describe("filter", () => {
           values,
         });
         expect(columnInfo?.name).toBe(columnName);
-        expect(bucket).toBe(null);
+        expect(bucketInfo).toBe(null);
       },
     );
 
     it('should be able to create and destructure a specific date filter with "between" operator and 2 values', () => {
       const values = [new Date(2018, 2, 10), new Date(2019, 10, 20)];
-      const { filterParts, columnInfo, bucket } = addSpecificDateFilter(
+      const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
         query,
         Lib.specificDateFilterClause(query, 0, {
           operator: "between",
@@ -761,7 +764,50 @@ describe("filter", () => {
         values,
       });
       expect(columnInfo?.name).toBe(columnName);
-      expect(bucket).toBe(null);
+      expect(bucketInfo).toBe(null);
+    });
+
+    it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      'should set "minute" bucket with "%s" operator and 1 value if there are time parts',
+      operator => {
+        const values = [new Date(2018, 2, 10, 30)];
+        const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
+          query,
+          Lib.specificDateFilterClause(query, 0, {
+            operator,
+            column,
+            values,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values,
+        });
+        expect(columnInfo?.name).toBe(columnName);
+        expect(bucketInfo?.shortName).toBe("minute");
+      },
+    );
+
+    it('should set "minute" bucket with "between" operator and 1 value if there are time parts', () => {
+      const values = [new Date(2018, 2, 10), new Date(2019, 10, 20, 15)];
+      const { filterParts, columnInfo, bucketInfo } = addSpecificDateFilter(
+        query,
+        Lib.specificDateFilterClause(query, 0, {
+          operator: "between",
+          column,
+          values,
+        }),
+      );
+
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values,
+      });
+      expect(columnInfo?.name).toBe(columnName);
+      expect(bucketInfo?.shortName).toBe("minute");
     });
   });
 
@@ -874,7 +920,7 @@ describe("filter", () => {
     );
 
     it("should remove an existing temporal bucket from a column", () => {
-      const { filterParts, bucket } = addRelativeDateFilter(
+      const { filterParts, bucketInfo } = addRelativeDateFilter(
         query,
         Lib.relativeDateFilterClause({
           column: Lib.withTemporalBucket(
@@ -890,7 +936,7 @@ describe("filter", () => {
       );
 
       expect(filterParts).toBeDefined();
-      expect(bucket).toBeNull();
+      expect(bucketInfo).toBeNull();
     });
 
     it("should remove an existing temporal bucket from a column with an offset", () => {
