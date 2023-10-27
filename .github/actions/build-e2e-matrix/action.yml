@@ -12,10 +12,10 @@ runs:
     - uses: actions/github-script@v6
       id: matrix
       with:
-        script: |
+        script: | # js
           const java = 11;
 
-          const defaultRunner = "ubuntu-22.04";
+          const defaultRunner = "buildjet-2vcpu-ubuntu-2204";
           const beefierRunner = "buildjet-2vcpu-ubuntu-2204";
 
           const defaultOptions = {
