@@ -345,11 +345,9 @@ export const tabsReducer = createReducer<DashboardState>(
         const dashboard = state.dashboards[dashboardId];
 
         const dashCard = state.dashcards[dashCardId];
-        const movement = dashboard.dashCardTabMovements?.[dashCardId];
-
-        if (!movement) {
-          throw new Error(`cannot find movement to undo undoMoveDashCardToTab`);
-        }
+        const movement = checkNotNull(
+          dashboard.dashCardTabMovements?.[dashCardId],
+        );
 
         dashCard.row = movement.originalRow;
         dashCard.col = movement.originalCol;
