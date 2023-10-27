@@ -117,7 +117,7 @@ export const SMTPConnectionForm = ({
       <Flex justify="space-between">
         <SettingsBatchForm
           ref={formRef}
-          breadcrumbs={BREADCRUMBS}
+          breadcrumbs={isEmailConfigured ? BREADCRUMBS : null}
           elements={elements}
           settingValues={settingValues}
           updateSettings={handleUpdateEmailSettings}
