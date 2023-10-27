@@ -23,8 +23,18 @@ import { b64hash_to_utf8 } from "metabase/lib/encoding";
 
 const COUNT_COLUMN_ID = "count";
 const COUNT_COLUMN_NAME = "Count";
+const COUNT_COLUMN_SOURCE = {
+  type: "column",
+  id: COUNT_COLUMN_ID,
+  name: COUNT_COLUMN_NAME,
+};
 const CREATED_AT_COLUMN_ID = "CREATED_AT";
 const CREATED_AT_COLUMN_NAME = "Created At";
+const CREATED_AT_COLUMN_SOURCE = {
+  type: "column",
+  id: CREATED_AT_COLUMN_ID,
+  name: CREATED_AT_COLUMN_NAME,
+};
 const FILTER_VALUE = "123";
 const POINT_COUNT = 79;
 const POINT_CREATED_AT = "2022-08";
@@ -1034,15 +1044,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                 click_behavior: {
                   parameterMapping: {
                     [parameterId]: {
-                      source: {
-                        type: "column",
-                        id: COUNT_COLUMN_ID,
-                        name: COUNT_COLUMN_NAME,
-                      },
-                      target: {
-                        type: "parameter",
-                        id: parameterId,
-                      },
+                      source: COUNT_COLUMN_SOURCE,
+                      target: { type: "parameter", id: parameterId },
                       id: parameterId,
                     },
                   },
@@ -1127,6 +1130,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         enable_embedding: true,
         embedding_params: {},
       };
+      const targetId = "3";
 
       cy.createQuestion(
         {
@@ -1153,21 +1157,17 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               visualization_settings: {
                 click_behavior: {
                   parameterMapping: {
-                    '["dimension",["field",12,null]]': {
-                      source: {
-                        type: "column",
-                        id: COUNT_COLUMN_ID,
-                        name: COUNT_COLUMN_NAME,
-                      },
+                    [targetId]: {
+                      source: COUNT_COLUMN_SOURCE,
                       target: {
                         type: "dimension",
-                        id: `["dimension",["field",${ORDERS.QUANTITY},null]]`,
+                        id: targetId,
                         dimension: [
                           "dimension",
                           ["field", ORDERS.QUANTITY, null],
                         ],
                       },
-                      id: `["dimension",["field",${ORDERS.QUANTITY},null]]`,
+                      id: targetId,
                     },
                   },
                   targetId: targetQuestionId,
@@ -1269,27 +1269,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                 type: "crossfilter",
                 parameterMapping: {
                   [countParameterId]: {
-                    source: {
-                      type: "column",
-                      id: COUNT_COLUMN_ID,
-                      name: COUNT_COLUMN_NAME,
-                    },
-                    target: {
-                      type: "parameter",
-                      id: countParameterId,
-                    },
+                    source: COUNT_COLUMN_SOURCE,
+                    target: { type: "parameter", id: countParameterId },
                     id: countParameterId,
                   },
                   [createdAtParameterId]: {
-                    source: {
-                      type: "column",
-                      id: CREATED_AT_COLUMN_ID,
-                      name: CREATED_AT_COLUMN_NAME,
-                    },
-                    target: {
-                      type: "parameter",
-                      id: createdAtParameterId,
-                    },
+                    source: CREATED_AT_COLUMN_SOURCE,
+                    target: { type: "parameter", id: createdAtParameterId },
                     id: createdAtParameterId,
                   },
                 },
