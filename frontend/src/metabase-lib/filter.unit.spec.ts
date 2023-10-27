@@ -72,11 +72,15 @@ function addFilter<T extends Lib.FilterParts>(
   const newColumnInfo = newFilterParts
     ? Lib.displayInfo(newQuery, 0, newFilterParts.column)
     : null;
+  const newBucket = newFilterParts
+    ? Lib.temporalBucket(newFilterParts?.column)
+    : null;
 
   return {
     newQuery,
     filterParts: newFilterParts,
     columnInfo: newColumnInfo,
+    bucket: newBucket,
   };
 }
 
@@ -109,6 +113,13 @@ function addBooleanFilter(
   filterClause: Lib.ExpressionClause,
 ) {
   return addFilter(query, filterClause, Lib.booleanFilterParts);
+}
+
+function addSpecificDateFilter(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return addFilter(query, filterClause, Lib.specificDateFilterParts);
 }
 
 function addRelativeDateFilter(
@@ -700,6 +711,60 @@ describe("filter", () => {
     });
   });
 
+  describe("specific date filters", () => {
+    const tableName = "PRODUCTS";
+    const columnName = "CREATED_AT";
+    const column = findColumn(query, tableName, columnName);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2020, 0, 1));
+    });
+
+    it.each<Lib.SpecificDateFilterOperatorName>(["=", ">", "<"])(
+      'should be able to create and destructure a specific date filter with "%s" operator and 1 value',
+      operator => {
+        const values = [new Date(2018, 2, 10)];
+        const { filterParts, columnInfo, bucket } = addSpecificDateFilter(
+          query,
+          Lib.specificDateFilterClause(query, 0, {
+            operator,
+            column,
+            values,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          values,
+        });
+        expect(columnInfo?.name).toBe(columnName);
+        expect(bucket).toBe(null);
+      },
+    );
+
+    it('should be able to create and destructure a specific date filter with "between" operator and 2 values', () => {
+      const values = [new Date(2018, 2, 10), new Date(2019, 10, 20)];
+      const { filterParts, columnInfo, bucket } = addSpecificDateFilter(
+        query,
+        Lib.specificDateFilterClause(query, 0, {
+          operator: "between",
+          column,
+          values,
+        }),
+      );
+
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values,
+      });
+      expect(columnInfo?.name).toBe(columnName);
+      expect(bucket).toBe(null);
+    });
+  });
+
   describe("relative date filters", () => {
     const tableName = "PRODUCTS";
     const columnName = "CREATED_AT";
@@ -809,7 +874,7 @@ describe("filter", () => {
     );
 
     it("should remove an existing temporal bucket from a column", () => {
-      const { filterParts } = addRelativeDateFilter(
+      const { filterParts, bucket } = addRelativeDateFilter(
         query,
         Lib.relativeDateFilterClause({
           column: Lib.withTemporalBucket(
@@ -824,9 +889,6 @@ describe("filter", () => {
         }),
       );
 
-      const bucket = filterParts
-        ? Lib.temporalBucket(filterParts?.column)
-        : null;
       expect(filterParts).toBeDefined();
       expect(bucket).toBeNull();
     });
