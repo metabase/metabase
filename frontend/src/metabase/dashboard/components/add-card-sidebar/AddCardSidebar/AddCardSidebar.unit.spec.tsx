@@ -16,6 +16,7 @@ import {
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import type { Collection, CollectionItem, Dashboard } from "metabase-types/api";
 import { getNextId } from "__support__/utils";
+import { checkNotNull } from "metabase/lib/types";
 import { AddCardSidebar } from "./AddCardSidebar";
 
 const CURRENT_USER = createMockUser({
@@ -87,7 +88,7 @@ async function setup({
     collections,
   });
   setupCollectionItemsEndpoint({
-    collection: createMockCollection(dashboard.collection),
+    collection: createMockCollection(checkNotNull(dashboard.collection)),
     collectionItems,
   });
 
