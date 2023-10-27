@@ -59,7 +59,6 @@ export const expectGoodSnowplowEventCount = expectedEventCounts => {
         .filter(event => event.eventType === "unstruct")
         .map(event => event.event?.unstruct_event?.data?.data)
         .reduce((acc, cur) => {
-          console.log(cur);
           if (cur.event in acc) {
             acc[cur.event] += 1;
           } else {
