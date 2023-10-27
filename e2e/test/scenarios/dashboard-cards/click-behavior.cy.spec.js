@@ -1,6 +1,7 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
   editDashboard,
   getActionCardDetails,
   getBrokenUpTextMatcher,
@@ -14,6 +15,7 @@ import {
   saveDashboard,
   updateDashboardCards,
   visitDashboard,
+  visitEmbeddedPage,
 } from "e2e/support/helpers";
 
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -876,6 +878,140 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           .should("have.text", `Created at: ${POINT_CREATED_AT_FORMATTED}`)
           .click();
       })();
+    });
+  });
+
+  describe("full app embedding", () => {
+    const questionDetails = QUESTION_LINE_CHART;
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+    });
+
+    it("allows opening custom dashboard destination without parameters", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+      };
+
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          enable_embedding: true,
+          parameters: [DASHBOARD_FILTER_TEXT],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {},
+                  targetId: targetDashboardId,
+                  linkType: "dashboard",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      clickLineChartPoint();
+      cy.get("header").findByText(TARGET_DASHBOARD.name).should("exist");
+      cy.findByTestId("field-set").should("not.exist");
+    });
+
+    it("allows opening custom dashboard destination with parameters", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+        },
+      };
+      const parameterId = "1";
+
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          enable_embedding: true,
+          embedding_params: {
+            [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+          },
+          parameters: [DASHBOARD_FILTER_TEXT],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      );
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {
+                    [parameterId]: {
+                      source: {
+                        type: "column",
+                        id: COUNT_COLUMN_ID,
+                        name: COUNT_COLUMN_NAME,
+                      },
+                      target: {
+                        type: "parameter",
+                        id: parameterId,
+                      },
+                      id: parameterId,
+                    },
+                  },
+                  targetId: targetDashboardId,
+                  linkType: "dashboard",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_COUNT);
     });
   });
 });
