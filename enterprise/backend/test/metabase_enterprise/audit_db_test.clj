@@ -33,8 +33,8 @@
 (deftest audit-db-content-is-not-installed-when-not-found
   (mt/test-drivers #{:postgres :h2 :mysql}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-dir-resource nil]
-        (is (= nil audit-db/analytics-dir-resource))
+      (with-redefs [audit-db/analytics-dir nil]
+        (is (= nil audit-db/analytics-dir))
         (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= (audit-db/default-audit-db-id) (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
