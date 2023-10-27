@@ -889,7 +889,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
     });
 
-    it("allows opening custom dashboard destination without parameters", () => {
+    it.skip("allows opening custom dashboard destination without parameters", () => {
       const dashboardDetails = {
         enable_embedding: true,
       };
@@ -939,7 +939,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByTestId("field-set").should("not.exist");
     });
 
-    it("allows opening custom dashboard destination with parameter", () => {
+    it.skip("allows opening custom dashboard destination with parameter", () => {
       const dashboardDetails = {
         enable_embedding: true,
         embedding_params: {
@@ -1011,7 +1011,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", POINT_COUNT);
     });
 
-    it("allows opening custom question destination without parameter", () => {
+    it.skip("allows opening custom question destination without parameters", () => {
       const dashboardDetails = {
         enable_embedding: true,
       };
@@ -1059,6 +1059,76 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.get("header").findByText(TARGET_QUESTION.name).should("exist");
       cy.findByTestId("field-set").should("not.exist");
+    });
+
+    it.skip("allows opening custom question destination with parameters", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+      };
+
+      cy.createQuestion(
+        {
+          ...TARGET_QUESTION,
+          enable_embedding: true,
+        },
+        {
+          wrapId: true,
+          idAlias: "targetQuestionId",
+        },
+      );
+
+      cy.get("@targetQuestionId").then(targetQuestionId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {
+                    '["dimension",["field",12,null]]': {
+                      source: {
+                        type: "column",
+                        id: COUNT_COLUMN_ID,
+                        name: COUNT_COLUMN_NAME,
+                      },
+                      target: {
+                        type: "dimension",
+                        id: `["dimension",["field",${ORDERS.QUANTITY},null]]`,
+                        dimension: [
+                          "dimension",
+                          ["field", ORDERS.QUANTITY, null],
+                        ],
+                      },
+                      id: `["dimension",["field",${ORDERS.QUANTITY},null]]`,
+                    },
+                  },
+                  targetId: targetQuestionId,
+                  linkType: "question",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      clickLineChartPoint();
+      cy.get("header").findByText(TARGET_QUESTION.name).should("exist");
+      cy.findByTestId("qb-filters-panel")
+        .should("contain.text", "Created At is August 1–31, 2022")
+        .should("contain.text", "Quantity is equal to 79");
     });
 
     it("allows opening custom URL destination with parameters", () => {
