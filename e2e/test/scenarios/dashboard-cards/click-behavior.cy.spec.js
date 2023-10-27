@@ -577,6 +577,62 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       testChangingBackToDefaultBehavior();
     });
 
+    it("behavior is updated after linked dashboard filter has been removed", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+      };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+          cy.location().then(({ pathname }) => {
+            cy.wrap(pathname).as("originalPathname");
+          });
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside").findByText("Update a dashboard filter").click();
+      addTextParameter();
+      addTimeParameter();
+      cy.get("aside")
+        .should("contain.text", DASHBOARD_FILTER_TEXT.name)
+        .should("contain.text", COUNT_COLUMN_NAME);
+      cy.get("aside").button("Done").click();
+
+      saveDashboard();
+
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText(DASHBOARD_FILTER_TEXT.name)
+        .click();
+      cy.get("aside").button("Remove").click();
+
+      saveDashboard();
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
+      cy.get("@originalPathname").then(originalPathname => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(originalPathname);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+          );
+        });
+      });
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside")
+        .should("not.contain.text", DASHBOARD_FILTER_TEXT.name)
+        .should("not.contain.text", COUNT_COLUMN_NAME);
+    });
+
     it("allows updating multiple dashboard filters", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
