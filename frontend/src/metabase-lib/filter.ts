@@ -429,9 +429,8 @@ export function timeFilterClause({
   column,
   values,
 }: TimeFilterParts): ExpressionClause {
-  const columnWithoutBucket = withTemporalBucket(column, null);
   const serializedValues = values.map(value => serializeTime(value));
-  return expressionClause(operator, [columnWithoutBucket, ...serializedValues]);
+  return expressionClause(operator, [column, ...serializedValues]);
 }
 
 export function timeFilterParts(
