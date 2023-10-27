@@ -662,12 +662,14 @@
 
 (defmulti inject-remark
   "Injects the remark into the SQL query text."
-  {:arglists '(^String [driver sql remark])}
+  {:arglists '([driver sql remark])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
+;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
+;  be overriden.
 (defmethod inject-remark :default
-  "Most databases using sql-jdbc based drivers support prepending the remark to the SQL statement, but not all of them."
   [_ sql remark]
   (str "-- " remark "\n" sql))
 

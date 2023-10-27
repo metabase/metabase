@@ -582,9 +582,9 @@
 
 ;;; --------------------------------------------------- Query remarks ---------------------------------------------------
 
+;  Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
+;  remark instead.
 (defmethod sql-jdbc.execute/inject-remark :snowflake
-  "Snowflake strips comments prepended to the SQL statement (default remark injection behavior). We should append the
-  remark instead."
   [_ sql remark]
   (str sql "\n\n-- " remark))
 
