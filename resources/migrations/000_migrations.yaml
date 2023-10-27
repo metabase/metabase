@@ -15526,6 +15526,15 @@ databaseChangeLog:
             where: semantic_type = 'type/Number'
       rollback:
 
+   - changeSet:
+       id: v48.00-027
+       author: qnkhuat
+       comment: 'Drop parameter_card.entity_id'
+       changes:
+         - dropColumn:
+             tableName: parameter_card
+             columnName: entity_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
