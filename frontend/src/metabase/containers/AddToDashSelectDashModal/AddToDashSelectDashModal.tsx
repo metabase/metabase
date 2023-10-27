@@ -14,8 +14,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
 import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-import { getCollection } from "metabase/collections/selectors";
 import { useSelector } from "metabase/lib/redux";
+import Collections from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { useCollectionId, useMostRecentlyViewedDashboard } from "./hooks";
 
@@ -60,7 +60,9 @@ const AddToDashSelectDashModal = ({
     CollectionId | undefined
   >();
   const openCollection = useSelector(state =>
-    getCollection(state, { collectionId: openCollectionId }),
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
   );
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
   const hideCreateNewDashboardOption =
