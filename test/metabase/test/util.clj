@@ -45,12 +45,7 @@
    (java.net ServerSocket)
    (java.util Locale)
    (java.util.concurrent TimeoutException)
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    Scheduler
-    Trigger)
+   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger)
    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
