@@ -273,7 +273,7 @@ describe("scenarios > models metadata", () => {
       .and("contain", "TAX");
   });
 
-  describe("native models metadata overwrites", () => {
+  describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
       cy.createNativeQuestion(
         {
