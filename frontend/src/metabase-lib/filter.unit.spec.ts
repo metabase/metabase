@@ -53,7 +53,7 @@ function findColumn(query: Lib.Query, tableName: string, columnName: string) {
   return columnFinder(query, columns)(tableName, columnName);
 }
 
-function filterByColumn<T extends Lib.FilterParts>(
+function addFilter<T extends Lib.FilterParts>(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
   getFilterParts: (
@@ -76,25 +76,19 @@ function filterByColumn<T extends Lib.FilterParts>(
   };
 }
 
-function filterByStringColumn(
-  query: Lib.Query,
-  filterClause: Lib.ExpressionClause,
-) {
-  return filterByColumn(query, filterClause, Lib.stringFilterParts);
+function addStringFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
+  return addFilter(query, filterClause, Lib.stringFilterParts);
 }
 
-function filterByNumberColumn(
-  query: Lib.Query,
-  filterClause: Lib.ExpressionClause,
-) {
-  return filterByColumn(query, filterClause, Lib.numberFilterParts);
+function addNumberFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
+  return addFilter(query, filterClause, Lib.numberFilterParts);
 }
 
-function filterByCoordinateColumn(
+function addCoordinateFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
 ) {
-  const { newQuery, filterParts, columnInfo } = filterByColumn(
+  const { newQuery, filterParts, columnInfo } = addFilter(
     query,
     filterClause,
     Lib.coordinateFilterParts,
@@ -106,18 +100,22 @@ function filterByCoordinateColumn(
   return { newQuery, filterParts, columnInfo, longitudeColumnInfo };
 }
 
-function filterByBooleanColumn(
+function addBooleanFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
 ) {
-  return filterByColumn(query, filterClause, Lib.booleanFilterParts);
+  return addFilter(query, filterClause, Lib.booleanFilterParts);
 }
 
-function filterByTimeColumn(
+function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
+  return addFilter(query, filterClause, Lib.timeFilterParts);
+}
+
+function addExcludeDateFilter(
   query: Lib.Query,
   filterClause: Lib.ExpressionClause,
 ) {
-  return filterByColumn(query, filterClause, Lib.timeFilterParts);
+  return addFilter(query, filterClause, Lib.excludeDateFilterParts);
 }
 
 describe("filter", () => {
@@ -138,7 +136,7 @@ describe("filter", () => {
     ])(
       'should be able to create and destructure a string filter with "%s" operator and 1 value',
       operator => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator,
@@ -161,7 +159,7 @@ describe("filter", () => {
     it.each<Lib.StringFilterOperatorName>(["=", "!="])(
       'should be able to create and destructure a string filter with "%s" operator and multiple values',
       operator => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator,
@@ -189,7 +187,7 @@ describe("filter", () => {
     ])(
       'should be able to create and destructure a string filter with "%s" operator without values',
       operator => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator,
@@ -217,7 +215,7 @@ describe("filter", () => {
     ])(
       'should fill defaults for case sensitivity options for "%s" operator',
       () => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator: "starts-with",
@@ -243,7 +241,7 @@ describe("filter", () => {
       "starts-with",
       "ends-with",
     ])('should use provided case sensitivity options for "%s" operator', () => {
-      const { filterParts, columnInfo } = filterByStringColumn(
+      const { filterParts, columnInfo } = addStringFilter(
         query,
         Lib.stringFilterClause({
           operator: "starts-with",
@@ -265,7 +263,7 @@ describe("filter", () => {
     it.each<Lib.StringFilterOperatorName>(["=", "!="])(
       'should ignore case sensitivity options as they are not supported by "%s" operator and 1 value',
       operator => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator,
@@ -293,7 +291,7 @@ describe("filter", () => {
     ])(
       'should ignore case sensitivity options as they are not supported by "%s" operator without values',
       operator => {
-        const { filterParts, columnInfo } = filterByStringColumn(
+        const { filterParts, columnInfo } = addStringFilter(
           query,
           Lib.stringFilterClause({
             operator,
@@ -314,7 +312,7 @@ describe("filter", () => {
     );
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = filterByStringColumn(
+      const { filterParts } = addStringFilter(
         query,
         Lib.expressionClause("concat", [
           findColumn(query, tableName, columnName),
@@ -326,7 +324,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = filterByStringColumn(
+      const { filterParts } = addStringFilter(
         query,
         Lib.expressionClause("=", ["A", column]),
       );
@@ -335,7 +333,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with non-string arguments", () => {
-      const { filterParts } = filterByStringColumn(
+      const { filterParts } = addStringFilter(
         query,
         Lib.expressionClause("=", [column, column]),
       );
@@ -352,7 +350,7 @@ describe("filter", () => {
     it.each<Lib.NumberFilterOperatorName>(["=", "!=", ">", ">", ">=", "<="])(
       'should be able to create and destructure a number filter with "%s" operator and 1 value',
       operator => {
-        const { filterParts, columnInfo } = filterByNumberColumn(
+        const { filterParts, columnInfo } = addNumberFilter(
           query,
           Lib.numberFilterClause({
             operator,
@@ -373,7 +371,7 @@ describe("filter", () => {
     it.each<Lib.NumberFilterOperatorName>(["=", "!="])(
       'should be able to create and destructure a number filter with "%s" operator and multiple values',
       operator => {
-        const { filterParts, columnInfo } = filterByNumberColumn(
+        const { filterParts, columnInfo } = addNumberFilter(
           query,
           Lib.numberFilterClause({
             operator,
@@ -394,7 +392,7 @@ describe("filter", () => {
     it.each<Lib.NumberFilterOperatorName>(["between"])(
       'should be able to create and destructure a number filter with "%s" operator and exactly 2 values',
       operator => {
-        const { filterParts, columnInfo } = filterByNumberColumn(
+        const { filterParts, columnInfo } = addNumberFilter(
           query,
           Lib.numberFilterClause({
             operator,
@@ -415,7 +413,7 @@ describe("filter", () => {
     it.each<Lib.NumberFilterOperatorName>(["is-null", "not-null"])(
       'should be able to create and destructure a number filter with "%s" operator without values',
       operator => {
-        const { filterParts, columnInfo } = filterByNumberColumn(
+        const { filterParts, columnInfo } = addNumberFilter(
           query,
           Lib.numberFilterClause({
             operator,
@@ -434,7 +432,7 @@ describe("filter", () => {
     );
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = filterByNumberColumn(
+      const { filterParts } = addNumberFilter(
         query,
         Lib.expressionClause("+", [
           findColumn(query, tableName, columnName),
@@ -446,7 +444,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = filterByNumberColumn(
+      const { filterParts } = addNumberFilter(
         query,
         Lib.expressionClause("=", [10, column]),
       );
@@ -455,7 +453,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with non-numeric arguments", () => {
-      const { filterParts } = filterByNumberColumn(
+      const { filterParts } = addNumberFilter(
         query,
         Lib.expressionClause("=", [column, column]),
       );
@@ -479,7 +477,7 @@ describe("filter", () => {
     ])(
       'should be able to create and destructure a coordinate filter with "%s" operator and 1 value',
       operator => {
-        const { filterParts, columnInfo } = filterByCoordinateColumn(
+        const { filterParts, columnInfo } = addCoordinateFilter(
           query,
           Lib.coordinateFilterClause({
             operator,
@@ -500,7 +498,7 @@ describe("filter", () => {
     it.each<Lib.CoordinateFilterOperatorName>(["=", "!="])(
       'should be able to create and destructure a coordinate filter with "%s" operator and multiple values',
       operator => {
-        const { filterParts, columnInfo } = filterByCoordinateColumn(
+        const { filterParts, columnInfo } = addCoordinateFilter(
           query,
           Lib.coordinateFilterClause({
             operator,
@@ -521,7 +519,7 @@ describe("filter", () => {
     it.each<Lib.CoordinateFilterOperatorName>(["between"])(
       'should be able to create and destructure a coordinate filter with "%s" operator and exactly 2 values',
       operator => {
-        const { filterParts, columnInfo } = filterByCoordinateColumn(
+        const { filterParts, columnInfo } = addCoordinateFilter(
           query,
           Lib.coordinateFilterClause({
             operator,
@@ -541,7 +539,7 @@ describe("filter", () => {
 
     it('should be able to create and destructure a coordinate filter with "inside" operator and 1 column', () => {
       const { filterParts, columnInfo, longitudeColumnInfo } =
-        filterByCoordinateColumn(
+        addCoordinateFilter(
           query,
           Lib.coordinateFilterClause({
             operator: "inside",
@@ -562,7 +560,7 @@ describe("filter", () => {
 
     it('should be able to create and destructure a coordinate filter with "inside" operator and 2 columns', () => {
       const { filterParts, columnInfo, longitudeColumnInfo } =
-        filterByCoordinateColumn(
+        addCoordinateFilter(
           query,
           Lib.coordinateFilterClause({
             operator: "inside",
@@ -583,7 +581,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = filterByCoordinateColumn(
+      const { filterParts } = addCoordinateFilter(
         query,
         Lib.expressionClause("+", [
           findColumn(query, tableName, columnName),
@@ -595,7 +593,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = filterByCoordinateColumn(
+      const { filterParts } = addCoordinateFilter(
         query,
         Lib.expressionClause("=", [10, column]),
       );
@@ -604,7 +602,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with non-numeric arguments", () => {
-      const { filterParts } = filterByCoordinateColumn(
+      const { filterParts } = addCoordinateFilter(
         query,
         Lib.expressionClause("=", [column, column]),
       );
@@ -621,7 +619,7 @@ describe("filter", () => {
     it.each([true, false])(
       'should be able to create and destructure a boolean filter with "=" operator and a "%s" value',
       value => {
-        const { filterParts, columnInfo } = filterByBooleanColumn(
+        const { filterParts, columnInfo } = addBooleanFilter(
           query,
           Lib.booleanFilterClause({
             operator: "=",
@@ -642,7 +640,7 @@ describe("filter", () => {
     it.each<Lib.BooleanFilterOperatorName>(["is-null", "not-null"])(
       'should be able to create and destructure a boolean filter with "%s" operator without values',
       operator => {
-        const { filterParts, columnInfo } = filterByBooleanColumn(
+        const { filterParts, columnInfo } = addBooleanFilter(
           query,
           Lib.booleanFilterClause({
             operator,
@@ -661,7 +659,7 @@ describe("filter", () => {
     );
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = filterByBooleanColumn(
+      const { filterParts } = addBooleanFilter(
         query,
         Lib.expressionClause("!=", [
           findColumn(query, tableName, columnName),
@@ -673,7 +671,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = filterByBooleanColumn(
+      const { filterParts } = addBooleanFilter(
         query,
         Lib.expressionClause("=", [true, column]),
       );
@@ -682,7 +680,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with non-boolean arguments", () => {
-      const { filterParts } = filterByBooleanColumn(
+      const { filterParts } = addBooleanFilter(
         query,
         Lib.expressionClause("=", [column, column]),
       );
@@ -704,7 +702,7 @@ describe("filter", () => {
     it.each<Lib.TimeFilterOperatorName>([">", "<"])(
       'should be able to create and destructure a time filter with "%s" operator and 1 value',
       operator => {
-        const { filterParts, columnInfo } = filterByTimeColumn(
+        const { filterParts, columnInfo } = addTimeFilter(
           query,
           Lib.timeFilterClause({
             operator,
@@ -723,7 +721,7 @@ describe("filter", () => {
     );
 
     it('should be able to create and destructure a time filter with "between" operator and 2 values', () => {
-      const { filterParts, columnInfo } = filterByTimeColumn(
+      const { filterParts, columnInfo } = addTimeFilter(
         query,
         Lib.timeFilterClause({
           operator: "between",
@@ -741,7 +739,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with not supported operators", () => {
-      const { filterParts } = filterByTimeColumn(
+      const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause("=", [column, "10:20:00.000"]),
       );
@@ -750,7 +748,7 @@ describe("filter", () => {
     });
 
     it("should ignore expressions without first column", () => {
-      const { filterParts } = filterByTimeColumn(
+      const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause(">", ["10:20:00.000", column]),
       );
@@ -759,12 +757,74 @@ describe("filter", () => {
     });
 
     it("should ignore expressions with non-time arguments", () => {
-      const { filterParts } = filterByTimeColumn(
+      const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause(">", [column, column]),
       );
 
       expect(filterParts).toBeNull();
     });
+  });
+
+  describe("exclude date filters", () => {
+    const tableName = "PRODUCTS";
+    const columnName = "CREATED_AT";
+    const column = findColumn(query, tableName, columnName);
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2020, 0, 1));
+    });
+
+    it.each<Lib.ExcludeDateBucketName>([
+      "hour-of-day",
+      "day-of-week",
+      "month-of-year",
+      "quarter-of-year",
+    ])(
+      'should be able to create and destructure an exclude date filter with "%s" bucket and multiple values',
+      bucket => {
+        const { filterParts, columnInfo } = addExcludeDateFilter(
+          query,
+          Lib.excludeDateFilterClause(query, 0, {
+            operator: "!=",
+            column,
+            bucket,
+            values: [1, 2],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator: "!=",
+          column: expect.anything(),
+          bucket,
+          values: [1, 2],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.ExcludeDateFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure an exclude date filter with "%s" operator without values',
+      operator => {
+        const { filterParts, columnInfo } = addExcludeDateFilter(
+          query,
+          Lib.excludeDateFilterClause(query, 0, {
+            operator,
+            column,
+            bucket: null,
+            values: [1, 2],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator: "!=",
+          column: expect.anything(),
+          bucket: null,
+          values: [1, 2],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
   });
 });
