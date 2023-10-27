@@ -539,15 +539,16 @@
 (deftest user-update-event-test
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-model-cleanup [:model/AuditLog]
-        (let [event (assoc (mt/fetch-user :lucky) :changes {:last_name "Charms"})]
-          (is (= event (events/publish-event! :event/user-update event))))
-        (is (= {:model_id (mt/user->id :lucky)
-                :user_id  (mt/user->id :rasta)
-                :details  {:last_name "Charms"}
-                :topic    :user-update
-                :model    "User"}
-               (event :user-update (mt/user->id :lucky))))))))
+      (let [event (t2/select-one :model/User (mt/user->id :lucky))
+            new-event (assoc event :first_name "When Preperation Meets Opportunity")]
+        (is (= event (:audit-log/previous (events/publish-event! :event/user-update (assoc new-event :audit-log/previous event))))))
+      (is (= {:model_id (mt/user->id :lucky)
+              :user_id  (mt/user->id :rasta)
+              :topic    :user-update
+              :model    "User"
+              :details {:previous-value {:first_name "Lucky"}
+                        :new-value {:first_name "When Preperation Meets Opportunity"}}}
+             (event :user-update (mt/user->id :lucky)))))))
 
 (deftest user-deactivated-event-test
  (testing :event/user-deactivated
