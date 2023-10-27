@@ -159,7 +159,7 @@
   [topic segment]
   (audit-log/record-event! topic
                            (maybe-prepare-update-event-data
-                            (dissoc segment  :revision_message :actor_id :creator))
+                            (dissoc segment :creator))
                            api/*current-user-id*
                            :model/Segment
                            (:id segment)))
