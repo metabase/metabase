@@ -10,13 +10,12 @@ describe("scenarios > admin > settings > email settings", () => {
   });
 
   it("should be able to save email settings", () => {
-    // first time SMTP setup should redirect user to SMTP connection form
-    // at "/admin/settings/email/smtp"
     cy.visit("/admin/settings/email");
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email/smtp",
-    );
+
+    cy.findByTestId("smtp-connection-card").within(() => {
+      cy.findByText("Active").should("not.exist");
+      cy.findByText("Set up").click();
+    });
 
     // SMTP connection setup
     cy.findByLabelText("SMTP Host").type("localhost").blur();
@@ -31,13 +30,13 @@ describe("scenarios > admin > settings > email settings", () => {
     });
     cy.wait("@smtpSaved");
 
-    // after first time setup, user is redirected top-level page
-    // which contains additional email settings
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
-    cy.findByTestId("smtp-connection-card").should("exist");
+    // back navigate with breadcrumbs
+    cy.findByTestId("breadcrumbs").findByText("Email").click();
+
+    cy.findByTestId("smtp-connection-card").within(() => {
+      cy.findByText("Active").should("exist");
+      cy.findByText("Edit Configuration").should("exist");
+    });
 
     // Non SMTP-settings should save automatically
     cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
@@ -48,12 +47,6 @@ describe("scenarios > admin > settings > email settings", () => {
 
     // Refresh page to confirm changes persist
     cy.reload();
-
-    // validate that there is no-redirect after initial setup
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
 
     // validate additional settings
     cy.findByDisplayValue("mailer@metabase.test");
@@ -67,9 +60,6 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue("localhost");
     cy.findByDisplayValue(SMTP_PORT);
     cy.findAllByDisplayValue("admin");
-
-    // breadcrumbs should now show up since it is not a first time configuration
-    cy.findByTestId("breadcrumbs").findByText("Email").click();
   });
 
   it("should show an error if test email fails", () => {
@@ -84,9 +74,12 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-security": "none",
       "email-smtp-username": null,
     });
-    cy.visit("/admin/settings/email/smtp");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Send test email").click();
+    cy.visit("/admin/settings/email");
+    cy.findByTestId("smtp-connection-card")
+      .findByText("Edit Configuration")
+      .click();
+    main().findByText("Send test email").click();
+
     cy.findAllByText("Wrong host or port").should("have.length", 2);
   });
 
@@ -96,11 +89,12 @@ describe("scenarios > admin > settings > email settings", () => {
     () => {
       setupSMTP();
 
-      cy.visit("/admin/settings/email/smtp");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Send test email").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sent!");
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("smtp-connection-card")
+        .findByText("Edit Configuration")
+        .click();
+      main().findByText("Send test email").click();
+      main().findByText("Sent!");
 
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
         ({ body }) => {
@@ -112,9 +106,10 @@ describe("scenarios > admin > settings > email settings", () => {
   );
 
   it("should be able to clear email settings", () => {
-    cy.visit("/admin/settings/email/smtp");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Clear").click();
+    cy.visit("/admin/settings/email");
+    cy.findByTestId("smtp-connection-card").findByText("Set up").click();
+    main().findByText("Clear").click();
+
     cy.findByLabelText("SMTP Host").should("have.value", "");
     cy.findByLabelText("SMTP Port").should("have.value", "");
   });
@@ -126,9 +121,11 @@ describe("scenarios > admin > settings > email settings", () => {
       // Make sure some settings are already there
       setupSMTP();
 
-      cy.visit("/admin/settings/email/smtp");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Send test email").scrollIntoView();
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("smtp-connection-card")
+        .findByText("Edit Configuration")
+        .click();
+      main().findByText("Send test email").scrollIntoView();
       // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
       cy.button("Save changes").should("be.disabled");
     },
