@@ -44,7 +44,7 @@
 (defn- test-start-of-week-offset
   [db-start-of-week target-start-of-week]
   (with-redefs [driver/db-start-of-week   (constantly db-start-of-week)
-                setting/get-value-of-type (constantly target-start-of-week)]
+                setting/get-parsed-value (constantly target-start-of-week)]
     (driver.common/start-of-week-offset :sql)))
 
 (deftest start-of-week-offset-test

@@ -797,8 +797,8 @@
   [path context]
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml"))
           :when (or (= context :update)
-                    (nil? (setting/get-value-of-type :string k)))]
-    (setting/set-value-of-type! :string k v)))
+                    (nil? (setting/get-raw-value k)))]
+    (setting/set-parsed-value! k v)))
 
 (defn compatible?
   "Is dump at path `path` compatible with the currently running version of Metabase?"

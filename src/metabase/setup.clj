@@ -32,9 +32,9 @@
   ;; TODO -- 95% sure we can just use [[setup-token]] directly now and not worry about manually fetching the env var
   ;; value or setting DB values and the like
   (or (when-let [mb-setup-token (env/env :mb-setup-token)]
-        (setting/set-value-of-type! :string :setup-token mb-setup-token))
+        (setting/set-parsed-value! :setup-token mb-setup-token))
       (t2/select-one-fn :value Setting :key "setup-token")
-      (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
+      (setting/set-parsed-value! :setup-token (str (random-uuid)))))
 
 (defsetting has-user-setup
   (deferred-tru "A value that is true iff the metabase instance has one or more users registered.")
@@ -42,7 +42,7 @@
   :type       :boolean
   :setter     (fn [value]
                 (if (or config/is-dev? config/is-test?)
-                  (setting/set-value-of-type! :boolean :has-user-setup value)
+                  (setting/set-parsed-value! :has-user-setup value)
                   (throw (ex-info (tru "Cannot set `has-user-setup`.")
                                   {:value value}))))
   ;; Once a User is created it's impossible for this to ever become falsey -- deleting the last User is disallowed.
@@ -55,7 +55,7 @@
                 (fn []
                   (let [possible-override (when (or config/is-dev? config/is-test?)
                                             ;; allow for overriding in dev and test
-                                            (setting/get-value-of-type :boolean :has-user-setup))]
+                                            (setting/get-parsed-value :has-user-setup))]
                     ;; override could be false so have to check non-nil
                     (if (some? possible-override)
                       possible-override

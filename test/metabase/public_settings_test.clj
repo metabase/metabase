@@ -55,9 +55,9 @@
 (deftest site-url-settings-nil-getter-when-invalid
   (testing "if `site-url` in the database is invalid, the getter for `site-url` should return `nil` (#9849)"
     (mt/discard-setting-changes [site-url]
-      (setting/set-value-of-type! :string :site-url "https://&")
+      (setting/set-parsed-value! :site-url "https://&")
       (is (= "https://&"
-             (setting/get-value-of-type :string :site-url)))
+             (setting/get-parsed-value :site-url)))
       (is (= nil
              (public-settings/site-url))))))
 
@@ -65,7 +65,7 @@
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
       (is (= "localhost:3000/"
-             (setting/get-value-of-type :string :site-url)))
+             (setting/get-parsed-value :site-url)))
       (is (= "http://localhost:3000"
              (public-settings/site-url))))))
 
@@ -74,7 +74,7 @@
                 " whole instance break")
     (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
       (is (= "asd_12w31%$;"
-             (setting/get-value-of-type :string :site-url)))
+             (setting/get-parsed-value :site-url)))
       (is (= nil
              (public-settings/site-url))))))
 
@@ -221,7 +221,7 @@
     (testing "Error on invalid value"
       (is (thrown-with-msg?
            Throwable
-           #"Invalid day of week: :fraturday"
+           #"Invalid value for start-of-week"
            (public-settings/start-of-week! :fraturday))))
     (mt/with-temp-env-var-value [start-of-week nil]
       (testing "Should default to Sunday"

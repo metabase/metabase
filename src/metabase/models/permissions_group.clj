@@ -96,12 +96,12 @@
   (check-not-magic-group group)
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
-  (setting/set-value-of-type!
-    :json :ldap-group-mappings
-    (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
-      (zipmap (keys mappings)
-              (for [val (vals mappings)]
-                (remove (partial = id) val))))))
+  (setting/set-parsed-value!
+   :ldap-group-mappings
+   (when-let [mappings (setting/get-parsed-value :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
 
 (t2/define-before-update :model/PermissionsGroup
   [group]

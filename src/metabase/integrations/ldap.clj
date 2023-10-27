@@ -52,17 +52,17 @@
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail"
-  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email))))
+  :getter (fn [] (u/lower-case-en (setting/get-parsed-value :ldap-attribute-email))))
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName"
-  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname))))
+  :getter (fn [] (u/lower-case-en (setting/get-parsed-value :ldap-attribute-firstname))))
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn"
-  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname))))
+  :getter (fn [] (u/lower-case-en (setting/get-parsed-value :ldap-attribute-lastname))))
 
 (defsetting ldap-group-sync
   (deferred-tru "Enable group membership synchronization with LDAP.")
@@ -80,17 +80,20 @@
   :cache?  false
   :default {}
   :getter  (fn []
-             (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
+             (json/parse-string (setting/get-raw-value :ldap-group-mappings) #(DN. (str %))))
   :setter  (fn [new-value]
              (cond
                (string? new-value)
                (recur (json/parse-string new-value))
 
+               (nil? new-value)
+               (setting/set-parsed-value! :ldap-group-mappings new-value)
+
                (map? new-value)
                (do (doseq [k (keys new-value)]
                      (when-not (DN/isValidDN (u/qualified-name k))
                        (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
-                   (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
+                   (setting/set-parsed-value! :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   (deferred-tru "Have the mandatory LDAP settings (host and user search base) been validated and saved?")

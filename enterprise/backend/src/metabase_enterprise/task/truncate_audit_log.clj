@@ -8,7 +8,7 @@
 
 (define-multi-setting-impl truncate-audit-log.i/audit-max-retention-days :ee
   :getter (fn []
-            (let [env-var-value      (setting/get-value-of-type :integer :audit-max-retention-days)
+            (let [env-var-value      (setting/get-parsed-value :audit-max-retention-days)
                   min-retention-days truncate-audit-log.i/min-retention-days]
               (cond
                 (nil? env-var-value)   ##Inf

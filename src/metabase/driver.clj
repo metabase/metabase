@@ -56,7 +56,7 @@
   :visibility :settings-manager
   :setter
   (fn [new-value]
-    (setting/set-value-of-type! :string :report-timezone new-value)
+    (setting/set-raw-value! :report-timezone new-value)
     (notify-all-databases-updated)))
 
 (defsetting report-timezone-short

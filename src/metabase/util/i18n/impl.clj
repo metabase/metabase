@@ -210,8 +210,8 @@
 (defn site-locale-from-setting
   "Fetch the value of the `site-locale` Setting, or `nil` if it is unset."
   []
-  (when-let [get-value-of-type (resolve 'metabase.models.setting/get-value-of-type)]
-    (when (bound? get-value-of-type)
+  (when-let [get-parsed-value (resolve 'metabase.models.setting/get-parsed-value)]
+    (when (bound? get-parsed-value)
       ;; make sure we don't try to recursively fetch the site locale when we're actively in the process of fetching it,
       ;; otherwise that will cause infinite loops if we try to log anything... see #32376
       (when-not *in-site-locale-from-setting*
@@ -219,7 +219,7 @@
           ;; if there is an error fetching the Setting, e.g. if the app DB is in the process of shutting down, then just
           ;; return nil.
           (try
-            (get-value-of-type :string :site-locale)
+            (get-parsed-value :site-locale)
             (catch Exception _
               nil)))))))
 

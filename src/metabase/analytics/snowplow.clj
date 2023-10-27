@@ -30,7 +30,8 @@
          "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
-  :type       ::public-settings/uuid-nonce
+  :type       :string
+  :getter     (public-settings/get-or-generate-uuid-nonce! :analytics-uuid)
   :doc        false)
 
 (defsetting snowplow-available
@@ -82,9 +83,9 @@
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
                   (let [value (or (first-user-creation) (t/offset-date-time))]
-                    (setting/set-value-of-type! :timestamp :instance-creation value)
+                    (setting/set-raw-value! :instance-creation (setting/->string :timestamp value))
                     (track-event! ::new-instance-created)))
-                (u.date/format-rfc3339 (setting/get-value-of-type :timestamp :instance-creation)))
+                (u.date/format-rfc3339 (setting/string-> :timestamp (setting/get-raw-value :instance-creation))))
   :doc false)
 
 (def ^:private tracker-config

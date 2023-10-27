@@ -133,8 +133,7 @@
                  (view-log/most-recently-viewed-dashboard)))
           (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
             (is (string?
-                 (setting/set-value-of-type! :json
-                                             :most-recently-viewed-dashboard
-                                             {:id        (u/the-id dash)
-                                              :timestamp (t/minus (t/zoned-date-time) (t/hours 25))})))
+                 (setting/set-parsed-value! :most-recently-viewed-dashboard
+                                            {:id        (u/the-id dash)
+                                             :timestamp (t/minus (t/zoned-date-time) (t/hours 25))})))
             (is (nil? (view-log/most-recently-viewed-dashboard)))))))))

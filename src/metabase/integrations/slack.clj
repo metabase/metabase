@@ -32,12 +32,12 @@
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
   :visibility :settings-manager
   :getter (fn []
-            (-> (setting/get-value-of-type :string :slack-app-token)
+            (-> (setting/get-parsed-value :slack-app-token)
                 (u.str/mask 9))))
 
 (defn- unobfuscated-slack-app-token
   []
-  (setting/get-value-of-type :string :slack-app-token))
+  (setting/get-parsed-value :slack-app-token))
 
 (defsetting slack-token-valid?
   (deferred-tru
@@ -74,7 +74,7 @@
   :default "metabase_files"
   :visibility :settings-manager
   :setter (fn [channel-name]
-            (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
+            (setting/set-parsed-value! :slack-files-channel (process-files-channel-name channel-name))))
 
 (defn slack-configured?
   "Is Slack integration configured?"

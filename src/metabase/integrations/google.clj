@@ -34,10 +34,10 @@
                     (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
                       (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
                                       {:status-code 400})))
-                    (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
+                    (setting/set-parsed-value! :google-auth-client-id trimmed-client-id))
                   (do
-                   (setting/set-value-of-type! :string :google-auth-client-id nil)
-                   (setting/set-value-of-type! :boolean :google-auth-enabled false)))))
+                   (setting/set-parsed-value! :google-auth-client-id nil)
+                   (setting/set-parsed-value! :google-auth-enabled false)))))
 
 (defsetting google-auth-configured
   (deferred-tru "Is Google Sign-In configured?")
@@ -50,7 +50,7 @@
   :visibility :public
   :type       :boolean
   :getter     (fn []
-                (if-some [value (setting/get-value-of-type :boolean :google-auth-enabled)]
+                (if-some [value (setting/get-parsed-value :google-auth-enabled)]
                   value
                   (boolean (google-auth-client-id))))
   :setter     (fn [new-value]
@@ -58,16 +58,16 @@
                   (if-not (google-auth-client-id)
                     (throw (ex-info (tru "Google Sign-In is not configured. Please set the Client ID first.")
                                     {:status-code 400}))
-                    (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
-                  (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
+                    (setting/set-parsed-value! :google-auth-enabled new-value))
+                  (setting/set-parsed-value! :google-auth-enabled new-value))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
-  :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
+  :getter (fn [] (setting/get-parsed-value :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
                 ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
-              (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
+              (setting/set-parsed-value! :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 

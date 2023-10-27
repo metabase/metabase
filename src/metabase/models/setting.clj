@@ -26,8 +26,8 @@
     (setting/set! :mandrill-api-key nil)
     (mandrill-api-key! nil)
 
-  You can define additional Settings types adding implementations of [[default-tag-for-type]], [[get-value-of-type]],
-  and [[set-value-of-type!]].
+  You can define additional Settings types adding implementations of [[default-tag-for-type]], [[->string]],
+  and [[string->]].
 
   [[writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
   User-readable Settings, respectively. See their docstrings for more information.
@@ -141,7 +141,7 @@
   Primarily used in test to disable retired setting check."
   false)
 
-(declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
+(declare admin-writable-site-wide-settings string-> ->string get-raw-value set-raw-value! parsed?)
 
 (def Setting
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -205,21 +205,21 @@
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
-                             :getter (partial get-value-of-type :string))
+                             :getter get-raw-value)
         :when (contains? exported-settings (symbol key))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
 
 (defmethod serdes/load-find-local "Setting" [[{:keys [id]}]]
-  (get-value-of-type :string (keyword id)))
+  (get-raw-value (keyword id)))
 
 (defmethod serdes/load-one! "Setting" [{:keys [key value]} _]
-  (set-value-of-type! :string key value))
+  (set-raw-value! key value))
 
 (def ^:private Type
   (s/pred (fn [a-type]
-            (contains? (set (keys (methods get-value-of-type))) a-type))
+            (contains? (set (keys (methods string->))) a-type))
           "Valid Setting :type"))
 
 (def ^:private Visibility
@@ -530,54 +530,32 @@
 
   !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
 
-  This is the underlying function powering all the other getters such as methods of [[get-value-of-type]]. These
-  getter functions *must* be coded to handle either String or non-String values. You can use the three-arity version
-  of this function to do that.
+  This is the underlying function powering all the other getters such as methods of [[get-parsed-value]]. These
+  getter functions *must* be coded to handle either String or non-String values."
+  [setting-definition-or-name]
+  (let [setting      (resolve-setting setting-definition-or-name)
+        setting-type (:type setting)
+        source-fns   [user-local-value
+                      database-local-value
+                      env-var-value
+                      db-or-cache-value
+                      default-value]]
+    (loop [[f & more] source-fns]
+      (let [v (f setting)]
+        (cond
+          ;; if the value is parsed, serialize it. this is `get-raw-value`, after all. we have rules!
+          (and
+           (some? v)
+           (parsed? setting-type v)) (->string setting-type v)
+          ;; if the value is not parsed, return it as-is.
+          (some? v)                        v
+          (seq more)                       (recur more))))))
 
-  Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
-  conditions values can be returned directly (`pred`) -- see [[get-value-of-type]] for `:boolean` for example usage."
-  ([setting-definition-or-name]
-   (let [setting    (resolve-setting setting-definition-or-name)
-         source-fns [user-local-value
-                     database-local-value
-                     env-var-value
-                     db-or-cache-value
-                     default-value]]
-     (loop [[f & more] source-fns]
-       (let [v (f setting)]
-         (cond
-           (some? v)  v
-           (seq more) (recur more))))))
-
-  ([setting-definition-or-name pred parse-fn]
-   (let [parse     (fn [v]
-                     (try
-                       (parse-fn v)
-                       (catch Throwable e
-                         (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
-                           (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
-                                           {:setting setting-name}
-                                           e))))))
-         raw-value (get-raw-value setting-definition-or-name)
-         v         (cond-> raw-value
-                     (string? raw-value) parse)]
-     (when (pred v)
-       v))))
-
-(defmulti get-value-of-type
-  "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
-  for Settings with `setting-type`.
-
-  Impls should call [[get-raw-value]] to get the underlying possibly-serialized value and parse it appropriately if it
-  comes back as a String; impls should only return values that are of the correct type (e.g. the `:boolean` impl
-  should only return [[Boolean]] values)."
-  {:arglists '([setting-type setting-definition-or-name])}
+(defmulti string->
+  "Given a `setting-type` and a value, parses the string into the appropriate type."
+  {:arglists '([setting-type setting-value])}
   (fn [setting-type _]
     (keyword setting-type)))
-
-(defmethod get-value-of-type :string
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name string? identity))
 
 (s/defn string->boolean :- (s/maybe s/Bool)
   "Interpret a `string-value` of a Setting as a boolean."
@@ -589,54 +567,74 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
-;; Strings are parsed as follows:
-;;
-;; * `true`  if *lowercased* string value is `true`
-;; * `false` if *lowercased* string value is `false`.
-;; * Otherwise, throw an Exception.
-(defmethod get-value-of-type :boolean
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name boolean? string->boolean))
+(defmethod string-> :string [_ value] value)
+(defmethod string-> :boolean [_ value] (string->boolean value))
+(defmethod string-> :integer [_ value]
+  (Long/parseLong ^String value))
+(defmethod string-> :double [_ value]
+  (Double/parseDouble ^String value))
+(defmethod string-> :keyword [_ value]
+  (keyword (u/lower-case-en value)))
+(defmethod string-> :timestamp [_ value]
+  (u.date/parse value))
+(defmethod string-> :json [_ value]
+  (json/parse-string value true))
+(defmethod string-> :csv [_ value]
+  (first (csv/read-csv value)))
 
-(defmethod get-value-of-type :integer
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
+(defmulti parsed?
+  "Given a `setting-type` and a value, check if the value has been parsed into the appropriate type"
+  {:arglists '([setting-type setting-value])}
+  (fn [setting-type _]
+    (keyword setting-type)))
+(defmethod parsed? :string [_ value] (string? value))
+(defmethod parsed? :boolean [_ value] (boolean? value))
+(defmethod parsed? :integer [_ value] (integer? value))
+(defmethod parsed? :double [_ value] (double? value))
+(defmethod parsed? :keyword [_ value] (keyword? value))
+(defmethod parsed? :timestamp [_ value] (instance? Temporal value))
+(defmethod parsed? :json [_ value] (coll? value))
+(defmethod parsed? :csv [_ value] (sequential? value))
 
-(defmethod get-value-of-type :double
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
+(defn get-parsed-value
+  "The single-arity version of this function takes a setting and returns the value of that setting, parsed according
+  to that setting's `:type` value. For example, `:boolean`-typed settings will return `true` or `false` rather than
+  `\"true\"` or `\"false\"`.
 
-(defmethod get-value-of-type :keyword
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name keyword? #(keyword (u/lower-case-en %))))
-
-(defmethod get-value-of-type :timestamp
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name #(instance? Temporal %) u.date/parse))
-
-(defmethod get-value-of-type :json
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? #(json/parse-string % true)))
-
-(defmethod get-value-of-type :csv
-  [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
-
-(defn- getter-for-type [setting-type setting-definition-or-name]
-  (fn []
-    (let [setting (resolve-setting setting-definition-or-name)
-          values (:values setting)
-          value (get-value-of-type (keyword setting-type) setting-definition-or-name)]
-      (cond
-        (nil? values) value
-        (contains? values value) value
-        :else (u/prog1 (:default setting)
-                (log/warn
-                 (format "Invalid value `%s` for setting `%s`. Defaulting to `%s`. Permitted values: `%s`"
-                         value
-                         (setting-name setting)
-                         (:default setting)
-                         values)))))))
+The three-arity version of this function takes a setting, a predicate that evaluates to `true` if the retrieved value
+is already parsed (see [[get-raw-value]] - it may return a string OR a parsed value), and a `parse-fn` that parses
+strings to the correct type.
+"
+  ([setting-definition-or-name]
+   (let [setting (resolve-setting setting-definition-or-name)
+         setting-type (:type setting)]
+     (get-parsed-value setting-definition-or-name
+                       #(parsed? setting-type %)
+                       #(string-> setting-type %))))
+  ([setting-definition-or-name parsed?-pred parse-fn]
+   (let [setting (resolve-setting setting-definition-or-name)
+         allowed-values (:values setting)
+         default (:default setting)
+         raw-value (get-raw-value setting-definition-or-name)
+         parsed (try
+                  (cond-> raw-value
+                    (string? raw-value) parse-fn)
+                  (catch Throwable e
+                    (let [{setting-name :name} setting]
+                      (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
+                                      {:setting setting-name}
+                                      e)))))]
+     (when (parsed?-pred parsed)
+       (cond
+         (nil? allowed-values) parsed
+         (contains? allowed-values parsed) parsed
+         :else (u/prog1 default
+                 (log/warn
+                  (format "Invalid value `%s` for setting `%s`. Defaulting to `%s`. Permitted values: `%s`"
+                          parsed
+                          (setting-name setting)
+                          (:default setting)
+                          allowed-values))))))))
 
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
@@ -683,18 +681,10 @@
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
 
-(defmulti set-value-of-type!
-  "Set the value of a `setting-type` `setting-definition-or-name`. A `nil` value deletes the current value of the
-  Setting (when set in the application database). Returns `new-value`.
-
-  Impls of this method should ultimately call the implementation for `:string`, which handles the low-level logic of
-  updating the cache and application database."
-  {:arglists '([setting-type setting-definition-or-name new-value])}
-  (fn [setting-type _ _]
-    (keyword setting-type)))
-
-(s/defmethod set-value-of-type! :string
-  [_setting-type setting-definition-or-name new-value :- (s/maybe s/Str)]
+(s/defn set-raw-value!
+  "Sets a setting to a raw string value. In general, you probably want `set-parsed-value!`, which will serialize the
+  setting value according to its type before writing."
+  [setting-definition-or-name new-value :- (s/maybe s/Str)]
   (let [new-value                         (when (seq new-value)
                                             new-value)
         {:keys [sensitive? deprecated]
@@ -746,53 +736,42 @@
         ;; Now return the `new-value`.
         new-value))))
 
-(defmethod set-value-of-type! :keyword
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (u/qualified-name new-value)))
+(defmulti ->string
+  "Given a `setting-type` and a value, turns the value into a string"
+  {:arglists '([setting-type setting-value])}
+  (fn [setting-type _]
+    (keyword setting-type)))
 
-(defmethod set-value-of-type! :boolean
-  [setting-type setting-definition-or-name new-value]
-  (if (string? new-value)
-    (set-value-of-type! setting-type setting-definition-or-name (string->boolean new-value))
-    (let [s (case new-value
-              true  "true"
-              false "false"
-              nil   nil)]
-      (set-value-of-type! :string setting-definition-or-name s))))
+(defmethod ->string :string [_ value] value)
 
-(defmethod set-value-of-type! :integer
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (when new-value
-     (assert (or (integer? new-value)
-                 (and (string? new-value)
-                      (re-matches #"^-?\d+$" new-value))))
-     (str new-value))))
+(defmethod ->string :keyword [_ value]
+  (u/qualified-name value))
 
-(defmethod set-value-of-type! :double
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (when new-value
-     (assert (or (number? new-value)
-                 (and (string? new-value)
-                      (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value))))
-     (str new-value))))
+(defmethod ->string :boolean [_ value]
+  (case (if (string? value) (string->boolean value) value)
+    true "true"
+    false "false"
+    nil nil))
 
-(defmethod set-value-of-type! :json
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (some-> new-value json/generate-string)))
+(defmethod ->string :integer [_ value]
+  (when value
+    (assert (or (integer? value)
+                (and (string? value)
+                     (re-matches #"^-?\d+$" value))))
+    (str value)))
 
-(defmethod set-value-of-type! :timestamp
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type!
-   :string setting-definition-or-name
-   (some-> new-value u.date/format)))
+(defmethod ->string :double [_ value]
+  (when value
+    (assert (or (number? value)
+                (and (string? value)
+                     (re-matches #"[+-]?([0-9]*[.])?[0-9]+" value))))
+    (str value)))
+
+(defmethod ->string :json [_ value]
+  (some-> value json/generate-string))
+
+(defmethod ->string :timestamp [_ value]
+  (some-> value u.date/format))
 
 (defn- serialize-csv [value]
   (cond
@@ -809,21 +788,27 @@
     :else
     value))
 
-(defmethod set-value-of-type! :csv
-  [_setting-type setting-definition-or-name new-value]
-  (set-value-of-type! :string setting-definition-or-name (serialize-csv new-value)))
+(defmethod ->string :csv [_ value]
+  (serialize-csv value))
 
-(defn- setter-for-type [setting-type setting-definition-or-name]
-  (fn [value]
-    (let [setting (resolve-setting setting-definition-or-name)
-          values (:values setting)]
-      (when-not (or (nil? value)
-                    (nil? values)
-                    (contains? values value))
-        (throw (ex-info (format "Invalid value for %s" (setting-name setting))
-                        {:allowed-values values
-                         :value value})))
-      (set-value-of-type! (keyword setting-type) setting-definition-or-name value))))
+(defn set-parsed-value!
+  "Given a setting definition and a value, serializes the value according to the setting type (if necessary) and sets
+  the raw value accordingly."
+  [setting-definition-or-name value]
+  (let [{:keys [type values] :as setting} (resolve-setting setting-definition-or-name)
+        ;; we need both the parsed version (to check against `:values`) and the unparsed version (for the actual
+        ;; call to `set-raw-value!`).
+        unparsed (->string type value)
+        parsed (if (parsed? type value)
+                 value
+                 (some->> unparsed (string-> type)))]
+    (when (and (some? parsed)
+               (some? values)
+               (not (contains? values parsed)))
+      (throw (ex-info (format "Invalid value for %s" (setting-name setting))
+                      {:allowed-values values
+                       :value parsed})))
+    (set-raw-value! setting-definition-or-name unparsed)))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -869,8 +854,8 @@
                  :type           setting-type
                  :default        default
                  :on-change      nil
-                 :getter         (getter-for-type setting-type setting-name)
-                 :setter         (setter-for-type setting-type setting-name)
+                 :getter         #(get-parsed-value setting-name)
+                 :setter         #(set-parsed-value! setting-name %)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
                  :sensitive?     false
@@ -1029,7 +1014,7 @@
 
   ###### `:type`
 
-  `:string` (default) or one of the other types that implement [[get-value-of-type]] and [[set-value-of-type]].
+  `:string` (default) or one of the other types that implement [[->string]] and [[string->]].
   Non-`:string` Settings have special default getters and setters that automatically coerce values to the correct
   types.
 
@@ -1051,7 +1036,7 @@
   ###### `:getter`
 
   A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in turn call functions
-  in this namespace like methods of [[get-value-of-type]] to invoke the 'parent' getter behavior.)
+  in this namespace like `get-raw-value` or `get-parsed-value` to actually read the setting.)
 
   ###### `:setter`
 
@@ -1168,11 +1153,11 @@
   Accepts options:
 
   * `:getter` -- the getter function to use to fetch the Setting value. By default, uses `setting/get`, which will
-  convert the setting to the appropriate type; you can use `(partial get-value-of-type :string)` to get all string
-  values of Settings, for example."
+  convert the setting to the appropriate type; you can use `get-raw-value` to get all string values of Settings, for
+  example."
   [setting-definition-or-name & {:keys [getter], :or {getter get}}]
   (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-definition-or-name)
-        unparsed-value                                                (get-value-of-type :string k)
+        unparsed-value                                                (get-raw-value k)
         parsed-value                                                  (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
         value-is-default?                                             (= parsed-value default)
