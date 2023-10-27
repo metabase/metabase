@@ -1064,6 +1064,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
 
       clickLineChartPoint();
+      cy.get("header").findByText(TARGET_DASHBOARD.name).should("exist");
       cy.findAllByTestId("field-set")
         .should("have.length", 1)
         .should("contain.text", POINT_COUNT);
