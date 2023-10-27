@@ -859,7 +859,7 @@ describe("filter", () => {
       [-7, "year", -70, "year"],
       [7, "year", 70, "year"],
     ])(
-      "should be able to create and destructure a relative date filter with offset",
+      "should be able to create and destructure a relative date filter with an offset",
       (value, bucket, offsetValue, offsetBucket) => {
         const { filterParts, columnInfo } = addRelativeDateFilter(
           query,
@@ -884,6 +884,52 @@ describe("filter", () => {
         expect(columnInfo?.name).toBe(columnName);
       },
     );
+
+    it("should remove an existing temporal bucket from a column", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.relativeDateFilterClause({
+          column: Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Year"),
+          ),
+          value: 1,
+          bucket: "day",
+          offsetValue: null,
+          offsetBucket: null,
+          options: {},
+        }),
+      );
+
+      const bucket = filterParts
+        ? Lib.temporalBucket(filterParts?.column)
+        : null;
+      expect(filterParts).toBeDefined();
+      expect(bucket).toBeNull();
+    });
+
+    it("should remove an existing temporal bucket from a column with an offset", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.relativeDateFilterClause({
+          column: Lib.withTemporalBucket(
+            column,
+            findTemporalBucket(query, column, "Month"),
+          ),
+          value: 1,
+          bucket: "day",
+          offsetValue: 2,
+          offsetBucket: "month",
+          options: {},
+        }),
+      );
+
+      const bucket = filterParts
+        ? Lib.temporalBucket(filterParts?.column)
+        : null;
+      expect(filterParts).toBeDefined();
+      expect(bucket).toBeNull();
+    });
 
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = addRelativeDateFilter(
