@@ -173,11 +173,11 @@
       :else
       ::no-op)))
 
-(def analytics-dir-resource
+(def analytics-dir
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def instance-analytics-plugin-dir
+(def ia-plugins-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
   (fs/path (plugins/plugins-dir) "instance_analytics"))
 
@@ -188,13 +188,17 @@
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
       (log/info "The app is running from a jar, starting copy...")
+      (when (fs/exists? (u.files/relative-path ia-plugins-dir))
+        (fs/delete-tree (u.files/relative-path ia-plugins-dir)))
       (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
       (log/info "Copying complete."))
-    (let [out-path (fs/path analytics-dir-resource)]
+    (let [out-path (fs/path analytics-dir)]
       (log/info "The app is not running from a jar, starting copy...")
-      (log/info (str "Copying " out-path " -> " instance-analytics-plugin-dir))
+      (log/info (str "Copying " out-path " -> " ia-plugins-dir))
+      (when (fs/exists? (u.files/relative-path ia-plugins-dir))
+        (fs/delete-tree (u.files/relative-path ia-plugins-dir)))
       (fs/copy-tree (u.files/relative-path out-path)
-                    (u.files/relative-path instance-analytics-plugin-dir)
+                    (u.files/relative-path ia-plugins-dir)
                     {:replace-existing true})
       (log/info "Copying complete."))))
 
@@ -204,7 +208,7 @@
   []
   (u/prog1 (ensure-db-installed!)
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
-      (when analytics-dir-resource
+      (when analytics-dir
         ;; prevent sync while loading
         ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
            (fn []
