@@ -506,7 +506,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       saveDashboard();
 
-      cy.findByTestId("field-set").click();
+      cy.findByTestId("field-set-content").click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
         cy.button("Add filter").click();
@@ -841,7 +841,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       (function testCustomUrlDestinationClick() {
         cy.log("it handles 'Created at' column click");
 
-        cy.findByTestId("field-set").click();
+        cy.findByTestId("field-set-content").click();
         popover().within(() => {
           cy.icon("close").click();
           cy.findByPlaceholderText("Enter some text").type(FILTER_VALUE);
