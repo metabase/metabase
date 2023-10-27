@@ -28,12 +28,12 @@ const MODEL_NAME: Record<EnabledSearchModelType, string> = {
 };
 
 const TEST_TYPES: Array<EnabledSearchModelType> = [
-  "collection",
   "dashboard",
   "card",
+  "dataset",
+  "collection",
   "database",
   "table",
-  "dataset",
   "action",
 ];
 
@@ -102,15 +102,23 @@ const setup = async ({
 const getCheckboxes = () => {
   return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
     "checkbox",
-    {},
   ) as HTMLInputElement[];
 };
 describe("TypeFilterContent", () => {
-  it("should display `Type` and all type labels", async () => {
+  it("should display `Type` and all type labels in order", async () => {
     await setup();
-    for (const entityType of TEST_TYPES) {
-      expect(screen.getByText(MODEL_NAME[entityType])).toBeInTheDocument();
-    }
+
+    const typeFilterElements = screen.getAllByTestId("type-filter-checkbox");
+    TEST_TYPES.forEach((type, index) => {
+      const checkboxWrapper = within(typeFilterElements[index]);
+      const checkboxValue = checkboxWrapper
+        .getByRole("checkbox")
+        .getAttribute("value");
+      expect(checkboxValue).toEqual(type);
+      expect(
+        checkboxWrapper.getByLabelText(MODEL_NAME[type]),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should only display available types", async () => {

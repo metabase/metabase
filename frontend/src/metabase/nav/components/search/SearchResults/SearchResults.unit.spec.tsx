@@ -17,7 +17,7 @@ import {
   createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { SearchResultsFooter } from "metabase/nav/components/search/SearchResults";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 

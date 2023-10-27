@@ -14,6 +14,7 @@ import type {
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";
 
+import { DashCardTabMenu } from "../DashCardTabMenu/DashCardTabMenu";
 import DashCardActionButton from "./DashCardActionButton";
 
 import AddSeriesButton from "./AddSeriesButton";
@@ -65,9 +66,14 @@ function DashCardActionButtons({
 
   const buttons = [];
 
+  if (dashcard) {
+    buttons.push(<DashCardTabMenu key="tabs" dashCardId={dashcard.id} />);
+  }
+
   if (supportPreviewing) {
     buttons.push(
       <DashCardActionButton
+        key="preview"
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
         aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
