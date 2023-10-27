@@ -597,7 +597,9 @@
                          :cardId      card-id
                          :dashboardId dashboard-id
                          :databaseId  database-id
-                         :queryHash   (codecs/bytes->hex query-hash)
+                         :queryHash   (if (instance? (Class/forName "[B") query-hash)
+                                        (codecs/bytes->hex query-hash)
+                                        nil)
                          :serverId    (public-settings/site-uuid)}))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
