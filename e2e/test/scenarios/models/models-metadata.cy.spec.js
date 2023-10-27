@@ -14,12 +14,13 @@ import {
   mapColumnTo,
   setModelMetadata,
   sidebar,
+  saveMetadataChanges,
 } from "e2e/support/helpers";
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
-const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -31,19 +32,25 @@ describe("scenarios > models metadata", () => {
 
   describe("GUI model", () => {
     beforeEach(() => {
-      // Convert saved question "Orders" into a model
-      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      const modelDetails = {
         name: "GUI Model",
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
         dataset: true,
-      });
+      };
 
-      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+      cy.createQuestion(modelDetails).then(({ body: { id } }) => {
+        cy.visit(`/model/${id}`);
+        cy.wait("@dataset");
+      });
     });
 
     it("should edit GUI model metadata", () => {
       openQuestionActions();
 
-      popover().findByTextEnsureVisible("89%").trigger("mouseenter");
+      popover().findByTextEnsureVisible("89%").realHover();
 
       cy.findByTestId("tooltip-content").within(() => {
         cy.findByText(
@@ -54,55 +61,61 @@ describe("scenarios > models metadata", () => {
         );
       });
 
-      popover().findByText("Edit metadata").click();
-
+      popover().findByTextEnsureVisible("Edit metadata").click();
       cy.url().should("include", "/metadata");
-      cy.findByTextEnsureVisible("Product ID");
 
       openColumnOptions("Subtotal");
-
       renameColumn("Subtotal", "Pre-tax");
       setColumnType("No special type", "Cost");
-      cy.button("Save changes").click();
+      saveMetadataChanges();
 
+      cy.log(
+        "Ensure that a question created from this model inherits its metadata.",
+      );
       startQuestionFromModel("GUI Model");
-
       visualize();
-      cy.findByTestId("TableInteractive-root").findByText("Pre-tax ($)");
+
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
     });
 
     it("allows for canceling changes", () => {
       openQuestionActions();
-
-      popover().findByText("Edit metadata").click();
+      popover().findByTextEnsureVisible("Edit metadata").click();
 
       openColumnOptions("Subtotal");
-
       renameColumn("Subtotal", "Pre-tax");
       setColumnType("No special type", "Cost");
 
-      cy.button("Cancel").click();
+      cy.findByTestId("dataset-edit-bar").button("Cancel").click();
       modal().button("Discard changes").click();
 
-      cy.findByTestId("TableInteractive-root").findByText("Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax");
     });
 
     it("clears custom metadata when a model is turned back into a question", () => {
       openQuestionActions();
-
-      popover().findByText("Edit metadata").click();
+      popover().findByTextEnsureVisible("Edit metadata").click();
 
       openColumnOptions("Subtotal");
-
       renameColumn("Subtotal", "Pre-tax");
       setColumnType("No special type", "Cost");
-      cy.button("Save changes").click();
+      saveMetadataChanges();
+
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
 
       openQuestionActions();
-      popover().findByText("Turn back to saved question").click();
+      popover().findByTextEnsureVisible("Turn back to saved question").click();
+      cy.wait("@cardQuery");
 
-      cy.wait("@dataset");
-      cy.findByTestId("TableInteractive-root").findByText("Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax ($)");
     });
   });
 
