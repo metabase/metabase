@@ -288,25 +288,23 @@
 (deftest metric-update-event-test
   (testing :metric-update
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
-      (mt/with-model-cleanup [:model/AuditLog]
-        (mt/with-test-user :rasta
-         (let [event (-> (assoc metric
-                                :actor_id         (mt/user->id :rasta)
-                                :revision_message "update this mofo")
-                         ;; doing this specifically to ensure :actor_id is utilized
-                         (dissoc :creator_id))]
-           (is (= event
-                  (events/publish-event! :event/metric-update event))))
-         (is (= {:topic       :metric-update
-                 :user_id     (mt/user->id :rasta)
-                 :model       "Metric"
-                 :model_id    (:id metric)
-                 :details     {:name             (:name metric)
-                               :description      (:description metric)
-                               :revision_message "update this mofo"
-                               :database_id (mt/id)
-                               :table_id    (mt/id :venues)}}
-                (event "metric-update" (:id metric)))))))))
+      (mt/with-test-user :rasta
+        (let [event (-> (assoc metric
+                               :actor_id         (mt/user->id :rasta)
+                               :revision_message "update this mofo")
+                        ;; doing this specifically to ensure :actor_id is utilized
+                        (dissoc :creator_id))
+              new-event (assoc event :revision_message "Update this, please.")]
+          (is (= event
+                 (:audit-log/previous
+                  (events/publish-event! :event/metric-update (assoc new-event :audit-log/previous event))))))
+        (is (= {:topic       :metric-update
+                :user_id     (mt/user->id :rasta)
+                :model       "Metric"
+                :model_id    (:id metric)
+                :details     {:new-value {:revision_message "Update this, please."}
+                              :previous-value {:revision_message "update this mofo"}}}
+               (event "metric-update" (:id metric))))))))
 
 (deftest metric-delete-event-test
   (testing :metric-delete

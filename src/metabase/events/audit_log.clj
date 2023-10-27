@@ -99,12 +99,9 @@
 (derive :event/metric-update ::metric-update-event)
 (methodical/defmethod events/publish-event! ::metric-update-event
   [topic metric]
-  (def topic topic)
-  (def metric metric)
-  (log/fatal (apply str (repeat 500 "X")))
   (audit-log/record-event! topic
                            (maybe-prepare-update-event-data
-                            (dissoc metric  :revision_message :actor_id :creator))
+                            (dissoc metric :creator))
                            api/*current-user-id*
                            :model/Metric
                            (:id metric)))
