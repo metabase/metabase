@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -87,29 +86,39 @@
                   :limit       3
                   :order-by    [[:asc $id]]})))))))
 
+(defn- dont-return-expressions-if-fields-is-explicit-context []
+  ;; bigquery doesn't let you have hypthens in field, table, etc names
+  (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
+        oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
+        query        (mt/mbql-query venues
+                       {:expressions {priceplusone [:+ $price 1]
+                                      oneplusone   [:+ 1 1]}
+                        :fields      [$price [:expression oneplusone]]
+                        :order-by    [[:asc $id]]
+                        :limit       3})]
+    {:priceplusone priceplusone, :oneplusone oneplusone, :query query}))
+
 (deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    ;; bigquery doesn't let you have hypthens in field, table, etc names
-    (let [priceplusone (if (= driver/*driver* :bigquery-cloud-sdk) "price_plus_1" "Price + 1")
-          oneplusone   (if (= driver/*driver* :bigquery-cloud-sdk) "one_plus_one" "1 + 1")
-          query        (mt/mbql-query venues
-                         {:expressions {priceplusone [:+ $price 1]
-                                        oneplusone   [:+ 1 1]}
-                          :fields      [$price [:expression oneplusone]]
-                          :order-by    [[:asc $id]]
-                          :limit       3})]
+    (let [{:keys [query]} (dont-return-expressions-if-fields-is-explicit-context)]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
-                 (qp/process-query query)))))
+                 (qp/process-query query))))))))
 
+(deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (let [{:keys [query]} (dont-return-expressions-if-fields-is-explicit-context)]
       (testing "If `:fields` is not explicit, then return all the expressions"
         (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4 2]
                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3 2]
                 [3 "The Apple Pan"         11 34.0406 -118.428 2 3 2]]
                (mt/formatted-rows [int str int 4.0 4.0 int int int]
-                 (qp/process-query (m/dissoc-in query [:query :fields]))))))
+                 (qp/process-query (m/dissoc-in query [:query :fields])))))))))
 
+(deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (let [{:keys [priceplusone oneplusone]} (dont-return-expressions-if-fields-is-explicit-context)]
       (testing "When aggregating, expressions that aren't used shouldn't come back"
         (is (= [[2 22] [3 59] [4 13]]
                (mt/formatted-rows [int int]
@@ -131,7 +140,10 @@
                (mt/run-mbql-query venues
                  {:expressions {:x [:+ $price $id]}
                   :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))
+                  :order-by    [[:desc [:expression :x]]]})))))))
+
+(deftest ^:parallel expressions-in-order-by-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside an ORDER BY clause with a secondary order by?"
       (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
               [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
@@ -365,16 +377,12 @@
                                                                                            (mt/id :lots-of-fields :b)}]
                                                                       {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        ;; skip the MLv2 conversion tests here since they use
-        ;; the [[metabase.lib.metadata.jvm/application-database-metadata-provider]] which makes tons of DB calls
-        ;; that aren't actually done IRL, and we don't want to include that in the DB call count
-        (binding [qp-test.mlv2/*skip-conversion-tests* true]
-          (t2/with-call-count [call-count-fn]
-            (mt/with-native-query-testing-context query
-              (is (= 1
-                     (-> (qp/process-query query) mt/rows ffirst))))
-            (testing "# of app DB calls should not be some insane number"
-              (is (< (call-count-fn) 20)))))))))
+        (t2/with-call-count [call-count-fn]
+          (mt/with-native-query-testing-context query
+            (is (= 1
+                   (-> (qp/process-query query) mt/rows ffirst))))
+          (testing "# of app DB calls should not be some insane number"
+            (is (< (call-count-fn) 20))))))))
 
 (deftest ^:parallel expression-with-slashes
   (mt/test-drivers (disj

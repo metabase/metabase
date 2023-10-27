@@ -16,7 +16,9 @@
   (testing "1 should not be allowed as a <string> arg"
     (is (not (mc/validate
               ::mbql-clause/clause
-              [:contains {:lib/uuid "1527d17e-a2f0-4e5f-a92b-65d1db90c094"} "x" 1])))))
+              [:contains {:lib/uuid "1527d17e-a2f0-4e5f-a92b-65d1db90c094"} "x" 1]))))
+  (testing "Do not barf on non-sequential values"
+    (is (false? (mc/validate ::mbql-clause/clause :asc)))))
 
 (deftest ^:parallel resolve-schema-test
   (testing "Schema should be registered"

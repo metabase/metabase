@@ -1,5 +1,6 @@
 (ns metabase.lib.order-by
   (:require
+   [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -15,7 +16,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema.util :as lib.schema.util]))
 
 (lib.hierarchy/derive :asc  ::order-by-clause)
 (lib.hierarchy/derive :desc ::order-by-clause)
@@ -73,19 +75,31 @@
    (-> (order-by-clause-method orderable)
        (with-direction (or direction :asc)))))
 
-(mu/defn order-by
+(mu/defn ^:private remove-duplicate-order-bys :- ::lib.schema.order-by/order-bys
+  "Remove any order by clauses that are considered duplicates."
+  [order-bys :- [:sequential {:min 1} ::lib.schema.order-by/order-by]]
+  (println "FIXME if you add an order by that CHANGES DIRECTION we should keep the new one and replace the old one.")
+  (into []
+        (m/distinct-by (fn [[_tag _opts expr]]
+                         (lib.schema.util/ref-distinct-by expr)))
+        order-bys))
+
+(mu/defn order-by :- ::lib.schema/query
   "Add an MBQL order-by clause (i.e., `:asc` or `:desc`) from something that you can theoretically sort by -- maybe a
   Field, or `:field` clause, or expression of some sort, etc.
 
   You can teach Metabase lib how to generate order by clauses for different things by implementing the
-  underlying [[order-by-clause-method]] multimethod."
+  underlying [[order-by-clause-method]] multimethod.
+
+  It is against the rules to have duplicate order bys; this will effectively ignore them since it
+  calls [[remove-duplicate-order-bys]] when updating the query `:order-by` clauses."
   ([query orderable]
    (order-by query -1 orderable nil))
 
   ([query orderable direction]
    (order-by query -1 orderable direction))
 
-  ([query
+  ([query        :- ::lib.schema/query
     stage-number :- [:maybe :int]
     orderable    :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
@@ -93,7 +107,8 @@
          new-order-by (cond-> (order-by-clause-method orderable)
                         direction (with-direction direction))]
      (lib.util/update-query-stage query stage-number update :order-by (fn [order-bys]
-                                                                        (conj (vec order-bys) new-order-by))))))
+                                                                        (remove-duplicate-order-bys
+                                                                         (conj (vec order-bys) new-order-by)))))))
 
 (mu/defn order-bys :- [:maybe [:sequential ::lib.schema.order-by/order-by]]
   "Get the order-by clauses in a query."

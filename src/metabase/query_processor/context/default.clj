@@ -1,4 +1,4 @@
-(ns metabase.query-processor.context.default
+(ns ^:deprecated metabase.query-processor.context.default
   (:require
    [clojure.core.async :as a]
    [metabase.config :as config]

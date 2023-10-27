@@ -3,7 +3,8 @@
   (:require
    [clojure.core.async :as a]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.core.async.impl.buffers PromiseBuffer)
    (clojure.core.async.impl.channels ManyToManyChannel)
@@ -21,15 +22,20 @@
        (instance? PromiseBuffer (.buf ^ManyToManyChannel chan))))
 
 (def PromiseChan
-  "Schema for a core.async promise channel."
-  (s/constrained ManyToManyChannel promise-chan? "promise chan"))
+  "Malli schema for a core.async promise channel."
+  [:and
+   (ms/InstanceOfClass ManyToManyChannel)
+   [:fn
+    {:error/message "promise chan"}
+    #'promise-chan?]])
 
 ;;; TODO -- this is used in literally one place only, [[metabase.api.public/run-query-for-card-with-id-async-run-fn]],
 ;;; so maybe we should consider getting rid of it.
-(s/defn promise-pipe
+(mu/defn promise-pipe
   "Like `core.async/pipe` but for promise channels, and closes `in-chan` if `out-chan` is closed before receiving a
   result. Closes both channels when `in-chan` closes or receives a result."
-  [in-chan :- PromiseChan, out-chan :- PromiseChan]
+  [in-chan  :- PromiseChan
+   out-chan :- PromiseChan]
   (a/go
     (let [[val port] (a/alts! [in-chan out-chan] :priority true)]
       ;; forward any result of `in-chan` to `out-chan`.

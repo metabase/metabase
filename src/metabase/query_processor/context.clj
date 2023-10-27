@@ -1,4 +1,4 @@
-(ns metabase.query-processor.context
+(ns ^:deprecated metabase.query-processor.context
   "Interface for the QP context/utility functions for using the things in the context correctly.
 
   The default implementations of all these functions live in [[metabase.query-processor.context.default]]; refer to

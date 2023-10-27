@@ -22,7 +22,7 @@
    [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context-2 :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -671,24 +671,26 @@
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
-   (do-with-connection-with-options
-    driver
-    (lib.metadata/database (qp.store/metadata-provider))
-    {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
-    (fn [^Connection conn]
-      (with-open [stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
-                  ^ResultSet rs (try
-                                  (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                                  (catch Throwable e
-                                    (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                    {:driver driver
-                                                     :sql    (str/split-lines (mdb.query/format-sql sql driver))
-                                                     :params params
-                                                     :type   qp.error-type/invalid-query}
-                                                    e))))]
-        (let [rsmeta           (.getMetaData rs)
-              results-metadata {:cols (column-metadata driver rsmeta)}]
-          (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))))
+   (println "FIXME: doubt cancel chan will actually get called, since we don't use the new context")
+   (let [[canceled-chan _new-context] (qp.context/cancel-chan-context context)]
+     (do-with-connection-with-options
+      driver
+      (lib.metadata/database (qp.store/metadata-provider))
+      {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
+      (fn [^Connection conn]
+        (with-open [stmt          (statement-or-prepared-statement driver conn sql params canceled-chan)
+                    ^ResultSet rs (try
+                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                    (catch Throwable e
+                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                      {:driver driver
+                                                       :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                       :params params
+                                                       :type   qp.error-type/invalid-query}
+                                                      e))))]
+          (let [rsmeta           (.getMetaData rs)
+                results-metadata {:cols (column-metadata driver rsmeta)}]
+            (respond results-metadata (reducible-rows driver rs rsmeta canceled-chan)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

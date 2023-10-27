@@ -61,6 +61,15 @@
   [m]
   (into {} (remove (fn [[k _v]] (qualified-keyword? k))) m))
 
+(defn ref-distinct-by
+  "Remove keys that should be ignored when considered whether refs should be considered distinct or not. Can be used
+  with something like [[medley.core/distinct-by]]."
+  [ref]
+  (lib.options/update-options ref (fn [options]
+                                    (-> options
+                                        remove-namespaced-keys
+                                        (dissoc :base-type :effective-type)))))
+
 (defn distinct-refs?
   "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
   aren't important such as namespaced keys and type info)?"
@@ -69,8 +78,4 @@
    (< (count refs) 2)
    (apply
     distinct?
-    (for [ref refs]
-      (lib.options/update-options ref (fn [options]
-                                        (-> options
-                                            remove-namespaced-keys
-                                            (dissoc :base-type :effective-type))))))))
+    (map ref-distinct-by refs))))

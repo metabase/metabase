@@ -9,7 +9,9 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -17,7 +19,8 @@
     :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -56,8 +59,8 @@
                                            (-> % field-id-props nfc-roots))
                                       fields)))))
 
-(defn- nest-source [inner-query]
-  (classloader/require 'metabase.query-processor)
+(mu/defn ^:private nest-source :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (mbql.u/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
@@ -65,17 +68,19 @@
                  ;; here in the first place we already had to do perms checks to make sure the query we're transforming
                  ;; is itself ok, so we don't need to run another check
                  (binding [api/*current-user-id* nil]
-                   ((resolve 'metabase.query-processor/preprocess)
+                   (classloader/require 'metabase.query-processor.preprocess)
+                   ((resolve 'metabase.query-processor.preprocess/preprocess)
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
                      :query    source}))
+                 (lib.convert/->legacy-MBQL source)
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
                  (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
                  (cond-> source
-                   keep-filter? (assoc :filter filter-clause)))]
+                   keep-filter? (u/assoc-dissoc :filter filter-clause)))]
     (-> inner-query
         (dissoc :source-table :source-metadata :joins)
         (assoc :source-query source)
@@ -94,7 +99,8 @@
      (or desired-alias expression-name)
      (assoc opts :base-type (or base-type :type/*))]))
 
-(defn- rewrite-fields-and-expressions [query]
+(mu/defn ^:private rewrite-fields-and-expressions :- mbql.s/MBQLQuery
+  [query :- mbql.s/MBQLQuery]
   (mbql.u/replace query
     ;; don't rewrite anything inside any source queries or source metadata.
     (_ :guard (constantly (some (partial contains? (set &parents))
@@ -128,11 +134,11 @@
                                 (assoc join :qp/refs (:qp/refs query)))
                               joins))))))
 
-(defn nest-expressions
+(mu/defn nest-expressions :- mbql.s/MBQLQuery
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
-  [query]
+  [query :- mbql.s/MBQLQuery]
   (let [{:keys [expressions], :as query} (m/update-existing query :source-query nest-expressions)]
     (if (empty? expressions)
       query

@@ -109,9 +109,8 @@
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
   from this map returned preferentially to the site-wide value.
 
-  This is normally bound automatically in Query Processor context
-  by [[metabase.query-processor.middleware.resolve-database-and-driver]]. You may need to manually bind it in other
-  places where you want to use Database-local values.
+  This is normally bound automatically in Query Processor context by [[metabase.query-processor.setup]]. You may need
+  to manually bind it in other places where you want to use Database-local values.
 
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
   nil)

@@ -427,8 +427,8 @@
                                            (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
                             aggregations)))))
 
-(defn- add-alias-info* [inner-query]
-  (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
+(mu/defn ^:private add-alias-info* :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
   (let [unique-alias-fn (make-unique-alias-fn)]
     (-> (mbql.u/replace inner-query
           ;; don't rewrite anything inside any source queries or source metadata.
@@ -440,7 +440,16 @@
           (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
         (add-info-to-aggregation-definitions unique-alias-fn))))
 
-(defn add-alias-info
+(def ^:private OuterOrInnerQuery
+  [:multi
+   {:dispatch (fn [m]
+                (if (:database m)
+                  ::outer
+                  ::inner))}
+   [::outer mbql.s/Query]
+   [::inner mbql.s/MBQLQuery]])
+
+(mu/defn add-alias-info :- OuterOrInnerQuery
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must
   be fully preprocessed.
 
@@ -468,12 +477,17 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  [query-or-inner-query]
-  (walk/postwalk
-   (fn [form]
-     (if (and (map? form)
-              ((some-fn :source-query :source-table) form)
-              (not (:strategy form)))
-       (vary-meta (add-alias-info* form) assoc ::transformed true)
-       form))
-   query-or-inner-query))
+  [query-or-inner-query :- OuterOrInnerQuery]
+  (try
+    (walk/postwalk
+     (fn [form]
+       (if (and (map? form)
+                ((some-fn :source-query :source-table) form)
+                (not (:strategy form)))
+         (vary-meta (add-alias-info* form) assoc ::transformed true)
+         form))
+     query-or-inner-query)
+    (catch Throwable e
+      (throw (ex-info (tru "Error adding alias info: {0}" (ex-message e))
+                      {:query query-or-inner-query, :type qp.error-type/qp}
+                      e)))))

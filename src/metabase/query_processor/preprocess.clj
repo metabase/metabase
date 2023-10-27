@@ -1,7 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.public-settings.premium-features :refer [defenterprise]]
@@ -15,6 +13,7 @@
    [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.middleware.check-features :as check-features]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
@@ -37,10 +36,8 @@
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.normalize :as qp.normalize]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :as i18n :refer [tru]]))
 
 (defenterprise ee-middleware-apply-download-limit
   "EE-only: apply a limit to the number of rows for downloads based on EE user perms."
@@ -71,6 +68,7 @@
   [#'qp.normalize/normalize
    #'qp.perms/remove-permissions-key
    #'validate/validate-query
+   #'qp.constraints/add-default-userland-constraints
    (legacy-middleware #'expand-macros/expand-macros)
    (legacy-middleware #'qp.resolve-referenced/resolve-referenced-card-resources)
    (legacy-middleware #'parameters/substitute-parameters)
@@ -117,18 +115,19 @@
     (thunk)))
 
 (defn preprocess
-  "All [[middleware]] combined into a single function. This still needs to be ran in the context
-  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
-  this with the [[around-middleware]]."
   [query]
   (qp.setup/do-with-qp-setup
    query
    (^:once fn* [query]
     (do-with-max-preprocessing-level
      (^:once fn* []
-      (reduce
-       (fn [query middleware-fn]
-         (u/prog1 (middleware-fn query)
-           (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
-       query
-       middleware))))))
+      (try
+        (reduce
+         (fn [query middleware-fn]
+           (middleware-fn query))
+         query
+         middleware)
+        (catch Throwable e
+          (throw (ex-info (i18n/tru "Error preprocessing query: {0}" (ex-message e))
+                          {:query query, :type qp.error-type/qp}
+                          e)))))))))

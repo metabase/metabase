@@ -2,8 +2,10 @@
   (:require
    [metabase.driver :as driver]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.permissions :as qp.perms]))
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.util.i18n :as i18n]))
 
 (defenterprise ee-middleware-check-download-permissions
   "EE only: middleware for queries that generate downloads, which checks that the user has permissions to download the
@@ -57,4 +59,9 @@
    middleware))
 
 (defn execute [query rff context]
-  ((execute-qp) query rff context))
+  (try
+    ((execute-qp) query rff context)
+    (catch Throwable e
+      (throw (ex-info (i18n/tru "Error executing query: {0}" (ex-message e))
+                      {:query query, :type qp.error-type/driver}
+                      e)))))

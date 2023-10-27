@@ -44,7 +44,12 @@
 (defn explain
   "[[mc/explain]], but uses a cached explainer from [[explainer]]."
   [schema value]
-  ((explainer schema) value))
+  (try
+    ((explainer schema) value)
+    (catch #?(:clj Throwable :cljs :default) e
+      (throw (ex-info (str "Error explaining error: " (ex-message e))
+                      {:schema schema, :value value}
+                      e)))))
 
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas)

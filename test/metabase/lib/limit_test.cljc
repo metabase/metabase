@@ -40,7 +40,9 @@
       (is (= 100 (lib/current-limit (lib/limit query 0 100) 0)))
       (is (nil? (lib/current-limit query 1))))))
 
-;;; NOCOMMIT
+
+(println "FIXME: update to use pMBQL queries.")
+
 (deftest ^:parallel query->max-rows-limit-test
   (doseq [[group query->expected]
           {"should return `:limit` if set"

@@ -2,8 +2,9 @@
   (:require
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]))
+   [metabase.util.malli :as mu]))
 
 (defn- query-type [query]
   (keyword (some (fn [k]
@@ -13,22 +14,17 @@
                   :type
                   "type"])))
 
-(defn- resolve-database-id [query]
-  (let [database-id (qp.resolve-database-and-driver/resolve-database-id query)]
-    (assoc query :database database-id)))
-
-(defn normalize [query]
+(mu/defn normalize
+  ;; database ID has to be resolved before normalizing stuff; see [[metabase.query-processor.setup]]
+  [query :- [:map [:database ::lib.schema.id/database]]]
   (case (query-type query)
     :mbql/query
-    (-> query
-        lib.normalize/normalize
-        resolve-database-id)
+    (lib.normalize/normalize query)
 
     (:native :query)
     (-> query
         mbql.normalize/normalize
-        lib.convert/->pMBQL
-        resolve-database-id)
+        lib.convert/->pMBQL)
 
     :else
     (throw (ex-info "Invalid query: unknown type"

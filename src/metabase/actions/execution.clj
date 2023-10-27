@@ -30,6 +30,7 @@
   (try
     (let [parameters (for [parameter (:parameters action)]
                        (assoc parameter :value (get request-parameters (:id parameter))))
+          ;; TODO -- oh man, why is this not using the normal QP normalization code =(
           query (-> dataset_query
                     (update :type keyword)
                     (assoc :parameters parameters))]

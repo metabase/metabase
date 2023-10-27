@@ -18,7 +18,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.lib.expression :as lib.expression]))
 
 (mu/defn ^:private table->sorted-fields :- [:sequential ::lib.schema.metadata/column]
   "Return a sequence of all Fields for table that we'd normally include in the equivalent of a `SELECT *`."
@@ -47,7 +48,6 @@
                 (map lib.ref/ref))
           fields)))
 
-;; NOCOMMIT FIXME
 (mu/defn ^:private source-metadata->fields :- ::lib.schema/fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- [:sequential {:min 1} ::lib.schema.metadata/column]]
@@ -112,8 +112,8 @@
                         (when-let [previous-stage-metadata (lib.stage/previous-stage-metadata query stage-number identity)]
                           (source-metadata->fields previous-stage-metadata)))
           ;; generate a new expression ref clause for each expression defined in the query.
-          expressions     (for [expression (lib/expressions query stage-number)]
-                        (lib/ref expression))]
+          expressions     (for [expression (lib/expressions-metadata query stage-number)]
+                            (lib/ref expression))]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it."
@@ -127,13 +127,11 @@
   *explicitly* referenced in `order-by`."
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
-  ;; automatically ignore new ones that are reference Fields already in the order-by clause
   (reduce
    (fn [query breakout]
      (lib/order-by query stage-number breakout :asc))
    query
-   (lib/breakouts query stage-number)))
+   (lib/breakouts-metadata query stage-number)))
 
 (defn add-implicit-mbql-clauses
   "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."

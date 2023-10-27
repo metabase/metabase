@@ -23,12 +23,18 @@
   in [[clause-schema-registry]]."
   []
   (into [:multi
-         {:dispatch first
+         {:dispatch (fn [x]
+                      (if (vector? x)
+                        (first x)
+                        ::invalid))
           :error/fn (fn [{:keys [value]} _]
                       (if (vector? value)
                         (str "Invalid " (pr-str (first value)) " clause: " (pr-str value))
                         "not an MBQL clause"))}
-         [::mc/default [:fn {:error/message "not a known MBQL clause"} (constantly false)]]]
+         [::invalid    [:fn {:error/message "not a valid MBQL clause"}
+                        (constantly false)]]
+         [::mc/default [:fn {:error/message "not a known MBQL clause"}
+                        (constantly false)]]]
         (map (fn [tag]
                [tag [:ref (tag->registered-schema-name tag)]]))
         @tag-registry))

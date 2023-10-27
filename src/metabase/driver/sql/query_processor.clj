@@ -1510,8 +1510,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod preprocess :sql
-  [_driver inner-query]
+(mu/defmethod preprocess :sql :- mbql.s/MBQLQuery
+  [_driver     :- :keyword
+   inner-query :- mbql.s/MBQLQuery]
   (nest-query/nest-expressions (add/add-alias-info inner-query)))
 
 (defn mbql->honeysql
@@ -1532,6 +1533,7 @@
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver outer-query]
+  (assert (:type outer-query) "Expected legacy query, got pMBQL")
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

@@ -4,7 +4,8 @@
   (:require
    [metabase.driver :as driver]
    [metabase.lib.convert :as lib.convert]
-   [metabase.query-processor.error-type :as qp.error-type]))
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :as i18n]))
 
 (defn query->native-form
   "Return a `:native` query form for `query`, converting it from MBQL if needed."
@@ -19,8 +20,8 @@
     (try
       (driver/mbql->native driver/*driver* query)
       (catch Throwable e
-        (throw (ex-info (format "Error compiling MBQL query to native: %s" (ex-message e))
-                        {:type qp.error-type/driver, :driver driver/*driver*, :query query}
+        (throw (ex-info (i18n/tru "Error compiling legacy query: {0}" (ex-message e))
+                        {:query query, :error qp.error-type/driver}
                         e))))
 
     ;; legacy native query
