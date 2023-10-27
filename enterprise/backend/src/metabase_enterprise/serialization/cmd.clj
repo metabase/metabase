@@ -3,10 +3,10 @@
   (:require
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
-   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.db :as mdb]
    [metabase.models.card :refer [Card]]
@@ -219,4 +219,16 @@
 
   Returns truthy if all entity IDs were added successfully, or falsey if any errors were encountered."
   []
-  (v2.seed-entity-ids/seed-entity-ids!))
+  (v2.entity-ids/seed-entity-ids!))
+
+(defn drop-entity-ids
+  "Drop entity IDs for all instances of serializable models.
+
+  This is needed for some cases of migrating from v1 to v2 serdes. v1 doesn't dump `entity_id`, so they may have been
+  randomly generated independently in both instances. Then when v2 serdes is used to export and import, the randomly
+  generated IDs don't match and the entities get duplicated. Dropping `entity_id` from both instances first will force
+  them to be regenerated based on the hashes, so they should match up if the receiving instance is a copy of the sender.
+
+  Returns truthy if all entity IDs have been dropped, or falsey if any errors were encountered."
+  []
+  (v2.entity-ids/drop-entity-ids!))

@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { Anchor, Text } from "metabase/ui";
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
@@ -20,6 +21,7 @@ export const SearchResultLink = ({
         as: Anchor,
         href,
         td: "underline",
+        onClick: (e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation(),
       }
     : {
         as: Text,
@@ -36,7 +38,6 @@ export const SearchResultLink = ({
           c="text.1"
           size="sm"
           truncate
-          onClick={e => e.stopPropagation()}
           ref={truncatedRef}
         >
           {children}

@@ -1,5 +1,6 @@
 import { t, jt } from "ttag";
 import { connect } from "react-redux";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
