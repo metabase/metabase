@@ -9,8 +9,7 @@ import type { SettingElement } from "metabase/admin/settings/types";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
 
-import { Box, Flex, Stack } from "metabase/ui";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
+import { Flex, Stack } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
@@ -115,12 +114,10 @@ export const SMTPConnectionForm = ({
 
   return (
     <Stack spacing="sm">
-      <Box ml="1rem">
-        {isEmailConfigured && <Breadcrumbs crumbs={BREADCRUMBS} />}
-      </Box>
       <Flex justify="space-between">
         <SettingsBatchForm
           ref={formRef}
+          breadcrumbs={BREADCRUMBS}
           elements={elements}
           settingValues={settingValues}
           updateSettings={handleUpdateEmailSettings}
