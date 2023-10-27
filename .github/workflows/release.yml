@@ -445,7 +445,7 @@ jobs:
             process.exit(1);
           });
     - name: Reorder release tags to put OSS first
-      run: ./release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
+      run: $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
     needs: push-tags
