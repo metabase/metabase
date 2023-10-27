@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import cloneDeep from "lodash.clonedeep";
 
 import type {
   ComputedVisualizationSettings,
@@ -81,7 +82,7 @@ export function getPieChartOption(
       ),
     });
 
-  const seriesOption = { ...SUNBURST_SERIES_OPTION };
+  const seriesOption = cloneDeep(SUNBURST_SERIES_OPTION); // deep clone to avoid sharing label.formatter will other instances
   if (!seriesOption.label) {
     throw Error(`"seriesOption.label" is undefined`);
   }
