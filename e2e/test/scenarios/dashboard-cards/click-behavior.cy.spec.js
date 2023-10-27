@@ -1179,6 +1179,76 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       clickLineChartPoint();
     });
+
+    it("allows updating multiple dashboard filters", () => {
+      const dashboardDetails = {
+        parameters: [DASHBOARD_FILTER_TEXT, DASHBOARD_FILTER_TIME],
+        enable_embedding: true,
+        embedding_params: {
+          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
+          [DASHBOARD_FILTER_TIME.slug]: "enabled",
+        },
+      };
+      const countParameterId = "1";
+      const createdAtParameterId = "2";
+
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  [countParameterId]: {
+                    source: {
+                      type: "column",
+                      id: COUNT_COLUMN_ID,
+                      name: COUNT_COLUMN_NAME,
+                    },
+                    target: {
+                      type: "parameter",
+                      id: countParameterId,
+                    },
+                    id: countParameterId,
+                  },
+                  [createdAtParameterId]: {
+                    source: {
+                      type: "column",
+                      id: CREATED_AT_COLUMN_ID,
+                      name: CREATED_AT_COLUMN_NAME,
+                    },
+                    target: {
+                      type: "parameter",
+                      id: createdAtParameterId,
+                    },
+                    id: createdAtParameterId,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 2)
+        .should("contain.text", POINT_COUNT)
+        .should("contain.text", POINT_CREATED_AT_FORMATTED);
+    });
   });
 });
 
