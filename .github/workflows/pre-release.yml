@@ -13,6 +13,34 @@ on:
         required: true
 
 jobs:
+  send-start-message:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send build start message
+        uses: actions/github-script@v6
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendReleaseMessage({
+              stage: 'test-start',
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              runId: '${{ github.run_id }}',
+              version: '${{ inputs.version }}',
+              releaseSha: '${{ inputs.commit }}',
+            }).catch(console.error);
+
   release-artifact:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -280,3 +308,32 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
+
+  done-message:
+    needs: [verify-docker-pull]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Send build done message
+        uses: actions/github-script@v6
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendReleaseMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendReleaseMessage({
+              stage: 'test-done',
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              runId: '${{ github.run_id }}',
+              version: '${{ inputs.version }}',
+              releaseSha: '${{ inputs.commit }}',
+            }).catch(console.error);

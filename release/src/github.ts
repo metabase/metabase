@@ -8,7 +8,7 @@ import {
 
 import type { ReleaseProps, Issue } from "./types";
 
-const findMilestone = async ({
+export const findMilestone = async ({
   version,
   github,
   owner,
