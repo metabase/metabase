@@ -14,5 +14,7 @@ export const isItemActive = ({ model, model_object }: RecentItem) => {
   return isSyncCompleted(model_object);
 };
 
-export const getItemUrl = (item: RecentItem) =>
-  isItemActive(item) ? Urls.modelToUrl(item) : "";
+export const getItemUrl = (item: RecentItem) => {
+  const url = isItemActive(item) && Urls.modelToUrl(item);
+  return url || undefined;
+};
