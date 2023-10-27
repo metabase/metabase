@@ -1067,7 +1067,7 @@ export const Icons = {
     component: number_component,
     source: number_source,
   },
-  cake: {
+  balloons: {
     component: birthday_component,
     source: birthday_source,
   },
