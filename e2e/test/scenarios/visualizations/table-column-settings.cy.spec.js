@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -225,7 +227,7 @@ describe("scenarios > visualizations > table column settings", () => {
       assertColumnEnabled(getColumn(sanityCheck));
     }
     if (needsScroll) {
-      [...Array(scrollTimes)].forEach(() => {
+      _.times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -251,7 +253,7 @@ describe("scenarios > visualizations > table column settings", () => {
       assertColumnEnabled(getColumn(sanityCheck));
     }
     if (needsScroll) {
-      [...Array(scrollTimes)].forEach(() => {
+      _.times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -277,7 +279,7 @@ describe("scenarios > visualizations > table column settings", () => {
     cy.wait("@dataset");
     cy.findByText("Doing science...").should("not.exist");
     if (needsScroll) {
-      [...Array(scrollTimes)].forEach(() => {
+      _.times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });
@@ -307,7 +309,7 @@ describe("scenarios > visualizations > table column settings", () => {
     cy.wait("@dataset");
     cy.findByText("Doing science...").should("not.exist");
     if (needsScroll) {
-      [...Array(scrollTimes)].forEach(() => {
+      _.times(scrollTimes, () => {
         scrollVisualization();
         cy.wait(200);
       });

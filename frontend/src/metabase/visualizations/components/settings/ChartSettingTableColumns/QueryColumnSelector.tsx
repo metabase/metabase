@@ -1,11 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button } from "metabase/ui";
+import { Button, Text } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
 } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
+import { ChartSettingAddRemoveColumns } from "../ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
 import { TableColumnSelector } from "./TableColumnSelector";
 import {
   disableColumnInSettings,
@@ -38,8 +39,9 @@ export const QueryColumnSelector = ({
   getColumnName,
   onChange,
   onShowWidget,
-  handleWidgetOverride,
 }: QueryColumnSelectorProps) => {
+  const [addRemoveColumns, setAddRemoveColumns] = useState(false);
+
   const columnSettings = useMemo(() => {
     return getColumnSettingsWithRefs(value);
   }, [value]);
@@ -82,19 +84,32 @@ export const QueryColumnSelector = ({
 
   return (
     <>
+      {!addRemoveColumns && (
+        <Text fw={700} mb="0.5rem" fs="0.875em">{t`Columns`}</Text>
+      )}
       <Button
         variant="subtle"
-        onClick={() => handleWidgetOverride("table.columnVisibility")}
+        onClick={() => setAddRemoveColumns(value => !value)}
         pl="0"
-      >{t`Add or remove columns`}</Button>
-      <TableColumnSelector
-        columnItems={columnItems}
-        getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
-        onEnableColumn={handleEnableColumn}
-        onDisableColumn={handleDisableColumn}
-        onDragColumn={handleDragColumn}
-        onShowWidget={onShowWidget}
-      />
+      >
+        {addRemoveColumns ? t`Done picking columns` : t`Add or remove columns`}
+      </Button>
+      {addRemoveColumns ? (
+        <ChartSettingAddRemoveColumns
+          value={value}
+          onChange={onChange}
+          query={query}
+        />
+      ) : (
+        <TableColumnSelector
+          columnItems={columnItems}
+          getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}
+          onEnableColumn={handleEnableColumn}
+          onDisableColumn={handleDisableColumn}
+          onDragColumn={handleDragColumn}
+          onShowWidget={onShowWidget}
+        />
+      )}
     </>
   );
 };

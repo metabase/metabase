@@ -46,7 +46,6 @@ export function columnSettings({
 }
 
 import MetabaseSettings from "metabase/lib/settings";
-import { ChartSettingAddRemoveColumns } from "metabase/visualizations/components/settings/ChartSettingAddRemoveColumns/ChartSettingAddRemoveColumns";
 import {
   isDate,
   isNumber,
@@ -510,7 +509,7 @@ export const buildTableColumnSettings = ({
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
   "table.columns": {
     section: t`Columns`,
-    title: t`Columns`,
+    // title: t`Columns`,
     widget: ChartSettingTableColumns,
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     isValid: ([{ card, data }]) => {
@@ -544,19 +543,5 @@ export const buildTableColumnSettings = ({
         getColumnName: column => getTitleForColumn(column, series, settings),
       };
     },
-  },
-  "table.columnVisibility": {
-    widget: ChartSettingAddRemoveColumns,
-    hidden: true,
-    writeSettingId: "table.columns",
-    readDependencies: ["table.columns"],
-    getValue: (_series, vizSettings) => vizSettings["table.columns"],
-    getProps: ([
-      {
-        data: { cols },
-      },
-    ]) => ({
-      columns: cols,
-    }),
   },
 });

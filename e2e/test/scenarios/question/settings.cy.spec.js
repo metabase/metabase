@@ -7,6 +7,7 @@ import {
   popover,
   modal,
   sidebar,
+  moveColumnDown,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -173,8 +174,6 @@ describe("scenarios > question > settings", () => {
 
       // Remove "Total"
       hideColumn("Total");
-
-      // refreshResultsInOverlay();
 
       cy.findByTestId("query-builder-main")
         .findByText("117.03")

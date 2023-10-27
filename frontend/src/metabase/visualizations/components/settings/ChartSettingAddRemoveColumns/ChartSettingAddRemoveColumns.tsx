@@ -1,13 +1,12 @@
 import { useCallback, useState, useMemo } from "react";
 import { t } from "ttag";
-import { Button, Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
+import { Checkbox, TextInput, Box, Flex, Text } from "metabase/ui";
 
 import { Icon } from "metabase/core/components/Icon";
 import type { TableColumnOrderSetting } from "metabase-types/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { StackedCheckBox } from "metabase/components/StackedCheckBox/StackedCheckBox";
-
-import type Question from "metabase-lib/Question";
+import type * as Lib from "metabase-lib";
 import type {
   ColumnSetting,
   ColumnMetadataItem,
@@ -24,20 +23,17 @@ import {
 } from "../ChartSettingTableColumns/utils";
 
 interface ChartSettingAddRemoveColumnsProps {
-  question: Question;
+  query: Lib.Query;
   value: TableColumnOrderSetting[];
-  onChange: (value: ColumnSetting[], quesion?: Question) => void;
-  onWidgetOverride: (key: string | null) => void;
+  onChange: (value: ColumnSetting[], quesion?: Lib.Query) => void;
 }
 
 export const ChartSettingAddRemoveColumns = ({
   value,
   onChange,
-  question,
-  onWidgetOverride,
+  query,
 }: ChartSettingAddRemoveColumnsProps) => {
   const [search, setSearch] = useState("");
-  const query = question._getMLv2Query();
 
   const columnSettings = useMemo(
     () => getColumnSettingsWithRefs(value),
@@ -79,7 +75,7 @@ export const ChartSettingAddRemoveColumns = ({
       }
     });
 
-    onChange(newSettings, question?._setMLv2Query(newQuery));
+    onChange(newSettings, newQuery);
   };
 
   const removeAllColumnsFromTable = (columns: ColumnMetadataItem[]) => {
@@ -103,7 +99,7 @@ export const ChartSettingAddRemoveColumns = ({
       }
     });
 
-    onChange(newSettings, question?._setMLv2Query(newQuery));
+    onChange(newSettings, newQuery);
   };
 
   const toggleColumn = (columnItem: ColumnMetadataItem) => {
@@ -124,9 +120,9 @@ export const ChartSettingAddRemoveColumns = ({
       const newQuery = enableColumnInQuery(query, {
         metadataColumn: columnItem.column,
       });
-      onChange(newSettings, question?._setMLv2Query(newQuery));
+      onChange(newSettings, newQuery);
     },
-    [question, query, columnSettings, onChange],
+    [query, columnSettings, onChange],
   );
 
   const handleDisableColumn = useCallback(
@@ -144,9 +140,9 @@ export const ChartSettingAddRemoveColumns = ({
         metadataColumn: columnItem.column,
       });
 
-      onChange(newSettings, question?._setMLv2Query(newQuery));
+      onChange(newSettings, newQuery);
     },
-    [question, query, columnSettings, onChange],
+    [query, columnSettings, onChange],
   );
 
   const showAddRemoveAll = (columns: ColumnMetadataItem[]) => {
@@ -159,9 +155,9 @@ export const ChartSettingAddRemoveColumns = ({
 
   return (
     <div>
-      <Button variant="subtle" pl="0" onClick={() => onWidgetOverride(null)}>
+      {/* <Button variant="subtle" pl="0" onClick={() => onWidgetOverride(null)}>
         Done picking columns
-      </Button>
+      </Button> */}
       <TextInput
         value={search}
         onChange={e => setSearch(e.target.value)}

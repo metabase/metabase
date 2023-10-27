@@ -97,7 +97,6 @@ class ChartSettings extends Component {
       this.setState({
         currentSection: (initial && initial.section) || null,
         currentWidget: (initial && initial.widget) || null,
-        widgetOverride: null,
       });
     }
   }
@@ -106,7 +105,6 @@ class ChartSettings extends Component {
     this.setState({
       currentSection: section,
       currentWidget: null,
-      widgetOverride: null,
     });
   };
 
@@ -277,12 +275,6 @@ class ChartSettings extends Component {
     return null;
   };
 
-  handleWidgetOverride = key => {
-    this.setState({
-      widgetOverride: key,
-    });
-  };
-
   render() {
     const {
       className,
@@ -293,7 +285,7 @@ class ChartSettings extends Component {
       dashcard,
       isDashboard,
     } = this.props;
-    const { popoverRef, widgetOverride } = this.state;
+    const { popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -340,14 +332,7 @@ class ChartSettings extends Component {
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    const visibleWidgets = widgetOverride
-      ? [
-          {
-            ...widgets.find(widget => widget.id === widgetOverride),
-            hidden: false,
-          },
-        ]
-      : sections[currentSection] || [];
+    const visibleWidgets = sections[currentSection] || [];
 
     // This checks whether the current section contains a column settings widget
     // at the top level. If it does, we avoid hiding the section tabs and
@@ -366,7 +351,6 @@ class ChartSettings extends Component {
       columnHasSettings: col => this.columnHasSettings(col),
       onChangeSeriesColor: (seriesKey, color) =>
         this.handleChangeSeriesColor(seriesKey, color),
-      onWidgetOverride: key => this.handleWidgetOverride(key),
     };
 
     const sectionPicker = (
