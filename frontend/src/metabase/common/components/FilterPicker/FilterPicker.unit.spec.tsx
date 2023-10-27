@@ -1,7 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import dayjs from "dayjs";
 import { createMockMetadata } from "__support__/metadata";
-import { act, render, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 
 import type { StructuredDatasetQuery } from "metabase-types/api";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -19,7 +27,10 @@ import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 
 import * as Lib from "metabase-lib";
 import { TYPE } from "metabase-lib/types/constants";
@@ -62,38 +73,74 @@ const SEGMENT_2 = createMockSegment({
   },
 });
 
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      tables: [
-        createOrdersTable({
-          fields: [
-            createOrdersIdField(),
-            createOrdersProductIdField(),
-            createOrdersUserIdField(),
-            createOrdersTotalField(),
-            createOrdersDiscountField(),
-            createOrdersQuantityField(),
-            createOrdersCreatedAtField(),
-            TIME_FIELD,
-          ],
-          segments: [SEGMENT_1, SEGMENT_2],
-        }),
-        createProductsTable(),
+const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
+const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
+
+const db = createSampleDatabase({
+  tables: [
+    createOrdersTable({
+      fields: [
+        createOrdersIdField(),
+        createOrdersProductIdField(),
+        createOrdersUserIdField(),
+        createOrdersTotalField(),
+        createOrdersDiscountField(),
+        createOrdersQuantityField(),
+        createOrdersCreatedAtField(),
+        TIME_FIELD,
       ],
+      segments: [SEGMENT_1, SEGMENT_2],
     }),
+    createProductsTable(),
   ],
+});
+
+const metadata = createMockMetadata({
+  databases: [db],
   segments: [SEGMENT_1, SEGMENT_2],
+});
+
+const storeInitialState = createMockState({
+  entities: createMockEntitiesState({
+    databases: [db],
+    segments: [SEGMENT_1, SEGMENT_2],
+  }),
 });
 
 function createQueryWithFilter() {
   const initialQuery = createQuery({ metadata });
   const columns = Lib.filterableColumns(initialQuery, 0);
   const findColumn = columnFinder(initialQuery, columns);
+
   const totalColumn = findColumn("ORDERS", "TOTAL");
-  const clause = Lib.expressionClause(">", [totalColumn, 20], null);
+  const clause = Lib.numberFilterClause({
+    operator: ">",
+    column: totalColumn,
+    values: [20],
+  });
+
   const query = Lib.filter(initialQuery, 0, clause);
   const [filter] = Lib.filters(query, 0);
+
+  return { query, filter };
+}
+
+function createQueryWithMultipleValuesFilter() {
+  const initialQuery = createQuery({ metadata });
+  const columns = Lib.filterableColumns(initialQuery, 0);
+  const findColumn = columnFinder(initialQuery, columns);
+
+  const productVendorColumn = findColumn("PRODUCTS", "VENDOR");
+  const clause = Lib.stringFilterClause({
+    operator: "!=",
+    column: productVendorColumn,
+    values: ["Vendor 1", "Vendor 2"],
+    options: {},
+  });
+
+  const query = Lib.filter(initialQuery, 0, clause);
+  const [filter] = Lib.filters(query, 0);
+
   return { query, filter };
 }
 
@@ -133,7 +180,9 @@ function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
   const onSelect = jest.fn();
   const onSelectLegacy = jest.fn();
 
-  render(
+  setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+
+  renderWithProviders(
     <FilterPicker
       query={query}
       stageIndex={0}
@@ -143,6 +192,7 @@ function setup({ query = createQuery({ metadata }), filter }: SetupOpts = {}) {
       onSelect={onSelect}
       onSelectLegacy={onSelectLegacy}
     />,
+    { storeInitialState },
   );
 
   function getNextFilter() {
@@ -207,6 +257,35 @@ describe("FilterPicker", () => {
         "aria-selected",
         "false",
       );
+    });
+
+    it("should ignore the existing filter state when changing a column", async () => {
+      const { query, getNextFilter } = setup(
+        createQueryWithMultipleValuesFilter(),
+      );
+      await waitForLoaderToBeRemoved(); // fetching Vendor field values
+
+      userEvent.click(screen.getByLabelText("Back"));
+      userEvent.click(screen.getByText("Category"));
+      await waitForLoaderToBeRemoved(); // fetching Category field values
+
+      productCategories.forEach(category => {
+        expect(screen.getByText(category)).not.toBeChecked();
+      });
+      productVendors.forEach(vendor => {
+        expect(screen.queryByText(vendor)).not.toBeInTheDocument();
+      });
+
+      userEvent.click(screen.getByText("Gadget"));
+      userEvent.click(screen.getByText("Gizmo"));
+      userEvent.click(screen.getByText("Update filter"));
+
+      const filter = getNextFilter();
+      const filterParts = Lib.stringFilterParts(query, 0, filter);
+      const column = filterParts?.column as Lib.ColumnMetadata;
+      expect(filterParts?.operator).toBe("=");
+      expect(filterParts?.values).toEqual(["Gadget", "Gizmo"]);
+      expect(Lib.displayInfo(query, 0, column).name).toBe("CATEGORY");
     });
 
     it("should open the expression editor when column type isn't supported", () => {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -50,9 +50,12 @@ export function FilterPicker({
   onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
-  const [column, setColumn] = useState(
-    getInitialColumn(query, stageIndex, filter),
+  const initialColumn = useMemo(
+    () => getInitialColumn(query, stageIndex, filter),
+    [query, stageIndex, filter],
   );
+
+  const [column, setColumn] = useState(initialColumn);
 
   const [
     isEditingExpression,
@@ -121,13 +124,17 @@ export function FilterPicker({
   const FilterWidget = getFilterWidget(column);
 
   if (FilterWidget) {
+    const isSameColumn =
+      initialColumn &&
+      Lib.isSameColumn(query, stageIndex, initialColumn, column);
+
     return (
       <Box miw={MIN_WIDTH}>
         <FilterWidget
           query={query}
           stageIndex={stageIndex}
           column={column}
-          filter={filter}
+          filter={isSameColumn ? filter : undefined}
           isNew={!filter}
           onChange={handleChange}
           onBack={() => setColumn(undefined)}
