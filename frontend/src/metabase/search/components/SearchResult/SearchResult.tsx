@@ -93,7 +93,7 @@ export function SearchResult({
           </ResultTitle>
           <ModerationIcon status={moderated_status} filled size={14} />
         </Group>
-        <InfoText result={result} isCompact={compact} />
+        <InfoText showLinks={!onClick} result={result} isCompact={compact} />
       </ResultNameSection>
       {isLoading && (
         <LoadingSection px="xs">
