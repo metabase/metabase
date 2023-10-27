@@ -85,6 +85,17 @@
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
                (names/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
 
+(deftest ^:parallel cell-title-default-test
+  (mt/$ids venues
+    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
+                                               :aggregation  [:count]}
+                                    :type     :query
+                                    :database (mt/id)})
+          root  (magic/->root query)]
+      (testing "Just say \"relates to\" when we don't know what the operator is"
+        (is (= "number of Venues where Name relates to Test"
+               (names/cell-title root ["???" ["field" %name nil] "Test"])))))))
+
 (deftest ^:parallel cell-title-with-dates-comparison-test
   (testing "Ensure cell titles with date comparisons display correctly"
     (mt/$ids users

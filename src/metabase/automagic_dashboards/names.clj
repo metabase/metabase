@@ -187,6 +187,14 @@
        (map (partial humanize-filter-value root))
        join-enumeration))
 
+(defmethod humanize-filter-value :default
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} relates to {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} relates to {1}" field-name value))))
+
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
