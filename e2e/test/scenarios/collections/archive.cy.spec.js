@@ -1,4 +1,4 @@
-import { createAndArchiveDashboard, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -219,3 +219,12 @@ describe("scenarios > collections > archive", () => {
     });
   });
 });
+
+function createAndArchiveDashboard({ name, collection_id }) {
+  cy.request("POST", "/api/dashboard/", {
+    name: name,
+    collection_id: collection_id,
+  }).then(({ body: { id: dashboardId } }) => {
+    cy.request("PUT", `/api/dashboard/${dashboardId}`, { archived: true });
+  });
+}

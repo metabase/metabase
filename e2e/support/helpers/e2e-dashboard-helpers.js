@@ -205,15 +205,6 @@ export const dashboardHeader = () => {
   return cy.findByTestId("dashboard-header");
 };
 
-export const createAndArchiveDashboard = ({ name, collection_id }) => {
-  cy.request("POST", "/api/dashboard/", {
-    name: name,
-    collection_id: collection_id,
-  }).then(({ body: { id: dashboardId } }) => {
-    cy.request("PUT", `/api/dashboard/${dashboardId}`, { archived: true });
-  });
-};
-
 export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
