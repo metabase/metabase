@@ -1,10 +1,8 @@
 import { Component } from "react";
-import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { getSetting } from "metabase/selectors/settings";
-import { getIsEmailConfigured } from "metabase/setup/selectors";
 import { SettingsSection } from "../../app/components/SettingsEditor/SettingsSection";
 import { SMTPConnectionCard } from "./SMTPConnectionCard";
 
@@ -25,11 +23,7 @@ class SettingsEmailForm extends Component {
   }
 
   render() {
-    const { elements, isHosted, isEmailConfigured, push } = this.props;
-
-    if (!isHosted && !isEmailConfigured) {
-      push("/admin/settings/email/smtp");
-    }
+    const { elements, isHosted } = this.props;
 
     const settingElements = elements.filter(setting => !setting.getHidden?.());
 
@@ -51,11 +45,6 @@ class SettingsEmailForm extends Component {
 
 const mapStateToProps = state => ({
   isHosted: getSetting(state, "is-hosted"),
-  isEmailConfigured: getIsEmailConfigured(state),
 });
 
-const mapDispatchToProps = {
-  push,
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(SettingsEmailForm);
+export default connect(mapStateToProps)(SettingsEmailForm);

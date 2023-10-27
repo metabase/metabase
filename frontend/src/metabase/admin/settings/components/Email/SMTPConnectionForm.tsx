@@ -7,7 +7,7 @@ import type { Settings } from "metabase-types/api";
 import type { SettingElement } from "metabase/admin/settings/types";
 
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import { getIsHosted } from "metabase/setup/selectors";
 
 import { Flex, Stack } from "metabase/ui";
 import Button from "metabase/core/components/Button";
@@ -51,7 +51,6 @@ export const SMTPConnectionForm = ({
   const formRef = useRef<FormRefType>();
   const isHosted = useSelector(getIsHosted);
   const isPaidPlan = useSelector(getIsPaidPlan);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
 
   const dispatch = useDispatch();
 
@@ -65,12 +64,8 @@ export const SMTPConnectionForm = ({
   const handleUpdateEmailSettings = useCallback(
     async formData => {
       await dispatch(updateEmailSettings(formData));
-
-      if (!isEmailConfigured) {
-        dispatch(push("/admin/settings/email"));
-      }
     },
-    [dispatch, isEmailConfigured],
+    [dispatch],
   );
 
   const handleSendTestEmail = useCallback(
@@ -117,7 +112,7 @@ export const SMTPConnectionForm = ({
       <Flex justify="space-between">
         <SettingsBatchForm
           ref={formRef}
-          breadcrumbs={isEmailConfigured ? BREADCRUMBS : null}
+          breadcrumbs={BREADCRUMBS}
           elements={elements}
           settingValues={settingValues}
           updateSettings={handleUpdateEmailSettings}
