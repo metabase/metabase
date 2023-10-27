@@ -1011,6 +1011,56 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("contain.text", POINT_COUNT);
     });
 
+    it("allows opening custom question destination without parameter", () => {
+      const dashboardDetails = {
+        enable_embedding: true,
+      };
+
+      cy.createQuestion(
+        {
+          ...TARGET_QUESTION,
+          enable_embedding: true,
+        },
+        {
+          wrapId: true,
+          idAlias: "targetQuestionId",
+        },
+      );
+      cy.get("@targetQuestionId").then(targetQuestionId => {
+        cy.createQuestionAndDashboard({
+          questionDetails,
+          dashboardDetails,
+        }).then(({ body: card }) => {
+          addOrUpdateDashboardCard({
+            dashboard_id: card.dashboard_id,
+            card_id: card.card_id,
+            card: {
+              id: card.id,
+              visualization_settings: {
+                click_behavior: {
+                  parameterMapping: {},
+                  targetId: targetQuestionId,
+                  linkType: "question",
+                  type: "link",
+                },
+              },
+            },
+          });
+
+          visitEmbeddedPage({
+            resource: { dashboard: card.dashboard_id },
+            params: {},
+          });
+          cy.wait("@dashboard");
+          cy.wait("@cardQuery");
+        });
+      });
+
+      clickLineChartPoint();
+      cy.get("header").findByText(TARGET_QUESTION.name).should("exist");
+      cy.findByTestId("field-set").should("not.exist");
+    });
+
     it("allows opening custom URL destination with parameters", () => {
       const dashboardDetails = {
         parameters: [DASHBOARD_FILTER_TEXT],
