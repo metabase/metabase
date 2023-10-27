@@ -1,4 +1,3 @@
-import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { DatabaseHelp } from "../DatabaseHelp";
@@ -12,7 +11,7 @@ import { PageBody, PageHeader } from "./SettingsPage.styled";
 
 export const SettingsPage = (): JSX.Element => {
   return (
-    <div>
+    <div data-testid="setup-forms">
       <PageHeader>
         <LogoIcon height={51} />
       </PageHeader>

@@ -1,18 +1,18 @@
-import React from "react";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
+import type { HeaderTitleContainerVariant } from "./SidebarHeader.styled";
 import {
   HeaderRoot,
   HeaderIcon,
   HeaderTitleContainer,
-  HeaderTitleContainerVariant,
   CloseButton,
 } from "./SidebarHeader.styled";
 
 type Props = {
   className?: string;
   title?: string;
-  icon?: string;
+  icon?: IconName;
   onBack?: () => void;
   onClose?: () => void;
 };

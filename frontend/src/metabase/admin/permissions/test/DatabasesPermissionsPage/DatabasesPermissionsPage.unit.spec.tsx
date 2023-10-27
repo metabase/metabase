@@ -1,19 +1,20 @@
-import React from "react";
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
   screen,
   fireEvent,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
 import { createMockGroup } from "metabase-types/api/mocks/group";
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { setupPermissionsGraphEndpoint } from "__support__/server-mocks/permissions";
-import { setupGroupsEndpoint } from "__support__/server-mocks/group";
+import {
+  setupDatabasesEndpoints,
+  setupPermissionsGraphEndpoint,
+  setupGroupsEndpoint,
+} from "__support__/server-mocks";
 import DatabasesPermissionsPage from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { delay } from "metabase/lib/promise";
@@ -56,9 +57,7 @@ const setup = async () => {
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 
   return { mockEventListener };
 };

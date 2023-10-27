@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
@@ -9,7 +8,8 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { useSchemaListQuery } from "./use-schema-list-query";
 
@@ -22,6 +22,7 @@ const TEST_DATABASE = createMockDatabase({
 const TestComponent = () => {
   const {
     data = [],
+    metadata,
     isLoading,
     error,
   } = useSchemaListQuery({
@@ -37,6 +38,10 @@ const TestComponent = () => {
       {data.map(schema => (
         <div key={schema.id}>{schema.name}</div>
       ))}
+
+      <div data-testid="metadata">
+        {(!metadata || Object.keys(metadata).length === 0) && "No metadata"}
+      </div>
     </div>
   );
 };
@@ -58,18 +63,26 @@ const setup = ({ hasDataAccess = true }: SetupOpts = {}) => {
 describe("useSchemaListQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_TABLE.schema)).toBeInTheDocument();
   });
 
   it("should show error from the response", async () => {
     setup({ hasDataAccess: false });
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
+  });
+
+  it("should not have any metadata in the response", async () => {
+    setup();
+    await waitForLoaderToBeRemoved();
+    expect(
+      within(screen.getByTestId("metadata")).getByText("No metadata"),
+    ).toBeInTheDocument();
   });
 });

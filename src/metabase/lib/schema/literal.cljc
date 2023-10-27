@@ -85,6 +85,9 @@
 (def ^:private offset-part
   (str "(?:Z|(?:[+-]" time-part "))"))
 
+(def ^:private zone-offset-part-regex
+  (re-pattern (str "(?:Z|(?:[+-]" time-part "))")))
+
 (def ^:private ^:const local-date-regex
   (re-pattern (str \^ date-part \$)))
 
@@ -104,6 +107,11 @@
   [:re
    {:error/message "date string literal"}
    local-date-regex])
+
+(mr/def ::string.zone-offset
+  [:re
+   {:error/message "timezone offset string literal"}
+   zone-offset-part-regex])
 
 (mr/def ::string.time
   [:or
@@ -133,23 +141,23 @@
 
 (mr/def ::date
   #?(:clj  [:or
-            :time/local-date
+            [:time/local-date {:error/message "instance of java.time.LocalDate"}]
             ::string.date]
      :cljs ::string.date))
 
 (mr/def ::time
   #?(:clj [:or
            ::string.time
-           :time/local-time
-           :time/offset-time]
+           [:time/local-time {:error/message "instance of java.time.LocalTime"}]
+           [:time/offset-time {:error/message "instance of java.time.OffsetTime"}]]
      :cljs ::string.time))
 
 (mr/def ::datetime
   #?(:clj [:or
            ::string.datetime
-           :time/local-date-time
-           :time/offset-date-time
-           :time/zoned-date-time]
+           [:time/local-date-time {:error/message "instance of java.time.LocalDateTime"}]
+           [:time/offset-date-time {:error/message "instance of java.time.OffsetDateTime"}]
+           [:time/zoned-date-time {:error/message "instance of java.time.ZonedDateTime"}]]
      :cljs ::string.datetime))
 
 (mr/def ::temporal

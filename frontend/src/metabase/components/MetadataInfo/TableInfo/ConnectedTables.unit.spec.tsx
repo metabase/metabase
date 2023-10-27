@@ -1,6 +1,5 @@
-import React from "react";
-import { checkNotNull } from "metabase/core/utils/types";
-import { Table } from "metabase-types/api";
+import { checkNotNull } from "metabase/lib/types";
+import type { Table } from "metabase-types/api";
 import {
   createMockField,
   createMockForeignKey,

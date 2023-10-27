@@ -1,4 +1,8 @@
-import { updateParametersWidgetStickiness } from "./stickyParameters";
+import * as domUtils from "metabase/lib/dom";
+import {
+  MAXIMUM_PARAMETERS_FOR_STICKINESS,
+  updateParametersWidgetStickiness,
+} from "./stickyParameters";
 
 const offsetTop = 100;
 
@@ -7,34 +11,18 @@ function mockMainElementScroll(scrollTop) {
   document.getElementsByTagName = () => [fakeMainElement];
 }
 
+function simulateSmallScreen() {
+  jest.spyOn(domUtils, "isSmallScreen").mockReturnValue(true);
+}
+
 describe("updateParametersWidgetStickiness", () => {
-  it("initializes parametersWidgetOffsetTop", () => {
-    const setState = jest.fn();
-
-    mockMainElementScroll(0);
-
-    const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
-      state: {},
-      setState,
-    };
-
-    updateParametersWidgetStickiness(dashboard);
-
-    expect(setState).toHaveBeenCalledWith({
-      parametersWidgetOffsetTop: offsetTop,
-    });
-  });
-
   it("makes filters sticky with enough scrolling down", () => {
     const setState = jest.fn();
 
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -52,8 +40,7 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {},
       setState,
     };
@@ -71,11 +58,9 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop + 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: true,
-        parametersWidgetOffsetTop: offsetTop,
       },
       setState,
     };
@@ -91,11 +76,9 @@ describe("updateParametersWidgetStickiness", () => {
     mockMainElementScroll(offsetTop - 1);
 
     const dashboard = {
-      parametersWidgetRef: { offsetTop },
-      parametersAndCardsContainerRef: { style: {} },
+      parametersWidgetRef: { current: { offsetTop } },
       state: {
         isParametersWidgetSticky: false,
-        parametersWidgetOffsetTop: offsetTop,
       },
       setState,
     };
@@ -103,5 +86,48 @@ describe("updateParametersWidgetStickiness", () => {
     updateParametersWidgetStickiness(dashboard);
 
     expect(setState).not.toHaveBeenCalled();
+  });
+
+  describe("on small device", () => {
+    beforeEach(() => {
+      simulateSmallScreen();
+      mockMainElementScroll(offsetTop + 1);
+    });
+
+    it("keeps filters not sticky if filters number is > MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
+      const setState = jest.fn();
+
+      const dashboard = {
+        parametersWidgetRef: { current: { offsetTop } },
+        state: {
+          isParametersWidgetSticky: false,
+          parametersListLength: MAXIMUM_PARAMETERS_FOR_STICKINESS + 1,
+        },
+        setState,
+      };
+
+      updateParametersWidgetStickiness(dashboard);
+
+      expect(setState).not.toHaveBeenCalled();
+    });
+
+    it("makes filters sticky if filters number is <= MAXIMUM_PARAMETERS_FOR_STICKINESS", () => {
+      const setState = jest.fn();
+
+      const dashboard = {
+        parametersWidgetRef: { current: { offsetTop } },
+        state: {
+          isParametersWidgetSticky: false,
+          parametersListLength: MAXIMUM_PARAMETERS_FOR_STICKINESS,
+        },
+        setState,
+      };
+
+      updateParametersWidgetStickiness(dashboard);
+
+      expect(setState).toHaveBeenCalledWith({
+        isParametersWidgetSticky: true,
+      });
+    });
   });
 });

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -6,9 +5,8 @@ import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import TimelineDetailsModal, {
-  TimelineDetailsModalProps,
-} from "./TimelineDetailsModal";
+import type { TimelineDetailsModalProps } from "./TimelineDetailsModal";
+import TimelineDetailsModal from "./TimelineDetailsModal";
 
 describe("TimelineDetailsModal", () => {
   it("should use the collection's name for default timelines", () => {

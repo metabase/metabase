@@ -1,9 +1,6 @@
 name: E2E Tests
 
 on:
-  # We'll record runs using Replay.io and their browser on a schedule as an experiment
-  schedule:
-    - cron: '0 */8 * * *'
   push:
     branches:
       - "master"
@@ -16,18 +13,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-run-id:
-    runs-on: ubuntu-22.04
-    outputs:
-      testRunId: ${{ steps.testRunId.outputs.testRunId }}
-    steps:
-      - id: testRunId
-        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
     steps:
       - uses: actions/checkout@v3
@@ -38,9 +29,24 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+  e2e-matrix-builder:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.e2e-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate matrix for E2E tests
+        id: e2e-matrix
+        uses: ./.github/actions/build-e2e-matrix
+
   build:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
+    needs: [files-changed, e2e-matrix-builder]
+    if: |
+      !cancelled() &&
+      github.event.pull_request.draft == false &&
+      needs.e2e-matrix-builder.result == 'success' &&
+      needs.files-changed.outputs.e2e_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
@@ -61,99 +67,71 @@ jobs:
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
 
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
+      - name: Mark with the commit hash
+        run: echo ${{ github.sha }} > COMMIT-ID
+        shell: bash
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+        shell: bash
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum
 
   e2e-tests:
-    needs: [build, files-changed, test-run-id]
+    needs: [build, files-changed, e2e-matrix-builder]
     if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'true' &&
-      needs.build.result == 'success'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+      !cancelled() &&
+      (needs.files-changed.outputs.e2e_specs == 'true' || needs.build.result == 'success')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       DISPLAY: ""
       QA_DB_ENABLED: true
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
+      # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      # Record runs using Deploysentinel except for the release branch
+      CYPRESS_DEPLOYSENTINEL_KEY: ${{ !(startsWith(github.event.pull_request.base.ref, 'release')) && secrets.CYPRESS_DEPLOYSENTINEL_KEY ||  '' }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
+      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
-      matrix:
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      openldap:
-        image: osixia/openldap:1.5.0
-        ports:
-          - "389:389"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      postgres-sample:
-        image: metabase/qa-databases:postgres-sample-12
-        ports:
-          - "5404:5432"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.4
-        ports:
-          - 27004:27017
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      mysql-sample:
-        image: metabase/qa-databases:mysql-sample-8
-        ports:
-          - 3304:3306
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
+
     steps:
       - uses: actions/checkout@v3
-      - name: Record runs using Deploysentinel except for the release branch
-        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
-        run: |
-          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
+        with:
+          # Important in case we need to download uberjar from previous commits!
+          fetch-depth: ${{ needs.build.result == 'success' && '' || 20 }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: ${{ startsWith(matrix.name, 'admin') }}
+          postgres: ${{ matrix.name != 'mongo'}}
+          mysql: ${{ matrix.name != 'mongo'}}
+          mongo: ${{ matrix.name == 'mongo'}}
+
+      - name: Download Metabase ${{ matrix.edition }} uberjar
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: ${{ matrix.edition }}
+          was-built: ${{ needs.build.result == 'success' }}
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -161,152 +139,101 @@ jobs:
         with:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
+
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
+
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
-
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ${{ matrix.edition }}
-        with:
-          name: metabase-${{ matrix.edition }}-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
 
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags=@OSS \
-          --spec './e2e/test/scenarios/**/*.cy.spec.js'
-        env:
-          TERM: xterm
-
-      - name: Run EE Cypress tests on ${{ matrix.folder }}
-        if: matrix.edition == 'ee' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }}
-        env:
-          TERM: xterm
-
-      # REPLAY.IO specific jobs
-      - name: Install Replay.io browser
-        if: ${{ github.event_name == 'schedule' }}
-        run: npx @replayio/cypress install
-
-      - name: Run OSS-specific Cypress tests using Replay.io browser
-        if: matrix.edition == 'oss' && github.event_name == 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS \
+          --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser "replay-chromium"
-        env:
-          TERM: xterm
-          REPLAYIO_ENABLED: 1
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Run EE Cypress tests on ${{ matrix.folder }} using Replay.io browser
-        if: matrix.edition == 'ee' && github.event_name == 'schedule'
+      - name: Run slow and resource-intensive Cypress tests
+        if: matrix.name == 'slow' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
-          --env grepTags="-@quarantine" \
-          --folder ${{ matrix.folder }} \
-          --browser "replay-chromium"
-        env:
-          TERM: xterm
-          REPLAYIO_ENABLED: 1
-          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
-          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          --env grepTags="@slow",grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
-      - name: Upload Replay.io recordings
-        if: ${{ github.event_name == 'schedule' }}
-        uses: replayio/action-upload@v0.4.7
-        with:
-          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
-          public: true
+      - name: Run EE Cypress tests on ${{ matrix.name }}
+        if: matrix.context == 'folder' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@slow+-@mongo --@quarantine",grepOmitFiltered=true \
+          --folder ${{ matrix.name }} \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
+      - name: Run E2E tests that depend on Mongo
+        if: matrix.name == 'mongo'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
+          --spec './e2e/test/scenarios/**/*.cy.spec.js' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          CYPRESS_QA_DB_MONGO: true
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v3
         if: failure()
         with:
-          name: cypress-recording-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+          name: cypress-recording-${{ matrix.name }}-${{ matrix.edition }}
           path: |
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
 
   e2e-tests-skipped-stub:
-    needs: [build, files-changed]
+    needs: [e2e-tests, e2e-matrix-builder]
     if: |
-      always() &&
-      needs.files-changed.outputs.e2e_all == 'false' &&
-      needs.build.result == 'skipped'
-    runs-on: ubuntu-22.04
+      !cancelled() &&
+      needs.e2e-tests.result == 'skipped'
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 5
-    name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
+    name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     strategy:
       fail-fast: false
-      matrix:
-        java-version: [11]
-        edition: [ee]
-        folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
-        include:
-          - edition: oss
-            context: grep
-            java-version: 11
+      matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
-    needs: build
-    if: ${{ github.event_name != 'schedule' }}
+    timeout-minutes: 60
+    needs: [build]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.e2e_specs == 'true' || needs.build.result == 'success') &&
+      github.event_name != 'schedule'
     name: percy-visual-regression-tests
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    services:
-      maildev:
-        image: maildev/maildev:2.0.5
-        ports:
-          - "1080:1080"
-          - "1025:1025"
-        credentials:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: Enable Percy recording on master only
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
+        with:
+          # Important in case we need to download uberjar from previous commits!
+          fetch-depth: ${{ needs.build.result == 'success' && '' || 20 }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+
+      - name: Download Metabase enterprise uberjar
+        uses: ./.github/actions/e2e-download-uberjar
+        with:
+          edition: 'ee'
+          was-built: ${{ needs.build.result == 'success' }}
+
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK 11
@@ -315,17 +242,10 @@ jobs:
           java-version: 11
           distribution: 'temurin'
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
-      - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf target/uberjar/metabase.jar version.properties
-          mv version.properties resources/
       - name: Percy Test
-        run: yarn run test-visual-run
+        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
-          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
+          PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}

@@ -2,7 +2,7 @@
   "teams": [
     {
       "name": "Team 42",
-      "label": ".Team/42 :milky_way:",
+      "label": ".Team/42",
       "members": [
         "ranquild",
         "WiNloSt",
@@ -12,24 +12,27 @@
         "tsmacdonald",
         "qnkhuat",
         "calherries",
-        "kamilmielnik"
+        "kamilmielnik",
+        "npretto",
+        "piranha"
       ]
     },
     {
       "name": "Query Processor",
-      "label": ".Team/QueryProcessor :hammer_and_wrench:",
+      "label": ".Team/QueryProcessor",
       "members": [
         "camsaul",
         "kulyk",
         "snoe",
         "bshepherdson",
         "john-metabase",
-        "metamben"
+        "metamben",
+        "lbrdnk"
       ]
     },
     {
       "name": "Pixel Police",
-      "label": ".Team/PixelPolice :police_officer:",
+      "label": ".Team/PixelPolice",
       "members": [
         "noahmoss",
         "escherize",
@@ -40,7 +43,8 @@
         "npfitz",
         "EmmadUsmani",
         "JesseSDevaney",
-        "shaunlebron"
+        "shaunlebron",
+        "johnswanson"
       ]
     }
   ]

@@ -3,8 +3,8 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.util.honey-sql-2 :as h2x]
-   [ring.util.codec :as codec]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [ring.util.codec :as codec]))
 
 ;; DEPRECATED Query that returns data for a two-series timeseries: the number of DAU (a User is considered active for
 ;; purposes of this query if they ran at least one query that day), and total number of queries ran. Broken out by
@@ -29,8 +29,8 @@
 
 ;; Two-series timeseries that returns number of active Users (Users who ran at least one query) and number of new
 ;; Users, broken out by `datetime-unit`.
-(s/defmethod audit.i/internal-query ::active-and-new-by-time
-  [_ datetime-unit :- common/DateTimeUnitStr]
+(mu/defmethod audit.i/internal-query ::active-and-new-by-time
+  [_query-type datetime-unit :- common/DateTimeUnitStr]
   {:metadata [[:date         {:display_name "Date",         :base_type (common/datetime-unit-str->base-type datetime-unit)}]
               [:active_users {:display_name "Active Users", :base_type :type/Integer}]
               [:new_users    {:display_name "New Users",    :base_type :type/Integer}]]
@@ -143,11 +143,11 @@
                :limit     10})})
 
 ;; A table of all the Users for this instance, and various statistics about them (see metadata below).
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
 
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    {:metadata [[:user_id          {:display_name "User ID",          :base_type :type/Integer, :remapped_to :name}]
                [:name             {:display_name "Member",           :base_type :type/Name,    :remapped_from :user_id}]
                [:role             {:display_name "Role",             :base_type :type/Text}]

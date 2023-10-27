@@ -6,17 +6,14 @@ import {
   createMockModelIndex,
 } from "metabase-types/api/mocks";
 
-import { setupModelIndexEndpoints } from "__support__/server-mocks/model-indexes";
+import { setupModelIndexEndpoints } from "__support__/server-mocks";
 
 import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
-import {
-  updateModelIndexes,
-  cleanIndexFlags,
-  FieldWithMaybeIndex,
-} from "./actions";
+import type { FieldWithMaybeIndex } from "./actions";
+import { updateModelIndexes, cleanIndexFlags } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
   return createBaseMockField(options as Partial<Field>);
@@ -37,9 +34,9 @@ describe("Entities > model-indexes > actions", () => {
         createMockField(),
       ]);
 
-      const cleanedQuestion = cleanIndexFlags(model);
+      const cleanedFields = cleanIndexFlags(model.getResultMetadata());
 
-      cleanedQuestion.getResultMetadata().forEach((field: any) => {
+      cleanedFields.forEach((field: any) => {
         expect(field?.should_index).toBeUndefined();
       });
     });
@@ -50,7 +47,7 @@ describe("Entities > model-indexes > actions", () => {
         createMockField({ should_index: true }),
       ]);
 
-      cleanIndexFlags(model);
+      cleanIndexFlags(model.getResultMetadata());
 
       model.getResultMetadata().forEach((field: any) => {
         expect(field?.should_index).toBe(true);
@@ -85,7 +82,9 @@ describe("Entities > model-indexes > actions", () => {
       setupModelIndexEndpoints(model.id(), []);
 
       const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({ entities: { modelIndexes: [] } }));
+      const mockGetState = jest.fn(() => ({
+        entities: { modelIndexes: {}, modelIndexes_list: {} },
+      }));
       await updateModelIndexes(model)(mockDispatch, mockGetState);
 
       expect(mockDispatch).toHaveBeenCalled();
@@ -113,6 +112,7 @@ describe("Entities > model-indexes > actions", () => {
 
       const existingModelIndex = createMockModelIndex({
         id: 99,
+        model_id: 1,
         value_ref: indexFieldRef,
       });
 
@@ -123,7 +123,7 @@ describe("Entities > model-indexes > actions", () => {
         entities: {
           modelIndexes: { 99: existingModelIndex },
           modelIndexes_list: {
-            '{"model_id":1': {
+            '{"model_id":1}': {
               list: [99],
               metadata: {},
             },
@@ -163,7 +163,7 @@ describe("Entities > model-indexes > actions", () => {
         entities: {
           modelIndexes: { 99: existingModelIndex },
           modelIndexes_list: {
-            '{"model_id":1': {
+            '{"model_id":1}': {
               list: [99],
               metadata: {},
             },
@@ -194,7 +194,9 @@ describe("Entities > model-indexes > actions", () => {
       setupModelIndexEndpoints(model.id(), []);
 
       const mockDispatch = jest.fn();
-      const mockGetState = jest.fn(() => ({ entities: { modelIndexes: [] } }));
+      const mockGetState = jest.fn(() => ({
+        entities: { modelIndexes: {}, modelIndexes_list: {} },
+      }));
       await updateModelIndexes(model)(mockDispatch, mockGetState);
 
       expect(mockDispatch).toHaveBeenCalled();

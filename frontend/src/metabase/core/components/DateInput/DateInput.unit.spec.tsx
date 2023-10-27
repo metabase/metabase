@@ -1,8 +1,12 @@
-import React, { useCallback, useState } from "react";
-import moment, { Moment } from "moment-timezone";
+import { useCallback, useState } from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import DateInput, { DateInputProps } from "./DateInput";
+import type { DateInputProps } from "./DateInput";
+import DateInput from "./DateInput";
 
 const DateInputTest = ({ onChange, ...props }: DateInputProps) => {
   const [value, setValue] = useState<Moment>();

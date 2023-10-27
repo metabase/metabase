@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import SlackStatus from "../../components/SlackStatus";
 import SlackStatusForm from "../../containers/SlackStatusForm";
 import { updateSettings } from "../../actions";

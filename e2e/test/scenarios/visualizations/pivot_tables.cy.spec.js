@@ -8,6 +8,8 @@ import {
   visitIframe,
   dragField,
   leftSidebar,
+  main,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -21,6 +23,8 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
+  ANALYTIC_EVENTS,
+  ANALYTIC_EVENTS_ID,
 } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
@@ -31,10 +35,32 @@ const TEST_CASES = [
   { case: "dashboard", subject: DASHBOARD_NAME },
 ];
 
-describe("scenarios > visualizations > pivot tables", () => {
+/**
+ * Our app registers beforeunload event listener e.g. when editing a native SQL question.
+ * Cypress does not automatically close the browser prompt and does not allow manually
+ * interacting with it (unlike with window.confirm). The test will hang forever with
+ * the prompt displayed and will eventually time out. We need to work around this by
+ * monkey-patching window.addEventListener to ignore beforeunload event handlers.
+ *
+ * @see https://github.com/cypress-io/cypress/issues/2118
+ */
+Cypress.on("window:load", window => {
+  const addEventListener = window.addEventListener;
+
+  window.addEventListener = function (event) {
+    if (event === "beforeunload") {
+      return;
+    }
+
+    return addEventListener.apply(this, arguments);
+  };
+});
+
+describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createCard");
   });
 
   it("should be created from an ad-hoc question", () => {
@@ -51,7 +77,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should correctly display saved question", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.get(".Visualization").within(() => {
       assertOnPivotFields();
     });
@@ -63,7 +89,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should not show sub-total data after a switch to other viz type", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Switch to "ordinary" table
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -87,7 +113,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should allow drill through on cells", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("783").click();
@@ -105,7 +131,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should allow drill through on left/top header values", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     // open drill-through menu and filter to that value
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
@@ -129,7 +155,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should rearrange pivoted columns", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
 
     // Open Pivot table side-bar
     cy.findByTestId("viz-settings-button").click();
@@ -252,7 +278,7 @@ describe("scenarios > visualizations > pivot tables", () => {
         type: "query",
         query: {
           "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2016-06-01"],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
           aggregation: [["count"]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
@@ -524,9 +550,9 @@ describe("scenarios > visualizations > pivot tables", () => {
 
       // check values in the table
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42,156.87"); // sum of total for 2016
+      cy.findByText("42,156.87"); // sum of total for 2022
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("84,313.74"); // sum of "twice total" for 2016
+      cy.findByText("84,313.74"); // sum of "twice total" for 2022
 
       // check grand totals
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -579,7 +605,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
@@ -621,7 +647,7 @@ describe("scenarios > visualizations > pivot tables", () => {
           name: DASHBOARD_NAME,
         },
         cardDetails: {
-          size_x: 12,
+          size_x: 16,
           size_y: 8,
         },
       }).then(({ body: { card_id, dashboard_id } }) => {
@@ -695,7 +721,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should open the download popover (metabase#14750)", () => {
-    createAndVisitTestQuestion();
+    createTestQuestion();
     cy.icon("download").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("Download full results"));
@@ -780,7 +806,7 @@ describe("scenarios > visualizations > pivot tables", () => {
     cy.wait("@datasetPivot");
     cy.get(".Visualization").within(() => {
       cy.contains("Row totals");
-      cy.findByText("333"); // Row totals for 2018
+      cy.findByText("333"); // Row totals for 2024
       cy.findByText("Grand totals");
     });
   });
@@ -801,8 +827,8 @@ describe("scenarios > visualizations > pivot tables", () => {
             [
               "between",
               ["field", ORDERS.CREATED_AT, null],
-              "2016-11-09",
-              "2016-11-11",
+              "2022-11-09",
+              "2022-11-11",
             ],
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],
@@ -833,18 +859,18 @@ describe("scenarios > visualizations > pivot tables", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 9, 2016");
+    cy.findByText("November 9, 2022");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 10, 2016");
+    cy.findByText("November 10, 2022");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 11, 2016");
+    cy.findByText("November 11, 2022");
     collapseRowsFor("Created At: Day");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 9, 2016");
+    cy.findByText("Totals for November 9, 2022");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 10, 2016");
+    cy.findByText("Totals for November 10, 2022");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 11, 2016");
+    cy.findByText("Totals for November 11, 2022");
 
     function collapseRowsFor(column_name) {
       cy.findByText(column_name).parent().find(".Icon-dash").click();
@@ -863,7 +889,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -904,7 +930,7 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -958,8 +984,15 @@ describe("scenarios > visualizations > pivot tables", () => {
           "source-table": REVIEWS_ID,
           aggregation: [["count"]],
           breakout: [
-            ["field", REVIEWS.RATING, null],
-            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+            [
+              "field",
+              REVIEWS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+                "base-type": "type/DateTimeWithLocalTZ",
+              },
+            ],
           ],
         },
         type: "query",
@@ -1044,6 +1077,99 @@ describe("scenarios > visualizations > pivot tables", () => {
       });
     });
   });
+
+  it("should not have to wait for data to show fields in summarisation (metabase#26467)", () => {
+    cy.intercept("POST", "api/card/pivot/*/query", req => {
+      req.on("response", res => {
+        res.setDelay(20_000);
+      });
+    });
+
+    createTestQuestion({ visitQuestion: false }).then(({ body }) => {
+      // manually visiting the question to avoid the auto wait logic,
+      // we need to go to the editor while the query is still loading
+      cy.visit(`/question/${body.id}`);
+    });
+
+    // confirm that it's loading
+    main().findByText("Doing science...").should("be.visible");
+
+    cy.icon("notebook").click();
+
+    main().findByText("User → Source").click();
+
+    popover().findByText("Address").click();
+
+    main().findByText("User → Address").should("be.visible");
+  });
+
+  it("should return the same number of rows when running as an ad-hoc query vs a saved card (metabase#34278)", () => {
+    const query = {
+      type: "query",
+      query: {
+        "source-table": ANALYTIC_EVENTS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ANALYTIC_EVENTS.BUTTON_LABEL, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+          [
+            "field",
+            ANALYTIC_EVENTS.TIMESTAMP,
+            { "base-type": "type/DateTime", "temporal-unit": "day" },
+          ],
+          ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+          ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+        ],
+      },
+      database: SAMPLE_DB_ID,
+    };
+
+    visitQuestionAdhoc({
+      dataset_query: query,
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.BUTTON_LABEL,
+              { "base-type": "type/Text" },
+            ],
+            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
+            [
+              "field",
+              ANALYTIC_EVENTS.TIMESTAMP,
+              { "base-type": "type/DateTime", "temporal-unit": "day" },
+            ],
+            ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+          ],
+          columns: [
+            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
+          ],
+          values: [["aggregation", 0]],
+        },
+      },
+    });
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
+
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    modal().button("Save").click();
+    cy.wait("@createCard");
+    cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
+    cy.reload();
+    cy.wait("@cardPivotQuery");
+
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing first 52,711 rows",
+    );
+  });
 });
 
 const testQuery = {
@@ -1059,11 +1185,11 @@ const testQuery = {
   database: SAMPLE_DB_ID,
 };
 
-function createAndVisitTestQuestion({ display = "pivot" } = {}) {
+function createTestQuestion({ display = "pivot", visitQuestion = true } = {}) {
   const { query } = testQuery;
   const questionDetails = { name: QUESTION_NAME, query, display };
 
-  cy.createQuestion(questionDetails, { visitQuestion: true });
+  return cy.createQuestion(questionDetails, { visitQuestion });
 }
 
 function assertOnPivotSettings() {

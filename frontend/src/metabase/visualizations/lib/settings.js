@@ -1,10 +1,9 @@
-/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 
 import _ from "underscore";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
 import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
-import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
+import { ChartSettingInputNumeric } from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
 import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
@@ -12,7 +11,7 @@ import ChartSettingSegmentedControl from "metabase/visualizations/components/set
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import ChartSettingFieldsPartition from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
-import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
+import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -124,7 +123,7 @@ function getSettingWidget(
 ) {
   const settingDef = settingDefs[settingId];
   const value = computedSettings[settingId];
-  const onChange = value => {
+  const onChange = (value, question) => {
     const newSettings = { [settingId]: value };
     for (const settingId of settingDef.writeDependencies || []) {
       newSettings[settingId] = computedSettings[settingId];
@@ -132,7 +131,8 @@ function getSettingWidget(
     for (const settingId of settingDef.eraseDependencies || []) {
       newSettings[settingId] = null;
     }
-    onChangeSettings(newSettings);
+    onChangeSettings(newSettings, question);
+    settingDef.onUpdate?.(value, extra);
   };
   if (settingDef.useRawSeries && object._raw) {
     extra.transformedSeries = object;

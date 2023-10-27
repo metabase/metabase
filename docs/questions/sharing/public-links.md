@@ -20,7 +20,7 @@ Once toggled on, the **Public sharing** section will display Metabase questions,
 
 ## Enable sharing on your saved question or dashboard
 
-Once [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing and embedding icon** on saved questions and dashboards (it looks like a box with an arrow pointing to the upper right). 
+Once [public sharing](#enable-sharing-on-your-saved-question-or-dashboard) is enabled for your Metabase, you'll find the **Sharing and embedding icon** on saved questions and dashboards (it looks like a box with an arrow pointing to the upper right).
 
 You can find the **Sharing and embedding icon** icon at the bottom right corner of a question, or the top right corner of a dashboard.
 
@@ -28,7 +28,7 @@ To enable public sharing on a question or dashboard, click on the **Sharing and 
 
 ![Enable sharing](../images/enable-links.png)
 
-For more information about the option to **Embed this item in an application**, see the docs on [signed embedding](../../embedding/signed-embedding.md).
+For more information about the option to **Embed this item in an application**, see the docs on [static embedding](../../embedding/static-embedding.md).
 
 ## Public links
 
@@ -84,7 +84,7 @@ To apply appearance or filter settings to your public embed, you can add paramet
 
 Note that it's possible to find the public link URL behind a public embed. If someone gets access to the public link URL, they can remove the parameters from the URL to view the original question or dashboard (that is, without any appearance or filter settings).
 
-If you'd like to create a secure embed that prevents people from changing filter names or values, check out [signed embedding](../../embedding/signed-embedding.md).
+If you'd like to create a secure embed that prevents people from changing filter names or values, check out [static embedding](../../embedding/static-embedding.md).
 
 ### Appearance parameters
 
@@ -95,7 +95,7 @@ To toggle appearance settings, add _hash_ parameters to the end of the public li
 | bordered                | true, false                                      |
 | titled                  | true, false                                      |
 | theme                   | null, transparent, night                         |
-| hide_parameters         | [filter name](#filter-parameters)                |      
+| hide_parameters         | [filter name](#filter-parameters)                |
 | font¹                   | [font name](../../configuring-metabase/fonts.md) |
 | hide_download_button²   | true, false                                      |
 

@@ -1,12 +1,12 @@
-import { Card, Parameter, ParameterTarget } from "metabase-types/api";
-import {
+import type { Card, Parameter, ParameterTarget } from "metabase-types/api";
+import type {
   ParameterWithTarget,
   UiParameter,
 } from "metabase-lib/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getParameterTargetField } from "metabase-lib/parameters/utils/targets";
 import Question from "metabase-lib/Question";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import { getParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 export function getCardUiParameters(

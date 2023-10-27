@@ -1,14 +1,15 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import type {
-  DashboardOrderedCard,
+  DashboardCard,
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { IconName } from "metabase/core/components/Icon";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";
 import CustomLinkText from "./CustomLinkText";
@@ -20,7 +21,7 @@ import ValuesYouCanReference from "./ValuesYouCanReference";
 
 type LinkTypeOption = {
   type: CustomDestinationClickBehaviorLinkType;
-  icon: string;
+  icon: IconName;
   name: string;
 };
 
@@ -50,7 +51,7 @@ function LinkTypeOptions({
 
 interface Props {
   clickBehavior: CustomDestinationClickBehavior;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }

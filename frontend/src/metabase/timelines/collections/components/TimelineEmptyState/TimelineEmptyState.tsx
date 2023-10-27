@@ -1,9 +1,9 @@
-import React from "react";
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
-import { Collection, Timeline } from "metabase-types/api";
+import type { Collection, Timeline } from "metabase-types/api";
 import {
   EmptyStateBody,
   EmptyStateChart,
@@ -51,7 +51,7 @@ const TimelineEmptyState = ({
           </svg>
         </EmptyStateChart>
         <EmptyStateTooltip>
-          <EmptyStateTooltipIcon name="mail" />
+          <EmptyStateTooltipIcon name="mail_filled" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
             <EmptyStateTooltipDate value={date} unit="day" data-server-date />
@@ -60,7 +60,7 @@ const TimelineEmptyState = ({
         <EmptyStateThread>
           <EmptyStateThreadLine />
           <EmptyStateThreadIconContainer>
-            <EmptyStateThreadIcon name="balloons" />
+            <EmptyStateThreadIcon name="star" />
           </EmptyStateThreadIconContainer>
           <EmptyStateThreadLine />
         </EmptyStateThread>

@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { Children, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
@@ -25,6 +25,7 @@ export default class LoadingAndErrorWrapper extends Component {
     messageInterval: PropTypes.number,
     loadingScenes: PropTypes.array,
     renderError: PropTypes.func,
+    "data-testid": PropTypes.string,
   };
 
   static defaultProps = {
@@ -116,6 +117,9 @@ export default class LoadingAndErrorWrapper extends Component {
       showSpinner,
       loadingMessages,
       loadingScenes,
+      style,
+      className,
+      "data-testid": testId,
     } = this.props;
 
     const { messageIndex, sceneIndex } = this.state;
@@ -131,10 +135,10 @@ export default class LoadingAndErrorWrapper extends Component {
       if (children == null) {
         return null;
       }
-      return React.Children.only(children);
+      return Children.only(children);
     }
     return (
-      <div className={this.props.className} style={this.props.style}>
+      <div className={className} style={style} data-testid={testId}>
         {error ? (
           this.renderError(contentClassName)
         ) : loading ? (

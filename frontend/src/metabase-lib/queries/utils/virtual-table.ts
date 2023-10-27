@@ -1,4 +1,4 @@
-import { TableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import type Database from "metabase-lib/metadata/Database";

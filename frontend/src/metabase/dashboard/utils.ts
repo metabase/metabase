@@ -1,18 +1,18 @@
 import _ from "underscore";
 import { t } from "ttag";
-import Utils from "metabase/lib/utils";
+import { isUUID, isJWT } from "metabase/lib/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import {
+import type {
   Card,
   CardId,
   DashCardId,
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Database,
   Dataset,
   NativeDatasetQuery,
@@ -20,6 +20,7 @@ import {
   StructuredDatasetQuery,
   ActionDashboardCard,
 } from "metabase-types/api";
+import type { SelectedTabId } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import {
   isDateParameter,
@@ -53,7 +54,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
     name: "",
     parameters: [],
     ...dashboard,
-    ordered_cards: dashboard.ordered_cards?.map(dashcard => ({
+    dashcards: dashboard.dashcards?.map(dashcard => ({
       visualization_settings: {},
       parameter_mappings: [],
       ...dashcard,
@@ -75,26 +76,26 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
-export function isVirtualDashCard(dashcard: DashboardOrderedCard) {
+export function isVirtualDashCard(dashcard: DashboardCard) {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
-export function getVirtualCardType(dashcard: DashboardOrderedCard) {
+export function getVirtualCardType(dashcard: DashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
-export function isLinkDashCard(dashcard: DashboardOrderedCard) {
+export function isLinkDashCard(dashcard: DashboardCard) {
   return getVirtualCardType(dashcard) === "link";
 }
 
-export function isNativeDashCard(dashcard: DashboardOrderedCard) {
+export function isNativeDashCard(dashcard: DashboardCard) {
   return dashcard.card && new Question(dashcard.card).isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
 // info text about parameter mapping in the card itself or as a tooltip.
 export function showVirtualDashCardInfoText(
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   isMobile: boolean,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -119,12 +120,23 @@ export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   if (dashboard) {
-    for (const dashcard of dashboard.ordered_cards) {
+    for (const dashcard of dashboard.dashcards) {
       const cards = [dashcard.card].concat((dashcard as any).series || []);
       results.push(...cards.map(card => ({ card, dashcard })));
     }
   }
   return results;
+}
+
+export function getCurrentTabDashboardCards(
+  dashboard: Dashboard,
+  selectedTabId: SelectedTabId,
+) {
+  return getAllDashboardCards(dashboard).filter(
+    ({ dashcard }) =>
+      (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
+      dashcard.dashboard_tab_id === selectedTabId,
+  );
 }
 
 export function hasDatabaseActionsEnabled(database: Database) {
@@ -135,9 +147,9 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (Utils.isUUID(id)) {
+  } else if (isUUID(id)) {
     return "public";
-  } else if (Utils.isJWT(id)) {
+  } else if (isJWT(id)) {
     return "embed";
   } else if (typeof id === "string" && /\/auto\/dashboard/.test(id)) {
     return "transient";
@@ -163,7 +175,7 @@ export function getDatasetQueryParams(
 }
 
 export function isDashcardLoading(
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
 ) {
   if (isVirtualDashCard(dashcard)) {
@@ -188,7 +200,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (isAccessRestricted) {
     return {
       message: getPermissionErrorMessage(),
-      icon: "key",
+      icon: "key" as const,
     };
   }
 
@@ -196,11 +208,11 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   if (errors.length > 0) {
     if (IS_EMBED_PREVIEW) {
       const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
+      return { message, icon: "warning" as const };
     }
     return {
       message: getGenericErrorMessage(),
-      icon: "warning",
+      icon: "warning" as const,
     };
   }
 
@@ -225,7 +237,7 @@ const hasRows = (dashcardData: Record<CardId, Dataset>) => {
 };
 
 const shouldHideCard = (
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   dashcardData: Record<CardId, Dataset | null>,
   wasVisible: boolean,
 ) => {
@@ -248,7 +260,7 @@ const shouldHideCard = (
 };
 
 export const getVisibleCardIds = (
-  cards: DashboardOrderedCard[],
+  cards: DashboardCard[],
   dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
   prevVisibleCardIds = new Set<number>(),
 ) => {

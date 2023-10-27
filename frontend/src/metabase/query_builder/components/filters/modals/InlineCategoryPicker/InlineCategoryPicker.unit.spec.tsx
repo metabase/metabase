@@ -1,15 +1,15 @@
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import type { Field, FieldValue } from "metabase-types/api";
 import { createMockField } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
+import { setupFieldValuesGeneralEndpoint } from "__support__/server-mocks";
 import Question from "metabase-lib/Question";
 import Filter from "metabase-lib/queries/structured/Filter";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -90,6 +90,10 @@ describe("InlineCategoryPicker", () => {
     metadata.field(REMAPPED_CATEGORY_FIELD),
   );
 
+  beforeEach(() => {
+    setupFieldValuesGeneralEndpoint();
+  });
+
   it("should render an inline category picker", () => {
     const testFilter = new Filter(
       ["=", smallCategoryField.reference(), undefined],
@@ -135,7 +139,7 @@ describe("InlineCategoryPicker", () => {
         dimension={emptyCategoryField.dimension()}
       />,
     );
-    screen.getByTestId("loading-spinner");
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
   });
 

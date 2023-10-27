@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -7,7 +6,7 @@ import { ChartSettingsWithState } from "metabase/visualizations/components/Chart
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -17,7 +16,7 @@ import DashCardActionButton from "./DashCardActionButton";
 interface Props {
   series: Series;
   dashboard: Dashboard;
-  dashcard?: DashboardOrderedCard;
+  dashcard?: DashboardCard;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
 }
 
@@ -32,7 +31,10 @@ function ChartSettingsButton({
       wide
       tall
       triggerElement={
-        <DashCardActionButton tooltip={t`Visualization options`}>
+        <DashCardActionButton
+          tooltip={t`Visualization options`}
+          aria-label={t`Show visualization options`}
+        >
           <DashCardActionButton.Icon name="palette" />
         </DashCardActionButton>
       }

@@ -5,6 +5,7 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
+   [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
@@ -15,11 +16,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (def DashboardCard
@@ -99,17 +96,23 @@
   (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
              (merge
                (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-               {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
-                :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
+               {:order-by [[(mdb.u/qualify DashboardCardSeries :position) :asc]]
+                :where    [:= (mdb.u/qualify DashboardCardSeries :dashboardcard_id) id]})))
 
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
-(s/defn retrieve-dashboard-card
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (action/select-action :id)))
+
+(mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
-  [id :- su/IntGreaterThanZero]
+  [id :- ms/PositiveInt]
   (-> (t2/select-one :model/DashboardCard :id id)
-      (hydrate :series)))
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which are other cards with respect to this dashboard card
@@ -153,13 +156,13 @@
       (t2/insert! DashboardCardSeries card-series))))
 
 (def ^:private DashboardCardUpdates
-  {:id                                      su/IntGreaterThanZero
-   (s/optional-key :action_id)              (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
-   (s/optional-key :visualization_settings) (s/maybe su/Map)
+  [:map
+   [:id                                      ms/PositiveInt]
+   [:action_id              {:optional true} [:maybe ms/PositiveInt]]
+   [:parameter_mappings     {:optional true} [:maybe [:sequential :map]]]
+   [:visualization_settings {:optional true} [:maybe :map]]
    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
-   (s/optional-key :series)                 (s/maybe [su/IntGreaterThanZero])
-   s/Keyword                                s/Any})
+   [:series                 {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (defn- shallow-updates
   "Returns the keys in `new` that have different values than the corresponding keys in `old`"
@@ -169,7 +172,7 @@
                   (not= v (get old k)))
                 new)))
 
-(s/defn update-dashboard-card!
+(mu/defn update-dashboard-card!
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
@@ -193,10 +196,12 @@
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  {:parameter_id su/NonBlankString
-   ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
-   #_:target       #_s/Any
-   s/Keyword     s/Any})
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
+    [:parameter_id ms/NonBlankString]
+    #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
@@ -219,14 +224,12 @@
                                  (for [dashcard dashboard-cards]
                                    (merge {:parameter_mappings []
                                            :visualization_settings {}}
-                                          (select-keys dashcard
-                                                       [:dashboard_id :card_id :action_id :size_x :size_y :row :col
-                                                        :parameter_mappings :visualization_settings :dashboard_tab_id]))))]
+                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard
         (-> (t2/select DashboardCard :id [:in dashboard-card-ids])
-            (hydrate :series))))))
+            (t2/hydrate :series))))))
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
@@ -347,6 +350,14 @@
                  card))
              dashcards))
       dashcards)))
+
+(defn dashcard-comparator
+  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
+  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
+  [{row-1 :row col-1 :col} {row-2 :row col-2 :col}]
+  (if (= row-1 row-2)
+    (compare col-1 col-2)
+    (compare row-1 row-2)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { alpha, color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Markdown from "metabase/core/components/Markdown";
 
 export interface CardRootProps {

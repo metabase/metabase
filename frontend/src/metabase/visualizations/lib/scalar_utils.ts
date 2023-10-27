@@ -1,5 +1,5 @@
 import { formatValue } from "metabase/lib/formatting";
-import { OptionsType } from "metabase/lib/formatting/types";
+import type { OptionsType } from "metabase/lib/formatting/types";
 
 // used below to determine whether we show compact formatting
 export const COMPACT_MAX_WIDTH = 250;

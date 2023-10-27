@@ -1,4 +1,5 @@
-import React, { forwardRef, Ref } from "react";
+import type { Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import Button from "metabase/core/components/Button";
@@ -38,7 +39,6 @@ const RunButton = forwardRef(function RunButton(
       {...props}
       icon={icon}
       primary={isDirty}
-      iconSize={16}
       className={cx(className, "RunButton", {
         "RunButton--hidden": hidden,
         "RunButton--compact": circular && !props.borderless && compact,

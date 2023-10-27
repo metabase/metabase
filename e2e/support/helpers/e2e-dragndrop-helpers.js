@@ -1,7 +1,7 @@
 // Rely on native drag events, rather than on the coordinates
 // We have 3 "drag-handles" in this test. Their indexes are 0-based.
 export function dragField(startIndex, dropIndex) {
-  cy.get(".Icon-grabber2").should("be.visible").as("dragHandle");
+  cy.get(".Icon-grabber").should("be.visible").as("dragHandle");
 
   const BUTTON_INDEX = 0;
   const SLOPPY_CLICK_THRESHOLD = 10;

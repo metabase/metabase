@@ -1,7 +1,6 @@
-import React from "react";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
-import { LocationDescriptor } from "history";
+import type { LocationDescriptor } from "history";
 
 import { useMount } from "react-use";
 import { refreshCurrentUser } from "metabase/redux/user";

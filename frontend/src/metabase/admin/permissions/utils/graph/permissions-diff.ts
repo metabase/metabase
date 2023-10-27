@@ -3,7 +3,7 @@ import type {
   Group,
   GroupsPermissions,
 } from "metabase-types/api";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getFieldsPermission,
   getNativePermission,

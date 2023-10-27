@@ -1,11 +1,11 @@
 import type { LocalFieldReference } from "metabase-types/api";
-import { Card } from "./card";
-import { DatabaseId } from "./database";
-import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
-import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
-import { DownloadPermission } from "./permissions";
-import { ParameterOptions } from "./parameters";
-import { TableId } from "./table";
+import type { Card } from "./card";
+import type { DatabaseId } from "./database";
+import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
+import type { DownloadPermission } from "./permissions";
+import type { ParameterOptions } from "./parameters";
+import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
@@ -14,18 +14,18 @@ export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
-  description: string | null;
+  description?: string | null;
   source: string;
-  coercion_strategy: string | null;
-  visibility_type: FieldVisibilityType;
-  table_id: TableId;
+  coercion_strategy?: string | null;
+  visibility_type?: FieldVisibilityType;
+  table_id?: TableId;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
   expression_name?: any;
   base_type?: string;
-  semantic_type?: string;
+  semantic_type?: string | null;
   remapped_from?: string;
   remapped_to?: string;
   effective_type?: string;
@@ -33,7 +33,7 @@ export interface DatasetColumn {
     bin_width?: number;
   };
   settings?: Record<string, any>;
-  fingerprint: FieldFingerprint | null;
+  fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
@@ -69,6 +69,22 @@ export interface Dataset {
     data?: string;
   };
   context?: string;
+  status?: string;
+}
+
+export interface PublicDatasetData {
+  rows: RowValues[];
+  cols: DatasetColumn[];
+  rows_truncated: number;
+  // TODO: Correct this type
+  insights: any;
+  requested_timezone?: string;
+  results_timezone?: string;
+}
+
+export interface PublicDataset {
+  data: PublicDatasetData;
+  json_query?: JsonQuery;
   status?: string;
 }
 

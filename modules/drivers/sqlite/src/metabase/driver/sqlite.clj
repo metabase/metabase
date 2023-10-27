@@ -2,10 +2,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -338,17 +337,9 @@
     [:datetime (h2x/literal (u.date/format-sql t))]))
 
 ;; SQLite defaults everything to UTC
-(defmethod driver.common/current-db-time-date-formatters :sqlite
-  [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
-
-(defmethod driver.common/current-db-time-native-query :sqlite
-  [_]
-  "select cast(datetime('now') as text);")
-
-(defmethod driver/current-db-time :sqlite
-  [& args]
-  (apply driver.common/current-db-time args))
+(defmethod driver/db-default-timezone :sqlite
+  [_driver _database]
+  "UTC")
 
 (defmethod sql-jdbc.sync/active-tables :sqlite
   [& args]
@@ -409,15 +400,16 @@
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them. So skip that
 ;; step. SQLite doesn't have a notion of session timezones so don't do that either. The only thing we're doing here from
 ;; the default impl is setting the transaction isolation level
-(defmethod sql-jdbc.execute/connection-with-timezone :sqlite
-  [driver database _timezone-id]
-  (let [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! driver database))]
-    (try
-      (sql-jdbc.execute/set-best-transaction-level! driver conn)
-      conn
-      (catch Throwable e
-        (.close conn)
-        (throw e)))))
+(defmethod sql-jdbc.execute/do-with-connection-with-options :sqlite
+  [driver db-or-id-or-spec options f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (sql-jdbc.execute/set-best-transaction-level! driver conn))
+     (f conn))))
 
 ;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
 (defmethod sql-jdbc.execute/prepared-statement :sqlite

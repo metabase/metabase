@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 import { getIn, assocIn, dissocIn } from "icepick";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Select from "metabase/core/components/Select";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,8 +16,9 @@ import { loadMetadataForQuery } from "metabase/redux/metadata";
 import { getParameters } from "metabase/dashboard/selectors";
 import { getTargetsWithSourceFilters } from "metabase-lib/parameters/utils/click-behavior";
 import Question from "metabase-lib/Question";
+import { TargetTrigger } from "./ClickMappings.styled";
 
-class ClickMappingsInner extends React.Component {
+class ClickMappingsInner extends Component {
   render() {
     const { setTargets, unsetTargets } = this.props;
     const sourceOptions = {
@@ -169,11 +170,7 @@ function TargetWithoutSource({
   return (
     <Select
       key={id}
-      triggerElement={
-        <div className="flex p1 rounded align-center full mb1 text-bold bg-light-hover text-brand-hover">
-          {name}
-        </div>
-      }
+      triggerElement={<TargetTrigger>{name}</TargetTrigger>}
       value={null}
       sections={Object.entries(sourceOptions).map(([sourceType, items]) => ({
         name: {
@@ -272,7 +269,7 @@ function TargetWithSource({
  */
 function loadQuestionMetadata(getQuestion) {
   return ComposedComponent => {
-    class MetadataLoader extends React.Component {
+    class MetadataLoader extends Component {
       componentDidMount() {
         if (this.props.question) {
           this.fetch();
@@ -294,7 +291,6 @@ function loadQuestionMetadata(getQuestion) {
       }
 
       render() {
-        // eslint-disable-next-line no-unused-vars
         const { question, metadata, ...rest } = this.props;
         return <ComposedComponent {...rest} />;
       }
@@ -310,7 +306,7 @@ function loadQuestionMetadata(getQuestion) {
 }
 
 export function withUserAttributes(ComposedComponent) {
-  return class WithUserAttributes extends React.Component {
+  return class WithUserAttributes extends Component {
     state = { userAttributes: [] };
 
     async componentDidMount() {

@@ -6,6 +6,7 @@ import {
   visitDashboard,
   sendEmailAndAssert,
 } from "e2e/support/helpers";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import { USERS } from "e2e/support/cypress_data";
 
@@ -21,7 +22,7 @@ describe("issue 18344", { tags: "@external" }, () => {
     setupSMTP();
 
     // Rename the question
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
 

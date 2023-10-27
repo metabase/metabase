@@ -1,9 +1,9 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { Line, Polygon } from "@visx/shape";
 import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
 import { measureTextHeight } from "metabase/static-viz/lib/text";
-import {
+import type {
   FunnelDatum,
   FunnelSettings,
 } from "metabase/static-viz/components/FunnelChart/types";
@@ -36,7 +36,7 @@ const layout = {
   percentBottomOffset: 24,
 };
 
-type FunnelProps = {
+export type FunnelProps = {
   data: FunnelDatum[];
   settings: FunnelSettings;
 };

@@ -1,8 +1,8 @@
-import React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { assoc } from "icepick";
-
-import { DurationInputArg2 } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import type { DurationInputArg2 } from "moment-timezone";
 import { isValidTimeInterval } from "metabase/lib/time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import {
@@ -15,7 +15,7 @@ import {
   toTimeInterval,
 } from "metabase-lib/queries/utils/query-time";
 
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   GridContainer,
   GridText,
@@ -166,7 +166,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
   const showOptions = !startingFrom;
   const numColumns = showOptions ? 3 : 4;
 
-  const [optionsVisible, setOptionsVisible] = React.useState(false);
+  const [optionsVisible, setOptionsVisible] = useState(false);
 
   const optionsContent = (
     <OptionsContent {...props} setOptionsVisible={setOptionsVisible} />

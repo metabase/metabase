@@ -6,17 +6,24 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.setup :as mdb.setup]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database]]
    [metabase.test :as mt]
-   [toucan.db :as db]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.map-backend.honeysql2 :as t2.honeysql]))
 
 (defn- create-test-db! []
-  (jdbc/with-db-connection [server-conn (sql-jdbc.conn/connection-details->spec :mysql
-                                          (mt/dbdef->connection-details :mysql :server nil))]
-    (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
-                       "CREATE DATABASE utf8_test;"]]
-      (jdbc/execute! server-conn statement))))
+  (let [spec (sql-jdbc.conn/connection-details->spec
+              :mysql
+              (mt/dbdef->connection-details :mysql :server nil))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     spec
+     {:write? true}
+     (fn [^java.sql.Connection server-conn]
+       (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
+                          "CREATE DATABASE utf8_test;"]]
+         (jdbc/execute! {:connection server-conn} statement))))))
 
 (defn- test-data-source ^javax.sql.DataSource []
   (mdb.data-source/broken-out-details->DataSource
@@ -89,7 +96,7 @@
             (convert-to-charset! jdbc-spec charset collation)
             (remove-utf8mb4-migrations! jdbc-spec)
             (t2/with-connection [_conn jdbc-spec]
-              (binding [db/*quoting-style* :mysql]
+              (binding [t2.honeysql/*options* (assoc t2.honeysql/*options* :dialect :mysql)]
                 (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
                   (let [db-cs  (db-charset)
                         tb-cs  (table-charset)

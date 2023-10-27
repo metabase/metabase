@@ -1,4 +1,5 @@
-import React, { ReactNode, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import type { LocationDescriptor } from "history";
 
@@ -31,6 +32,15 @@ export interface NewItemMenuProps {
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
+type NewMenuItem = {
+  title: string;
+  icon: string;
+  link?: LocationDescriptor;
+  event?: string;
+  action?: () => void;
+  onClose?: () => void;
+};
+
 const NewItemMenu = ({
   className,
   collectionId,
@@ -61,7 +71,7 @@ const NewItemMenu = ({
   );
 
   const menuItems = useMemo(() => {
-    const items = [];
+    const items: NewMenuItem[] = [];
 
     if (hasDataAccess) {
       items.push({
@@ -70,6 +80,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
+          collectionId,
         }),
         event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
@@ -83,6 +94,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           type: "native",
           creationType: "native_question",
+          collectionId,
         }),
         event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
@@ -103,12 +115,15 @@ const NewItemMenu = ({
         event: `${analyticsContext};New Collection Click;`,
       },
     );
-
     if (hasNativeWrite) {
+      const collectionQuery = collectionId
+        ? `?collectionId=${collectionId}`
+        : "";
+
       items.push({
         title: t`Model`,
         icon: "model",
-        link: "/model/new",
+        link: `/model/new${collectionQuery}`,
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
@@ -125,13 +140,14 @@ const NewItemMenu = ({
 
     return items;
   }, [
-    hasModels,
     hasDataAccess,
     hasNativeWrite,
-    hasDatabaseWithJsonEngine,
-    hasDatabaseWithActionsEnabled,
     analyticsContext,
+    hasModels,
+    hasDatabaseWithActionsEnabled,
+    collectionId,
     onCloseNavbar,
+    hasDatabaseWithJsonEngine,
   ]);
 
   return (

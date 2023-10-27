@@ -24,7 +24,7 @@
 (def ^:private default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
 (alter-var-root #'cheshire.factory/default-date-format (constantly default-date-format))
-(alter-var-root #'cheshire.generate/*date-format* (constantly default-date-format))
+(alter-var-root #'json.generate/*date-format* (constantly default-date-format))
 
 ;; ## Custom JSON encoders
 
@@ -84,7 +84,7 @@
 
 (defn- wrap-streamed-json-response* [opts response]
   (if-let [json-response (and (coll? (:body response))
-                              (update-in response [:body] streamed-json-response opts))]
+                              (update response :body streamed-json-response opts))]
     (if (contains? (:headers json-response) "Content-Type")
       json-response
       (response/content-type json-response "application/json; charset=utf-8"))

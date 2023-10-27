@@ -33,7 +33,7 @@ describe("getColumnKey", () => {
             expression_name: "foo",
             field_ref: fieldRefEnabled ? ["expression", "foo"] : undefined,
           }),
-        ).toEqual(JSON.stringify(["ref", ["expression", "foo", null]]));
+        ).toEqual(JSON.stringify(["ref", ["expression", "foo"]]));
       });
       it("should return [name ...] for aggregation", () => {
         const col = {

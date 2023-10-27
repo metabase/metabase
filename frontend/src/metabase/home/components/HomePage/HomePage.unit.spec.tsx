@@ -1,46 +1,73 @@
-import React from "react";
-import { renderWithProviders } from "__support__/ui";
-import * as dom from "metabase/lib/dom";
-import HomePage from "./HomePage";
+import { Route } from "react-router";
+import type { DashboardId } from "metabase-types/api";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupDashboardEndpoints,
+  setupDatabasesEndpoints,
+  setupPopularItemsEndpoints,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
+} from "__support__/server-mocks";
+import { HomePage } from "./HomePage";
 
-jest.mock("metabase/lib/dom");
+const TEST_USER_NAME = "Testy";
+const TEST_DASHBOARD_NAME = "Dashboard";
 
-const LayoutMock = () => <div />;
-jest.mock("../HomeLayout", () => LayoutMock);
+const TestDashboard = () => <div>{TEST_DASHBOARD_NAME}</div>;
 
-const ContentMock = () => <div />;
-jest.mock("../../containers/HomeContent", () => ContentMock);
+interface SetupOpts {
+  dashboardId?: DashboardId;
+}
+
+const setup = async ({ dashboardId }: SetupOpts = {}) => {
+  const state = createMockState({
+    currentUser: createMockUser({
+      first_name: TEST_USER_NAME,
+      custom_homepage: dashboardId ? { dashboard_id: dashboardId } : null,
+    }),
+    settings: createMockSettingsState({
+      "is-metabot-enabled": false,
+    }),
+  });
+
+  setupDatabasesEndpoints([]);
+  setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
+  setupPopularItemsEndpoints([]);
+  if (dashboardId !== undefined) {
+    setupDashboardEndpoints(createMockDashboard({ id: dashboardId }));
+  }
+
+  renderWithProviders(
+    <>
+      <Route path="/" component={HomePage} />
+      <Route path="/dashboard/:slug" component={TestDashboard} />
+    </>,
+    {
+      withRouter: true,
+      storeInitialState: state,
+    },
+  );
+};
 
 describe("HomePage", () => {
-  let isSmallScreenSpy: jest.SpyInstance;
-
-  beforeEach(() => {
-    isSmallScreenSpy = jest.spyOn(dom, "isSmallScreen");
+  it("should not load metabot-related data when it is disabled", () => {
+    setup();
+    expect(screen.getByText(new RegExp(TEST_USER_NAME))).toBeInTheDocument();
   });
 
-  afterEach(() => {
-    isSmallScreenSpy.mockRestore();
+  it("should redirect you to a dashboard when one has been defined to be used as a homepage", async () => {
+    setup({ dashboardId: 1 });
+    expect(await screen.findByText(TEST_DASHBOARD_NAME)).toBeInTheDocument();
   });
 
-  it("should open the navbar on a regular screen", () => {
-    const onOpenNavbar = jest.fn();
-    isSmallScreenSpy.mockReturnValue(false);
-
-    renderWithProviders(
-      <HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />,
-    );
-
-    expect(onOpenNavbar).toHaveBeenCalled();
-  });
-
-  it("should not open the navbar on a small screen", () => {
-    const onOpenNavbar = jest.fn();
-    isSmallScreenSpy.mockReturnValue(true);
-
-    renderWithProviders(
-      <HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />,
-    );
-
-    expect(onOpenNavbar).not.toHaveBeenCalled();
+  it("should render the homepage when a custom dashboard is not set", () => {
+    setup();
+    expect(screen.queryByText(TEST_DASHBOARD_NAME)).not.toBeInTheDocument();
   });
 });

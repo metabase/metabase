@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import PropTypes from "prop-types";
 
 import MainPane from "./MainPane";

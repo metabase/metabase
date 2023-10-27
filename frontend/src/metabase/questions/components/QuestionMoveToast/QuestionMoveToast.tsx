@@ -1,4 +1,3 @@
-import React from "react";
 import { jt } from "ttag";
 
 import { coerceCollectionId } from "metabase/collections/utils";

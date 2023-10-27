@@ -1,0 +1,140 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Box, Stack, Title } from "metabase/ui";
+
+export const args = {
+  align: "left",
+  order: 1,
+  underline: false,
+  truncate: false,
+};
+
+export const argTypes = {
+  align: {
+    options: ["left", "center", "right"],
+    control: { type: "inline-radio" },
+  },
+  order: {
+    options: [1, 2, 3, 4],
+    control: { type: "inline-radio" },
+  },
+  underline: {
+    control: { type: "boolean" },
+  },
+  truncate: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Typography/Title"
+  component={Title}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Title
+
+Our themed wrapper around [Mantine Title](https://v6.mantine.dev/core/title/).
+
+## When to use Title
+
+TBD
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/SEQS7bshKQ4y4V5FwvdROv/Typography-%2F-Title?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Title Docs](https://v6.mantine.dev/core/title/)
+
+## Examples
+
+export const DefaultTemplate = args => <Title {...args}>Header</Title>;
+
+export const SizeTemplate = args => (
+  <Stack>
+    <Title {...args} order={1}>
+      Header 1
+    </Title>
+    <Title {...args} order={2}>
+      Header 2
+    </Title>
+    <Title {...args} order={3}>
+      Header 3
+    </Title>
+    <Title {...args} order={4}>
+      Header 4
+    </Title>
+  </Stack>
+);
+
+export const TruncatedTemplate = args => (
+  <Stack>
+    <Box w="6rem">
+      <Title {...args} order={1}>
+        Header 1
+      </Title>
+    </Box>
+    <Box w="5rem">
+      <Title {...args} order={2}>
+        Header 2
+      </Title>
+    </Box>
+    <Box w="4rem">
+      <Title {...args} order={3}>
+        Header 3
+      </Title>
+    </Box>
+    <Box w="3.5rem">
+      <Title {...args} order={4}>
+        Header 4
+      </Title>
+    </Box>
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Sizes
+
+export const Sizes = SizeTemplate.bind({});
+
+<Canvas>
+  <Story name="Sizes">{Sizes}</Story>
+</Canvas>
+
+### Underlined
+
+export const Underlined = SizeTemplate.bind({});
+Underlined.args = {
+  underline: true,
+};
+
+<Canvas>
+  <Story name="Underlined">{Underlined}</Story>
+</Canvas>
+
+### Truncated
+
+export const Truncated = TruncatedTemplate.bind({});
+Truncated.args = {
+  truncate: true,
+};
+
+<Canvas>
+  <Story name="Truncated">{Truncated}</Story>
+</Canvas>
+
+### Truncated and underlined
+
+export const TruncatedAndUnderlined = TruncatedTemplate.bind({});
+TruncatedAndUnderlined.args = {
+  truncate: true,
+  underline: true,
+};
+
+<Canvas>
+  <Story name="Truncated and underlined">{TruncatedAndUnderlined}</Story>
+</Canvas>

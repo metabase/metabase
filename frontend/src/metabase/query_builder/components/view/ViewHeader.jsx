@@ -1,8 +1,7 @@
-import React, { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
-import { usePrevious, useMount } from "react-use";
+import { usePrevious } from "react-use";
 
 import * as Urls from "metabase/lib/urls";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -18,18 +17,15 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
+import * as ML_Urls from "metabase-lib/urls";
 import QuestionActions from "../QuestionActions";
+import { FilterHeaderButton } from "./FilterHeaderButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionNotebookButton from "./QuestionNotebookButton";
+import { QuestionNotebookButton } from "./QuestionNotebookButton";
 import ConvertQueryButton from "./ConvertQueryButton";
-import QuestionFilters, {
-  FilterHeaderToggle,
-  FilterHeader,
-  QuestionFilterWidget,
-} from "./QuestionFilters";
+import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
   AdHocViewHeading,
@@ -47,6 +43,7 @@ import {
   ViewHeaderIconButtonContainer,
   BackButton,
   BackButtonContainer,
+  ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -150,7 +147,7 @@ export function ViewTitleHeader(props) {
           onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeader.shouldRender(props) && (
         <FilterHeader
           {...props}
           expanded={areFiltersExpanded}
@@ -212,12 +209,12 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
-  useMount(() => {
+  useEffect(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
     return () => clearTimeout(timerId);
-  });
+  }, []);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
@@ -415,7 +412,6 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -449,20 +445,24 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
+  const getRunButtonLabel = useCallback(
+    () => (isRunning ? t`Cancel` : t`Refresh`),
+    [isRunning],
+  );
+
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
           question={question}
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
-          onQueryChange={onQueryChange}
         />
       )}
-      {QuestionFilterWidget.shouldRender(props) && (
-        <QuestionFilterWidget
+      {FilterHeaderButton.shouldRender(props) && (
+        <FilterHeaderButton
           className="hide sm-show"
           onOpenModal={onOpenModal}
         />
@@ -497,10 +497,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
-          <RunButtonWithTooltip
-            className={cx("text-brand-hover text-dark", {
-              "text-white-hover": isResultDirty,
-            })}
+          <ViewRunButtonWithTooltip
             iconSize={16}
             onlyIcon
             medium
@@ -510,6 +507,7 @@ function ViewTitleHeaderRightSide(props) {
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
+            getTooltip={getRunButtonLabel}
           />
         </ViewHeaderIconButtonContainer>
       )}
@@ -553,11 +551,9 @@ ExploreResultsLink.propTypes = {
 };
 
 function ExploreResultsLink({ question }) {
-  const url = question
-    .composeThisQuery()
-    .setDisplay("table")
-    .setSettings({})
-    .getUrl();
+  const url = ML_Urls.getUrl(
+    question.composeThisQuery().setDisplay("table").setSettings({}),
+  );
 
   return (
     <Link to={url}>

@@ -81,8 +81,7 @@ describe("issue 23293", () => {
 function modifyColumn(columnName, action) {
   const icon = action === "add" ? "add" : "eye_outline";
   const iconSelector = `.Icon-${icon}`;
-  const columnSeletor = `draggable-item-${columnName}`;
-  cy.findByTestId(columnSeletor).find(iconSelector).click();
+  cy.findAllByRole("listitem", { name: columnName }).find(iconSelector).click();
 }
 
 function saveQuestion() {

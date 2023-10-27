@@ -1,9 +1,8 @@
-import React from "react";
 import PropTypes from "prop-types";
-import { iconPropTypes } from "metabase/components/Icon";
+
 import Tooltip from "metabase/core/components/Tooltip";
 import Markdown from "metabase/core/components/Markdown";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import LegendActions from "./LegendActions";
 import {
   LegendCaptionRoot,
@@ -17,10 +16,16 @@ const propTypes = {
   className: PropTypes.string,
   title: PropTypes.string,
   description: PropTypes.string,
-  icon: PropTypes.shape(iconPropTypes),
+  icon: PropTypes.object,
   actionButtons: PropTypes.node,
   onSelectTitle: PropTypes.func,
+  width: PropTypes.number,
 };
+
+function shouldHideDescription(width) {
+  const HIDE_DESCRIPTION_THRESHOLD = 100;
+  return width != null && width < HIDE_DESCRIPTION_THRESHOLD;
+}
 
 const LegendCaption = ({
   className,
@@ -29,6 +34,7 @@ const LegendCaption = ({
   icon,
   actionButtons,
   onSelectTitle,
+  width,
 }) => {
   return (
     <LegendCaptionRoot className={className} data-testid="legend-caption">
@@ -37,13 +43,13 @@ const LegendCaption = ({
         className="fullscreen-normal-text fullscreen-night-text"
         onClick={onSelectTitle}
       >
-        <Ellipsified>{title}</Ellipsified>
+        <Ellipsified data-testid="legend-caption-title">{title}</Ellipsified>
       </LegendLabel>
       <LegendRightContent>
-        {description && (
+        {description && !shouldHideDescription(width) && (
           <Tooltip
             tooltip={
-              <Markdown disallowHeading unstyleLinks>
+              <Markdown dark disallowHeading unstyleLinks>
                 {description}
               </Markdown>
             }

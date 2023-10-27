@@ -1,11 +1,13 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import HomeHelpCard from "./HomeHelpCard";
+import { render, screen } from "__support__/ui";
+import { HomeHelpCard } from "./HomeHelpCard";
+
+const setup = () => {
+  render(<HomeHelpCard />);
+};
 
 describe("HomeHelpCard", () => {
   it("should render correctly", () => {
-    render(<HomeHelpCard />);
-
+    setup();
     expect(screen.getByText("Metabase tips")).toBeInTheDocument();
   });
 });

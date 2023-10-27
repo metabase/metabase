@@ -3,7 +3,7 @@ import {
   getOriginalQuestion,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import QuestionLineage from "../../components/QuestionLineage";
 
 const mapStateToProps = (state: State) => ({

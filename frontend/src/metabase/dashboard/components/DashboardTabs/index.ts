@@ -1,2 +1,2 @@
 export * from "./DashboardTabs";
-export * from "./useDashboardTabs";
+export * from "./use-dashboard-tabs";

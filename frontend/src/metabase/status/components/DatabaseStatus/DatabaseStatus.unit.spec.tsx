@@ -1,8 +1,7 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Database, User } from "metabase-types/api";
+import type { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";

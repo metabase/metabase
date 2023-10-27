@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { createRef, Component } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -33,7 +33,7 @@ const MAP_OPTIONS = {
   custom: { type: "custom", name: t`Custom mapping` },
 };
 
-class FieldRemappingSettings extends React.Component {
+class FieldRemappingSettings extends Component {
   state = {
     isChoosingInitialFkTarget: false,
     dismissedInitialFkTargetPopover: false,
@@ -42,7 +42,7 @@ class FieldRemappingSettings extends React.Component {
   constructor(props, context) {
     super(props, context);
 
-    this.fkPopover = React.createRef();
+    this.fkPopover = createRef();
   }
 
   getMappingTypeForField = field => {
@@ -308,7 +308,7 @@ class FieldRemappingSettings extends React.Component {
 }
 
 // consider renaming this component to something more descriptive
-class ValueRemappings extends React.Component {
+class ValueRemappings extends Component {
   state = {
     editingRemappings: new Map(),
   };
@@ -425,7 +425,7 @@ class ValueRemappings extends React.Component {
   }
 }
 
-class FieldValueMapping extends React.Component {
+class FieldValueMapping extends Component {
   onInputChange = e => {
     this.props.setMapping(e.target.value);
   };

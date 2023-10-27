@@ -15,12 +15,12 @@ import {
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
-  waitForElementToBeRemoved,
   screen,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import {
+import type {
   Card,
   Database,
   StructuredDatasetQuery,
@@ -58,7 +58,7 @@ async function setup({
     initialRoute,
   });
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 }
 
 describe("ModelActionDetails", () => {

@@ -8,7 +8,7 @@
 
 (deftest audit-max-retention-days-test
   ;; Tests for the OSS & Cloud implementations are in `metabase.task.truncate-audit-log-test`
-  (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+  (with-redefs [premium-features/enable-audit-app? (constantly true)]
     (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
     (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]

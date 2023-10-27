@@ -41,7 +41,7 @@ const TEST_PEOPLE_QUESTION = {
   },
 };
 
-describe("scenarios > question > object details", () => {
+describe("scenarios > question > object details", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -179,6 +179,24 @@ describe("scenarios > question > object details", () => {
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
+  });
+
+  it("should fetch linked entities data only once per entity type when reopening the modal (metabase#32720)", () => {
+    cy.intercept("POST", "/api/dataset", cy.spy().as("fetchDataset"));
+
+    openProductsTable();
+    cy.get("@fetchDataset").should("have.callCount", 1);
+
+    drillPK({ id: 5 });
+    cy.get("@fetchDataset").should("have.callCount", 3);
+
+    cy.findByTestId("object-detail-close-button").click();
+
+    drillPK({ id: 5 });
+    cy.get("@fetchDataset").should("have.callCount", 5);
+
+    cy.wait(100);
+    cy.get("@fetchDataset").should("have.callCount", 5);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
@@ -330,6 +348,30 @@ function changeSorting(columnName, direction) {
           cy.findAllByText("Duck").should("have.length", 2);
           cy.icon("chevrondown").click();
           cy.findAllByText("Horse").should("have.length", 2);
+        });
+      });
+
+      it("cannot navigate past the end of the list of objects with the keyboard", () => {
+        // this bug only manifests on tables without single integer primary keys
+        // it is also reproducible on tables with string keys
+
+        getTableId({ name: TEST_TABLE }).then(tableId => {
+          cy.visit(`/question#?db=${WRITABLE_DB_ID}&table=${tableId}`);
+        });
+
+        cy.get("#main-data-grid").findByText("Rabbit").trigger("mouseover");
+
+        cy.icon("expand").first().click();
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Rabbit").should("have.length", 2);
+        });
+
+        cy.get("body").type("{downarrow}");
+
+        cy.findByRole("dialog").within(() => {
+          cy.findAllByText("Rabbit").should("have.length", 2);
+          cy.findByText("Empty").should("not.exist");
         });
       });
     },

@@ -1,85 +1,109 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 
-const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
+/**
+ * @typedef {object} QuestionResource
+ * @property {number} question - ID of a question we are embedding
+ *
+ * @typedef {object} DashboardResource
+ * @property {number} dashboard - ID of a dashboard we are embedding
+ *
+ * @typedef {object} EmbedPayload
+ * @property {(QuestionResource|DashboardResource)} resource
+ * {@link QuestionResource} or {@link DashboardResource}
+ * @property {object} params
+ *
+ * @typedef {object} HiddenFilters
+ * @property {string} hide_parameters
+ *
+ * @typedef {object} PageStyle
+ * @property {boolean} bordered
+ * @property {boolean} titled
+ * @property {boolean} hide_download_button - EE/PRO only feature to disable downloads
+ */
 
 /**
- * Programatically generate token and visit the embedded page for question or dashboard
+ * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
- * @param {object} payload
- * @param {{setFilters: string, hideFilters:string}}
+ * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
+ * @param {{setFilters: object, pageStyle: PageStyle, hideFilters: string[]}} options
  *
  * @example
  * visitEmbeddedPage(payload, {
- *   // We divide filter values with an ampersand
- *   setFilters: "id=92&source=Organic",
- *   // We divide multiple hidden filters with coma.
- *   // Make sure there are no spaces in between!
- *   hideFilters: "created_at,state"
+ *   setFilters: {id: 92, source: "Organic"},
+ *   pageStyle: {titled: true},
+ *   hideFilters: ["id", "source"]
  * });
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = "", hideFilters = "" } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {} } = {},
 ) {
+  const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
+
   const payloadWithExpiration = {
     ...payload,
     exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
   };
 
   const stringifiedPayload = JSON.stringify(payloadWithExpiration);
+  const signTransaction = `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`;
 
-  const embeddableObject = getEmbeddableObject(payload);
-
-  const urlRoot = `/embed/${embeddableObject}/`;
-  const filters = getFilterValues(setFilters);
-  const hiddenFilters = getHiddenFilters(hideFilters);
-  // Style is hard coded for now because we're not concerned with testing its properties
-  const style = "#bordered=true&titled=true";
-
-  cy.exec(
-    `node  ${jwtSignLocation} '${stringifiedPayload}' ${METABASE_SECRET_KEY}`,
-  ).then(({ stdout: token }) => {
-    const embeddableUrl = urlRoot + token + filters + style + hiddenFilters;
+  cy.exec(signTransaction).then(({ stdout: tokenizedQuery }) => {
+    const embeddableObject = getEmbeddableObject(payload);
+    const hiddenFilters = getHiddenFilters(hideFilters);
+    const urlRoot = `/embed/${embeddableObject}/${tokenizedQuery}`;
+    const urlHash = getHash(pageStyle, hiddenFilters);
 
     // Always visit embedded page logged out
     cy.signOut();
 
-    cy.visit(embeddableUrl);
+    cy.visit({
+      url: urlRoot,
+      qs: setFilters,
+      onBeforeLoad: window => {
+        if (urlHash) {
+          window.location.hash = urlHash;
+        }
+      },
+    });
   });
+
+  /**
+   * Construct a hidden filters object from the list of filters we want to hide
+   *
+   * @param {string[]} filters
+   * @returns {HiddenFilters}
+   */
+  function getHiddenFilters(filters) {
+    const params = filters.join(",");
+    return filters.length > 0 ? { hide_parameters: params } : {};
+  }
+
+  /**
+   * Get the URL hash from the page style and/or hidden filters parameters
+   *
+   * @param {PageStyle} pageStyle
+   * @param {HiddenFilters} hiddenFilters
+   *
+   * @returns string
+   */
+  function getHash(pageStyle, hiddenFilters) {
+    return new URLSearchParams({ ...pageStyle, ...hiddenFilters }).toString();
+  }
+
+  /**
+   * Extract the embeddable object type from the payload
+   *
+   * @param {EmbedPayload} payload - See {@link EmbedPayload}
+   * @returns ("question"|"dashboard")
+   */
+  function getEmbeddableObject(payload) {
+    return Object.keys(payload.resource)[0];
+  }
 }
 
 /**
- * Construct the string that sets value to certain filters
- *
- * @param {string} filters
- * @returns string
- */
-function getFilterValues(filters) {
-  return filters && "?" + filters;
-}
-
-/**
- * Construct the string that hides certain filters
- *
- * @param {string} filters
- * @returns string
- */
-function getHiddenFilters(filters) {
-  return filters && "&hide_parameters=" + filters;
-}
-
-/**
- * Extract the embeddable object type from the payload
- *
- * @param {object} payload
- * @returns ("question"|"dashboard")
- */
-function getEmbeddableObject(payload) {
-  return Object.keys(payload.resource)[0];
-}
-
-/**
- * Grab iframe `src` via UI and open it,
+ * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
  */
 export function visitIframe() {

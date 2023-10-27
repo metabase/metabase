@@ -1,16 +1,14 @@
-import React from "react";
 import { render, screen, within } from "@testing-library/react";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
 import {
   createSampleDatabase,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
-import ExpressionEditorHelpText, {
-  ExpressionEditorHelpTextProps,
-} from "./ExpressionEditorHelpText";
+import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
+import type { ExpressionEditorHelpTextProps } from "./ExpressionEditorHelpText";
+import ExpressionEditorHelpText from "./ExpressionEditorHelpText";
 
 describe("ExpressionEditorHelpText", () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });

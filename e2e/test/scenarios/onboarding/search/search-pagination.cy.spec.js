@@ -25,8 +25,8 @@ describe("scenarios > search", () => {
     generateQuestions(TOTAL_ITEMS);
 
     cy.visit("/");
-    cy.findByPlaceholderText("Search…").type("generated question{enter}");
-    cy.findByTestId("previous-page-btn").should("be.disabled");
+    cy.findByPlaceholderText("Search…").type("generated_question{enter}");
+    cy.findByLabelText("Previous page").should("be.disabled");
 
     // First page
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -34,16 +34,16 @@ describe("scenarios > search", () => {
     cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
     cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
 
-    cy.findByTestId("next-page-btn").click();
+    cy.findByLabelText("Next page").click();
 
     // Second page
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
     cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
     cy.findAllByTestId("search-result-item").should("have.length", 1);
-    cy.findByTestId("next-page-btn").should("be.disabled");
+    cy.findByLabelText("Next page").should("be.disabled");
 
-    cy.findByTestId("previous-page-btn").click();
+    cy.findByLabelText("Previous page").click();
 
     // First page
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -56,7 +56,7 @@ describe("scenarios > search", () => {
 const generateQuestions = count => {
   _.range(count).map(i =>
     cy.createQuestion({
-      name: `generated question ${i}`,
+      name: `generated_question ${i}`,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],

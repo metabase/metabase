@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -49,8 +49,15 @@ export default class TextPicker extends Component {
   }
 
   render() {
-    const { validations, multi, onCommit, isSingleLine, autoFocus, prefix } =
-      this.props;
+    const {
+      validations,
+      multi,
+      onCommit,
+      isSingleLine,
+      autoFocus,
+      prefix,
+      "data-testid": testId,
+    } = this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
     const commitOnEnter = e => {
@@ -60,7 +67,7 @@ export default class TextPicker extends Component {
     };
 
     return (
-      <div>
+      <div data-testid={testId ?? "text-picker"}>
         <div className="FilterInput px1 pt1 relative flex align-center">
           {!!prefix && (
             <span

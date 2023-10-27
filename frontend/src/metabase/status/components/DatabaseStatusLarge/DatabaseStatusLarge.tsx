@@ -1,11 +1,10 @@
-import React from "react";
 import { t } from "ttag";
 import {
   isSyncAborted,
   isSyncCompleted,
   isSyncInProgress,
 } from "metabase/lib/syncing";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 
 import StatusLarge from "../StatusLarge";
 

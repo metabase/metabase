@@ -1,11 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import {
   createMockField,
   createMockTextFieldFingerprint,
 } from "metabase-types/api/mocks";
 import type { Field } from "metabase-types/api";
-import { DimensionOption } from "metabase-lib/queries/StructuredQuery";
+import type { DimensionOption } from "metabase-lib/queries/StructuredQuery";
 import { sortDimensions } from "./utils";
 
 function createTextField({

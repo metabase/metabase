@@ -8,14 +8,14 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
   isVariableTarget,
   getTemplateTagFromTarget,
   getTargetFieldFromCard,
 } from "metabase-lib/parameters/utils/targets";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 describe("parameters/utils/targets", () => {
   const metadata = createMockMetadata({
@@ -143,16 +143,20 @@ describe("parameters/utils/targets", () => {
       ["field", PRODUCTS.CATEGORY, null],
     ] as ParameterDimensionTarget;
 
-    it("should return null when given a card without a `dataset_query`", () => {
+    it("should return the field that maps to the mapping target event given a card without a `dataset_query` (metabase#20656)", () => {
+      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
+
       const card = {
         id: 1,
       } as Card;
 
-      expect(getTargetFieldFromCard(target, card, metadata)).toBe(null);
+      expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
+        expect.objectContaining({ id: expectedField.id }),
+      );
     });
 
     it("should return the field that maps to the mapping target", () => {
-      const field = metadata.field(PRODUCTS.CATEGORY) as Field;
+      const expectedField = metadata.field(PRODUCTS.CATEGORY) as Field;
 
       const card = {
         id: 1,
@@ -166,7 +170,7 @@ describe("parameters/utils/targets", () => {
       } as Card;
 
       expect(getTargetFieldFromCard(target, card, metadata)).toEqual(
-        expect.objectContaining({ id: field.id }),
+        expect.objectContaining({ id: expectedField.id }),
       );
     });
   });

@@ -1,6 +1,6 @@
-import React from "react";
+import type * as React from "react";
 
-import {
+import type {
   FieldName,
   FieldValues,
   FormField as FormFieldType,

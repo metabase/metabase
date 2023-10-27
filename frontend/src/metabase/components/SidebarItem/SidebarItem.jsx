@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "../Sidebar.css";
@@ -22,4 +22,4 @@ SidebarItem.propTypes = {
   href: PropTypes.string.isRequired,
 };
 
-export default React.memo(SidebarItem);
+export default memo(SidebarItem);

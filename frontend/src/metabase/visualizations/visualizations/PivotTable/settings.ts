@@ -37,7 +37,7 @@ import {
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
 } from "./utils";
-import { PivotSetting } from "./types";
+import type { PivotSetting } from "./types";
 
 export const getTitleForColumn = (
   column: DatasetColumn,

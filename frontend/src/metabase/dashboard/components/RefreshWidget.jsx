@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 
 import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
-import ClockIcon from "metabase/components/icons/ClockIcon";
 import CountdownIcon from "metabase/components/icons/CountdownIcon";
 
 import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
@@ -29,7 +28,7 @@ export default class RefreshWidget extends Component {
   constructor(props) {
     super(props);
 
-    this.popover = React.createRef();
+    this.popover = createRef();
   }
   state = { elapsed: null };
 
@@ -51,7 +50,7 @@ export default class RefreshWidget extends Component {
   }
 
   render() {
-    const { period, onChangePeriod, className } = this.props;
+    const { period, onChangePeriod } = this.props;
     const { elapsed } = this.state;
     const remaining = period - elapsed;
     return (
@@ -61,9 +60,8 @@ export default class RefreshWidget extends Component {
           elapsed == null ? (
             <Tooltip tooltip={t`Auto-refresh`}>
               <DashboardHeaderButton
-                icon={
-                  <ClockIcon width={16} height={16} className={className} />
-                }
+                icon="clock"
+                aria-label={t`Auto Refresh`}
               />
             </Tooltip>
           ) : (
@@ -85,6 +83,7 @@ export default class RefreshWidget extends Component {
                     percent={Math.min(0.95, (period - elapsed) / period)}
                   />
                 }
+                aria-label={t`Auto Refresh`}
               />
             </Tooltip>
           )
@@ -121,8 +120,7 @@ const RefreshOption = ({ name, period, selected, onClick }) => (
     isSelected={selected}
     onClick={onClick}
   >
-    <RefreshOptionIcon name="check" size={14} />
-    <span>{name.split(" ")[0]}</span>
-    <span>{name.split(" ")[1]}</span>
+    <RefreshOptionIcon name="check" />
+    <span>{name}</span>
   </RefreshOptionItem>
 );

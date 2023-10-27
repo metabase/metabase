@@ -1,11 +1,11 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
-import TimelinePanel, { TimelinePanelProps } from "./TimelinePanel";
+import type { TimelinePanelProps } from "./TimelinePanel";
+import TimelinePanel from "./TimelinePanel";
 
 describe("TimelinePanel", () => {
   it("should allow creating an event and a default timeline", () => {

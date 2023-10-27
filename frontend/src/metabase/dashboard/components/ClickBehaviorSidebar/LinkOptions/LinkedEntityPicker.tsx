@@ -1,7 +1,7 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
@@ -18,12 +18,12 @@ import ClickMappings, {
 import type {
   Dashboard,
   DashboardId,
-  DashboardOrderedCard,
+  DashboardCard,
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
 import { Heading } from "../ClickBehaviorSidebar.styled";
@@ -37,14 +37,14 @@ const LINK_TARGETS = {
   question: {
     Entity: Questions,
     PickerComponent: QuestionPicker,
-    pickerIcon: "bar",
+    pickerIcon: "bar" as const,
     getModalTitle: () => t`Pick a question to link to`,
     getPickerButtonLabel: () => t`Pick a question…`,
   },
   dashboard: {
     Entity: Dashboards,
     PickerComponent: DashboardPicker,
-    pickerIcon: "dashboard",
+    pickerIcon: "dashboard" as const,
     getModalTitle: () => t`Pick a dashboard to link to`,
     getPickerButtonLabel: () => t`Pick a dashboard…`,
   },
@@ -98,7 +98,7 @@ function TargetClickMappings({
 }: {
   isDash: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDash ? Dashboards : Questions;
@@ -125,7 +125,7 @@ function LinkedEntityPicker({
   clickBehavior,
   updateSettings,
 }: {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {

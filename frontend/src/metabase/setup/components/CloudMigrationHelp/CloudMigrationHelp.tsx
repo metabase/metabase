@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";

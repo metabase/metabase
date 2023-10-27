@@ -86,9 +86,7 @@
  {:linter                      :suspicious-expression
   :for-macro                   'clojure.core/let
   :if-inside-macroexpansion-of '#{metabase.test/with-temp
-                                  metabase.test/with-temp*
-                                  toucan.util.test/with-temp
-                                  toucan.util.test/with-temp*}
+                                  metabase.test/with-temp*}
   :within-depth                10})
 
 (disable-warning

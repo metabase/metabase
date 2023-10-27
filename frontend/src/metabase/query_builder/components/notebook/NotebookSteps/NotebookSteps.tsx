@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -22,12 +22,15 @@ interface NotebookStepsProps {
 
 function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   const isNew = !readOnly && !question.table();
-  return isNew
-    ? {
-        "0:filter": true,
-        "0:summarize": true,
-      }
-    : {};
+
+  if (isNew) {
+    return {
+      "0:filter": true,
+      "0:summarize": true,
+    };
+  }
+
+  return {};
 }
 
 function NotebookSteps({

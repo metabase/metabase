@@ -1,7 +1,6 @@
 :root {
   --title-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
-  --blue-color: var(--color-brand);
 }
 
 :local(.detail) {

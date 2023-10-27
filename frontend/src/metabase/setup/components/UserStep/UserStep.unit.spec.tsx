@@ -1,5 +1,4 @@
-import React from "react";
-import { UserInfo } from "metabase-types/store";
+import type { UserInfo } from "metabase-types/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSetupState,

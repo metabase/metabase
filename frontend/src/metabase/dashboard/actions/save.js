@@ -14,18 +14,20 @@ import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 import { saveCardsAndTabs } from "./tabs";
 
-export const SAVE_DASHBOARD_AND_CARDS =
-  "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
+export const UPDATE_DASHBOARD_AND_CARDS =
+  "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
 
-export const saveDashboardAndCards = createThunkAction(
-  SAVE_DASHBOARD_AND_CARDS,
-  function (preserveParameters = false) {
+export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
+
+export const updateDashboardAndCards = createThunkAction(
+  UPDATE_DASHBOARD_AND_CARDS,
+  function () {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
         ...dashboards[dashboardId],
-        ordered_cards: dashboards[dashboardId].ordered_cards.map(
+        dashcards: dashboards[dashboardId].dashcards.map(
           dashcardId => dashcards[dashcardId],
         ),
       };
@@ -39,8 +41,8 @@ export const saveDashboardAndCards = createThunkAction(
         );
 
         const cardsHaveChanged = haveDashboardCardsChanged(
-          dashboard.ordered_cards,
-          dashboardBeforeEditing.ordered_cards,
+          dashboard.dashcards,
+          dashboardBeforeEditing.dashcards,
         );
 
         if (!cardsHaveChanged && !dashboardHasChanged) {
@@ -53,10 +55,10 @@ export const saveDashboardAndCards = createThunkAction(
       // Invalid (partially complete) states are fine during editing,
       // but we should restore the previous value if saved while invalid.
       const clickBehaviorPath = ["visualization_settings", "click_behavior"];
-      dashboard.ordered_cards = dashboard.ordered_cards.map((card, index) => {
+      dashboard.dashcards = dashboard.dashcards.map((card, index) => {
         if (!clickBehaviorIsValid(getIn(card, clickBehaviorPath))) {
           const startingValue = getIn(dashboardBeforeEditing, [
-            "ordered_cards",
+            "dashcards",
             index,
             ...clickBehaviorPath,
           ]);
@@ -68,7 +70,7 @@ export const saveDashboardAndCards = createThunkAction(
       });
 
       // update parameter mappings
-      dashboard.ordered_cards = dashboard.ordered_cards.map(dc => ({
+      dashboard.dashcards = dashboard.dashcards.map(dc => ({
         ...dc,
         parameter_mappings: dc.parameter_mappings.filter(
           mapping =>
@@ -86,24 +88,13 @@ export const saveDashboardAndCards = createThunkAction(
 
       // update modified cards
       await Promise.all(
-        dashboard.ordered_cards
+        dashboard.dashcards
           .filter(dc => dc.card.isDirty)
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      // update the dashboard itself
-      if (dashboard.isDirty) {
-        const { id, name, description, parameters } = dashboard;
-        await dispatch(
-          Dashboards.actions.update({ id }, { name, description, parameters }),
-        );
-      }
-
-      // update the dashboard cards and tabs
-      const dashcardsToUpdate = dashboard.ordered_cards.filter(
-        dc => !dc.isRemoved,
-      );
-      const updatedCardsAndTabs = await DashboardApi.updateCardsAndTabs({
+      const dashcardsToUpdate = dashboard.dashcards.filter(dc => !dc.isRemoved);
+      const updateCardsAndTabs = DashboardApi.updateCardsAndTabs({
         dashId: dashboard.id,
         cards: dashcardsToUpdate.map(dc => ({
           id: dc.id,
@@ -118,19 +109,57 @@ export const saveDashboardAndCards = createThunkAction(
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
         })),
-        ordered_tabs: (dashboard.ordered_tabs ?? [])
+        tabs: (dashboard.tabs ?? [])
           .filter(tab => !tab.isRemoved)
           .map(({ id, name }) => ({
             id,
             name,
           })),
       });
-      dispatch(saveCardsAndTabs(updatedCardsAndTabs));
 
-      await dispatch(Dashboards.actions.update(dashboard));
+      updateCardsAndTabs.then(updatedCardsAndTabs => {
+        dispatch(saveCardsAndTabs(updatedCardsAndTabs));
+      });
+
+      // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
+      await Promise.all([
+        updateCardsAndTabs,
+        dispatch(Dashboards.actions.update(dashboard)),
+      ]);
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null, { preserveParameters })); // disable using query parameters when saving
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: false }),
+      ); // disable using query parameters when saving
+    };
+  },
+);
+
+export const updateDashboard = createThunkAction(
+  UPDATE_DASHBOARD,
+  function ({ attributeNames }) {
+    return async function (dispatch, getState) {
+      const state = getState();
+      const { dashboards, dashboardId } = state.dashboard;
+      const dashboard = dashboards[dashboardId];
+
+      if (!dashboard) {
+        console.warn(`no dashboard with id ${dashboardId} were found`);
+        return;
+      }
+
+      if (attributeNames.length > 0) {
+        const attributes = _.pick(dashboard, attributeNames);
+
+        await dispatch(
+          Dashboards.actions.update({ id: dashboardId }, attributes),
+        );
+      }
+
+      // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
+      dispatch(
+        fetchDashboard(dashboard.id, null, { preserveParameters: true }),
+      );
     };
   },
 );

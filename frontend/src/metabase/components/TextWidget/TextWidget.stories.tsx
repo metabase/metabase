@@ -1,7 +1,6 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
-import TextWidget from "./TextWidget";
+import { TextWidget } from "./TextWidget";
 
 export default {
   title: "Parameters/TextWidget",

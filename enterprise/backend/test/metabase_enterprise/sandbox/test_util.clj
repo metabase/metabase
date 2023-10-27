@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.test-util
   "Shared test utilities for sandbox tests."
   (:require
+   [mb.hawk.parallel]
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
@@ -15,10 +16,11 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes")
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
     (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
       (thunk))))
@@ -39,16 +41,16 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (tt/with-temp Card [{card-id :id} {:dataset_query query}]
+                           (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query query}]
                              (f card-id))
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (tt/with-temp GroupTableAccessPolicy [_gtap {:group_id             (u/the-id group)
-                                                      :table_id             (data/id table-kw)
-                                                      :card_id              card-id
-                                                      :attribute_remappings remappings}]
-           (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (data/id table-kw))))
+         (t2.with-temp/with-temp [GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
+                                                                :table_id             (data/id table-kw)
+                                                                :card_id              card-id
+                                                                :attribute_remappings remappings}]
+           (perms/grant-permissions! group (perms/table-sandboxed-query-path (t2/select-one Table :id (data/id table-kw))))
            (do-with-gtap-defs group more f)))))))
 
 (def ^:private WithGTAPsArgs
@@ -62,6 +64,7 @@
    (s/pred map?)})
 
 (defn do-with-gtaps-for-user [args-fn test-user-name-or-user-id f]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-gtaps-for-user")
   (letfn [(thunk []
             ;; remove perms for All Users group
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
@@ -70,7 +73,7 @@
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
-                  (premium-features-test/with-premium-features #{:sandboxes}
+                  (premium-features-test/with-additional-premium-features #{:sandboxes}
                     ;; create Cards/GTAPs from defs
                     (do-with-gtap-defs group gtaps
                       (fn []

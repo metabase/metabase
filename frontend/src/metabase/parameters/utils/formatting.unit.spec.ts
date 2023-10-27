@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -48,17 +48,42 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/month-year",
         value: "2018-01",
-        expected: "January, 2018",
+        expected: "January 2018",
       },
       {
         type: "date/quarter-year",
         value: "Q1-2018",
-        expected: "Q1, 2018",
+        expected: "Q1 2018",
       },
       {
         type: "date/relative",
         value: "past30days",
         expected: "Past 30 Days",
+      },
+      {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
+        type: "date/month-year",
+        value: "thisweek",
+        expected: "This Week",
+      },
+      {
+        type: "date/month-year",
+        value: "past1days",
+        expected: "Yesterday",
+      },
+      {
+        type: "date/month-year",
+        value: "past1weeks",
+        expected: "Last Week",
+      },
+      {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "October 2, 2023 - October 24, 2023",
       },
       {
         type: "number/=",

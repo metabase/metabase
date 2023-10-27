@@ -1,7 +1,6 @@
-import React from "react";
 import * as Urls from "metabase/lib/urls";
-import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import { Icon } from "metabase/core/components/Icon";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { BackButtonLink } from "./MetadataBackButton.styled";
 
 interface MetadataBackButtonProps {

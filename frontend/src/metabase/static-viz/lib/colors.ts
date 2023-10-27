@@ -1,5 +1,5 @@
 import { colors, color } from "metabase/lib/colors/palette";
-import { ColorPalette } from "metabase/lib/colors/types";
+import type { ColorPalette } from "metabase/lib/colors/types";
 
 export type ColorGetter = (colorName: string) => string;
 

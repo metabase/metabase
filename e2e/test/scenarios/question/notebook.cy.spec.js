@@ -7,8 +7,10 @@ import {
   filterField,
   getNotebookStep,
   join,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
+  openTable,
   popover,
   restore,
   startNewQuestion,
@@ -17,13 +19,13 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > question > notebook", () => {
+describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -48,12 +50,12 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should allow post-aggregation filters", () => {
-    // start a custom question with orders
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
+    cy.findByRole("button", { name: "Summarize" }).click();
 
     // count orders by user id, filter to the one user with 46 orders
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -66,7 +68,9 @@ describe("scenarios > question > notebook", () => {
     popover().within(() => {
       cy.contains("User ID").click();
     });
-    cy.icon("filter").click();
+    cy.findByTestId("step-summarize-0-0").within(() => {
+      cy.icon("filter").click();
+    });
     popover().within(() => {
       cy.icon("int").click();
       cy.get("input").type("46");
@@ -84,13 +88,18 @@ describe("scenarios > question > notebook", () => {
   it("shouldn't show sub-dimensions for FK (metabase#16787)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("User ID")
-      .closest(".List-item")
-      .find(".Field-extra")
-      .should("not.have.descendants", "*");
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover().within(() => {
+      cy.findByText("User ID")
+        .findByLabelText("Binning strategy")
+        .should("not.exist");
+      cy.findByText("User ID")
+        .findByLabelText("Temporal bucket")
+        .should("not.exist");
+    });
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
@@ -365,11 +374,11 @@ describe("scenarios > question > notebook", () => {
   // intentional simplification of "Select none" to quickly
   // fix users' pain caused by the inability to unselect all columns
   it("select no columns select the first one", () => {
-    startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+    openTable({
+      table: ORDERS_ID,
+      mode: "notebook",
+    });
+
     cy.findByTestId("fields-picker").click();
 
     popover().within(() => {
@@ -378,6 +387,8 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Tax").click();
       cy.findByLabelText("ID").should("be.enabled").click();
     });
+
+    cy.findByTestId("step-data-0-0").findByText("Data").click(); //Dismiss popover
 
     visualize();
 
@@ -431,6 +442,8 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
+    cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
+
     cy.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
@@ -438,20 +451,20 @@ describe("scenarios > question > notebook", () => {
       display: "table",
     });
 
-    cy.createQuestion({
-      name: "Orders model",
-      query: { "source-table": ORDERS_ID },
-      dataset: true,
-      display: "table",
-    });
+    cy.createQuestion(
+      {
+        name: "Orders model",
+        query: { "source-table": ORDERS_ID },
+        dataset: true,
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
 
-    startNewQuestion();
-    popover().findByText("Models").click();
-    popover().findByText("Products model").click();
+    openNotebook();
+
     join();
-    popover().findByText("Orders model").click();
-    popover().findByText("ID").click();
-    popover().findByText("Product ID").click();
+    popover().findByText("Products model").click();
 
     visualize();
   });
@@ -514,7 +527,7 @@ describe("scenarios > question > notebook", () => {
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();
     popover().within(() => {
-      cy.contains("Sample Database").click();
+      cy.contains("Raw Data").click();
       cy.contains("Orders").click();
     });
 
@@ -531,15 +544,21 @@ describe("scenarios > question > notebook", () => {
     beforeEach(() => {
       restore("postgres-12");
       cy.signInAsAdmin();
+
+      cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+        ({ body }) => {
+          const tableId = body.find(table => table.name === "products").id;
+          openTable({
+            database: WRITABLE_DB_ID,
+            table: tableId,
+            mode: "notebook",
+          });
+        },
+      );
     });
 
     it('should show "median" aggregation option for databases that support "percentile-aggregations" driver feature', () => {
-      // add a question with "Products" and "Median of Price" aggregation by "Category"
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      cy.findByRole("button", { name: "Summarize" }).click();
 
       addSummaryField({ metric: "Median of ...", field: "Price" });
 
@@ -555,11 +574,11 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should support custom columns", () => {
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      // startNewQuestion();
+      // popover().within(() => {
+      //   cy.findByText("QA Postgres12").click();
+      //   cy.findByText("Products").click();
+      // });
 
       addCustomColumn();
       enterCustomColumnDetails({
@@ -567,6 +586,8 @@ describe("scenarios > question > notebook", () => {
         name: "Mega price",
       });
       cy.button("Done").click();
+
+      cy.findByRole("button", { name: "Summarize" }).click();
 
       addSummaryField({ metric: "Median of ...", field: "Mega price" });
       addSummaryField({ metric: "Count of rows" });
@@ -591,11 +612,11 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should support Summarize side panel", () => {
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("QA Postgres12").click();
-        cy.findByText("Products").click();
-      });
+      // startNewQuestion();
+      // popover().within(() => {
+      //   cy.findByText("QA Postgres12").click();
+      //   cy.findByText("Products").click();
+      // });
 
       visualize();
 

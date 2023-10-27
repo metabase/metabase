@@ -7,6 +7,9 @@ on:
       - 'release-**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [External Trigger Filter]
+    types: [completed]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -30,9 +33,11 @@ jobs:
 
   be-tests-athena-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: athena
@@ -50,9 +55,11 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -72,9 +79,11 @@ jobs:
 
   be-tests-druid-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: druid
@@ -95,9 +104,11 @@ jobs:
 
   be-tests-googleanalytics-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: googleanalytics
@@ -111,9 +122,11 @@ jobs:
 
   be-google-related-drivers-classpath-test:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: 'googleanalytics,bigquery-cloud-sdk'
@@ -133,9 +146,11 @@ jobs:
 
   be-tests-mariadb-10-2-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -159,9 +174,11 @@ jobs:
 
   be-tests-mariadb-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -183,11 +200,13 @@ jobs:
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
 
-  be-tests-mongo-4-2-ee:
+  be-tests-mongo-4-4-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -195,22 +214,24 @@ jobs:
       MB_MONGO_TEST_PASSWORD: metasample123
     services:
       mongodb:
-        image: metabase/qa-databases:mongo-sample-4.2
+        image: metabase/qa-databases:mongo-sample-4.4
         ports:
           - "27017:27017"
     steps:
     - uses: actions/checkout@v3
-    - name: Test MongoDB driver (4.2)
+    - name: Test MongoDB driver (4.4)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-4-2-ee'
+        junit-name: 'be-tests-mongo-4-4-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-mongo-4-2-ssl-ee:
+  be-tests-mongo-4-4-ssl-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -220,7 +241,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Spin up Mongo docker container
-        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.2 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
+        run: docker run -d -p 27017:27017 --name metamongo metabase/qa-databases:mongo-sample-4.4 mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
       - name: Wait until the port 27017 is ready
         run: while ! nc -z localhost 27017; do sleep 1; done
         timeout-minutes: 5
@@ -235,17 +256,19 @@ jobs:
           curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt \
           -o ./test_resources/ssl/mongo/metaca.crt
 
-      - name: Test MongoDB SSL driver (4.2)
+      - name: Test MongoDB SSL driver (4.4)
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'be-tests-mongo-4-2-ee'
+          junit-name: 'be-tests-mongo-4-4-ee'
           test-args: ":exclude-tags '[:mb/once]'"
 
   be-tests-mongo-5-0-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -266,9 +289,11 @@ jobs:
 
   be-tests-mongo-5-0-ssl-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -301,9 +326,11 @@ jobs:
 
   be-tests-mongo-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -325,11 +352,13 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-mysql-5-7-ee:
+  be-tests-mysql-8-0-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -341,21 +370,23 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: circleci/mysql:5.7.23
+        image: cimg/mysql:8.0
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v3
-    - name: Test MySQL driver (5.7)
+    - name: Test MySQL driver (8.0)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-5-7-ee'
+        junit-name: 'be-tests-mysql-8-0-ee'
 
   be-tests-mysql-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -391,9 +422,11 @@ jobs:
 
   be-tests-oracle-18-4-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: oracle
@@ -418,9 +451,11 @@ jobs:
 
   be-tests-oracle-21-3-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: oracle
@@ -454,38 +489,43 @@ jobs:
 
   be-tests-postgres-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: postgres
       MB_DB_TYPE: postgres
       MB_DB_PORT: 5432
       MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
     services:
       postgres:
-        image: circleci/postgres:9.6-alpine
+        image: postgres:12-alpine
         ports:
           - "5432:5432"
         env:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v3
-    - name: Test Postgres driver (9.6)
+    - name: Test Postgres driver (12)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
 
   be-tests-postgres-latest-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -516,9 +556,11 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: presto-jdbc
@@ -566,9 +608,11 @@ jobs:
 
   be-tests-redshift-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: redshift
@@ -586,9 +630,11 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -608,9 +654,11 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: sparksql
@@ -629,9 +677,11 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: sqlite
@@ -643,11 +693,13 @@ jobs:
         junit-name: 'be-tests-sqlite-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
-  be-tests-sqlserver-ee:
+  be-tests-sqlserver-2017-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: sqlserver
@@ -665,17 +717,49 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     steps:
     - uses: actions/checkout@v3
-    - name: Test MS SQL Server driver
+    - name: Test MS SQL Server 2017 driver
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
         test-args: ":exclude-tags '[:mb/once]'"
 
+  be-tests-sqlserver-2022-ee:
+    needs: files-changed
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: sqlserver
+      MB_SQLSERVER_TEST_HOST: localhost
+      MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+      MB_SQLSERVER_TEST_USER: SA
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+          - "1433:1433"
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
+          MSSQL_MEMORY_LIMIT_MB: 1024
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test MS SQL Server 2022 driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-sqlserver-2022-ee'
+        test-args: ":exclude-tags '[:mb/once]'"
+
   be-tests-vertica-ee:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    if: |
+      (github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true') &&
+      (github.event.pull_request.head.repo.full_name == github.repository || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: vertica

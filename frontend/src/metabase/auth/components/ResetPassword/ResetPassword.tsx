@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
@@ -11,7 +11,7 @@ import {
   validatePassword,
   validatePasswordToken,
 } from "../../actions";
-import { ResetPasswordData } from "../../types";
+import type { ResetPasswordData } from "../../types";
 import { ResetPasswordForm } from "../ResetPasswordForm";
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
 

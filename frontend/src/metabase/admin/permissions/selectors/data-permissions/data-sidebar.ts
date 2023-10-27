@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
-import { ITreeNodeItem } from "metabase/components/tree/types";
-import { isNotNull } from "metabase/core/utils/types";
+import type { ITreeNodeItem } from "metabase/components/tree/types";
+import { isNotNull } from "metabase/lib/types";
 
-import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-import Metadata from "metabase-lib/metadata/Metadata";
-import { EntityId, RawDataRouteParams } from "../../types";
+import type { State } from "metabase-types/store";
+import type Database from "metabase-lib/metadata/Database";
+import type Metadata from "metabase-lib/metadata/Metadata";
+import type { EntityId, RawDataRouteParams } from "../../types";
 import {
   getTableEntityId,
   getSchemaEntityId,
@@ -55,7 +55,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
       id: database.id,
       name: database.name,
       entityId: getDatabaseEntityId(database),
-      icon: "database",
+      icon: "database" as const,
     }));
 
   return {
@@ -86,7 +86,7 @@ const getTablesSidebar = (
         id: getSchemaId(schema.name),
         name: schema.name,
         entityId: getSchemaEntityId(schema),
-        icon: "folder",
+        icon: "folder" as const,
         children: schema
           .getTables()
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
@@ -94,7 +94,7 @@ const getTablesSidebar = (
             id: getTableId(table.id),
             entityId: getTableEntityId(table),
             name: table.displayName(),
-            icon: "table",
+            icon: "table" as const,
           })),
       };
     });

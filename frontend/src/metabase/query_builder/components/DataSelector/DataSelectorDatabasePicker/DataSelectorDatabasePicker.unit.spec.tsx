@@ -1,5 +1,4 @@
-import React from "react";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";

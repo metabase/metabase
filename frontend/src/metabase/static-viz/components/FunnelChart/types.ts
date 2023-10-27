@@ -1,5 +1,5 @@
-import { VisualizationSettings } from "metabase-types/api";
-import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export type Step = string | number;
 export type Measure = number;
@@ -9,7 +9,7 @@ export type FunnelDatum = [Step, Measure];
 export type FunnelSettings = {
   step: {
     name: string;
-    format: NumberFormatOptions;
+    format?: NumberFormatOptions;
   };
   measure: {
     format: NumberFormatOptions;
@@ -23,7 +23,7 @@ export type FunnelSettings = {
 };
 
 export type FunnelStep = {
-  step: string;
+  step: string | number;
   measure: number;
   percent: number;
   top: number;

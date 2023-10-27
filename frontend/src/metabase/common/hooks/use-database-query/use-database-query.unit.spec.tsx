@@ -1,4 +1,3 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {
@@ -9,7 +8,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useDatabaseQuery } from "./use-database-query";
 
@@ -44,18 +43,18 @@ const setup = ({ hasDataAccess = true }: SetupOpts = {}) => {
 describe("useDatabaseQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_DATABASE.name)).toBeInTheDocument();
   });
 
   it("should show error from the response", async () => {
     setup({ hasDataAccess: false });
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(PERMISSION_ERROR)).toBeInTheDocument();
   });
 });

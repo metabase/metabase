@@ -1,9 +1,9 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 
-import { DashboardOrderedCard } from "metabase-types/api";
+import type { DashboardCard } from "metabase-types/api";
 
 import {
   Root,
@@ -14,11 +14,9 @@ import {
 } from "./ClickBehaviorSidebarOverlay.styled";
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardWidth: number;
-  showClickBehaviorSidebar: (
-    dashCardId: DashboardOrderedCard["id"] | null,
-  ) => void;
+  showClickBehaviorSidebar: (dashCardId: DashboardCard["id"] | null) => void;
   isShowingThisClickBehaviorSidebar: boolean;
 }
 

@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -9,7 +7,7 @@ import ButtonBar from "metabase/components/ButtonBar";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
-} from "metabase/query_builder/containers/QuestionEmbedWidget";
+} from "metabase/query_builder/components/QuestionEmbedWidget";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -124,6 +122,8 @@ const ViewFooter = ({
               question={question}
               result={result}
               visualizationSettings={visualizationSettings}
+              dashcardId={question.card().dashcardId}
+              dashboardId={question.card().dashboardId}
             />
           ),
           QuestionAlertWidget.shouldRender({

@@ -3,7 +3,7 @@ import { color, alpha } from "metabase/lib/colors";
 
 import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/core/components/Select";
-import FilterPopover from "../../FilterPopover";
+import { FilterPopover } from "../../FilterPopover";
 
 type SelectFilterButtonProps = {
   isActive?: boolean;

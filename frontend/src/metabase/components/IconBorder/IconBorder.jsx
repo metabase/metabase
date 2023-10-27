@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -15,7 +15,7 @@ import cx from "classnames";
 
 export default class IconBorder extends Component {
   static propTypes = {
-    borderWidth: PropTypes.string,
+    borderWidth: PropTypes.oneOf([PropTypes.string, PropTypes.number]),
     borderStyle: PropTypes.string,
     borderColor: PropTypes.string,
     borderRadius: PropTypes.string,

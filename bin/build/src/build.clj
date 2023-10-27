@@ -3,7 +3,7 @@
    [build-drivers :as build-drivers]
    [build.licenses :as license]
    [build.uberjar :as uberjar]
-   [build.version-info :as version-info]
+   [build.version-properties :as version-properties]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -87,7 +87,7 @@
 (def all-steps
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
-                   (version-info/generate-version-info-file! edition version))
+                   (version-properties/generate-version-properties-file! edition version))
    :translations (fn [_]
                    (i18n/create-all-artifacts!))
    :frontend     (fn [{:keys [edition]}]
@@ -108,7 +108,7 @@
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
    (let [version (or version
-                     (version-info/current-snapshot-version edition))]
+                     (version-properties/current-snapshot-version edition))]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"

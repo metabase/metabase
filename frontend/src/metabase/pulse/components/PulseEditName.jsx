@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -13,7 +13,7 @@ export default class PulseEditName extends Component {
       valid: true,
     };
 
-    this.name = React.createRef();
+    this.name = createRef();
 
     _.bindAll(this, "setName", "validate");
   }

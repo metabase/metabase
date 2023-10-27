@@ -123,6 +123,21 @@
       {"foo" {:type :string/= :value "*bar*"}}
       "_*\\*bar\\**_"))
 
+    (t/testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
+      (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "en" false))
+        "{{foo}}"
+        {"foo" {:type :string/= :value "*bar*"}}
+        "*bar*"
+
+        "{{foo}}"
+        {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
+        "<script>alert(1)</script>"
+
+        ;; Characters in the original text are not escaped
+        "_*{{foo}}*_"
+        {"foo" {:type :string/= :value "*bar*"}}
+        "_**bar**_"))
+
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
     (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param))
       ;; Nil input
@@ -217,7 +232,7 @@
       "Next 5 Years"))
 
   (t/testing "Date values are formatted using the locale passed in as an argument"
-    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es"))
+    (t/are [text tag->param expected] (= expected (params/substitute_tags text tag->param "es" true))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "julio 9\\, 2022"

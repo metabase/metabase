@@ -8,6 +8,7 @@ import {
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -19,41 +20,25 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 
   describe("with no segments", () => {
-    it("should show no segments in UI", () => {
-      cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Segments").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        "Create segments to add them to the Filter dropdown in the query builder",
-      );
-    });
-
     it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
       cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("New segment").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Select a table").click();
 
-      // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
-      // For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
-      // Sample Database (collapsed) only. We need to click on it to expand it.
-      // This conditional mechanism prevents failures even if that popover opens expanded in the future.
-      cy.get(".List-section").then($list => {
-        if ($list.length !== 5) {
-          cy.findByText("Sample Database").click();
-        }
-        cy.findByText("Orders").click();
-      });
+      cy.log("should initially show no segments in UI");
+      cy.get("main").findByText(
+        "Create segments to add them to the Filter dropdown in the query builder",
+      );
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filters to narrow your answer").click();
+      cy.button("New segment").click();
+
+      cy.get(".GuiBuilder").findByText("Select a table").click();
+      popover().findByText("Orders").click();
+
+      cy.get(".GuiBuilder")
+        .findByText("Add filters to narrow your answer")
+        .click();
 
       cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
-      popover().within(() => {
-        cy.findByText("Custom Expression");
-      });
+      popover().findByText("Custom Expression");
     });
 
     it("should show no segments", () => {
@@ -70,7 +55,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     beforeEach(() => {
       // Create a segment through API
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -156,15 +141,13 @@ describe("scenarios > admin > datamodel > segments", () => {
         "Questions about this segment will appear here as they're added",
       ).should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(
-        `Orders, Filtered by ${SEGMENT_NAME} and Product ID equals 14`,
-      );
+      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID is 14`);
     });
 
     it("should update that segment", () => {
       cy.visit("/admin");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Data Model").click();
+      cy.contains("Table Metadata").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Segments").click();
 

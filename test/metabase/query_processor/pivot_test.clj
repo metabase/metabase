@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest group-bitmask-test
+(deftest ^:parallel group-bitmask-test
   (doseq [[indices expected] {[0]     6
                               [0 1]   4
                               [0 1 2] 0
@@ -25,7 +25,7 @@
     (is (= expected
            (#'qp.pivot/group-bitmask 3 indices)))))
 
-(deftest powerset-test
+(deftest ^:parallel powerset-test
   (is (= [[]]
          (#'qp.pivot/powerset [])))
   (is (= [[0] []]
@@ -35,7 +35,7 @@
   (is (= [[0 1 2] [1 2] [0 2] [2] [0 1] [1] [0] []]
          (#'qp.pivot/powerset [0 1 2]))))
 
-(deftest breakout-combinations-test
+(deftest ^:parallel breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
             [0 1]
@@ -70,7 +70,7 @@
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
-(deftest validate-pivot-rows-cols-test
+(deftest ^:parallel validate-pivot-rows-cols-test
   (testing "Should throw an Exception if you pass in invalid pivot-rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -153,9 +153,15 @@
                                       :pivot-cols [2])
                                (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                                (assoc-in [:query :source-table] (mt/$ids $$orders))))
-                actual   (map (fn [actual-val] (dissoc actual-val :database)) (#'qp.pivot/generate-queries request))]
+                actual   (map (fn [actual-val] (dissoc actual-val :database))
+                              (#'qp.pivot/generate-queries request {:pivot-rows [1 0] :pivot-cols [2]}))]
             (is (= 6 (count actual)))
             (is (= expected actual))))))))
+
+(deftest pivot-options-test
+  (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
+    (is (= {:pivot-rows [1 0] :pivot-cols [2]}
+           (qp.pivot/pivot-options (api.pivots/pivot-query false) (:visualization_settings (api.pivots/pivot-card)))))))
 
 (deftest dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -294,8 +300,8 @@
           (testing "Should be able to run the query via a Card that All Users has perms for"
             ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
             ;; Collection inherits Root Collection perms when created
-            (mt/with-temp* [Collection [collection]
-                            Card       [card {:collection_id (u/the-id collection), :dataset_query query}]]
+            (mt/with-temp [Collection collection {}
+                           Card       card {:collection_id (u/the-id collection), :dataset_query query}]
               (is (schema= {:status   (s/eq "completed")
                             s/Keyword s/Any}
                            (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id card)))))
@@ -307,7 +313,7 @@
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
 
-(deftest pivot-with-order-by-test
+(deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query products

@@ -9,6 +9,7 @@ import {
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -187,7 +188,7 @@ describe("scenarios > filters > bulk filtering", () => {
     const SEGMENT_2_NAME = "Discounted Orders";
 
     beforeEach(() => {
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_1_NAME,
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
@@ -198,7 +199,7 @@ describe("scenarios > filters > bulk filtering", () => {
         },
       });
 
-      cy.request("POST", "/api/segment", {
+      createSegment({
         name: SEGMENT_2_NAME,
         description: "All orders with a discount",
         table_id: ORDERS_ID,
@@ -343,10 +344,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Today").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 0 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At Today")
+        .should("be.visible");
     });
 
     it("can add a date shortcut filter from the popover", () => {
@@ -360,10 +360,9 @@ describe("scenarios > filters > bulk filtering", () => {
       });
       applyFilters();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At Previous 3 Months").should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 0 rows").should("be.visible");
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At Previous 3 Months")
+        .should("be.visible");
     });
 
     // if this gets flaky, disable, it's an issue with internal state in the datepicker component
@@ -379,20 +378,20 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Before").click();
 
       popover().within(() => {
-        cy.get("input").eq(0).clear().type("01/01/2017", { delay: 0 });
+        cy.get("input").eq(0).clear().type("01/01/2023", { delay: 0 });
 
         cy.findByText("Add filter").click();
       });
 
       modal().within(() => {
         cy.findByLabelText("Created At").within(() => {
-          cy.findByText("is before January 1, 2017").should("be.visible");
+          cy.findByText("is before January 1, 2023").should("be.visible");
         });
       });
       applyFilters();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At is before January 1, 2017").should(
+      cy.findByText("Created At is before January 1, 2023").should(
         "be.visible",
       );
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

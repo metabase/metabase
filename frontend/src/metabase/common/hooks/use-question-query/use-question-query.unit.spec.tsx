@@ -1,11 +1,10 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockCard } from "metabase-types/api/mocks";
 import { setupCardsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useQuestionQuery } from "./use-question-query";
 
@@ -31,12 +30,12 @@ const setup = () => {
 describe("useQuestionQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_CARD.name)).toBeInTheDocument();
   });
 });

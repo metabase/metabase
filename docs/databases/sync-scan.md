@@ -16,7 +16,7 @@ When Metabase first connects to your database, Metabase performs a [sync](#how-d
 
 You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
 
-Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Data model**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
 ## Choose when Metabase syncs and scans
 
@@ -50,14 +50,14 @@ If you've turned ON [Choose when syncs and scans happen](#choose-when-metabase-s
 
 To scan values from all the columns in a table:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Select the table that you want to bring up to date with your database.
 3. Click the **gear icon** at the top of the page.
 4. Click **Re-scan this table**.
 
 To scan values from a specific column:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Select the table.
 3. Find the column you want bring up to date with your database.
 4. Click the **gear icon** in the panel for that column.
@@ -79,7 +79,7 @@ Turn this setting ON if you want Metabase to use larger samples of column values
 
 To ask Metabase to forget the data from previous [scans](#syncing-and-scanning-databases) and [fingerprinting](#how-database-fingerprinting-works):
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Select the table.
 3. Optional: select the column.
 4. Click the **gear icon**.
@@ -89,7 +89,7 @@ To ask Metabase to forget the data from previous [scans](#syncing-and-scanning-d
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
-1. Go to **Admin settings** > **Data model** > your database.
+1. Go to **Admin settings** > **Table Metadata** > your database.
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 

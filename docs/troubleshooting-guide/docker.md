@@ -78,7 +78,7 @@ Docker logs -f CONTAINER_ID
 
 will let you see the logs as they are printed.
 
-If the container is being terminated before it finished starting, the problem could be a health check timeout in the orchestration service used to start the container, such as Docker Cloud or Elastic Beanstalk.
+If the container is being terminated before it finished starting, the problem could be a health check timeout in the orchestration service used to start the container, such as Docker Cloud.
 
 If the container is _not_ being terminated from the outside, but is failing to start anyway, this problem is probably not specific to Docker. If you're using a Metabase-supplied image, please [open a GitHub issue](https://github.com/metabase/metabase/issues/new/choose).
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";

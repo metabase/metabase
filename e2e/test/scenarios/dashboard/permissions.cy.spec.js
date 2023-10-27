@@ -21,7 +21,6 @@ describe("scenarios > dashboard > permissions", () => {
 
     cy.request("POST", "/api/collection", {
       name: "locked down collection",
-      color: "#509EE3",
       parent_id: null,
     }).then(({ body: { id: collection_id } }) => {
       cy.request("GET", "/api/collection/graph").then(
@@ -72,8 +71,8 @@ describe("scenarios > dashboard > permissions", () => {
       updateDashboardCards({
         dashboard_id: dashId,
         cards: [
-          { card_id: firstQuestionId, row: 0, col: 0, size_x: 6, size_y: 6 },
-          { card_id: secondQuestionId, row: 0, col: 6, size_x: 6, size_y: 6 },
+          { card_id: firstQuestionId, row: 0, col: 0, size_x: 8, size_y: 6 },
+          { card_id: secondQuestionId, row: 0, col: 6, size_x: 8, size_y: 6 },
         ],
       });
     });

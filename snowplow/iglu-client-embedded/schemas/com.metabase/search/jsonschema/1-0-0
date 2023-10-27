@@ -1,0 +1,30 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Search events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "search",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": ["new_search_query"],
+      "maxLength": 1024
+    },
+    "runtime_milliseconds": {
+      "description": "Number of milliseconds it took to successfully run the search query",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": ["event"],
+  "additionalProperties": true
+}

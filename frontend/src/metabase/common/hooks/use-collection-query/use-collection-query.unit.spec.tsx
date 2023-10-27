@@ -1,15 +1,15 @@
-import React from "react";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { createMockCollection } from "metabase-types/api/mocks";
 import {
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+  setupCollectionsWithError,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { createMockCollection } from "metabase-types/api/mocks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useCollectionQuery } from "./use-collection-query";
 
 const TEST_COLLECTION = createMockCollection();
@@ -27,15 +27,21 @@ const TestComponent = () => {
 };
 
 const setup = ({ error }: { error?: string } = {}) => {
-  setupCollectionsEndpoints([TEST_COLLECTION]);
+  if (error) {
+    setupCollectionsWithError({ error });
+  } else {
+    setupCollectionsEndpoints({ collections: [TEST_COLLECTION] });
+  }
+
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION], error });
+
   renderWithProviders(<TestComponent />);
 };
 
 describe("useCollectionQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should display error", async () => {
@@ -44,14 +50,16 @@ describe("useCollectionQuery", () => {
       error: ERROR,
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
 
     expect(screen.getByText(ERROR)).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+    await waitForLoaderToBeRemoved();
+
     expect(screen.getByText(TEST_COLLECTION.name)).toBeInTheDocument();
   });
 });

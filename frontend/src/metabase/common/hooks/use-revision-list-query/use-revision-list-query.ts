@@ -1,9 +1,9 @@
 import RevisionEntity from "metabase/entities/revisions";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
+import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
 import type { Revision, RevisionListQuery } from "metabase-types/api";
 
 export const useRevisionListQuery = (
@@ -15,5 +15,6 @@ export const useRevisionListQuery = (
     getLoading: RevisionEntity.selectors.getLoading,
     getLoaded: RevisionEntity.selectors.getLoaded,
     getError: RevisionEntity.selectors.getError,
+    getListMetadata: RevisionEntity.selectors.getListMetadata,
   });
 };

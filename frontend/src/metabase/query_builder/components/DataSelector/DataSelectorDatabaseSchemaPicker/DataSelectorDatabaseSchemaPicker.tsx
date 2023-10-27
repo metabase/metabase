@@ -1,16 +1,16 @@
-import React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";
 
-import Icon from "metabase/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/metadata/Database";
+import type Schema from "metabase-lib/metadata/Schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
-import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -33,7 +33,7 @@ type Section = {
     name: string;
   }[];
   className?: string | null;
-  icon?: string;
+  icon?: IconName;
   loading?: boolean;
   active: boolean;
 };
@@ -93,10 +93,9 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    !active && <PickerSpinner size={16} borderWidth={2} />;
+  const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
-  const renderSectionIcon = ({ icon }: { icon?: string }) =>
+  const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
     icon && <Icon className="Icon text-default" name={icon} size={18} />;
 
   if (hasBackButton) {
@@ -126,11 +125,11 @@ const DataSelectorDatabaseSchemaPicker = ({
       onChange={({ schema }: any) => onChangeSchema(schema)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(schema: Schema) => schema === selectedSchema}
-      renderSectionExtra={renderSectionExtra}
       renderSectionIcon={renderSectionIcon}
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
+      showSpinner={showSpinner}
       showItemArrows={hasNextStep}
     />
   );

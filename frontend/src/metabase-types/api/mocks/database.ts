@@ -1,4 +1,4 @@
-import {
+import type {
   Database,
   DatabaseData,
   DatabaseFeature,
@@ -28,6 +28,7 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   ...createMockDatabaseData(opts),
   id: 1,
   engine: "H2",
+  can_upload: false,
   is_sample: false,
   is_saved_questions: false,
   created_at: "2015-01-01T20:10:30.200",

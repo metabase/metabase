@@ -1,13 +1,17 @@
 (ns metabase.mbql.schema.macros
   (:require
-   [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]))
+   [metabase.mbql.schema.helpers :as metabase.mbql.schema.helpers]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- stringify-names [arg-names-and-schemas]
-  (reduce concat (for [[arg-name schema] (partition 2 arg-names-and-schemas)]
-                   [(name arg-name) (if (and (list? schema)
-                                             (#{:optional :rest} (keyword (first schema))))
-                                      (vec (cons (keyword (first schema)) (rest schema)))
-                                      schema)])))
+  (into []
+        (comp (partition-all 2)
+              (mapcat (fn [[arg-name schema]]
+                        [(name arg-name) (if (and (list? schema)
+                                                  (#{:optional :rest} (keyword (first schema))))
+                                           (vec (cons (keyword (first schema)) (rest schema)))
+                                           schema)])))
+        arg-names-and-schemas))
 
 (defmacro defclause
   "Define a new MBQL clause.
@@ -28,15 +32,19 @@
   [clause-name & arg-names-and-schemas]
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
-                                  [clause-name (or (:clause-name (meta clause-name)) clause-name)])]
-    `(def ~(vary-meta symb-name assoc
-                      :clause-name (keyword clause-name)
-                      :clause-form (into [(keyword clause-name)]
-                                         (mapcat (fn [[arg schema]]
-                                                   [(keyword arg) `'~schema])
-                                                 (partition 2 arg-names-and-schemas)))
-                      :doc         (format "Schema for a valid %s clause." clause-name))
-       (metabase.mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))))
+                                  [clause-name (or (:clause-name (meta clause-name)) clause-name)])
+        clause-registry-name    (keyword "metabase.mbql.schema" (name symb-name))]
+    `(do
+       (mr/register! ~clause-registry-name
+                     (metabase.mbql.schema.helpers/clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))
+       (def ~(vary-meta symb-name assoc
+                        :clause-name (keyword clause-name)
+                        :clause-form (into [(keyword clause-name)]
+                                           (mapcat (fn [[arg schema]]
+                                                     [(keyword arg) `'~schema])
+                                                   (partition 2 arg-names-and-schemas)))
+                        :doc         (format "Schema for a valid %s clause." clause-name))
+         [:ref ~clause-registry-name]))))
 
 (defmacro one-of
   "Define a schema that accepts one of several different MBQL clauses.
@@ -45,4 +53,6 @@
   [& clauses]
   `(metabase.mbql.schema.helpers/one-of*
     ~@(for [clause clauses]
-        [`(or (:clause-name (meta (resolve '~clause))) '~clause) clause])))
+        [`(or (:clause-name (meta (resolve '~clause)))
+              '~clause)
+         clause])))

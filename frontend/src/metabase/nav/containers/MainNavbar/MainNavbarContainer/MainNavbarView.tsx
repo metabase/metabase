@@ -1,8 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { IconProps } from "metabase/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -15,7 +15,8 @@ import * as Urls from "metabase/lib/urls";
 
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
-import { SelectedItem } from "../types";
+import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import type { SelectedItem } from "../types";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 
 import {
@@ -33,7 +34,7 @@ import {
 import BookmarkList from "./BookmarkList";
 
 interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
 
@@ -161,6 +162,7 @@ function MainNavbarView({
           </SidebarSection>
         )}
       </div>
+      <WhatsNewNotification />
     </SidebarContentRoot>
   );
 }
@@ -188,7 +190,11 @@ function CollectionSectionHeading({
         </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
-            icon={getCollectionIcon(PERSONAL_COLLECTIONS as Collection)}
+            icon={
+              getCollectionIcon(
+                PERSONAL_COLLECTIONS as Collection,
+              ) as unknown as IconName
+            }
             url={OTHER_USERS_COLLECTIONS_URL}
             onClick={closePopover}
           >
@@ -213,7 +219,7 @@ function CollectionSectionHeading({
       <CollectionsMoreIconContainer>
         <TippyPopoverWithTrigger
           renderTrigger={({ onClick }) => (
-            <CollectionsMoreIcon name="ellipsis" onClick={onClick} size={12} />
+            <CollectionsMoreIcon name="ellipsis" onClick={onClick} />
           )}
           popoverContent={renderMenu}
         />

@@ -1,8 +1,9 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-
 import Visualization from "metabase/visualizations/components/Visualization";
+import registerVisualizations from "metabase/visualizations/register";
 import { NumberColumn } from "__support__/visualizations";
+
+registerVisualizations();
 
 const series = (rows, settings = {}) => {
   const cols = [NumberColumn({ name: "Foo" })];

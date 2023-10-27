@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
 
@@ -11,9 +11,16 @@ import {
 import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import { ADD_CARD_TO_DASH } from "./core";
-import { fetchCardData } from "./data-fetching";
+import { trackCardCreated } from "../analytics";
+import { getDashCardById } from "../selectors";
+import {
+  ADD_CARD_TO_DASH,
+  REMOVE_CARD_FROM_DASH,
+  UNDO_REMOVE_CARD_FROM_DASH,
+} from "./core";
+import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
+import { getExistingDashCards } from "./utils";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
@@ -23,22 +30,6 @@ function generateTemporaryDashcardId() {
   return tempId--;
 }
 
-function getExistingDashCards(state, dashId, tabId) {
-  const { dashboards, dashcards } = state.dashboard;
-  const dashboard = dashboards[dashId];
-  return dashboard.ordered_cards
-    .map(id => dashcards[id])
-    .filter(dc => {
-      if (dc.isRemoved) {
-        return false;
-      }
-      if (tabId != null) {
-        return dc.dashboard_tab_id === tabId;
-      }
-      return true;
-    });
-}
-
 export const addCardToDashboard =
   ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
@@ -46,7 +37,7 @@ export const addCardToDashboard =
     const card = Questions.selectors
       .getObject(getState(), { entityId: cardId })
       .card();
-    const { visualization } = getVisualizationRaw([{ card }]);
+    const visualization = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
     const dashcard = {
@@ -57,7 +48,7 @@ export const addCardToDashboard =
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(getState().dashboard, dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -70,13 +61,35 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
   };
 
+export const removeCardFromDashboard = createThunkAction(
+  REMOVE_CARD_FROM_DASH,
+  ({ dashcardId, cardId }) =>
+    (dispatch, _getState) => {
+      dispatch(cancelFetchCardData(cardId, dashcardId));
+      return { dashcardId };
+    },
+);
+
+export const undoRemoveCardFromDashboard = createThunkAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+  ({ dashcardId }) =>
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const card = dashcard.card;
+
+      dispatch(fetchCardData(card, dashcard));
+
+      return { dashcardId };
+    },
+);
+
 export const addDashCardToDashboard = function ({
   dashId,
   dashcardOverrides,
   tabId,
 }) {
   return function (dispatch, getState) {
-    const { visualization } = getVisualizationRaw([dashcardOverrides]);
+    const visualization = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
     const dashcard = {
@@ -87,7 +100,7 @@ export const addDashCardToDashboard = function ({
       dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
-        getExistingDashCards(getState(), dashId, tabId),
+        getExistingDashCards(getState().dashboard, dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -99,10 +112,14 @@ export const addDashCardToDashboard = function ({
   };
 };
 
-export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
-  const virtualTextCard = createCard();
-  virtualTextCard.display = "text";
-  virtualTextCard.archived = false;
+export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("text", dashId);
+
+  const virtualTextCard = {
+    ...createCard(),
+    display: "text",
+    archived: false,
+  };
 
   const dashcardOverrides = {
     card: virtualTextCard,
@@ -117,7 +134,32 @@ export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
   });
 };
 
+export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("heading", dashId);
+
+  const virtualTextCard = {
+    ...createCard(),
+    display: "heading",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualTextCard,
+    visualization_settings: {
+      virtual_card: virtualTextCard,
+      "dashcard.background": false,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+    tabId,
+  });
+};
+
 export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("link", dashId);
+
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -140,6 +182,8 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 export const addActionToDashboard =
   async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
+    trackCardCreated("action", dashId);
+
     const virtualActionsCard = {
       ...createCard(),
       id: action.model_id,

@@ -1,4 +1,4 @@
-import {
+import type {
   NativeDatasetQuery,
   NativeQuery,
   StructuredDatasetQuery,

@@ -17,13 +17,13 @@ function createResizeObserver() {
 
   return {
     observer,
-    subscribe(target: HTMLElement, callback: ResizeObserverCallback) {
+    subscribe(target: Element, callback: ResizeObserverCallback) {
       observer.observe(target);
       const callbacks = callbacksMap.get(target) ?? [];
       callbacks.push(callback);
       callbacksMap.set(target, callbacks);
     },
-    unsubscribe(target: HTMLElement, callback: ResizeObserverCallback) {
+    unsubscribe(target: Element, callback: ResizeObserverCallback) {
       const callbacks = callbacksMap.get(target) ?? [];
       if (callbacks.length === 1) {
         observer.unobserve(target);

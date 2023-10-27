@@ -1,13 +1,13 @@
 import type { ScaleContinuousNumeric } from "d3-scale";
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { Margin } from "metabase/visualizations/shared/types/layout";
-import {
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { Margin } from "metabase/visualizations/shared/types/layout";
+import type {
   ChartFont,
   GoalStyle,
 } from "metabase/visualizations/shared/types/style";
-import { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
 import { LABEL_PADDING } from "../constants";
-import { SeriesData } from "../types";
+import type { SeriesData } from "../types";
 
 const CHART_PADDING = 10;
 const TICKS_OFFSET = 10;
@@ -16,11 +16,11 @@ const GOAL_LINE_PADDING = 14;
 export const getMaxWidth = (
   formattedYTicks: string[],
   ticksFont: ChartFont,
-  measureText: TextMeasurer,
+  measureTextWidth: TextWidthMeasurer,
 ): number => {
   return Math.max(
     ...formattedYTicks.map(tick =>
-      measureText(tick, {
+      measureTextWidth(tick, {
         size: `${ticksFont.size}px`,
         family: "Lato",
         weight: String(ticksFont.weight ?? 400),
@@ -35,7 +35,7 @@ export const getChartMargin = <TDatum>(
   ticksFont: ChartFont,
   labelFont: ChartFont,
   hasGoalLine: boolean,
-  measureText: TextMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   xLabel?: string | null,
   yLabel?: string | null,
   hasXAxis?: boolean,
@@ -47,7 +47,7 @@ export const getChartMargin = <TDatum>(
           seriesData.bars.map(bar => yTickFormatter(bar.yValue)),
         ),
         ticksFont,
-        measureText,
+        measureTextWidth,
       ) + TICKS_OFFSET
     : 0;
 
@@ -83,14 +83,14 @@ export const getMaxYValuesCount = (
 export const getRowChartGoal = (
   goal: ChartGoal | null | undefined,
   style: GoalStyle,
-  measureText: TextMeasurer,
+  measureTextWidth: TextWidthMeasurer,
   xScale: ScaleContinuousNumeric<number, number, never>,
 ) => {
   if (!goal) {
     return null;
   }
 
-  const labelWidth = measureText(goal.label, style.label);
+  const labelWidth = measureTextWidth(goal.label, style.label);
   const goalX = xScale(goal.value);
   const xMax = xScale.range()[1];
   const availableRightSideSpace = xMax - goalX;

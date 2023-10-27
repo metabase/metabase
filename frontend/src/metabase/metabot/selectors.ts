@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getMetadata } from "metabase/selectors/metadata";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { DEFAULT_TABLE_SETTINGS } from "./constants";

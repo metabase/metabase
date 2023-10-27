@@ -2,8 +2,9 @@
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -18,9 +19,8 @@
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]))
 
@@ -132,18 +132,19 @@
 
 ;; All the references in the dumps should resolved to entities already loaded.
 (def ^:private Context
-  {(s/optional-key :database)   su/IntGreaterThanZero
-   (s/optional-key :table)      su/IntGreaterThanZero
-   (s/optional-key :schema)     (s/maybe s/Str)
-   (s/optional-key :field)      su/IntGreaterThanZero
-   (s/optional-key :metric)     su/IntGreaterThanZero
-   (s/optional-key :segment)    su/IntGreaterThanZero
-   (s/optional-key :card)       su/IntGreaterThanZero
-   (s/optional-key :dashboard)  su/IntGreaterThanZero
-   (s/optional-key :collection) (s/maybe su/IntGreaterThanZero) ; root collection
-   (s/optional-key :pulse)      su/IntGreaterThanZero
-   (s/optional-key :user)       su/IntGreaterThanZero
-   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZero)})
+  [:map {:closed true}
+   [:database   {:optional true} ms/PositiveInt]
+   [:table      {:optional true} ms/PositiveInt]
+   [:schema     {:optional true} [:maybe :string]]
+   [:field      {:optional true} ms/PositiveInt]
+   [:metric     {:optional true} ms/PositiveInt]
+   [:segment    {:optional true} ms/PositiveInt]
+   [:card       {:optional true} ms/PositiveInt]
+   [:dashboard  {:optional true} ms/PositiveInt]
+   [:collection {:optional true} [:maybe ms/PositiveInt]] ; root collection
+   [:pulse      {:optional true} ms/PositiveInt]
+   [:user       {:optional true} ms/PositiveInt]
+   [:snippet    {:optional true} [:maybe ms/PositiveInt]]])
 
 (defmulti ^:private path->context* (fn [_ model _ _]
                                      model))
@@ -156,7 +157,7 @@
 (defmethod path->context* "databases"
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
-                             mbql.s/saved-questions-virtual-database-id
+                             lib.schema.id/saved-questions-virtual-database-id
                              (t2/select-one-pk Database :name db-name))))
 
 (defmethod path->context* "schemas"
@@ -312,30 +313,29 @@
                           partition-name-components
                           (map (fn [[model-name & entity-parts]]
                                  (cond-> {::model-name model-name ::entity-name (last entity-parts)}
-                                         (and (= "collections" model-name) (> (count entity-parts) 1))
-                                         (assoc :namespace (->> entity-parts
-                                                                       first ; ns is first/only item after "collections"
-                                                                       rest  ; strip the starting :
-                                                                       (apply str)))))))
+                                   (and (= "collections" model-name) (> (count entity-parts) 1))
+                                   (assoc :namespace (->> entity-parts
+                                                          first ; ns is first/only item after "collections"
+                                                          rest  ; strip the starting :
+                                                          (apply str)))))))
           context (loop [acc-context                   {}
-                         [{:keys [::model-name ::entity-name] :as model-map} & more] components]
+                         [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
                       (if (empty? more)
                         new-context
                         (recur new-context more))))]
-      (try
-        (s/validate (s/maybe Context) context)
-        (catch Exception e
-          (when-not *suppress-log-name-lookup-exception*
-            (log/warn
-             (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                           (str/join ", " (map name (keys (:value (ex-data e)))))
-                           fully-qualified-name)
-                      {:fully-qualified-name fully-qualified-name
-                       :resolve-name-failed? true
-                       :context              context}
-                      e))))))))
+      (if (and
+           (not (mc/validate [:maybe Context] context))
+           (not *suppress-log-name-lookup-exception*))
+        (log/warn
+         (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+                       (str/join ", " (map name (keys context)))
+                       fully-qualified-name)
+                  {:fully-qualified-name fully-qualified-name
+                   :resolve-name-failed? true
+                   :context              context}))
+        context))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"

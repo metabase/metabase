@@ -23,4 +23,13 @@
 
         (testing "requires superusers"
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "premium-features/token/status"))))))))
+                 (mt/user-http-request :rasta :get 403 "premium-features/token/status")))))))
+
+  (testing "Invalid token format"
+    ;; with-temporary-setting-values triggers error in premium-embedding-token :setter
+    (with-redefs [premium-features/premium-embedding-token (constantly "qwertyuiop")]
+      (testing "returns an error"
+        (is (= {:valid         false
+                :status        "invalid"
+                :error-details "Token should be 64 hexadecimal characters."}
+               (mt/user-http-request :crowberto :get 200 "premium-features/token/status")))))))

@@ -32,7 +32,7 @@
    [metabase.api.pulse :as api.pulse]
    [metabase.api.revision :as api.revision]
    [metabase.api.routes.common
-    :refer [+apikey +auth +public-exceptions +message-only-exceptions]]
+    :refer [+apikey +auth +message-only-exceptions +public-exceptions]]
    [metabase.api.search :as api.search]
    [metabase.api.segment :as api.segment]
    [metabase.api.session :as api.session]
@@ -50,10 +50,10 @@
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.api.routes))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.api.routes))
 
 ;; EE routes defined in [[metabase-enterprise.api.routes/routes]] always get the first chance to handle a request, if
 ;; they exist. If they don't exist, this handler returns `nil` which means Compojure will try the next handler.

@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import { SetupCheckListItem } from "metabase-types/api";
+import type { SetupCheckListItem } from "metabase-types/api";
 
 export function setupErrorSetupEndpoints() {
   fetchMock.post("path:/api/setup", 400);

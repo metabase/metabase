@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import {
@@ -11,7 +10,7 @@ import {
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import {
   createMockCard,
@@ -19,7 +18,7 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { Collection, Dashboard } from "metabase-types/api";
+import type { Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
@@ -96,7 +95,7 @@ const setup = async ({
   waitForContent = true,
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
@@ -122,7 +121,7 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
   }
 };
 
@@ -150,7 +149,7 @@ describe("AddToDashSelectDashModal", () => {
     it("should show loading", async () => {
       await setup({ waitForContent: false });
 
-      expect(screen.getByText("Loading...")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
     });
 
     it("should show error", async () => {

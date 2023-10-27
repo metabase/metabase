@@ -1,4 +1,3 @@
-import React from "react";
 import { IconButton } from "./ChartSettingIconRadio.styled";
 
 interface ChartSettingIconRadioProps {

@@ -2,7 +2,6 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.config :as config]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.middleware.resolve-fields
     :as qp.resolve-fields]
@@ -10,11 +9,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
-
-(defn- has-a-native-source-query-at-some-level? [{:keys [source-query]}]
-  (or (:native source-query)
-      (when source-query
-        (has-a-native-source-query-at-some-level? source-query))))
 
 (defn- warn-once
   "Log only one warning per QP run (regardless of message)."
@@ -26,32 +20,33 @@
     (qp.store/cached ::bad-clause-warning
       (log/warn (u/colorize :red message)))))
 
-(defn- fix-clause [{:keys [inner-query source-aliases field-name->field]} [_ field-name options :as field-clause]]
+(defn- unique-reference?
+  "Check if the field-id and the (possibly missing) join-alias of `field-clause`
+  result in an unambiguous reference to one of the `columns`
+  The join-alias of columns is taken from their field_ref property."
+  [field-clause columns]
+  (let [[_ field-id {:keys [join-alias]}] field-clause
+        matches-by-id (filter #(= (:id %) field-id) columns)]
+    (or (nil? (next matches-by-id))
+        (->> matches-by-id (filter #(= (get-in % [:field-ref 2 :join-alias]) join-alias)) count (= 1)))))
+
+(defn- fix-clause [{:keys [source-aliases field-name->field]} [_ field-name options :as field-clause]]
   ;; attempt to find a corresponding Field ref from the source metadata.
-  (let [field-ref (:field_ref (get field-name->field field-name))]
+  (let [field-ref (:field_ref (get field-name->field field-name))
+        ;; the map contains duplicate columns to support lowercase lookup
+        columns (set (vals field-name->field))]
     (cond
       field-ref
       (mbql.u/match-one field-ref
-        ;; If the matching Field ref is an integer `:field` clause then replace it with the corrected clause and log
-        ;; a developer-facing warning. Things will still work and this should be fixed on the FE, but we don't need to
-        ;; blow up prod logs
+        ;; If the matching Field ref is an integer `:field` clause then replace it with the corrected clause.
         [:field (id :guard integer?) new-options]
-        (u/prog1 [:field id (merge new-options (dissoc options :base-type))]
-          (when (and (not config/is-prod?)
-                     (not (has-a-native-source-query-at-some-level? inner-query)))
-            ;; don't i18n this because it's developer-facing only.
-            (warn-once
-             (str "Warning: query is using a [:field <string> ...] clause to refer to a Field in an MBQL source query."
-                  \newline
-                  "Use [:field <integer> ...] clauses to refer to Fields in MBQL source queries."
-                  \newline
-                  "We will attempt to fix this, but it may lead to incorrect queries."
-                  \newline
-                  "See #19757 for more information."
-                  \newline
-                  (str "Clause:       " (pr-str field-clause))
-                  \newline
-                  (str "Corrected to: " (pr-str <>))))))
+        (let [new-clause [:field id (merge new-options (dissoc options :base-type))]]
+          (if (unique-reference? new-clause columns)
+            new-clause
+            (u/prog1 field-clause
+              (warn-once
+               (format "Warning: upgrading field literal %s would result in an ambiguous reference. Not upgrading."
+                       (pr-str field-clause))))))
 
         ;; Otherwise the Field clause in the source query uses a string Field name as well, but that name differs from
         ;; the one in `source-aliases`. Will this work? Not sure whether or not we need to log something about this.

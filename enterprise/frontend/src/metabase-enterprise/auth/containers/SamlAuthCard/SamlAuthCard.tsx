@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
 import AuthCard from "metabase/admin/settings/auth/components/AuthCard";
-import { Dispatch, State } from "metabase-types/store";
+import type { Dispatch, State } from "metabase-types/store";
 import { SAML_SCHEMA } from "../../constants";
 
 const mapStateToProps = (state: State) => ({

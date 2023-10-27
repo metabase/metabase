@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -9,7 +9,7 @@ import Modal from "metabase/components/Modal";
 import * as Urls from "metabase/lib/urls";
 
 import ArchiveModelModal from "metabase/questions/containers/ArchiveQuestionModal";
-import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
+import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 
 import type { Collection } from "metabase-types/api";
 

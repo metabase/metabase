@@ -1,13 +1,13 @@
 import { restore, openNativeEditor } from "e2e/support/helpers";
 
-const dbName = "Sample2";
+const dbName = "sqlite";
 
 describe("issue 18148", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    cy.addH2SampleDatabase({
+    cy.addSQLiteDatabase({
       name: dbName,
     });
 

@@ -1,8 +1,6 @@
-import React from "react";
 import ChartNestedSettingSeriesMultiple from "./ChartNestedSettingSeriesMultiple";
-import ChartNestedSettingSeriesSingle, {
-  ChartNestedSettingsSeriesSingleProps,
-} from "./ChartNestedSettingSeriesSingle";
+import type { ChartNestedSettingsSeriesSingleProps } from "./ChartNestedSettingSeriesSingle";
+import ChartNestedSettingSeriesSingle from "./ChartNestedSettingSeriesSingle";
 
 interface ChartNestedSettingSeriesProps
   extends ChartNestedSettingsSeriesSingleProps {

@@ -1,6 +1,5 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { render, screen, within } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -1,7 +1,3 @@
-:root {
-  --edit-header-color: var(--color-brand);
-}
-
 :local(.editHeader) {
   composes: text-white flex align-center from "style";
   position: absolute;
@@ -18,7 +14,7 @@
 
 :local(.editHeaderButton) {
   border: none;
-  color: var(--edit-header-color);
+  color: var(--color-brand);
 }
 
 :local(.saveButton) {

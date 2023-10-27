@@ -89,14 +89,14 @@ When you [X-ray](../exploration-and-organization/x-rays.md) a table, Metabase co
 
 Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
-### Editing types in the Data Model page
+### Editing types in the Table Metadata page
 
-If you're an administrator, you can edit field types using the [Data Model page](./metadata-editing.md) in the Admin Panel.
+If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
 
 While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 ## Further Reading
 
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).
-- [The Data Model page: editing metadata](./metadata-editing.md).
+- [The Table Metadata page: editing metadata](./metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/sql-questions/field-filters.html).

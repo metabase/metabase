@@ -104,6 +104,6 @@ function removeAllExpressions() {
 function updateQuestion() {
   cy.intercept("PUT", "/api/card/*").as("updateQuestion");
   cy.findByText("Save").click();
-  modal().within(() => cy.button("Save").click());
+  modal().button("Save").click();
   cy.wait("@updateQuestion");
 }

@@ -1,14 +1,14 @@
 (ns metabase.driver.presto-jdbc-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [honeysql.format :as hformat]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.api.database :as api.database]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.presto-jdbc :as presto-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -18,8 +18,10 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File)))
 
@@ -86,7 +88,7 @@
                 (sort-by first)
                 (take 5))))))
 
-(deftest page-test
+(deftest ^:parallel page-test
   (testing ":page clause"
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
@@ -104,9 +106,9 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
-    (is (= nil
+    (is (= "UTC"
            (driver/db-default-timezone :presto-jdbc (mt/db))))))
 
 (deftest template-tag-timezone-test
@@ -163,7 +165,7 @@
 
 (deftest honeysql-tests
   (mt/test-driver :presto-jdbc
-    (mt/with-everything-store
+    (mt/with-metadata-provider (mt/id)
       (testing "Complex HoneySQL conversions work as expected"
         (testing "unix-timestamp with microsecond precision"
           (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
@@ -184,11 +186,14 @@
 
 (defn- execute-ddl! [ddl-statements]
   (mt/with-driver :presto-jdbc
-    (let [jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))]
-      (with-open [conn (jdbc/get-connection jdbc-spec)]
-        (doseq [ddl-stmt ddl-statements]
-          (with-open [stmt (.prepareStatement conn ddl-stmt)]
-            (.executeUpdate stmt)))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     :presto-jdbc
+     (sql-jdbc.conn/connection-details->spec :presto-jdbc (clone-db-details))
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (doseq [ddl-stmt ddl-statements]
+         (with-open [stmt (.prepareStatement conn ddl-stmt)]
+           (.executeUpdate stmt)))))))
 
 (deftest specific-schema-sync-test
   (mt/test-driver :presto-jdbc
@@ -201,7 +206,7 @@
                        (format "DROP SCHEMA IF EXISTS %s" s)
                        (format "CREATE SCHEMA %s" s)
                        (format "CREATE TABLE %s.%s (pk INTEGER, val1 VARCHAR(512))" s t)])
-        (mt/with-temp Database [db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
+        (t2.with-temp/with-temp [Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)

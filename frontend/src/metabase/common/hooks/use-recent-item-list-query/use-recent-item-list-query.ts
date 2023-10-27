@@ -1,10 +1,10 @@
 import RecentItems from "metabase/entities/recent-items";
-import { RecentItem } from "metabase-types/api";
-import {
-  useEntityListQuery,
+import type { RecentItem } from "metabase-types/api";
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "../use-entity-list-query";
+import { useEntityListQuery } from "../use-entity-list-query";
 
 export const useRecentItemListQuery = (
   props: UseEntityListQueryProps = {},
@@ -15,5 +15,6 @@ export const useRecentItemListQuery = (
     getLoading: RecentItems.selectors.getLoading,
     getLoaded: RecentItems.selectors.getLoaded,
     getError: RecentItems.selectors.getError,
+    getListMetadata: RecentItems.selectors.getListMetadata,
   });
 };

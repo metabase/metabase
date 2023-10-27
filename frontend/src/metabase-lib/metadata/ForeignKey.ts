@@ -1,6 +1,6 @@
-import { NormalizedForeignKey } from "metabase-types/api";
-import Field from "./Field";
-import Metadata from "./Metadata";
+import type { NormalizedForeignKey } from "metabase-types/api";
+import type Field from "./Field";
+import type Metadata from "./Metadata";
 
 interface ForeignKey
   extends Omit<NormalizedForeignKey, "origin" | "destination"> {

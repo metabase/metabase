@@ -70,7 +70,7 @@ datetimeDiff([Aging Start], now, "day")
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase. For more info about these data types in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
 
 ## Limitations
 

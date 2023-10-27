@@ -21,7 +21,7 @@ import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 import Questions from "metabase/entities/questions";
 
-import { GET, PUT } from "metabase/lib/api";
+import { PUT } from "metabase/lib/api";
 import {
   getMetadata,
   getMetadataUnfiltered,
@@ -31,11 +31,9 @@ import {
   getQuestionVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(...args)).tables;
-const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
+  (await MetabaseApi.db_metadata(...args)).tables;
 const updateFieldOrder = PUT("/api/table/:id/fields/order");
 const updateTables = PUT("/api/table");
 
@@ -57,11 +55,11 @@ const Tables = createEntity({
   api: {
     list: async (params, ...args) => {
       if (params.dbId != null && params.schemaName != null) {
-        return listTablesForSchema(params, ...args);
+        return MetabaseApi.db_schema_tables(params, ...args);
       } else if (params.dbId != null) {
         return listTablesForDatabase(params, ...args);
       } else {
-        return listTables(params, ...args);
+        return MetabaseApi.table_list(params, ...args);
       }
     },
   },

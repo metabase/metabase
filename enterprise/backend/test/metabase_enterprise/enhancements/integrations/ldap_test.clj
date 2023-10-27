@@ -4,15 +4,16 @@
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
 (deftest find-test
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
+  (premium-features-test/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -92,7 +93,7 @@
                  (ldap/find-user "sally.brown@metabase.com"))))))))
 
 (deftest attribute-sync-test
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
+  (premium-features-test/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server
       (testing "find by email/username should return other attributes as well"
         (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
@@ -165,7 +166,7 @@
               (t2/delete! User :%lower.email "john.smith@metabase.com"))))))))
 
 (deftest update-attributes-on-login-test
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
+  (premium-features-test/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server
       (testing "Existing user's attributes are updated on fetch"
         (try
@@ -175,8 +176,9 @@
                             s/Keyword s/Any}
                            (ldap/fetch-or-create-user! user-info))))
             (testing "Call fetch-or-create-user! again to trigger update"
-              (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
-                           (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+              (is (malli= [:and [:map-of :keyword :any]
+                           [:map [:id ms/PositiveInt]]]
+                    (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
             (is (= {:first_name       "John"
                     :last_name        "Smith"
                     :common_name      "John Smith"
@@ -197,12 +199,13 @@
           (mt/with-temporary-setting-values [ldap-sync-user-attributes false]
             (let [user-info (ldap/find-user "jsmith1")]
               (testing "First let a user get created for John Smith"
-                (is (schema= {:email    (s/eq "john.smith@metabase.com")
-                              s/Keyword s/Any}
-                             (ldap/fetch-or-create-user! user-info))))
+                (is (malli= [:and [:map-of :keyword :any]
+                             [:map [:email [:= "john.smith@metabase.com"]]]]
+                            (ldap/fetch-or-create-user! user-info))))
               (testing "Call fetch-or-create-user! again to trigger update"
-                (is (schema= {:id su/IntGreaterThanZero,  s/Keyword s/Any}
-                             (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
+                (is (malli= [:and [:map-of :keyword :any]
+                             [:map [:id ms/PositiveInt]]]
+                      (ldap/fetch-or-create-user! (assoc-in user-info [:attributes :unladenspeed] 100)))))
               (is (= {:first_name       "John"
                       :last_name        "Smith"
                       :common_name      "John Smith"
@@ -214,7 +217,7 @@
             (t2/delete! User :%lower.email "john.smith@metabase.com")))))))
 
 (deftest fetch-or-create-user-test
-  (with-redefs [#_{:clj-kondo/ignore [:deprecated-var]} premium-features/enable-enhancements? (constantly true)]
+  (premium-features-test/with-premium-features #{:sso-ldap}
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

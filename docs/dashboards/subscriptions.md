@@ -17,11 +17,7 @@ To enable dashboard subscriptions, your administrators will need to have set up 
 
 ## Setting up a dashboard subscription
 
-To set up a subscription to a dashboard, click on the **sharing** icon (the one-way arrow) and select **Dashboard subscriptions**.
-
-![Select dashboard subscriptions](./images/select-dashboard-subscription.png)
-
-Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
+To set up a subscription to a dashboard, click on the **Subscriptions** icon (mail icon with a plus symbol). Metabase will slide out a sidebar on the right, with an option to set up a subscription via email or Slack:
 
 ![Set up a dashboard subscription with email or slack](./images/email-or-slack.png)
 
@@ -50,6 +46,10 @@ For Slack subscriptions, you can set up a subscription for a channel (like #gene
 > If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
+
+### Sending subscriptions to private channels
+
+See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-channels).
 
 ## Adding multiple subscriptions
 

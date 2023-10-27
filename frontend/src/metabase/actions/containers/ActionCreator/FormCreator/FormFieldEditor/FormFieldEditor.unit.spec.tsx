@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import userEvent from "@testing-library/user-event";
 import {
   getIcon,
@@ -8,10 +8,11 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import FormProvider from "metabase/core/components/FormProvider";
+import { FormProvider } from "metabase/forms";
 import { getDefaultFieldSettings } from "metabase/actions/utils";
 import type { FieldSettings } from "metabase-types/api";
-import FormFieldEditor, { FormFieldEditorProps } from "./FormFieldEditor";
+import type { FormFieldEditorProps } from "./FormFieldEditor";
+import FormFieldEditor from "./FormFieldEditor";
 
 const DEFAULT_FIELD: FormFieldEditorProps["field"] = {
   name: "uuid",
@@ -62,7 +63,7 @@ describe("FormFieldEditor", () => {
     expect(screen.getByText(field.description)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(field.placeholder)).toBeInTheDocument();
     expect(screen.getByLabelText("Field settings")).toBeInTheDocument();
-    expect(getIcon("grabber2")).toBeInTheDocument();
+    expect(getIcon("grabber")).toBeInTheDocument();
   });
 
   it("handles field type change", () => {
@@ -94,7 +95,7 @@ describe("FormFieldEditor", () => {
       screen.queryByRole("radiogroup", { name: "Field type" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Field settings")).not.toBeInTheDocument();
-    expect(queryIcon("grabber2")).not.toBeInTheDocument();
+    expect(queryIcon("grabber")).not.toBeInTheDocument();
   });
 
   describe("field values", () => {

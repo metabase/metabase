@@ -1,5 +1,8 @@
 import { t } from "ttag";
-import moment, { DurationInputArg2, MomentInput } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import type { DurationInputArg2, MomentInput } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -10,8 +13,10 @@ addAbbreviatedLocale();
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
 const TEXT_UNIT_FORMATS = {
-  "day-of-week": (value: string) =>
-    moment.parseZone(value, "ddd").startOf("day"),
+  "day-of-week": (value: string) => {
+    const day = moment.parseZone(value, "ddd").startOf("day");
+    return day.isValid() ? day : moment.parseZone(value).startOf("day");
+  },
 };
 
 const NUMERIC_UNIT_FORMATS = {
@@ -187,7 +192,7 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 export function parseTimestamp(
   value: MomentInput,
   unit: DatetimeUnit | null = null,
-  local: unknown = false,
+  isLocal = false,
 ) {
   let m: any;
   if (moment.isMoment(value)) {
@@ -203,5 +208,5 @@ export function parseTimestamp(
   } else {
     m = moment.utc(value);
   }
-  return local ? m.local() : m;
+  return isLocal ? m.local() : m;
 }

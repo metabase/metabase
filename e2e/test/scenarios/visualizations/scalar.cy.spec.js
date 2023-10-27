@@ -41,7 +41,7 @@ describe("scenarios > visualizations > scalar", () => {
           display: "scalar",
         },
         cardDetails: {
-          size_x: 4,
+          size_x: 5,
           size_y: 4,
         },
       }).then(({ body: { dashboard_id } }) => {
@@ -56,7 +56,7 @@ describe("scenarios > visualizations > scalar", () => {
       dataset_query: {
         type: "native",
         native: {
-          query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
+          query: `SELECT cast('2024-05-01T00:00:00Z'::timestamp as date)`,
           "template-tags": {},
         },
         database: SAMPLE_DB_ID,
@@ -65,7 +65,7 @@ describe("scenarios > visualizations > scalar", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 30, 2018");
+    cy.findByText("April 30, 2024");
     cy.findByTestId("viz-settings-button").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

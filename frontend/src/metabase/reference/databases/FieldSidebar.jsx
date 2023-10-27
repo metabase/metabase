@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -58,4 +58,4 @@ FieldSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(FieldSidebar);
+export default memo(FieldSidebar);

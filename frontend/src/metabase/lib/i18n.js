@@ -1,5 +1,8 @@
 import { addLocale, useLocale } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
+import dayjs from "dayjs";
+import updateLocalePlugin from "dayjs/plugin/updateLocale";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
@@ -26,26 +29,21 @@ export async function loadLocalization(locale) {
   setLocalization(translationsObject);
 }
 
-// Tell Moment.js to use the value of the start-of-week Setting for its current locale
+// Tell moment.js to use the value of the start-of-week Setting for its current locale
+// Moment.js dow range Sunday (0) - Saturday (6)
 export function updateMomentStartOfWeek() {
-  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
-  if (!startOfWeekDayName) {
-    return;
+  const startOfWeekDay = getStartOfWeekDay();
+  if (startOfWeekDay != null) {
+    moment.updateLocale(moment.locale(), { week: { dow: startOfWeekDay } });
   }
+}
 
-  const startOfWeekDayNumber = DAY_OF_WEEK_OPTIONS.findIndex(
-    ({ id }) => id === startOfWeekDayName,
-  );
-  if (startOfWeekDayNumber === -1) {
-    return;
+export function updateDayjsStartOfWeek() {
+  const startOfWeekDay = getStartOfWeekDay();
+  if (startOfWeekDay != null) {
+    dayjs.extend(updateLocalePlugin);
+    dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
-
-  moment.updateLocale(moment.locale(), {
-    week: {
-      // Moment.js dow range Sunday (0) - Saturday (6)
-      dow: startOfWeekDayNumber,
-    },
-  });
 }
 
 // if the start of week Setting is updated, update the moment start of week
@@ -62,35 +60,66 @@ function setLanguage(translationsObject) {
 }
 
 function setLocalization(translationsObject) {
-  const locale = translationsObject.headers.language;
-
+  const language = translationsObject.headers.language;
   setLanguage(translationsObject);
-
-  updateMomentLocale(locale);
-  updateMomentStartOfWeek(locale);
+  updateMomentLocale(language);
+  updateDayjsLocale(language);
+  updateMomentStartOfWeek();
+  updateDayjsStartOfWeek();
 }
 
-function updateMomentLocale(locale) {
-  const momentLocale = mapToMomentLocale(locale);
+function updateMomentLocale(language) {
+  const locale = getLocale(language);
+
   try {
-    if (momentLocale !== "en") {
-      require("moment/locale/" + momentLocale);
+    if (locale !== "en") {
+      require(`moment/locale/${locale}.js`);
     }
-    moment.locale(momentLocale);
+    moment.locale(locale);
   } catch (e) {
-    console.warn(`Could not set moment locale to ${momentLocale}`);
+    console.warn(`Could not set moment.js locale to ${locale}`);
     moment.locale("en");
   }
 }
 
-function mapToMomentLocale(locale = "") {
-  switch (locale) {
+function updateDayjsLocale(language) {
+  const locale = getLocale(language);
+
+  try {
+    if (locale !== "en") {
+      require(`dayjs/locale/${locale}.js`);
+    }
+    dayjs.locale(locale);
+  } catch (e) {
+    console.warn(`Could not set day.js locale to ${locale}`);
+    dayjs.locale("en");
+  }
+}
+
+function getLocale(language = "") {
+  switch (language) {
     case "zh":
     case "zh-Hans":
       return "zh-cn";
     default:
-      return locale.toLowerCase();
+      return language.toLowerCase();
   }
+}
+
+function getStartOfWeekDay() {
+  const startOfWeekDayName = MetabaseSettings.get("start-of-week");
+  if (!startOfWeekDayName) {
+    return;
+  }
+
+  const startOfWeekDayNumber = DAY_OF_WEEK_OPTIONS.findIndex(
+    ({ id }) => id === startOfWeekDayName,
+  );
+  if (startOfWeekDayNumber === -1) {
+    return;
+  }
+
+  return startOfWeekDayNumber;
 }
 
 // we delete msgid property since it's redundant, but have to add it back in to

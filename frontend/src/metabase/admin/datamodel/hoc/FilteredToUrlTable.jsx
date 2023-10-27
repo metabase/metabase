@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
 import { t } from "ttag";
 
 import Tables from "metabase/entities/tables";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import FieldSet from "metabase/components/FieldSet";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
@@ -15,7 +15,7 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
  */
 const FilteredToUrlTable = propName => ComposedComponent =>
   connect(null, { push })(
-    class FilteredToUrlTable extends React.Component {
+    class FilteredToUrlTable extends Component {
       constructor(props) {
         super(props);
         const { table } = props.location.query || {};
@@ -50,7 +50,7 @@ const FilteredToUrlTable = propName => ComposedComponent =>
 
 export default FilteredToUrlTable;
 
-class TableSelectorInner extends React.Component {
+class TableSelectorInner extends Component {
   render() {
     const { table, tableId, setTableId } = this.props;
     return (

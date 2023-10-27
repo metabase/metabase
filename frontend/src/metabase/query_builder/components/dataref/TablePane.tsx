@@ -1,9 +1,8 @@
-import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import Tables from "metabase/entities/tables";
 import {
   Description,

@@ -1,9 +1,8 @@
-import React from "react";
-
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { has24HourModeSetting } from "metabase/lib/time";
 import NumericInput from "metabase/components/NumericInput";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import { AmPmLabel } from "./HoursMinutesInput.styled";
 
@@ -31,6 +30,7 @@ const HoursMinutesInput = ({
       style={{ height: 36 }}
       size={2}
       maxLength={2}
+      placeholder="hh"
       value={
         is24HourMode
           ? String(hours)
@@ -48,6 +48,7 @@ const HoursMinutesInput = ({
     <NumericInput
       style={{ height: 36 }}
       size={2}
+      placeholder="mm"
       maxLength={2}
       value={(minutes < 10 ? "0" : "") + minutes}
       onChange={(value: number) => onChangeMinutes(value)}

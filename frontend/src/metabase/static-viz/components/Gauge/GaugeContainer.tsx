@@ -1,5 +1,3 @@
-import React from "react";
-
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/static-viz/lib/colors";
@@ -28,7 +26,7 @@ import {
 import type { Card, Data, GaugeLabelData, Position } from "./types";
 import Gauge from "./Gauge";
 
-interface GaugeContainerProps {
+export interface GaugeContainerProps {
   card: Card;
   data: Data;
   getColor: ColorGetter;

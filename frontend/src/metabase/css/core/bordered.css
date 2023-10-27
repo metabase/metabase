@@ -80,10 +80,6 @@
   border-color: transparent;
 }
 
-.border-brand-hover:hover {
-  border-color: var(--color-brand);
-}
-
 .border-hover:hover {
   border-color: var(--color-border);
 }

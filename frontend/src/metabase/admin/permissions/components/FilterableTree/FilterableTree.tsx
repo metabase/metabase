@@ -1,11 +1,12 @@
 import { t } from "ttag";
-import React, { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import EmptyState from "metabase/components/EmptyState";
 import { Tree } from "metabase/components/tree";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { ITreeNodeItem } from "metabase/components/tree/types";
-import Input, { InputProps } from "metabase/core/components/Input";
+import type { ITreeNodeItem } from "metabase/components/tree/types";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
 import {
   EmptyStateContainer,
   FilterableTreeContainer,
@@ -86,7 +87,7 @@ export const FilterableTree = ({
           itemGroups.map((items, index) => {
             const isLastGroup = index === itemGroups.length - 1;
             return (
-              <React.Fragment key={index}>
+              <Fragment key={index}>
                 <Tree
                   data={items}
                   selectedId={selectedId}
@@ -94,7 +95,7 @@ export const FilterableTree = ({
                   TreeNode={AdminTreeNode}
                 />
                 {!isLastGroup && <ItemGroupsDivider />}
-              </React.Fragment>
+              </Fragment>
             );
           })}
       </FilterableTreeContainer>

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { Parameter } from "metabase-types/api";
+import type { Parameter } from "metabase-types/api";
 import type { FieldFilterUiParameter } from "metabase-lib/parameters/types";
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase-lib/parameters/constants";
 

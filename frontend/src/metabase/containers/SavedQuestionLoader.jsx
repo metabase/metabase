@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import _ from "underscore";
 import { useAsync } from "react-use";

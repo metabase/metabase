@@ -12,7 +12,7 @@ If the bug has not yet been reported, go ahead and [open a bug report][metabase-
 2. Javascript console logs
 3. Whether it can be reproduced on the sample database
 4. Your Metabase version
-5. Where Metabase is running (Docker image, AWS Elastic Beanstalk, Heroku, Linux/Ubuntu, etc.)
+5. Where Metabase is running (Docker image, Linux/Ubuntu, etc.)
 6. Which database you are using
 7. What browser version you are using
 8. Screenshots (if relevant)

@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import Icon from "metabase/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
+import type { DashboardCard, ClickBehavior } from "metabase-types/api";
 import type { UiParameter } from "metabase-lib/parameters/types";
 
 import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
@@ -13,7 +14,7 @@ import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
   option: string;
-  icon: string;
+  icon: IconName;
   hasNextStep: boolean;
   selected: boolean;
   disabled?: boolean;
@@ -50,7 +51,7 @@ export const BehaviorOption = ({
 );
 
 interface TypeSelectorProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings?: ClickBehavior) => void;

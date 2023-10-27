@@ -1,4 +1,4 @@
-import { User, UserInfo, UserListResult } from "metabase-types/api";
+import type { User, UserInfo, UserListResult } from "metabase-types/api";
 
 export const createMockUser = (opts?: Partial<User>): User => ({
   id: 1,
@@ -23,7 +23,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   ...opts,
 });
 
-export const createMockerUserListResult = (
+export const createMockUserListResult = (
   opts?: Partial<UserListResult>,
 ): UserListResult => ({
   id: 1,

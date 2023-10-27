@@ -1,16 +1,16 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
-import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, SchemaId } from "metabase-types/api";
-import { Dispatch, State } from "metabase-types/store";
-import Schema from "metabase-lib/metadata/Schema";
+import { Icon } from "metabase/core/components/Icon";
+import type { DatabaseId, SchemaId } from "metabase-types/api";
+import type { Dispatch, State } from "metabase-types/store";
+import type Schema from "metabase-lib/metadata/Schema";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -22,14 +22,24 @@ interface SchemaLoaderProps {
 }
 
 interface DispatchProps {
-  onSelectSchema: (databaseId: DatabaseId, schemaId: SchemaId) => void;
+  onSelectSchema: (
+    databaseId: DatabaseId,
+    schemaId: SchemaId,
+    options?: { useReplace?: boolean },
+  ) => void;
 }
 
 type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectSchema: (databaseId, schemaId) =>
-    dispatch(push(Urls.dataModelSchema(databaseId, schemaId))),
+  // When navigating programatically, use replace so that the browser back button works
+  onSelectSchema: (databaseId, schemaId, { useReplace = false } = {}) => {
+    dispatch(
+      useReplace
+        ? replace(Urls.dataModelSchema(databaseId, schemaId))
+        : push(Urls.dataModelSchema(databaseId, schemaId)),
+    );
+  },
 });
 
 const MetadataSchemaList = ({
@@ -58,7 +68,9 @@ const MetadataSchemaList = ({
 
   useLayoutEffect(() => {
     if (allSchemas.length === 1 && selectedSchemaId == null) {
-      onSelectSchema(selectedDatabaseId, allSchemas[0].id);
+      onSelectSchema(selectedDatabaseId, allSchemas[0].id, {
+        useReplace: true,
+      });
     }
   }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 

@@ -1,8 +1,7 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Dataset } from "metabase-types/api";
+import type { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,

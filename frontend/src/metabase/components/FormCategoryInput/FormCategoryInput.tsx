@@ -1,4 +1,5 @@
-import React, { forwardRef, ReactNode, Ref, useCallback } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
+import { forwardRef, useCallback } from "react";
 import { useField } from "formik";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import FormField from "metabase/core/components/FormField";
@@ -13,7 +14,7 @@ export interface FormCategoryInputProps {
   description?: ReactNode;
   nullable?: boolean;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   field: Field;
 }
 

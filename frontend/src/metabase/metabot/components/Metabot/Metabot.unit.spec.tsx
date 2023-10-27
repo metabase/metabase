@@ -1,9 +1,9 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Database } from "metabase-types/api";
+import registerVisualizations from "metabase/visualizations/register";
+import type { Card, Database } from "metabase-types/api";
 import {
   createMockCard,
   createMockDatabase,
@@ -11,22 +11,23 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
-import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
+import type { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 import {
+  API_ERROR,
   setupCardDataset,
   setupDatabaseEndpoints,
-} from "__support__/server-mocks";
-import {
-  API_ERROR,
   setupBadRequestMetabotDatabaseEndpoint,
   setupBadRequestMetabotModelEndpoint,
   setupMetabotDatabaseEndpoint,
   setupMetabotModelEndpoint,
-} from "__support__/server-mocks/metabot";
+} from "__support__/server-mocks";
+
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import Metabot from "./Metabot";
+
+registerVisualizations();
 
 const PROMPT = "average orders total";
 

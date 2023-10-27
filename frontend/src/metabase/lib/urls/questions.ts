@@ -3,8 +3,10 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { CardId, Card as SavedCard } from "metabase-types/api";
-import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
+import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type { QuestionCreatorOpts } from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
@@ -37,8 +39,11 @@ export function question(
 
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
-      .filter(([key, value]) => value !== undefined)
-      .map(kv => kv.map(encodeURIComponent).join("="))
+      .map(([key, value]) =>
+        value == null
+          ? `${encodeURIComponent(key)}=`
+          : [key, value].map(encodeURIComponent).join("="),
+      )
       .join("&");
   }
 
@@ -102,7 +107,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
   const question = Question.create(options);
-  const url = question.getUrl({
+  const url = ML_Urls.getUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });
@@ -116,12 +121,18 @@ export function newQuestion({
   }
 }
 
-export function publicQuestion(
-  uuid: string,
-  type: string | null = null,
-  query?: string,
-) {
-  const siteUrl = MetabaseSettings.get("site-url");
+export function publicQuestion({
+  uuid,
+  type = null,
+  query,
+  includeSiteUrl = true,
+}: {
+  uuid: string;
+  type: string | null;
+  query?: string;
+  includeSiteUrl?: boolean;
+}) {
+  const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
   return (
     `${siteUrl}/public/question/${uuid}` +
@@ -131,8 +142,7 @@ export function publicQuestion(
 }
 
 export function embedCard(token: string, type: string | null = null) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function tableRowsQuery(

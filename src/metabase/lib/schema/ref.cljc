@@ -1,7 +1,9 @@
 (ns metabase.lib.schema.ref
   "Malli schema for a Field, aggregation, or expression reference (etc.)"
   (:require
+   [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
@@ -43,10 +45,19 @@
     [:= :field]
     ::field.options
     [:or ::id/field ::common/non-blank-string]]
-   [:multi {:dispatch (fn [[_field _opts id-or-name]]
-                        (lib.dispatch/dispatch-value id-or-name))}
+   [:multi {:dispatch      (fn [clause]
+                             ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
+                             ;; schema above failed, so we need to check that this is actually a tuple here again.
+                             (when (sequential? clause)
+                               (let [[_field _opts id-or-name] clause]
+                                 (lib.dispatch/dispatch-value id-or-name))))
+            ;; without this it gives us dumb messages like "Invalid dispatch value" if the dispatch function above
+            ;; doesn't return something that matches.
+            :error/message "Invalid :field clause ID or name: must be a string or integer"}
     [:dispatch-type/integer ::field.id]
     [:dispatch-type/string ::field.literal]]])
+
+(lib.hierarchy/derive :field ::ref)
 
 (defmethod expression/type-of-method :field
   [[_tag opts _id-or-name]]
@@ -60,6 +71,8 @@
   [[_tag opts _expression-name]]
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
+
+(lib.hierarchy/derive :expression ::ref)
 
 (mr/def ::aggregation-options
   [:merge
@@ -79,10 +92,24 @@
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
+(lib.hierarchy/derive :aggregation ::ref)
+
+(mbql-clause/define-tuple-mbql-clause :segment :- :type/Boolean
+  #_segment-id [:schema [:ref ::id/segment]])
+
+(lib.hierarchy/derive :segment ::ref)
+
+(mbql-clause/define-tuple-mbql-clause :metric :- ::expression/type.unknown
+  #_metric-id [:schema [:ref ::id/metric]])
+
+(lib.hierarchy/derive :metric ::ref)
+
 (mr/def ::ref
   [:and
    ::mbql-clause/clause
    [:fn
-    {:error/message ":field, :expression, :or :aggregation reference"}
+    {:error/fn (fn [_ _]
+                 (str "Valid reference, must be one of these clauses: "
+                      (str/join ", " (sort (descendants @lib.hierarchy/hierarchy ::ref)))))}
     (fn [[tag :as _clause]]
-      (#{:field :expression :aggregation} tag))]])
+      (lib.hierarchy/isa? tag ::ref))]])

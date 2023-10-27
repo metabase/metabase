@@ -1,8 +1,8 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { isRootCollection } from "metabase/collections/utils";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import { Collection } from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 import {
   ExpandButton,
   PathContainer,
@@ -38,7 +38,6 @@ export const CollectionBreadcrumbs = ({
         <ExpandButton
           small
           borderless
-          iconSize={10}
           icon="ellipsis"
           onlyIcon
           onClick={toggle}

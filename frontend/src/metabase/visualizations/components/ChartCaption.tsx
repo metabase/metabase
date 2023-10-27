@@ -1,6 +1,7 @@
-import React, { useCallback, ReactNode } from "react";
-import { IconProps } from "metabase/components/Icon";
-import {
+import type { ReactNode } from "react";
+import { useCallback } from "react";
+import type { IconProps } from "metabase/core/components/Icon";
+import type {
   Series,
   TransformedSeries,
   VisualizationSettings,
@@ -12,6 +13,7 @@ interface ChartCaptionProps {
   settings: VisualizationSettings;
   icon?: IconProps;
   actionButtons?: ReactNode;
+  width: number;
   onChangeCardAndRun: (data: Record<string, unknown>) => void;
 }
 
@@ -21,6 +23,7 @@ const ChartCaption = ({
   icon,
   actionButtons,
   onChangeCardAndRun,
+  width,
 }: ChartCaptionProps) => {
   const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
@@ -47,6 +50,7 @@ const ChartCaption = ({
       icon={icon}
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
+      width={width}
     />
   );
 };

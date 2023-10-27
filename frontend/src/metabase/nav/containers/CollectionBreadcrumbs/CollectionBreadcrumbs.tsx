@@ -1,6 +1,6 @@
 import Collections from "metabase/entities/collections";
 import { getCollectionId } from "metabase/selectors/app";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import CollectionBreadcrumbs from "../../components/CollectionBreadcrumbs";
 
 const collectionProps = {

@@ -1,5 +1,5 @@
-import { Aggregation, NormalizedMetric } from "metabase-types/api";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type { Aggregation, NormalizedMetric } from "metabase-types/api";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 

@@ -1,7 +1,6 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { SetupCheckListItem } from "metabase-types/api";
+import type { SetupCheckListItem } from "metabase-types/api";
 import {
   createMockSetupCheckListItem,
   createMockSetupCheckListTask,
@@ -10,7 +9,7 @@ import { setupAdminCheckListEndpoint } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import SetupCheckList from "./SetupCheckList";
 
@@ -49,7 +48,7 @@ const setup = async ({ items = CHECK_LIST_ITEMS }: SetupOpts = {}) => {
     { withRouter: true },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { history };
 };

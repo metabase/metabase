@@ -20,7 +20,7 @@
     (is (= test-max-results
            (-> (limit {:type :native}) mt/rows count)))))
 
-(deftest disable-max-results-test
+(deftest ^:parallel disable-max-results-test
   (testing "Apply `absolute-max-results` limit in the default case"
     (let [query {:type :query
                  :query {}}]

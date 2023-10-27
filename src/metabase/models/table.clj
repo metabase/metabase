@@ -38,6 +38,7 @@
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
   We'll keep this till we replace all the Table symbol in our codebase."
   :model/Table)
+
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
 
 (doto :model/Table
@@ -57,9 +58,8 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
-                  :field_order         (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))
-                  :initial_sync_status "incomplete"}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table

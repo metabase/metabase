@@ -6,6 +6,8 @@ import {
   popover,
   restore,
   startNewQuestion,
+  setTokenFeatures,
+  openTable,
 } from "e2e/support/helpers";
 import {
   SAMPLE_DB_ID,
@@ -52,7 +54,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -99,7 +101,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -113,7 +115,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -222,11 +224,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -405,11 +403,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated User ID").should("be.visible");
 
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -423,6 +417,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
+      setTokenFeatures("all");
     });
 
     it("should allow changing the table name with data model permissions only", () => {
@@ -440,7 +435,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       startNewQuestion();
       popover().within(() => {
-        cy.findByText("Sample Database").click();
+        cy.findByText("Raw Data").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -506,11 +501,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated User ID").should("be.visible");
 
       cy.signInAsNormalUser();
-      startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+      openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
       popover().within(() => {
         cy.findByText("Products").click();
@@ -668,7 +659,7 @@ const getFieldSection = fieldName => {
 };
 
 const moveField = (fieldIndex, deltaY) => {
-  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0);
+  cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0, { force: true });
   cy.get("#ColumnsList")
     .trigger("mousemove", 10, deltaY)
     .trigger("mouseup", 10, deltaY);

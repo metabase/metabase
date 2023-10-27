@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
 import Triggerable from "metabase/components/Triggerable";
-import ChartSettingColorPicker from "./ChartSettingColorPicker";
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 interface ChartSettingFieldPickerRootProps {
   disabled: boolean;
@@ -33,17 +33,17 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     margin-left: 0;
     color: ${color("text-dark")};
     height: 0.625rem;
-
     ${props => props.disabled && "display: none;"}
+    flex-shrink: 0;
   }
 
   ${SelectButton.Content} {
     font-size: 0.875rem;
     line-height: 1rem;
     margin-right: 0.25rem;
-    text-overflow: ellipsis;
     max-width: 100%;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+    text-align: left;
     overflow: hidden;
     color: ${color("text-dark")};
   }

@@ -1,7 +1,8 @@
-import { getCollectionIdFromSlug, restore } from "e2e/support/helpers";
+import { restore } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const getQuestionDetails = collectionId => ({
   name: "A question",
@@ -13,6 +14,131 @@ describe("scenarios > collections > archive", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
+
+  it("should allow user to unarchive, delete, and undo archive of items", () => {
+    const DASHBOARD_NAME = "ARCHIVED DASHBOARD";
+
+    cy.createDashboard({
+      name: DASHBOARD_NAME,
+      dashboardDetails: { collection_id: null },
+    }).then(({ body: { id } }) => {
+      cy.archiveDashboard(id);
+    });
+
+    const COLLECTION_NAME = "ARCHIVED COLLECTION";
+    cy.createCollection({
+      name: COLLECTION_NAME,
+    }).then(({ body: { id } }) => {
+      cy.archiveCollection(id);
+    });
+
+    const QUESTION_NAME = "ARCHIVED QUESTION";
+    cy.createQuestion({
+      name: QUESTION_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+        ],
+      },
+    }).then(({ body: { id } }) => {
+      cy.archiveQuestion(id);
+    });
+
+    cy.visit("/archive");
+
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    cy.intercept("DELETE", "/api/dashboard/*").as("deleteDashboard");
+    cy.intercept("DELETE", "/api/collection/*").as("deleteCollection");
+    cy.intercept("DELETE", "/api/card/*").as("deleteQuestion");
+
+    cy.log("Test individual archive and undo");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
+      .findByText(`${DASHBOARD_NAME}`)
+      .realHover()
+      .findByLabelText("unarchive icon")
+      .click();
+    cy.wait("@updateDashboard");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
+
+    cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait("@updateDashboard");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
+
+    cy.log("Test bulk archive and undo");
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).within(() => {
+      cy.findByLabelText("archive-item-swapper").realHover().click();
+      cy.get("input").should("be.checked");
+    });
+
+    cy.findByTestId("bulk-action-bar", { timeout: 5000 })
+      .should("be.visible")
+      .within(() => {
+        cy.findByLabelText("bulk-actions-input").click();
+        cy.findByText("Unarchive").click();
+        cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+      });
+
+    cy.get("main").findByText("Items you archive will appear here.");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("not.exist");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
+
+    cy.findByTestId("toast-undo").findByText("Undo").click();
+    cy.wait(["@updateDashboard", "@updateCollection", "@updateQuestion"]);
+    cy.get("main")
+      .findByText("Items you archive will appear here.")
+      .should("not.exist");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("exist");
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
+
+    cy.log("test individual delete");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`)
+      .findByText(`${DASHBOARD_NAME}`)
+      .realHover()
+      .findByLabelText("trash icon")
+      .click();
+    cy.wait("@deleteDashboard");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("exist");
+    cy.findByTestId(`archive-item-${DASHBOARD_NAME}`).should("not.exist");
+
+    cy.findByTestId("toast-undo").should("not.exist");
+
+    cy.log(
+      "Make sure we don't offer to delete archived collections (metabase#33996)",
+    );
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`)
+      .as("archivedCollection")
+      .findByLabelText("unarchive icon")
+      .should("exist");
+    cy.get("@archivedCollection")
+      .findByLabelText("trash icon")
+      .should("not.exist");
+
+    cy.log("test bulk delete");
+    cy.get("@archivedCollection")
+      .findByLabelText("archive-item-swapper")
+      .realHover()
+      .click();
+
+    cy.findByTestId("bulk-action-bar", { timeout: 5000 })
+      .should("be.visible")
+      .within(() => {
+        cy.findByLabelText("bulk-actions-input").click();
+        cy.findByText("2 items selected");
+        cy.button("Delete").click();
+      });
+    cy.wait("@deleteQuestion");
+
+    cy.log("Cannot delete collections");
+    cy.findByTestId(`archive-item-${COLLECTION_NAME}`).should("exist");
+    cy.findByTestId(`archive-item-${QUESTION_NAME}`).should("not.exist");
   });
 
   it("should load initially hidden archived items on scroll (metabase#24213)", () => {
@@ -39,22 +165,18 @@ describe("scenarios > collections > archive", () => {
   });
 
   it("shows correct page when visiting page of question that was in archived collection (metabase##23501)", () => {
-    getCollectionIdFromSlug("first_collection", collectionId => {
-      const questionDetails = getQuestionDetails(collectionId);
+    const questionDetails = getQuestionDetails(FIRST_COLLECTION_ID);
 
-      cy.createQuestion(questionDetails).then(
-        ({ body: { id: questionId } }) => {
-          cy.request("PUT", `/api/collection/${collectionId}`, {
-            archived: true,
-          });
+    cy.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+        archived: true,
+      });
 
-          // Question belonging to collection
-          // will have been archived,
-          // and archived page should be displayed
-          cy.visit(`/question/${questionId}`);
-          cy.findByText("This question has been archived");
-        },
-      );
+      // Question belonging to collection
+      // will have been archived,
+      // and archived page should be displayed
+      cy.visit(`/question/${questionId}`);
+      cy.findByText("This question has been archived");
     });
   });
 });

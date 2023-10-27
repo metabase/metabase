@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
@@ -7,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type {
@@ -91,9 +90,7 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }
 
 describe("PublicAction", () => {

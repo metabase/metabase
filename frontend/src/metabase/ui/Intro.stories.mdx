@@ -1,0 +1,22 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="Intro" />
+
+# Metabase's Design System
+
+Welcome to the nascent documentation for Metabase's design system.
+
+## Overview
+
+Metabase's design system is going to be built on top of [Mantine](https://v6.mantine.dev) and [React](https://reactjs.org/). Mantine is a React component library that provides a set of accessible, reusable, and composable components that can be used to build UIs.
+
+We're currently in the process of "migrating" our existing components to Mantine and as part of doing that we'll be upgrading our Figma component library at the same time. All of this should result in a faster, clearer developer experience and a more accessible and consistent UI in Metabase.
+
+## How we'll integrate Mantine
+
+- Mantine based components will live in this directory inside of a categorical folder and be themed to match our design system using Mantine's theming system.
+- We'll create a lightweight named export around the Mantine component to help make it clear which Mantine components have been vetted and documented by the design team. Nothing about the component's props or functionality should change.
+- Each component will have an associated storybook story with links to Mantine's documentation for the version we're using as well as a link to the component file in our Figma component library.
+- Once a component has been "released" we'll move the existing component to a `deprecated` folder and add a deprecation warning.
+
+Please reach out in the [#proj-ui-library](https://metaboat.slack.com/archives/C057WD5L0JG) slack channel, or talk to Kyle if you have any questions.

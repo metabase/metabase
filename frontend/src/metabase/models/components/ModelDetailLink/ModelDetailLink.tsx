@@ -1,7 +1,7 @@
-import React from "react";
 import { t } from "ttag";
 
-import Button, { ButtonProps } from "metabase/core/components/Button";
+import type { ButtonProps } from "metabase/core/components/Button";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
 import * as Urls from "metabase/lib/urls";
@@ -24,6 +24,7 @@ function ModelDetailLink({ model, ...props }: Props) {
       to={Urls.modelDetail(model)}
       icon="reference"
       onlyIcon
+      iconSize={16}
       role="link"
       data-testid="model-detail-link"
     />

@@ -1,6 +1,6 @@
 import { format } from "metabase-lib/expressions/format";
 
-import shared from "./__support__/shared";
+import shared from "metabase-lib/expressions/__support__/shared";
 
 describe("metabase-lib/expressions/format", () => {
   describe.each(shared)("%s", (name, cases, opts) => {

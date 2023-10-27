@@ -10,8 +10,10 @@ import {
   openOrdersTable,
   enterCustomColumnDetails,
   visualize,
+  checkExpressionEditorHelperPopoverPosition,
 } from "e2e/support/helpers";
 
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -23,7 +25,7 @@ describe("scenarios > question > summarize sidebar", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    visitQuestion(1);
+    visitQuestion(ORDERS_QUESTION_ID);
     summarize();
   });
 
@@ -41,8 +43,13 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click()
-      .should("have.attr", "aria-selected", "true");
+      .click();
+
+    getDimensionByName({ name: "Total" }).should(
+      "have.attr",
+      "aria-selected",
+      "true",
+    );
 
     cy.button("Done").click();
 
@@ -144,26 +151,6 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("49.54");
   });
 
-  it("breakout binning popover should have normal height even when it's rendered lower on the screen (metabase#15445)", () => {
-    cy.visit("/question/1/notebook");
-    summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At")
-      .closest(".List-item")
-      .findByText("by month")
-      .click({ force: true });
-    // First a reality check - "Minute" is the only string visible in UI and this should pass
-    cy.findAllByText("Minute")
-      .first() // TODO: cy.findAllByText(string).first() is necessary workaround that will be needed ONLY until (metabase#15570) gets fixed
-      .isVisibleInPopover();
-    // The actual check that will fail until this issue gets fixed
-    cy.findAllByText("Week").first().isVisibleInPopover();
-  });
-
   it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
@@ -220,23 +207,20 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {
-    // Go straight to orders table in custom questions
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
     popover().within(() => {
       cy.findByText("Number of distinct values of ...").click();
-      cy.log(
-        "**Test fails at this point as there isn't an extra field next to 'Created At'**",
-      );
-      // instead of relying on DOM structure that might change
-      // (i.e. find "Created At" -> parent -> parent -> parent -> find "by month")
-      // access it directly from the known common parent
-      cy.get(".List-item").contains("by month").click({ force: true });
+      cy.findByLabelText("Temporal bucket").click();
     });
-    // this should be among the granular selection choices
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of day").click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.button("More…").click();
+        cy.findByText("Hour of day").click();
+      });
   });
 
   it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
@@ -281,7 +265,7 @@ describe("scenarios > question > summarize sidebar", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/No results!/i).should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("744"); // `Count` for year 2016
+    cy.contains("744"); // `Count` for year 2022
   });
 
   // flaky test (#19454)
@@ -297,6 +281,19 @@ describe("scenarios > question > summarize sidebar", () => {
 
     popover().contains("Title");
     popover().contains("199 distinct values");
+  });
+
+  it("should render custom expression helper near the custom expression field", async () => {
+    openReviewsTable({ mode: "notebook" });
+    summarize({ mode: "notebook" });
+
+    popover().within(() => {
+      cy.findByText("Custom Expression").click();
+
+      enterCustomColumnDetails({ formula: "floor" });
+
+      checkExpressionEditorHelperPopoverPosition();
+    });
   });
 });
 

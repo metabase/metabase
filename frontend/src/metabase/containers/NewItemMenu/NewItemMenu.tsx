@@ -17,7 +17,7 @@ import {
 
 import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/metadata/Database";
 
 interface MenuDatabaseProps {
   databases?: Database[];

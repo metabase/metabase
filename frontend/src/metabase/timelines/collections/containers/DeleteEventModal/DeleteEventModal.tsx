@@ -5,9 +5,9 @@ import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import { ModalParams } from "../../types";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+import type { ModalParams } from "../../types";
 
 interface DeleteEventModalProps {
   params: ModalParams;

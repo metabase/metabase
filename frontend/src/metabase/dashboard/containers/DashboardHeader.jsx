@@ -1,16 +1,19 @@
-/* eslint-disable react/prop-types */
-import React, { Component, Fragment } from "react";
+import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getIsNavbarOpen } from "metabase/redux/app";
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+
+import { getIsNavbarOpen } from "metabase/selectors/app";
 
 import ActionButton from "metabase/components/ActionButton";
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -18,9 +21,13 @@ import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
+
+import { getPulseFormInput } from "metabase/pulse/selectors";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
   getIsBookmarked,
   getIsShowDashboardInfoSidebar,
@@ -34,7 +41,7 @@ import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
 
-import DashboardHeaderView from "../components/DashboardHeaderView";
+import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -43,6 +50,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
+    formInput: getPulseFormInput(state, props),
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
@@ -58,6 +66,7 @@ const mapDispatchToProps = {
     Bookmark.actions.create({ id, type: "dashboard" }),
   deleteBookmark: ({ id }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
+  fetchPulseFormInput,
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
@@ -66,17 +75,23 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-    this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
 
+  componentDidMount() {
+    this.props.fetchPulseFormInput();
+  }
+
   state = {
-    modal: null,
+    showCancelWarning: false,
   };
 
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
-    isEditable: PropTypes.bool.isRequired,
+    fetchPulseFormInput: PropTypes.func.isRequired,
+    formInput: PropTypes.object.isRequired,
+    isAdmin: PropTypes.bool,
+    isDirty: PropTypes.bool,
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
@@ -88,10 +103,11 @@ class DashboardHeader extends Component {
     setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
-    addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addHeadingDashCardToDashboard: PropTypes.func.isRequired,
+    addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    saveDashboardAndCards: PropTypes.func.isRequired,
+    updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
@@ -100,7 +116,6 @@ class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
-
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
@@ -113,11 +128,35 @@ class DashboardHeader extends Component {
     addActionToDashboard: PropTypes.func.isRequired,
 
     databases: PropTypes.object,
+
+    dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
+
+    location: PropTypes.shape({
+      query: PropTypes.object,
+      pathname: PropTypes.string,
+    }),
+
+    createBookmark: PropTypes.func,
+    deleteBookmark: PropTypes.func,
+    isBookmarked: PropTypes.bool,
+    dashboardBeforeEditing: PropTypes.object,
+    parametersWidget: PropTypes.node,
+    isShowingDashboardInfoSidebar: PropTypes.bool,
+    isAddParameterPopoverOpen: PropTypes.bool,
+    showAddParameterPopover: PropTypes.func,
+    hideAddParameterPopover: PropTypes.func,
+    addParameter: PropTypes.func,
+    isHomepageDashboard: PropTypes.bool,
   };
 
   handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
   }
+
+  handleCancelWarningClose = () => {
+    this.setState({ showCancelWarning: false });
+  };
 
   handleToggleBookmark() {
     const { createBookmark, deleteBookmark, isBookmarked } = this.props;
@@ -127,8 +166,15 @@ class DashboardHeader extends Component {
     toggleBookmark(this.props.dashboardId);
   }
 
-  onAddTextBox() {
-    this.props.addTextDashCardToDashboard({
+  onAddMarkdownBox() {
+    this.props.addMarkdownDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
+  }
+
+  onAddHeading() {
+    this.props.addHeadingDashCardToDashboard({
       dashId: this.props.dashboard.id,
       tabId: this.props.selectedTabId,
     });
@@ -162,15 +208,25 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave(preserveParameters) {
-    await this.props.saveDashboardAndCards(preserveParameters);
+  async onSave() {
+    await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
 
-  async onCancel() {
+  onRequestCancel = () => {
+    const { isDirty, isEditing } = this.props;
+
+    if (isDirty && isEditing) {
+      this.setState({ showCancelWarning: true });
+    } else {
+      this.onCancel();
+    }
+  };
+
+  onCancel = () => {
     this.onRevert();
     this.onDoneEditing();
-  }
+  };
 
   getEditWarning(dashboard) {
     if (dashboard.embedding_params) {
@@ -195,7 +251,7 @@ class DashboardHeader extends Component {
         data-metabase-event="Dashboard;Cancel Edits"
         key="cancel"
         className="Button Button--small mr1"
-        onClick={() => this.onCancel()}
+        onClick={this.onRequestCancel}
       >
         {t`Cancel`}
       </Button>,
@@ -218,7 +274,6 @@ class DashboardHeader extends Component {
       isBookmarked,
       isEditing,
       isFullscreen,
-      isEditable,
       location,
       onFullscreenChange,
       createBookmark,
@@ -231,7 +286,7 @@ class DashboardHeader extends Component {
       databases,
     } = this.props;
 
-    const canEdit = dashboard.can_write && isEditable && !!dashboard;
+    const canEdit = dashboard.can_write;
 
     const hasModelActionsEnabled = Object.values(databases).some(
       hasDatabaseActionsEnabled,
@@ -263,21 +318,21 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      // Add text card button
+      // Text/Headers
       buttons.push(
-        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
-          <a
-            data-metabase-event="Dashboard;Add Text Box"
-            key="add-text"
-            aria-label={t`Add a text box`}
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddTextBox()}
-          >
-            <DashboardHeaderButton>
-              <Icon name="string" size={18} />
-            </DashboardHeaderButton>
-          </a>
+        <Tooltip
+          key="dashboard-add-heading-or-text-button"
+          tooltip={t`Add a heading or text`}
+        >
+          <TextOptionsButton
+            onAddMarkdown={() => this.onAddMarkdownBox()}
+            onAddHeading={() => this.onAddHeading()}
+          />
         </Tooltip>,
+      );
+
+      // Add link card button
+      buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton
             onClick={() => this.onAddLinkCard()}
@@ -314,6 +369,7 @@ class DashboardHeader extends Component {
                 <DashboardHeaderButton
                   key="parameters"
                   onClick={showAddParameterPopover}
+                  aria-label={t`Add a filter`}
                 >
                   <Icon name="filter" />
                 </DashboardHeaderButton>
@@ -352,11 +408,11 @@ class DashboardHeader extends Component {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
+            visibleOnSmallScreen={false}
             key="edit"
             aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
             icon="pencil"
-            className="text-brand-hover cursor-pointer"
             onClick={() => this.handleEdit(dashboard)}
           />
         </Tooltip>,
@@ -379,10 +435,12 @@ class DashboardHeader extends Component {
       });
 
       extraButtons.push({
-        title: t`Export as PDF`,
+        title:
+          dashboard.tabs?.length > 1 ? t`Export tab as PDF` : t`Export as PDF`,
         icon: "document",
+        testId: "dashboard-export-pdf-button",
         action: () => {
-          this.saveAsImage();
+          this.saveAsPDF();
         },
       });
 
@@ -441,10 +499,12 @@ class DashboardHeader extends Component {
     return buttons;
   }
 
-  saveAsImage = async () => {
+  saveAsPDF = async () => {
     const { dashboard } = this.props;
     const cardNodeSelector = "#Dashboard-Cards-Container";
-    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+    await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
+      trackExportDashboardToPDF(dashboard.id);
+    });
   };
 
   render() {
@@ -457,32 +517,43 @@ class DashboardHeader extends Component {
       setSidebar,
       isHomepageDashboard,
     } = this.props;
-
+    const { showCancelWarning } = this.state;
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <DashboardHeaderView
-        headerClassName="wrapper"
-        objectType="dashboard"
-        analyticsContext="Dashboard"
-        dashboard={dashboard}
-        isEditing={isEditing}
-        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
-        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
-        isEditingInfo={isEditing}
-        isNavBarOpen={this.props.isNavBarOpen}
-        headerButtons={this.getHeaderButtons()}
-        editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You're editing this dashboard.`.concat(
-          isHomepageDashboard
-            ? t` Remember that this dashboard is set as homepage.`
-            : "",
-        )}
-        editingButtons={this.getEditingButtons()}
-        setDashboardAttribute={setDashboardAttribute}
-        onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave(true)}
-      />
+      <>
+        <DashboardHeaderComponent
+          headerClassName="wrapper"
+          objectType="dashboard"
+          analyticsContext="Dashboard"
+          location={this.props.location}
+          dashboard={dashboard}
+          isEditing={isEditing}
+          isBadgeVisible={
+            !isEditing && !isFullscreen && isAdditionalInfoVisible
+          }
+          isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+          isEditingInfo={isEditing}
+          isNavBarOpen={this.props.isNavBarOpen}
+          headerButtons={this.getHeaderButtons()}
+          editWarning={this.getEditWarning(dashboard)}
+          editingTitle={t`You're editing this dashboard.`.concat(
+            isHomepageDashboard
+              ? t` Remember that this dashboard is set as homepage.`
+              : "",
+          )}
+          editingButtons={this.getEditingButtons()}
+          setDashboardAttribute={setDashboardAttribute}
+          onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
+        />
+
+        <Modal isOpen={showCancelWarning}>
+          <LeaveConfirmationModalContent
+            onAction={this.onCancel}
+            onClose={this.handleCancelWarningClose}
+          />
+        </Modal>
+      </>
     );
   }
 }

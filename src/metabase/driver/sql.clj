@@ -9,9 +9,9 @@
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.util.schema :as su]
-   [potemkin :as p]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -37,12 +37,18 @@
     [driver _feature db]
     (driver/database-supports? driver :foreign-keys db)))
 
+(defmethod driver/database-supports? [:sql :persist-models-enabled]
+  [driver _feat db]
+  (and
+    (driver/database-supports? driver :persist-models db)
+    (-> db :settings :persist-models-enabled)))
+
 (defmethod driver/mbql->native :sql
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(s/defmethod driver/substitute-native-parameters :sql
-  [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
+(mu/defmethod driver/substitute-native-parameters :sql
+  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ms/NonBlankString}]]]
   (let [[query params] (-> query
                            params.parse/parse
                            (sql.params.substitute/substitute (params.values/query->params-map inner-query)))]
@@ -58,6 +64,32 @@
     (seq params)
     (merge {:params nil
             :query  (unprepare/unprepare driver (cons sql params))})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Connection Impersonation                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti set-role-statement
+  "SQL for setting the active role for a connection, such as USE ROLE or equivalent, for the given driver."
+  {:added "0.47.0" :arglists '([driver role])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod set-role-statement :default
+  [_ _ _]
+  nil)
+
+(defmulti default-database-role
+  "The name of the default role for a given database, used for queries that do not have custom user
+  impersonation rules configured for them. This must be implemented for each driver that supports user impersonation."
+  {:added "0.47.0" :arglists '(^String [driver database])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-database-role :default
+  [_ _database]
+  nil)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

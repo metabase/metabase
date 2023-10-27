@@ -1,4 +1,4 @@
-import { Revision } from "metabase-types/api";
+import type { Revision } from "metabase-types/api";
 
 export const createMockRevision = (opts?: Partial<Revision>): Revision => {
   return {

@@ -10,6 +10,10 @@ import {
   saveDashboard,
   updateDashboardCards,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -30,17 +34,17 @@ describe("scenarios > dashboard > parameters", () => {
         dashboard_id: id,
         cards: [
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 0,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
           {
-            card_id: 2,
+            card_id: ORDERS_COUNT_QUESTION_ID,
             row: 0,
             col: 4,
-            size_x: 4,
+            size_x: 5,
             size_y: 4,
           },
         ],
@@ -96,7 +100,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get(".DashCard").last().should("contain", "4,939");
   });
 
-  it("should remove parameter name or the whole parameter (metabase#10829, metabase#17933)", () => {
+  it("should be able to remove parameter (metabase#17933)", () => {
     // Mirrored issue in metabase-enterprise#275
 
     const questionDetails = {
@@ -135,7 +139,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -191,8 +195,10 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    const startsWithSlug = `${startsWith.slug}=G`;
-    cy.location("search").should("eq", `?${startsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=`,
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
@@ -207,8 +213,10 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.button("Add filter").click();
 
-    const endsWithSlug = `${endsWith.slug}=zmo`;
-    cy.location("search").should("eq", `?${startsWithSlug}&${endsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
+    );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
@@ -219,23 +227,13 @@ describe("scenarios > dashboard > parameters", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWithSlug}`);
-
-    // Remove filter name (metabase#10829)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(endsWith.name).find(".Icon-gear").click();
-    cy.findByDisplayValue(endsWith.name).clear().blur();
-
-    cy.location("search").should("eq", "?unnamed=zmo");
-    cy.findByDisplayValue("unnamed");
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
     cy.button("Save").click();
 
-    cy.log("Filter name should be 'unnamed' and the value cleared");
-    filterWidget().contains(/unnamed/i);
-
-    cy.log("URL should reset");
-    cy.location("search").should("eq", "");
+    cy.log("There should only be one filter remaining and its value cleared");
+    filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
+    cy.location("search").should("eq", `?${endsWith.slug}=`);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
@@ -285,7 +283,7 @@ describe("scenarios > dashboard > parameters", () => {
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -309,7 +307,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("Column to filter on").parent().contains("Native Filter");
+
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Native Filter");
+      });
 
       // Update the underlying question's query
       cy.request("PUT", `/api/card/${card_id}`, {
@@ -397,7 +399,7 @@ describe("scenarios > dashboard > parameters", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 14,
+              size_x: 19,
               size_y: 12,
               parameter_mappings: [
                 {
@@ -496,7 +498,7 @@ describe("scenarios > dashboard > parameters", () => {
 
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTextEnsureVisible("Created At");
 
       cy.icon("pencil").click();
@@ -511,7 +513,7 @@ describe("scenarios > dashboard > parameters", () => {
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.signIn("nodata");
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should not see mapping options", () => {

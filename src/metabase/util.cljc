@@ -2,6 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:require
    [camel-snake-kebab.internals.macros :as csk.macros]
+   [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -12,14 +13,16 @@
    [metabase.shared.util.namespaces :as u.ns]
    [metabase.util.format :as u.format]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
    [weavejester.dependency :as dep]
-   #?@(:clj  [[clojure.math.numeric-tower :as math]
+   #?@(:clj  ([clojure.math.numeric-tower :as math]
               [metabase.config :as config]
               #_{:clj-kondo/ignore [:discouraged-namespace]}
               [metabase.util.jvm :as u.jvm]
+              [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec]]))
+              [ring.util.codec :as codec])))
   #?(:clj (:import
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
@@ -30,7 +33,7 @@
 (u.ns/import-fns
   [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
-#?(:clj (p/import-vars [metabase.util.jvm
+#?(:clj (p/import-vars [u.jvm
                         all-ex-data
                         auto-retry
                         decode-base64
@@ -47,7 +50,9 @@
                         sorted-take
                         varargs
                         with-timeout
-                        with-us-locale]))
+                        with-us-locale]
+                       [u.str
+                        build-sentence]))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
@@ -198,22 +203,26 @@
 (def ^{:arglists '([x])} ->kebab-case-en
   "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->kebab-case-en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->snake_case_en
   "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->snake_case_en* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->camelCaseEn
   "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
   with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->camelCaseEn* :lru/threshold 256)))
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
   keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*))
+  (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords
+   (memoize/lru ->SCREAMING_SNAKE_CASE_EN* :lru/threshold 256)))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -444,6 +453,13 @@
     arg
     [arg]))
 
+(defn many-or-one
+  "Returns coll if it has multiple elements, or else returns its only element"
+  [coll]
+  (if (next coll)
+    coll
+    (first coll)))
+
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
 
@@ -470,6 +486,11 @@
              (as-> s s
                (str/replace s #"\s" "")
                (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
+
+(defn batches-of
+  "Returns coll split into seqs of up to n items"
+  [n coll]
+  (partition n n nil coll))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
@@ -794,10 +815,31 @@
      m
      (assoc m k v)))
   ([m k v & kvs]
-    (let [ret (assoc-default m k v)]
-      (if kvs
-        (if (next kvs)
-          (recur ret (first kvs) (second kvs) (nnext kvs))
-          (throw (ex-info "assoc-default expects an even number of key-values"
-                          {:kvs kvs})))
-        ret))))
+   (let [ret (assoc-default m k v)]
+     (if kvs
+       (if (next kvs)
+         (recur ret (first kvs) (second kvs) (nnext kvs))
+         (throw (ex-info "assoc-default expects an even number of key-values"
+                         {:kvs kvs})))
+       ret))))
+
+(defn classify-changes
+  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
+  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
+
+  Where:
+  :to-create is a list of maps that ids in `new-items`
+  :to-update is a list of maps that has ids in both `current-items` and `new-items`
+  :to delete is a list of maps that has ids only in `current-items`"
+  [current-items new-items]
+  (let [[delete-ids create-ids update-ids] (diff (set (map :id current-items))
+                                                 (set (map :id new-items)))]
+    {:to-create (when (seq create-ids) (filter #(create-ids (:id %)) new-items))
+     :to-delete (when (seq delete-ids) (filter #(delete-ids (:id %)) current-items))
+     :to-update (when (seq update-ids) (filter #(update-ids (:id %)) new-items))}))
+
+(defn empty-or-distinct?
+  "True if collection `xs` is either [[empty?]] or all values are [[distinct?]]."
+  [xs]
+  (or (empty? xs)
+      (apply distinct? xs)))

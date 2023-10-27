@@ -36,10 +36,7 @@ const CypressBackend = {
         MB_JETTY_HOST: "0.0.0.0",
         MB_JETTY_PORT: server.port,
         MB_ENABLE_TEST_ENDPOINTS: "true",
-        MB_PREMIUM_EMBEDDING_TOKEN:
-          (process.env["MB_EDITION"] === "ee" &&
-            process.env["MB_PREMIUM_EMBEDDING_TOKEN"]) ||
-          undefined,
+        MB_DANGEROUS_UNSAFE_ENABLE_TESTING_H2_CONNECTIONS_DO_NOT_ENABLE: "true",
       };
 
       /**

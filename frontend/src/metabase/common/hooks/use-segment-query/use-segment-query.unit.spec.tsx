@@ -1,11 +1,10 @@
-import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockSegment } from "metabase-types/api/mocks";
 import { setupSegmentsEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { useSegmentQuery } from "./use-segment-query";
 
@@ -31,12 +30,12 @@ const setup = () => {
 describe("useSegmentQuery", () => {
   it("should be initially loading", () => {
     setup();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
   });
 
   it("should show data from the response", async () => {
     setup();
-    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    await waitForLoaderToBeRemoved();
     expect(screen.getByText(TEST_SEGMENT.name)).toBeInTheDocument();
   });
 });

@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import ActionCreatorHeader from "metabase/actions/containers/ActionCreator/ActionCreatorHeader";
-import FormCreator from "metabase/actions/containers/ActionCreator/FormCreator";
+import { FormCreator } from "metabase/actions/containers/ActionCreator/FormCreator";
 import {
   DataReferenceTriggerButton,
   DataReferenceInline,
@@ -17,7 +18,7 @@ import {
   ModalRight,
 } from "metabase/actions/containers/ActionCreator/ActionCreator.styled";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import type { ActionFormSettings, WritebackAction } from "metabase-types/api";
 
 import type { ActionCreatorUIProps, SideView } from "./types";
@@ -86,7 +87,7 @@ export default function ActionCreatorView({
   }, []);
 
   return (
-    <ModalRoot>
+    <ModalRoot data-testid="action-creator">
       <ActionCreatorBodyContainer>
         <ModalLeft>
           <ActionCreatorHeader
@@ -121,6 +122,7 @@ export default function ActionCreatorView({
         <ModalRight>
           {activeSideView === "actionForm" ? (
             <FormCreator
+              actionType={action.type ?? "query"}
               parameters={action.parameters ?? []}
               formSettings={formSettings}
               isEditable={isEditable && canChangeFieldSettings}

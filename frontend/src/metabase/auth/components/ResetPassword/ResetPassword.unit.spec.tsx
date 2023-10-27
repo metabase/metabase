@@ -1,4 +1,3 @@
-import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";

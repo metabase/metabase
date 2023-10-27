@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
@@ -41,6 +40,7 @@ import { Setup } from "metabase/setup/components/Setup";
 
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 
+import { UnsubscribePage } from "metabase/containers/Unsubscribe";
 import { Unauthorized } from "metabase/containers/ErrorPages";
 import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
@@ -72,17 +72,17 @@ import getAdminRoutes from "metabase/admin/routes";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 
-import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import { PublicQuestion } from "metabase/public/containers/PublicQuestion";
 import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import ArchiveDashboardModal from "metabase/dashboard/containers/ArchiveDashboardModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
-import HomePageApp from "metabase/home/containers/HomePageApp";
+import { HomePage } from "metabase/home/components/HomePage";
 import CollectionLanding from "metabase/collections/components/CollectionLanding";
 
-import ArchiveApp from "metabase/archive/containers/ArchiveApp";
+import { ArchiveApp } from "metabase/archive/containers/ArchiveApp";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 import {
@@ -113,7 +113,7 @@ export const getRoutes = store => (
     {/* PUBLICLY SHARED LINKS */}
     <Route path="public">
       <Route path="question/:uuid" component={PublicQuestion} />
-      <Route path="dashboard/:uuid" component={PublicDashboard} />
+      <Route path="dashboard/:uuid(/:tabSlug)" component={PublicDashboard} />
     </Route>
 
     {/* APP */}
@@ -124,7 +124,9 @@ export const getRoutes = store => (
         done();
       }}
       onChange={(prevState, nextState) => {
-        trackPageView(nextState.location.pathname);
+        if (nextState.location.pathname !== prevState.location.pathname) {
+          trackPageView(nextState.location.pathname);
+        }
       }}
     >
       {/* AUTH */}
@@ -144,11 +146,11 @@ export const getRoutes = store => (
         {/* The global all hands routes, things in here are for all the folks */}
         <Route
           path="/"
-          component={HomePageApp}
+          component={HomePage}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
-              replace(page);
+              replace(page[0] === "/" ? page : `/${page}`);
             }
           }}
         />
@@ -325,6 +327,7 @@ export const getRoutes = store => (
     />
 
     {/* MISC */}
+    <Route path="/unsubscribe" component={UnsubscribePage} />
     <Route path="/unauthorized" component={Unauthorized} />
     <Route path="/*" component={NotFoundFallbackPage} />
   </Route>

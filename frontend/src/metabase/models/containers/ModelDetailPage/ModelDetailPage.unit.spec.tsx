@@ -1,4 +1,3 @@
-import React from "react";
 import { IndexRedirect, Redirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
@@ -11,7 +10,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import {
@@ -21,7 +20,7 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { ActionsApi } from "metabase/services";
 
 import Actions from "metabase/entities/actions";
@@ -59,6 +58,7 @@ import {
   createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
+import * as ML_Urls from "metabase-lib/urls";
 import { TYPE } from "metabase-lib/types/constants";
 
 import ModelDetailPage from "./ModelDetailPage";
@@ -76,6 +76,7 @@ const TEST_TABLE_ID = 1;
 const TEST_FIELD = createMockField({
   id: 1,
   display_name: "Field 1",
+  semantic_type: TYPE.PK,
   table_id: TEST_TABLE_ID,
 });
 
@@ -227,7 +228,7 @@ async function setup({
 
   setupCardsEndpoints([card]);
   setupModelActionsEndpoints(actions, model.id());
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
 
   const name = model.displayName()?.toLowerCase();
   const slug = `${model.id()}-${name}`;
@@ -259,7 +260,7 @@ async function setup({
     { withRouter: true, initialRoute },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { model, history, baseUrl, metadata, usedByQuestions, modelUpdateSpy };
 }
@@ -296,17 +297,17 @@ describe("ModelDetailPage", () => {
       expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
     });
 
-    it("displays model contact", async () => {
+    it("displays model creator", async () => {
       const creator = createMockUser();
       await setup({ model: getModel({ creator }) });
 
-      expect(screen.getByLabelText("Contact")).toHaveTextContent(
+      expect(screen.getByLabelText("Created by")).toHaveTextContent(
         creator.common_name,
       );
     });
 
     describe("management", () => {
-      it("allows to rename modal", async () => {
+      it("allows to rename model", async () => {
         const { model, modelUpdateSpy } = await setup({ model: getModel() });
 
         const input = screen.getByDisplayValue(model.displayName() as string);
@@ -389,7 +390,7 @@ describe("ModelDetailPage", () => {
 
         expect(
           screen.getByRole("link", { name: /Create a new question/i }),
-        ).toHaveAttribute("href", model.getUrl());
+        ).toHaveAttribute("href", ML_Urls.getUrl(model));
         expect(
           screen.getByText(/This model is not used by any questions yet/i),
         ).toBeInTheDocument();
@@ -407,11 +408,11 @@ describe("ModelDetailPage", () => {
 
         expect(screen.getByRole("link", { name: "Q1" })).toHaveAttribute(
           "href",
-          q1.getUrl(),
+          ML_Urls.getUrl(q1),
         );
         expect(screen.getByRole("link", { name: "Q2" })).toHaveAttribute(
           "href",
-          q2.getUrl(),
+          ML_Urls.getUrl(q2),
         );
 
         expect(
@@ -796,7 +797,7 @@ describe("ModelDetailPage", () => {
 
       expect(
         list.getByRole("link", { name: TABLE_1.displayName() }),
-      ).toHaveAttribute("href", TABLE_1.newQuestion().getUrl());
+      ).toHaveAttribute("href", ML_Urls.getUrl(TABLE_1.newQuestion()));
       expect(list.queryByText("Reviews")).not.toBeInTheDocument();
     });
 
@@ -976,7 +977,9 @@ describe("ModelDetailPage", () => {
         model: createSavedStructuredCard(),
       });
 
-      expect(history?.getCurrentLocation().pathname).toBe(question.getUrl());
+      expect(history?.getCurrentLocation().pathname).toBe(
+        ML_Urls.getUrl(question),
+      );
     });
 
     it("shows 404 when opening an archived model", async () => {

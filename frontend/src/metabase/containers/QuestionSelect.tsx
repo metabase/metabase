@@ -1,5 +1,3 @@
-import React from "react";
-
 import Question from "metabase/entities/questions";
 
 import type { CardId } from "metabase-types/api";

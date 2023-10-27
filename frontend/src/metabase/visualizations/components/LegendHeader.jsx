@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { getAccentColors } from "metabase/lib/colors/groups";
-import Icon, { iconPropTypes } from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
-import LegendItem from "./LegendItem";
 import styles from "./Legend.css";
+import { AddSeriesIcon, LegendHeaderItem } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
@@ -23,7 +23,7 @@ class LegendHeader extends Component {
     actionButtons: PropTypes.node,
     description: PropTypes.string,
     classNameWidgets: PropTypes.string,
-    icon: PropTypes.shape(iconPropTypes),
+    icon: PropTypes.object,
   };
 
   static defaultProps = {
@@ -78,18 +78,18 @@ class LegendHeader extends Component {
         )}
       >
         {series.map((s, index) => [
-          <LegendItem
+          <LegendHeaderItem
             key={index}
             title={titles[index]}
             icon={icon}
             description={description}
             color={colors[index % colors.length]}
-            className={cx({ "text-brand-hover": !isBreakoutSeries })}
             showDot={showDots}
             showTitle={showTitles}
             isMuted={
               hovered && hovered.index != null && index !== hovered.index
             }
+            isBreakoutSeries={isBreakoutSeries}
             onMouseEnter={() => onHoverChange && onHoverChange({ index })}
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
@@ -122,13 +122,7 @@ class LegendHeader extends Component {
           ),
         ])}
         {onAddSeries && (
-          <Icon
-            name="add"
-            className="mx1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
-            size={12}
-            style={{ padding: 5 }}
-            onClick={e => onAddSeries(e)}
-          />
+          <AddSeriesIcon name="add" size={12} onClick={e => onAddSeries(e)} />
         )}
         {actionButtons && (
           <span

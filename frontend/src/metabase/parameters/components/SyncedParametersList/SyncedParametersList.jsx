@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import ParametersList from "metabase/parameters/components/ParametersList";
@@ -43,13 +42,8 @@ export function SyncedParametersList({
   setEditingParameter,
 }) {
   useSyncedQueryString(
-    () =>
-      getParameterValuesBySlug(
-        parameters,
-        undefined,
-        dashboard && { preserveDefaultedParameters: true },
-      ),
-    [parameters, dashboard],
+    () => getParameterValuesBySlug(parameters),
+    [parameters],
   );
 
   return (

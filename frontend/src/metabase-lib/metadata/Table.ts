@@ -5,7 +5,7 @@ import { singularize } from "metabase/lib/formatting";
 import type { NormalizedTable } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
@@ -47,6 +47,10 @@ class Table {
 
   getFields() {
     return this.fields ?? [];
+  }
+
+  getMetrics() {
+    return this.metrics ?? [];
   }
 
   isVirtualCard() {

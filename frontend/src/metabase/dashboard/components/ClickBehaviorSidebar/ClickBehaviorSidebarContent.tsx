@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { getIn } from "icepick";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   CardId,
   ClickBehavior,
@@ -21,7 +21,7 @@ import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;

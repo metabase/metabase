@@ -1,6 +1,6 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import { t } from "ttag";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,

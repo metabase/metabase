@@ -1,12 +1,17 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
@@ -16,7 +21,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -42,9 +47,38 @@ describe("scenarios > dashboard > filters > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
+  });
+
+  it("should reset filter state when all values are unselected (metabase#25533)", () => {
+    const filterType = "Is";
+    const filterValue = "Organic";
+
+    cy.log(`Make sure we can connect '${filterType}' filter`);
+    setFilter("Text or Category", filterType);
+
+    cy.findByTestId("dashcard").findByText("Select…").click();
+    popover().contains("Source").click();
+
+    saveDashboard();
+    filterWidget().click();
+
+    applyFilterByType(filterType, filterValue);
+
+    filterWidget().click();
+    cy.log("uncheck all values");
+
+    popover().within(() => {
+      cy.findByText(filterValue).click();
+      cy.button("Update filter").click();
+    });
+
+    filterWidget().within(() => {
+      cy.icon("close").should("not.exist");
+    });
   });
 
   it(`should work when set as the default filter which (if cleared) should not be preserved on reload (metabase#13960)`, () => {
@@ -66,9 +100,9 @@ describe("scenarios > dashboard > filters > text/category", () => {
     popover().contains("User ID").click();
 
     saveDashboard();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
-    cy.location("search").should("eq", "?text=Organic");
+    cy.location("search").should("eq", "?text=Organic&id=");
     cy.get(".Card").within(() => {
       cy.contains("39.58");
     });
@@ -76,27 +110,22 @@ describe("scenarios > dashboard > filters > text/category", () => {
     // This part reproduces metabase#13960
     // Remove default filter (category)
     cy.get("fieldset .Icon-close").click();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
-    cy.location("search").should("eq", "?text=");
+    cy.location("search").should("eq", "?text=&id=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
     cy.button("Add filter").click();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     cy.location("search").should("eq", "?text=&id=4");
 
     cy.reload();
-    cy.wait("@dashcardQuery1");
+    cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
 
     cy.location("search").should("eq", "?text=&id=4");
     filterWidget().contains("Text");
     filterWidget().contains("Arnold Adams");
   });
 });
-
-function clearFilter(index = 0) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}

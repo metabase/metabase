@@ -15,6 +15,7 @@ export * from "./modelIndexes";
 export * from "./parameters";
 export * from "./query";
 export * from "./schema";
+export * from "./search";
 export * from "./segment";
 export * from "./series";
 export * from "./session";

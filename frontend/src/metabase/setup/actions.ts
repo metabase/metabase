@@ -2,8 +2,8 @@ import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
 import { SetupApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadLocalization } from "metabase/lib/i18n";
-import { DatabaseData } from "metabase-types/api";
-import { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
+import type { DatabaseData } from "metabase-types/api";
+import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 import {
   trackAddDataLaterClicked,
   trackDatabaseSelected,

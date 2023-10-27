@@ -7,7 +7,8 @@
    [metabase.models :refer [Field FieldValues User]]
    [metabase.models.field-values :as field-values]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest fetch-field-test
   (testing "GET /api/field/:id"
@@ -85,7 +86,7 @@
                            (fetch-values :rasta :name))))
                   (testing "A User with a *different* sandbox should see their own values"
                     (let [password (mt/random-name)]
-                      (mt/with-temp User [another-user {:password password}]
+                      (t2.with-temp/with-temp [User another-user {:password password}]
                         (met/with-gtaps-for-user another-user {:gtaps      {:venues
                                                                             {:remappings
                                                                              {:cat
@@ -128,12 +129,12 @@
         ;; Rasta Toucan is only allowed to see Venues that are in the "Mexican" category [category_id = 50]. So
         ;; searching whould only include venues in that category
         (let [url (format "field/%s/search/%s" (mt/id :venues :name) (mt/id :venues :name))]
-          (is (= [["Gordo Taqueria"         "Gordo Taqueria"]
-                  ["Tacos Villa Corona"     "Tacos Villa Corona"]
-                  ["Taqueria Los Coyotes"   "Taqueria Los Coyotes"]
-                  ["Taqueria San Francisco" "Taqueria San Francisco"]
-                  ["Tito's Tacos"           "Tito's Tacos"]
-                  ["Yuca's Taqueria"        "Yuca's Taqueria"]]
+          (is (= [["Gordo Taqueria"]
+                  ["Tacos Villa Corona"]
+                  ["Taqueria Los Coyotes"]
+                  ["Taqueria San Francisco"]
+                  ["Tito's Tacos"]
+                  ["Yuca's Taqueria"]]
                  (mt/user-http-request :rasta :get 200 url :value "Ta"))))))))
 
 (deftest caching-test
@@ -156,7 +157,7 @@
 
       (testing "Do different users has different sandbox FieldValues"
         (let [password (mt/random-name)]
-          (mt/with-temp User [another-user {:password password}]
+          (t2.with-temp/with-temp [User another-user {:password password}]
             (met/with-gtaps-for-user another-user {:gtaps      {:venues
                                                                 {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
                                                                  :query      (mt.tu/restricted-column-query (mt/id))}}
@@ -169,14 +170,14 @@
 
       (testing "Do we invalidate the cache when full FieldValues change"
         (try
-          (let [;; Updating FieldValues which should invalidate the cache
+          (let [ ;; Updating FieldValues which should invalidate the cache
                 fv-id      (t2/select-one-pk FieldValues :field_id (:id field) :type :full)
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
             (t2/update! FieldValues fv-id
                         {:values new-values})
-            (with-redefs [field-values/distinct-values (constantly {:values          new-values
+            (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                     :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))

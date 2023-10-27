@@ -3,7 +3,7 @@ import {
   createSampleDatabase,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
 

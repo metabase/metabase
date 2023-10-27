@@ -1,4 +1,4 @@
-import React from "react";
+import { isValidElement } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 
@@ -14,6 +14,7 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -215,9 +216,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     );
   }
 
-  return parts.filter(
-    part => React.isValidElement(part) || part.name || part.icon,
-  );
+  return parts.filter(part => isValidElement(part) || part.name || part.icon);
 }
 
 QuestionTableBadges.propTypes = {
@@ -257,7 +256,7 @@ function getTableURL(table) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     return Urls.question({ id: cardId, name: table.displayName() });
   }
-  return table.newQuestion().getUrl();
+  return ML_Urls.getUrl(table.newQuestion());
 }
 
 export default QuestionDataSource;

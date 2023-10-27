@@ -1,4 +1,3 @@
-import React from "react";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import type Field from "metabase-lib/metadata/Field";
@@ -52,7 +51,7 @@ function CategoryFieldInput({
         autoFocus={false}
         alwaysShowOptions={false}
         disableSearch={false}
-        forceTokenField
+        disableList
         layoutRenderer={DefaultTokenFieldLayout}
         valueRenderer={(val: string) => <span>{val}</span>}
         color="brand"

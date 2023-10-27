@@ -1,4 +1,3 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import SlackStatus from "./SlackStatus";
 
@@ -16,7 +15,6 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 };
 
 Default.args = {
-  // eslint-disable-next-line react/display-name
   Form: () => <div />,
   isValid: true,
 };

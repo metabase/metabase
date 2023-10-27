@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useUpdate } from "react-use";
 import { useSelector } from "metabase/lib/redux";
 import { trackStepSeen } from "../../analytics";

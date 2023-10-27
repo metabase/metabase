@@ -56,7 +56,6 @@ export const HeaderCaption = styled(EditableText)`
 export const HeaderBadges = styled.div`
   display: flex;
   align-items: center;
-  padding-left: 0.25rem;
   border-left: 1px solid transparent;
 
   ${breakpointMaxSmall} {
@@ -85,7 +84,8 @@ interface HeaderContentProps {
 }
 
 export const HeaderContent = styled.div<HeaderContentProps>`
-  padding: 1rem 0;
+  padding-top: 1rem;
+  padding-bottom: 0.75rem;
 
   ${HeaderCaptionContainer} {
     top: ${props => (props.showSubHeader ? "0px" : "10px")};

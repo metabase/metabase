@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -116,12 +118,18 @@ class ChartSettings extends Component {
   handleResetSettings = () => {
     MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
 
-    const settings = getClickBehaviorSettings(this._getSettings());
-    this.props.onChange(settings);
+    const originalCardSettings =
+      this.props.dashcard.card.visualization_settings;
+    const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());
+
+    this.props.onChange({ ...originalCardSettings, ...clickBehaviorSettings });
   };
 
-  handleChangeSettings = changedSettings => {
-    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
+  handleChangeSettings = (changedSettings, question) => {
+    this.props.onChange(
+      updateSettings(this._getSettings(), changedSettings),
+      question,
+    );
   };
 
   handleChangeSeriesColor = (seriesKey, color) => {
@@ -153,13 +161,14 @@ class ChartSettings extends Component {
     if (this.props.widgets) {
       return this.props.widgets;
     } else {
-      const { isDashboard } = this.props;
+      const { isDashboard, dashboard } = this.props;
       const transformedSeries = this._getTransformedSeries();
 
       return getSettingsWidgetsForSeries(
         transformedSeries,
         this.handleChangeSettings,
         isDashboard,
+        { dashboardId: dashboard?.id },
       );
     }
   }
@@ -273,7 +282,7 @@ class ChartSettings extends Component {
       dashcard,
       isDashboard,
     } = this.props;
-    const { currentWidget, popoverRef } = this.state;
+    const { popoverRef } = this.state;
 
     const settings = this._getSettings();
     const widgets = this._getWidgets();
@@ -409,9 +418,6 @@ class ChartSettings extends Component {
           </ChartSettingsPreview>
         )}
         <ChartSettingsWidgetPopover
-          currentWidgetKey={
-            currentWidget?.props?.initialKey || currentWidget?.props?.seriesKey
-          }
           anchor={popoverRef}
           widgets={[this.getFormattingWidget(), this.getStyleWidget()].filter(
             widget => !!widget,

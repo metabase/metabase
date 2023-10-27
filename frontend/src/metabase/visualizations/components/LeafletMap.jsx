@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 
 import "leaflet/dist/leaflet.css";
 import "./LeafletMap.css";
@@ -17,7 +17,7 @@ export default class LeafletMap extends Component {
   constructor(props) {
     super(props);
 
-    this.mapRef = React.createRef();
+    this.mapRef = createRef();
   }
 
   componentDidMount() {

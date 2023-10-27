@@ -19,5 +19,5 @@ export interface CheckBoxIconContainerProps {
 }
 
 export interface CheckBoxLabelProps {
-  labelEllipsis: boolean;
+  labelEllipsis?: boolean;
 }

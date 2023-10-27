@@ -1,11 +1,11 @@
-import React from "react";
+import { useRef } from "react";
 import { t } from "ttag";
 import { useHoverDirty } from "react-use";
 
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/metadata/utils/models";
 
 import {
@@ -34,7 +34,7 @@ function getTooltipMessage(percentage: number) {
     percentage <= 0.5 ? t`Most` : percentage >= 0.8 ? t`Some` : t`Many`;
 
   return (
-    <TooltipContent>
+    <TooltipContent data-testid="tooltip-content">
       <TooltipParagraph>
         {t`${columnCountDescription} columns are missing a column type, description, or friendly name.`}
       </TooltipParagraph>
@@ -56,7 +56,7 @@ type Props = {
 const TOOLTIP_DELAY: [number, null] = [700, null];
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
-  const rootRef = React.useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const isHovering = useHoverDirty(rootRef);
   const resultMetadata = dataset.getResultMetadata();
 

@@ -1,9 +1,9 @@
-import { Card } from "./card";
-import { CollectionId } from "./collection";
-import { DashboardId } from "./dashboard";
-import { Channel } from "./notifications";
-import { Parameter } from "./parameters";
-import { UserId, UserInfo } from "./user";
+import type { Card } from "./card";
+import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
+import type { Channel } from "./notifications";
+import type { Parameter } from "./parameters";
+import type { UserId, UserInfo } from "./user";
 
 export interface Alert {
   id: number;

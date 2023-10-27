@@ -26,13 +26,6 @@ Fetch all `Databases`.
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
-  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
-    be removed in a future release.
-
-  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
-    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead.
-
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
@@ -40,11 +33,9 @@ Fetch all `Databases`.
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
 ### PARAMS:
-
-*  **`include_tables`** nullable boolean
-
-*  **`include_cards`** nullable boolean
 
 *  **`include`** include must be either empty or the value tables
 
@@ -53,6 +44,10 @@ Fetch all `Databases`.
 *  **`include_editable_data_model`** nullable boolean
 
 *  **`exclude_uneditable_details`** nullable boolean
+
+*  **`include_only_uploadable`** nullable boolean
+
+*  **`include_analytics`** nullable boolean
 
 ## `GET /api/database/:id`
 
@@ -186,8 +181,6 @@ Returns a list of all the schemas with tables found for the database `id`. Exclu
 
 Returns a list of all syncable schemas found for the database `id`.
 
-You must be a superuser to do this.
-
 ### PARAMS:
 
 *  **`id`** value must be an integer greater than zero.
@@ -291,15 +284,7 @@ Trigger a manual scan of the field values for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
-
-## `POST /api/database/:id/sync`
-
-Update the metadata for this `Database`. This happens asynchronously.
-
-### PARAMS:
-
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/sync_schema`
 
@@ -307,7 +292,7 @@ Trigger a manual update of the schema metadata for this `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/database/:id/unpersist`
 

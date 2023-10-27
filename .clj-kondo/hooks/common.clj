@@ -141,6 +141,84 @@
                 body))]
     {:node node*}))
 
+(defn with-five-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-six-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-seven-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f g]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil, g nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f g] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or g (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
 (defn with-one-top-level-binding
   "Helper for macros that have a shape like
 

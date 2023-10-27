@@ -29,13 +29,15 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline :refer [Timeline]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -91,7 +93,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (hydrate collections :can_write)
+    (t2/hydrate collections :can_write :is_personal)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
@@ -156,10 +158,13 @@
   #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models" "timeline"})
 
 (def ^:private ModelString
-  (apply s/enum valid-model-param-values))
+  (into [:enum] valid-model-param-values))
 
-; This is basically a union type. defendpoint-schema splits the string if it only gets one
-(def ^:private models-schema (s/conditional vector? [ModelString] :else ModelString))
+(def ^:private Models
+  "This is basically a union type. [[api/defendpoint]] splits the string if it only gets one."
+  [:or
+   [:sequential ModelString]
+   ModelString])
 
 (def ^:private valid-pinned-state-values
   "Valid values for the `?pinned_state` param accepted by endpoints in this namespace."
@@ -169,18 +174,23 @@
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
 
-
 (def ^:private CollectionChildrenOptions
-  {:archived?                     s/Bool
-   (s/optional-key :pinned-state) (s/maybe (apply s/enum (map keyword valid-pinned-state-values)))
+  [:map
+   [:archived?                     :boolean]
+   [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
-   (s/optional-key :models)       (s/maybe #{(apply s/enum (map keyword valid-model-param-values))})
-   (s/optional-key :sort-info)    (s/maybe [(s/one (apply s/enum (map normalize-sort-choice valid-sort-columns)) "sort-columns")
-                                            (s/one (apply s/enum (map normalize-sort-choice valid-sort-directions)) "sort-direction")])})
+   [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
+   [:sort-info    {:optional true} [:maybe [:tuple
+                                            (into [:enum {:error/message "sort-columns"}]
+                                                  (map normalize-sort-choice)
+                                                  valid-sort-columns)
+                                            (into [:enum {:error/message "sort-direction"}]
+                                                  (map normalize-sort-choice)
+                                                  valid-sort-directions)]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
-  in the `CollectionChildrenOptions` schema above.
+  in the [[CollectionChildrenOptions]] schema above.
 
   NOTES:
 
@@ -259,13 +269,18 @@
             :description :display :authority_level :moderated_status :icon :personal_owner_id
             :collection_preview :dataset_query)))
 
-(defmethod collection-children-query :snippet
-  [_ collection {:keys [archived?]}]
+(defenterprise snippets-collection-children-query
+  "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
+  collections are an EE feature."
+  metabase-enterprise.snippet-collections.api.native-query-snippet
+  [_ {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
    :from   [[:native_query_snippet :nqs]]
-   :where  [:and
-            [:= :collection_id (:id collection)]
-            [:= :archived (boolean archived?)]]})
+   :where  [:= :archived (boolean archived?)]})
+
+(defmethod collection-children-query :snippet
+  [_ collection options]
+  (snippets-collection-children-query collection options))
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
@@ -315,17 +330,10 @@
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
-       ;; todo: should there be a flag, or a realized view?
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Card")]]} :r]
-                   [:= :r.model_id :c.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :c.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -404,16 +412,10 @@
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Dashboard")]]} :r]
-                   [:= :r.model_id :d.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :d.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -431,12 +433,22 @@
                 :dataset_query)
        rows))
 
+(defenterprise snippets-collection-filter-clause
+  "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
+  snippet-collections. EE implementation returns `nil`, so as to not filter out snippet collections."
+  metabase-enterprise.snippet-collections.api.native-query-snippet
+  []
+  [:or
+   [:= :namespace nil]
+   [:not= :namespace (u/qualified-name "snippets")]])
+
 (defn- collection-query
   [collection {:keys [archived? collection-namespace pinned-state]}]
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)])
+              [:= :namespace (u/qualified-name collection-namespace)]
+              (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
              :select [:id
@@ -471,7 +483,7 @@
                   :collection_preview :dataset_query)
           update-personal-collection))))
 
-(s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+(mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -646,7 +658,7 @@
       res
       limit-res)))
 
-(s/defn ^:private collection-children
+(mu/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -666,13 +678,13 @@
        :offset mw.offset-paging/*offset*
        :models valid-models})))
 
-(s/defn ^:private collection-detail
+(mu/defn ^:private collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -697,8 +709,7 @@
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/items"
+(api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
   *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models
@@ -707,11 +718,12 @@
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
   [id models archived pinned_state sort_column sort_direction]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
-   sort_column    (s/maybe (apply s/enum valid-sort-columns))
-   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
+  {id             ms/PositiveInt
+   models         [:maybe Models]
+   archived       [:maybe ms/BooleanString]
+   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column    [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))]
     (collection-children (api/read-check Collection id)
                          {:models       model-kwds
@@ -746,8 +758,7 @@
       #{:collection}
       #{:no_models})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root/items"
+(api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
   `collection_id` exist. It does, however, have its own set of Permissions.
@@ -762,24 +773,24 @@
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
   [models archived namespace pinned_state sort_column sort_direction]
-  {models         (s/maybe models-schema)
-   archived       (s/maybe su/BooleanString)
-   namespace      (s/maybe su/NonBlankString)
-   pinned_state   (s/maybe (apply s/enum valid-pinned-state-values))
-   sort_column    (s/maybe (apply s/enum valid-sort-columns))
-   sort_direction (s/maybe (apply s/enum valid-sort-directions))}
+  {models         [:maybe Models]
+   archived       [:maybe ms/BooleanString]
+   namespace      [:maybe ms/NonBlankString]
+   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column    [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
-      root-collection
-      {:models       model-kwds
-       :archived?    (Boolean/parseBoolean archived)
-       :pinned-state (keyword pinned_state)
-       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+     root-collection
+     {:models       model-kwds
+      :archived?    (Boolean/parseBoolean archived)
+      :pinned-state (keyword pinned_state)
+      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -795,34 +806,33 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name color description parent_id namespace authority_level]}]
+  [{:keys [name description parent_id namespace authority_level]}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
+  (when (some? authority_level)
+    ;; make sure only admin and an EE token is present to be able to create an Official token
+    (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
+    (api/check-superuser))
   ;; Now create the new Collection :)
-  (api/check-403 (or (nil? authority_level)
-                     (and api/*is-superuser?* authority_level)))
   (first
     (t2/insert-returning-instances!
       Collection
       (merge
         {:name        name
-         :color       color
          :description description
          :authority_level authority_level
          :namespace   namespace}
         (when parent_id
           {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new Collection."
-  [:as {{:keys [name color description parent_id namespace authority_level] :as body} :body}]
-  {name            su/NonBlankString
-   color           collection/hex-color-regex
-   description     (s/maybe su/NonBlankString)
-   parent_id       (s/maybe su/IntGreaterThanZero)
-   namespace       (s/maybe su/NonBlankString)
-   authority_level collection/AuthorityLevel}
+  [:as {{:keys [name description parent_id namespace authority_level] :as body} :body}]
+  {name            ms/NonBlankString
+   description     [:maybe ms/NonBlankString]
+   parent_id       [:maybe ms/PositiveInt]
+   namespace       [:maybe ms/NonBlankString]
+   authority_level [:maybe collection/AuthorityLevel]}
   (create-collection! body))
 
 ;; TODO - I'm not 100% sure it makes sense that moving a Collection requires a special call to `move-collection!`,
@@ -872,22 +882,23 @@
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
-  [id, :as {{:keys [name color description archived parent_id authority_level], :as collection-updates} :body}]
-  {name                                   (s/maybe su/NonBlankString)
-   color                                  (s/maybe collection/hex-color-regex)
-   description                            (s/maybe su/NonBlankString)
-   archived                               (s/maybe s/Bool)
-   parent_id                              (s/maybe su/IntGreaterThanZero)
-   authority_level                        collection/AuthorityLevel}
+  [id, :as {{:keys [name description archived parent_id authority_level], :as collection-updates} :body}]
+  {id              ms/PositiveInt
+   name            [:maybe ms/NonBlankString]
+   description     [:maybe ms/NonBlankString]
+   archived        [:maybe ms/BooleanValue]
+   parent_id       [:maybe ms/PositiveInt]
+   authority_level [:maybe collection/AuthorityLevel]}
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (api/write-check Collection id)]
     ;; if we're trying to *archive* the Collection, make sure we're allowed to do that
     (check-allowed-to-archive-or-unarchive collection-before-update collection-updates)
+    ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
-               (not= authority_level (:authority_level collection-before-update)))
+               (not= (keyword authority_level) (:authority_level collection-before-update)))
+      (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 (and api/*is-superuser?*
                           ;; pre-update of model checks if the collection is a personal collection and rejects changes
                           ;; to authority_level, but it doesn't check if it is a sub-collection of a personal one so we add that
@@ -895,7 +906,7 @@
                           (not (collection/is-personal-collection-or-descendant-of-one? collection-before-update)))))
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
-    (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
+    (let [updates (u/select-keys-when collection-updates :present [:name :description :archived :authority_level])]
       (when (seq updates)
         (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
@@ -903,8 +914,7 @@
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (t2/select-one Collection :id id)
-      (hydrate :parent_id)))
+  (collection-detail (t2/select-one Collection :id id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 

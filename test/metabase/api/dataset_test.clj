@@ -13,21 +13,21 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.driver :as driver]
    [metabase.http-client :as client]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -78,7 +78,7 @@
         (testing "\nAPI Response"
           (is (partial=
                {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
                                          :native_form      true
                                          :results_timezone "UTC"}
                 :row_count              1
@@ -106,6 +106,7 @@
                   :dashboard_id nil
                   :error        nil
                   :id           true
+                  :action_id    nil
                   :cache_hit    false
                   :database_id  (mt/id)
                   :started_at   true
@@ -124,38 +125,38 @@
                     :native   {:query "foobar"}}
             result (mt/user-http-request :rasta :post 202 "dataset" query)]
         (testing "\nAPI Response"
-          (is (schema= {:data        (s/eq {:rows []
-                                            :cols []})
-                        :row_count   (s/eq 0)
-                        :status      (s/eq "failed")
-                        :context     (s/eq "ad-hoc")
-                        :error       #"Syntax error in SQL statement"
-                        :json_query  (s/eq (merge
-                                            query-defaults
-                                            {:database (mt/id)
-                                             :type     "native"
-                                             :native   {:query "foobar"}}))
-                        :database_id (s/eq (mt/id))
-                        :state       (s/eq "42000")
-                        :class       (s/eq "class org.h2.jdbc.JdbcSQLSyntaxErrorException")
-                        s/Keyword    s/Any}
-                       result)))
+          (is (malli= [:map
+                       [:data        [:fn #(= % {:rows [] :cols []})]]
+                       [:row_count   [:= 0]]
+                       [:status      [:= "failed"]]
+                       [:context     [:= "ad-hoc"]]
+                       [:error       #"Syntax error in SQL statement"]
+                       [:json_query  [:fn #(= % (merge
+                                                  query-defaults
+                                                  {:database (mt/id)
+                                                   :type     "native"
+                                                   :native   {:query "foobar"}}))]]
+                       [:database_id [:= (mt/id)]]
+                       [:state       [:= "42000"]]
+                       [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
+                      result)))
 
         (testing "\nSaved QueryExecution"
-          (is (schema= {:hash         (Class/forName "[B")
-                        :id           su/IntGreaterThanZero
-                        :result_rows  (s/eq 0)
-                        :row_count    (s/eq 0)
-                        :context      (s/eq :ad-hoc)
-                        :error        #"Syntax error in SQL statement"
-                        :database_id  (s/eq (mt/id))
-                        :executor_id  (s/eq (mt/user->id :rasta))
-                        :native       (s/eq true)
-                        :pulse_id     (s/eq nil)
-                        :card_id      (s/eq nil)
-                        :dashboard_id (s/eq nil)
-                        s/Keyword     s/Any}
-                       (most-recent-query-execution-for-query query))))))))
+          (is (malli=
+               [:map
+                [:hash         (ms/InstanceOfClass (Class/forName "[B"))]
+                [:id           ms/PositiveInt]
+                [:result_rows  [:= 0]]
+                [:row_count    [:= 0]]
+                [:context      [:= :ad-hoc]]
+                [:error        #"Syntax error in SQL statement"]
+                [:database_id  [:= (mt/id)]]
+                [:executor_id  [:= (mt/user->id :rasta)]]
+                [:native       [:= true]]
+                [:pulse_id     nil?]
+                [:card_id      nil?]
+                [:dashboard_id nil?]]
+               (most-recent-query-execution-for-query query))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -177,7 +178,7 @@
            (test-download-response-headers "dataset/csv")))
     (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
             "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.json\""
-            "Content-Type"        "application/json;charset=utf-8"
+            "Content-Type"        "application/json; charset=utf-8"
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
            (test-download-response-headers "dataset/json")))
@@ -190,13 +191,13 @@
 
 (deftest check-that-we-can-export-the-results-of-a-nested-query
   (mt/with-temp-copy-of-db
-    (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                              :type     :native
-                                              :native   {:query "SELECT * FROM USERS;"}}}]
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :native
+                                                        :native   {:query "SELECT * FROM USERS;"}}}]
       (letfn [(do-test []
                 (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
                                                    :query (json/generate-string
-                                                           {:database mbql.s/saved-questions-virtual-database-id
+                                                           {:database lib.schema.id/saved-questions-virtual-database-id
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))
@@ -265,11 +266,11 @@
       ;; the Database
       (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
       (perms/grant-permissions! (perms-group/all-users) (mt/id) "schema_that_does_not_exist")
-      (is (schema= {:status   (s/eq "failed")
-                    :error    (s/eq "You do not have permissions to run this query.")
-                    s/Keyword s/Any}
-                   (mt/user-http-request :rasta :post "dataset"
-                                         (mt/mbql-query venues {:limit 1})))))))
+      (is (malli= [:map
+                   [:status [:= "failed"]]
+                   [:error  [:= "You do not have permissions to run this query."]]]
+                  (mt/user-http-request :rasta :post "dataset"
+                                        (mt/mbql-query venues {:limit 1})))))))
 
 (deftest compile-test
   (testing "POST /api/dataset/native"
@@ -299,12 +300,12 @@
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-          (is (schema= {:permissions-error? (s/eq true)
-                        :message            (s/eq "You do not have permissions to run this query.")
-                        s/Any               s/Any}
-                       (mt/user-http-request :rasta :post "dataset/native"
-                                             (mt/mbql-query venues
-                                               {:fields [$id $name]})))))))
+          (is (malli= [:map
+                       [:permissions-error? [:= true]]
+                       [:message            [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset/native"
+                                            (mt/mbql-query venues
+                                                           {:fields [$id $name]})))))))
     (testing "We should be able to format the resulting SQL query if desired"
       ;; Note that the following was tested against all driver branches of format-sql and all results were identical.
       (is (= {:query  (str "SELECT\n"
@@ -318,7 +319,7 @@
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc
                                     (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty true)))))
+                                    :pretty true)))))
     (testing "The default behavior is to format the SQL"
       (is (= {:query  (str "SELECT\n"
                            "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"
@@ -329,7 +330,22 @@
                            "  1048575")
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
-                                   (mt/mbql-query venues {:fields [$id $name]})))))))
+                                   (mt/mbql-query venues {:fields [$id $name]})))))
+    (testing "`:now` is usable inside `:case` with mongo (#32216)"
+      (mt/test-driver :mongo
+        (is (= {:$switch
+                {:branches
+                 [{:case {:$eq [{:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}
+                                {:$dayOfMonth {:date "$$NOW", :timezone "UTC"}}]},
+                   :then "a"}]
+                 :default "b"}}
+               (-> (mt/user-http-request
+                    :rasta :post 200 "dataset/native"
+                    (mt/mbql-query venues
+                      {:expressions
+                       {:E [:case [[[:= [:get-day [:now]] [:get-day [:now]]] "a"]]
+                            {:default "b"}]}}))
+                   :query first :$project :E)))))))
 
 (deftest report-timezone-test
   (mt/test-driver :postgres
@@ -439,17 +455,17 @@
                        :type :string/=,
                        :sectionId "string"}]
         (testing "values"
-          (is (partial= {:values ["foo1" "foo2" "bar"]}
+          (is (partial= {:values [["foo1"] ["foo2"] ["bar"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/values"
                                               {:parameter parameter}))))
         (testing "search"
-          (is (partial= {:values ["foo1" "foo2"]}
+          (is (partial= {:values [["foo1"] ["foo2"]]}
                         (mt/user-http-request :rasta :post 200
                                               "dataset/parameter/search/fo"
                                               {:parameter parameter}))))))
-    (mt/with-temp* [Card [{card-id :id} {:database_id (mt/id)
-                                         :dataset_query (mt/mbql-query products)}]]
+    (mt/with-temp [Card {card-id :id} {:database_id (mt/id)
+                                       :dataset_query (mt/mbql-query products)}]
       (let [parameter {:values_query_type "list",
                        :values_source_type "card",
                        :values_source_config {:card_id card-id,
@@ -466,13 +482,13 @@
                                                    "dataset/parameter/values"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget" "Doohickey"} values))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"] ["Doohickey"]} values))))
           (testing "search"
             (let [values (-> (mt/user-http-request :rasta :post 200
                                                    "dataset/parameter/search/g"
                                                    {:parameter parameter})
                              :values set)]
-              (is (= #{"Gizmo" "Widget" "Gadget"} values)))))))
+              (is (= #{["Gizmo"] ["Widget"] ["Gadget"]} values)))))))
 
     (testing "nil value (current behavior of field values)"
       (let [parameter {:values_query_type "list",
@@ -513,25 +529,27 @@
             (is (= [["Twitter"] ["Organic"] ["Affiliate"] ["Google"] ["Facebook"]] values))))))
 
     (testing "fallback to field-values"
-      (with-redefs [api.dataset/parameter-field-values (constantly "field-values")]
-        (testing "if value-field not found in source card"
-          (mt/with-temp Card [{source-card-id :id}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))
+      (let [mock-default-result {:values          [["field-values"]]
+                                 :has_more_values false}]
+        (with-redefs [api.dataset/parameter-field-values (constantly mock-default-result)]
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}})))))
 
-        (testing "if value-field not found in source card"
-          (mt/with-temp Card [{source-card-id :id} {:archived true}]
-            (is (= "field-values"
-                   (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
-                                         {:parameter  {:values_source_type   "card"
-                                                       :values_source_config {:card_id     source-card-id
-                                                                              :value_field (mt/$ids $people.source)}
-                                                       :type                 :string/=,
-                                                       :name                 "Text"
-                                                       :id                   "abc"}})))))))))
+          (testing "if value-field not found in source card"
+            (t2.with-temp/with-temp [Card {source-card-id :id} {:archived true}]
+              (is (= mock-default-result
+                     (mt/user-http-request :rasta :post 200 "dataset/parameter/values"
+                                           {:parameter  {:values_source_type   "card"
+                                                         :values_source_config {:card_id     source-card-id
+                                                                                :value_field (mt/$ids $people.source)}
+                                                         :type                 :string/=,
+                                                         :name                 "Text"
+                                                         :id                   "abc"}}))))))))))

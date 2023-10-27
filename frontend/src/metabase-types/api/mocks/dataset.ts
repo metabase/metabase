@@ -1,7 +1,9 @@
-import {
+import type {
   Dataset,
   DatasetColumn,
   DatasetData,
+  PublicDataset,
+  PublicDatasetData,
   ResultsMetadata,
   TemplateTag,
 } from "metabase-types/api/dataset";
@@ -49,6 +51,34 @@ export const createMockDataset = ({
   ...opts
 }: MockDatasetOpts = {}) => ({
   data: createMockDatasetData(data),
+  database_id: 1,
+  row_count: 0,
+  running_time: 1000,
+  ...opts,
+});
+
+export const createMockPublicDatasetData = ({
+  cols = [
+    createMockColumn({
+      display_name: "NAME",
+      source: "native",
+      name: "NAME",
+    }),
+  ],
+  ...opts
+}: Partial<PublicDatasetData>): PublicDatasetData => ({
+  rows: [],
+  cols,
+  rows_truncated: 0,
+  insights: null,
+  ...opts,
+});
+
+export const createMockPublicDataset = ({
+  data = {},
+  ...opts
+}: MockDatasetOpts = {}): PublicDataset => ({
+  data: createMockPublicDatasetData(data),
   database_id: 1,
   row_count: 0,
   running_time: 1000,

@@ -19,7 +19,9 @@
     Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
+   [malli.core :as mc]
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.classloader :as classloader]
@@ -28,45 +30,44 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
-(def ^Integer category-cardinality-threshold
+(def ^Long category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
   This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
   frontend behavior such as widget choices."
-  (int 30))
+  30)
 
-(def ^Integer auto-list-cardinality-threshold
+(def ^Long auto-list-cardinality-threshold
   "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
-  (int 1000))
+  1000)
 
-(def ^:private ^Integer entry-max-length
+(def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
-  (int 100))
+  100)
 
-(def ^:dynamic *total-max-length*
+(def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (int (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* auto-list-cardinality-threshold entry-max-length)))
 
-(def advanced-field-values-max-age
+(def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
   After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
   (t/days 30))
 
-(def ^:private active-field-values-cutoff
+(def ^:private ^java.time.Period active-field-values-cutoff
   "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
    they are used again."
   (t/days 14))
 
 (def advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
-  #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
-    :linked-filter}) ;; are fieldvalues but has constraints from other linked parameters on dashboard/embedding
+  #{:sandbox         ;; field values filtered by sandbox permissions
+    :impersonation   ;; field values with connection impersonation enforced (db-level roles)
+    :linked-filter}) ;; field values with constraints from other linked parameters on dashboard/embedding
 
 (def ^:private field-values-types
   "All FieldValues type."
@@ -94,7 +95,7 @@
    :type                  mi/transform-keyword})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
-  (when (s/check (s/maybe [(s/maybe su/NonBlankString)]) human-readable-values)
+  (when-not (mc/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
     (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
@@ -204,24 +205,20 @@
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
            visibility-type  :visibility_type
-           has-field-values :has_field_values
-           :as              field} field-or-field-id]
-      (s/check {:visibility_type  su/KeywordOrString
-                :base_type        (s/maybe su/KeywordOrString)
-                :has_field_values (s/maybe su/KeywordOrString)
-                s/Keyword         s/Any}
-               field)
+           has-field-values :has_field_values} field-or-field-id]
       (boolean
-       (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-            (not (isa? (keyword base-type) :type/Temporal))
-            (#{:list :auto-list} (keyword has-field-values)))))))
+       (and
+        (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
+        (not (isa? (keyword base-type) :type/Temporal))
+        (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
   "Like `take` but condition by the total length of elements.
-  Returns a stateful transducer when no collection is provided.
+   Assumes the elements are 1-tuples of values with a .toString() method.
+   Returns a stateful transducer when no collection is provided.
 
-    ;; (take-by-length 6 [\"Dog\" \"Cat\" \"Crocodile\"])
-    ;; => [\"Dog\" \"Cat\"]"
+    ;; (take-by-length 6 [[\"Dog\"] [\"Cat\"] [\"Duck\"]])
+    ;; => [[\"Dog\"] [\"Cat\"]]"
   ([max-length]
    (fn [rf]
      (let [current-length (volatile! 0)]
@@ -230,7 +227,7 @@
          ([result]
           (rf result))
          ([result input]
-          (vswap! current-length + (count (str input)))
+          (vswap! current-length + (count (str (first input))))
           (if (< @current-length max-length)
             (rf result input)
             (reduced result)))))))
@@ -239,13 +236,13 @@
    (lazy-seq
      (when-let [s (seq coll)]
        (let [f          (first s)
-             new-length (- max-length (count (str f)))]
+             new-length (- max-length (count (str (first f))))]
          (when-not (neg? new-length)
            (cons f (take-by-length new-length
                                    (rest s)))))))))
 
 (defn fixup-human-readable-values
-  "Field values and human readable values are lists that are zipped together. If the field values have changes, the
+  "Field values and human readable values are lists that are zipped together. If the field values have changed, the
   human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
   `new-values`. If a new field value is found, a string version of that is used"
   [{old-values :values, old-hrv :human_readable_values} new-values]
@@ -277,6 +274,12 @@
   [_field-id]
   nil)
 
+(defenterprise hash-key-for-impersonation
+  "Return a hash-key that will be used for impersonated fieldvalues."
+  metabase-enterprise.advanced-permissions.driver.impersonation
+  [_field-id]
+  nil)
+
 (defn default-hash-key-for-linked-filters
   "OSS impl of [[hash-key-for-linked-filters]]."
   [field-id constraints]
@@ -299,7 +302,7 @@
   It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
-  ;; ->  {:values          [1, 2, 3]
+  ;; ->  {:values          [[1], [2], [3]]
           :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
@@ -334,9 +337,12 @@
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
   [field & [human-readable-values]]
-  (let [field-values                     (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
-        {:keys [values has_more_values]} (distinct-values field)
-        field-name                       (or (:name field) (:id field))]
+  (let [field-values              (t2/select-one FieldValues :field_id (u/the-id field) :type :full)
+        {unwrapped-values :values
+         :keys [has_more_values]} (distinct-values field)
+        ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
+        values                    (map first unwrapped-values)
+        field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
       ;; the accumulated length of all values exceeded the [[*total-max-length*]] threshold
@@ -366,17 +372,18 @@
         ::fv-skipped)
 
       ;; if the FieldValues object already exists then update values in it
-      (and field-values values)
+      (and field-values unwrapped-values)
       (do
-        (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
-        (db/update-non-nil-keys! FieldValues (u/the-id field-values)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values (fixup-human-readable-values field-values values))
-        ::fv-updated)
+       (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
+       (t2/update! FieldValues (u/the-id field-values)
+                   (m/remove-vals nil?
+                                  {:has_more_values       has_more_values
+                                   :values                values
+                                   :human_readable_values (fixup-human-readable-values field-values values)}))
+       ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
-      values
+      unwrapped-values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (t2/insert! FieldValues
@@ -397,10 +404,11 @@
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
   created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
   {:arglists '([field] [field human-readable-values])}
-  [{field-id :id :as field} & [human-readable-values]]
+  [{field-id :id field-values :values :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (let [existing (t2/select-one FieldValues :field_id field-id :type :full)]
+    (let [existing (or (not-empty field-values)
+                       (t2/select-one FieldValues :field_id field-id :type :full))]
       (if (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field human-readable-values)
           ::fv-deleted

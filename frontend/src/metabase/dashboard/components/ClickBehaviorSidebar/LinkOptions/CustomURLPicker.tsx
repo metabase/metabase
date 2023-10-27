@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -8,7 +8,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
-  DashboardOrderedCard,
+  DashboardCard,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
@@ -26,7 +26,7 @@ import {
 } from "./CustomURLPicker.styled";
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings: ClickBehavior) => void;

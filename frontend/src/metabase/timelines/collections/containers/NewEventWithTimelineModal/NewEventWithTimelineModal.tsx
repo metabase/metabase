@@ -5,10 +5,10 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import { Collection, TimelineEvent } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { Collection, TimelineEvent } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalParams } from "../../types";
+import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalProps {
   params: ModalParams;

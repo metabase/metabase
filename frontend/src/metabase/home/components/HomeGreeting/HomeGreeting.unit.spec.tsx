@@ -1,12 +1,11 @@
-import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-import { User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import HomeGreeting from "./HomeGreeting";
+import { HomeGreeting } from "./HomeGreeting";
 
 interface SetupOpts {
   currentUser?: User;

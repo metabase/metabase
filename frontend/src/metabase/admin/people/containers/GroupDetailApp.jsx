@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import _ from "underscore";
 
 import User from "metabase/entities/users";
@@ -14,5 +14,5 @@ class GroupDetailApp extends Component {
 
 export default _.compose(
   User.loadList(),
-  Group.load({ id: (_state, props) => props.params.groupId }),
+  Group.load({ id: (_state, props) => props.params.groupId, reload: true }),
 )(GroupDetailApp);

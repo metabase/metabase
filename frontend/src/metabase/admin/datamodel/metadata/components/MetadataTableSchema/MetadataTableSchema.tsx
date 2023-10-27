@@ -1,8 +1,8 @@
-import React, { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import Field from "metabase-lib/metadata/Field";
-import Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/metadata/Field";
+import type Table from "metabase-lib/metadata/Table";
 import {
   ColumnNameCell,
   DataTypeCell,
@@ -37,7 +37,7 @@ const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
             const nestedFields = fieldByParent[field.name] ?? [];
 
             return (
-              <React.Fragment key={index}>
+              <Fragment key={index}>
                 <ColumnRow field={field} isBordered={nestedFields.length > 0} />
                 {nestedFields.map((field, index) => (
                   <ColumnRow
@@ -47,7 +47,7 @@ const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
                     isSecondary
                   />
                 ))}
-              </React.Fragment>
+              </Fragment>
             );
           })}
         </tbody>

@@ -1,24 +1,18 @@
 /* eslint-disable react/prop-types */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useMount, useUnmount, usePrevious } from "react-use";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import { getSetting } from "metabase/selectors/settings";
 
-import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
+import { closeNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   getUser,
@@ -27,7 +21,7 @@ import {
 } from "metabase/selectors/user";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
-
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
@@ -35,7 +29,10 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
-import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { useSelector } from "metabase/lib/redux";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
+
 import View from "../components/view/View";
 
 import {
@@ -48,7 +45,6 @@ import {
   getQueryResults,
   getParameterValues,
   getIsDirty,
-  getIsNew,
   getIsObjectDetail,
   getTables,
   getTableForeignKeys,
@@ -92,9 +88,11 @@ import {
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
   isResultsMetadataDirty,
+  getShouldShowUnsavedChangesWarning,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import { isNavigationAllowed } from "../utils";
 
 const timelineProps = {
   query: { include: "events" },
@@ -145,7 +143,6 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
@@ -182,7 +179,7 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
+    loadingMessage: getWhiteLabeledLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
   };
@@ -199,6 +196,7 @@ const mapDispatchToProps = {
 function QueryBuilder(props) {
   const {
     question,
+    originalQuestion,
     location,
     params,
     fromUrl,
@@ -221,10 +219,8 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    isDirty: isModelQueryDirty,
-    isMetadataDirty,
     closeQB,
-    isNew,
+    route,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -272,51 +268,75 @@ function QueryBuilder(props) {
     toggleBookmark(id);
   };
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
+
   const handleCreate = useCallback(
     async newQuestion => {
       const shouldBePinned = newQuestion.isDataset();
-      await apiCreateQuestion(newQuestion.setPinned(shouldBePinned));
+      const createdQuestion = await apiCreateQuestion(
+        newQuestion.setPinned(shouldBePinned),
+      );
+      await setUIControls({ isModifiedFromNotebook: false });
 
-      setRecentlySaved("created");
+      scheduleCallback(async () => {
+        await updateUrl(createdQuestion, { dirty: false });
+
+        setRecentlySaved("created");
+      });
     },
-    [apiCreateQuestion, setRecentlySaved],
+    [
+      apiCreateQuestion,
+      setRecentlySaved,
+      setUIControls,
+      updateUrl,
+      scheduleCallback,
+    ],
   );
 
   const handleSave = useCallback(
     async (updatedQuestion, { rerunQuery } = {}) => {
       await apiUpdateQuestion(updatedQuestion, { rerunQuery });
-      if (!rerunQuery) {
-        await updateUrl(updatedQuestion, { dirty: false });
-      }
-      if (fromUrl) {
-        onChangeLocation(fromUrl);
-      } else {
-        setRecentlySaved("updated");
-      }
+      await setUIControls({ isModifiedFromNotebook: false });
+
+      scheduleCallback(async () => {
+        if (!rerunQuery) {
+          await updateUrl(updatedQuestion, { dirty: false });
+        }
+
+        if (fromUrl) {
+          onChangeLocation(fromUrl);
+        } else {
+          setRecentlySaved("updated");
+        }
+      });
     },
-    [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
+    [
+      fromUrl,
+      apiUpdateQuestion,
+      updateUrl,
+      onChangeLocation,
+      setRecentlySaved,
+      setUIControls,
+      scheduleCallback,
+    ],
   );
 
   useMount(() => {
     initializeQB(location, params);
-  }, []);
+  });
 
-  useMount(() => {
+  useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
-  }, []);
+  });
 
-  const isExistingModelDirty = useMemo(
-    () => isModelQueryDirty || isMetadataDirty,
-    [isMetadataDirty, isModelQueryDirty],
+  const shouldShowUnsavedChangesWarning = useSelector(
+    getShouldShowUnsavedChangesWarning,
   );
-
-  const isExistingSqlQueryDirty = useMemo(
-    () => isModelQueryDirty && isNativeEditorOpen,
-    [isModelQueryDirty, isNativeEditorOpen],
-  );
-
-  useBeforeUnload(!isNew && (isExistingModelDirty || isExistingSqlQueryDirty));
 
   useUnmount(() => {
     cancelQuery();
@@ -384,7 +404,7 @@ function QueryBuilder(props) {
     onTimeout,
   });
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -412,22 +432,41 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
+  const isLocationAllowed = useCallback(
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
+  );
+
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-      toggleBookmark={onClickBookmark}
-      onDismissToast={onDismissToast}
-      onConfirmToast={onConfirmToast}
-      isShowingToaster={isShowingToaster}
-    />
+    <>
+      <View
+        {...props}
+        modal={uiControls.modal}
+        recentlySaved={uiControls.recentlySaved}
+        onOpenModal={openModal}
+        onCloseModal={closeModal}
+        onSetRecentlySaved={setRecentlySaved}
+        onSave={handleSave}
+        onCreate={handleCreate}
+        handleResize={forceUpdateDebounced}
+        toggleBookmark={onClickBookmark}
+        onDismissToast={onDismissToast}
+        onConfirmToast={onConfirmToast}
+        isShowingToaster={isShowingToaster}
+      />
+
+      <LeaveConfirmationModal
+        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
+        isLocationAllowed={isLocationAllowed}
+        route={route}
+      />
+    </>
   );
 }
 

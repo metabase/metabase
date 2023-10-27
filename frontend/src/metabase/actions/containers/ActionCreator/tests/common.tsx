@@ -1,12 +1,7 @@
 /* istanbul ignore file */
-import React from "react";
 import fetchMock from "fetch-mock";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -85,7 +80,5 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }

@@ -1,5 +1,6 @@
-import {
+import type {
   Card,
+  DashboardId,
   Dataset,
   Field,
   ParameterValueOrArray,
@@ -15,6 +16,7 @@ export type ForeignKeyReference = {
 };
 
 export interface QueryBuilderUIControls {
+  isModifiedFromNotebook: boolean;
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingNewbModal: boolean;
@@ -25,6 +27,7 @@ export interface QueryBuilderUIControls {
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
   isShowingTimelineSidebar: boolean;
+  isNativeEditorOpen: boolean;
   initialChartSetting: null;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
@@ -39,10 +42,15 @@ export interface QueryBuilderLoadingControls {
   timeoutId: string;
 }
 
+export interface QueryBuilderDashboardState {
+  dashboardId: DashboardId | null;
+  isEditing: boolean;
+}
+
 export interface QueryBuilderState {
   uiControls: QueryBuilderUIControls;
-
   loadingControls: QueryBuilderLoadingControls;
+  parentDashboard: QueryBuilderDashboardState;
   queryStatus: QueryBuilderQueryStatus;
   queryResults: Dataset[] | null;
   queryStartTime: number | null;

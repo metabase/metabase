@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { COMPLETED_STEP } from "../../constants";
@@ -19,7 +18,7 @@ export const CompletedStep = (): JSX.Element | null => {
     return null;
   }
 
-  const baseUrl = (window as any).MetabaseRoot || "/";
+  const baseUrl = window.MetabaseRoot ?? "/";
 
   return (
     <StepRoot>

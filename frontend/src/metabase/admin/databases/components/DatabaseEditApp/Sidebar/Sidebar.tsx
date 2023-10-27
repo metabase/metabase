@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";

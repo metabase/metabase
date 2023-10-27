@@ -1,4 +1,4 @@
-import React from "react";
+import { Component } from "react";
 
 /**
  * fitViewport allows you to modify the top level classes on the react root node
@@ -19,7 +19,7 @@ import React from "react";
  * @deprecated HOCs are deprecated
  */
 function fitViewport(ComposedComponent) {
-  return class extends React.Component {
+  return class extends Component {
     static displayName = "FitViewport";
 
     /*

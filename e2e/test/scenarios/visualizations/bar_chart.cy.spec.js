@@ -5,6 +5,8 @@ import {
   getDraggableElements,
   moveColumnDown,
   popover,
+  visitDashboard,
+  cypressWaitAll,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -96,11 +98,11 @@ describe("scenarios > visualizations > bar chart", () => {
           type: "native",
           native: {
             query:
-              "select '2021-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
+              "select '2027-01-01' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
+              "select '2027-01-02' as x_axis_1, 'A' as x_axis_2, 19 as y_axis\n" +
               "union all\n" +
-              "select '2021-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
+              "select '2027-01-03' as x_axis_1, 'A' as x_axis_2, 20000000 as y_axis\n",
           },
           database: SAMPLE_DB_ID,
         },
@@ -180,6 +182,12 @@ describe("scenarios > visualizations > bar chart", () => {
           cy.findAllByTestId("legend-item").should("have.length", 4);
           cy.get(".enable-dots").should("have.length", 4);
         });
+
+      cy.findAllByTestId("legend-item").contains("Gadget").click();
+      popover().findByText("See these Orders").click();
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Category is Gadget")
+        .should("exist");
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
@@ -349,5 +357,160 @@ describe("scenarios > visualizations > bar chart", () => {
       "This chart type doesn't support more than 100 series of data.",
     );
     cy.get("[data-testid^=draggable-item]").should("have.length", 0);
+  });
+
+  it("should support showing data points with > 10 series (#33725)", () => {
+    cy.signInAsAdmin();
+    const stateFilter = [
+      "=",
+      ["field", PEOPLE.STATE, {}],
+      "AK",
+      "AL",
+      "AR",
+      "AZ",
+      "CA",
+      "CO",
+      "CT",
+      "FL",
+      "GA",
+      "IA",
+    ];
+
+    const dateFilter = [
+      "between",
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "base-type": "type/DateTime",
+        },
+      ],
+      "2023-09-01",
+      "2023-09-30",
+    ];
+
+    const avgTotalByMonth = {
+      name: "Average Total by Month",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["avg", ["field", ORDERS.TOTAL]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "line",
+    };
+
+    const sumTotalByMonth = {
+      name: "Sum Total by Month",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "line",
+    };
+
+    const multiMetric = {
+      name: "Should split",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [
+          ["avg", ["field", ORDERS.TAX]],
+          ["sum", ["field", ORDERS.TAX]],
+          ["min", ["field", ORDERS.TAX]],
+          ["max", ["field", ORDERS.TAX]],
+          ["avg", ["field", ORDERS.SUBTOTAL]],
+          ["sum", ["field", ORDERS.SUBTOTAL]],
+          ["min", ["field", ORDERS.SUBTOTAL]],
+          ["max", ["field", ORDERS.SUBTOTAL]],
+          ["avg", ["field", ORDERS.TOTAL]],
+          ["sum", ["field", ORDERS.TOTAL]],
+          ["min", ["field", ORDERS.TOTAL]],
+          ["max", ["field", ORDERS.TOTAL]],
+        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        filter: dateFilter,
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.show_values": true,
+      },
+    };
+
+    const breakoutQuestion = {
+      name: "Should not Split",
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
+        ],
+        filter: ["and", stateFilter, dateFilter],
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT", "STATE"],
+        "graph.metrics": ["count"],
+        "graph.show_values": true,
+      },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardName: "Split Test Dashboard",
+      questions: [multiMetric],
+    }).then(({ dashboard }) => {
+      cy.createQuestion(sumTotalByMonth, { wrapId: true }).then(() => {
+        cy.get("@questionId").then(questionId => {
+          cypressWaitAll([
+            cy.createQuestionAndAddToDashboard(avgTotalByMonth, dashboard.id, {
+              series: [
+                {
+                  id: questionId,
+                },
+              ],
+              col: 12,
+              row: 0,
+              visualization_settings: {
+                "card.title": "Multi Series",
+              },
+            }),
+            cy.createQuestionAndAddToDashboard(breakoutQuestion, dashboard.id, {
+              col: 0,
+              row: 9,
+              size_x: 15,
+            }),
+          ]).then(() => {
+            visitDashboard(dashboard.id);
+          });
+        });
+      });
+    });
+
+    //This card is testing #33725 now, as the changes made for #34618 would cause "Should not Split" to no longer split and error
+    cy.findAllByTestId("dashcard")
+      .contains("[data-testid=dashcard]", "Should split")
+      .within(() => {
+        cy.get(".axis.yr").should("exist");
+      });
+
+    cy.findAllByTestId("dashcard")
+      .contains("[data-testid=dashcard]", "Multi Series")
+      .within(() => {
+        cy.get(".axis.yr").should("exist");
+      });
+
+    cy.log("Should not produce a split axis graph (#34618)");
+    cy.findAllByTestId("dashcard")
+      .contains("[data-testid=dashcard]", "Should not Split")
+      .within(() => {
+        cy.get(".value-labels").should("contain", "6");
+        cy.get(".value-labels").should("contain", "13");
+        cy.get(".value-labels").should("contain", "19");
+        cy.get(".axis.yr").should("not.exist");
+      });
   });
 });

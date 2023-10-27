@@ -3,7 +3,7 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.util.honey-sql-2 :as h2x]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;; WITH table_executions AS (
 ;;     SELECT t.id AS table_id, count(*) AS executions
@@ -52,10 +52,10 @@
   (query-counts :asc))
 
 ;; A table of Tables.
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    {:metadata [[:database_id        {:display_name "Database ID",        :base_type :type/Integer, :remapped_to   :database_name}]
                [:database_name      {:display_name "Database",           :base_type :type/Text,    :remapped_from :database_id}]
                [:schema_id          {:display_name "Schema ID",          :base_type :type/Text,   :remapped_to   :schema_name}]

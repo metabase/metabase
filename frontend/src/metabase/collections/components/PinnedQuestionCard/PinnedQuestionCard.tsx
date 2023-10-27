@@ -1,13 +1,13 @@
-import React from "react";
 import { t } from "ttag";
 import {
   isFullyParametrized,
   isPreviewShown,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import Database from "metabase-lib/metadata/Database";
+import type { IconName } from "metabase/core/components/Icon";
+import type Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenuContainer,
@@ -67,14 +67,12 @@ const PinnedQuestionCard = ({
         <PinnedQuestionLoader id={item.id}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
-              <>
-                {positionedActionMenu}
-                <CardPreviewSkeleton
-                  name={question?.displayName()}
-                  display={question?.display()}
-                  description={question?.description()}
-                />
-              </>
+              <CardPreviewSkeleton
+                name={question?.displayName()}
+                display={question?.display()}
+                description={question?.description()}
+                actionMenu={actionMenu}
+              />
             ) : (
               <Visualization
                 actionButtons={actionMenu}
@@ -91,7 +89,7 @@ const PinnedQuestionCard = ({
         <CardStaticSkeleton
           name={item.name}
           description={item.description ?? t`A question`}
-          icon={item.getIcon()}
+          icon={item.getIcon() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
       )}

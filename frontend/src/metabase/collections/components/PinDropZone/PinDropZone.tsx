@@ -1,10 +1,9 @@
-import React from "react";
 import PropTypes from "prop-types";
 
+import type { PinDropTargetRenderArgs } from "./PinDropZone.styled";
 import {
   StyledPinDropTarget,
   PinDropTargetIndicator,
-  PinDropTargetRenderArgs,
 } from "./PinDropZone.styled";
 
 type PinDropZoneProps = {

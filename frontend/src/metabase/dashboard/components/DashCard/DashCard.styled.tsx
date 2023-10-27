@@ -6,6 +6,7 @@ export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;
+  shouldForceHiddenBackground: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -23,6 +24,11 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
+const hiddenBackgroundStyle = css`
+  background: ${color("bg-light")};
+  box-shadow: none !important;
+`;
+
 export const DashCardRoot = styled.div<DashCardRootProps>`
   background-color: ${color("white")};
 
@@ -30,6 +36,9 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
+
+  ${({ shouldForceHiddenBackground }) =>
+    shouldForceHiddenBackground && hiddenBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
@@ -41,13 +50,15 @@ export const DashboardCardActionsPanel = styled.div`
   right: 20px;
   border-radius: 8px;
   box-shadow: 0px 1px 3px rgb(0 0 0 / 13%);
-  z-index: 3;
   cursor: default;
   transition: opacity 200ms;
   opacity: 0;
   pointer-events: none;
+  // react-resizable covers panel, we have to override it
+  z-index: 2;
 
-  .Card:hover & {
+  .Card:hover &,
+  .Card:focus-within & {
     opacity: 1;
     pointer-events: all;
   }

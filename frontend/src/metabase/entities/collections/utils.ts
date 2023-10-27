@@ -1,4 +1,4 @@
-import { IconProps } from "metabase/components/Icon";
+import type { IconName, IconProps } from "metabase/core/components/Icon";
 
 import { color } from "metabase/lib/colors";
 
@@ -20,9 +20,13 @@ export function normalizedCollection(collection: Collection) {
 }
 
 export function getCollectionIcon(
-  collection: Collection,
+  collection: Partial<Collection>,
   { tooltip = "default" } = {},
-) {
+): {
+  name: IconName;
+  color?: string;
+  tooltip?: string;
+} {
   if (collection.id === PERSONAL_COLLECTIONS.id) {
     return { name: "group" };
   }
@@ -34,7 +38,7 @@ export function getCollectionIcon(
 
   return authorityLevel
     ? {
-        name: authorityLevel.icon,
+        name: authorityLevel.icon as unknown as IconName,
         color: authorityLevel.color ? color(authorityLevel.color) : undefined,
         tooltip: authorityLevel.tooltips?.[tooltip],
       }
@@ -55,7 +59,7 @@ export function getCollectionType(
 }
 
 export interface CollectionTreeItem extends Collection {
-  icon: string | IconProps;
+  icon: IconName | IconProps;
   children: CollectionTreeItem[];
   schemaName?: string;
 }

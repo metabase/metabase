@@ -1,17 +1,13 @@
 /* istanbul ignore file */
-import React from "react";
-
 import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
-import {
-  setupCollectionsEndpoints,
   setupCollectionVirtualSchemaEndpoints,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
+  setupUsersEndpoints,
+  setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import Input from "metabase/core/components/Input";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -22,13 +18,15 @@ import {
   createMockCollectionItem,
   createMockDatabase,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type { DataPickerValue, DataPickerFiltersProp } from "../types";
-import useDataPickerValue from "../useDataPickerValue";
-import { useDataPicker } from "../../DataPicker";
-import DataPicker from "../DataPickerContainer";
+import DataPicker, {
+  useDataPicker,
+  useDataPickerValue,
+} from "../../DataPicker";
+import type { DataPickerFiltersProp, DataPickerValue } from "../types";
 
 export const SAMPLE_TABLE = createMockTable({
   id: 1,
@@ -216,7 +214,14 @@ export async function setup({
     setupDatabasesEndpoints([], { hasSavedQuestions: false });
   }
 
-  setupCollectionsEndpoints([SAMPLE_COLLECTION, EMPTY_COLLECTION]);
+  const collectionList = [SAMPLE_COLLECTION, EMPTY_COLLECTION];
+  setupCollectionsEndpoints({
+    collections: collectionList,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: collectionList,
+  });
 
   setupCollectionVirtualSchemaEndpoints(createMockCollection(ROOT_COLLECTION), [
     SAMPLE_QUESTION,
@@ -243,6 +248,8 @@ export async function setup({
     setupSearchEndpoints([SAMPLE_QUESTION_SEARCH_ITEM]);
   }
 
+  setupUsersEndpoints([createMockUser()]);
+
   const settings = createMockSettingsState({
     "enable-nested-queries": hasNestedQueriesEnabled,
   });
@@ -261,7 +268,7 @@ export async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onChange };
 }

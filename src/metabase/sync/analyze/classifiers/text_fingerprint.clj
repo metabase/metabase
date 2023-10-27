@@ -5,8 +5,8 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private ^:const ^Double percent-valid-threshold
   "Fields that have at least this percent of values that are satisfy some predicate (such as `u/email?`)
@@ -18,12 +18,13 @@
   given the corresponding semantic type (such as `:type/State`)"
   0.7)
 
-(s/defn ^:private percent-key-above-threshold? :- s/Bool
-  "Is the value of PERCENT-KEY inside TEXT-FINGERPRINT above the `percent-valid-threshold`?"
-  [^Double threshold, text-fingerprint :- i/TextFingerprint, percent-key :- s/Keyword]
-  (boolean
-   (when-let [percent (get text-fingerprint percent-key)]
-     (>= percent threshold))))
+(mu/defn ^:private percent-key-above-threshold?
+  "Is the value of `percent-key` inside `text-fingerprint` above the `percent-valid-threshold`?"
+  [threshold        :- :double
+   text-fingerprint :- i/TextFingerprint
+   percent-key      :- :keyword]
+  (when-let [percent (get text-fingerprint percent-key)]
+    (>= percent threshold)))
 
 (def ^:private percent-key->semantic-type
   "Map of keys inside the `TextFingerprint` to the corresponding semantic types we should mark a Field as if the value of
@@ -33,8 +34,8 @@
    :percent-email [:type/Email          percent-valid-threshold]
    :percent-state [:type/State          lower-percent-valid-threshold]})
 
-(s/defn ^:private infer-semantic-type-for-text-fingerprint :- (s/maybe su/FieldType)
-  "Check various percentages inside the TEXT-FINGERPRINT and return the corresponding semantic type to mark the Field
+(mu/defn ^:private infer-semantic-type-for-text-fingerprint :- [:maybe ms/FieldType]
+  "Check various percentages inside the `text-fingerprint` and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- i/TextFingerprint]
   (some (fn [[percent-key [semantic-type threshold]]]
@@ -53,11 +54,11 @@
         (and original
              (nil? (:semantic_type original))))))
 
-
-(s/defn infer-semantic-type :- (s/maybe i/FieldInstance)
+(mu/defn infer-semantic-type :- [:maybe i/FieldInstance]
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."
-  [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
+  [field       :- i/FieldInstance
+   fingerprint :- [:maybe i/Fingerprint]]
   (when (and (isa? (:base_type field) :type/Text)
              (can-edit-semantic-type? field))
     (when-let [text-fingerprint (get-in fingerprint [:type :type/Text])]

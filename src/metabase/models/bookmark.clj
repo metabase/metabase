@@ -3,14 +3,14 @@
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.schema :as su]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -38,16 +38,17 @@
   "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
-  {:id                               s/Str
-   :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZero
-   :name                             su/NonBlankString
-   (s/optional-key :dataset)         (s/maybe s/Bool)
-   (s/optional-key :display)         (s/maybe s/Str)
-   (s/optional-key :authority_level) (s/maybe s/Str)
-   (s/optional-key :description)     (s/maybe s/Str)})
+  [:map {:closed true}
+   [:id                               :string]
+   [:type                             [:enum "card" "collection" "dashboard"]]
+   [:item_id                          ms/PositiveInt]
+   [:name                             ms/NonBlankString]
+   [:authority_level {:optional true} [:maybe :string]]
+   [:dataset         {:optional true} [:maybe :boolean]]
+   [:description     {:optional true} [:maybe :string]]
+   [:display         {:optional true} [:maybe :string]]])
 
-(s/defn ^:private normalize-bookmark-result :- BookmarkResult
+(mu/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
@@ -91,7 +92,7 @@
                   :from   [:collection_bookmark]
                   :where  [:= :user_id user-id]}]}))
 
-(s/defn bookmarks-for-user :- [BookmarkResult]
+(mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
@@ -99,18 +100,18 @@
         {:select    [[:bookmark.created_at        :created_at]
                      [:bookmark.type              :type]
                      [:bookmark.item_id           :item_id]
-                     [:card.name                  (db/qualify Card :name)]
-                     [:card.dataset               (db/qualify Card :dataset)]
-                     [:card.display               (db/qualify Card :display)]
-                     [:card.description           (db/qualify Card :description)]
-                     [:card.archived              (db/qualify Card :archived)]
-                     [:dashboard.name             (db/qualify Dashboard :name)]
-                     [:dashboard.description      (db/qualify Dashboard :description)]
-                     [:dashboard.archived         (db/qualify Dashboard :archived)]
-                     [:collection.name            (db/qualify Collection  :name)]
-                     [:collection.authority_level (db/qualify Collection :authority_level)]
-                     [:collection.description     (db/qualify Collection :description)]
-                     [:collection.archived        (db/qualify Collection :archived)]]
+                     [:card.name                  (mdb.u/qualify Card :name)]
+                     [:card.dataset               (mdb.u/qualify Card :dataset)]
+                     [:card.display               (mdb.u/qualify Card :display)]
+                     [:card.description           (mdb.u/qualify Card :description)]
+                     [:card.archived              (mdb.u/qualify Card :archived)]
+                     [:dashboard.name             (mdb.u/qualify Dashboard :name)]
+                     [:dashboard.description      (mdb.u/qualify Dashboard :description)]
+                     [:dashboard.archived         (mdb.u/qualify Dashboard :archived)]
+                     [:collection.name            (mdb.u/qualify Collection  :name)]
+                     [:collection.authority_level (mdb.u/qualify Collection :authority_level)]
+                     [:collection.description     (mdb.u/qualify Collection :description)]
+                     [:collection.archived        (mdb.u/qualify Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
          :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
                      [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]

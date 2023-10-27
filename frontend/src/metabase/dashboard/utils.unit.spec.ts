@@ -1,5 +1,6 @@
 import {
   fetchDataOrError,
+  getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
@@ -7,8 +8,9 @@ import {
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import {
+  createMockDashboard,
   createMockDashboardCardWithVirtualCard,
-  createMockDashboardOrderedCard,
+  createMockDashboardCard,
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
@@ -140,7 +142,7 @@ describe("Dashboard utils", () => {
 
     it("should return false for cards with loaded data", () => {
       expect(
-        isDashcardLoading(createMockDashboardOrderedCard({ id: 1 }), {
+        isDashcardLoading(createMockDashboardCard({ id: 1 }), {
           1: { 2: createMockDataset() },
         }),
       ).toBe(false);
@@ -148,7 +150,7 @@ describe("Dashboard utils", () => {
 
     it("should return true when the dash card data is missing", () => {
       expect(
-        isDashcardLoading(createMockDashboardOrderedCard({ id: 1 }), {
+        isDashcardLoading(createMockDashboardCard({ id: 1 }), {
           1: { 2: null, 3: createMockDataset() },
         }),
       ).toBe(true);
@@ -215,10 +217,10 @@ describe("Dashboard utils", () => {
     });
 
     const normalCardId = 2;
-    const normalCard = createMockDashboardOrderedCard({ id: normalCardId });
+    const normalCard = createMockDashboardCard({ id: normalCardId });
 
     const hidingWhenEmptyCardId = 3;
-    const hidingWhenEmptyCard = createMockDashboardOrderedCard({
+    const hidingWhenEmptyCard = createMockDashboardCard({
       id: hidingWhenEmptyCardId,
       visualization_settings: { "card.hide_empty": true },
     });
@@ -282,6 +284,50 @@ describe("Dashboard utils", () => {
       expect(visibleIds).toStrictEqual(
         new Set([virtualCardId, normalCardId, hidingWhenEmptyCardId]),
       );
+    });
+  });
+
+  describe("getCurrentTabDashboardCards", () => {
+    it("when selectedTabId=null returns cards with dashboard_tab_id=undefined", () => {
+      const selectedTabId = null;
+      const dashcard = createMockDashboardCard({
+        dashboard_tab_id: undefined,
+      });
+      const dashboard = createMockDashboard({
+        dashcards: [dashcard],
+      });
+
+      expect(
+        getCurrentTabDashboardCards(dashboard, selectedTabId),
+      ).toStrictEqual([
+        {
+          card: dashcard.card,
+          dashcard,
+        },
+      ]);
+    });
+
+    it("returns cards from selected tab only", () => {
+      const selectedTabId = 1;
+      const visibleDashcard = createMockDashboardCard({
+        dashboard_tab_id: 1,
+      });
+      const hiddenDashcard = createMockDashboardCard({
+        dashboard_tab_id: 2,
+      });
+
+      const dashboard = createMockDashboard({
+        dashcards: [visibleDashcard, hiddenDashcard],
+      });
+
+      expect(
+        getCurrentTabDashboardCards(dashboard, selectedTabId),
+      ).toStrictEqual([
+        {
+          card: visibleDashcard.card,
+          dashcard: visibleDashcard,
+        },
+      ]);
     });
   });
 });

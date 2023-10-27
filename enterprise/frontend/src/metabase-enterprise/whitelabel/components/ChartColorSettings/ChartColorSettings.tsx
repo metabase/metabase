@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { color } from "metabase/lib/colors";

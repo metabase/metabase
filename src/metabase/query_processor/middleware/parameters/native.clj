@@ -27,13 +27,14 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]))
 
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
   [inner-query]
-  (if-not (driver/database-supports? driver/*driver* :native-parameters (qp.store/database))
+  (if-not (driver/database-supports? driver/*driver* :native-parameters (lib.metadata/database (qp.store/metadata-provider)))
     inner-query
     ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
     ;; source queries use `:native`. So we need to handle either case.

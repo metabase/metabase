@@ -1,10 +1,10 @@
-import React from "react";
+import { Fragment } from "react";
 import { t } from "ttag";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Search from "metabase/entities/search";
 import EmptyState from "metabase/components/EmptyState";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
-import { Collection, CollectionItem } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 import {
@@ -49,7 +49,7 @@ const SavedQuestionList = ({
           >
             {({ list }: { list: CollectionItem[] }) => {
               return (
-                <React.Fragment>
+                <Fragment>
                   {list.map(collectionItem => {
                     const { id, name, moderated_status } = collectionItem;
                     const virtualTableId = getQuestionVirtualTableId(id);
@@ -73,7 +73,7 @@ const SavedQuestionList = ({
                     );
                   })}
                   {list.length === 0 ? emptyState : null}
-                </React.Fragment>
+                </Fragment>
               );
             }}
           </Search.ListLoader>

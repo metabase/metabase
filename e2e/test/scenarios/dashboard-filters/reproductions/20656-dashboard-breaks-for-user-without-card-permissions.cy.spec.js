@@ -3,8 +3,10 @@ import {
   filterWidget,
   visitDashboard,
   editDashboard,
+  getDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ADMIN_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -19,7 +21,7 @@ const filter = {
 const questionDetails = {
   query: { "source-table": PRODUCTS_ID, limit: 2 },
   // Admin's personal collection is always the first one (hence, the id 1)
-  collection_id: 1,
+  collection_id: ADMIN_PERSONAL_COLLECTION_ID,
 };
 
 const dashboardDetails = {
@@ -42,7 +44,7 @@ describe("issue 20656", () => {
               card_id,
               row: 0,
               col: 0,
-              size_x: 18,
+              size_x: 24,
               size_y: 10,
               parameter_mappings: [
                 {
@@ -73,11 +75,9 @@ describe("issue 20656", () => {
       .find(".Icon-gear")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Column to filter on")
-      .parent()
-      .within(() => {
-        cy.icon("key");
-      });
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.icon("key");
+    });
   });
 });

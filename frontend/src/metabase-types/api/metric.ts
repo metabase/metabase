@@ -1,5 +1,5 @@
-import { StructuredQuery } from "./query";
-import { TableId } from "./table";
+import type { StructuredQuery } from "./query";
+import type { TableId } from "./table";
 
 export type MetricId = number | string;
 

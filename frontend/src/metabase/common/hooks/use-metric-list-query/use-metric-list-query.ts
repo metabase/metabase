@@ -1,10 +1,10 @@
 import Metrics from "metabase/entities/metrics";
-import {
-  useEntityListQuery,
+import type {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
-import Metric from "metabase-lib/metadata/Metric";
+import { useEntityListQuery } from "metabase/common/hooks/use-entity-list-query";
+import type Metric from "metabase-lib/metadata/Metric";
 
 export const useMetricListQuery = (
   props: UseEntityListQueryProps = {},
@@ -15,5 +15,6 @@ export const useMetricListQuery = (
     getLoading: Metrics.selectors.getLoading,
     getLoaded: Metrics.selectors.getLoaded,
     getError: Metrics.selectors.getError,
+    getListMetadata: Metrics.selectors.getListMetadata,
   });
 };

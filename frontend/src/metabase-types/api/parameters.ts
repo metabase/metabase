@@ -1,6 +1,6 @@
-import { CardId } from "./card";
-import { RowValue } from "./dataset";
-import { LocalFieldReference } from "./query";
+import type { CardId } from "./card";
+import type { RowValue } from "./dataset";
+import type { LocalFieldReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -67,10 +67,12 @@ export interface ValuesSourceConfig {
 
 export type VariableTarget = ["template-tag", string];
 export type ParameterVariableTarget = ["variable", VariableTarget];
+export type ParameterTextTarget = ["text-tag", string];
 
 export type ParameterTarget =
   | ParameterVariableTarget
-  | ParameterDimensionTarget;
+  | ParameterDimensionTarget
+  | ParameterTextTarget;
 
 type DimensionTarget = LocalFieldReference;
 export type ParameterDimensionTarget = [

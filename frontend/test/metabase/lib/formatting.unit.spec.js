@@ -1,4 +1,5 @@
 import { isElementOfType } from "react-dom/test-utils";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import {
@@ -581,7 +582,7 @@ describe("formatting", () => {
       ["hour", "Wed, April 27, 2022, 6:00 AM"],
       ["day", "Wed, April 27, 2022"],
       ["week", "Wed, April 27, 2022"],
-      ["month", "April, 2022"],
+      ["month", "April 2022"],
       ["year", "2022"],
     ])(
       "should include weekday when date unit is smaller or equal whan a week",

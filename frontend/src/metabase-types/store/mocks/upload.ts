@@ -1,4 +1,4 @@
-import { FileUpload } from "../upload";
+import type { FileUpload } from "../upload";
 
 export const createMockUploadState = (uploads = {}) => {
   return { ...uploads };

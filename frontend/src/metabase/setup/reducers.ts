@@ -1,5 +1,5 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { SetupState } from "metabase-types/store";
+import type { SetupState } from "metabase-types/store";
 import {
   skipDatabase,
   loadLocaleDefaults,

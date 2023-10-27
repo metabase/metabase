@@ -4,13 +4,11 @@
   cookie is deleted, it's fine; the user will just get an email saying they logged in from a new device next time
   they log in."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.server.request.util :as request.u]
-   [metabase.util.schema :as su]
-   [ring.util.response :as response]
-   [schema.core :as s])
-  (:import
-   (java.util UUID)))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +29,7 @@
            {:same-site :none, :secure true}
            {:same-site :lax})))
 
-(s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
+(mu/defn ^:private add-browser-id-cookie [request response browser-id :- ms/NonBlankString]
   (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie
@@ -40,7 +38,7 @@
   (fn [request respond raise]
     (if-let [browser-id (get-in request [:cookies browser-id-cookie-name :value])]
       (handler (assoc request :browser-id browser-id) respond raise)
-      (let [browser-id (str (UUID/randomUUID))]
+      (let [browser-id (str (random-uuid))]
         (handler
          (assoc request :browser-id browser-id)
          (fn [response]

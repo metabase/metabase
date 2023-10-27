@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -44,9 +44,11 @@ const mapDispatchToProps = {
 
 const createListItem = table => (
   <ListItem
+    data-testid="table-list-item"
     key={table.id}
     name={table.display_name || table.name}
     description={table.description}
+    disabled={table.initial_sync_status !== "complete"}
     url={`/reference/databases/${table.db_id}/tables/${table.id}`}
     icon="table2"
   />

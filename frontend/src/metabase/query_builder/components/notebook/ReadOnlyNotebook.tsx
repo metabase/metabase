@@ -1,5 +1,3 @@
-import React from "react";
-
 import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import type Question from "metabase-lib/Question";
 

@@ -1,16 +1,19 @@
 (ns metabase.lib.aggregation
   (:refer-clojure :exclude [count distinct max min var])
   (:require
-   [clojure.math :as math]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -18,7 +21,7 @@
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
-  "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
+  "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}
@@ -27,7 +30,7 @@
     [:aggregation options ag-uuid]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
-  "Resolve an aggregation with a specific `index`."
+  "Resolve an aggregation with a specific `ag-uuid`."
   [query        :- ::lib.schema/query
    stage-number :- :int
    ag-uuid      :- :string]
@@ -66,20 +69,36 @@
   [query stage-number [_tag _opts index] style]
   (lib.metadata.calculation/display-name query stage-number (resolve-aggregation query stage-number index) style))
 
-(defmethod lib.metadata.calculation/display-name-method :count
-  [query stage-number [_count _opts x] style]
+(lib.hierarchy/derive ::count-aggregation ::aggregation)
+
+;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
+;;; I think means count where X is not NULL or something like that. Basically `count(x)` in SQL)
+(doseq [tag [:count
+             :cum-count]]
+  (lib.hierarchy/derive tag ::count-aggregation))
+
+(defmethod lib.metadata.calculation/display-name-method ::count-aggregation
+  [query stage-number [tag _opts x] style]
   ;; x is optional.
   (if x
-    (i18n/tru "Count of {0}" (lib.metadata.calculation/display-name query stage-number x style))
-    (i18n/tru "Count")))
+    (let [x-display-name (lib.metadata.calculation/display-name query stage-number x style)]
+      (case tag
+        :count     (i18n/tru "Count of {0}" x-display-name)
+        :cum-count (i18n/tru "Cumulative count of {0}" x-display-name)))
+    (case tag
+      :count     (i18n/tru "Count")
+      :cum-count (i18n/tru "Cumulative count"))))
 
-(defmethod lib.metadata.calculation/column-name-method :count
-  [query stage-number [_count _opts x]]
-  (if x
-    (str "count_" (lib.metadata.calculation/column-name query stage-number x))
-    "count"))
+(defmethod lib.metadata.calculation/column-name-method ::count-aggregation
+  [_query _stage-number [tag :as _clause]]
+  (case tag
+    :count     "count"
+    :cum-count "cum_count"))
 
-(lib.hierarchy/derive :count ::aggregation)
+(defmethod lib.metadata.calculation/metadata-method ::count-aggregation
+  [query stage-number clause]
+  (assoc ((get-method lib.metadata.calculation/metadata-method ::aggregation) query stage-number clause)
+         :semantic-type :type/Quantity))
 
 (defmethod lib.metadata.calculation/display-name-method :case
   [_query _stage-number _case _style]
@@ -89,10 +108,11 @@
   [_query _stage-number _case]
   "case")
 
+;;; TODO - Should `:case` derive from `::aggregation` as well???
+
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)
 
 (doseq [tag [:avg
-             :cum-count
              :cum-sum
              :distinct
              :max
@@ -104,28 +124,24 @@
   (lib.hierarchy/derive tag ::unary-aggregation))
 
 (defmethod lib.metadata.calculation/column-name-method ::unary-aggregation
-  [query stage-number [tag _opts arg]]
-  (let [arg (lib.metadata.calculation/column-name-method query stage-number arg)]
-    (str
-     (case tag
-       :avg       "avg_"
-       :cum-count "cum_count_"
-       :cum-sum   "cum_sum_"
-       :distinct  "distinct_"
-       :max       "max_"
-       :median    "median_"
-       :min       "min_"
-       :stddev    "std_dev_"
-       :sum       "sum_"
-       :var       "var_")
-     arg)))
+  [_query _stage-number [tag _opts _arg]]
+  (case tag
+    :avg       "avg"
+    :cum-sum   "sum"
+    :distinct  "count"
+    :max       "max"
+    :median    "median"
+    :min       "min"
+    :stddev    "stddev"
+    :sum       "sum"
+    :var       "var"))
+
 
 (defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query stage-number [tag _opts arg] style]
   (let [arg (lib.metadata.calculation/display-name query stage-number arg style)]
     (case tag
       :avg       (i18n/tru "Average of {0}"            arg)
-      :cum-count (i18n/tru "Cumulative count of {0}"   arg)
       :cum-sum   (i18n/tru "Cumulative sum of {0}"     arg)
       :distinct  (i18n/tru "Distinct values of {0}"    arg)
       :max       (i18n/tru "Max of {0}"                arg)
@@ -140,12 +156,8 @@
   (i18n/tru "{0}th percentile of {1}" p (lib.metadata.calculation/display-name query stage-number x style)))
 
 (defmethod lib.metadata.calculation/column-name-method :percentile
-  [query stage-number [_percentile _opts x p]]
-  ;; if `p` is between `0` and `1` then just use the first two digits for the name, e.g. `p95_whatever`
-  (let [p (if (< 0 p 1)
-            (int (math/round (* p 100.0)))
-            p)]
-    (lib.util/format "p%s_%s" p (lib.metadata.calculation/column-name query stage-number x))))
+  [_query _stage-number _clause]
+  "percentile")
 
 (lib.hierarchy/derive :percentile ::aggregation)
 
@@ -212,12 +224,25 @@
   [aggregation-clause]
   aggregation-clause)
 
+(def ^:private Aggregatable
+  "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
+  [:or
+   ::lib.schema.aggregation/aggregation
+   ::lib.schema.common/external-op
+   lib.metadata/MetricMetadata])
+
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
-  ([query an-aggregate-clause]
-   (aggregate query -1 an-aggregate-clause))
-  ([query stage-number an-aggregate-clause]
-   (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
+  ([query aggregatable]
+   (aggregate query -1 aggregatable))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    aggregatable :- Aggregatable]
+   ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
+   (if (= (lib.dispatch/dispatch-value aggregatable) :metadata/metric)
+     (recur query stage-number (lib.ref/ref aggregatable))
+     (lib.util/add-summary-clause query stage-number :aggregation aggregatable))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
@@ -249,11 +274,11 @@
    [:map
     [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
 
-(defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-name-method :operator/aggregation
   [_query _stage-number {:keys [display-info]} _display-name-style]
   (:display-name (display-info)))
 
-(defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
+(defmethod lib.metadata.calculation/display-info-method :operator/aggregation
   [_query _stage-number {:keys [display-info requires-column? selected?] short-name :short}]
   (cond-> (assoc (display-info)
                  :short-name (u/qualified-name short-name)
@@ -295,39 +320,30 @@
                             (let [feature (:driver-feature op)]
                               (or (nil? feature) (db-features feature)))))
                   (keep with-columns)
-                  (map #(assoc % :lib/type :mbql.aggregation/operator)))
+                  (map #(assoc % :lib/type :operator/aggregation)))
             lib.schema.aggregation/aggregation-operators)))))
 
-(mu/defn aggregation-clause
+(mu/defn aggregation-clause :- ::lib.schema.aggregation/aggregation
   "Returns a standalone aggregation clause for an `aggregation-operator` and
   a `column`.
   For aggregations requiring an argument `column` is mandatory, otherwise
   it is optional."
   ([aggregation-operator :- ::lib.schema.aggregation/operator]
    (if-not (:requires-column? aggregation-operator)
-     {:lib/type :lib/external-op
-      :operator (:short aggregation-operator)}
+     (lib.options/ensure-uuid [(:short aggregation-operator) {}])
      (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
                                       (:short aggregation-operator))
                      {:aggregation-operator aggregation-operator}))))
 
   ([aggregation-operator :- ::lib.schema.aggregation/operator
     column]
-   {:lib/type :lib/external-op
-    :operator (:short aggregation-operator)
-    :args [column]}))
-
-(def ^:private SelectedColumnMetadata
-  [:merge
-   lib.metadata/ColumnMetadata
-   [:map
-    [:selected? {:optional true} :boolean]]])
+   (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
 (def ^:private SelectedOperatorWithColumns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
-    [:columns {:optional true} [:sequential SelectedColumnMetadata]]
+    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]
     [:selected? {:optional true} :boolean]]])
 
 (mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
@@ -335,7 +351,8 @@
   [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
    agg-clause]
   (when (seq agg-operators)
-    (let [[op _ agg-col] agg-clause]
+    (let [[op _ agg-col] agg-clause
+          agg-temporal-unit (-> agg-col lib.options/options :temporal-unit)]
       (mapv (fn [agg-op]
               (cond-> agg-op
                 (= (:short agg-op) op)
@@ -343,11 +360,44 @@
                     (m/update-existing
                      :columns
                      (fn [cols]
-                       (mapv (fn [col]
-                               (let [a-ref (lib.ref/ref col)]
-                                 (cond-> col
-                                   (or (lib.equality/= a-ref agg-col)
-                                       (lib.equality/= a-ref (lib.util/with-default-effective-type agg-col)))
-                                   (assoc :selected? true))))
-                             cols))))))
+                       (let [cols (lib.equality/mark-selected-columns
+                                   cols
+                                   [(lib.options/update-options agg-col dissoc :temporal-unit)])]
+                         (mapv (fn [c]
+                                 (cond-> c
+                                   (some? agg-temporal-unit)
+                                   (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                               cols)))))))
             agg-operators))))
+
+(mu/defn aggregation-ref :- :mbql.clause/aggregation
+  "Find the aggregation at `ag-index` and create an `:aggregation` ref for it. Intended for use
+  when creating queries using threading macros e.g.
+
+    (-> (lib/query ...)
+        (lib/aggregate (lib/avg ...))
+        (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))"
+  ([query ag-index]
+   (aggregation-ref query -1 ag-index))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    ag-index     :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   (if-let [[_ {ag-uuid :lib/uuid}] (get (:aggregation (lib.util/query-stage query stage-number)) ag-index)]
+     (lib.options/ensure-uuid [:aggregation {} ag-uuid])
+     (throw (ex-info (str "Undefined aggregation " ag-index)
+                     {:aggregation-index ag-index
+                      :query             query
+                      :stage-number      stage-number})))))
+
+(mu/defn aggregation-at-index :- [:maybe ::lib.schema.aggregation/aggregation]
+  "Get the aggregation at `index` in a stage of the query if it exists, otherwise `nil`. This is mostly for working
+  with legacy references like
+
+    [:aggregation 0]"
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
+  (let [ags (aggregations query stage-number)]
+    (when (> (clojure.core/count ags) index)
+      (nth ags index))))

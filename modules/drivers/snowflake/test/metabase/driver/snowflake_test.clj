@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
@@ -18,9 +19,10 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -106,7 +108,7 @@
         (jdbc/execute! spec ["CREATE DATABASE \"views_test\";"]
                        {:transaction? false})
         ;; create the DB object
-        (mt/with-temp Database [database {:engine :snowflake, :details (assoc details :db "views_test")}]
+        (t2.with-temp/with-temp [Database database {:engine :snowflake, :details (assoc details :db "views_test")}]
           (let [sync! #(sync/sync-database! database)]
             ;; create a view
             (doseq [statement ["CREATE VIEW \"views_test\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";"
@@ -279,9 +281,20 @@
 (deftest normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"
-      (mt/with-temp Database [db {:name    "Legacy Snowflake DB"
-                                  :engine  :snowflake,
-                                  :details {:account  "my-instance"
-                                            :regionid "us-west-1"}}]
+      (t2.with-temp/with-temp [Database db {:name    "Legacy Snowflake DB"
+                                            :engine  :snowflake,
+                                            :details {:account  "my-instance"
+                                                      :regionid "us-west-1"}}]
         (is (= {:account "my-instance.us-west-1"}
                (:details db)))))))
+
+(deftest set-role-statement-test
+  (testing "set-role-statement should return a USE ROLE command, with the role quoted if it contains special characters"
+    ;; No special characters
+    (is (= "USE ROLE MY_ROLE;"        (driver.sql/set-role-statement :snowflake "MY_ROLE")))
+    (is (= "USE ROLE ROLE123;"        (driver.sql/set-role-statement :snowflake "ROLE123")))
+    (is (= "USE ROLE lowercase_role;" (driver.sql/set-role-statement :snowflake "lowercase_role")))
+
+    ;; Special characters
+    (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
+    (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))

@@ -3,13 +3,14 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util.i18n :refer [tru]]
@@ -99,6 +100,7 @@
 
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
+  (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
     (login-jwt-user jwt request)

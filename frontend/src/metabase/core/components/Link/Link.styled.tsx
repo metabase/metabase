@@ -1,21 +1,18 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { display, space, hover, color } from "styled-system";
+import isPropValid from "@emotion/is-prop-valid";
 import { Link } from "react-router";
 import { color as metabaseColor } from "metabase/lib/colors";
-import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 import { focusOutlineStyle } from "metabase/core/style/input";
-
 import type { LinkProps } from "./types";
 
-export const LinkRoot = styled(Link, {
-  shouldForwardProp: shouldForwardNonTransientProp,
-})<LinkProps>`
-  ${display};
-  ${space};
-  ${hover};
-  ${color};
+const isLinkPropValid = (propName: PropertyKey) => {
+  return isPropValid(propName) || propName === "activeClassName";
+};
 
+export const LinkRoot = styled(Link, {
+  shouldForwardProp: isLinkPropValid,
+})<LinkProps>`
   opacity: ${props => (props.disabled ? "0.4" : "")};
   pointer-events: ${props => (props.disabled ? "none" : "")};
   transition: opacity 0.3s linear;

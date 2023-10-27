@@ -1,10 +1,13 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { MIN_SEARCH_LENGTH } from "./constants";
 
-import type { DataPickerProps, DataPickerDataType } from "./types";
-import type { DataTypeInfoItem } from "./utils";
+import type {
+  DataPickerProps,
+  DataPickerDataType,
+  DataTypeInfoItem,
+} from "./types";
 
 import CardPicker from "./CardPicker";
 import DataTypePicker from "./DataTypePicker";

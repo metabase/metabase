@@ -1,12 +1,17 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
@@ -18,7 +23,7 @@ describe("scenarios > dashboard > filters > number", () => {
     restore();
     cy.signInAsAdmin();
 
-    visitDashboard(1);
+    visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
   });
@@ -44,7 +49,8 @@ describe("scenarios > dashboard > filters > number", () => {
           cy.findByText(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
       },
     );
   });
@@ -62,7 +68,7 @@ describe("scenarios > dashboard > filters > number", () => {
       cy.findByText("37.65");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     filterWidget().click();
 
@@ -73,9 +79,3 @@ describe("scenarios > dashboard > filters > number", () => {
     });
   });
 });
-
-function clearFilter(index = 0) {
-  console.log(cy.state());
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery1");
-}

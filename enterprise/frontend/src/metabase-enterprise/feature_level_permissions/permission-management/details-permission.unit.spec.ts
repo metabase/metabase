@@ -1,4 +1,4 @@
-import { Group, GroupsPermissions } from "metabase-types/api";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 import {
   buildDetailsPermission,
   DETAILS_PERMISSION_OPTIONS,

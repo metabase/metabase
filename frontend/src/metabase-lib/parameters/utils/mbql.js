@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
 
@@ -17,7 +18,6 @@ import {
   deriveFieldOperatorFromParameter,
   getParameterOperatorName,
 } from "metabase-lib/parameters/utils/operators";
-import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =
@@ -169,7 +169,7 @@ export function numberParameterValueToMBQL(parameter, fieldRef) {
 
 function isFieldFilterParameterConveratableToMBQL(parameter) {
   const { value, target } = parameter;
-  const hasValue = hasParameterValue(value);
+  const hasValue = value != null;
   const hasWellFormedTarget = Array.isArray(target?.[1]);
   const hasFieldDimensionTarget =
     isDimensionTarget(target) && !isTemplateTagReference(target[1]);

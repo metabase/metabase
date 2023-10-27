@@ -52,6 +52,8 @@ export const clearSegments = query =>
 
 export const canAddFilter = query => F.canAddFilter(query.filter);
 
+export { getFilterClause } from "./filter";
+
 // JOIN
 
 export const getJoins = query => J.getJoins(query.joins);
@@ -61,8 +63,6 @@ export const updateJoin = (query, index, join) =>
   setJoinClause(query, J.updateJoin(query.joins, index, join));
 export const removeJoin = (query, index) =>
   setJoinClause(query, J.removeJoin(query.joins, index));
-export const clearJoins = query =>
-  setJoinClause(query, J.clearJoins(query.joins));
 
 // ORDER_BY
 

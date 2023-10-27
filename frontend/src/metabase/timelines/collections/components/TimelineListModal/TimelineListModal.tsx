@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -6,7 +6,7 @@ import {
   getSortedTimelines,
 } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, Timeline } from "metabase-types/api";
+import type { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineList from "../TimelineList";

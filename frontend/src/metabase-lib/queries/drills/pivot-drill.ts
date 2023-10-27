@@ -1,9 +1,10 @@
 import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
-import StructuredQuery, {
-  FieldFilterFn,
-} from "metabase-lib/queries/StructuredQuery";
+import type Question from "metabase-lib/Question";
+import type Field from "metabase-lib/metadata/Field";
+/* eslint-disable import/no-duplicates */
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { FieldFilterFn } from "metabase-lib/queries/StructuredQuery";
+/* eslint-enable import/no-duplicates */
 import type {
   ClickObject,
   ClickObjectDimension,

@@ -64,14 +64,20 @@
    ns-decls))
 
 (defn metabase-namespaces-in-topo-order [basis]
-  (let [ns-decls   (mapcat
-                    (comp ns.find/find-ns-decls-in-dir io/file)
-                    (all-paths basis))
-        ns-symbols (set (map ns.parse/name-from-ns-decl ns-decls))]
-    (->> (dependencies-graph ns-decls)
-         ns.deps/topo-sort
-         (filter ns-symbols)
-         (cons 'metabase.bootstrap))))
+  (let [ns-decls   (into []
+                         (comp (map io/file)
+                               (mapcat ns.find/find-ns-decls-in-dir))
+                         (all-paths basis))
+        ns-symbols (into #{} (map ns.parse/name-from-ns-decl) ns-decls)
+        sorted     (->> (dependencies-graph ns-decls)
+                        ns.deps/topo-sort
+                        (filter ns-symbols))
+        orphans    (remove (set sorted) ns-symbols)
+        all        (concat orphans sorted)]
+    (assert (contains? (set all) 'metabase.bootstrap))
+    (when (contains? ns-symbols 'metabase-enterprise.core)
+      (assert (contains? (set all) 'metabase-enterprise.core)))
+    all))
 
 (defn compile-sources! [basis]
   (u/step "Compile Clojure source files"
@@ -80,27 +86,26 @@
           ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
-        (b/compile-clj {:basis        basis
-                        :src-dirs     paths
-                        :class-dir    class-dir
-                        :ns-compile   ns-decls
-                        :compile-opts {:direct-linking true}})
+        (b/compile-clj {:basis      basis
+                        :src-dirs   paths
+                        :class-dir  class-dir
+                        :ns-compile ns-decls})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (defn copy-resources! [edition basis]
   (u/step "Copy resources"
-    ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
-      (u/step (format "Copy %s" path)
-        (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
+      (when (not (#{"src" "shared/src" "enterprise/backend/src"} path))
+        (u/step (format "Copy %s" path)
+                (b/copy-dir {:target-dir class-dir, :src-dirs [path]}))))))
 
 (defn create-uberjar! [basis]
   (u/step "Create uberjar"
     (with-duration-ms [duration-ms]
-      (depstar/uber {:class-dir    class-dir
-                     :uber-file    uberjar-filename
-                     :basis        basis
-                     :compile-opts {:direct-linking true}})
+      (depstar/uber {:class-dir class-dir
+                     :uber-file uberjar-filename
+                     :basis     basis
+                     :exclude   [".*metabase.*.clj[c|s]?$"]})
       (u/announce "Created uberjar in %.1f seconds." (/ duration-ms 1000.0)))))
 
 (def manifest-entries

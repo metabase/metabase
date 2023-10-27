@@ -1,6 +1,7 @@
 /// code to "apply" chart tooltips. (How does one apply a tooltip?)
 
 import d3 from "d3";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -48,7 +49,7 @@ function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   const { card: addedSeriesCard } = series[seriesIndex];
 
   // find the dashcard associated with the first series
-  const dashCard = dashboard.ordered_cards.find(
+  const dashCard = dashboard.dashcards.find(
     dashCard => dashCard.card_id === firstCardInSeries.id,
   );
 
@@ -331,19 +332,9 @@ export const getStackedTooltipModel = (
   }));
 
   const hoveredSeries = seriesWithGroupedData[hoveredIndex];
-  const hoveredCardId = hoveredSeries?.card?.id;
-  const hoveredCardSeries = seriesWithGroupedData.filter(
-    series => series.card?.id === hoveredCardId,
-  );
-  const hasBreakout = hoveredCardSeries?.some(
+  const hasBreakout = seriesWithGroupedData.some(
     series => series.card?._breakoutColumn != null,
   );
-
-  const seriesToShow = hasBreakout
-    ? hoveredCardSeries
-    : seriesWithGroupedData.filter(
-        series => series.card?._breakoutColumn == null,
-      );
 
   const formattedXValue = formatValueForTooltip({
     value: xValue,
@@ -357,21 +348,28 @@ export const getStackedTooltipModel = (
       column: hoveredSeries?.data?.cols[METRIC_INDEX],
     });
 
-  const tooltipRows = seriesToShow
+  const tooltipRows = seriesWithGroupedData
     .map(series => {
       const { card, groupedData, data } = series;
-      const datum = groupedData?.find(
+      const dataForXValue = groupedData?.filter(
         datum => datum[DIMENSION_INDEX] === xValue,
       );
 
-      if (!datum) {
+      if (dataForXValue.length === 0) {
         return null;
       }
 
-      const value = datum[METRIC_INDEX];
+      const value = dataForXValue.reduce((totalValue, datum) => {
+        const datumValue = datum[METRIC_INDEX];
+        if (totalValue == null && datumValue == null) {
+          return null;
+        }
+        return totalValue + datum[METRIC_INDEX];
+      }, null);
+
       const valueColumn = data.cols[METRIC_INDEX];
 
-      let name = null;
+      let name;
       if (hasBreakout) {
         name = settings.series(series)?.["title"] ?? card.name;
       } else {
@@ -421,9 +419,9 @@ export const getStackedTooltipModel = (
     headerTitle: formattedXValue,
     headerRows,
     bodyRows,
-    totalFormatter: hasBreakout ? totalFormatter : undefined,
-    showTotal: hasBreakout,
-    showPercentages: hasBreakout,
+    totalFormatter,
+    showTotal: true,
+    showPercentages: true,
   };
 };
 

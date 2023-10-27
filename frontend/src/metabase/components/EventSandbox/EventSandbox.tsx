@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import * as React from "react";
 
 type Options = {
   preventDefault?: boolean;
@@ -19,6 +20,7 @@ type EventSandboxProps = {
   enableMouseEvents?: boolean;
   disabled?: boolean;
   preventDefault?: boolean;
+  className?: string;
 };
 
 // Prevent DOM events from bubbling through the React component tree
@@ -29,6 +31,7 @@ function EventSandbox({
   disabled,
   enableMouseEvents = false,
   preventDefault = false,
+  className,
 }: EventSandboxProps) {
   const stop = useCallback(
     (event: React.SyntheticEvent) => {
@@ -55,6 +58,7 @@ function EventSandbox({
     <React.Fragment>{children}</React.Fragment>
   ) : (
     <div
+      className={className}
       onClick={stop}
       onContextMenu={stop}
       onDoubleClick={stop}

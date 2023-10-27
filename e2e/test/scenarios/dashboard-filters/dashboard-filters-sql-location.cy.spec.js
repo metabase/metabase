@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -17,6 +18,10 @@ import {
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -50,7 +55,8 @@ describe("scenarios > dashboard > filters > location", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery");
       },
     );
   });
@@ -73,7 +79,7 @@ describe("scenarios > dashboard > filters > location", () => {
       cy.contains("Arnold Adams");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     cy.url().should("not.include", "Rye");
 
@@ -86,8 +92,3 @@ describe("scenarios > dashboard > filters > location", () => {
     });
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}

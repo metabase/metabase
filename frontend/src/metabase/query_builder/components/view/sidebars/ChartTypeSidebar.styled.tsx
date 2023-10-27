@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, tint, isDark, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
 
 export interface OptionRootProps {
@@ -9,8 +9,6 @@ export interface OptionRootProps {
 const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
   if (isSelected) {
     return color("white");
-  } else if (isDark("brand")) {
-    return tint("brand", 0.5);
   } else {
     return color("brand");
   }
@@ -25,7 +23,7 @@ export const OptionRoot = styled.div<OptionRootProps>`
     props.isSelected &&
     `
     ${OptionIconContainer} {
-      &, &:hover { 
+      &, &:hover {
       background-color: ${color("brand")};
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
@@ -75,7 +73,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   padding: 0.875rem;
   &:hover {
     color: ${color("brand")};
-    background-color: ${lighten("brand", 0.55)};
+    background-color: ${alpha("brand", 0.15)};
     border: 1px solid transparent;
 
     ${SettingsButton} {

@@ -1,10 +1,5 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 import Tooltip from "metabase/core/components/Tooltip";
 import { BookmarkIcon, BookmarkButton } from "./BookmarkToggle.styled";
@@ -55,7 +50,6 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
       >
         <BookmarkIcon
           name="bookmark"
-          size={16}
           isBookmarked={isBookmarked}
           isAnimating={isAnimating}
           onAnimationEnd={handleAnimationEnd}

@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 import MoveCollectionModal from "../../components/MoveCollectionModal";
 
 interface MoveCollectionModalProps {

@@ -9,6 +9,7 @@ import {
   filterField,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -20,7 +21,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   });
 
   it("should be possible to sort by metric (metabase#8283)", () => {
-    cy.request("POST", "/api/metric", {
+    createMetric({
       name: "Revenue",
       description: "Sum of orders subtotal",
       table_id: ORDERS_ID,
@@ -135,7 +136,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   describe("with metrics", () => {
     beforeEach(() => {
       // CREATE METRIC
-      cy.request("POST", "/api/metric", {
+      createMetric({
         definition: {
           aggregation: ["count"],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
@@ -200,7 +201,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should update that metric", () => {
       cy.visit("/admin");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Data Model").click();
+      cy.contains("Table Metadata").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Metrics").click();
 
@@ -260,7 +261,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
   describe("custom metrics", () => {
     it("should save the metric using custom expressions (metabase#13022)", () => {
-      cy.request("POST", "/api/metric", {
+      createMetric({
         name: "13022_Metric",
         desription: "desc",
         table_id: ORDERS_ID,
@@ -322,17 +323,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   });
 });
 
-// Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
-// For unknon reasons, popover doesn't open with expanded list of all Sample Database tables. Rather. it shows
-// Sample Database (collapsed) only. We need to click on it to expand it.
-// This conditional mechanism prevents failures even if that popover opens expanded in the future.
 function selectTable(tableName) {
   cy.findByText("Select a table").click();
-
-  cy.get(".List-section").then($list => {
-    if ($list.length !== 5) {
-      cy.findByText("Sample Database").click();
-    }
-    cy.findByText(tableName).click();
-  });
+  popover().findByText(tableName).click();
 }

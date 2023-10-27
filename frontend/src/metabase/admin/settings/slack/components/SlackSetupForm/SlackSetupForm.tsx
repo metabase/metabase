@@ -1,5 +1,4 @@
-import React from "react";
-import { SlackSettings } from "metabase-types/api";
+import type { SlackSettings } from "metabase-types/api";
 import SlackForm from "../SlackForm";
 
 const DEFAULT_SETTINGS: SlackSettings = {

@@ -1,6 +1,5 @@
-import React from "react";
 import { t } from "ttag";
-import { Collection, Timeline } from "metabase-types/api";
+import type { Collection, Timeline } from "metabase-types/api";
 import {
   EmptyStateButton,
   EmptyStateIcon,

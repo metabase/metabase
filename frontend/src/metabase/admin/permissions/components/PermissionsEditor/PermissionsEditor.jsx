@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

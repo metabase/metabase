@@ -1,5 +1,5 @@
 import { CardApi, DashboardApi, ParameterApi } from "metabase/services";
-import {
+import type {
   CardId,
   DashboardId,
   FieldId,
@@ -7,7 +7,7 @@ import {
   ParameterId,
   ParameterValues,
 } from "metabase-types/api";
-import { Dispatch, GetState } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase-types/store";
 import { getNonVirtualFields } from "metabase-lib/parameters/utils/parameter-fields";
 import { normalizeParameter } from "metabase-lib/parameters/utils/parameter-values";
 import { getParameterValuesCache } from "./selectors";
@@ -108,7 +108,7 @@ const loadParameterValues = async (request: ParameterValuesRequest) => {
     : await ParameterApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -125,7 +125,7 @@ const loadCardParameterValues = async (request: CardParameterValuesRequest) => {
     : await CardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };
@@ -144,7 +144,7 @@ const loadDashboardParameterValues = async (
     : await DashboardApi.parameterValues(request);
 
   return {
-    values: values.map((value: any) => [].concat(value)),
+    values: values,
     has_more_values: request.query ? true : has_more_values,
   };
 };

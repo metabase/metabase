@@ -5,12 +5,12 @@
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase.util.schema :as su]
-   [ring.util.codec :as codec]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [ring.util.codec :as codec]))
 
-(defmethod audit.i/internal-query ::bad-card
-  [_ card-id]
+(mu/defmethod audit.i/internal-query ::bad-card
+  [_query-type card-id :- ms/PositiveInt]
   {:metadata [[:card_id         {:display_name "Question ID",        :base_type :type/Integer :remapped_from :card_name}]
               [:card_name       {:display_name "Question",           :base_type :type/Text    :remapped_from :card_id}]
               [:error_str       {:display_name "Error",              :base_type :type/Text    :code          true}]
@@ -59,8 +59,8 @@
                :where     [:= :card.id card-id]})})
 
 ;; Details about a specific query (currently just average execution time).
-(s/defmethod audit.i/internal-query ::details
-  [_ query-hash :- su/NonBlankString]
+(mu/defmethod audit.i/internal-query ::details
+  [_query-type query-hash :- ms/NonBlankString]
   {:metadata [[:query                  {:display_name "Query",                :base_type :type/Dictionary}]
               [:average_execution_time {:display_name "Avg. Exec. Time (ms)", :base_type :type/Number}]]
    :results  (common/reducible-query

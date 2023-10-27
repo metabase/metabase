@@ -1,10 +1,11 @@
 (ns metabase.lib.util-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.util :as lib.util]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -137,7 +138,7 @@
   (is (=? {:database 1
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1
-                       :aggregation  [[:count]]}]}
+                       :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
           (lib.util/update-query-stage {:database 1
                                         :type     :query
                                         :query    {:source-table 1}}
@@ -145,7 +146,7 @@
                                        update
                                        :aggregation
                                        conj
-                                       [:count])))
+                                       [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))
   (are [stage expected] (=? expected
                             (lib.util/update-query-stage {:database 1
                                                           :type     :query
@@ -154,22 +155,22 @@
                                                          update
                                                          :aggregation
                                                          conj
-                                                         [:count]))
+                                                         [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]))
     0 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1
-                   :aggregation  [[:count]]}
+                   :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}
                   {:lib/type :mbql.stage/mbql}]}
     1 {:database 1
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1}
                   {:lib/type    :mbql.stage/mbql
-                   :aggregation [[:count]]}]}
+                   :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}
     -1 {:database 1
         :stages   [{:lib/type     :mbql.stage/mbql
                     :source-table 1}
                    {:lib/type    :mbql.stage/mbql
-                    :aggregation [[:count]]}]})
+                    :aggregation [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]})
   (testing "out of bounds"
     (is (thrown-with-msg?
          #?(:clj Throwable :cljs js/Error)
@@ -181,7 +182,7 @@
                                       update
                                       :aggregation
                                       conj
-                                      [:count])))))
+                                      [:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}])))))
 
 (deftest ^:parallel ensure-mbql-final-stage-test
   (is (=? {:database 1
@@ -318,3 +319,21 @@
     "Customer"       "Customer ID"
     "Customer"       "Customer id"
     "some id number" "some id number"))
+
+(deftest ^:parallel original-isa?
+  (are [exp typ] (lib.util/original-isa? exp typ)
+    (lib/ref (meta/field-metadata :products :id))
+    :type/Number
+
+    (lib/ref (meta/field-metadata :products :created-at))
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        (lib/with-temporal-bucket :day-of-week)
+        lib/ref)
+    :type/Temporal
+
+    (-> (meta/field-metadata :products :created-at)
+        lib/ref
+        (lib/with-temporal-bucket :day-of-week))
+    :type/Temporal))

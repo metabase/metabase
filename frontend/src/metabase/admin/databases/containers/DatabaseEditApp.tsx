@@ -1,31 +1,35 @@
-import React, { ComponentType, useState } from "react";
+import type { ComponentType } from "react";
+import { useState } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import type { Route } from "react-router";
 
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
 
 import { useMount } from "react-use";
-import type { Location } from "history";
+import type { Location, LocationDescriptor } from "history";
 import title from "metabase/hoc/Title";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 
 import { getSetting } from "metabase/selectors/settings";
 
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DatabaseForm from "metabase/databases/containers/DatabaseForm";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { GenericError } from "metabase/containers/ErrorPages";
-import {
+import type {
   Database as DatabaseType,
   DatabaseData,
   DatabaseId,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
+import type { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 
 import { getEditingDatabase, getInitializeError } from "../selectors";
@@ -72,6 +76,8 @@ interface DatabaseEditAppProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
+  route: Route;
+  onChangeLocation: (location: LocationDescriptor) => void;
 }
 
 const mapStateToProps = (state: State) => {
@@ -96,6 +102,7 @@ const mapDispatchToProps = {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  onChangeLocation: push,
 };
 
 type DatabaseEditErrorType = {
@@ -123,6 +130,8 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     initializeDatabase,
     params,
     saveDatabase,
+    route,
+    onChangeLocation,
   } = props;
 
   const editingExistingDatabase = database?.id != null;
@@ -130,7 +139,11 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   const [isDirty, setIsDirty] = useState(false);
 
-  useBeforeUnload(isDirty);
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
 
   useMount(async () => {
     await reset();
@@ -144,10 +157,18 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   const handleSubmit = async (database: DatabaseData) => {
     try {
       await saveDatabase(database);
+
+      if (addingNewDatabase) {
+        scheduleCallback(() => {
+          onChangeLocation("/admin/databases?created=true");
+        });
+      }
     } catch (error) {
       throw getSubmitError(error as DatabaseEditErrorType);
     }
   };
+
+  const autofocusFieldName = window.location.hash.slice(1);
 
   return (
     <DatabaseEditRoot>
@@ -168,6 +189,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                       isAdvanced
                       onSubmit={handleSubmit}
                       setIsDirty={setIsDirty}
+                      autofocusFieldName={autofocusFieldName}
                     />
                   </DatabaseEditForm>
                   <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
@@ -191,6 +213,11 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           />
         )}
       </DatabaseEditMain>
+
+      <LeaveConfirmationModal
+        isEnabled={isDirty && !isCallbackScheduled}
+        route={route}
+      />
     </DatabaseEditRoot>
   );
 }

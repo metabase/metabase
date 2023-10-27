@@ -1,30 +1,25 @@
-import React from "react";
+import { Component, Fragment } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
-
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-
+import { Icon } from "metabase/core/components/Icon";
 import { isObscured } from "metabase/lib/dom";
 import {
   ExpressionListItem,
   ExpressionList,
   ExpressionPopover,
+  SuggestionSpanContent,
+  SuggestionSpanRoot,
 } from "./ExpressionEditorSuggestions.styled";
 
 const SuggestionSpan = ({ suggestion, isHighlighted }) => {
-  const className = cx("text-dark text-bold hover-child", {
-    "text-white bg-brand": isHighlighted,
-  });
-
   return !isHighlighted && suggestion.range ? (
-    <span className="text-medium">
+    <SuggestionSpanRoot>
       {suggestion.name.slice(0, suggestion.range[0])}
-      <span className={className}>
+      <SuggestionSpanContent isHighlighted={isHighlighted}>
         {suggestion.name.slice(suggestion.range[0], suggestion.range[1])}
-      </span>
+      </SuggestionSpanContent>
       {suggestion.name.slice(suggestion.range[1])}
-    </span>
+    </SuggestionSpanRoot>
   ) : (
     suggestion.name
   );
@@ -50,7 +45,7 @@ function colorForIcon(icon) {
       };
   }
 }
-export default class ExpressionEditorSuggestions extends React.Component {
+export default class ExpressionEditorSuggestions extends Component {
   static propTypes = {
     suggestions: PropTypes.array,
     onSuggestionMouseDown: PropTypes.func, // signature is f(index)
@@ -109,7 +104,6 @@ export default class ExpressionEditorSuggestions extends React.Component {
                   <Icon
                     name={icon}
                     color={isHighlighted ? highlighted : normal}
-                    size="14"
                     className="mr1"
                   />
                   <SuggestionSpan
@@ -119,7 +113,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
                 </ExpressionListItem>
               );
 
-              return <React.Fragment key={key}>{listItem}</React.Fragment>;
+              return <Fragment key={key}>{listItem}</Fragment>;
             })}
           </ExpressionList>
         }

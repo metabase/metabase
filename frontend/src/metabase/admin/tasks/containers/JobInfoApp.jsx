@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -60,7 +60,7 @@ const renderJobsTable = jobs => {
   );
 };
 
-class JobInfoApp extends React.Component {
+class JobInfoApp extends Component {
   async componentDidMount() {
     try {
       const info = (await this.props.fetchJobInfo()).payload;

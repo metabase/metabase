@@ -1,14 +1,17 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import cx from "classnames";
-import moment, { Moment } from "moment-timezone";
-import Icon from "metabase/components/Icon";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import type { Moment } from "moment-timezone";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
+import moment from "moment-timezone";
+import { Icon } from "metabase/core/components/Icon";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,
 } from "metabase/lib/date-time";
 
 import "./Calendar.css";
-import { CalendarDay } from "./Calendar.styled";
+import { CalendarDay, CalendarIconContainer } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
@@ -115,20 +118,17 @@ export default class Calendar extends Component<CalendarProps, State> {
     return (
       <div className="Calendar-header flex align-center border-bottom">
         {side !== "right" && (
-          <div
-            className="cursor-pointer text-brand-hover"
-            onClick={this.previous}
-          >
+          <CalendarIconContainer onClick={this.previous}>
             <Icon name="chevronleft" size={10} />
-          </div>
+          </CalendarIconContainer>
         )}
         <span className="flex-full" />
         <h4>{current.format("MMMM YYYY")}</h4>
         <span className="flex-full" />
         {side !== "left" && (
-          <div className="cursor-pointer text-brand-hover" onClick={this.next}>
+          <CalendarIconContainer onClick={this.next}>
             <Icon name="chevronright" size={10} />
-          </div>
+          </CalendarIconContainer>
         )}
       </div>
     );

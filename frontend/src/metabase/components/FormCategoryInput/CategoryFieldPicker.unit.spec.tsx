@@ -1,4 +1,3 @@
-import React from "react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -8,7 +7,7 @@ import {
   setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
@@ -18,7 +17,7 @@ import {
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 

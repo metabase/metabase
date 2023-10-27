@@ -13,6 +13,7 @@
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
+   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
@@ -21,7 +22,6 @@
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
-   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
@@ -31,11 +31,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 (def Dashboard
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
@@ -43,7 +41,6 @@
   :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
-
 
 (doto :model/Dashboard
   (derive :metabase/model)
@@ -105,7 +102,7 @@
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
                                    (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
-                                                        :card_id [:in cards-to-add]))
+                                                     :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -127,9 +124,33 @@
   [dashboard]
   (update-dashboard-subscription-pulses! dashboard))
 
+(defn- migrate-parameter [p]
+  (cond-> p
+    ;; It was previously possible for parameters to have empty strings for :name and
+    ;; :slug, but these are now required to be non-blank strings. (metabase#24500)
+    (or (= (:name p) "")
+        (= (:slug p) ""))
+    (assoc :name "unnamed" :slug "unnamed")
+    (or
+     ;; we don't support linked filters for parameters with :values_source_type of anything except nil,
+     ;; but it was previously possible to set :values_source_type to "static-list" or "card" and still
+     ;; have linked filters. (metabase#33892)
+     (some? (:values_source_type p))
+     (= (:values_query_type p) "none"))
+     ;; linked filters don't do anything when parameters have values_query_type="none" (aka "Input box"),
+     ;; but it was previously possible to set :values_query_type to "none" and still have linked filters.
+     ;; (metabase#34657)
+    (dissoc :filteringParameters)))
+
+(defn- migrate-parameters-list
+  "Update the `:parameters` list of a dashboard from legacy formats."
+  [dashboard]
+  (m/update-existing dashboard :parameters #(map migrate-parameter %)))
+
 (t2/define-after-select :model/Dashboard
   [dashboard]
   (-> dashboard
+      migrate-parameters-list
       public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
@@ -138,14 +159,14 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method ordered-tabs
-  :ordered_tabs
+(mi/define-simple-hydration-method tabs
+  :tabs
   "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
   [dashboard-or-id]
   (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
-(mi/define-simple-hydration-method ordered-cards
-  :ordered_cards
+(mi/define-simple-hydration-method dashcards
+  :dashcards
   "Return the DashboardCards associated with `dashboard`, in the order they were created."
   [dashboard-or-id]
   (t2/select DashboardCard
@@ -178,41 +199,62 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
+(def ^:private excluded-columns-for-dashboard-revision
+  [:id :created_at :updated_at :creator_id :points_of_interest :caveats :show_in_getting_started :entity_id
+   ;; not sure what position is for, from the column remark:
+   ;; > The position this Dashboard should appear in the Dashboards list,
+   ;;   lower-numbered positions appearing before higher numbered ones.
+   ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
+   :public_uuid :made_public_by_id
+   :position])
+
+(def ^:private excluded-columns-for-dashcard-revision
+  [:entity_id :created_at :updated_at :collection_authority_level])
+
+(def ^:private excluded-columns-for-dashboard-tab-revision
+  [:created_at :updated_at :entity_id])
+
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
-  (-> dashboard
-      (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
-      (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
-                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
+  (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
+      (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
+                           (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
+                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
+      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (tabs dashboard)))))
+
+(defn- revert-dashcards
+  [dashboard-id serialized-cards]
+  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
+                                           :model/DashboardCard
+                                           :dashboard_id dashboard-id)
+        id->current-card (zipmap (map :id current-cards) current-cards)
+        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+    (when (seq to-delete)
+      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
+    (when (seq to-create)
+      (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
+    (when (seq to-update)
+      (doseq [update-card to-update]
+        (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
-  [_model dashboard-id user-id serialized-dashboard]
+  [_model dashboard-id _user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
-  ;; Now update the cards as needed
-  (let [serialized-cards    (:cards serialized-dashboard)
-        id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (t2/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
-                                       :dashboard_id dashboard-id)
-        id->current-card    (zipmap (map :id current-cards) current-cards)
-        all-dashcard-ids    (concat (map :id serialized-cards)
-                                    (map :id current-cards))]
-    (doseq [dashcard-id all-dashcard-ids]
-      (let [serialized-card (id->serialized-card dashcard-id)
-            current-card    (id->current-card dashcard-id)]
-        (cond
-          ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-cards! [(:id current-card)])
-
-          ;; If card is in serialized-cards but not current-cards we need to add it
-          (not current-card) (dashboard-card/create-dashboard-cards! [(assoc serialized-card
-                                                                             :dashboard_id dashboard-id
-                                                                             :creator_id   user-id)])
-
-          ;; If card is in both we need to update it to match serialized-card as needed
-          :else (dashboard-card/update-dashboard-card! serialized-card current-card)))))
-
+  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
+  ;; Now update the tabs and cards as needed
+  (let [serialized-cards          (:cards serialized-dashboard)
+        current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
+                                                    :model/DashboardTab :dashboard_id dashboard-id)
+        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+        serialized-cards          (cond->> serialized-cards
+                                    ;; in case reverting result in new tabs being created,
+                                    ;; we need to remap the tab-id
+                                    (seq old->new-tab-id)
+                                    (map (fn [card]
+                                           (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                             (assoc card :dashboard_tab_id new-tab-id)
+                                             card))))]
+    (revert-dashcards dashboard-id serialized-cards))
   serialized-dashboard)
 
 (defmethod revision/diff-strings :model/Dashboard
@@ -232,7 +274,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
+    (-> [(when-let [default-description (u/build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
@@ -240,24 +282,46 @@
              (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
              (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
-                           (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
+                     (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
            (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
                  num-prev-cards (count prev-card-ids)
                  new-card-ids   (set (map :id (:cards dashboard)))
                  num-new-cards  (count new-card-ids)
-                 num-cards-diff (abs (- num-prev-cards num-new-cards))]
+                 num-cards-diff (abs (- num-prev-cards num-new-cards))
+                 keys-changes   (set (flatten (concat (map keys (:cards changes))
+                                                      (map keys (:cards removals)))))]
              (cond
                (and
-                 (set/subset? prev-card-ids new-card-ids)
-                 (< num-prev-cards num-new-cards))         (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+                (set/subset? prev-card-ids new-card-ids)
+                (< num-prev-cards num-new-cards))                     (deferred-trun "added a card" "added {0} cards" num-cards-diff)
                (and
-                 (set/subset? new-card-ids prev-card-ids)
-                 (> num-prev-cards num-new-cards))         (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
-               (and (= num-prev-cards num-new-cards)
-                    (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
-               :else                                       (deferred-tru "modified the cards"))))
+                (set/subset? new-card-ids prev-card-ids)
+                (> num-prev-cards num-new-cards))                     (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+               (set/subset? keys-changes #{:row :col :size_x :size_y}) (deferred-tru "rearranged the cards")
+               :else                                                   (deferred-tru "modified the cards"))))
 
+         (when (or (:tabs changes) (:tabs removals))
+           (let [prev-tabs     (:tabs prev-dashboard)
+                 new-tabs      (:tabs dashboard)
+                 prev-tab-ids  (set (map :id prev-tabs))
+                 num-prev-tabs (count prev-tab-ids)
+                 new-tab-ids   (set (map :id new-tabs))
+                 num-new-tabs  (count new-tab-ids)
+                 num-tabs-diff (abs (- num-prev-tabs num-new-tabs))]
+             (cond
+               (and
+                (set/subset? prev-tab-ids new-tab-ids)
+                (< num-prev-tabs num-new-tabs))              (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
+
+               (and
+                (set/subset? new-tab-ids prev-tab-ids)
+                (> num-prev-tabs num-new-tabs))              (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
+
+               (= (set (map #(dissoc % :position) prev-tabs))
+                  (set (map #(dissoc % :position) new-tabs))) (deferred-tru "rearranged the tabs")
+
+               :else                                          (deferred-tru "modified the tabs"))))
          (let [f (comp boolean :auto_apply_filters)]
            (when (not= (f prev-dashboard) (f dashboard))
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]
@@ -277,8 +341,8 @@
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
   (let [dash (-> (t2/select-one Dashboard :id (u/the-id dashboard-or-id))
-                 (hydrate [:ordered_cards :card]))]
-    (params/dashcards->param-field-ids (:ordered_cards dash))))
+                 (t2/hydrate [:dashcards :card]))]
+    (params/dashcards->param-field-ids (:dashcards dash))))
 
 (defn- update-field-values-for-on-demand-dbs!
   "If the parameters have changed since last time this Dashboard was saved, we need to update the FieldValues
@@ -310,7 +374,7 @@
 (def ^:private DashboardWithSeriesAndCard
   [:map
    [:id ms/PositiveInt]
-   [:ordered_cards [:sequential [:map
+   [:dashcards [:sequential [:map
                                  [:card_id {:optional true} [:maybe ms/PositiveInt]]
                                  [:card {:optional true} [:maybe [:map
                                                                   [:id ms/PositiveInt]]]]]]]])
@@ -323,7 +387,7 @@
   {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
-  (let [old-dashcards    (:ordered_cards dashboard)
+  (let [old-dashcards    (:dashcards dashboard)
         id->old-dashcard (m/index-by :id old-dashcards)
         old-dashcard-ids (set (keys id->old-dashcard))
         new-dashcard-ids (set (map :id new-dashcards))
@@ -358,23 +422,14 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        'Card
+                        Card
                         (-> card
                             (update :result_metadata #(or % (-> card
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
-      (events/publish-event! :card-create card)
-      (hydrate card :creator :dashboard_count :can_write :collection))))
-
-(defn- applied-filters-blurb
-  [applied-filters]
-  (some->> applied-filters
-           not-empty
-           (map (fn [{:keys [field value]}]
-                  (format "%s %s" (str/join " " field) value)))
-           (str/join ", ")
-           (str "Filtered by: ")))
+      (events/publish-event! :event/card-create card)
+      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
@@ -389,23 +444,23 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashboard  (i18n/localized-strings->strings dashboard)
-        dashcards  (:ordered_cards dashboard)
+  (let [{dashcards      :dashcards
+         tabs           :tabs
+         dashboard-name :name
+         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
         collection (populate/create-collection!
-                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth (populate/colors))
+                    (ensure-unique-collection-name dashboard-name parent-collection-id)
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
                             :model/Dashboard
                             (-> dashboard
-                                (dissoc :ordered_cards :rule :related :transient_name
-                                        :transient_filters :param_fields :more)
-                                (assoc :description         (->> dashboard
-                                                                 :transient_filters
-                                                                 applied-filters-blurb)
-                                       :collection_id       (:id collection)
-                                       :collection_position 1))))]
+                                (dissoc :dashcards :tabs :rule :related
+                                        :transient_name :transient_filters :param_fields :more)
+                                (assoc :description description
+                                       :collection_id (:id collection)
+                                       :collection_position 1))))
+        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
                       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
@@ -414,28 +469,27 @@
                                                                           (assoc :collection_id (:id collection))
                                                                           save-card!))))
                             dashcard (-> dashcard
-                                         (dissoc :card :id)
+                                         (dissoc :card :id :creator_id)
                                          (update :parameter_mappings
                                                  (partial map #(assoc % :card_id (:id card))))
                                          (assoc :series series)
+                                         (update :dashboard_tab_id (or old->new-tab-id {}))
                                          (assoc :card_id (:id card)))]
                         dashcard)))
-   dashboard))
+    dashboard))
 
 (def ^:private ParamWithMapping
-  {:name     su/NonBlankString
-   :id       su/NonBlankString
-   :mappings (s/maybe #{dashboard-card/ParamMapping})
-   s/Keyword s/Any})
+  [:map
+   [:id ms/NonBlankString]
+   [:name ms/NonBlankString]
+   [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(s/defn ^:private dashboard->resolved-params* :- (let [param-id su/NonBlankString]
-                                                   {param-id ParamWithMapping})
-  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
-                 s/Keyword                    s/Any}]
-  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+(mu/defn ^:private dashboard->resolved-params* :- [:map-of ms/NonBlankString ParamWithMapping]
+  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
+  (let [dashboard           (t2/hydrate dashboard [:dashcards :card])
         param-key->mappings (apply
                              merge-with set/union
-                             (for [dashcard (:ordered_cards dashboard)
+                             (for [dashcard (:dashcards dashboard)
                                    param    (:parameter_mappings dashcard)]
                                {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
     (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
@@ -469,7 +523,7 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(hydrate % :ordered_cards))
+  (eduction (map #(t2/hydrate % :dashcards))
             (serdes/extract-query-collections Dashboard opts)))
 
 (defn- extract-dashcard
@@ -489,13 +543,13 @@
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
   (let [dash (cond-> dash
-               (nil? (:ordered_cards dash))
-               (hydrate :ordered_cards)
-               (nil? (:ordered_tabs dash))
-               (hydrate :ordered_tabs))]
+               (nil? (:dashcards dash))
+               (t2/hydrate :dashcards)
+               (nil? (:tabs dash))
+               (t2/hydrate :tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
-        (update :ordered_cards     #(mapv extract-dashcard %))
-        (update :ordered_tabs      #(mapv extract-dashtab %))
+        (update :dashcards         #(mapv extract-dashcard %))
+        (update :tabs              #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
@@ -505,7 +559,7 @@
   [dash]
   (-> dash
       serdes/load-xform-basics
-      ;; Deliberately not doing anything to :ordered_cards - they get handled by load-insert! and load-update! below.
+      ;; Deliberately not doing anything to :dashcards - they get handled by load-insert! and load-update! below.
       (update :collection_id     serdes/*import-fk* Collection)
       (update :parameters        serdes/import-parameters)
       (update :creator_id        serdes/*import-user*)
@@ -528,25 +582,26 @@
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :ordered_cards :ordered_tabs) maybe-local)]
-    (doseq [tab (:ordered_tabs ingested)]
+  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
+    (doseq [tab (:tabs ingested)]
       (serdes/load-one! (dashtab-for tab dashboard)
                         (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
-    (doseq [dashcard (:ordered_cards ingested)]
+    (doseq [dashcard (:dashcards ingested)]
       (serdes/load-one! (dashcard-for dashcard dashboard)
                         (t2/select-one 'DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
-  [{:keys [card_id parameter_mappings visualization_settings]}]
+  [{:keys [action_id card_id parameter_mappings visualization_settings]}]
   (->> (mapcat serdes/mbql-deps parameter_mappings)
        (concat (serdes/visualization-settings-deps visualization_settings))
-       (concat (when card_id #{[{:model "Card" :id card_id}]}))
+       (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
+       (concat (when action_id #{[{:model "Action" :id action_id}]}))
        set))
 
 (defmethod serdes/dependencies "Dashboard"
-  [{:keys [collection_id ordered_cards parameters]}]
-  (->> (map serdes-deps-dashcard ordered_cards)
-       (reduce set/union)
+  [{:keys [collection_id dashcards parameters]}]
+  (->> (map serdes-deps-dashcard dashcards)
+       (reduce set/union #{})
        (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
        (set/union (serdes/parameters-deps parameters))))
 

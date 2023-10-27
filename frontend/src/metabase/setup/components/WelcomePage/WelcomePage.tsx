@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -33,7 +33,7 @@ export const WelcomePage = (): JSX.Element | null => {
   }
 
   return (
-    <PageRoot>
+    <PageRoot data-testid="welcome-page">
       <PageMain>
         <LogoIcon height={118} />
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>

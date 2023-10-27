@@ -13,6 +13,18 @@
             "name": "react-redux",
             "importNames": ["useSelector", "useDispatch"],
             "message": "Please import from `metabase/lib/redux` instead."
+          },
+          {
+            "name": "@mantine/core",
+            "message": "Please import from `metabase/ui` instead."
+          },
+          {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
           }
         ]
       }
@@ -34,6 +46,12 @@
     {
       "files": ["lib/redux/hooks.ts"],
       "rules": {
+        "no-restricted-imports": 0
+      }
+    },
+    {
+      "files": ["ui/**/*.{js,jsx,ts,tsx}"],
+      "rules": {
         "no-restricted-imports": [
           "error",
           {
@@ -41,6 +59,16 @@
               "metabase-enterprise",
               "metabase-enterprise/*",
               "cljs/metabase.lib*"
+            ],
+            "paths": [
+              {
+                "name": "moment",
+                "message": "Moment is deprecated, please use dayjs"
+              },
+              {
+                "name": "moment-timezone",
+                "message": "Moment is deprecated, please use dayjs"
+              }
             ]
           }
         ]

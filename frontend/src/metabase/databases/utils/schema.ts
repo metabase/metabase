@@ -1,7 +1,7 @@
 import * as Yup from "yup";
 import type { TestContext } from "yup";
 import * as Errors from "metabase/core/utils/errors";
-import { DatabaseData, Engine, EngineField } from "metabase-types/api";
+import type { DatabaseData, Engine, EngineField } from "metabase-types/api";
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
 
 const SCHEDULE_SCHEMA = Yup.object({
@@ -33,7 +33,7 @@ export const getValidationSchema = (
     refingerprint: Yup.boolean().nullable().default(false),
     cache_ttl: Yup.number().nullable().default(null).positive(Errors.positive),
     is_sample: Yup.boolean().default(false),
-    is_full_sync: Yup.boolean().default(false),
+    is_full_sync: Yup.boolean().default(true),
     is_on_demand: Yup.boolean().default(false),
   });
 };

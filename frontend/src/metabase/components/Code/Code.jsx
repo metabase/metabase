@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 
 const Code = ({ children, block }) => {
@@ -9,12 +9,12 @@ const Code = ({ children, block }) => {
     return (
       <span>
         {children.split(/\n/g).map((line, index) => (
-          <React.Fragment key={index}>
+          <Fragment key={index}>
             <span className="text-code" style={{ lineHeight: "1.8em" }}>
               {line}
             </span>
             <br />
-          </React.Fragment>
+          </Fragment>
         ))}
       </span>
     );

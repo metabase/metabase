@@ -1,5 +1,5 @@
 import { humanize, titleize } from "metabase/lib/formatting";
-import { NormalizedSchema } from "metabase-types/api";
+import type { NormalizedSchema } from "metabase-types/api";
 import type Metadata from "./Metadata";
 import type Database from "./Database";
 import type Table from "./Table";

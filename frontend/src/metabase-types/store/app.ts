@@ -1,4 +1,4 @@
-import { CollectionId } from "metabase-types/api/collection";
+import type { CollectionId } from "metabase-types/api/collection";
 
 export interface AppErrorDescriptor {
   status: number;

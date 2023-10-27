@@ -1,14 +1,15 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import {
+import type {
   Parameter,
   ParameterId,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { slugify } from "metabase/lib/formatting";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
@@ -116,6 +117,12 @@ const ParameterSidebar = ({
     onClose();
   }, [parameterId, onRemoveParameter, onClose]);
 
+  const isParameterSlugUsed = useCallback(
+    (value: string) =>
+      otherParameters.some(parameter => parameter.slug === slugify(value)),
+    [otherParameters],
+  );
+
   return (
     <Sidebar onClose={onClose}>
       <SidebarHeader>
@@ -130,6 +137,7 @@ const ParameterSidebar = ({
         {tab === "settings" ? (
           <ParameterSettings
             parameter={parameter}
+            isParameterSlugUsed={isParameterSlugUsed}
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}

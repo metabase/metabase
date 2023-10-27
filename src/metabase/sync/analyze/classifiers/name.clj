@@ -3,14 +3,13 @@
   (:require
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.models.database :refer [Database]]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -122,9 +121,10 @@
     (assert (or (isa? semantic-type :Semantic/*)
                 (isa? semantic-type :Relation/*)))))
 
-(s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
-  "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
-  [field-name :- su/NonBlankString, base-type :- su/FieldType]
+(mu/defn ^:private semantic-type-for-name-and-base-type :- [:maybe ms/FieldSemanticOrRelationType]
+  "If `name` and `base-type` matches a known pattern, return the `semantic-type` we should assign to it."
+  [field-name :- ms/NonBlankString
+   base-type  :- ms/FieldType]
   (let [field-name (u/lower-case-en field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)
@@ -134,12 +134,15 @@
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
-  {:name                           s/Str ; Some DBs such as MSSQL can return columns with blank name
-   :base_type                      s/Keyword
-   (s/optional-key :semantic_type) (s/maybe s/Keyword)
-   s/Any                           s/Any})
+  [:and
+   [:map
+    ;; Some DBs such as MSSQL can return columns with blank name
+    [:name      :string]
+    [:base_type :keyword]
+    [:semantic_type {:optional true} [:maybe :keyword]]]
+   ::i/no-kebab-case-keys])
 
-(s/defn infer-semantic-type :- (s/maybe s/Keyword)
+(mu/defn infer-semantic-type :- [:maybe :keyword]
   "Classifer that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
@@ -148,10 +151,10 @@
                 (str/blank? (:name field-or-column)))
     (semantic-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
-(s/defn infer-and-assoc-semantic-type :- (s/maybe FieldOrColumn)
+(mu/defn infer-and-assoc-semantic-type :- [:maybe FieldOrColumn]
   "Returns `field-or-column` with a computed semantic type based on the name and base type of the `field-or-column`"
   [field-or-column :- FieldOrColumn
-   _fingerprint    :- (s/maybe i/Fingerprint)]
+   _fingerprint    :- [:maybe i/Fingerprint]]
   (when-let [inferred-semantic-type (infer-semantic-type field-or-column)]
     (log/debug (format "Based on the name of %s, we're giving it a semantic type of %s."
                        (sync-util/name-for-logging field-or-column)
@@ -180,7 +183,7 @@
    [(prefix-or-postfix "companies")    :entity/CompanyTable]
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
-(s/defn infer-entity-type :- i/TableInstance
+(mu/defn infer-entity-type :- i/TableInstance
   "Classifer that infers the semantic type of a `table` based on its name."
   [table :- i/TableInstance]
   (let [table-name (-> table :name u/lower-case-en)]
@@ -188,10 +191,7 @@
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
-                                  (case (->> table
-                                             :db_id
-                                             (t2/select-one Database :id)
-                                             :engine)
+                                  (case (some-> (:db_id table) driver.u/database->driver)
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable
                                     nil)

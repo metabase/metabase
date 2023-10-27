@@ -1,4 +1,5 @@
-import { popover } from "./e2e-ui-elements-helpers";
+import { visitDashboard } from "./e2e-misc-helpers";
+import { menu, popover } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(selection, filterName) {
@@ -22,7 +23,7 @@ const DEFAULT_CARD = {
   id: -1,
   row: 0,
   col: 0,
-  size_x: 8,
+  size_x: 11,
   size_y: 8,
   visualization_settings: {},
   parameter_mappings: [],
@@ -44,6 +45,7 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
       body: response.body.cards[0],
     }));
 }
+
 /**
  * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
  * Can be used to remove cards (exclude from array), or add/update them.
@@ -60,11 +62,28 @@ export function getDashboardCardMenu(index = 0) {
 }
 
 export function showDashboardCardActions(index = 0) {
-  getDashboardCard(index).realHover();
+  getDashboardCard(index).realHover({ scrollBehavior: "bottom" });
+}
+
+export function removeDashboardCard(index = 0) {
+  showDashboardCardActions(index);
+  cy.findAllByTestId("dashboardcard-actions-panel")
+    .eq(0)
+    .should("be.visible")
+    .icon("close")
+    .click();
+}
+
+export function showDashcardVisualizationSettings(index = 0) {
+  return getDashboardCard(index)
+    .realHover()
+    .within(() => {
+      cy.findByLabelText("Show visualization options").click();
+    });
 }
 
 export function editDashboard() {
-  cy.icon("pencil").click();
+  cy.findByLabelText("Edit dashboard").click();
   cy.findByText("You're editing this dashboard.");
 }
 
@@ -97,14 +116,208 @@ export function setFilter(type, subType) {
   });
 }
 
+export function createEmptyTextBox() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
+}
+
 export function addTextBox(string, options = {}) {
-  cy.icon("pencil").click();
-  cy.icon("string").click();
+  cy.findByLabelText("Edit dashboard").click();
+  addTextBoxWhileEditing(string, options);
+}
+
+export function addTextBoxWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
 }
 
-export function openQuestionsSidebar() {
-  cy.findByLabelText("Add questions").click();
+export function createEmptyHeading() {
+  cy.findByLabelText("Edit dashboard").click();
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
 }
+
+export function addHeading(string, options = {}) {
+  cy.findByLabelText("Edit dashboard").click();
+  addHeadingWhileEditing(string, options);
+}
+
+export function addHeadingWhileEditing(string, options = {}) {
+  cy.findByLabelText("Add a heading or text box").click();
+  popover().findByText("Heading").click();
+  cy.findByPlaceholderText("Heading").type(string, options);
+}
+
+export function openQuestionsSidebar() {
+  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
+}
+
+export function createNewTab() {
+  cy.findByLabelText("Create new tab").click();
+}
+
+export function deleteTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).findByRole("button").click();
+  popover().within(() => {
+    cy.findByText("Delete").click();
+  });
+}
+
+export function goToTab(tabName) {
+  cy.findByRole("tab", { name: tabName }).click();
+}
+
+export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
+  getDashboardCard(dashcardIndex).realHover().icon("move_card").click();
+  menu().findByText(tabName).click();
+}
+
+export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
+  visitDashboard(dashboardId);
+  editDashboard();
+  createNewTab();
+  if (save) {
+    saveDashboard();
+  }
+}
+
+export function resizeDashboardCard({ card, x, y }) {
+  card.within(() => {
+    const resizeHandle = cy.get(".react-resizable-handle");
+    resizeHandle
+      .trigger("mousedown", { button: 0 })
+      .trigger("mousemove", {
+        clientX: x,
+        clientY: y,
+      })
+      .trigger("mouseup", { force: true });
+  });
+}
+
+export function createLinkCard() {
+  cy.icon("link").click();
+}
+
+export function toggleDashboardInfoSidebar() {
+  dashboardHeader().icon("info").click();
+}
+
+export function openDashboardMenu() {
+  dashboardHeader().findByLabelText("dashboard-menu-button").click();
+}
+
+export const dashboardHeader = () => {
+  return cy.findByTestId("dashboard-header");
+};
+
+export const dashboardGrid = () => {
+  return cy.findByTestId("dashboard-grid");
+};
+
+/**
+ *
+ * @param {number} dashboardId
+ * @param {Object} option
+ * @param {number=} option.id
+ * @param {number=} option.col
+ * @param {number=} option.row
+ * @param {number=} option.size_x
+ * @param {number=} option.size_y
+ * @param {string} option.text
+ */
+export function getTextCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 6,
+  text,
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "text",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      text,
+    },
+  };
+}
+
+export function getHeadingCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 24,
+  size_y = 1,
+  text = "Heading text details",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "heading",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      "dashcard.background": false,
+      text,
+    },
+  };
+}
+
+export function getLinkCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
+  size_x = 4,
+  size_y = 1,
+  url = "https://metabase.com",
+}) {
+  return {
+    id,
+    card_id: null,
+    col,
+    row,
+    size_x,
+    size_y,
+    visualization_settings: {
+      virtual_card: {
+        name: null,
+        display: "link",
+        visualization_settings: {},
+        dataset_query: {},
+        archived: false,
+      },
+      link: {
+        url,
+      },
+    },
+    parameter_mappings: [],
+  };
+}
+
+export const getNextUnsavedDashboardCardId = (() => {
+  let id = 0;
+  return () => --id;
+})();

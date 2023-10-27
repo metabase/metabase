@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Field Table]]
@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]))
 

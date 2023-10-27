@@ -1,10 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import SidebarLayout from "../components/SidebarLayoutFixedWidth";
-import AuditSidebar from "../components/AuditSidebar";
+import { AuditSidebar } from "../components/AuditSidebar";
 
 const Layout = fitViewport(SidebarLayout);
 

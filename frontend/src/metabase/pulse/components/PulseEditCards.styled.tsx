@@ -12,3 +12,17 @@ export const CardNotice = styled.div<CardNoticeProps>`
   border-left: 3px solid
     ${props => (props.isWarning ? color("warning") : color("brand"))};
 `;
+
+interface AttachmentTypeProps {
+  isSelected?: boolean;
+}
+
+export const AttachmentType = styled.span<AttachmentTypeProps>`
+  margin-right: 0.5rem;
+  cursor: pointer;
+  color: ${props => props.isSelected && color("brand")};
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;

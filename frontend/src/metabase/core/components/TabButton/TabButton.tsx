@@ -1,26 +1,31 @@
-import React, {
+import type {
+  HTMLAttributes,
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  MouseEventHandler,
+  Ref,
+} from "react";
+import {
   useEffect,
   useContext,
   useCallback,
   useRef,
   useState,
-  HTMLAttributes,
-  ChangeEventHandler,
-  KeyboardEventHandler,
-  MouseEventHandler,
   forwardRef,
-  Ref,
 } from "react";
+import styled from "@emotion/styled";
 import { t } from "ttag";
 
+import { css } from "@emotion/react";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 
+import { color, lighten } from "metabase/lib/colors";
+import type { TabContextType } from "../Tab";
 import {
   getTabButtonInputId,
   getTabId,
   getTabPanelId,
   TabContext,
-  TabContextType,
 } from "../Tab";
 import { TabButtonMenu } from "./TabButtonMenu";
 import {
@@ -120,12 +125,15 @@ const _TabButton = forwardRef(function TabButton<T>(
     >
       <TabButtonInputWrapper
         onDoubleClick={onInputDoubleClick}
+        isSelected={isSelected}
+        disabled={disabled}
         data-testid={INPUT_WRAPPER_TEST_ID}
       >
         <TabButtonInputResizer aria-hidden="true">
           {label}
         </TabButtonInputResizer>
         <TabButtonInput
+          maxLength={75}
           type="text"
           value={label}
           isSelected={isSelected}
@@ -179,6 +187,24 @@ export interface RenameableTabButtonProps<T>
   canRename?: boolean;
 }
 
+// These styles need to be here instead of .styled to avoid circular dependency
+const borderStyle = css`
+  border: 1px solid ${color("brand")};
+  box-shadow: 0px 0px 0px 1px ${lighten(color("brand"), 0.28)};
+`;
+export const RenameableTabButtonStyled = styled(_TabButton)<{
+  isRenaming: boolean;
+  isSelected: boolean;
+  canRename: boolean;
+}>`
+  ${TabButtonInputWrapper} {
+    ${props => props.isRenaming && borderStyle}
+    :hover {
+      ${props => props.canRename && props.isSelected && borderStyle}
+    }
+  }
+`;
+
 export function RenameableTabButton<T>({
   label: labelProp,
   menuItems: originalMenuItems = [],
@@ -188,6 +214,9 @@ export function RenameableTabButton<T>({
   canRename = true,
   ...props
 }: RenameableTabButtonProps<T>) {
+  const { value: selectedValue } = useContext(TabContext);
+  const isSelected = props.value === selectedValue;
+
   const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -226,13 +255,17 @@ export function RenameableTabButton<T>({
   ];
 
   return (
-    <_TabButton
+    <RenameableTabButtonStyled
       label={label}
+      isSelected={isSelected}
       isRenaming={canRename && isRenaming}
+      canRename={canRename}
       onRename={e => setLabel(e.target.value)}
       onFinishRenaming={onFinishEditing}
       onInputDoubleClick={() => setIsRenaming(canRename)}
-      menuItems={menuItems}
+      menuItems={
+        menuItems as TabButtonMenuItem<unknown>[] /* workaround for styled component swallowing generic type */
+      }
       ref={inputRef}
       {...props}
     />

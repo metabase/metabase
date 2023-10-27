@@ -1,5 +1,5 @@
 import _ from "underscore";
-import {
+import type {
   CardId,
   DatabaseId,
   FieldId,
@@ -7,6 +7,8 @@ import {
   MetricId,
   SchemaId,
   SegmentId,
+  SettingKey,
+  Settings,
   TableId,
 } from "metabase-types/api";
 import type Question from "../Question";
@@ -17,6 +19,7 @@ import type Field from "./Field";
 import type Metric from "./Metric";
 import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "./utils/saved-questions";
 
 interface MetadataOpts {
   databases?: Record<string, Database>;
@@ -26,6 +29,7 @@ interface MetadataOpts {
   metrics?: Record<string, Metric>;
   segments?: Record<string, Segment>;
   questions?: Record<string, Question>;
+  settings?: Settings;
 }
 
 class Metadata {
@@ -36,6 +40,7 @@ class Metadata {
   metrics: Record<string, Metric> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
+  settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
     Object.assign(this, opts);
@@ -61,6 +66,10 @@ class Metadata {
     return Object.values(this.tables);
   }
 
+  fieldsList(): Field[] {
+    return Object.values(this.fields);
+  }
+
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Metric[]}
@@ -83,6 +92,10 @@ class Metadata {
 
   database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
+  }
+
+  savedQuestionsDatabase() {
+    return this.databases[SAVED_QUESTIONS_VIRTUAL_DB_ID];
   }
 
   schema(schemaId: SchemaId | undefined | null): Schema | null {
@@ -112,6 +125,10 @@ class Metadata {
 
   question(cardId: CardId | undefined | null): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
+  }
+
+  setting<T extends SettingKey>(key: T): Settings[T] | null {
+    return this.settings ? this.settings[key] : null;
   }
 }
 

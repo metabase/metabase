@@ -1,10 +1,8 @@
-import Database from "metabase-lib/metadata/Database";
-import Schema from "metabase-lib/metadata/Schema";
+import type Database from "metabase-lib/metadata/Database";
+import type Schema from "metabase-lib/metadata/Schema";
 
 export const getDatabaseOptions = (databases: Database[]) =>
-  databases
-    .filter(db => db?.settings?.["database-enable-actions"])
-    .map(db => ({ name: db.name, value: db.id }));
+  databases.map(db => ({ name: db.name, value: db.id }));
 
 export const getSchemaOptions = (schema: Schema[]) =>
   schema.map(s => ({ name: s.name, value: s.name }));

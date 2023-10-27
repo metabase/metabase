@@ -16,7 +16,10 @@ export const isNoticeEnabled = (state: State): boolean => {
 };
 
 export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
-  return props.databases?.some(d => isDeprecatedEngine(d.engine)) ?? false;
+  return (
+    props.databases?.some(d => !d.is_sample && isDeprecatedEngine(d.engine)) ??
+    false
+  );
 };
 
 export const getAdminPaths = (state: State) => {

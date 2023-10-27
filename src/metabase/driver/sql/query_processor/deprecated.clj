@@ -6,7 +6,6 @@
   Deprecated method impls should call [[log-deprecation-warning]] to gently nudge driver authors to stop using this
   method."
   (:require
-   [clojure.string :as str]
    [honeysql.core :as hsql]
    [honeysql.format :as hformat]
    [metabase.query-processor.store :as qp.store]
@@ -45,8 +44,7 @@
   hformat/ToSql
   (to-sql [_]
     (dorun (map hformat/add-anon-param params))
-    ;; strip off any trailing semicolons
-    (str "(" (str/replace sql #";+\s*$" "") ")"))
+    sql)
 
   pretty/PrettyPrintable
   (pretty [_]

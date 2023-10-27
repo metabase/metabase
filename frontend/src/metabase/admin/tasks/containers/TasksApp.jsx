@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,10 +8,10 @@ import Task from "metabase/entities/tasks";
 
 import PaginationControls from "metabase/components/PaginationControls";
 import AdminHeader from "metabase/components/AdminHeader";
-import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
+  InfoIcon,
   SectionControls,
   SectionHeader,
   SectionRoot,
@@ -22,7 +22,7 @@ import {
 // Otherwise @Database.loadList overrides pagination props
 // that come from @Task.LoadList
 
-class TasksAppInner extends React.Component {
+class TasksAppInner extends Component {
   render() {
     const {
       tasks,
@@ -46,12 +46,7 @@ class TasksAppInner extends React.Component {
             <Tooltip
               tooltip={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
             >
-              <Icon
-                name="info"
-                ml={1}
-                style={{ marginTop: 5 }}
-                className="text-brand-hover cursor-pointer text-medium"
-              />
+              <InfoIcon name="info" />
             </Tooltip>
           </SectionTitle>
           <SectionControls>

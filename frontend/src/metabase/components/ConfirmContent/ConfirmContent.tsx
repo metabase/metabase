@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-import React from "react";
 import _ from "underscore";
 
 import { t } from "ttag";
@@ -8,6 +6,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 
 interface ConfirmContentProps {
+  "data-testid"?: string;
   title: string;
   content?: string | null;
   message?: string;
@@ -19,6 +18,7 @@ interface ConfirmContentProps {
 }
 
 const ConfirmContent = ({
+  "data-testid": dataTestId,
   title,
   content = null,
   message = t`Are you sure you want to do this?`,
@@ -29,6 +29,7 @@ const ConfirmContent = ({
   cancelButtonText = t`Cancel`,
 }: ConfirmContentProps) => (
   <ModalContent
+    data-testid={dataTestId}
     title={title}
     formModal
     onClose={() => {
@@ -51,7 +52,7 @@ const ConfirmContent = ({
       </Button>
       <Button
         danger
-        ml={2}
+        className="ml2"
         onClick={() => {
           onAction();
           onClose();

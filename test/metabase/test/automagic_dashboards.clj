@@ -7,6 +7,7 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
@@ -37,8 +38,8 @@
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (schema= mbql.s/Query
-                     (mbql.normalize/normalize query)))))))
+        (is (malli= mbql.s/Query
+                    (mbql.normalize/normalize query)))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?
@@ -50,11 +51,11 @@
       (testing "Dashboard should have a name"
         (is (some? (:name dashboard))))
       (testing "Cards should have correct cardinality"
-        (is (= cardinality (-> dashboard :ordered_cards count))))
+        (is (= cardinality (-> dashboard :dashcards count))))
       (testing "URLs should be valid"
         (test-urls-are-valid dashboard))
       (testing "Dashboard's cards should be valid"
-        (doseq [card (keep :card (:ordered_cards dashboard))]
+        (doseq [card (keep :card (:dashcards dashboard))]
           (test-card-is-valid card)))
       (testing "Dashboard should have `auto_apply_filters` set to true"
         (is (true? (:auto_apply_filters dashboard)))))))

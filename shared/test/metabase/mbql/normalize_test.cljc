@@ -1373,6 +1373,16 @@
                (mbql.normalize/normalize-fragment nil
                                                   [:field 2 {"temporal-unit" "day"}]))))))
 
+(t/deftest ^:parallel normalize-fragment-filter-test
+  (t/is (= [:!=
+            [:expression "expr"]
+            [:field 66302 {:base-type :type/DateTime}]]
+           (mbql.normalize/normalize-fragment
+               [:query :filter]
+               ["!="
+                [:expression "expr" {:base-type :type/Date}]
+                [:field 66302 {:base-type :type/DateTime}]]))))
+
 (t/deftest ^:parallel normalize-source-metadata-test
   (t/testing "normalize-source-metadata"
     (t/testing "should convert legacy field_refs to modern `:field` clauses"
@@ -1447,3 +1457,15 @@
                                  [:field "date_seen" {:base-type :type/Date}]
                                  "2021-05-01T12:30:00"]}}
                (mbql.normalize/normalize query))))))
+
+(t/deftest ^:parallel normalize-aggregation-ref-test
+  (t/are [clause] (= {:database 1
+                      :type     :query
+                      :query    {:order-by [[:asc [:aggregation 0]]]}}
+                     (metabase.mbql.normalize/normalize
+                      {:database 1
+                       :type     :query
+                       :query    {:order-by [[:asc clause]]}}))
+    [:aggregation 0 nil]
+    [:aggregation 0 {}]
+    [:aggregation 0]))

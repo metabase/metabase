@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { mockSettings } from "__support__/settings";
 import HelpModal from "./HelpModal";

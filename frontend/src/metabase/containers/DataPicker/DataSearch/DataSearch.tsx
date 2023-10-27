@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { SearchResults } from "metabase/query_builder/components/DataSelector/data-search";
 

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -13,7 +13,7 @@ import DashboardData from "metabase/dashboard/hoc/DashboardData";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -22,7 +22,7 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import { getIsHeaderVisible, getTabs } from "metabase/dashboard/selectors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -32,10 +32,13 @@ import { color } from "metabase/lib/colors";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import * as Q from "metabase-lib/queries/utils/query";
 import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
+import { isSegment } from "metabase-lib/queries/utils/filter";
 
+import { DashboardTabs } from "../components/DashboardTabs";
 import {
   ItemContent,
   ItemDescription,
+  ItemLink,
   ListRoot,
   SidebarHeader,
   SidebarRoot,
@@ -49,6 +52,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
   isHeaderVisible: getIsHeaderVisible(state),
+  tabs: getTabs(state),
 });
 
 const mapDispatchToProps = {
@@ -56,7 +60,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-class AutomaticDashboardAppInner extends React.Component {
+class AutomaticDashboardAppInner extends Component {
   state = {
     savedDashboardId: null,
   };
@@ -120,8 +124,11 @@ class AutomaticDashboardAppInner extends React.Component {
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
           {isHeaderVisible && (
-            <div className="bg-white border-bottom py2">
-              <div className="wrapper flex align-center">
+            <div
+              className="bg-white border-bottom"
+              data-testid="automatic-dashboard-header"
+            >
+              <div className="wrapper flex align-center py2">
                 <XrayIcon name="bolt" size={24} />
                 <div>
                   <h2 className="text-wrap mr2">
@@ -147,6 +154,11 @@ class AutomaticDashboardAppInner extends React.Component {
                   </ActionButton>
                 )}
               </div>
+              {this.props.tabs.length > 1 && (
+                <div className="wrapper flex align-center">
+                  <DashboardTabs location={this.props.location} />
+                </div>
+              )}
             </div>
           )}
 
@@ -163,7 +175,7 @@ class AutomaticDashboardAppInner extends React.Component {
                 />
               </div>
             )}
-            <Dashboard {...this.props} />
+            <Dashboard isXray {...this.props} />
           </div>
           {more && (
             <div className="flex justify-end px4 pb4">
@@ -221,7 +233,7 @@ const TransientFilter = ({ filter, metadata }) => {
     <div className="mr3">
       <Icon
         size={12}
-        name={getIconForFilter(dimension.field())}
+        name={getIconForFilter(filter, dimension)}
         className="mr1"
       />
       <Filter filter={filter} metadata={metadata} />
@@ -229,8 +241,14 @@ const TransientFilter = ({ filter, metadata }) => {
   );
 };
 
-const getIconForFilter = field => {
-  if (field.isDate()) {
+const getIconForFilter = (filter, dimension) => {
+  const field = dimension?.field();
+
+  if (isSegment(filter)) {
+    return "star";
+  } else if (!field) {
+    return "label";
+  } else if (field.isDate()) {
     return "calendar";
   } else if (field.isLocation()) {
     return "location";
@@ -267,31 +285,28 @@ const SuggestionsList = ({ suggestions, section }) => (
         </SuggestionSectionHeading>
         {suggestions[s].length > 0 &&
           suggestions[s].map((item, itemIndex) => (
-            <Link
-              hover={{ color: color("brand") }}
+            <ItemLink
               key={itemIndex}
               to={item.url}
-              className="block hover-parent hover--visibility"
+              className="hover-parent hover--visibility"
               data-metabase-event={`Auto Dashboard;Click Related;${s}`}
-              mb={1}
             >
-              <Card p={2} hoverable>
+              <Card className="p2" hoverable>
                 <ItemContent>
                   <Icon
                     name={RELATED_CONTENT[s].icon}
                     color={color("accent4")}
-                    mr={1}
-                    size={22}
+                    className="mr1"
                   />
                   <h4 className="text-wrap">{item.title}</h4>
                   <ItemDescription className="hover-child">
                     <Tooltip tooltip={item.description}>
-                      <Icon name="question" color={color("bg-dark")} />
+                      <Icon name="info_outline" color={color("bg-dark")} />
                     </Tooltip>
                   </ItemDescription>
                 </ItemContent>
               </Card>
-            </Link>
+            </ItemLink>
           ))}
       </li>
     ))}

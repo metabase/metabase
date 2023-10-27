@@ -17,19 +17,20 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private KeypathComponents
-  {:table-name (s/maybe su/NonBlankString)
-   :field-name (s/maybe su/NonBlankString)
-   :k          s/Keyword})
+  [:map
+   [:table-name [:maybe ms/NonBlankString]]
+   [:field-name [:maybe ms/NonBlankString]]
+   [:k          :keyword]])
 
-(s/defn ^:private parse-keypath :- KeypathComponents
-  "Parse a KEYPATH into components for easy use."
+(mu/defn ^:private parse-keypath :- KeypathComponents
+  "Parse a `keypath` into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
-  [keypath :- su/NonBlankString]
+  [keypath :- ms/NonBlankString]
   ;; keypath will have one of three formats:
   ;; property (for database-level properties)
   ;; table_name.property
@@ -39,9 +40,11 @@
      :field-name (when third-part second-part)
      :k          (keyword (or third-part second-part first-part))}))
 
-(s/defn ^:private set-property! :- s/Bool
-  "Set a property for a Field or Table in DATABASE. Returns `true` if a property was successfully set."
-  [database :- i/DatabaseInstance, {:keys [table-name field-name k]} :- KeypathComponents, value]
+(mu/defn ^:private set-property! :- :boolean
+  "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
+  [database                          :- i/DatabaseInstance
+   {:keys [table-name field-name k]} :- KeypathComponents
+   value]
   (boolean
     ;; ignore legacy entries that try to set field_type since it's no longer part of Field
     (when-not (= k :field_type)
@@ -57,7 +60,7 @@
             (pos? (t2/update! Table table-id {k value}))))
         (pos? (t2/update! Database (u/the-id database) {k value}))))))
 
-(s/defn ^:private sync-metabase-metadata-table!
+(mu/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
   metadata about the `Tables` and `Fields` it contains. This table is *not* synced normally, i.e. a Metabase `Table`
   is not created for it. Instead, *this* function is called, which reads the data it contains and updates the relevant
@@ -75,23 +78,26 @@
 
   This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
-  [driver, database :- i/DatabaseInstance, metabase-metadata-table :- i/DatabaseMetadataTable]
+  [driver
+   database                :- i/DatabaseInstance
+   metabase-metadata-table :- i/DatabaseMetadataTable]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
       (or (set-property! database (parse-keypath keypath) value)
           (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
 
-(s/defn is-metabase-metadata-table? :- s/Bool
+(mu/defn is-metabase-metadata-table?
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
   (= "_metabase_metadata" (u/lower-case-en (:name table))))
 
-(s/defn sync-metabase-metadata!
+(mu/defn sync-metabase-metadata!
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    This table contains information about type information, descriptions, and other properties that
    should be set for Metabase objects like Tables and Fields."
   ([database :- i/DatabaseInstance]
    (sync-metabase-metadata! database (fetch-metadata/db-metadata database)))
+
   ([database :- i/DatabaseInstance db-metadata]
    (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
                                           (sync-util/name-for-logging database))

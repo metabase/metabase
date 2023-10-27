@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { getSetting } from "metabase/selectors/settings";
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -146,7 +146,9 @@ export const PublicLinksQuestionListing = () => (
     revoke={CardApi.deletePublicLink}
     type={t`Public Card Listing`}
     getUrl={question => Urls.question(question)}
-    getPublicUrl={({ public_uuid }) => Urls.publicQuestion(public_uuid)}
+    getPublicUrl={({ public_uuid }) =>
+      Urls.publicQuestion({ uuid: public_uuid })
+    }
     noLinksMessage={t`No questions have been publicly shared yet.`}
   />
 );

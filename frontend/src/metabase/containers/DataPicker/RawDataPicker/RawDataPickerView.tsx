@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import SelectList from "metabase/components/SelectList";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 
-import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
 

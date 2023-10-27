@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import { assocIn } from "icepick";
 import { getVisualizationRaw } from "metabase/visualizations";
+import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { normalizeFieldRef } from "metabase-lib/queries/utils/dataset";
 import {
@@ -31,6 +32,13 @@ const COMMON_SETTINGS = {
     inline: true,
     dashboard: true,
     getHidden: ([{ card }]) => isVirtualDashCard(card),
+    onUpdate: (value, extra) => {
+      if (!value) {
+        return;
+      }
+
+      trackCardSetToHideWhenNoResults(extra.dashboardId);
+    },
   },
   click_behavior: {},
 };
@@ -39,7 +47,7 @@ function getSettingDefintionsForSeries(series) {
   if (!series) {
     return {};
   }
-  const { visualization } = getVisualizationRaw(series);
+  const visualization = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
     ...(visualization.settings || {}),
@@ -99,6 +107,7 @@ export function getSettingsWidgetsForSeries(
   series,
   onChangeSettings,
   isDashboard = false,
+  extra = {},
 ) {
   const settingsDefs = getSettingDefintionsForSeries(series);
   const storedSettings = getStoredSettingsForSeries(series);
@@ -110,7 +119,7 @@ export function getSettingsWidgetsForSeries(
     computedSettings,
     series,
     onChangeSettings,
-    { isDashboard },
+    { isDashboard, ...extra },
   ).filter(
     widget =>
       widget.dashboard === undefined || widget.dashboard === isDashboard,

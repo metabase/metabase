@@ -1,6 +1,7 @@
-import React, { ReactNode, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -9,12 +10,12 @@ import type { Expression } from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
+import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
   ActionButtonsWrapper,
   Container,
   ExpressionFieldWrapper,
-  FieldTitle,
+  FieldLabel,
   FieldWrapper,
   Footer,
   InfoLink,
@@ -40,7 +41,7 @@ export interface ExpressionWidgetProps {
   onClose?: () => void;
 }
 
-const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
+export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const {
     query,
     name: initialName,
@@ -83,7 +84,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     <Container>
       {header}
       <ExpressionFieldWrapper>
-        <FieldTitle>
+        <FieldLabel htmlFor="expression-content">
           {t`Expression`}
           <Tooltip
             tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
@@ -98,7 +99,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
               <StyledFieldTitleIcon name="info" />
             </InfoLink>
           </Tooltip>
-        </FieldTitle>
+        </FieldLabel>
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
             helpTextTarget={helpTextTargetRef.current}
@@ -107,6 +108,7 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             name={name}
             query={query}
             reportTimezone={reportTimezone}
+            textAreaId="expression-content"
             onChange={handleExpressionChange}
             onCommit={handleCommit}
             onError={(errorMessage: string) => setError(errorMessage)}
@@ -115,8 +117,9 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
       </ExpressionFieldWrapper>
       {withName && (
         <FieldWrapper>
-          <FieldTitle>{t`Name`}</FieldTitle>
+          <FieldLabel htmlFor="expression-name">{t`Name`}</FieldLabel>
           <Input
+            id="expression-name"
             type="text"
             value={name}
             placeholder={t`Something nice and descriptive`}
@@ -156,6 +159,3 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
     </Container>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExpressionWidget;

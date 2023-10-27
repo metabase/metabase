@@ -1,15 +1,15 @@
-import React from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {
   disabled?: boolean;
-  icon?: string;
+  icon?: IconName;
   tooltip?: string;
   isFullHeight?: boolean;
   onClick?: () => void;

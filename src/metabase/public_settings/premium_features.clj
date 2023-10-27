@@ -4,10 +4,10 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
-   #_:clj-kondo/ignore
-   [clojure.spec.alpha :as spec]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [environ.core :refer [env]]
+   [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -15,8 +15,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.schema :as su]
-   [schema.core :as schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.string :as u.str]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
@@ -86,57 +87,61 @@
 (def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def ^:private TokenStatus
-  {:valid                               schema/Bool
-   :status                              su/NonBlankString
-   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
-   (schema/optional-key :features)      [su/NonBlankString]
-   (schema/optional-key :trial)         schema/Bool
-   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
-   ;; don't explode in the future if we add more to the response! lol
-   schema/Any                           schema/Any})
+  [:map
+   [:valid                          :boolean]
+   [:status                         ms/NonBlankString]
+   [:error-details {:optional true} [:maybe ms/NonBlankString]]
+   [:features      {:optional true} [:sequential ms/NonBlankString]]
+   [:trial         {:optional true} :boolean]
+   [:valid-thru    {:optional true} ms/NonBlankString]]) ; ISO 8601 timestamp
 
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (cached-active-users-count)
-                                    :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
+          (http/get {:query-params {:users      (cached-active-users-count)
+                                    :site-uuid  (setting/get :site-uuid-for-premium-features-token-checks)
+                                    :mb-version (:tag config/mb-version-info)}})
           :body
           (json/parse-string keyword)))
 
-(schema/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
-  [token :- ValidToken]
+  [token :- :string]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
-                 ;; ValidToken will ensure the length of token is 64 chars long
-                 (str (subs token 0 4) "..." (subs token 60 64))))
-  (let [fut    (future
-                 (try (fetch-token-and-parse-body token token-check-url)
-                      (catch Exception e1
-                        (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-                        ;; Try the fallback URL, which was the default URL prior to 45.2
-                        (try (fetch-token-and-parse-body token store-url)
-                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                             ;; first error and return a generic message about the token being invalid. This message
-                             ;; will get displayed in the Settings page in the admin panel so we do not want something
-                             ;; complicated
-                             (catch Exception e2
-                               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-                               (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                                 (or
-                                  body
-                                  {:valid         false
-                                   :status        (tru "Unable to validate token")
-                                   :error-details (.getMessage e1)})))))))
-        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-    (if (= result ::timed-out)
-      (do
-        (future-cancel fut)
-        {:valid         false
-         :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")})
-      result)))
+  (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
+  (if-not (mc/validate ValidToken token)
+    (do
+      (log/error (u/format-color 'red "Invalid token format!"))
+      {:valid         false
+       :status        "invalid"
+       :error-details (trs "Token should be 64 hexadecimal characters.")})
+    (let [fut    (future
+                   (try (fetch-token-and-parse-body token token-check-url)
+                        (catch Exception e1
+                          (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                          ;; Try the fallback URL, which was the default URL prior to 45.2
+                          (try (fetch-token-and-parse-body token store-url)
+                               ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                               ;; first error and return a generic message about the token being invalid. This message
+                               ;; will get displayed in the Settings page in the admin panel so we do not want something
+                               ;; complicated
+                               (catch Exception e2
+                                 (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+                                 (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                                   (or
+                                     body
+                                     {:valid         false
+                                      :status        (tru "Unable to validate token")
+                                      :error-details (.getMessage e1)})))))))
+          result (deref fut fetch-token-status-timeout-ms ::timed-out)]
+      (if (= result ::timed-out)
+        (do
+          (future-cancel fut)
+          {:valid         false
+           :status        (tru "Unable to validate token")
+           :error-details (tru "Token validation timed out.")})
+        result))))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -162,7 +167,7 @@
       (locking lock
         (f token)))))
 
-(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
+(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
   [token :- ValidToken]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -202,7 +207,7 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when (schema/check ValidToken new-value)
+        (when-not (mc/validate ValidToken new-value)
           (throw (ex-info (tru "Token format is invalid.")
                           {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
@@ -221,7 +226,7 @@
                        (log/debug e (trs "Error validating token")))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
-  (schema/defn ^:private token-features :- #{su/NonBlankString}
+  (mu/defn token-features :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []
     (try
@@ -243,6 +248,30 @@
     (has-feature? :toucan-management)  ; -> false"
   [feature]
   (contains? (token-features) (name feature)))
+
+(defn ee-feature-error
+  "Returns an error that can be used to throw when an enterprise feature check fails."
+  [feature-name]
+  (ex-info (tru "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+                feature-name)
+           {:status-code 402}))
+
+(mu/defn assert-has-feature
+  "Check if an token with `feature` is present. If not, throw an error with a message using `feature-name`.
+  `feature-name` should be a localized string unless used in a CLI context.
+  (assert-has-feature :sandboxes (tru \"Sandboxing\"))
+  => throws an error with a message using \"Sandboxing\" as the feature name."
+  [feature-flag :- keyword?
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
+
+(mu/defn assert-has-any-features
+  "Check if has at least one of feature in `features`. Throw an error if none of the features are available."
+  [feature-flag :- [:sequential keyword?]
+   feature-name :- [:or string? mu/localized-string-schema]]
+  (when-not (some has-feature? feature-flag)
+    (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
@@ -284,32 +313,82 @@
   "Should we enable the Audit Logs interface in the Admin UI?"
   :audit-app)
 
+(define-premium-feature ^{:added "0.41.0"} enable-email-allow-list?
+  "Should we enable restrict email domains for subscription recipients?"
+  :email-allow-list)
+
+(define-premium-feature ^{:added "0.41.0"} enable-cache-granular-controls?
+  "Should we enable granular controls for cache TTL at the database, dashboard, and card level?"
+  :cache-granular-controls)
+
+(define-premium-feature ^{:added "0.41.0"} enable-config-text-file?
+  "Should we enable initialization on launch from a config file?"
+  :config-text-file)
+
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
   :sandboxes)
 
-(define-premium-feature enable-sso?
-  "Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?"
-  :sso)
+(define-premium-feature enable-sso-jwt?
+  "Should we enable JWT-based authentication?"
+  :sso-jwt)
 
-(define-premium-feature ^{:added "0.41.0"} enable-advanced-config?
-  "Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for
-  notifications, more in the future)?"
-  :advanced-config)
+(define-premium-feature enable-sso-saml?
+  "Should we enable SAML-based authentication?"
+  :sso-saml)
+
+(define-premium-feature enable-sso-ldap?
+  "Should we enable advanced configuration for LDAP authentication?"
+  :sso-ldap)
+
+(define-premium-feature enable-sso-google?
+  "Should we enable advanced configuration for Google Sign-In authentication?"
+  :sso-google)
+
+(defn enable-any-sso?
+  "Should we enable any SSO-based authentication?"
+  []
+  (or (enable-sso-jwt?)
+      (enable-sso-saml?)
+      (enable-sso-ldap?)
+      (enable-sso-google?)))
+
+(define-premium-feature enable-session-timeout-config?
+  "Should we enable configuring session timeouts?"
+  :session-timeout-config)
+
+(define-premium-feature can-disable-password-login?
+  "Can we disable login by password?"
+  :disable-password-login)
+
+(define-premium-feature ^{:added "0.41.0"} enable-dashboard-subscription-filters?
+  "Should we enable filters for dashboard subscriptions?"
+  :dashboard-subscription-filters)
 
 (define-premium-feature ^{:added "0.41.0"} enable-advanced-permissions?
   "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level
   permissions, etc.)?"
   :advanced-permissions)
 
-(define-premium-feature ^{:added "0.41.0"} enable-content-management?
-  "Should we enable official Collections, Question verifications (and more in the future, like workflows, forking,
-  etc.)?"
-  :content-management)
+(define-premium-feature ^{:added "0.41.0"} enable-content-verification?
+  "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
+  :content-verification)
+
+(define-premium-feature ^{:added "0.41.0"} enable-official-collections?
+  "Should we enable Official Collections?"
+  :official-collections)
+
+(define-premium-feature ^{:added "0.41.0"} enable-snippet-collections?
+  "Should we enable SQL snippet folders?"
+  :snippet-collections)
 
 (define-premium-feature ^{:added "0.45.0"} enable-serialization?
   "Enable the v2 SerDes functionality"
   :serialization)
+
+(define-premium-feature ^{:added "0.47.0"} enable-email-restrict-recipients?
+  "Enable restrict email recipients?"
+  :email-restrict-recipients)
 
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
@@ -363,10 +442,7 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (if (= feature :any)
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (enable-enhancements?)
-        (has-feature? feature))))
+      (has-feature? feature)))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
@@ -425,7 +501,7 @@
     `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
-                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                            `(mu/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
                             `(fn ~(symbol (str fn-name)) ~@fn-tail))]
        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
        (def
@@ -437,24 +513,24 @@
   [conformed-options]
   (into {} (map (comp (juxt :k :v) second) conformed-options)))
 
-(spec/def ::defenterprise-options
-  (spec/&
-   (spec/*
-    (spec/alt
-     :feature  (spec/cat :k #{:feature}  :v keyword?)
-     :fallback (spec/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
-   (spec/conformer options-conformer)))
+(s/def ::defenterprise-options
+  (s/&
+   (s/*
+    (s/alt
+     :feature  (s/cat :k #{:feature}  :v keyword?)
+     :fallback (s/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
+   (s/conformer options-conformer)))
 
-(spec/def ::defenterprise-args
-  (spec/cat :docstr  (spec/? string?)
-            :ee-ns   (spec/? symbol?)
-            :options (spec/? ::defenterprise-options)
-            :fn-tail (spec/* any?)))
+(s/def ::defenterprise-args
+  (s/cat :docstr  (s/? string?)
+            :ee-ns   (s/? symbol?)
+            :options (s/? ::defenterprise-options)
+            :fn-tail (s/* any?)))
 
-(spec/def ::defenterprise-schema-args
-  (spec/cat :return-schema      (spec/? (spec/cat :- #{:-}
-                                                  :schema any?))
-            :defenterprise-args (spec/? ::defenterprise-args)))
+(s/def ::defenterprise-schema-args
+  (s/cat :return-schema      (s/? (s/cat :- #{:-}
+                                             :schema any?))
+            :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
@@ -473,9 +549,9 @@
 
   ###### `:feature`
 
-  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
-  require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
-  EE implementation if available, regardless of token.
+  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:none` to
+  always run the EE implementation if available, regardless of token (WARNING: this is not recommended for most use
+  cases. You probably want to gate your code by a specific premium feature.)
 
   ###### `:fallback`
 
@@ -485,33 +561,32 @@
   (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise args"
-                                      (spec/explain-data ::defenterprise-args parsed-args))))
+                                      (s/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
 (defmacro defenterprise-schema
   "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
-  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
+  the same as when using `mu/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
   usage details."
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [parsed-args (spec/conform ::defenterprise-schema-args defenterprise-args)
-        _           (when (spec/invalid? parsed-args)
+  (let [parsed-args (s/conform ::defenterprise-schema-args defenterprise-args)
+        _           (when (s/invalid? parsed-args)
                       (throw (ex-info "Failed to parse defenterprise-schema args"
-                                      (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                                      (s/explain-data ::defenterprise-schema-args parsed-args))))
         args        (-> (:defenterprise-args parsed-args)
                         (assoc :schema? true)
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
                         (assoc :fn-name fn-name))]
     `(defenterprise-impl ~args)))
 
-
-(defenterprise segmented-user?
-  "Returns a boolean if the current user is a segmented user. In OSS is always false. Will throw an error
-  if [[api/*current-user-id*]] is not bound."
+(defenterprise sandboxed-user?
+  "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
+  error if [[api/*current-user-id*]] is not bound."
   metabase-enterprise.sandbox.api.util
   []
   (when-not api/*current-user-id*
@@ -520,4 +595,26 @@
     (throw (ex-info (str (tru "No current user found"))
                     {:status-code 403})))
   ;; oss doesn't have sandboxing. But we throw if no current-user-id so the behavior doesn't change when ee version
+  ;; becomes available
   false)
+
+(defenterprise impersonated-user?
+  "Returns a boolean if the current user uses connection impersonation for any database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.advanced-permissions.api.util
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for impersonations, so we should throw in this case to avoid
+    ;; returning `false` for users who should actually be using impersonations.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
+  ;; ee version becomes available
+  false)
+
+(defn sandboxed-or-impersonated-user?
+  "Returns a boolean if the current user uses sandboxing or connection impersonation for any database. In OSS is always
+  false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  []
+  (or (sandboxed-user?)
+      (impersonated-user?)))

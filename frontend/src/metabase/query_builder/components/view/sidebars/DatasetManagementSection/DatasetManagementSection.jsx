@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -66,7 +65,7 @@ function DatasetManagementSection({
           </MetadataIndicatorContainer>
         </Row>
         <Button
-          icon="model_framed"
+          icon="insight"
           onClick={turnDatasetIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection

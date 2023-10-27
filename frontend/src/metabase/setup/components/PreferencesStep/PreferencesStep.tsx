@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { t, jt } from "ttag";
 import { getIn } from "icepick";
 import { useDispatch, useSelector } from "metabase/lib/redux";

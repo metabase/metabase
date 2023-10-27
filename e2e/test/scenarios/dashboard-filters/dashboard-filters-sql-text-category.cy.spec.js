@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -17,6 +18,10 @@ import {
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -52,7 +57,8 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
           cy.contains(representativeResult);
         });
 
-        clearFilter(index);
+        clearFilterWidget(index);
+        cy.wait("@dashcardQuery");
       },
     );
   });
@@ -75,7 +81,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
       cy.contains("Rustic Paper Wallet");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     cy.url().should("not.include", "Gizmo");
 
@@ -87,8 +93,3 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}

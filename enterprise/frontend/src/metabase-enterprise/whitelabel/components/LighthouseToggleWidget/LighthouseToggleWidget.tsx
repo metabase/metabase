@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 import ImageToggle from "../ImageToggle";
-import { LighthouseSetting } from "./types";
+import type { LighthouseSetting } from "./types";
 import { LighthouseImage } from "./LighthouseToggleWidget.styled";
 
 interface LighthouseToggleWidgetProps {

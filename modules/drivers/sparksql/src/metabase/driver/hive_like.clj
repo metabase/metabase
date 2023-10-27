@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]

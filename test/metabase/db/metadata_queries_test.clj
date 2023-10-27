@@ -30,7 +30,7 @@
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map int (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
+           (map (comp int first) (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
 
 (deftest table-rows-sample-test
   (let [expected [["20th Century Cafe"]

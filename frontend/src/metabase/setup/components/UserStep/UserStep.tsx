@@ -1,7 +1,6 @@
-import React from "react";
 import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { UserInfo } from "metabase-types/store";
+import type { UserInfo } from "metabase-types/store";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InvactiveStep";
 import { UserForm } from "../UserForm";
