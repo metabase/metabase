@@ -9,7 +9,11 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  findTemporalBucket,
+} from "metabase-lib/test-helpers";
 
 const PEOPLE_TABLE = createPeopleTable();
 
@@ -822,6 +826,32 @@ describe("filter", () => {
           column: expect.anything(),
           bucket: null,
           values: [1, 2],
+        });
+        expect(columnInfo?.name).toBe(columnName);
+      },
+    );
+
+    it.each<Lib.ExcludeDateFilterOperatorName>(["is-null", "not-null"])(
+      'should remove an existing temporal bucket with "%s" operator',
+      operator => {
+        const { filterParts, columnInfo } = addExcludeDateFilter(
+          query,
+          Lib.excludeDateFilterClause(query, 0, {
+            operator,
+            column: Lib.withTemporalBucket(
+              column,
+              findTemporalBucket(query, column, "Minute"),
+            ),
+            bucket: null,
+            values: [],
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+          bucket: null,
+          values: [],
         });
         expect(columnInfo?.name).toBe(columnName);
       },
