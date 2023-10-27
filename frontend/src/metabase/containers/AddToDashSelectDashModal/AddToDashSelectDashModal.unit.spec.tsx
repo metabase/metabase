@@ -16,7 +16,7 @@ import {
 } from "metabase-types/api/mocks";
 import type { Card, Collection, Dashboard } from "metabase-types/api";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
-import { checkNotNull, isNotNull } from "metabase/core/utils/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import { ConnectedAddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CURRENT_USER = createMockUser({
