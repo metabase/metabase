@@ -10,7 +10,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 import type { Group, Member } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import GroupSummary from "../GroupSummary";
 import {
   MembershipActionsContainer,

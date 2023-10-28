@@ -15,7 +15,7 @@ import Popover from "metabase/components/Popover";
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 import {
   GroupOverflowHidden,
   DropdownFieldSet,

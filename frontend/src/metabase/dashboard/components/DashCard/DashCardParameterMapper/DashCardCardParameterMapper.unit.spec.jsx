@@ -3,11 +3,15 @@ import { getIcon } from "__support__/ui";
 
 import {
   createMockCard,
+  createMockTemplateTag,
   createMockDashboardCard,
   createMockActionDashboardCard,
   createMockHeadingDashboardCard,
+  createMockParameter,
   createMockTextDashboardCard,
   createMockStructuredDatasetQuery,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
 } from "metabase-types/api/mocks";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -175,6 +179,58 @@ describe("DashCardParameterMapper", () => {
       mappingOptions: ["foo", "bar"],
     });
     expect(screen.queryByText(/Column to filter on/i)).not.toBeInTheDocument();
+  });
+
+  it("should show native question variable warning if a native question variable is used", () => {
+    const card = createMockCard({
+      dataset_query: createMockNativeDatasetQuery({
+        dataset_query: {
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ACCOUNTS WHERE source = {{ source }}",
+            "template-tags": [createMockTemplateTag({ name: "source" })],
+          }),
+        },
+      }),
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({ card }),
+      target: ["variable", ["template-tag", "source"]],
+    });
+    expect(
+      screen.getByText(
+        /Native question variables only accept a single value\. They do not support dropdown lists/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should show native question variable warning without single value explanation if parameter is date type", () => {
+    const card = createMockCard({
+      dataset_query: createMockNativeDatasetQuery({
+        dataset_query: {
+          native: createMockNativeQuery({
+            query: "SELECT * FROM ORDERS WHERE created_at = {{ created_at }}",
+            "template-tags": [
+              createMockTemplateTag({
+                name: "created_at",
+                type: "date/month-year",
+              }),
+            ],
+          }),
+        },
+      }),
+    });
+    setup({
+      card,
+      dashcard: createMockDashboardCard({ card }),
+      target: ["variable", ["template-tag", "created_at"]],
+      editingParameter: createMockParameter({ type: "date/month-year" }),
+    });
+    expect(
+      screen.getByText(
+        /Native question variables do not support dropdown lists/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   describe("mobile", () => {

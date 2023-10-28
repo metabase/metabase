@@ -222,7 +222,7 @@
                   :can_write
                   :param_fields
                   :param_values
-                  :collection)
+                  [:collection :is_personal])
       collection.root/hydrate-root-collection
       api/read-check
       api/check-not-archived
@@ -301,9 +301,9 @@
                     {:user-id api/*current-user-id*
                      :dashboard-id dashboard-id})))
   (let [dashcards (if (seq id->new-tab-id)
-                        (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
-                             dashcards)
-                        dashcards)]
+                    (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
+                         dashcards)
+                    dashcards)]
     (if-not deep?
       dashcards
       (keep (fn [dashboard-card]
@@ -442,7 +442,7 @@
                                                                    :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/select-one :model/Dashboard :id id)]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal])]
     (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -862,8 +862,8 @@
   - static-list: user defined values list
   - card: values is result of running a card
   - nil: chain-filter"
-  ([dashboard param-key query-params]
-   (param-values dashboard param-key query-params nil))
+  ([dashboard param-key constraint-param-key->value]
+   (param-values dashboard param-key constraint-param-key->value nil))
 
   ([dashboard                   :- :map
     param-key                   :- ms/NonBlankString
@@ -883,12 +883,12 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [id param-key :as {:keys [query-params]}]
+  [id param-key :as {constraint-param-key->value :query-params}]
   {id ms/PositiveInt}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key query-params))))
+      (param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -899,13 +899,13 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  [id param-key query :as {:keys [query-params]}]
+  [id param-key query :as {constraint-param-key->value :query-params}]
   {id    ms/PositiveInt
    query ms/NonBlankString}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key query-params query))))
+      (param-values dashboard param-key constraint-param-key->value query))))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
