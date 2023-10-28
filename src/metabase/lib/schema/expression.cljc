@@ -132,7 +132,7 @@
 
 (def orderable-types
   "Set of base types that are orderable."
-  #{:type/Text :type/Number :type/Temporal})
+  #{:type/Text :type/Number :type/Temporal :type/Boolean})
 
 (mr/def ::orderable
   (expression-schema orderable-types
