@@ -92,6 +92,7 @@ e2e_all:
   - *default
   - *ci
   - *sources
+  - *e2e_specs
 
 snowplow:
   - *ci
