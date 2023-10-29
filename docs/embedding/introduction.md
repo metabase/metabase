@@ -46,6 +46,10 @@ If you'd like to share your data with the good people of the internet, you can c
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |
 | View usage of embeds with [auditing tools](../usage-and-performance-tools/audit.md)                      | ✅                                  | ❌                              | ❌                                             |
 
+## If I chose to use static embedding, can I then switch to interactive embedding?
+
+You can, but it's not a flip of a switch. Both embedding methods have different code approaches you need to make: on interactive embedding you authenticate a user via single sign-on (SSO), while in static embedding you don't, so plan accordingly before choosing which embedding method you want to use for your use case.
+
 ## Further reading
 
 - [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/embedding/embedding-overview).
