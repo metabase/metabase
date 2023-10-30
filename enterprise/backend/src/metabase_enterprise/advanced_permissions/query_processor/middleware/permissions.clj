@@ -4,7 +4,9 @@
    [metabase.api.common :as api]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]))
 
@@ -92,6 +94,12 @@
               (apply min (filter some? [original-limit max-rows-in-limited-downloads])))
     query))
 
+(defenterprise ee-middleware-apply-download-limit
+  "EE-only: apply a limit to the number of rows for downloads based on EE user perms."
+  :feature :advanced-permissions
+  [query]
+  (apply-download-limit query))
+
 (defn limit-download-result-rows
   "Post-processing middleware to limit the number of rows included in downloads if the user has `limited` download
   perms. Mainly useful for native queries, which are not modified by the [[apply-download-limit]] pre-processing
@@ -103,6 +111,13 @@
     (fn limit-download-result-rows* [metadata]
       ((take max-rows-in-limited-downloads) (rff metadata)))
     rff))
+
+(defenterprise ee-middleware-limit-download-result-rows
+  "EE-only: limit the number of rows included in downloads if the user has `limited` download perms. Mainly useful for
+  native queries, which are not modified by the [[apply-download-limit]] pre-processing middleware."
+  :feature :advanced-permissions
+  [query rff]
+  (limit-download-result-rows query rff))
 
 (defn check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
@@ -126,3 +141,13 @@
             (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))
             context))
       (qp query rff context))))
+
+(defenterprise ee-middleware-check-download-permissions
+  "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
+  of the query, and aborts the query or limits the number of results if necessary.
+
+  If this query is not run to generate an export (e.g. :export-format is :api) we return user's download permissions in
+  the query metadata so that the frontend can determine whether to show the download option on the UI."
+  :feature :advanced-permissions
+  [qp]
+  (check-download-permissions qp))

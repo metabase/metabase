@@ -4,7 +4,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context-2 :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
     :as catch-exceptions]
@@ -56,7 +56,17 @@
    (catch-exceptions run {}))
 
   ([run query]
-   (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions query {} [] {:run run}))))
+   (let [context (let [parent-context (catch-exceptions/catch-exceptions-context (qp.context/sync-context))]
+                   (reify qp.context/Context
+                     (cancel [_this]
+                       (parent-context))
+                     (execute [_this _thunk]
+                       (run))
+                     (respond [_this result]
+                       (qp.context/respond parent-context result))
+                     (raise [_this e]
+                       (qp.context/raise parent-context e))))]
+     (qp/process-query query (qp/default-rff) context))))
 
 (deftest ^:parallel no-exception-test
   (testing "No Exception -- should return response as-is"
@@ -90,19 +100,25 @@
 
 (deftest ^:parallel async-exception-test
   (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
-    (is (= {:status     :failed
-            :class      java.lang.Exception
-            :error      "Something went wrong"
-            :stacktrace true
-            :json_query {}
-            :row_count  0
-            :data       {:cols []}}
-           (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                      {} {} []
-                                      {:runf (fn [_ _ context]
-                                               (qp.context/raisef (Exception. "Something went wrong") context))})
-               :metadata
-               (update :stacktrace boolean))))))
+    (let [context (let [parent-context (catch-exceptions/catch-exceptions-context (qp.context/sync-context))]
+                    (reify qp.context/Context
+                      (cancel [_this]
+                        (parent-context))
+                      (execute [this _thunk]
+                        (qp.context/raise this (Exception. "Something went wrong")))
+                      (respond [_this result]
+                        (qp.context/respond parent-context result))
+                      (raise [_this e]
+                        (qp.context/raise parent-context e))))]
+      (is (= {:status     :failed
+              :class      java.lang.Exception
+              :error      "Something went wrong"
+              :stacktrace true
+              :json_query {}
+              :row_count  0
+              :data       {:cols []}}
+             (-> (qp/process-query {} (qp/default-rff) context)
+                 (update :stacktrace boolean)))))))
 
 (deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"

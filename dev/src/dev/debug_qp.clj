@@ -394,6 +394,7 @@
             (*printer* [::transformed-row @before row]))
           (rf result row)))))))
 
+;; FIXME: QP does not use this middleware anymore.
 (defn- default-debug-middleware
   "The default set of middleware applied to queries ran via [[process-query-debug]].
   Analogous to [[qp/default-middleware]]."

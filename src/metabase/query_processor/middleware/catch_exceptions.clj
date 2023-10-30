@@ -1,12 +1,13 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context-2 :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [pretty.core :as pretty]
    [schema.utils])
   (:import
    (clojure.lang ExceptionInfo)
@@ -116,58 +117,49 @@
      (when (seq more)
        {:via (vec more)}))))
 
-(defn- query-info
-  "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed native]}]
-  (merge
-   {:json_query (dissoc query :info :driver)}
-   ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
-   ;; useful for debugging purposes.
-   (when (= (keyword query-type) :query)
-     {:preprocessed preprocessed
-      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
-                      native)})))
-
 (defn- query-execution-info [query-execution]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (defn- format-exception*
   "Format a `Throwable` into the usual userland error-response format."
-  [query ^Throwable e extra-info]
+  [^Throwable e]
   (try
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
-             (format-exception* query (.getCause e) extra-info))
+             (format-exception (ex-cause e)))
       (merge
        {:data {:rows [], :cols []}, :row_count 0}
-       (exception-response e)
-       (query-info query extra-info)))
+       (exception-response e)))
     (catch Throwable e
       e)))
 
-(defn catch-exceptions
+(defn- catch-exceptions-context-raise [context e]
+  ;; format the Exception and return it
+  (let [formatted-exception (format-exception* e)]
+    (log/error (str (trs "Error processing query: {0}"
+                         (or (:error formatted-exception)
+                             ;; log in server locale, respond in user locale
+                             (trs "Error running query")))
+                    "\n" (u/pprint-to-str formatted-exception)))
+    ;; ensure always a message on the error otherwise FE thinks query was successful.  (#23258, #23281)
+    (qp.context/respond context (update formatted-exception
+                                        :error (fnil identity (trs "Error running query"))))))
+
+(mu/defn catch-exceptions-context :- qp.context/ContextInstance
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
-  [qp]
-  (fn [query rff context]
-    (let [extra-info (delay
-                      {:native       (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/compile) query))
-                       :preprocessed (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/preprocess) query))})]
-      (letfn [(raisef* [e context]
-                ;; format the Exception and return it
-                (let [formatted-exception (format-exception* query e @extra-info)]
-                  (log/error (str (trs "Error processing query: {0}"
-                                       (or (:error formatted-exception)
-                                           ;; log in server locale, respond in user locale
-                                           (trs "Error running query")))
-                                  "\n" (u/pprint-to-str formatted-exception)))
-                  ;; ensure always a message on the error otherwise FE thinks query was successful.  (#23258, #23281)
-                  (qp.context/resultf (update formatted-exception
-                                              :error (fnil identity (trs "Error running query")))
-                                      context)))]
-        (try
-          (qp query rff (assoc context :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+  [parent-context :- qp.context/ContextInstance]
+  (reify
+    qp.context/Context
+    (cancel [_this]
+      (qp.context/cancel parent-context))
+    (execute [_this thunk]
+      (qp.context/execute parent-context thunk))
+    (respond [_this result]
+      (qp.context/respond parent-context result))
+    (raise [this e]
+      (catch-exceptions-context-raise this e))
+
+    pretty/PrettyPrintable
+    (pretty [_this]
+      (list `catch-exceptions-context parent-context))))

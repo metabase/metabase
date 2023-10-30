@@ -201,9 +201,9 @@
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
           (is (= (lib.tu.macros/$ids [$venues.id
-                           (mbql.u/update-field-options field-ref dissoc :temporal-unit)
-                           $venues.category-id->categories.name])
-                 (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
+                                      (mbql.u/update-field-options field-ref dissoc :temporal-unit)
+                                      $venues.category-id->categories.name])
+                 (get-in (qp.add-implicit-clauses/add-implicit-mbql-clauses query)
                          [:query :fields]))))))))
 
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
@@ -237,13 +237,13 @@
         (is (= (lib.tu.macros/$ids orders
                  [$product-id->products.title
                   *sum/Float])
-               (-> (qp.add-implicit-clauses/add-implicit-clauses query)
+               (-> (qp.add-implicit-clauses/add-implicit-mbql-clauses query)
                    :query
                    :fields)))))))
 
 (defn- add-implicit-clauses [query]
   (qp.store/with-metadata-provider meta/metadata-provider
-    (qp.add-implicit-clauses/add-implicit-clauses query)))
+    (qp.add-implicit-clauses/add-implicit-mbql-clauses query)))
 
 (deftest ^:parallel add-implicit-fields-for-source-query-inside-join-test
   (testing "Should add implicit `:fields` for `:source-query` inside a join"

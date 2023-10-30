@@ -82,7 +82,7 @@
       (fn [query rff context]
         (qp query rff context)))
 
-  pattern, such as stuff in [[metabase.query-processor/around-middleware]]. Changes are returned in a map with keys:
+  pattern. Changes are returned in a map with keys:
 
     * `:result`   ­ final result
     * `:pre`      ­ `query` after preprocessing

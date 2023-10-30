@@ -642,7 +642,7 @@
    nil
    args))
 
-(defn query->max-rows-limit
+(defn ^{:deprecated "0.48.0"} query->max-rows-limit
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
 

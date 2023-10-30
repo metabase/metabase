@@ -6,16 +6,6 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel query-without-aggregations-or-limits?-test
-  (are [x expected] (= expected
-                       (qp.util/query-without-aggregations-or-limits? x))
-    {:query {:aggregation [[:count]]}} false
-    {:query {}}                        true
-    {:query {:aggregation [[:count]]
-             :limit       10}}         false
-    {:query {:aggregation [[:count]]
-             :page        1}}          false))
-
 (defn- byte-array= {:style/indent 0}
   ([^bytes a ^bytes b]
    (java.util.Arrays/equals a b))

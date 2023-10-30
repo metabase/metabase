@@ -511,7 +511,11 @@
     a-join       :- [:or lib.join.util/PartialJoin Joinable]]
    (let [a-join              (join-clause a-join)
          suggested-condition (when (empty? (join-conditions a-join))
-                               (suggested-join-condition query stage-number (joined-thing query a-join)))
+                               (or (suggested-join-condition query stage-number (joined-thing query a-join))
+                                   (throw (ex-info "Error adding join: unable to infer join condition"
+                                                   {:query        query
+                                                    :stage-number stage-number
+                                                    :joined-thing (joined-thing query a-join)}))))
          a-join              (cond-> a-join
                                suggested-condition (with-join-conditions [suggested-condition]))
          a-join              (add-default-alias query stage-number a-join)]

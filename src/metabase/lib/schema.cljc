@@ -125,6 +125,14 @@
                      (ref-error-for-stage value))}
    (complement ref-error-for-stage)])
 
+(mr/def ::limit
+  ::common/positive-int)
+
+(mr/def ::page
+  [:map
+   [:page  ::common/positive-int]
+   [:items ::common/positive-int]])
+
 (mr/def ::stage.mbql
   [:and
    [:map
@@ -136,10 +144,10 @@
     [:fields       {:optional true} ::fields]
     [:filters      {:optional true} ::filters]
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
+    [:limit        {:optional true} [:ref ::limit]]
+    [:page         {:optional true} [:ref ::page]]
     [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]
-    ;; TODO -- `:page` ???
-    ]
+    [:source-card  {:optional true} [:ref ::id/card]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]

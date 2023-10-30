@@ -23,7 +23,7 @@
                                                 (Thread/sleep 5000)
                                                 (throw (Exception. "Don't actually run!")))]
 
-            (let [out-chan (qp/process-query-async query)]
+            (let [out-chan (qp/process-query query (qp/default-rff) (qp/async-context))]
               ;; wait for query to start running, then close `out-chan`
               (a/go
                 (a/<! running-chan)

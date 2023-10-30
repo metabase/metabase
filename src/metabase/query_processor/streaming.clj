@@ -1,4 +1,4 @@
-(ns metabase.query-processor.streaming
+(ns ^:deprecated metabase.query-processor.streaming
   (:require
    [clojure.core.async :as a]
    [metabase.async.streaming-response :as streaming-response]

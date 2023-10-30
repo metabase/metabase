@@ -5,7 +5,7 @@
    [clojure.core.async :as a]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.context-2 :as qp.context]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -29,14 +29,21 @@
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
 
-(defn- async-result-metadata-reducedf [result context]
-  (let [results-metdata (or (get-in result [:data :results_metadata :columns])
-                            [])]
-    (qp.context/resultf results-metdata context)))
-
-(defn- async-result-metdata-raisef [e context]
-  (log/error e (trs "Error running query to determine Card result metadata:"))
-  (qp.context/resultf [] context))
+(defn- result-metadata-async-context []
+  (let [parent-context (qp.context/async-context)]
+    (reify
+      qp.context/Context
+      (cancel [_this]
+        (qp.context/cancel parent-context))
+      (execute [_this thunk]
+        (qp.context/execute parent-context thunk))
+      (respond [_this result]
+        (let [results-metdata (or (get-in result [:data :results_metadata :columns])
+                                  [])]
+          (qp.context/respond parent-context results-metdata)))
+      (raise [_this e]
+        (log/error e (trs "Error running query to determine Card result metadata:"))
+        (qp.context/raise parent-context e)))))
 
 (s/defn result-metadata-for-query-async :- ManyToManyChannel
   "Fetch the results metadata for a `query` by running the query and seeing what the QP gives us in return.
@@ -52,5 +59,4 @@
         chan)
       ;; for *native* queries we actually have to run it.
       (let [query (query-for-result-metadata query)]
-        (qp/process-query-async query {:reducedf async-result-metadata-reducedf
-                                       :raisef   async-result-metdata-raisef})))))
+        (qp/process-query query (qp/default-rff) (result-metadata-async-context))))))

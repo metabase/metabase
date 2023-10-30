@@ -21,6 +21,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.query.permissions :as query-perms]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -357,6 +358,12 @@
         query)
     query))
 
+(defenterprise ee-middleware-apply-sandboxing
+  "EE-only: apply sandboxing to the current query."
+  :feature :sandboxes
+  [query]
+  (apply-sandboxing query))
+
 
 ;;;; Post-processing
 
@@ -379,3 +386,9 @@
     (fn merge-sandboxing-metadata-rff* [metadata]
       (rff (merge-metadata original-metadata metadata)))
     rff))
+
+(defenterprise ee-middleware-merge-sandboxing-metadata
+  "EE-only: merge in column metadata from the original, unsandboxed version of the query."
+  :feature :sandboxes
+  [query rff]
+  (merge-sandboxing-metadata query rff))

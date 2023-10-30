@@ -8,9 +8,9 @@
    [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.resolve-database-and-driver
-    :as qp.resolve-database-and-driver]
+   [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.userland :as qp.userland]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -149,9 +149,10 @@
                                       ([acc]     acc)
                                       ([acc row] (rf acc ((:row-mapping-fn context) row context)))))}]
       (try
-        (if info
-          (qp/process-userland-query-sync (assoc query :info info) context)
-          (qp/process-query-sync (dissoc query :info) context))
+        (let [{:keys [query context]} (if info
+                                        {:query (assoc query :info info), :context (qp.userland/userland-context context)}
+                                        {:query (dissoc query :info), :context context})]
+          (qp/process-query query context))
         (catch Throwable e
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))

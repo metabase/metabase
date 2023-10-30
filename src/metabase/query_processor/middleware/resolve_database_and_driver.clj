@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-database-and-driver
+(ns ^:deprecated metabase.query-processor.middleware.resolve-database-and-driver
   (:require
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,8 +12,6 @@
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
-
-(declare resolve-database-id)
 
 (defn- bootstrap-metadata-provider []
   (if (qp.store/initialized?)
@@ -38,18 +36,23 @@
   "Return the *actual* `:database` ID for a query, even if it is using
   the [[metabase.lib.schema.id/saved-questions-virtual-database-id]]."
   [{database-id :database, :as query}]
-  (or
-   (when (pos-int? database-id)
-     database-id)
-   ;; MLv2 query
-   (when (= (:lib/type query) :mbql/query)
-     (when-let [source-card-id (lib.util/source-card-id query)]
-       (resolve-database-id-for-source-card source-card-id)))
-   ;; legacy query
-   (when (= (:type query) :query)
-     (let [most-deeply-nested-source-query (last (take-while some? (iterate :source-query (:query query))))]
-       (when-let [card-id (lib.util/legacy-string-table-id->card-id (:source-table most-deeply-nested-source-query))]
-         (resolve-database-id-for-source-card card-id))))))
+  (if (pos-int? database-id)
+    database-id
+    (do
+      (when-not (= database-id lib.schema.id/saved-questions-virtual-database-id)
+        (throw (ex-info (tru "Invalid query: invalid database ID.")
+                        {:query query, :database-id database-id})))
+      (case ((some-fn :lib/type :type) query)
+        ;; MLv2 query
+        :mbql/query
+        (when-let [source-card-id (lib.util/source-card-id query)]
+          (resolve-database-id-for-source-card source-card-id))
+
+        ;; legacy query
+        :query
+        (let [most-deeply-nested-source-query (last (take-while some? (iterate :source-query (:query query))))]
+          (when-let [card-id (lib.util/legacy-string-table-id->card-id (:source-table most-deeply-nested-source-query))]
+            (resolve-database-id-for-source-card card-id)))))))
 
 (defn resolve-database
   "If query `:database` ID is the [[metabase.lib.schema.id/saved-questions-virtual-database-id]], resolve it to the

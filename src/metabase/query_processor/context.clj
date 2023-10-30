@@ -1,11 +1,12 @@
-(ns metabase.query-processor.context
+(ns ^:deprecated metabase.query-processor.context
   "Interface for the QP context/utility functions for using the things in the context correctly.
 
   The default implementations of all these functions live in [[metabase.query-processor.context.default]]; refer to
   those when overriding individual functions. Some wiring for the [[clojure.core.async]] channels takes place in
   [[metabase.query-processor.reducible]]."
   (:require
-   [metabase.async.util :as async.u]))
+   [metabase.async.util :as async.u]
+   [metabase.query-processor.error-type :as qp.error-type]))
 
 (defn raisef
   "Raise an Exception."
@@ -57,7 +58,14 @@
   {:arglists '([driver query context respond])}
   [driver query {executef* :executef, :as context} respond]
   {:pre [(ifn? executef*)]}
-  (executef* driver query context respond)
+  (try
+    (executef* driver query context respond)
+    (catch Throwable e
+      (throw (ex-info (format "Error executing query: %s" (ex-message e))
+                      {:type   qp.error-type/driver
+                       :driver driver
+                       :query  query}
+                      e))))
   nil)
 
 (defn reducef
