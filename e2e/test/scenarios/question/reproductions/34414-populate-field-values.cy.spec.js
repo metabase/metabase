@@ -1,8 +1,6 @@
 import { popover, restore, visitQuestionAdHoc } from "e2e/support/helpers";
-import {
-  SAMPLE_DATABASE,
-  SAMPLE_DATABASE_ID,
-} from "e2e/support/cypress_sample_database";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
 const { INVOICES_ID } = SAMPLE_DATABASE;
 
@@ -25,7 +23,7 @@ describe("issue 34414", () => {
       visitQuestionAdHoc({
         dataset_query: {
           type: "query",
-          database: SAMPLE_DATABASE_ID,
+          database: SAMPLE_DB_ID,
           query: { "source-table": `card__${modelId}` },
         },
       });
