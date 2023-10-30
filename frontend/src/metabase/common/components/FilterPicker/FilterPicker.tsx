@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { usePrevious } from "react-use";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -65,13 +64,10 @@ export function FilterPicker({
   );
 
   const isNewFilter = !initialFilter;
-  const previousFilter = usePrevious(initialFilter);
 
-  useEffect(() => {
-    if (previousFilter !== initialFilter) {
-      setFilter(initialFilter);
-    }
-  }, [previousFilter, initialFilter]);
+  useLayoutEffect(() => {
+    setFilter(initialFilter);
+  }, [initialFilter]);
 
   const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
