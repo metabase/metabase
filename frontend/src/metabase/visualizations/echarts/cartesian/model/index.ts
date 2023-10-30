@@ -14,6 +14,8 @@ import {
   getDatasetExtents,
   getGroupedData,
   getNormalizedDataset,
+  getNullReplacerFunction,
+  replaceValues,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { getYAxisSplit } from "metabase/visualizations/echarts/cartesian/model/axis";
 
@@ -70,9 +72,13 @@ export const getCartesianChartModel = (
     renderingContext,
   );
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-  const dataset = getGroupedData(rawSeries, cardsColumns);
-  const extents = getDatasetExtents(seriesDataKeys, dataset);
+  let dataset = getGroupedData(rawSeries, cardsColumns);
+  dataset = replaceValues(
+    dataset,
+    getNullReplacerFunction(settings, seriesModels),
+  );
 
+  const extents = getDatasetExtents(seriesDataKeys, dataset);
   const normalizedDataset = getNormalizedDataset(
     dataset,
     seriesDataKeys,

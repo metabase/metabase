@@ -2,8 +2,10 @@ import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
   DataKey,
   GroupedDataset,
+  SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/types/utils/isa";
 
 export const sumMetric = (left: RowValue, right: RowValue) => {
@@ -119,7 +121,7 @@ export const getNormalizedDataset = (
     const total = computeTotal(row, normalizedSeriesKeys);
 
     // Copy the dimension value
-    const normalizedDatum: Record<DataKey, RowValue> = {
+    const normalizedRow: Record<DataKey, RowValue> = {
       [dimensionKey]: row[dimensionKey],
     };
 
@@ -128,7 +130,7 @@ export const getNormalizedDataset = (
       const numericValue = getNumericValue(row[key]);
       normalizedRow[key] = numericValue / total;
       return normalizedRow;
-    }, normalizedDatum);
+    }, normalizedRow);
   });
 };
 
@@ -160,4 +162,47 @@ export const getDatasetExtents = (keys: DataKey[], dataset: GroupedDataset) => {
   });
 
   return extents;
+};
+
+export type ReplacerFn = (dataKey: string, value: RowValue) => RowValue;
+
+export const replaceValues = (
+  dataset: Record<DataKey, RowValue>[],
+  replacer: ReplacerFn,
+) => {
+  return dataset.map(row => {
+    return Object.keys(row).reduce((updatedRow, dataKey) => {
+      updatedRow[dataKey] = replacer(dataKey, row[dataKey]);
+      return updatedRow;
+    }, {} as Record<DataKey, RowValue>);
+  });
+};
+
+export const getNullReplacerFunction = (
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+): ReplacerFn => {
+  const replaceNullsWithZeroDataKeys = seriesModels.reduce(
+    (seriesDataKeys, seriesModel) => {
+      const shouldReplaceNullsWithZeros =
+        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
+          "line.missing"
+        ] === "zero";
+
+      if (shouldReplaceNullsWithZeros) {
+        seriesDataKeys.add(seriesModel.dataKey);
+      }
+
+      return seriesDataKeys;
+    },
+    new Set<DataKey>(),
+  );
+
+  return (dataKey, value) => {
+    if (replaceNullsWithZeroDataKeys.has(dataKey) && value === null) {
+      return 0;
+    }
+
+    return value;
+  };
 };

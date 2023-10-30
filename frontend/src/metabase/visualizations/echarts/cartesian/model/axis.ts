@@ -11,7 +11,6 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { SeriesSettings } from "metabase-types/api";
-import { createLegacySeriesObjectKey } from "metabase/visualizations/echarts/cartesian/option/series";
 import { isNotNull } from "metabase/core/utils/types";
 
 const KEYS_TO_COMPARE = new Set([
@@ -208,7 +207,7 @@ export const getYAxisSplit = (
 ): AxisSplit => {
   const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
     const seriesSettings: SeriesSettings = settings.series(
-      createLegacySeriesObjectKey(seriesModel.vizSettingsKey),
+      seriesModel.legacySeriesSettingsObjectKey,
     );
 
     acc[seriesModel.dataKey] = seriesSettings?.["axis"];

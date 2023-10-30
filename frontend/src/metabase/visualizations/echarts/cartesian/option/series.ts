@@ -11,16 +11,6 @@ import type {
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
 
-// HACK: creates a pseudo legacy series object to integrate with the `series` function in computed settings.
-// This workaround is necessary for generating a compatible key with `keyForSingleSeries` function,
-// ensuring the correct retrieval of series visualization settings based on the provided `seriesVizSettingsKey`.
-// Will be replaced with just a string key when implementing the dynamic line/area/bar.
-export const createLegacySeriesObjectKey = (seriesVizSettingsKey: string) => ({
-  card: {
-    _seriesKey: seriesVizSettingsKey,
-  },
-});
-
 const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
@@ -152,7 +142,7 @@ export const buildEChartsSeries = (
   return chartModel.seriesModels
     .map(seriesModel => {
       const seriesSettings: SeriesSettings = settings.series(
-        createLegacySeriesObjectKey(seriesModel.vizSettingsKey),
+        seriesModel.legacySeriesSettingsObjectKey,
       );
       const seriesColor =
         settings?.["series_settings.colors"]?.[seriesModel.vizSettingsKey];

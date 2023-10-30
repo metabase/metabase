@@ -7,6 +7,11 @@ export type RegularSeriesModel = {
   dataKey: DataKey;
   vizSettingsKey: VizSettingsKey;
 
+  // TODO: remove when the settings definitions are updated for the dynamic combo chart.
+  // This object is used as a key for the `series` function of the computed
+  // visualization settings to get the computed series settings
+  legacySeriesSettingsObjectKey: object;
+
   cardId?: number;
 
   column: DatasetColumn;

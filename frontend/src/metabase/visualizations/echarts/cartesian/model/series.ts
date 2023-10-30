@@ -52,6 +52,16 @@ export const getSeriesVizSettingsKey = ({
   return prefix + key;
 };
 
+// HACK: creates a pseudo legacy series object to integrate with the `series` function in computed settings.
+// This workaround is necessary for generating a compatible key with `keyForSingleSeries` function,
+// ensuring the correct retrieval of series visualization settings based on the provided `seriesVizSettingsKey`.
+// Will be replaced with just a string key when implementing the dynamic line/area/bar.
+const createLegacySeriesObjectKey = (seriesVizSettingsKey: string) => ({
+  card: {
+    _seriesKey: seriesVizSettingsKey,
+  },
+});
+
 export const getBreakoutDistinctValues = (
   data: DatasetData,
   breakoutIndex: number,
@@ -66,34 +76,44 @@ export const getCardSeriesModels = (
   const hasBreakout = "breakout" in columns;
 
   if (!hasBreakout) {
-    return columns.metrics.map(metric => ({
-      cardId: card.id,
-      column: metric.column,
-      columnIndex: metric.index,
-      dataKey: getDatasetKey({ column: metric.column, cardId: card.id }),
-      vizSettingsKey: getSeriesVizSettingsKey({
+    return columns.metrics.map(metric => {
+      const vizSettingsKey = getSeriesVizSettingsKey({
         cardName: card.name,
         metricColumn: metric.column,
         isFirstCard,
-      }),
-    }));
+      });
+
+      return {
+        cardId: card.id,
+        column: metric.column,
+        columnIndex: metric.index,
+        dataKey: getDatasetKey({ column: metric.column, cardId: card.id }),
+        vizSettingsKey,
+        legacySeriesSettingsObjectKey:
+          createLegacySeriesObjectKey(vizSettingsKey),
+      };
+    });
   }
 
   const { metric, breakout } = columns;
   const breakoutValues = getBreakoutDistinctValues(data, breakout.index);
 
   return breakoutValues.map(breakoutValue => {
+    const vizSettingsKey = getSeriesVizSettingsKey({
+      cardName: card.name,
+      isFirstCard,
+      breakoutValue,
+      breakoutColumn: breakout.column,
+      formatValue: renderingContext.formatValue,
+    });
+
     return {
       cardId: card.id,
       column: metric.column,
       columnIndex: metric.index,
-      vizSettingsKey: getSeriesVizSettingsKey({
-        cardName: card.name,
-        isFirstCard,
-        breakoutValue,
-        breakoutColumn: breakout.column,
-        formatValue: renderingContext.formatValue,
-      }),
+      vizSettingsKey,
+      legacySeriesSettingsObjectKey:
+        createLegacySeriesObjectKey(vizSettingsKey),
       dataKey: getDatasetKey({
         column: metric.column,
         breakoutValue,
