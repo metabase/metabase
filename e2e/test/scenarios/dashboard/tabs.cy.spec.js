@@ -26,6 +26,7 @@ import {
   goToTab,
   moveDashCardToTab,
   addTextBoxWhileEditing,
+  expectGoodSnowplowEvent,
 } from "e2e/support/helpers";
 
 import {
@@ -365,18 +366,28 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
+    const CARD_MOVE_EVENT_NAME = "card_moved_to_tab";
+
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+    expectGoodSnowplowEvent(
+      {
+        event: CARD_MOVE_EVENT_NAME,
+      },
+      0,
+    );
 
     editDashboard();
     createNewTab();
     goToTab("Tab 1");
 
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
-
     moveDashCardToTab({ tabName: "Tab 2" });
 
-    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
+    expectGoodSnowplowEvent(
+      {
+        event: CARD_MOVE_EVENT_NAME,
+      },
+      1,
+    );
   });
 });
