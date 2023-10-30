@@ -26,7 +26,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const PERMISSIONS = {
-  curate: ["admin"], //, "normal", "nodata"],
+  curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
   no: ["nocollection", "nosql", "none"],
 };
