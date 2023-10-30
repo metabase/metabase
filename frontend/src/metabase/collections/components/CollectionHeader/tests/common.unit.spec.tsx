@@ -1,74 +1,63 @@
 import userEvent, { specialChars } from "@testing-library/user-event";
-import { getIcon, render, screen } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
-import { createMockCollection } from "metabase-types/api/mocks";
-import type { CollectionHeaderProps } from "./CollectionHeader";
-import CollectionHeader from "./CollectionHeader";
+import { getIcon, screen } from "__support__/ui";
 
-const setup = (options = {}) => {
-  render(<CollectionHeader {...getProps({})} {...options} />);
-};
+import type { CollectionId } from "metabase-types/api";
+import { setup } from "./setup";
 
 describe("CollectionHeader", () => {
   describe("collection name", () => {
     it("should be able to edit name with write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          name: "Name",
-          can_write: true,
-        }),
-      });
+      const collection = {
+        name: "Name",
+        can_write: true,
+      };
 
-      render(<CollectionHeader {...props} />);
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
 
       const input = screen.getByDisplayValue("Name");
       userEvent.clear(input);
       userEvent.type(input, `New name${specialChars.enter}`);
 
-      expect(props.onUpdateCollection).toHaveBeenCalledWith(props.collection, {
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         name: "New name",
       });
     });
 
     it("should not be able to edit name without write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          name: "Name",
-          can_write: false,
-        }),
-      });
+      const collection = {
+        name: "Name",
+        can_write: false,
+      };
 
-      render(<CollectionHeader {...props} />);
+      setup({ collection });
 
       const input = screen.getByDisplayValue("Name");
       expect(input).toBeDisabled();
     });
 
     it("should not be able to edit name for the root collection", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        }),
-      });
+      const collection = {
+        id: "root" as CollectionId,
+        name: "Our analytics",
+        can_write: true,
+      };
 
-      render(<CollectionHeader {...props} />);
+      setup({ collection });
 
       const input = screen.getByDisplayValue("Our analytics");
       expect(input).toBeDisabled();
     });
 
     it("should not be able to edit name for personal collections", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          name: "Personal collection",
-          personal_owner_id: 1,
-          can_write: true,
-        }),
-      });
+      const collection = {
+        name: "Personal collection",
+        personal_owner_id: 1,
+        can_write: true,
+      };
 
-      render(<CollectionHeader {...props} />);
+      setup({ collection });
 
       const input = screen.getByDisplayValue("Personal collection");
       expect(input).toBeDisabled();
@@ -77,14 +66,14 @@ describe("CollectionHeader", () => {
 
   describe("collection description", () => {
     it("should be able to edit description with write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          description: "Description",
-          can_write: true,
-        }),
-      });
+      const collection = {
+        description: "Description",
+        can_write: true,
+      };
 
-      render(<CollectionHeader {...props} />);
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
 
       // show input
       const editableText = screen.getByText("Description");
@@ -95,53 +84,49 @@ describe("CollectionHeader", () => {
       userEvent.type(input, "New description");
       userEvent.tab();
 
-      expect(props.onUpdateCollection).toHaveBeenCalledWith(props.collection, {
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         description: "New description",
       });
     });
 
     it("should be able to add description with write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          description: null,
-          can_write: true,
-        }),
-      });
+      const collection = {
+        description: null,
+        can_write: true,
+      };
 
-      render(<CollectionHeader {...props} />);
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
 
       const input = screen.getByPlaceholderText("Add description");
       userEvent.type(input, "New description");
       userEvent.tab();
 
-      expect(props.onUpdateCollection).toHaveBeenCalledWith(props.collection, {
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
         description: "New description",
       });
     });
 
     it("should not be able to add description without write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          description: null,
-          can_write: false,
-        }),
-      });
+      const collection = {
+        description: null,
+        can_write: false,
+      };
 
-      render(<CollectionHeader {...props} />);
+      setup({ collection });
 
       const input = screen.queryByPlaceholderText("Add description");
       expect(input).not.toBeInTheDocument();
     });
 
     it("should be able to view the description without write access", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          description: "Description",
-          can_write: false,
-        }),
-      });
+      const collection = {
+        description: "Description",
+        can_write: false,
+      };
 
-      render(<CollectionHeader {...props} />);
+      setup({ collection });
 
       // show input
       const editableText = screen.getByText("Description");
@@ -155,9 +140,7 @@ describe("CollectionHeader", () => {
 
   describe("collection timelines", () => {
     it("should have a link to collection timelines", () => {
-      const props = getProps();
-
-      render(<CollectionHeader {...props} />);
+      setup();
 
       expect(screen.getByLabelText("calendar icon")).toBeInTheDocument();
     });
@@ -165,41 +148,38 @@ describe("CollectionHeader", () => {
 
   describe("collection bookmark", () => {
     it("should be able to bookmark a collection", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: false,
-        }),
+      const collection = {
+        can_write: false,
+      };
+
+      const { onCreateBookmark, collection: myCollection } = setup({
+        collection,
         isBookmarked: false,
       });
-
-      render(<CollectionHeader {...props} />);
       userEvent.click(screen.getByLabelText("bookmark icon"));
 
-      expect(props.onCreateBookmark).toHaveBeenCalledWith(props.collection);
+      expect(onCreateBookmark).toHaveBeenCalledWith(myCollection);
     });
 
     it("should be able to remove a collection from bookmarks", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          can_write: false,
-        }),
+      const collection = {
+        can_write: false,
+      };
+
+      const { onDeleteBookmark, collection: myCollection } = setup({
+        collection,
         isBookmarked: true,
       });
-
-      render(<CollectionHeader {...props} />);
       userEvent.click(screen.getByLabelText("bookmark icon"));
 
-      expect(props.onDeleteBookmark).toHaveBeenCalledWith(props.collection);
+      expect(onDeleteBookmark).toHaveBeenCalledWith(myCollection);
     });
   });
 
   describe("collection menu", () => {
     it("should have collection menu options", () => {
-      setup({
-        collection: createMockCollection({
-          can_write: true,
-        }),
-      });
+      const collection = { can_write: true };
+      setup({ collection });
 
       userEvent.click(screen.getByLabelText("ellipsis icon"));
       expect(screen.getByText("Move")).toBeInTheDocument();
@@ -210,7 +190,7 @@ describe("CollectionHeader", () => {
   describe("uploads", () => {
     it("should show the upload button if uploads are enabled and the user has write permissions", () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: true,
         canUpload: true,
         isAdmin: false,
@@ -221,7 +201,7 @@ describe("CollectionHeader", () => {
 
     it("should show the upload button if uploads are disabled and the user has write permissions", () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: false,
@@ -232,7 +212,7 @@ describe("CollectionHeader", () => {
 
     it("should not show the upload button if the user lacks write permissions on the collection", () => {
       setup({
-        collection: createMockCollection({ can_write: false }),
+        collection: { can_write: false },
         uploadsEnabled: true,
         canUpload: true,
         isAdmin: false,
@@ -243,7 +223,7 @@ describe("CollectionHeader", () => {
 
     it("should show an informational modal when clicking the upload button when uploads are disabled", async () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: false,
@@ -256,7 +236,7 @@ describe("CollectionHeader", () => {
 
     it("should show an informational modal with a link to settings for admins", async () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: true,
@@ -270,7 +250,7 @@ describe("CollectionHeader", () => {
 
     it("should show an informational modal without a link for non-admins", async () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: false,
@@ -283,7 +263,7 @@ describe("CollectionHeader", () => {
 
     it("should be able to close the admin upload info modal", async () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: true,
@@ -297,7 +277,7 @@ describe("CollectionHeader", () => {
 
     it("should be able to close the non-admin upload info modal", async () => {
       setup({
-        collection: createMockCollection({ can_write: true }),
+        collection: { can_write: true },
         uploadsEnabled: false,
         canUpload: true,
         isAdmin: false,
@@ -309,48 +289,4 @@ describe("CollectionHeader", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
-
-  describe("EE", () => {
-    beforeEach(() => {
-      setupEnterpriseTest();
-    });
-
-    it("should show an icon for instance analytics collections", () => {
-      const props = getProps({
-        collection: createMockCollection({
-          name: "Audit",
-          type: "instance-analytics",
-        }),
-      });
-
-      render(<CollectionHeader {...props} />);
-
-      expect(getIcon("audit")).toBeInTheDocument();
-    });
-  });
-});
-
-const getProps = (
-  opts?: Partial<CollectionHeaderProps>,
-): CollectionHeaderProps => ({
-  collection: createMockCollection(),
-  isAdmin: false,
-  isBookmarked: false,
-  canUpload: false,
-  uploadsEnabled: true,
-  isPersonalCollectionChild: false,
-  onUpdateCollection: jest.fn(),
-  onCreateBookmark: jest.fn(),
-  onUpload: jest.fn(),
-  onDeleteBookmark: jest.fn(),
-  location: {
-    pathname: `/collection/1`,
-    search: "",
-    query: {},
-    hash: "",
-    state: {},
-    action: "PUSH",
-    key: "1",
-  },
-  ...opts,
 });
