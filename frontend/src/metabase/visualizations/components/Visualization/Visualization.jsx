@@ -229,7 +229,11 @@ class Visualization extends PureComponent {
     if (!clicked) {
       return [];
     }
-    const { metadata, getExtraDataForClick = () => ({}) } = this.props;
+    const {
+      metadata,
+      isRawTable,
+      getExtraDataForClick = () => ({}),
+    } = this.props;
 
     const seriesIndex = clicked.seriesIndex || 0;
     const card = this.state.series[seriesIndex].card;
@@ -242,7 +246,7 @@ class Visualization extends PureComponent {
             ...clicked,
             extraData: {
               ...getExtraDataForClick(clicked),
-              isRawTable: this.props.isRawTable,
+              isRawTable,
             },
           },
           this.state.computedSettings,
