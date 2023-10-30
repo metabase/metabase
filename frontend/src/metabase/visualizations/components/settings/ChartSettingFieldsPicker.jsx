@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Droppable, Draggable } from "react-beautiful-dnd";
 
 import { DragDropContext } from "metabase/core/components/DragDropContext";
-import { moveElement } from "metabase/core/utils/arrays";
+import { moveElement } from "metabase/lib/arrays";
 
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
 import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
