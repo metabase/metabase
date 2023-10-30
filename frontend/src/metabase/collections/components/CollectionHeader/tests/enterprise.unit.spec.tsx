@@ -58,6 +58,39 @@ describe("Instance Analytics Collection Header", () => {
   });
 });
 
+describe("instance analytics custom reports collection", () => {
+  const defaultOptions = {
+    collection: {
+      name: "Custom Reports",
+      can_write: true,
+      entity_id: "okNLSZKdSxaoG58JSQY54",
+    },
+    hasEnterprisePlugins: true,
+    // 😬 this test needs the official_collections feature flag so that it
+    // doesn't cause the following test block to fail
+    tokenFeatures: { audit_app: true, official_collections: true },
+    isAdmin: true,
+  };
+
+  it("should not show move button", () => {
+    setup(defaultOptions);
+    userEvent.click(getIcon("ellipsis"));
+
+    expect(getIcon("lock")).toBeInTheDocument();
+    expect(queryIcon("move")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move")).not.toBeInTheDocument();
+  });
+
+  it("should not show archive button", () => {
+    setup(defaultOptions);
+    userEvent.click(getIcon("ellipsis"));
+
+    expect(getIcon("lock")).toBeInTheDocument();
+    expect(queryIcon("archive")).not.toBeInTheDocument();
+    expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+  });
+});
+
 describe("Official Collections Header", () => {
   const officialCollectionOptions = {
     collection: {
@@ -66,7 +99,6 @@ describe("Official Collections Header", () => {
       can_write: true,
     },
     hasEnterprisePlugins: true,
-
     tokenFeatures: { official_collections: true },
     isAdmin: true,
   };
