@@ -187,7 +187,7 @@ function getTargetsForDashboard(dashboard, dashcard) {
   });
 }
 
-function baseTypeFilterForParameterType(parameterType) {
+function baseTypeFilterForParameterType(parameterType: string) {
   const [typePrefix] = parameterType.split("/");
   const allowedTypes = {
     date: [TYPE.Temporal],
@@ -199,7 +199,7 @@ function baseTypeFilterForParameterType(parameterType) {
     // default to showing everything
     return () => true;
   }
-  return baseType =>
+  return (baseType: string) =>
     allowedTypes.some(allowedType => isa(baseType, allowedType));
 }
 
