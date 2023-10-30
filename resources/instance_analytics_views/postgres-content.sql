@@ -1,6 +1,7 @@
 create or replace view v_content as
 select
-    concat('action_', id) as id,
+    action.id as entity_id,
+    concat('action_', id) as entity_qualified_id,
     'action' as entity_type,
     created_at,
     updated_at,
@@ -22,7 +23,8 @@ select
     from action
 union
 select
-    concat('collection_', id) as id,
+    collection.id as entity_id,
+    concat('collection_', id) as entity_qualified_id,
     'collection' as entity_type,
     created_at,
     null as updated_at,
@@ -44,11 +46,12 @@ select
     from collection
 union
 select
+    report_card.id as entity_id,
     concat(
         case when dataset
             then 'model_'
             else 'question_'
-        end, id) as id,
+        end, id) as entity_qualified_id,
     case when dataset then 'model' else 'question' end as entity_type,
     created_at,
     updated_at,
@@ -70,7 +73,8 @@ select
     from report_card
 union
 select
-    concat('dashboard_', id) as id,
+    report_dashboard.id as entity_id,
+    concat('dashboard_', id) as entity_qualified_id,
     'dashboard' as entity_type,
     created_at,
     updated_at,
@@ -92,7 +96,8 @@ select
     from report_dashboard
 union
 select
-    concat('event_', event.id) as id,
+    event.id as entity_id,
+    concat('event_', event.id) as entity_qualified_id,
     'event' as entity_type,
     event.created_at,
     event.updated_at,
