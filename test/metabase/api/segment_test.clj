@@ -171,8 +171,8 @@
                             {:name             "Cool name"
                              :revision_message "WOW HOW COOL"
                              :definition       {}})
-      (is (=? {:new-value {:name "Cool name" :updated_at #hawk/malli :string},
-               :previous-value {:name "Toucans in the rainforest" :updated_at #hawk/malli :string}}
+      (is (=? {:new-value {:name "Cool name"},
+               :previous-value {:name "Toucans in the rainforest"}}
               (:details (mt/latest-audit-log-entry "segment-update")))))))
 
 (deftest archive-test

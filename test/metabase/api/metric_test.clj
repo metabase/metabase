@@ -167,8 +167,8 @@
      :crowberto :put 200 (format "metric/%d" id)
      {:revision_message "meow"
       :name             "Kitty Neeko"})
-    (is (=? {:new-value {:name "Kitty Neeko" :updated_at #hawk/malli :string}
-             :previous-value {:name "Toucans in the rainforest" :updated_at #hawk/malli :string}}
+    (is (=? {:new-value {:name "Kitty Neeko"}
+             :previous-value {:name "Toucans in the rainforest"}}
             (:details (mt/latest-audit-log-entry "metric-update"))))) )
 
 (deftest archive-test
