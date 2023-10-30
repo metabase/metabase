@@ -51,24 +51,22 @@ export interface ArbitraryCustomDestinationClickBehavior {
   linkTextTemplate?: string;
 }
 
-export type ImplicitActionType = "insert" | "update" | "delete";
-
-interface BaseActionClickBehavior {
+export interface BaseActionClickBehavior {
   type: "action";
-  actionType?: ImplicitActionType;
+  actionType: string;
 }
 
-interface InsertActionClickBehavior extends BaseActionClickBehavior {
+export interface InsertActionClickBehavior extends BaseActionClickBehavior {
   actionType: "insert";
   tableId: number;
 }
 
-interface UpdateActionClickBehavior extends BaseActionClickBehavior {
+export interface UpdateActionClickBehavior extends BaseActionClickBehavior {
   actionType: "update";
   objectDetailDashCardId: number;
 }
 
-interface DeleteActionClickBehavior extends BaseActionClickBehavior {
+export interface DeleteActionClickBehavior extends BaseActionClickBehavior {
   actionType: "delete";
   objectDetailDashCardId: number;
 }
