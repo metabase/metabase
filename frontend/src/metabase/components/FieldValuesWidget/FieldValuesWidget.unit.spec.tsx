@@ -101,10 +101,7 @@ describe("FieldValuesWidget", () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith({
-          id: PRODUCTS.CATEGORY,
-          table_id: field.table_id,
-        });
+        expect(fetchFieldValues).toHaveBeenCalledWith(field);
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -262,14 +259,18 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith({
-        id: LISTABLE_PK_FIELD_ID,
-        table_id: valuesField.table_id,
-      });
-      expect(fetchFieldValues).not.toHaveBeenCalledWith({
-        id: EXPRESSION_FIELD_ID,
-        table_id: expressionField.table_id,
-      });
+      expect(fetchFieldValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: LISTABLE_PK_FIELD_ID,
+          table_id: valuesField.table_id,
+        }),
+      );
+      expect(fetchFieldValues).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: EXPRESSION_FIELD_ID,
+          table_id: expressionField.table_id,
+        }),
+      );
     });
   });
 
