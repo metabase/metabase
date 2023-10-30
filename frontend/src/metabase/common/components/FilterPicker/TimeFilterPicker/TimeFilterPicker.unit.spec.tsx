@@ -98,6 +98,7 @@ function setup({
       stageIndex={0}
       column={column}
       filter={filter}
+      isNew={!filter}
       onChange={onChange}
       onBack={onBack}
     />,

@@ -13,6 +13,7 @@ export interface FilterPickerWidgetProps {
   stageIndex: number;
   column: ColumnMetadata;
   filter?: FilterClause;
+  isNew: boolean;
   onChange: (filter: ExpressionClause) => void;
   onBack: () => void;
 }

@@ -22,6 +22,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
   availableUnits: ReadonlyArray<DatePickerExtractionUnit>;
+  isNew: boolean;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -30,6 +31,7 @@ export function ExcludeDatePicker({
   value,
   availableOperators,
   availableUnits,
+  isNew,
   onChange,
   onBack,
 }: ExcludeDatePickerProps) {
@@ -47,7 +49,7 @@ export function ExcludeDatePicker({
 
   return unit ? (
     <ExcludeValuePicker
-      value={value}
+      isNew={isNew}
       unit={unit}
       initialValues={values}
       onChange={onChange}
@@ -130,7 +132,7 @@ export function ExcludeOptionPicker({
 }
 
 interface ExcludeValuePickerProps {
-  value: ExcludeDatePickerValue | undefined;
+  isNew: boolean;
   unit: DatePickerExtractionUnit;
   initialValues: number[];
   onChange: (value: ExcludeDatePickerValue) => void;
@@ -138,14 +140,13 @@ interface ExcludeValuePickerProps {
 }
 
 function ExcludeValuePicker({
-  value,
+  isNew,
   unit,
   initialValues,
   onChange,
   onBack,
 }: ExcludeValuePickerProps) {
   const [values, setValues] = useState(initialValues);
-  const isNew = value == null;
   const isEmpty = values.length === 0;
 
   const option = useMemo(() => {
