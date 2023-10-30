@@ -1,3 +1,9 @@
+export const isObject = (
+  value: unknown,
+): value is Record<string | number | symbol, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
 export const isNotNull = <T>(value: T | null | undefined): value is T => {
   return value != null;
 };
