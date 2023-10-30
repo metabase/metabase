@@ -5,7 +5,7 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockCustomColumn } from "metabase-types/api/mocks";
 import type {
   DatasetColumn,
   RowValue,
@@ -21,7 +21,6 @@ import {
   ORDERS_ROW_VALUES,
 } from "metabase-lib/tests/drills-common";
 import {
-  columnFinder,
   getAvailableDrills,
   SAMPLE_METADATA,
 } from "./test-helpers";
@@ -344,7 +343,7 @@ describe("availableDrillThrus", () => {
       } as StructuredDatasetQuery,
     });
     const columns = {
-      CustomColumn: createMockColumn({
+      CustomColumn: createMockCustomColumn({
         base_type: "type/Integer",
         name: "CustomColumn",
         display_name: "CustomColumn",
@@ -364,7 +363,7 @@ describe("availableDrillThrus", () => {
           },
         ],
       }),
-      count: createMockColumn({
+      count: createMockCustomColumn({
         base_type: "type/BigInteger",
         name: "count",
         display_name: "Count",
@@ -434,15 +433,10 @@ function setup({
   const query = question._getMLv2Query();
   const legacyQuery = question.query() as StructuredQuery;
 
-  const stageIndex = -1;
+  const stageIndex = STAGE_INDEX;
 
   const legacyColumns = legacyQuery.columns();
-
-  const metadataColumns = getMetadataColumns(query);
-  const column = columnFinder(query, metadataColumns)(
-    tableName,
-    clickedColumnName,
-  );
+  const column = columns[clickedColumnName];
 
   return {
     query,
