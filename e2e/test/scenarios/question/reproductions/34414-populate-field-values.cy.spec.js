@@ -1,4 +1,4 @@
-import { popover, restore, visitQuestionAdHoc } from "e2e/support/helpers";
+import { popover, restore, visitQuestionAdhoc } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -20,7 +20,7 @@ describe("issue 34414", () => {
     cy.createQuestion(INVOICE_MODEL_DETAILS).then(response => {
       const modelId = response.body.id;
 
-      visitQuestionAdHoc({
+      visitQuestionAdhoc({
         dataset_query: {
           type: "query",
           database: SAMPLE_DB_ID,
