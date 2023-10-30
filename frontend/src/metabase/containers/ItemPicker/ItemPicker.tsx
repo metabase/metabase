@@ -104,7 +104,9 @@ function ItemPicker<TId>({
   const openCollection = collectionsById[openCollectionId];
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
   const hideItems =
-    showOnlyPersonalCollections && !isOpenCollectionInPersonalCollection;
+    !searchString &&
+    showOnlyPersonalCollections &&
+    !isOpenCollectionInPersonalCollection;
 
   const collections = useMemo(() => {
     let list = openCollection?.children || [];
