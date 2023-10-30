@@ -2,6 +2,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import type { DatetimeUnit, ParameterType } from "metabase-types/api";
+import { isImplicitActionClickBehavior } from "metabase-types/guards";
 import { parseTimestamp } from "metabase/lib/time";
 import {
   formatDateTimeForParameter,
@@ -214,7 +215,7 @@ export function clickBehaviorIsValid(clickBehavior) {
     return Object.keys(parameterMapping).length > 0;
   }
   if (type === "action") {
-    return isValidImplicitActionClickBehavior(clickBehavior);
+    return isImplicitActionClickBehavior(clickBehavior);
   }
   // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {
@@ -228,31 +229,11 @@ export function clickBehaviorIsValid(clickBehavior) {
   return false;
 }
 
-function isValidImplicitActionClickBehavior(clickBehavior) {
-  if (
-    !clickBehavior ||
-    clickBehavior.type !== "action" ||
-    !("actionType" in clickBehavior)
-  ) {
-    return false;
-  }
-  if (clickBehavior.actionType === "insert") {
-    return clickBehavior.tableId != null;
-  }
-  if (
-    clickBehavior.actionType === "update" ||
-    clickBehavior.actionType === "delete"
-  ) {
-    return typeof clickBehavior.objectDetailDashCardId === "number";
-  }
-  return false;
-}
-
 export function formatSourceForTarget(
   source,
   target,
   { data, extraData, clickBehavior },
-) {
+): string {
   const datum = data[source.type][source.id.toLowerCase()] || [];
   if (datum.column && isDate(datum.column)) {
     const sourceDateUnit = datum.column.unit;
