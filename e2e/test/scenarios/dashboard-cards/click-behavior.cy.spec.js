@@ -955,7 +955,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
     });
 
-    it.skip("allows opening custom dashboard destination without parameters", () => {
+    it("does not allow opening custom dashboard destination", () => {
       const dashboardDetails = {
         enable_embedding: true,
         embedding_params: {},
@@ -1002,78 +1002,14 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
-      clickLineChartPoint();
-      cy.get("header").findByText(TARGET_DASHBOARD.name).should("exist");
-      cy.findByTestId("field-set").should("not.exist");
-    });
-
-    it.skip("allows opening custom dashboard destination with parameter", () => {
-      const dashboardDetails = {
-        enable_embedding: true,
-        embedding_params: {
-          [DASHBOARD_FILTER_TEXT.slug]: "enabled",
-        },
-      };
-      const parameterId = "1";
-
-      cy.createDashboard(
-        {
-          ...TARGET_DASHBOARD,
-          enable_embedding: true,
-          embedding_params: {
-            [DASHBOARD_FILTER_TEXT.slug]: "enabled",
-          },
-          parameters: [DASHBOARD_FILTER_TEXT],
-        },
-        {
-          wrapId: true,
-          idAlias: "targetDashboardId",
-        },
-      );
-      cy.get("@targetDashboardId").then(targetDashboardId => {
-        cy.createQuestionAndDashboard({
-          questionDetails,
-          dashboardDetails,
-        }).then(({ body: card }) => {
-          addOrUpdateDashboardCard({
-            dashboard_id: card.dashboard_id,
-            card_id: card.card_id,
-            card: {
-              id: card.id,
-              visualization_settings: {
-                click_behavior: {
-                  parameterMapping: {
-                    [parameterId]: {
-                      source: COUNT_COLUMN_SOURCE,
-                      target: { type: "parameter", id: parameterId },
-                      id: parameterId,
-                    },
-                  },
-                  targetId: targetDashboardId,
-                  linkType: "dashboard",
-                  type: "link",
-                },
-              },
-            },
-          });
-
-          visitEmbeddedPage({
-            resource: { dashboard: card.dashboard_id },
-            params: {},
-          });
-          cy.wait("@dashboard");
-          cy.wait("@cardQuery");
-        });
+      cy.url().then(originalUrl => {
+        clickLineChartPoint();
+        cy.url().should("eq", originalUrl);
       });
-
-      clickLineChartPoint();
-      cy.get("header").findByText(TARGET_DASHBOARD.name).should("exist");
-      cy.findAllByTestId("field-set")
-        .should("have.length", 1)
-        .should("contain.text", POINT_COUNT);
+      cy.get("header").findByText(TARGET_DASHBOARD.name).should("not.exist");
     });
 
-    it.skip("allows opening custom question destination without parameters", () => {
+    it("does not allow opening custom question destination", () => {
       const dashboardDetails = {
         enable_embedding: true,
         embedding_params: {},
@@ -1120,78 +1056,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         });
       });
 
-      clickLineChartPoint();
-      cy.get("header").findByText(TARGET_QUESTION.name).should("exist");
-      cy.findByTestId("field-set").should("not.exist");
-    });
-
-    it.skip("allows opening custom question destination with parameters", () => {
-      const dashboardDetails = {
-        enable_embedding: true,
-        embedding_params: {},
-      };
-      const targetId = "3";
-
-      cy.createQuestion(
-        {
-          ...TARGET_QUESTION,
-          enable_embedding: true,
-          embedding_params: {},
-        },
-        {
-          wrapId: true,
-          idAlias: "targetQuestionId",
-        },
-      );
-
-      cy.get("@targetQuestionId").then(targetQuestionId => {
-        cy.createQuestionAndDashboard({
-          questionDetails,
-          dashboardDetails,
-        }).then(({ body: card }) => {
-          addOrUpdateDashboardCard({
-            dashboard_id: card.dashboard_id,
-            card_id: card.card_id,
-            card: {
-              id: card.id,
-              visualization_settings: {
-                click_behavior: {
-                  parameterMapping: {
-                    [targetId]: {
-                      source: COUNT_COLUMN_SOURCE,
-                      target: {
-                        type: "dimension",
-                        id: targetId,
-                        dimension: [
-                          "dimension",
-                          ["field", ORDERS.QUANTITY, null],
-                        ],
-                      },
-                      id: targetId,
-                    },
-                  },
-                  targetId: targetQuestionId,
-                  linkType: "question",
-                  type: "link",
-                },
-              },
-            },
-          });
-
-          visitEmbeddedPage({
-            resource: { dashboard: card.dashboard_id },
-            params: {},
-          });
-          cy.wait("@dashboard");
-          cy.wait("@cardQuery");
-        });
+      cy.url().then(originalUrl => {
+        clickLineChartPoint();
+        cy.url().should("eq", originalUrl);
       });
-
-      clickLineChartPoint();
-      cy.get("header").findByText(TARGET_QUESTION.name).should("exist");
-      cy.findByTestId("qb-filters-panel")
-        .should("contain.text", "Created At is August 1–31, 2022")
-        .should("contain.text", "Quantity is equal to 79");
+      cy.get("header").findByText(TARGET_QUESTION.name).should("not.exist");
     });
 
     it("allows opening custom URL destination with parameters", () => {
