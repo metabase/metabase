@@ -32,7 +32,23 @@ function setup({
 }
 
 describe("ExcludeDatePicker", () => {
-  it("should allow to set an hour filter", () => {
+  it("should allow to exclude days", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Days of the week…"));
+    userEvent.click(screen.getByText("Monday"));
+    userEvent.click(screen.getByText("Sunday"));
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "!=",
+      unit: "day-of-week",
+      values: [1, 7],
+    });
+  });
+
+  it("should allow to exclude hours", () => {
     const { onChange } = setup();
 
     userEvent.click(screen.getByText("Hours of the day…"));
