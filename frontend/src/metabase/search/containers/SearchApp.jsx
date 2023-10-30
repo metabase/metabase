@@ -54,7 +54,9 @@ function SearchApp({ location }) {
   };
 
   useEffect(() => {
-    trackSearchEvents({ searchFilters });
+    if (!_.isEmpty(searchFilters)) {
+      trackSearchEvents({ searchFilters });
+    }
   }, [searchFilters]);
 
   const onChangeLocation = useCallback(

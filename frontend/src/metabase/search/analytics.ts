@@ -13,12 +13,6 @@ function getContentType(
   return null;
 }
 
-function isFilterEmpty(
-  filters: Record<string, boolean | SearchQueryParamValue[] | null>,
-) {
-  return Object.values(filters).every(value => !value);
-}
-
 export const trackSearchEvents = ({
   searchFilters,
 }: {
@@ -36,11 +30,6 @@ export const trackSearchEvents = ({
     search_native_queries: Boolean(searchFilters.search_native_query),
     content_type: getContentType(searchFilters.type),
   };
-
-  // we just want to track search filters if the user is using them
-  if (isFilterEmpty(filterBooleanPayload)) {
-    return;
-  }
 
   trackSchemaEvent("search", "1-0-1", {
     event: "search_results_filtered",

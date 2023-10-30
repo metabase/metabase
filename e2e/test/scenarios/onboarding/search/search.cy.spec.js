@@ -413,6 +413,7 @@ describe("scenarios > search", () => {
           ],
         });
       });
+
       it("should filter results by more than one user", () => {
         cy.visit("/");
 
