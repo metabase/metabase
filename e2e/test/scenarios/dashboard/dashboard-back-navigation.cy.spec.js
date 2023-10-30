@@ -7,7 +7,6 @@ import {
   getDashboardCard,
   getDashboardCardMenu,
   getDashboardCards,
-  getNextUnsavedDashboardCardId,
   modal,
   popover,
   queryBuilderHeader,
@@ -401,13 +400,9 @@ const createDashboardWithCards = () => {
           ({ body: { id: action_id } }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
               cards: [
-                {
-                  id: getNextUnsavedDashboardCardId(),
-                  card_id: question_id,
-                  ...questionDashcardDetails,
-                },
-                getTextCardDetails(),
-                getActionCardDetails({ action_id }),
+                { id: -1, card_id: question_id, ...questionDashcardDetails },
+                getTextCardDetails({ id: -2, size_y: 1 }),
+                getActionCardDetails({ id: -3, action_id }),
               ],
             });
           },
