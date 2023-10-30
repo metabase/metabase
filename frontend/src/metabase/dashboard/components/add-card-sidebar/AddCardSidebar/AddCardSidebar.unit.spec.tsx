@@ -118,151 +118,154 @@ describe("AddCardSideBar", () => {
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
 
-  it("should hide all personal collections when adding questions to dashboards in the root collection (public collection)", async () => {
-    const dashboardInPublicCollection = createMockDashboard({
-      collection: ROOT_COLLECTION,
-    });
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPublicCollection,
-    });
-
-    assertBreadcrumbs([ROOT_COLLECTION]);
-
-    expect(
-      screen.getByRole("menuitem", {
-        name: COLLECTION.name,
-      }),
-    ).toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("menuitem", {
-        name: PERSONAL_COLLECTION.name,
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should show all questions when adding questions to dashboards in the root collection (public collection)", async () => {
+  describe("dashboards in the root collection (public collection)", () => {
     const dashboardInRootCollection = createMockDashboard({
       collection: ROOT_COLLECTION,
     });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInRootCollection,
-      collectionItems,
-    });
+    it("should hide all personal collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+      });
 
-    assertBreadcrumbs([ROOT_COLLECTION]);
+      assertBreadcrumbs([ROOT_COLLECTION]);
 
-    collectionItems.forEach(collectionItem => {
       expect(
         screen.getByRole("menuitem", {
-          name: collectionItem.name,
+          name: COLLECTION.name,
         }),
       ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("menuitem", {
+          name: PERSONAL_COLLECTION.name,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show all questions", async () => {
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 1",
+        }),
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([ROOT_COLLECTION]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
     });
   });
 
-  it("should show all questions when adding questions to dashboards in public collections", async () => {
-    const dashboardInPublicSubcollection = createMockDashboard({
-      collection: SUBCOLLECTION,
-    });
+  describe("dashboards in public collections", () => {
+    it("should show all questions", async () => {
+      const dashboardInPublicSubcollection = createMockDashboard({
+        collection: SUBCOLLECTION,
+      });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPublicSubcollection,
-      collectionItems,
-    });
-
-    assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
-
-    collectionItems.forEach(collectionItem => {
-      expect(
-        screen.getByRole("menuitem", {
-          name: collectionItem.name,
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 1",
         }),
-      ).toBeInTheDocument();
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPublicSubcollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([ROOT_COLLECTION, COLLECTION, SUBCOLLECTION]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
     });
   });
 
-  it("should show all collections when adding questions to dashboards in personal subcollections", async () => {
-    const dashboardInPersonalSubcollection = createMockDashboard({
-      collection: PERSONAL_SUBCOLLECTION,
-    });
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPersonalSubcollection,
-    });
+  describe("dashboards in personal collections", () => {
+    it("should show all collections", async () => {
+      const dashboardInPersonalSubcollection = createMockDashboard({
+        collection: PERSONAL_SUBCOLLECTION,
+      });
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+      });
 
-    assertBreadcrumbs([
-      ROOT_COLLECTION,
-      PERSONAL_COLLECTION,
-      PERSONAL_SUBCOLLECTION,
-    ]);
+      assertBreadcrumbs([
+        ROOT_COLLECTION,
+        PERSONAL_COLLECTION,
+        PERSONAL_SUBCOLLECTION,
+      ]);
 
-    expect(screen.getByText("Nothing here")).toBeInTheDocument();
-  });
-
-  it("should show all questions when adding questions to dashboards in personal subcollections", async () => {
-    const dashboardInPersonalSubcollection = createMockDashboard({
-      collection: PERSONAL_SUBCOLLECTION,
+      expect(screen.getByText("Nothing here")).toBeInTheDocument();
     });
 
-    const collectionItems = [
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "private question 1",
-      }),
-      createMockCollectionItem({
-        id: getNextId(),
-        model: "card",
-        name: "private question 2",
-      }),
-    ];
-    await setup({
-      collections: COLLECTIONS,
-      dashboard: dashboardInPersonalSubcollection,
-      collectionItems,
-    });
+    it("should show all questions", async () => {
+      const dashboardInPersonalSubcollection = createMockDashboard({
+        collection: PERSONAL_SUBCOLLECTION,
+      });
 
-    assertBreadcrumbs([
-      ROOT_COLLECTION,
-      PERSONAL_COLLECTION,
-      PERSONAL_SUBCOLLECTION,
-    ]);
-
-    collectionItems.forEach(collectionItem => {
-      expect(
-        screen.getByRole("menuitem", {
-          name: collectionItem.name,
+      const collectionItems = [
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "private question 1",
         }),
-      ).toBeInTheDocument();
+        createMockCollectionItem({
+          id: getNextId(),
+          model: "card",
+          name: "private question 2",
+        }),
+      ];
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+        collectionItems,
+      });
+
+      assertBreadcrumbs([
+        ROOT_COLLECTION,
+        PERSONAL_COLLECTION,
+        PERSONAL_SUBCOLLECTION,
+      ]);
+
+      collectionItems.forEach(collectionItem => {
+        expect(
+          screen.getByRole("menuitem", {
+            name: collectionItem.name,
+          }),
+        ).toBeInTheDocument();
+      });
     });
   });
 });
