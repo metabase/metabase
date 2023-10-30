@@ -1,35 +1,49 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
-import type { URLSearchFilterQueryParams } from "metabase/search/types";
+import type {
+  SearchQueryParamValue,
+  URLSearchFilterQueryParams,
+} from "metabase/search/types";
+
+function getContentType(
+  type: SearchQueryParamValue,
+): Array<SearchQueryParamValue> | null {
+  if (type) {
+    return Array.isArray(type) ? type : [type];
+  }
+  return null;
+}
+
+function isFilterEmpty(
+  filters: Record<string, boolean | SearchQueryParamValue[] | null>,
+) {
+  return Object.values(filters).every(value => !value);
+}
 
 export const trackSearchEvents = ({
   searchFilters,
 }: {
   searchFilters: URLSearchFilterQueryParams;
 }) => {
-  let content_type = null;
-
-  if (searchFilters.type) {
-    content_type = Array.isArray(searchFilters.type)
-      ? searchFilters.type
-      : [searchFilters.type];
-  }
-
-  const filterBooleanPayload: Record<string, unknown> = {
-    creator: searchFilters.created_by,
-    last_editor: searchFilters.last_edited_by,
-    creation_date: searchFilters.created_at,
-    last_edit_date: searchFilters.last_edited_at,
-    verified_items: searchFilters.verified,
-    search_native_queries: searchFilters.search_native_query,
+  const filterBooleanPayload: Record<
+    string,
+    boolean | SearchQueryParamValue[] | null
+  > = {
+    creator: Boolean(searchFilters.created_by),
+    last_editor: Boolean(searchFilters.last_edited_by),
+    creation_date: Boolean(searchFilters.created_at),
+    last_edit_date: Boolean(searchFilters.last_edited_at),
+    verified_items: Boolean(searchFilters.verified),
+    search_native_queries: Boolean(searchFilters.search_native_query),
+    content_type: getContentType(searchFilters.type),
   };
 
-  Object.entries(searchFilters).forEach(([key, value]) => {
-    filterBooleanPayload[key] = !!value;
-  });
+  // we just want to track search filters if the user is using them
+  if (isFilterEmpty(filterBooleanPayload)) {
+    return;
+  }
 
   trackSchemaEvent("search", "1-0-1", {
     event: "search_results_filtered",
-    content_type,
-    filterPayload: filterBooleanPayload,
+    ...filterBooleanPayload,
   });
 };

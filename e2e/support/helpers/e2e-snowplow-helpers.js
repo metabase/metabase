@@ -41,40 +41,6 @@ export const expectGoodSnowplowEvents = count => {
     .should("have.length", count);
 };
 
-export const expectGoodSnowplowEventCount = expectedEventCounts => {
-  const totalCount = Object.values(expectedEventCounts).reduce(
-    (a, b) => a + b,
-    0,
-  );
-
-  retrySnowplowRequest("micro/good", ({ body }) => {
-    return body.length >= totalCount;
-  })
-    .then(({ body }) => {
-      const pageViewCount = body.filter(
-        event => event.eventType === "page_view",
-      ).length;
-
-      const events = body
-        .filter(event => event.eventType === "unstruct")
-        .map(event => event.event?.unstruct_event?.data?.data)
-        .reduce((acc, cur) => {
-          if (cur.event in acc) {
-            acc[cur.event] += 1;
-          } else {
-            acc[cur.event] = 1;
-          }
-          return acc;
-        }, {});
-
-      return {
-        page_view: pageViewCount,
-        ...events,
-      };
-    })
-    .should("deep.include", expectedEventCounts);
-};
-
 export const expectNoBadSnowplowEvents = () => {
   sendSnowplowRequest("micro/bad").its("body").should("have.length", 0);
 };

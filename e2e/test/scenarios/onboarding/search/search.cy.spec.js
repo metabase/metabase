@@ -3,7 +3,7 @@ import {
   describeEE,
   describeWithSnowplow,
   enableTracking,
-  expectGoodSnowplowEventCount,
+  expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   modal,
@@ -1102,7 +1102,6 @@ describeWithSnowplow("scenarios > search", () => {
   const NEW_SEARCH_QUERY_EVENT = 1;
   const SEARCH_RESULT_FILTERED_EVENT = 1;
 
-  const PAGE_VIEW_EVENT_NAME = "page_view";
   const SEARCH_RESULTS_FILTERED_NAME = "search_results_filtered";
   const NEW_SEARCH_QUERY_EVENT_NAME = "new_search_query";
 
@@ -1126,13 +1125,14 @@ describeWithSnowplow("scenarios > search", () => {
 
   describe("should send snowplow events for each filter when it is applied and removed", () => {
     describe("no filters", () => {
-      it("should send a snowplow event when a search with no filters is accessed from the URL", () => {
+      it("should not send a snowplow event when a search with no filters is accessed from the URL", () => {
         cy.visit("/search?q=orders");
         expectGoodSnowplowEvents(
-          PAGE_VIEW_EVENT +
-            NEW_SEARCH_QUERY_EVENT +
-            SEARCH_RESULT_FILTERED_EVENT,
+          PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT,
+          // SEARCH_RESULT_FILTERED_EVENT,
         );
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
       });
     });
 
@@ -1146,7 +1146,7 @@ describeWithSnowplow("scenarios > search", () => {
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
-        cy.visit("/search");
+        cy.visit("/search?q=orders");
 
         let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
@@ -1159,28 +1159,29 @@ describeWithSnowplow("scenarios > search", () => {
           cy.findByText("Apply").click();
         });
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          NEW_SEARCH_QUERY_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT;
+        eventCount += PAGE_VIEW_EVENT + SEARCH_RESULT_FILTERED_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
         cy.visit("/search?q=orders&type=card");
 
-        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + SEARCH_RESULT_FILTERED_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("type-search-filter")
           .findByLabelText("close icon")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          NEW_SEARCH_QUERY_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
+        // SEARCH_RESULT_FILTERED_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
@@ -1192,27 +1193,31 @@ describeWithSnowplow("scenarios > search", () => {
             NEW_SEARCH_QUERY_EVENT +
             SEARCH_RESULT_FILTERED_EVENT,
         );
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
 
-        let eventCount =
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
         cy.findByTestId("created_by-search-filter").click();
         popover().within(() => {
           cy.findByText("Bobby Tables").click();
           cy.findByText("Apply").click();
         });
+
         eventCount +=
           PAGE_VIEW_EVENT +
           SEARCH_RESULT_FILTERED_EVENT +
           NEW_SEARCH_QUERY_EVENT;
-
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
@@ -1228,12 +1233,12 @@ describeWithSnowplow("scenarios > search", () => {
           .findByLabelText("close icon")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
 
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
@@ -1245,15 +1250,15 @@ describeWithSnowplow("scenarios > search", () => {
             SEARCH_RESULT_FILTERED_EVENT +
             NEW_SEARCH_QUERY_EVENT,
         );
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
 
-        let eventCount =
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("last_edited_by-search-filter").click();
@@ -1267,6 +1272,9 @@ describeWithSnowplow("scenarios > search", () => {
           SEARCH_RESULT_FILTERED_EVENT +
           NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
@@ -1282,27 +1290,31 @@ describeWithSnowplow("scenarios > search", () => {
           .findByLabelText("close icon")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
     describe("created_at filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&created_at=thisday");
-        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            NEW_SEARCH_QUERY_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT,
+        );
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 1);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
 
-        let eventCount =
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("created_at-search-filter").click();
@@ -1315,6 +1327,9 @@ describeWithSnowplow("scenarios > search", () => {
           SEARCH_RESULT_FILTERED_EVENT +
           NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
@@ -1330,26 +1345,30 @@ describeWithSnowplow("scenarios > search", () => {
           .findByLabelText("close icon")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
 
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
     describe("last_edited_at filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&last_edited_at=thisday");
-        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            NEW_SEARCH_QUERY_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT,
+        );
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         let eventCount = PAGE_VIEW_EVENT;
 
         cy.visit("/search?q=orders");
-        eventCount += SEARCH_RESULT_FILTERED_EVENT + NEW_SEARCH_QUERY_EVENT;
+        eventCount += NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
         cy.findByTestId("last_edited_at-search-filter").click();
         popover().within(() => {
@@ -1361,6 +1380,9 @@ describeWithSnowplow("scenarios > search", () => {
           NEW_SEARCH_QUERY_EVENT;
 
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
@@ -1376,17 +1398,11 @@ describeWithSnowplow("scenarios > search", () => {
           .findByLabelText("close icon")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
-        expectGoodSnowplowEventCount({
-          [PAGE_VIEW_EVENT_NAME]: 2,
-          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
-          [SEARCH_RESULTS_FILTERED_NAME]: 2,
-        });
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
@@ -1403,10 +1419,7 @@ describeWithSnowplow("scenarios > search", () => {
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
 
-        let eventCount =
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("verified-search-filter")
@@ -1433,41 +1446,29 @@ describeWithSnowplow("scenarios > search", () => {
           .findByText("Verified items only")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
 
         expectGoodSnowplowEvents(eventCount);
 
-        expectGoodSnowplowEvent(
-          {
-            event: NEW_SEARCH_QUERY_EVENT_NAME,
-          },
-          2,
-        );
-        expectGoodSnowplowEvent(
-          {
-            event: SEARCH_RESULTS_FILTERED_NAME,
-          },
-          2,
-        );
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
 
     describe("search_native_query filter", () => {
       it("should send a snowplow event when a search filter is used in the URL", () => {
         cy.visit("/search?q=orders&search_native_query=true");
-        expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2);
+        expectGoodSnowplowEvents(
+          PAGE_VIEW_EVENT +
+            NEW_SEARCH_QUERY_EVENT +
+            SEARCH_RESULT_FILTERED_EVENT,
+        );
       });
 
       it("should send a snowplow event when a search filter is applied from the UI", () => {
         cy.visit("/search?q=orders");
 
-        let eventCount =
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        let eventCount = PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("search_native_query-search-filter")
@@ -1479,6 +1480,9 @@ describeWithSnowplow("scenarios > search", () => {
           SEARCH_RESULT_FILTERED_EVENT +
           NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
 
       it("should send a snowplow event when a search filter is removed from the UI", () => {
@@ -1486,24 +1490,19 @@ describeWithSnowplow("scenarios > search", () => {
 
         let eventCount =
           PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+          NEW_SEARCH_QUERY_EVENT +
+          SEARCH_RESULT_FILTERED_EVENT;
         expectGoodSnowplowEvents(eventCount);
 
         cy.findByTestId("search_native_query-search-filter")
           .findByText("Search the contents of native queries")
           .click();
 
-        eventCount +=
-          PAGE_VIEW_EVENT +
-          SEARCH_RESULT_FILTERED_EVENT +
-          NEW_SEARCH_QUERY_EVENT;
+        eventCount += PAGE_VIEW_EVENT + NEW_SEARCH_QUERY_EVENT;
         expectGoodSnowplowEvents(eventCount);
-        expectGoodSnowplowEventCount({
-          [PAGE_VIEW_EVENT_NAME]: 2,
-          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
-          [SEARCH_RESULTS_FILTERED_NAME]: 2,
-        });
+
+        expectGoodSnowplowEvent({ event: NEW_SEARCH_QUERY_EVENT_NAME }, 2);
+        expectGoodSnowplowEvent({ event: SEARCH_RESULTS_FILTERED_NAME }, 1);
       });
     });
   });
