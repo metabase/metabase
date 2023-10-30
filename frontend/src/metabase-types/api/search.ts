@@ -89,4 +89,5 @@ export interface SearchListQuery {
   limit?: number;
   offset?: number;
   collection?: CollectionId;
+  filter_items_in_personal_collection?: "only" | "exclude";
 }
