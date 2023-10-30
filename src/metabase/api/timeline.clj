@@ -28,7 +28,7 @@
   {name          su/NonBlankString
    default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
-   icon          (s/maybe timeline/Icons)
+   icon          (s/maybe timeline-event/Icon)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (collection/check-write-perms-for-collection collection_id)
@@ -36,7 +36,7 @@
             body
             {:creator_id api/*current-user-id*}
             (when-not icon
-              {:icon timeline/DefaultIcon}))]
+              {:icon timeline-event/default-icon}))]
     (first (t2/insert-returning-instances! Timeline tl))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -87,7 +87,7 @@
   {name          (s/maybe su/NonBlankString)
    default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
-   icon          (s/maybe timeline/Icons)
+   icon          (s/maybe timeline-event/Icon)
    collection_id (s/maybe su/IntGreaterThanZero)
    archived      (s/maybe s/Bool)}
   (let [existing (api/write-check Timeline id)
