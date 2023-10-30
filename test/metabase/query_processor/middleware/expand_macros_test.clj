@@ -12,7 +12,7 @@
   {:database 1, :type :query, :query (merge {:source-table 1}
                                             inner-query)})
 
-(deftest ^:parallel basic-expansion-test
+(deftest basic-expansion-test ^:parallel
   (testing "no Segment or Metric should yield exact same query"
     (is (= (mbql-query
             {:filter   [:> [:field 4 nil] 1]
@@ -424,34 +424,7 @@
              (mt/formatted-rows [int num int int]
                                 @(def p (qp/process-query q)))))))))
 
-(comment
-  (require '[mb.hawk.core :as hawk])
-  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/multiple-metrics-wip-test])
-
-  (def orig (t2/select :model/Metric 6))
-
-  (mt/formatted-rows [int num int int] p)
-
-  (t2/update! :model/Metric 6 {:definition (mt/$ids venues
-                                                    {:source-table $$venues
-                                                     :aggregation [[:count]]
-                                                     :filter [:> $category_id 20]})})
-
-  (t2/update! :model/Metric 6 {:definition {:source-table 9,
-                                            :aggregation
-                                            [[:aggregation-options
-                                              [:/ [:metric 4] [:metric 5]]
-                                              {:name "count div sum price", :display-name "count div sum price"}]],
-                                            :filter [:> [:field 85 nil] 20]}})
-
-  (t2/update! :model/Metric 6 (get orig :archived))
-  (keys orig)
-
-
-
-
-  )
-
+;;;; TODO: Here make more tests for expansion rather then query execution.
 (deftest simple-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -463,9 +436,9 @@
                                      :aggregation [[:count]]})}]
       (testing "Query containing metric returns correct results"
         (testing "no query filter, no breakout"
-          (is (= [[100]]
-                 (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]})
-                      (mt/formatted-rows [int])))))
+          (let [_q @(def qqq (mt/mbql-query venues {:aggregation [[:metric id]]}))]
+            (is (= [[100]]
+                   (mt/rows (mt/run-mbql-query venues {:aggregation [[:metric id]]}))))))
         (testing "no filter, with breakout"
           (is (= [[2 8] [3 2] [4 2] [5 7] [6 2]]
                  (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]
@@ -485,10 +458,11 @@
           (is (= [[67]]
                  (->> (mt/run-mbql-query venues {:aggregation [[:metric id]]
                                                  :filter [:> $category_id 10]})
-                      (mt/formatted-rows [int int])))))))))
+                      (mt/formatted-rows [int])))))))))
 
 ;;;; TODO: Check correctness of results by comparing with equivalent aggregation query.
 ;;;; TODO: Here make more tests for expansion rather then query execution.
+;;;; TODO: Wrong!
 (deftest metric-with-filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -528,6 +502,7 @@
 ;;;; TODO: Check correctness of results by comparing with equivalent aggregation query.
 ;;;; TODO: Here make more tests for expansion rather then query execution.
 ;;;; NOTE: Prev testing: Filter in query is correctly combined with segment filter in metric
+;;;; TODO: Wrong!
 (deftest metric-with-segment-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -588,6 +563,7 @@
                                                      :breakout [[:expression "cat+10"]]
                                                      :order-by [[:asc $category_id]]
                                                      :limit 5})))))
+        ;;;; TODO: Follo
         (testing "Expression in breakout with other fields"
           (is (= [[2 12 8] [3 13 2] [4 14 2] [5 15 7] [6 16 2]] ;; data ok
                  @(def x (mt/rows (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]}
@@ -595,6 +571,29 @@
                                                              :breakout [$category_id [:expression "cat+10"]]
                                                              :order-by [[:asc $category_id]]
                                                              :limit 5}))))))))))
+
+;;;; TODO: verify, but looks ok-ish
+(deftest expression-in-breakout-of-metric-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {metric-id :id}
+       {:name "venues, count"
+        :description "x"
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}]
+      (let [query @(def qqq (mt/mbql-query venues {:aggregation [[:metric metric-id]]
+                                                   :expressions {"cat+10" [:+ $category_id 10]}
+                                                   :breakout [[:expression "cat+10"]]
+                                                   :order-by [[:asc [:expression "cat+10"]]]
+                                                   :limit 5}))
+            _ @(def prep (qp/preprocess query))]
+        (is (= [[12 8]
+                [13 2]
+                [14 2]
+                [15 7]
+                [16 2]]
+               (mt/rows @(def post (qp/process-query query)))))))))
 
 ;;;; TODO: Still WIP, verify correctness, probably rewrite to just transformation checking, w/o execution!
 (deftest recursively-defined-metric-WIP-test
@@ -621,3 +620,85 @@
             _ @(def ppp (qp/preprocess query))]
         (is (= [[2 8] [3 2] [4 2] [5 7] [6 2]]
                @(def rrr (mt/rows (qp/process-query query)))))))))
+
+;;;; TODO: Metric in joins test
+(deftest metrics-in-joined-card-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {metric-id :id}
+       {:name "venues_count"
+        :description "x"
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}
+
+       :model/Card
+       {card-id :id}
+       {:dataset_query (mt/mbql-query venues {:aggregation [[:metric metric-id]]
+                                              :breakout [$category_id]})}]
+      (let [query (mt/mbql-query venues {:aggregation [[:count]]
+                                         :breakout [$category_id &Q1.$category_id &Q1.*venues_count/Integer]
+                                         :joins [{:alias "Q1"
+                                                  :strategy :left-join
+                                                  :source-table (str "card__" card-id)
+                                                  :condition [:= $category_id &Q1.$category_id]}]
+                                         :order-by [[:asc $category_id]]
+                                         :limit 5})
+            _ @(def prep (qp/preprocess query))
+            _ @(def post (qp/process-query query))]
+        (is (= [[2 2 8 8] [3 3 2 2] [4 4 2 2] [5 5 7 7] [6 6 2 2]]
+               (mt/rows post)))))))
+
+;;;; TODO: metric, aggregation on joined fields
+;;;; TODO: nonsensical, at least verify results!
+(deftest metrics-joins-data-source-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {metric-id :id}
+       {:name "venues_count"
+        :description "x"
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}]
+      (let [query @(def qqq (mt/mbql-query venues {:aggregation [[:metric metric-id] [:max &Q2.$users.last_login]]
+                                                   :breakout [$category_id]
+                                                   :joins [{:alias "Q1"
+                                                            :strategy :left-join
+                                                            :source-table $$checkins
+                                                            :condition [:= $id &Q1.$checkins.venue_id]}
+                                                           {:alias "Q2"
+                                                            :strategy :left-join
+                                                            :source-table $$users
+                                                            :condition [:= &Q1.$checkins.user_id &Q2.$users.id]}]
+                                                   :order-by [[:asc $category_id]]
+                                                   :limit 5}))
+            _ @(def prep (qp/preprocess query))]
+        (is (= ;;;; TODO: looks okish, but check!
+             [[2 91 "2014-12-05T15:15:00Z"]
+              [3 22 "2014-12-05T15:15:00Z"]
+              [4 13 "2014-11-01T07:00:00Z"]
+              [5 71 "2014-12-05T15:15:00Z"]
+              [6 14 "2014-11-06T16:15:00Z"]]
+               (mt/rows @(def ppp (qp/process-query query)))))))))
+
+(deftest aggregation-with-expression-using-one-metric-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (t2.with-temp/with-temp
+      [:model/Metric
+       {metric-id :id}
+       {:name "venues_count"
+        :description "x"
+        :definition (mt/$ids venues {:source-table $$venues
+                                     :aggregation [[:count]]})}]
+      (testing ""
+        (let [query @(def qqq (mt/mbql-query venues
+                                {:aggregation [[:aggregation-options
+                                                [:sum [:+ [:metric metric-id] [:metric metric-id]]]
+                                                {:name "m+m"
+                                                 :display-name "M + M"}]]
+                                 :breakout [$category_id]
+                                 :order-by [[:desc [:aggregation 0]]]
+                                 :limit 5}))
+              _ @(def prep (qp/preprocess query))]
+          (is (= nil 
+                 (mt/rows @(def post (qp/process-query qqq))))))))))

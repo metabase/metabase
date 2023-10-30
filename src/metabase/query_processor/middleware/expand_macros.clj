@@ -341,7 +341,8 @@
    to name aggregation in [[metrics-query]]."
   [{:keys [aggregation]} :- mbql.s/MBQLQuery {:keys [id] :as _metric-info} :- MetricInfo]
   (mbql.u/match-one aggregation
-    [:aggregation-options [:metric examined-id] (opts :guard #(contains? % :display-name))]
+    [:aggregation-options [:metric examined-id] (opts :guard (every-pred #(contains? % :display-name)
+                                                                         #_#(not(contains? % ::metric))))]
     (when (= id examined-id)
       (:display-name opts))))
 
@@ -350,6 +351,9 @@
 (mu/defn ^:private metric-info->aggregation :- mbql.s/Aggregation
   [query :- mbql.s/MBQLQuery
    {{[ag] :aggregation} :definition id :id metric-name :name :as metric-info} :- MetricInfo]
+  ;;;; TODO: aggregations that are transformed to fields should use display name of containing aggregation
+  ;;;;       as field name!
+  ;;;;       otherwise it does not matter...
   (let [top-display-name (top-display-name query metric-info)]
     (-> (mbql.u/match-one ag
           [:aggregation-options _ (opts :guard :display-name)]
@@ -405,7 +409,9 @@
   [{base-type :base_type
     name :name
     display-name :display_name}]
-  [:field (or name display-name) {:base-type base-type}])
+  #_[:field (or name display-name) {:base-type base-type}]
+  (update [:field (or name display-name) {:base-type base-type}] 2
+            m/assoc-some :display-name display-name))
 
 (defn- clause-with-metric-opt? [form]
   (and (vector? form)
@@ -434,6 +440,7 @@
                                       (mbql.u/update-field-options assoc :join-alias join-alias))])]
     ;;;; TODO: Using [:= 1 1] as condition is problematic. Hence changed to [:= [:+ 1 1] 2]. [:= 1 1] is changed 
     ;;;;       to [:= [:field 1 nil] 1] during preprocess and main cultprit is some middleware. Investigate!
+    ;;;; TODO: condp -> case?
     (condp = (count conditions)
       0 [:= [:+ 1 1] 2]
       1 (first conditions)
@@ -640,6 +647,18 @@
        :source-metadata metadatas})
     inner-query))
 
+;;;; TODO: add test!
+(defn- remove-metrics-internals [query]
+  (walk/postwalk
+   (fn [form]
+     (if (map? form)
+       (dissoc form ::metric ::metric-id->field ::ordered-clauses-for-fields)
+       form))
+   query))
+
+;;;; TODO: Add something like `remove-metric-internals`. That's necessary because if there are some metrics
+;;;;       expanded in deeper levels of query either in joins or source query, no wrapping occurs and queries
+;;;;       are left with ::ordered-clauses-for-fields set.
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
   "Expand metric macros. Expects expanded segments. If query contained metrics and expansion occured, query is wrapped
@@ -656,7 +675,8 @@
                          (and (some? source-table) (nil? condition))
                          expand-metrics*))
                      inner-query))
-      (update :query maybe-wrap-in-ordering-query)))
+      (update :query maybe-wrap-in-ordering-query)
+      (update :query remove-metrics-internals)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIDDLEWARE                                                   |
