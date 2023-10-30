@@ -577,7 +577,7 @@
                                             :cache_ttl      1234
                                             :last-edit-info {:timestamp true     :id    true :first_name "Rasta"
                                                              :last_name "Toucan" :email "rasta@metabase.com"}
-                                            :collection     false
+                                            :collection     true
                                             :collection_id  true})
                  (dashboard-response
                   (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
@@ -630,7 +630,7 @@
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
-                                            :collection              false
+                                            :collection              true
                                             :collection_id           true
                                             :caveats                 ""
                                             :points_of_interest      ""

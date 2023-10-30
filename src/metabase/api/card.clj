@@ -780,7 +780,8 @@ saved later when it is ready."
                  :can_write
                  :average_query_time
                  :last_query_start
-                 :collection [:moderation_reviews :moderator_details])
+                 [:collection :is_personal]
+                 [:moderation_reviews :moderator_details])
         (cond-> ;; card
           (:dataset card) (t2/hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
