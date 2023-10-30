@@ -34,7 +34,17 @@
         "null"
       ],
       "items": {
+        "description": "An entity type (card, question, dashboard, etc.)",
         "type": "string",
+        "enum": [
+          "dashboard",
+          "card",
+          "dataset",
+          "collection",
+          "database",
+          "table",
+          "action"
+        ],
         "maxLength": 1024
       }
     },

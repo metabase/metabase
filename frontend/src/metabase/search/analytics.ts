@@ -13,11 +13,9 @@ function getContentType(
   return null;
 }
 
-export const trackSearchEvents = ({
-  searchFilters,
-}: {
-  searchFilters: URLSearchFilterQueryParams;
-}) => {
+export const trackSearchEvents = (
+  searchFilters: URLSearchFilterQueryParams,
+) => {
   const filterBooleanPayload: Record<
     string,
     boolean | SearchQueryParamValue[] | null
