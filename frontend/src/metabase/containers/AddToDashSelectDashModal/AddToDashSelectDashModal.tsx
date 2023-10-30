@@ -17,7 +17,10 @@ import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/
 import { useSelector } from "metabase/lib/redux";
 import Collections from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
-import { useCollectionId, useMostRecentlyViewedDashboard } from "./hooks";
+import {
+  useInitialOpenCollectionId,
+  useMostRecentlyViewedDashboard,
+} from "./hooks";
 
 function mapStateToProps(state: State) {
   return {
@@ -45,15 +48,15 @@ const AddToDashSelectDashModal = ({
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
   const isQuestionInPersonalCollection = Boolean(card.collection?.is_personal);
-  const collectionId = useCollectionId({
+  const initialOpenCollectionId = useInitialOpenCollectionId({
     isQuestionInPersonalCollection,
     mostRecentlyViewedDashboard,
   });
   // when collectionId is null and loading is completed, show root collection
   // as user didn't visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
-    id: collectionId,
-    enabled: collectionId !== undefined,
+    id: initialOpenCollectionId,
+    enabled: initialOpenCollectionId !== undefined,
   });
 
   const [openCollectionId, setOpenCollectionId] = useState<
@@ -117,7 +120,7 @@ const AddToDashSelectDashModal = ({
         onOpenCollectionChange={setOpenCollectionId}
         showOnlyPersonalCollections={isQuestionInPersonalCollection}
         onChange={onDashboardSelected}
-        collectionId={collectionId}
+        collectionId={initialOpenCollectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}
       />
       {!hideCreateNewDashboardOption && (

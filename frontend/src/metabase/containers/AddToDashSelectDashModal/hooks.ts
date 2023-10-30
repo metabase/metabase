@@ -19,15 +19,15 @@ export const useMostRecentlyViewedDashboard = () => {
   return { data, isLoading, error };
 };
 
-interface UseCollectionIdProps {
+interface UseInitialOpenCollectionIdProps {
   isQuestionInPersonalCollection: boolean;
   mostRecentlyViewedDashboard: Dashboard | undefined;
 }
 
-export const useCollectionId = ({
+export const useInitialOpenCollectionId = ({
   isQuestionInPersonalCollection,
   mostRecentlyViewedDashboard,
-}: UseCollectionIdProps): undefined | CollectionId => {
+}: UseInitialOpenCollectionIdProps): undefined | CollectionId => {
   if (!mostRecentlyViewedDashboard) {
     return undefined;
   }
