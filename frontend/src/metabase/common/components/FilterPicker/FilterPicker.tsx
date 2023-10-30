@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 
 import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -42,7 +43,7 @@ const MIN_WIDTH = 300;
 export function FilterPicker({
   query,
   stageIndex,
-  filter,
+  filter: initialFilter,
   filterIndex,
   legacyQuery,
   legacyFilter,
@@ -50,12 +51,11 @@ export function FilterPicker({
   onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
-  const initialColumn = useMemo(
-    () => getInitialColumn(query, stageIndex, filter),
-    [query, stageIndex, filter],
-  );
+  const [filter, setFilter] = useState(initialFilter);
 
-  const [column, setColumn] = useState(initialColumn);
+  const [column, setColumn] = useState(
+    getInitialColumn(query, stageIndex, filter),
+  );
 
   const [
     isEditingExpression,
@@ -64,9 +64,23 @@ export function FilterPicker({
     isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
   );
 
+  const isNewFilter = !initialFilter;
+  const previousFilter = usePrevious(initialFilter);
+
+  useEffect(() => {
+    if (previousFilter !== initialFilter) {
+      setFilter(initialFilter);
+    }
+  }, [previousFilter, initialFilter]);
+
   const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
     onClose?.();
+  };
+
+  const handleColumnSelect = (column: Lib.ColumnMetadata) => {
+    setColumn(column);
+    setFilter(undefined);
   };
 
   const checkItemIsSelected = useCallback(
@@ -113,7 +127,7 @@ export function FilterPicker({
           query={query}
           stageIndex={stageIndex}
           checkItemIsSelected={checkItemIsSelected}
-          onColumnSelect={setColumn}
+          onColumnSelect={handleColumnSelect}
           onSegmentSelect={handleChange}
           onExpressionSelect={openExpressionEditor}
         />
@@ -124,18 +138,14 @@ export function FilterPicker({
   const FilterWidget = getFilterWidget(column);
 
   if (FilterWidget) {
-    const isSameColumn =
-      initialColumn &&
-      Lib.isSameColumn(query, stageIndex, initialColumn, column);
-
     return (
       <Box miw={MIN_WIDTH}>
         <FilterWidget
           query={query}
           stageIndex={stageIndex}
           column={column}
-          filter={isSameColumn ? filter : undefined}
-          isNew={!filter}
+          filter={filter}
+          isNew={isNewFilter}
           onChange={handleChange}
           onBack={() => setColumn(undefined)}
         />
