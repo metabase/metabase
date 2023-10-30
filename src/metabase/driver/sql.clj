@@ -8,6 +8,7 @@
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util.schema :as su]
    [potemkin :as p]
@@ -40,6 +41,10 @@
 (defmethod driver/mbql->native :sql
   [driver query]
   (sql.qp/mbql->native driver query))
+
+(defmethod driver/prettify-native-form :sql
+  [driver native-form]
+  (sql.u/format-sql-and-fix-params driver native-form))
 
 (s/defmethod driver/substitute-native-parameters :sql
   [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]
