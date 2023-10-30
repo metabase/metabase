@@ -7,7 +7,7 @@ import type {
 export const isFieldFilterUiParameter = (
   parameter: UiParameter,
 ): parameter is FieldFilterUiParameter => {
-  return "fields" in parameter && parameter.fields != null;
+  return "fields" in parameter && Array.isArray(parameter.fields);
 };
 
 export const hasFields = (parameter: UiParameter): boolean => {
