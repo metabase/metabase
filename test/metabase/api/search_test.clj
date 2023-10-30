@@ -13,6 +13,7 @@
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.model-index :as model-index]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
@@ -157,7 +158,8 @@
                    Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
                                                      :dataset true)
                    Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
-                   Metric      metric         (data-map "metric %s metric")
+                   Metric      metric         (assoc (data-map "metric %s metric")
+                                                     :table_id (mt/id :checkins))
                    Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
@@ -369,6 +371,22 @@
                    DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       (is (= dashboard-count-results
              (set (unsorted-search-request-data :rasta :q "dashboard-count")))))))
+
+(deftest moderated-status-test
+  (let [search-term "moderated-status-test"]
+    (mt/with-temp [:model/Card {card-id :id} {:name "moderated-status-test"}]
+      ;; an item could have multiple moderation-review, and it's current status is defined as
+      ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
+      ;; test result return the most recent status and don't duplicate the result
+      (doseq [status ["verified" nil "verified"]]
+        (moderation-review/create-review! {:moderated_item_id   card-id
+                                           :moderated_item_type "card"
+                                           :moderator_id        (mt/user->id :crowberto)
+                                           :status              status}))
+      (is (=? [{:id               card-id
+                :model            "card"
+                :moderated_status "verified"}]
+              (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
@@ -582,7 +600,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard 2"})
                      Collection  _ (archived {:name "collection test collection 2"})
-                     Metric      _ (archived {:name "metric test metric 2"})
+                     Metric      _ (archived {:name     "metric test metric 2"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test"))))))
@@ -602,7 +621,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name "metric test metric"})
+                     Metric      _ (archived {:name     "metric test metric"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true"))))))
@@ -618,7 +638,8 @@
                      Card        _ (archived {:name "dataset test dataset" :dataset true})
                      Dashboard   _ (archived {:name "dashboard test dashboard"})
                      Collection  _ (archived {:name "collection test collection"})
-                     Metric      _ (archived {:name "metric test metric"})
+                     Metric      _ (archived {:name     "metric test metric"
+                                              :table_id (mt/id :checkins)})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (ordered-subset? (default-archived-results)
                              (search-request-data :crowberto :archived "true")))))))
@@ -907,8 +928,8 @@
        :model/Card       {lucky-model-id :id}  {:name search-term :dataset true}
        :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
        :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
-       :model/Metric     {rasta-metric-id :id} {:name search-term}
-       :model/Metric     {lucky-metric-id :id} {:name search-term}]
+       :model/Metric     {rasta-metric-id :id} {:name search-term :table_id (mt/id :checkins)}
+       :model/Metric     {lucky-metric-id :id} {:name search-term :table_id (mt/id :checkins)}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
@@ -1046,7 +1067,7 @@
       [:model/Card       {card-id :id}   {:name search-term}
        :model/Card       {model-id :id}  {:name search-term :dataset true}
        :model/Dashboard  {dash-id :id}   {:name search-term}
-       :model/Metric     {metric-id :id} {:name search-term}
+       :model/Metric     {metric-id :id} {:name search-term :table_id (mt/id :checkins)}
        :model/Action     {action-id :id} {:name       search-term
                                           :model_id   model-id
                                           :type       :http}]
@@ -1137,7 +1158,8 @@
          :model/Segment    {_segment-new :id} {:name       search-term
                                                :created_at new}
          :model/Metric     {_metric-new :id}  {:name       search-term
-                                               :created_at new}]
+                                               :created_at new
+                                               :table_id (mt/id :checkins)}]
         ;; with clock doesn't work if calling via API, so we call the search function directly
         (let [test-search (fn [created-at expected]
                            (testing (format "searching with created-at = %s" created-at)
@@ -1194,8 +1216,8 @@
                                                 :dataset    true}
          :model/Card       {model-old :id}     {:name       search-term
                                                 :dataset    true}
-         :model/Metric     {metric-new :id}    {:name       search-term}
-         :model/Metric     {metric-old :id}    {:name       search-term}
+         :model/Metric     {metric-new :id}    {:name       search-term :table_id (mt/id :checkins)}
+         :model/Metric     {metric-old :id}    {:name       search-term :table_id (mt/id :checkins)}
          :model/Action     {action-new :id}    {:name       search-term
                                                 :model_id   model-new
                                                 :type       :http
