@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Divider, Group, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,7 +26,13 @@ export function BooleanFilterPicker({
   );
 
   const options = useMemo(
-    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+    () =>
+      getAvailableOperatorOptions(
+        query,
+        stageIndex,
+        column,
+        _.indexBy(OPTIONS, "operator"),
+      ),
     [query, stageIndex, column],
   );
 

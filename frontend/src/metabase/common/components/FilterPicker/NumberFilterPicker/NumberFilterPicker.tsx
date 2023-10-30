@@ -11,7 +11,7 @@ import { ColumnValuesWidget } from "../ColumnValuesWidget";
 import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { OPERATOR_OPTIONS, OPERATOR_OPTIONS_MAP } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
 
 export function NumberFilterPicker({
@@ -40,7 +40,7 @@ export function NumberFilterPicker({
 
   const [values, setValues] = useState(filterParts?.values ?? []);
 
-  const { valueCount = 0 } = OPERATOR_OPTIONS_MAP[operatorName] ?? {};
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -50,7 +50,7 @@ export function NumberFilterPicker({
   const handleOperatorChange = (
     nextOperatorName: Lib.NumberFilterOperatorName,
   ) => {
-    const nextOption = OPERATOR_OPTIONS_MAP[nextOperatorName];
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
     const nextValues = values.slice(0, nextOption.valueCount);
     setOperatorName(nextOperatorName);
     setValues(nextValues);

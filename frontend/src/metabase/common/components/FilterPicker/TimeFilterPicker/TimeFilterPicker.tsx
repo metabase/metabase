@@ -12,7 +12,7 @@ import { Header } from "../Header";
 import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-import { OPERATOR_OPTIONS, OPERATOR_OPTIONS_MAP } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import {
   getDefaultValue,
   getDefaultValuesForOperator,
@@ -49,7 +49,7 @@ export function TimeFilterPicker({
     filterParts?.values ?? getDefaultValuesForOperator(operatorName),
   );
 
-  const { valueCount = 0 } = OPERATOR_OPTIONS_MAP[operatorName] ?? {};
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -59,7 +59,7 @@ export function TimeFilterPicker({
   const handleOperatorChange = (
     nextOperatorName: Lib.TimeFilterOperatorName,
   ) => {
-    const nextOption = OPERATOR_OPTIONS_MAP[nextOperatorName];
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
     const nextValues = getNextValues(values, nextOption.valueCount);
     setOperatorName(nextOperatorName);
     setValues(nextValues);

@@ -13,7 +13,7 @@ import { Footer } from "../Footer";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
-import { OPERATOR_OPTIONS, OPERATOR_OPTIONS_MAP } from "./constants";
+import { OPERATOR_OPTIONS } from "./constants";
 import { isFilterValid } from "./utils";
 
 export function StringFilterPicker({
@@ -44,7 +44,7 @@ export function StringFilterPicker({
   const [options, setOptions] = useState(filterParts?.options ?? {});
 
   const { valueCount = 0, hasCaseSensitiveOption = false } =
-    OPERATOR_OPTIONS_MAP[operatorName] ?? {};
+    OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -54,7 +54,7 @@ export function StringFilterPicker({
   const handleOperatorChange = (
     nextOperatorName: Lib.StringFilterOperatorName,
   ) => {
-    const nextOption = OPERATOR_OPTIONS_MAP[nextOperatorName];
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName] ?? {};
 
     const nextValues = values.slice(0, nextOption.valueCount);
     const nextOptions = nextOption.hasCaseSensitiveOption ? options : {};
