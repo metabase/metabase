@@ -5,6 +5,7 @@ import type {
   ClickBehavior,
   Dashboard,
   DashboardCard,
+  DatasetColumn,
   DatetimeUnit,
   Parameter,
   ParameterType,
@@ -29,6 +30,24 @@ import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
+
+interface SourceFilters {
+  column: (column: DatasetColumn) => boolean;
+  parameter: (parameter: Parameter) => boolean;
+  userAttribute: (userAttribute: string) => boolean;
+}
+
+interface ParameterTarget {
+  type: "parameter";
+  id: Parameter["id"];
+}
+
+interface Target {
+  id: Parameter["id"];
+  name: Parameter["name"];
+  target: ParameterTarget;
+  sourceFilters: SourceFilters;
+}
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug = {}, userAttributes } = {},
@@ -152,25 +171,6 @@ export function getTargetsForQuestion(question: Question): Target[] {
     };
   });
 }
-
-interface SourceFilters {
-  column: (column: Column) => boolean;
-  parameter: (parameter: Parameter) => boolean;
-  userAttribute: (userAttribute) => boolean;
-}
-
-interface ParameterTarget {
-  type: "parameter";
-  id: Parameter["id"];
-}
-
-interface Target {
-  id: Parameter["id"];
-  name: Parameter["name"];
-  target: ParameterTarget;
-  sourceFilters: SourceFilters;
-}
-
 export function getTargetsForDashboard(
   dashboard: Dashboard,
   dashcard: DashboardCard,
