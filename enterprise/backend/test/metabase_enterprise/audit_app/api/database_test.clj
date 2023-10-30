@@ -14,7 +14,8 @@
       (testing "Neither admin nor regular users can modify the audit database"
         (doseq [[verb path] [[:post "database/%d/unpersist"]
                              [:put "database/%d"]
-                             [:get "database/%d/syncable_schemas"]]
+                             [:get "database/%d/syncable_schemas"]
+                             [:delete "database/%d"]]
                 user [:crowberto :lucky]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request user verb 403 (format path (perms/default-audit-db-id))))))))))

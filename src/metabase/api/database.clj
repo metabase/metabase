@@ -963,10 +963,10 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (api/let-404 [db (t2/select-one Database :id id)]
+    (api/check-403 (mi/can-write? db))
     (t2/delete! Database :id id)
     (events/publish-event! :event/database-delete db))
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------
 
