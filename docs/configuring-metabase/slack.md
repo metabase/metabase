@@ -6,7 +6,7 @@ redirect_from:
 
 # Slack
 
-If you want to have your [Dashboard subscriptions](../dashboards/subscriptions.md) or [alerts](../questions/sharing/alerts.md) sent to Slack channels (or people on Slack), an admin must first integrate your Metabase with Slack.
+If you want to have your [dashboard subscriptions](../dashboards/subscriptions.md) or [alerts](../questions/sharing/alerts.md) sent to Slack channels (or people on Slack), an admin must first integrate your Metabase with Slack.
 
 ## Create your Slack App
 
@@ -76,6 +76,14 @@ In your Slack workspace, create a public channel named whatever you want — we 
 ## Save your changes in Metabase
 
 In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token and your dedicated Slack channel are working properly. If something goes wrong, it'll give you an error message.
+
+## Sending alerts and subscriptions to private Slack channels
+
+In order to send subscriptions and alerts to private Slack channels, you must first add the Metabase app to the private channel. 
+
+In Slack, go to the private channel and mention the Metabase app. For example, if you called your Slack app "Metabase", you'd just type `@Metabase`. Slack will ask you if you want to invite your app to your channel, which you should.
+
+Once your Metabase app is added to the private channel, you'll need to type out the private channel's name in the subscription or alert. Make sure to spell the channel's name correctly, or Metabase won't be able to send the notification.
 
 ## Further reading
 

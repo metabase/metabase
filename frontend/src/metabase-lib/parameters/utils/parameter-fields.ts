@@ -7,7 +7,11 @@ import type {
 export const hasFields = (
   parameter: UiParameter,
 ): parameter is FieldFilterUiParameter => {
-  return (parameter as FieldFilterUiParameter).fields != null;
+  return (
+    "fields" in parameter &&
+    Array.isArray(parameter.fields) &&
+    parameter.fields.length > 0
+  );
 };
 
 export const getFields = (parameter: UiParameter): Field[] => {
