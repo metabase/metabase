@@ -1,6 +1,7 @@
 create or replace view v_users as
 select
     id as user_id,
+    concat('user_', id) as entity_qualified_id,
     email,
     first_name,
     last_name,
