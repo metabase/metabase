@@ -28,12 +28,12 @@ const MODEL_NAME: Record<EnabledSearchModelType, string> = {
 };
 
 const TEST_TYPES: Array<EnabledSearchModelType> = [
-  "collection",
   "dashboard",
   "card",
+  "dataset",
+  "collection",
   "database",
   "table",
-  "dataset",
   "action",
 ];
 
@@ -102,15 +102,23 @@ const setup = async ({
 const getCheckboxes = () => {
   return within(screen.getByTestId("type-filter-checkbox-group")).getAllByRole(
     "checkbox",
-    {},
   ) as HTMLInputElement[];
 };
 describe("TypeFilterContent", () => {
-  it("should display `Type` and all type labels", async () => {
+  it("should display `Type` and all type labels in order", async () => {
     await setup();
-    for (const entityType of TEST_TYPES) {
-      expect(screen.getByText(MODEL_NAME[entityType])).toBeInTheDocument();
-    }
+
+    const typeFilterElements = screen.getAllByTestId("type-filter-checkbox");
+    TEST_TYPES.forEach((type, index) => {
+      const checkboxWrapper = within(typeFilterElements[index]);
+      const checkboxValue = checkboxWrapper
+        .getByRole("checkbox")
+        .getAttribute("value");
+      expect(checkboxValue).toEqual(type);
+      expect(
+        checkboxWrapper.getByLabelText(MODEL_NAME[type]),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should only display available types", async () => {
@@ -146,10 +154,10 @@ describe("TypeFilterContent", () => {
 
     for (let i = 0; i < options.length; i++) {
       userEvent.click(options[i]);
-      expect(onChangeFilters).toHaveReturnedTimes(i + 1);
     }
 
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPES.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith(TEST_TYPES);
   });
 
@@ -161,8 +169,8 @@ describe("TypeFilterContent", () => {
     for (const checkedOption of checkedOptions) {
       userEvent.click(checkedOption);
     }
-
-    expect(onChangeFilters).toHaveReturnedTimes(TEST_TYPE_SUBSET.length);
+    userEvent.click(screen.getByText("Apply"));
+    expect(onChangeFilters).toHaveReturnedTimes(1);
     expect(onChangeFilters).toHaveBeenLastCalledWith([]);
   });
 });

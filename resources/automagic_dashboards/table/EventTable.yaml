@@ -26,12 +26,16 @@ filters:
 groups:
   - Overview:
       title: Overview
+      score: 90
   - Periodicity:
       title: Events over time
+      score: 60
   - Geographical:
       title: Where these events are happening
+      score: 70
   - General:
       title: Events by different categories
+      score: 80
 dashboard_filters:
 - Timestamp
 - GenericCategoryMedium

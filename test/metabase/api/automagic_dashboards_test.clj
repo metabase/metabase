@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.automagic-dashboards :as api.magic]
-   [metabase.automagic-dashboards.core :as magic]
+   [metabase.automagic-dashboards.util :as magic.util]
    [metabase.models :refer [Card Collection Dashboard Metric ModelIndex
                             ModelIndexValue Segment]]
    [metabase.models.model-index :as model-index]
@@ -116,7 +116,7 @@
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+    (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -146,7 +146,7 @@
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
   even though the underlying API will assert that dataset is true and the returned dashboard will be different."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
         (doseq [test-fn
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
@@ -173,10 +173,10 @@
             (test-fn collection-id card-id)))))))
 
 (deftest adhoc-query-xray-test
-  (let [query (#'magic/encode-base64-json
+  (let [query (magic.util/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
-        cell-query (#'magic/encode-base64-json
+        cell-query (magic.util/encode-base64-json
                     [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call "adhoc/%s" [query]))))
@@ -212,9 +212,9 @@
            (api-call "adhoc/%s/cell/%s/compare/segment/%s"
                      [(->> (mt/mbql-query venues
                              {:filter [:> $price 10]})
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       (->> [:= [:field (mt/id :venues :price) nil] 15]
-                           (#'magic/encode-base64-json))
+                           (magic.util/encode-base64-json))
                       segment-id]))))))
 
 (deftest compare-nested-query-test
@@ -235,12 +235,12 @@
                 cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
             (testing "X-Ray"
               (is (some? (api-call "adhoc/%s/cell/%s"
-                                   (map #'magic/encode-base64-json [query cell-query])
+                                   (map magic.util/encode-base64-json [query cell-query])
                                    #(revoke-collection-permissions! collection-id)))))
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
             (testing "Compare"
               (is (some? (api-call "adhoc/%s/cell/%s/compare/table/%s"
-                                   (concat (map #'magic/encode-base64-json [query cell-query])
+                                   (concat (map magic.util/encode-base64-json [query cell-query])
                                            [(format "card__%d" card-id)])
                                    #(revoke-collection-permissions! collection-id)))))))))))
 

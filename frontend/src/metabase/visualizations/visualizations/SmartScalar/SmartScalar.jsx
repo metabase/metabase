@@ -3,18 +3,20 @@ import { Component } from "react";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
+import {
+  formatDateTimeRangeWithUnit,
+  formatValue,
+} from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-
 import ScalarValue, {
   ScalarWrapper,
-  ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 import * as Lib from "metabase-lib";
 import {
@@ -22,32 +24,52 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
+import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
 import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 
-import { ICON_SIZE, TOOLTIP_ICON_SIZE } from "./constants";
+import {
+  DASHCARD_HEADER_HEIGHT,
+  ICON_SIZE,
+  TOOLTIP_ICON_SIZE,
+} from "./constants";
 import {
   PreviousValue,
   PreviousValueContainer,
   PreviousValueSeparator,
   PreviousValueWrapper,
+  PreviousValueLabel,
   Separator,
   Variation,
   VariationIcon,
   VariationTooltip,
   VariationValue,
+  ScalarPeriodContent,
 } from "./SmartScalar.styled";
 import {
   formatChange,
   formatChangeAutoPrecision,
-  getCanShowPreviousValue,
+  getFittedPreviousValue,
   getChangeWidth,
-  getTitleLinesCount,
   getValueHeight,
   getValueWidth,
+  getIsPeriodVisible,
 } from "./utils";
+
+const ScalarPeriod = ({ lines = 2, period, onClick }) => (
+  <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
+    <ScalarPeriodContent
+      className="fullscreen-normal-text fullscreen-night-text"
+      onClick={onClick}
+    >
+      <Ellipsified tooltip={period} lines={lines} placement="bottom">
+        {period}
+      </Ellipsified>
+    </ScalarPeriodContent>
+  </ScalarTitleContainer>
+);
 
 export class SmartScalar extends Component {
   static uiName = t`Trend`;
@@ -57,8 +79,6 @@ export class SmartScalar extends Component {
 
   static minSize = getMinSize("smartscalar");
   static defaultSize = getDefaultSize("smartscalar");
-
-  static noHeader = true;
 
   static settings = {
     ...fieldSetting("scalar.field", {
@@ -118,15 +138,12 @@ export class SmartScalar extends Component {
 
   render() {
     const {
-      actionButtons,
-      onChangeCardAndRun,
       onVisualizationClick,
       isDashboard,
       settings,
       visualizationIsClickable,
       series: [
         {
-          card,
           data: { rows, cols },
         },
       ],
@@ -137,6 +154,8 @@ export class SmartScalar extends Component {
       totalNumGridCols,
       fontFamily,
     } = this.props;
+
+    const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
 
     const metricIndex = cols.findIndex(
       col => col.name === settings["scalar.field"],
@@ -153,6 +172,11 @@ export class SmartScalar extends Component {
     if (!insight) {
       return null;
     }
+    const { unit } = insight;
+    const lastDate = lastRow[dimensionIndex];
+    const lastPeriod = formatDateTimeRangeWithUnit([lastDate], unit, {
+      compact: true,
+    });
 
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
@@ -176,7 +200,8 @@ export class SmartScalar extends Component {
       ? color("error")
       : color("success");
 
-    const titleLinesCount = getTitleLinesCount(height);
+    const isPeriodVisible = getIsPeriodVisible(innerHeight);
+    const valueHeight = getValueHeight(innerHeight);
 
     const changeDisplay = formatChangeAutoPrecision(lastChange, {
       fontFamily,
@@ -188,23 +213,33 @@ export class SmartScalar extends Component {
     const previousValueSeparator = (
       <PreviousValueSeparator>•</PreviousValueSeparator>
     );
-    const granularityDisplay = jt`last ${granularity}`;
-    const previousValueDisplay = formatValue(
-      previousValue,
-      settings.column(column),
+    const granularityDisplay = jt`previous ${granularity}`;
+    const previousValueDisplay = (
+      <PreviousValueLabel>
+        {formatValue(previousValue, formatOptions)}
+      </PreviousValueLabel>
+    );
+    const previousValueDisplayCompact = (
+      <PreviousValueLabel>
+        {formatValue(previousValue, {
+          ...formatOptions,
+          compact: true,
+        })}
+      </PreviousValueLabel>
     );
 
-    const previousValueDisplayInTooltip = jt`${tooltipSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
-    const previousValueDisplayInCard = jt`${previousValueSeparator} was ${previousValueDisplay} ${granularityDisplay}`;
-    const canShowPreviousValue = getCanShowPreviousValue({
-      width,
-      change: changeDisplay,
-      previousValue:
-        typeof previousValueDisplayInTooltip === "string"
-          ? previousValueDisplayInTooltip
-          : previousValueDisplayInTooltip.join(""),
-      fontFamily,
-    });
+    const previousValueDisplayInTooltip = jt`${tooltipSeparator} vs. ${granularityDisplay}: ${previousValueDisplay}`;
+    const { fittedPreviousValue, isPreviousValueTruncated } =
+      getFittedPreviousValue({
+        width,
+        change: changeDisplay,
+        previousValueCandidates: [
+          jt`${previousValueSeparator} vs. ${granularityDisplay}: ${previousValueDisplay}`,
+          jt`${previousValueSeparator} vs. ${granularityDisplay}: ${previousValueDisplayCompact}`,
+          jt`${previousValueSeparator} vs. ${granularityDisplay}`,
+        ],
+        fontFamily,
+      });
     const iconName = isNegative ? "arrow_down" : "arrow_up";
 
     const clicked = {
@@ -227,9 +262,6 @@ export class SmartScalar extends Component {
 
     return (
       <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
-          {actionButtons}
-        </div>
         <ScalarContainer
           className="fullscreen-normal-text fullscreen-night-text"
           data-testid="scalar-container"
@@ -249,24 +281,14 @@ export class SmartScalar extends Component {
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}
-              height={getValueHeight(height, canShowPreviousValue)}
+              height={valueHeight}
               totalNumGridCols={totalNumGridCols}
               value={displayValue}
               width={getValueWidth(width)}
             />
           </span>
         </ScalarContainer>
-        {isDashboard && (
-          <ScalarTitle
-            lines={titleLinesCount}
-            title={settings["card.title"]}
-            description={settings["card.description"]}
-            onClick={
-              onChangeCardAndRun &&
-              (() => onChangeCardAndRun({ nextCard: card }))
-            }
-          />
-        )}
+        {isPeriodVisible && <ScalarPeriod lines={1} period={lastPeriod} />}
 
         <PreviousValueWrapper data-testid="scalar-previous-value">
           {lastChange == null || previousValue == null ? (
@@ -277,37 +299,37 @@ export class SmartScalar extends Component {
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <PreviousValueContainer>
-              <Tooltip
-                isEnabled={!canShowPreviousValue}
-                placement="bottom"
-                tooltip={
-                  <VariationTooltip>
-                    <Variation>
-                      <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
-                      <VariationValue showTooltip={false}>
-                        {formatChange(lastChange)}
-                      </VariationValue>
-                    </Variation>
+            <Tooltip
+              isEnabled={isPreviousValueTruncated}
+              placement="bottom"
+              tooltip={
+                <VariationTooltip>
+                  <Variation color={changeColor}>
+                    <VariationIcon name={iconName} size={TOOLTIP_ICON_SIZE} />
+                    <VariationValue showTooltip={false}>
+                      {formatChange(lastChange)}
+                    </VariationValue>
+                  </Variation>
 
-                    {previousValueDisplayInTooltip}
-                  </VariationTooltip>
-                }
-              >
+                  {previousValueDisplayInTooltip}
+                </VariationTooltip>
+              }
+            >
+              <PreviousValueContainer>
                 <Variation color={changeColor}>
                   <VariationIcon name={iconName} size={ICON_SIZE} />
                   <VariationValue showTooltip={false}>
                     {changeDisplay}
                   </VariationValue>
                 </Variation>
-              </Tooltip>
 
-              {canShowPreviousValue && (
-                <PreviousValue id="SmartScalar-PreviousValue" responsive>
-                  {previousValueDisplayInCard}
-                </PreviousValue>
-              )}
-            </PreviousValueContainer>
+                {fittedPreviousValue && (
+                  <PreviousValue id="SmartScalar-PreviousValue" responsive>
+                    {fittedPreviousValue}
+                  </PreviousValue>
+                )}
+              </PreviousValueContainer>
+            </Tooltip>
           )}
         </PreviousValueWrapper>
       </ScalarWrapper>

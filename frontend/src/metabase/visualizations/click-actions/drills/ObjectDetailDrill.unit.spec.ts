@@ -9,7 +9,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type {
   QuestionChangeClickAction,
   ReduxClickAction,

@@ -18,7 +18,7 @@ describe("scenarios > models > create", () => {
 
     // Cancel creation with confirmation modal
     cy.findByTestId("dataset-edit-bar").button("Cancel").click();
-    modal().button("Leave anyway").click();
+    modal().button("Discard changes").click();
 
     // Now we will create a model
     navigateToNewModelPage();

@@ -8,7 +8,7 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import Fields from "metabase/entities/fields";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
