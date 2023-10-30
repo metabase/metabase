@@ -34,9 +34,17 @@
                        [:object   [:fn #(t2/instance-of? :model/Card %)]]])]
   (def ^:private card-events-schemas
     {:event/card-create default-schema
+     :event/card-read   default-schema
      :event/card-update default-schema
      :event/card-delete default-schema
-     :event/card-read   default-schema}))
+     :event/card-query  [:map {:closed true}
+                         [:user-id [:maybe pos-int?]]
+                         [:object  [:map
+                                    [:id                            pos-int?]
+                                    [:cached       {:optional true} :any]
+                                    [:context      {:optional true} :any]
+                                    [:ignore_cache {:optional true} :any]]]]}))
+
 
 ;; user events
 

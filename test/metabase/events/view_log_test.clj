@@ -34,7 +34,6 @@
 (deftest card-query-test
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
-
     (events/publish-event! :event/card-query {:object (assoc card :cached false :ignore_cache true) :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
