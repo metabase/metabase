@@ -198,6 +198,7 @@ export class Scalar extends Component {
       data: rows[0].map((value, index) => ({ value, col: cols[index] })),
       settings,
     };
+    const isClickable = onVisualizationClick != null;
 
     const showSmallTitle =
       !!settings["card.title"] &&
@@ -207,7 +208,11 @@ export class Scalar extends Component {
     const titleLinesCount = getTitleLinesCount(height);
 
     const handleClick = () => {
-      if (this._scalar && visualizationIsClickable(clicked)) {
+      if (
+        this._scalar &&
+        onVisualizationClick &&
+        visualizationIsClickable(clicked)
+      ) {
         onVisualizationClick({ ...clicked, element: this._scalar });
       }
     };
@@ -222,7 +227,7 @@ export class Scalar extends Component {
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
-          isClickable
+          isClickable={isClickable}
         >
           <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
             <ScalarValue

@@ -126,8 +126,10 @@ export default class FunnelNormal extends Component {
 
     const initial = infos[0];
 
+    const isClickable = onVisualizationClick != null;
+
     const handleClick = e => {
-      if (visualizationIsClickable(infos[0].clicked)) {
+      if (onVisualizationClick && visualizationIsClickable(infos[0].clicked)) {
         onVisualizationClick(e);
       }
     };
@@ -166,7 +168,7 @@ export default class FunnelNormal extends Component {
                 </Ellipsified>
               </Head>
               <GraphSection
-                className="cursor-pointer"
+                className={cx({ "cursor-pointer": isClickable })}
                 index={index}
                 info={info}
                 infos={infos}

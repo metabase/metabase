@@ -258,8 +258,14 @@ export class SmartScalar extends Component {
       settings,
     };
 
+    const isClickable = onVisualizationClick != null;
+
     const handleClick = () => {
-      if (this._scalar && visualizationIsClickable(clicked)) {
+      if (
+        this._scalar &&
+        onVisualizationClick &&
+        visualizationIsClickable(clicked)
+      ) {
         onVisualizationClick({ ...clicked, element: this._scalar });
       }
     };
@@ -271,7 +277,7 @@ export class SmartScalar extends Component {
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
-          isClickable
+          isClickable={isClickable}
         >
           <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
             <ScalarValue
