@@ -5,6 +5,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
+  applySortingVisibilitySettings,
   getCardSeriesModels,
   getDimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/series";
@@ -65,12 +66,14 @@ export const getCartesianChartModel = (
   const cardsColumns = getCardsColumns(rawSeries, settings);
 
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
-  const seriesModels = getCardsSeries(
+  let seriesModels = getCardsSeries(
     rawSeries,
     cardsColumns,
     settings,
     renderingContext,
   );
+  // seriesModels = applySortingVisibilitySettings(seriesModels, settings);
+
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   let dataset = getGroupedData(rawSeries, cardsColumns);
   dataset = replaceValues(

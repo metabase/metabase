@@ -12,9 +12,11 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
+  ComputedVisualizationSettings,
   Formatter,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { isNotNull } from "metabase/core/utils/types";
 
 type SeriesVizSettingsKeyParams = {
   cardName?: string;
@@ -138,4 +140,19 @@ export const getDimensionModel = (
     column: cardColumns[0].dimension.column,
     columnIndex: cardColumns[0].dimension.index,
   };
+};
+
+export const applySortingVisibilitySettings = (
+  seriesModels: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+) => {
+  return (settings["graph.series_order"] ?? [])
+    .map(({ key, enabled }) => {
+      if (!enabled) {
+        return null;
+      }
+
+      return seriesModels.find(seriesModel => seriesModel.dataKey === key);
+    })
+    .filter(isNotNull);
 };

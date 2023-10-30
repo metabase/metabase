@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { Card } from "metabase-types/api";
 
@@ -16,4 +17,58 @@ export const getDefaultStackingValue = (
       (settings["graph.dimensions"] ?? []).length > 1);
 
   return shouldStack ? "stacked" : null;
+};
+
+export const getSeriesOrderVisibilitySettings = (
+  settings: ComputedVisualizationSettings,
+  seriesKeys: string[],
+) => {
+  const seriesSettings = settings["series_settings"];
+  const seriesColors = settings["series_settings.colors"] || {};
+  const seriesOrder = settings["graph.series_order"];
+  // Because this setting is a read dependency of graph.series_order_dimension, this should
+  // Always be the stored setting, not calculated.
+  const seriesOrderDimension = settings["graph.series_order_dimension"];
+  const currentDimension = settings["graph.dimensions"][1];
+
+  if (currentDimension === undefined) {
+    return [];
+  }
+
+  const generateDefault = keys => {
+    return keys.map(key => ({
+      key,
+      color: seriesColors[key],
+      enabled: true,
+      name: seriesSettings[key]?.title || key,
+    }));
+  };
+
+  const removeMissingOrder = (keys, order) =>
+    order.filter(o => keys.includes(o.key));
+  const newKeys = (keys, order) =>
+    keys.filter(key => !order.find(o => o.key === key));
+
+  if (
+    !seriesOrder ||
+    !_.isArray(seriesOrder) ||
+    !seriesOrder.every(
+      order =>
+        order.key !== undefined &&
+        order.name !== undefined &&
+        order.color !== undefined,
+    ) ||
+    seriesOrderDimension !== currentDimension
+  ) {
+    return generateDefault(seriesKeys);
+  }
+
+  return [
+    ...removeMissingOrder(seriesKeys, seriesOrder),
+    ...generateDefault(newKeys(seriesKeys, seriesOrder)),
+  ].map(item => ({
+    ...item,
+    name: seriesSettings[item.key]?.title || item.key,
+    color: seriesColors[item.key],
+  }));
 };
