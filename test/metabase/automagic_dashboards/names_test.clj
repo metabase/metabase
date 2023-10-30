@@ -153,7 +153,7 @@
                  (names/cell-title root
                                    ["=" ["field" %last_login {:temporal-unit :quarter}] "2020"]))))
         ;; This was producing "number of Users where null of Last Login is 2020" originally
-        (testing "Should not contain nulls when temporal-unit is yar"
+        (testing "Should not contain nulls when temporal-unit is year"
           (is (= "number of Users where year of Last Login is 2020"
                  (names/cell-title root
                                    ["=" ["field" %last_login {:temporal-unit :year}] "2020"]))))))))
