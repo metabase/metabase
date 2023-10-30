@@ -653,7 +653,7 @@
                         :model_id (u/the-id alert)
                         :details  {:archived     false
                                    :name         "My question"
-                                   :dashboard_id nil
+                                   :card_id      (u/the-id card)
                                    :parameters   []
                                    :channel      ["email"]
                                    :schedule     ["daily"]
@@ -665,13 +665,13 @@
                         :user_id  (mt/user->id :crowberto)
                         :model    "Card"
                         :model_id (u/the-id alert)
-                        :details  {:archived     true
-                                   :name         "My question"
-                                   :dashboard_id nil
-                                   :parameters   []
-                                   :channel      ["email"]
-                                   :schedule     ["daily"]
-                                   :recipients   [[]]}}
+                        :details  {:archived   true
+                                   :name       "My question"
+                                   :card_id    (u/the-id card)
+                                   :parameters []
+                                   :channel    ["email"]
+                                   :schedule   ["daily"]
+                                   :recipients [[]]}}
                        (audit-log-test/event :alert-update (u/the-id alert)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -401,16 +401,16 @@
                     :user_id     (mt/user->id :rasta)
                     :model       "Card"
                     :model_id    (:id pulse)
-                    :details     {:archived     false
-                                  :name         "card-name"
-                                  :dashboard_id dashboard-id
-                                  :parameters   []
-                                  :channel      ["email" "slack"]
-                                  :schedule     ["daily" "hourly"]
-                                  :recipients   [[{:email "test@metabase.com"}
-                                                  {:id    (mt/user->id :rasta)
-                                                   :email "rasta@metabase.com"}]
-                                                 [{:id (mt/user->id :rasta)}]]}}
+                    :details     {:archived   false
+                                  :name       "card-name"
+                                  :card_id    (:id card)
+                                  :parameters []
+                                  :channel    ["email" "slack"]
+                                  :schedule   ["daily" "hourly"]
+                                  :recipients [[{:email "test@metabase.com"}
+                                                {:id    (mt/user->id :rasta)
+                                                 :email "rasta@metabase.com"}]
+                                               [{:id (mt/user->id :rasta)}]]}}
                    (event "alert-update" (:id pulse))))))))))
 
 (deftest subscription-unsubscribe-event-test
