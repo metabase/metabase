@@ -23,7 +23,7 @@
 ;;;; schemas
 
 (def default-icon
-  "The default icon for Timeline an TimelineEvents."
+  "The default icon for Timeline and TimelineEvents."
   "star")
 
 (def Icon
