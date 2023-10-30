@@ -18,12 +18,12 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
+import Question from "metabase-lib/Question";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
-} from "metabase-lib/parameters/utils/click-behavior";
-import Question from "metabase-lib/Question";
+} from "./click-behavior";
 
 const FLOAT_CATEGORY_FIELD = createMockField({
   id: 100,
