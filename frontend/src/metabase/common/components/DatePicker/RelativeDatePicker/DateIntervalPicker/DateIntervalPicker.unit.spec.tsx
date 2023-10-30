@@ -37,7 +37,7 @@ function setup({
 }
 
 describe("DateIntervalPicker", () => {
-  describe("interval", () => {
+  describe("past interval", () => {
     it("should change the past interval", () => {
       const { onChange } = setup();
 
