@@ -126,7 +126,11 @@ export default class FunnelNormal extends Component {
 
     const initial = infos[0];
 
-    const isClickable = visualizationIsClickable(infos[0].clicked);
+    const handleClick = e => {
+      if (visualizationIsClickable(infos[0].clicked)) {
+        onVisualizationClick(e);
+      }
+    };
 
     return (
       <FunnelNormalRoot
@@ -162,13 +166,13 @@ export default class FunnelNormal extends Component {
                 </Ellipsified>
               </Head>
               <GraphSection
-                className={cx({ "cursor-pointer": isClickable })}
+                className="cursor-pointer"
                 index={index}
                 info={info}
                 infos={infos}
                 hovered={hovered}
                 onHoverChange={onHoverChange}
-                onVisualizationClick={isClickable ? onVisualizationClick : null}
+                onVisualizationClick={handleClick}
               />
               <Info isNarrow={isNarrow}>
                 <Title>
