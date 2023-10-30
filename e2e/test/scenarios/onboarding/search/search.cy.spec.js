@@ -1440,11 +1440,18 @@ describeWithSnowplow("scenarios > search", () => {
 
         expectGoodSnowplowEvents(eventCount);
 
-        expectGoodSnowplowEventCount({
-          [PAGE_VIEW_EVENT_NAME]: 2,
-          [NEW_SEARCH_QUERY_EVENT_NAME]: 2,
-          [SEARCH_RESULTS_FILTERED_NAME]: 2,
-        });
+        expectGoodSnowplowEvent(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+          },
+          2,
+        );
+        expectGoodSnowplowEvent(
+          {
+            event: SEARCH_RESULTS_FILTERED_NAME,
+          },
+          2,
+        );
       });
     });
 

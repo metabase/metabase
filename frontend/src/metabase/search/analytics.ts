@@ -14,7 +14,7 @@ export const trackSearchEvents = ({
       : [searchFilters.type];
   }
 
-  const filterBooleanPayload: { [key: string]: unknown } = {
+  const filterBooleanPayload: Record<string, unknown> = {
     creator: searchFilters.created_by,
     last_editor: searchFilters.last_edited_by,
     creation_date: searchFilters.created_at,
