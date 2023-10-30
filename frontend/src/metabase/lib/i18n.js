@@ -7,17 +7,6 @@ import updateLocalePlugin from "dayjs/plugin/updateLocale";
 import MetabaseSettings from "metabase/lib/settings";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 
-(function preserveLatinNumbersInArabic() {
-  ["ar", "ar-sa"].map(l =>
-    moment.updateLocale(l, {
-      // Preserve latin numbers, but still replace commas.
-      // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
-      postformat: string =>
-        string.replace(/\d/g, match => match).replace(/,/g, "،"),
-    }),
-  );
-})();
-
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
@@ -70,6 +59,8 @@ function setLanguage(translationsObject) {
   useLocale(locale);
 }
 
+const ARABIC_LOCALES = ["ar", "ar-sa"];
+
 function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
@@ -77,6 +68,10 @@ function setLocalization(translationsObject) {
   updateDayjsLocale(language);
   updateMomentStartOfWeek();
   updateDayjsStartOfWeek();
+
+  if (ARABIC_LOCALES.includes(language)) {
+    preverseLatinNumbersInMomentLocale(language);
+  }
 }
 
 function updateMomentLocale(language) {
@@ -91,6 +86,19 @@ function updateMomentLocale(language) {
     console.warn(`Could not set moment.js locale to ${locale}`);
     moment.locale("en");
   }
+}
+
+/**
+ * Ensures that we consistently use latin numbers, even in Arabic locales.
+ * See https://github.com/metabase/metabase/issues/34271
+ */
+function preverseLatinNumbersInMomentLocale(locale) {
+  moment.updateLocale(locale, {
+    // Preserve latin numbers, but still replace commas.
+    // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
+    postformat: string =>
+      string.replace(/\d/g, match => match).replace(/,/g, "،"),
+  });
 }
 
 function updateDayjsLocale(language) {
