@@ -48,6 +48,38 @@ describe("ExcludeDatePicker", () => {
     });
   });
 
+  it("should allow to exclude months", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Months of the year…"));
+    userEvent.click(screen.getByText("January"));
+    userEvent.click(screen.getByText("December"));
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "!=",
+      unit: "month-of-year",
+      values: [0, 11],
+    });
+  });
+
+  it("should allow to exclude quarters", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Quarters of the year…"));
+    userEvent.click(screen.getByText("1st"));
+    userEvent.click(screen.getByText("4th"));
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "!=",
+      unit: "quarter-of-year",
+      values: [1, 4],
+    });
+  });
+
   it("should allow to exclude hours", () => {
     const { onChange } = setup();
 
