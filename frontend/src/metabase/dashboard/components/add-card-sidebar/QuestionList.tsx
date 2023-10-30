@@ -24,6 +24,7 @@ interface QuestionListProps {
   collectionId: CollectionId;
   onSelect: BaseSelectListItemProps["onSelect"];
   hasCollections: boolean;
+  showOnlyPublicCollections: boolean;
 }
 
 interface SearchListLoaderProps {
@@ -38,6 +39,7 @@ export function QuestionList({
   collectionId,
   onSelect,
   hasCollections,
+  showOnlyPublicCollections,
 }: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
@@ -54,16 +56,25 @@ export function QuestionList({
   const trimmedSearchText = searchText.trim();
   const isSearching = !!trimmedSearchText;
 
-  let query: SearchListQuery = isSearching
-    ? { q: trimmedSearchText }
-    : { collection: collectionId };
+  const query = createQuery();
 
-  query = {
-    ...query,
-    models: ["card", "dataset"],
-    offset: queryOffset,
-    limit: DEFAULT_SEARCH_LIMIT,
-  };
+  function createQuery(): SearchListQuery {
+    const baseQuery = isSearching
+      ? {
+          q: trimmedSearchText,
+          ...(showOnlyPublicCollections && {
+            filter_items_in_personal_collection: "exclude" as const,
+          }),
+        }
+      : { collection: collectionId };
+
+    return {
+      ...baseQuery,
+      models: ["card", "dataset"],
+      offset: queryOffset,
+      limit: DEFAULT_SEARCH_LIMIT,
+    };
+  }
 
   const handleClickNextPage = () => {
     setQueryOffset(queryOffset + DEFAULT_SEARCH_LIMIT);
