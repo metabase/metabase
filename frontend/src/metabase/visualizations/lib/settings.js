@@ -243,6 +243,30 @@ export function mergeSettings(first = {}, second = {}) {
       }
     }
   }
+
+  const findColumn = (colName, list) => {
+    return list.findIndex(({ name }) => name === colName);
+  };
+
+  if (first["table.columns"] && second["table.columns"]) {
+    const firstTableColumns = first["table.columns"];
+    const secondTableColumns = second["table.columns"];
+
+    const addedColumns = firstTableColumns.filter(
+      ({ name }) => findColumn(name, secondTableColumns) === -1,
+    );
+    const removedColumns = secondTableColumns
+      .filter(({ name }) => findColumn(name, firstTableColumns) === -1)
+      .map(({ name }) => name);
+
+    merged["table.columns"] = [
+      ...secondTableColumns.filter(
+        ({ name }) => !removedColumns.includes(name),
+      ),
+      ...addedColumns,
+    ];
+  }
+
   return merged;
 }
 
