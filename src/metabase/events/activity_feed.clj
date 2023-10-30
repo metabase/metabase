@@ -20,7 +20,7 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic {:keys [actor-id] card :object :as _event}]
+  [topic {:keys [user-id] card :object :as _event}]
   (let [{query :dataset_query
          dataset? :dataset}   card
         query                 (when (seq query)
@@ -31,7 +31,7 @@
         table-id              (mbql.u/query->source-table-id query)]
     (activity/record-activity!
      {:topic       topic
-      :user-id     actor-id
+      :user-id     user-id
       :model       (if dataset? "dataset" "card")
       :model-id    (:id card)
       :object      card
@@ -49,7 +49,7 @@
 (derive :event/dashboard-remove-cards ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic {:keys [dashcards actor-id] dashboard :object :as _event}]
+  [topic {:keys [dashcards user-id] dashboard :object :as _event}]
   (let [details   (case topic
                     ;; dashboard events
                     (:event/dashboard-create
@@ -72,7 +72,7 @@
      {:topic    topic
       :model    "dashboard"
       :model-id (:id dashboard)
-      :user-id  actor-id
+      :user-id  user-id
       :object   dashboard
       :details details})))
 
@@ -82,12 +82,12 @@
 (derive :event/metric-delete ::metric-event)
 
 (methodical/defmethod events/publish-event! ::metric-event
-  [topic {:keys [actor-id] metric :object :as event}]
+  [topic {:keys [user-id] metric :object :as event}]
   (let [table-id    (:table_id metric)
         database-id (table/table-id->database-id table-id)]
     (activity/record-activity!
      {:topic       topic
-      :user-id     actor-id
+      :user-id     user-id
       :model       "metric"
       :model-id    (:id metric)
       :object      metric
@@ -101,12 +101,12 @@
 (derive :event/pulse-delete ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [actor-id] pulse :object :as _event}]
+  [topic {:keys [user-id] pulse :object :as _event}]
   (activity/record-activity!
    {:topic    topic
     :model    "pulse"
     :model-id (:id pulse)
-    :user-id  actor-id
+    :user-id  user-id
     :object   pulse
     :details  (select-keys pulse [:name])}))
 
@@ -115,13 +115,13 @@
 (derive :event/alert-delete ::alert-event)
 
 (methodical/defmethod events/publish-event! ::alert-event
-  [topic {:keys [actor-id] alert :object :as _event}]
+  [topic {:keys [user-id] alert :object :as _event}]
   ;; TODO alert schema require card
   (let [{:keys [card]} alert]
     (activity/record-activity!
      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
      {:topic      topic
-      :user-id    actor-id
+      :user-id    user-id
       :model      "alert"
       :model-id   (:id card)
       :object     alert
@@ -133,14 +133,14 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
-  [topic {:keys [actor-id revision-message] segment :object :as _event}]
+  [topic {:keys [user-id revision-message] segment :object :as _event}]
   (let [table-id    (:table_id segment)
         database-id (table/table-id->database-id table-id)]
     (activity/record-activity!
      {:topic       topic
       :model       "segment"
       :model-id    (:id segment)
-      :user-id     actor-id
+      :user-id     user-id
       :object      segment
       :details     (assoc (select-keys segment [:name :description])
                           :revision_message revision-message)

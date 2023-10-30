@@ -80,7 +80,7 @@
 
 (methodical/defmethod events/publish-event! ::event
   "Handle processing for a single event notification received on the view-log-channel"
-  [topic {:keys [object actor-id] :as event}]
+  [topic {:keys [object user-id] :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
    (when event
@@ -93,7 +93,7 @@
        (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
                   ;; we don't want to count pinned card views
                   ((complement #{:collection :dashboard}) context))
-         (update-users-recent-views! actor-id model model-id))
-       (record-view! model model-id actor-id metadata)))
+         (update-users-recent-views! user-id model model-id))
+       (record-view! model model-id user-id metadata)))
    (catch Throwable e
      (log/warnf e "Failed to process activity event. %s" topic))))

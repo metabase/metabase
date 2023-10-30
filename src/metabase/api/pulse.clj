@@ -139,7 +139,7 @@
      ;; ok, now create the Pulse
      (let [pulse (api/check-500
                   (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
-       (events/publish-event! :event/pulse-create {:object pulse :actor-id api/*current-user-id*})
+       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
        pulse))))
 
 (api/defendpoint GET "/:id"

@@ -10,7 +10,7 @@
 
 (defn- push-revision!
   [model
-   {:keys [actor-id] object :object :as event}
+   {:keys [user-id] object :object :as event}
    {:keys [is-creation?]
     :or   {is-creation? false}
     :as   _options}]
@@ -21,7 +21,7 @@
      (revision/push-revision! {:entity       model
                                :id           (:id object)
                                :object       object
-                               :user-id      actor-id
+                               :user-id      user-id
                                :is-creation? is-creation?
                                :message      (:revision-message event)})
      (catch Throwable e

@@ -32,8 +32,7 @@
                                                         :name        name
                                                         :description description
                                                         :definition  definition)))]
-    (events/publish-event! :event/segment-create {:object   segment
-                                                  :actor-id api/*current-user-id*})
+    (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
 (mu/defn ^:private hydrated-segment [id :- ms/PositiveInt]
@@ -72,9 +71,7 @@
       (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
-                             {:object           <>
-                              :actor-id         api/*current-user-id*
-                              :revision-message revision_message}))))
+                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Segment` with ID."

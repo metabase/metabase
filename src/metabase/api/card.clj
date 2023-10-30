@@ -210,7 +210,7 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object <> :actor-id api/*current-user-id*})))))
+        (events/publish-event! :event/card-read {:object <> :user-id api/*current-user-id*})))))
 
 (defn- card-columns-from-names
   [card names]
@@ -541,7 +541,7 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :event/card-create {:object card :actor-id api/*current-user-id*}))
+       (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
@@ -757,7 +757,7 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (events/publish-event! :event/card-update {:object card :actor-id api/*current-user-id*})
+    (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*})
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
@@ -835,7 +835,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :event/card-delete {:object card :actor-id api/*current-user-id*}))
+    (events/publish-event! :event/card-delete {:object card :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------

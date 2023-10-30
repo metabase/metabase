@@ -15,7 +15,7 @@
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
 
-    (events/publish-event! :event/card-create {:object card :actor-id (:id user)})
+    (events/publish-event! :event/card-create {:object card :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)}
@@ -25,7 +25,7 @@
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
 
-    (events/publish-event! :event/card-read {:object card :actor-id (:id user)})
+    (events/publish-event! :event/card-read {:object card :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)}
@@ -35,7 +35,7 @@
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
 
-    (events/publish-event! :event/card-query {:object (assoc card :cached false :ignore_cache true) :actor-id (:id user)})
+    (events/publish-event! :event/card-query {:object (assoc card :cached false :ignore_cache true) :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)
@@ -45,7 +45,7 @@
 (deftest table-read-test
   (mt/with-temp [User  user  {}
                  Table table {}]
-    (events/publish-event! :event/table-read {:object table :actor-id (:id user)})
+    (events/publish-event! :event/table-read {:object table :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "table"
             :model_id (:id table)}
@@ -54,7 +54,7 @@
 (deftest dashboard-read-test
   (mt/with-temp [User      user {}
                  Dashboard dashboard {:creator_id (:id user)}]
-    (events/publish-event! :event/dashboard-read {:object dashboard :actor-id (:id user)})
+    (events/publish-event! :event/dashboard-read {:object dashboard :user-id (:id user)})
     (is (= {:user_id  (:id user)
             :model    "dashboard"
             :model_id (:id dashboard)}
@@ -98,9 +98,7 @@
                                         {:topic :event/card-query,     :item archived}
                                         {:topic :event/table-read,     :item hidden-table}]]
             (events/publish-event! topic
-                                   ;; view log entries look for the `:actor_id` in the item being viewed to set that
-                                   ;; view's :user_id
-                                   {:object item :actor-id (mt/user->id :crowberto)}))
+                                   {:object item :user-id (mt/user->id :crowberto)}))
           (is (= [{:model "table" :model_id (u/the-id hidden-table)}
                   {:model "card" :model_id (u/the-id archived)}
                   {:model "table" :model_id (u/the-id table1)}
@@ -126,7 +124,7 @@
         (mt/with-test-user :crowberto
           (is (nil? (view-log/most-recently-viewed-dashboard! nil)))
           (is (nil? (view-log/most-recently-viewed-dashboard)))
-          (events/publish-event! :event/dashboard-read {:object dash :actor-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/dashboard-read {:object dash :user-id (mt/user->id :crowberto)})
           (is (= (u/the-id dash)
                  (view-log/most-recently-viewed-dashboard)))
           (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."

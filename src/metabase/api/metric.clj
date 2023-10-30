@@ -33,7 +33,7 @@
                                                        :name        name
                                                        :description description
                                                        :definition  definition)))]
-    (events/publish-event! :event/metric-create {:object metric :actor-id api/*current-user-id*})
+    (events/publish-event! :event/metric-create {:object metric :user-id api/*current-user-id*})
     (t2/hydrate metric :creator)))
 
 (mu/defn ^:private hydrated-metric [id :- ms/PositiveInt]
@@ -82,9 +82,7 @@
       (t2/update! Metric id changes))
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :event/metric-delete :event/metric-update)
-                             {:object           <>
-                              :actor-id         api/*current-user-id*
-                              :revision-message revision_message}))))
+                             {:object <>  :user-id api/*current-user-id* :revision-message revision_message}))))
 
 
 (api/defendpoint PUT "/:id"

@@ -153,7 +153,7 @@
                     (-> new-alert-request-body
                         only-alert-keys
                         (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-   (events/publish-event! :event/alert-create {:object new-alert :actor-id api/*current-user-id*})
+   (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
    (notify-new-alert-created! new-alert)
     ;; return our new Alert
    new-alert))

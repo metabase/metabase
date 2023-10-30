@@ -8,7 +8,7 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:actor-id pos-int?]
+                       [:user-id pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
       with-dashcards (mut/assoc default-schema
                                 :dashcards [:sequential [:map [:id pos-int?]]])
@@ -29,7 +29,7 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:actor-id pos-int?]
+                       [:user-id  pos-int?]
                        [:object   [:fn #(t2/instance-of? :model/Card %)]]])]
   (def ^:private card-events-schemas
     {:event/card-create default-schema
@@ -48,7 +48,7 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:actor-id pos-int?]
+                       [:user-id  pos-int?]
                        [:object   [:fn #(t2/instance-of? :model/Metric %)]]])
       with-message   (mc/schema [:merge default-schema
                                   [:map {:closed true}
@@ -62,7 +62,7 @@
 
 (let [default-schema (mc/schema
                       [:map {:closed true}
-                       [:actor-id pos-int?]
+                       [:user-id  pos-int?]
                        [:object   [:fn #(t2/instance-of? :model/Segment %)]]])
       with-message (mc/schema
                     [:merge default-schema
@@ -78,21 +78,23 @@
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:object [:fn #(t2/instance-of? :model/Database %)]]])
-      with-actor     (mc/schema
-                      [:merge default-schema
-                       [:map {:closed true}
-                        [:actor-id pos-int?]]])]
+      with-user      (mc/schema
+                       [:merge default-schema
+                        [:map {:closed true}
+                         [:user-id  pos-int?]]])]
+
   (def ^:private database-events
-   {:event/database-create with-actor
-    :event/database-update default-schema
-    :event/database-delete default-schema}))
+    {:event/database-create with-user
+
+     :event/database-update default-schema
+     :event/database-delete default-schema}))
 
 ;; table events
 
 (def ^:private table-events
   {:event/table-read (mc/schema
                       [:map {:closed true}
-                       [:actor-id pos-int?]
+                       [:user-id  pos-int?]
                        [:object [:fn #(t2/instance-of? :model/Table %)]]])})
 
 (def topic->schema

@@ -29,7 +29,7 @@
   (testing :card-create
     (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/card-create {:object card :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)})
         (is (= {:topic       :card-create
                 :user_id     (mt/user->id :rasta)
                 :model       "card"
@@ -51,7 +51,7 @@
                                                   :type     :query
                                                   :query    {:source-table (str "card__" (u/the-id card-1))}}}]
         (mt/with-model-cleanup [Activity]
-          (events/publish-event! :event/card-create {:object card-2 :actor-id (mt/user->id :rasta)})
+          (events/publish-event! :event/card-create {:object card-2 :user-id (mt/user->id :rasta)})
           (is (= {:topic       :card-create
                   :user_id     (mt/user->id :rasta)
                   :model       "card"
@@ -67,7 +67,7 @@
       (testing (if dataset? "Dataset" "Card")
         (t2.with-temp/with-temp [Card card {:name "My Cool Card" :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
-            (events/publish-event! :event/card-update {:object card :actor-id (mt/user->id :rasta)})
+            (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :rasta)})
             (is (= {:topic       :card-update
                     :user_id     (mt/user->id :rasta)
                     :model       (if dataset? "dataset" "card")
@@ -84,7 +84,7 @@
       (testing (if dataset? "Dataset" "Card")
         (t2.with-temp/with-temp [Card card {:name "My Cool Card", :dataset dataset?}]
           (mt/with-model-cleanup [Activity]
-            (events/publish-event! :event/card-delete {:object card :actor-id (mt/user->id :rasta)})
+            (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)})
             (is (= {:topic       :card-delete
                     :user_id     (mt/user->id :rasta)
                     :model       (if dataset? "dataset" "card")
@@ -99,9 +99,9 @@
   (testing :dashboard-create
     (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
       (mt/with-model-cleanup [Activity]
-        (is (= {:object   dashboard
-                :actor-id (mt/user->id :rasta)}
-               (events/publish-event! :event/dashboard-create {:object dashboard :actor-id (mt/user->id :rasta)})))
+        (is (= {:object  dashboard
+                :user-id (mt/user->id :rasta)}
+               (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})))
         (is (= {:topic       :dashboard-create
                 :user_id     (mt/user->id :rasta)
                 :model       "dashboard"
@@ -115,7 +115,7 @@
   (testing :dashboard-delete
     (t2.with-temp/with-temp [Dashboard dashboard {:name "My Cool Dashboard"}]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/dashboard-delete {:object dashboard :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/dashboard-delete {:object dashboard :user-id (mt/user->id :rasta)})
         (is (= {:topic       :dashboard-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "dashboard"
@@ -132,7 +132,7 @@
                    DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-model-cleanup [Activity]
         (let [event {:object    dashboard
-                     :actor-id  (mt/user->id :rasta)
+                     :user-id   (mt/user->id :rasta)
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-add-cards event))))
@@ -157,7 +157,7 @@
                    DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-model-cleanup [Activity]
         (let [event {:object    dashboard
-                     :actor-id  (mt/user->id :rasta)
+                     :user-id   (mt/user->id :rasta)
                      :dashcards [dashcard]}]
           (is (= event
                  (events/publish-event! :event/dashboard-remove-cards event))))
@@ -193,7 +193,7 @@
   (testing :metric-create
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/metric-create {:object metric :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/metric-create {:object metric :user-id (mt/user->id :rasta)})
         (is (= {:topic       :metric-create
                 :user_id     (mt/user->id :rasta)
                 :model       "metric"
@@ -210,7 +210,7 @@
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
         (let [event {:object           metric
-                     :actor-id         (mt/user->id :rasta)
+                     :user-id          (mt/user->id :rasta)
                      :revision-message "update this mofo"}]
           (is (= event
                  (events/publish-event! :event/metric-update event))))
@@ -230,7 +230,7 @@
     (t2.with-temp/with-temp [Metric metric {:table_id (mt/id :venues)}]
       (mt/with-model-cleanup [Activity]
         (let [event {:object           metric
-                     :actor-id         (mt/user->id :rasta)
+                     :user-id          (mt/user->id :rasta)
                      :revision-message "deleted"}]
           (is (= event
                  (events/publish-event! :event/metric-delete event))))
@@ -249,7 +249,7 @@
   (testing :pulse-create
     (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/pulse-create {:object pulse :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/pulse-create {:object pulse :user-id (mt/user->id :rasta)})
         (is (= {:topic       :pulse-create
                 :user_id     (mt/user->id :rasta)
                 :model       "pulse"
@@ -263,7 +263,7 @@
   (testing :pulse-delete
     (t2.with-temp/with-temp [Pulse pulse]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/pulse-delete {:object pulse :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/pulse-delete {:object pulse :user-id (mt/user->id :rasta)})
         (is (= {:topic       :pulse-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "pulse"
@@ -277,7 +277,7 @@
   (testing :segment-create
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/segment-create {:object segment :actor-id (mt/user->id :rasta)})
+        (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})
         (is (= {:topic       :segment-create
                 :user_id     (mt/user->id :rasta)
                 :model       "segment"
@@ -293,8 +293,8 @@
   (testing :segment-update
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
-        (let [event {:object segment
-                     :actor-id         (mt/user->id :rasta)
+        (let [event {:object           segment
+                     :user-id          (mt/user->id :rasta)
                      :revision-message "update this mofo"}]
           (is (= event
                  (events/publish-event! :event/segment-update event))))
@@ -314,7 +314,7 @@
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-model-cleanup [Activity]
         (let [event {:object           segment
-                     :actor-id         (mt/user->id :rasta)
+                     :user-id          (mt/user->id :rasta)
                      :revision-message "deleted"}]
           (is (= event
                  (events/publish-event! :event/segment-delete event))))
