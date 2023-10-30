@@ -361,7 +361,6 @@ describe("metabase/lib/click-behavior", () => {
               }),
               metadata,
             ),
-            metadata,
           });
 
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>
@@ -447,7 +446,6 @@ describe("metabase/lib/click-behavior", () => {
               }),
               metadata,
             ),
-            metadata,
           });
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>
             sources.filter(sourceFilters[sourceType]),
