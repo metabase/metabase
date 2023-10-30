@@ -10,7 +10,7 @@ export const isFieldFilterUiParameter = (
   return "fields" in parameter && Array.isArray(parameter.fields);
 };
 
-export const hasFields = (parameter: UiParameter): boolean => {
+export const hasFields = (parameter: UiParameter) => {
   return isFieldFilterUiParameter(parameter) && parameter.fields.length > 0;
 };
 
