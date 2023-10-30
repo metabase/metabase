@@ -48,7 +48,7 @@ interface StateProps {
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props<TId> = OwnProps<TId> & StateProps;
+export type ItemPickerProps<TId> = OwnProps<TId> & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -93,7 +93,7 @@ function ItemPicker<TId>({
   initialOpenCollectionId = "root",
   onOpenCollectionChange,
   children,
-}: Props<TId>) {
+}: ItemPickerProps<TId>) {
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );

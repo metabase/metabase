@@ -1,10 +1,11 @@
-import type { ComponentProps } from "react";
 import type { CollectionId, DashboardId } from "metabase-types/api";
+import type { ItemPickerProps } from "./ItemPicker/ItemPicker";
+
 import ItemPicker from "./ItemPicker";
 
 export interface DashboardPickerProps
   extends Pick<
-    ComponentProps<typeof ItemPicker>,
+    ItemPickerProps<DashboardId>,
     "showOnlyPersonalCollections" | "onOpenCollectionChange"
   > {
   value?: DashboardId;
