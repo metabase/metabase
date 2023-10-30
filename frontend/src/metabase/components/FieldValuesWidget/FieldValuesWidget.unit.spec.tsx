@@ -95,7 +95,7 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = list", () => {
-      const field = metadata.field(PRODUCTS.CATEGORY);
+      const field = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 
       it("should call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
@@ -103,7 +103,7 @@ describe("FieldValuesWidget", () => {
         });
         expect(fetchFieldValues).toHaveBeenCalledWith({
           id: PRODUCTS.CATEGORY,
-          table_id: field?.table_id,
+          table_id: field.table_id,
         });
       });
 
