@@ -17,8 +17,8 @@ import type {
 
 import type { OptionalFormViewProps } from "metabase/components/form/FormikCustomForm/types";
 
-import type { GenericErrorResponse } from "metabase/core/utils/errors";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import type { GenericErrorResponse } from "metabase/lib/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 
 import { makeFormObject, cleanObject, isNestedFieldName } from "../formUtils";
 import FormikFormViewAdapter from "./FormikFormViewAdapter";

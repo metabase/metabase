@@ -15,17 +15,8 @@
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
-    :refer [Card
-            Collection
-            Dimension
-            Field
-            FieldValues
-            Permissions
-            PermissionsGroup
-            PermissionsGroupMembership
-            Setting
-            Table
-            User]]
+    :refer [Card Collection Dimension Field FieldValues Permissions
+            PermissionsGroup PermissionsGroupMembership Setting Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -33,7 +24,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline :as timeline]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -174,8 +165,7 @@
              {:creator_id  (rasta-id)
               :definition  {}
               :description "Lookin' for a blueberry"
-              :name        "Toucans in the rainforest"
-              :table_id    (data/id :checkins)}))
+              :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
@@ -186,10 +176,10 @@
    :model/PersistedInfo
    (fn [_] {:question_slug (tu.random/random-name)
             :query_hash    (tu.random/random-hash)
-            :definition    {:table-name (tu.random/random-name)
+            :definition    {:table-name        (tu.random/random-name)
                             :field-definitions (repeatedly
-                                                4
-                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
+                                                 4
+                                                 #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
             :table_name    (tu.random/random-name)
             :active        true
             :state         "persisted"
@@ -254,14 +244,14 @@
      (default-timestamped
        {:name       "Timeline of bird squawks"
         :default    false
-        :icon       timeline/DefaultIcon
+        :icon       timeline-event/default-icon
         :creator_id (rasta-id)}))
 
    :model/TimelineEvent
    (fn [_]
      (default-timestamped
        {:name         "default timeline event"
-        :icon         timeline/DefaultIcon
+        :icon         timeline-event/default-icon
         :timestamp    (t/zoned-date-time)
         :timezone     "US/Pacific"
         :time_matters true

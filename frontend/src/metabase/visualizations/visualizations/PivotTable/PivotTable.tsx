@@ -11,7 +11,7 @@ import { usePrevious, useMount } from "react-use";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { getSetting } from "metabase/selectors/settings";
 
-import { sumArray } from "metabase/core/utils/arrays";
+import { sumArray } from "metabase/lib/arrays";
 
 import {
   COLUMN_SHOW_TOTALS,
