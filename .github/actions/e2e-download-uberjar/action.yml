@@ -1,24 +1,14 @@
-name: Download uberjar for E2E tests
-description: Download either a freshly built artifact or the one built in one of the previous commits.
+name: Find and download uberjar for E2E tests
+description: Download previously built artifact from one of the previous commits.
 inputs:
   edition:
     description: Metabase edition.
-    required: true
-  was-built:
-    description: Was the artifact built during the current workflof run?
     required: true
 
 runs:
   using: "composite"
   steps:
-    - uses: actions/download-artifact@v3
-      if: ${{ inputs.was-built == 'true' }}
-      name: Retrieve uberjar artifact for ${{ inputs.edition }}
-      with:
-        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
     - name: Download previously stored uberjar
-      if: ${{ inputs.was-built == 'false' }}
       uses: actions/github-script@v6
       with:
         script: | # js
@@ -76,7 +66,6 @@ runs:
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
 
     - name: Unzip Metabase artifact containing an uberjar
-      if: ${{ inputs.was-built == 'false' }}
       run: unzip mb.zip
       shell: bash
 

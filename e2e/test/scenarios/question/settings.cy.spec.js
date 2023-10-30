@@ -470,7 +470,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Orders in a dashboard").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
-      modal().button("Leave anyway").click();
+      modal().button("Discard changes").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
