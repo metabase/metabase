@@ -102,21 +102,6 @@
         :object      segment
         :database-id 1
         :table-id    13)"
-  Takes the following kwargs:
-    :topic          Required.  The activity topic.
-    :user-id        Required.  ID of the `User` responsible for the activity.
-    :model          Required.  name of the model representing the activity.
-    :model-id       Required.  ID of the model representing the activity.
-    :object         Optional.  The activity object being saved.
-    :database-id    Optional.  ID of the `Database` related to the activity.
-    :table-id       Optional.  ID of the `Table` related to the activity.
-    :details        Optional.  Details of the activity.
-
-  ex: (record-activity!
-       :topic       :event/segment-update
-       :object      segment
-       :database-id 1
-       :table-id    13)"
   [{:keys [topic object details database-id
            table-id user-id model model-id]
     :or   {object {}}}                      :- [:map {:closed true}
