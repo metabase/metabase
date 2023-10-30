@@ -215,6 +215,52 @@
                                                        {:info {:metadata/dataset-metadata
                                                                (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
+(deftest nested-with-coerced-fields
+  (testing "Coerced fields are cast only once (#22519)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (mt/with-temp [Card {card-id :id} {:dataset_query
+                                             (mt/mbql-query reviews
+                                               {:fields [$rating]
+                                                :limit  1})}]
+            (testing "with all inherited fields"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)}})))))
+            (testing "with explicit top-level fields"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:fields       [(mt/id :reviews :rating)]
+                                                            :source-table (str "card__" card-id)}})))))
+            (testing "with breakout and order-by"
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)
+                                                            :aggregation [:count]
+                                                            :breakout [(mt/id :reviews :rating)]}})))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXSeconds->DateTime
+                                                                 :effective_type    :type/Instant}
+          (testing "with join"
+            (mt/with-temp [Card {card-id :id} {:dataset_query
+                                               (mt/mbql-query products
+                                                 {:fields [$id]
+                                                  :joins  [{:source-table $$reviews
+                                                            :alias        "R"
+                                                            :fields       [&R.reviews.rating]
+                                                            :condition    [:= $id &R.reviews.product_id]}]
+                                                  :limit  1})}]
+              (is (= :completed
+                     (:status (qp/process-query {:type     :query
+                                                 :database (mt/id)
+                                                 :query    {:source-table (str "card__" card-id)}})))))))))))
+
 (deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"

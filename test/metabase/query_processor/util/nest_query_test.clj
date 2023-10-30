@@ -99,18 +99,18 @@
                                                              ::add/source-alias  "double_id"
                                                              ::add/desired-alias "double_id"
                                                              ::add/position      0}]
-                                        [:field %date {:temporal-unit            :day
-                                                       ::nest-query/outer-select true
-                                                       ::add/source-table        ::add/source
-                                                       ::add/source-alias        "DATE"
-                                                       ::add/desired-alias       "DATE"
-                                                       ::add/position            1}]
-                                        [:field %date {:temporal-unit            :month
-                                                       ::nest-query/outer-select true
-                                                       ::add/source-table        ::add/source
-                                                       ::add/source-alias        "DATE"
-                                                       ::add/desired-alias       "DATE_2"
-                                                       ::add/position            2}]]
+                                        [:field %date {:temporal-unit      :day
+                                                       :nested/outer         true
+                                                       ::add/source-table  ::add/source
+                                                       ::add/source-alias  "DATE"
+                                                       ::add/desired-alias "DATE"
+                                                       ::add/position      1}]
+                                        [:field %date {:temporal-unit      :month
+                                                       :nested/outer         true
+                                                       ::add/source-table  ::add/source
+                                                       ::add/source-alias  "DATE"
+                                                       ::add/desired-alias "DATE_2"
+                                                       ::add/position      2}]]
                          :limit        1})
                       (-> (lib.tu.macros/mbql-query checkins
                             {:expressions {"double_id" [:* $id 2]}
@@ -543,12 +543,12 @@
                                                                        ::add/position      0}]
                                                        [:expression "test" {::add/desired-alias "test"
                                                                             ::add/position      1}]]}
-                         :fields       [[:field %price {:temporal-unit            :default
-                                                        ::nest-query/outer-select true
-                                                        ::add/source-table        ::add/source
-                                                        ::add/source-alias        "PRICE"
-                                                        ::add/desired-alias       "PRICE"
-                                                        ::add/position            0}]
+                         :fields       [[:field %price {:temporal-unit      :default
+                                                        :nested/outer       true
+                                                        ::add/source-table  ::add/source
+                                                        ::add/source-alias  "PRICE"
+                                                        ::add/desired-alias "PRICE"
+                                                        ::add/position      0}]
                                         [:field "test" {:base-type          :type/Float
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "test"
@@ -607,12 +607,12 @@
                                                                                      ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                                                                                      ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                                                                                      ::add/position      0}]
-                                       created-at        [:field %created-at {:temporal-unit            :year
-                                                                              ::nest-query/outer-select true
-                                                                              ::add/source-table        ::add/source
-                                                                              ::add/source-alias        "CREATED_AT"
-                                                                              ::add/desired-alias       "CREATED_AT"
-                                                                              ::add/position            1}]
+                                       created-at        [:field %created-at {:temporal-unit      :year
+                                                                              :nested/outer       true
+                                                                              ::add/source-table  ::add/source
+                                                                              ::add/source-alias  "CREATED_AT"
+                                                                              ::add/desired-alias "CREATED_AT"
+                                                                              ::add/position      1}]
                                        pivot-grouping    [:field "pivot-grouping" {:base-type          :type/Float
                                                                                    ::add/source-table  ::add/source
                                                                                    ::add/source-alias  "pivot-grouping"
