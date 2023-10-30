@@ -1,4 +1,10 @@
-import { popover, restore, visitQuestionAdhoc } from "e2e/support/helpers";
+import {
+  filter,
+  openNotebook,
+  popover,
+  restore,
+  visitQuestionAdhoc,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
@@ -29,12 +35,8 @@ describe("issue 34414", () => {
       });
     });
 
-    popover().within(() => {
-      cy.findByText("Models").click();
-      cy.findByText("Invoices Model").click();
-    });
-
-    cy.findAllByTestId("notebook-cell-item").contains("Add filters").click();
+    openNotebook();
+    filter({ mode: "notebook" });
 
     popover().within(() => {
       cy.findByText("Plan").click();
