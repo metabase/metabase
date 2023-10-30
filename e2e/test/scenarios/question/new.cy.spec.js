@@ -323,8 +323,13 @@ describe("scenarios > question > new", () => {
     beforeEach(() => {
       cy.createCollection(collectionInRoot);
       cy.createDashboard(dashboardInRoot);
-      startNewQuestion();
+      // Can't use `startNewQuestion` because it's missing `display: "table"` and
+      // adding that will fail a lot of other tests and I don't want to deal with that yet.
+      cy.visit("/");
+      cy.findByTestId("app-bar").button("New").click();
+      popover().findByText("Question").click();
     });
+
     it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
       popover().within(() => {
         cy.findByText("Raw Data").click();
