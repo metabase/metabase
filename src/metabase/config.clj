@@ -4,8 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.util.log :as log])
+   [metabase.plugins.classloader :as classloader])
   (:import
    (clojure.lang Keyword)
    (java.util UUID)))

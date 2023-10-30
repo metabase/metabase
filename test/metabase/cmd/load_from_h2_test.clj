@@ -110,7 +110,8 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-dir [dir nil]
       (let [h2-filename (str dir "/dump")
-            current-version (config/current-major-version)
+            current-version (or (config/current-major-version)
+                                (throw (ex-info "Couldn't determine current majore version" {})))
             versions (range current-version (- current-version 4) -1)]
         (create-dumps "load-test-source" h2-filename versions)
         (doseq [version versions]
