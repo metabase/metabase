@@ -2,7 +2,6 @@ import {
   editDashboard,
   restore,
   visitDashboard,
-  createLinkCard,
   getTextCardDetails,
 } from "e2e/support/helpers";
 
@@ -58,7 +57,7 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    createLinkCard();
+    cy.icon("link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(
