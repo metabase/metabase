@@ -259,20 +259,6 @@
                 :details     {:name (:name pulse)}}
                (activity "pulse-create" (:id pulse))))))))
 
-(deftest pulse-delete-event-test
-  (testing :pulse-delete
-    (t2.with-temp/with-temp [Pulse pulse]
-      (mt/with-model-cleanup [Activity]
-        (events/publish-event! :event/pulse-delete {:object pulse :user-id (mt/user->id :rasta)})
-        (is (= {:topic       :pulse-delete
-                :user_id     (mt/user->id :rasta)
-                :model       "pulse"
-                :model_id    (:id pulse)
-                :database_id nil
-                :table_id    nil
-                :details     {:name (:name pulse)}}
-               (activity "pulse-delete" (:id pulse))))))))
-
 (deftest segment-create-event-test
   (testing :segment-create
     (t2.with-temp/with-temp [Segment segment]

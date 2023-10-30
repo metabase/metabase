@@ -98,7 +98,6 @@
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
-(derive :event/pulse-delete ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
   [topic {:keys [user-id] pulse :object :as _event}]
@@ -112,11 +111,9 @@
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
-(derive :event/alert-delete ::alert-event)
 
 (methodical/defmethod events/publish-event! ::alert-event
   [topic {:keys [user-id] alert :object :as _event}]
-  ;; TODO alert schema require card
   (let [{:keys [card]} alert]
     (activity/record-activity!
      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
