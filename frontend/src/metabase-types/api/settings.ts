@@ -201,6 +201,7 @@ export interface Settings {
   "deprecation-notice-version"?: string;
   "dismissed-custom-dashboard-toast"?: boolean;
   "email-configured?": boolean;
+  "embedding-app-origin": string;
   "embedding-secret-key"?: string;
   "enable-embedding": boolean;
   "enable-enhancements?": boolean;
