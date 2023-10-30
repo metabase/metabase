@@ -859,6 +859,21 @@ describe("filter", () => {
       expect(bucketInfo?.shortName).toBe("minute");
     });
 
+    it("should support dates with timezone offsets", () => {
+      const { filterParts } = addSpecificDateFilter(
+        query,
+        Lib.expressionClause("=", [column, "2020-01-05T10:20:00+01:00"]),
+      );
+      expect(filterParts).toMatchObject({
+        operator: "=",
+        column: expect.anything(),
+        values: [expect.any(Date)],
+      });
+
+      const value = filterParts?.values[0];
+      expect(value?.toISOString()).toBe("2020-01-05T09:20:00.000Z");
+    });
+
     it("should ignore expressions with not supported operators", () => {
       const { filterParts } = addSpecificDateFilter(
         query,
