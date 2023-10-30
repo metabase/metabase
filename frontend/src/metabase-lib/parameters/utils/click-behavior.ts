@@ -8,8 +8,11 @@ import type {
   DatetimeUnit,
   Parameter,
   ParameterType,
+  ParameterValueOrArray,
+  UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
+import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
 import { parseTimestamp } from "metabase/lib/time";
 import {
   formatDateTimeForParameter,
@@ -19,17 +22,29 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
+import type { Dimension } from "metabase-lib/types";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
+import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
 
 export function getDataFromClicked({
-  extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
+  extraData: { dashboard, parameterValuesBySlug = {}, userAttributes } = {},
   dimensions = [],
   data = [],
-}) {
+}: {
+  extraData?: {
+    dashboard?: Dashboard;
+    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
+    userAttributes?: UserAttribute[] | null;
+  };
+  dimensions: Dimension[];
+  data: (ClickObjectDataRow & {
+    clickBehaviorValue: ClickObjectDataRow["value"];
+  })[];
+}): ValueAndColumnForColumnNameDate {
   const column = [
     ...dimensions,
     ...data.map(d => ({
@@ -39,25 +54,36 @@ export function getDataFromClicked({
     })),
   ]
     .filter(d => d.column != null)
-    .reduce(
-      (acc, { column, value }) =>
-        acc[name] === undefined
-          ? { ...acc, [column.name.toLowerCase()]: { value, column } }
-          : acc,
+    .reduce<ValueAndColumnForColumnNameDate["column"]>(
+      (acc, { column, value }) => {
+        if (!column) {
+          return acc;
+        }
+
+        const name = column.name.toLowerCase();
+
+        if (acc[name] === undefined) {
+          return { ...acc, [name]: { value, column } };
+        }
+
+        return acc;
+      },
       {},
     );
+
+  const dashboardParameters = (dashboard?.parameters || []).filter(
+    ({ slug }) => parameterValuesBySlug[slug] != null,
+  );
 
   const parameterByName =
     dashboard == null
       ? {}
-      : _.chain(dashboard.parameters)
-          .filter(p => parameterValuesBySlug[p.slug] != null)
-          .map(p => [
-            p.name.toLowerCase(),
-            { value: parameterValuesBySlug[p.slug] },
-          ])
-          .object()
-          .value();
+      : Object.fromEntries(
+          dashboardParameters.map(({ name, slug }) => [
+            name.toLowerCase(),
+            { value: parameterValuesBySlug[slug] },
+          ]),
+        );
 
   const parameterBySlug = _.mapObject(parameterValuesBySlug, value => ({
     value,
@@ -66,13 +92,16 @@ export function getDataFromClicked({
   const parameter =
     dashboard == null
       ? {}
-      : _.chain(dashboard.parameters)
-          .filter(p => parameterValuesBySlug[p.slug] != null)
-          .map(p => [p.id, { value: parameterValuesBySlug[p.slug] }])
-          .object()
-          .value();
+      : Object.fromEntries(
+          dashboardParameters.map(({ id, slug }) => [
+            id,
+            { value: parameterValuesBySlug[slug] },
+          ]),
+        );
 
-  const userAttribute = _.mapObject(userAttributes, value => ({ value }));
+  const userAttribute = Object.fromEntries(
+    (userAttributes || []).map(value => [value, { value }]),
+  );
 
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
 }
