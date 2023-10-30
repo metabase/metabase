@@ -29,7 +29,7 @@ function getTotalGraphicOption(
   formatMetric: Formatter,
   renderingContext: RenderingContext,
 ) {
-  const graphicOption = { ...TOTAL_GRAPHIC_OPTION };
+  const graphicOption = cloneDeep(TOTAL_GRAPHIC_OPTION);
 
   graphicOption.children.forEach(child => {
     child.style.fontFamily = renderingContext.fontFamily;
