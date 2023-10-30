@@ -126,3 +126,34 @@
           (is (= "number of Users where Last Login is not after on September 9, 1990"
                  (names/cell-title root
                                    ["<=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))))))
+
+(deftest ^:parallel no-null-cell-title-temporal-units-35170-test
+  (testing "Ensure various permutations of temporal units produce valid strings (without nulls in them)
+            as was reported in issue https://github.com/metabase/metabase/issues/35170"
+    (mt/$ids users
+      (let [query (query/adhoc-query {:query    {:source-table (mt/id :users)
+                                                 :aggregation  [:count]}
+                                      :type     :query
+                                      :database (mt/id)})
+            root  (magic/->root query)]
+        (testing "Should not contain nulls when temporal-unit is hour"
+          (is (= "number of Users where Last Login is at 12 PM, September 9, 1990"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :hour}] "1990-09-09T12:30:00"]))))
+        (testing "Should not contain nulls when temporal-unit is day"
+          (is (= "number of Users where Last Login is on January 1, 2020"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :day}] "2020"]))))
+        (testing "Should not contain nulls when temporal-unit is month"
+          (is (= "number of Users where Last Login is in January 2020"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :month}] "2020"]))))
+        (testing "Should not contain nulls when temporal-unit is quarter"
+          (is (= "number of Users where Last Login is in Q1 - 2020"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :quarter}] "2020"]))))
+        ;; This was producing "number of Users where null of Last Login is 2020" originally
+        (testing "Should not contain nulls when temporal-unit is year"
+          (is (= "number of Users where year of Last Login is 2020"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :year}] "2020"]))))))))
