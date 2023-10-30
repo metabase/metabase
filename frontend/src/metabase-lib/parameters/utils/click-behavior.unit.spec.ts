@@ -21,8 +21,9 @@ import {
 import Question from "metabase-lib/Question";
 import {
   getDataFromClicked,
-  getTargetsWithSourceFilters,
   formatSourceForTarget,
+  getTargetsForDashboard,
+  getTargetsForQuestion,
 } from "./click-behavior";
 
 const FLOAT_CATEGORY_FIELD = createMockField({
@@ -120,22 +121,20 @@ describe("metabase/lib/click-behavior", () => {
         slug: "my_param",
         type: "id",
       };
-      const [{ id, name, target }] = getTargetsWithSourceFilters({
-        isDash: true,
-        object: { parameters: [parameter] },
-        dashcard: {
+      const [{ id, name, target }] = getTargetsForDashboard(
+        { parameters: [parameter] },
+        {
           dashboard_id: 111,
         },
-      });
+      );
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Param");
       expect(target).toEqual({ type: "parameter", id: "foo123" });
     });
 
     it("should produce a template tag target", () => {
-      const [{ id, name, target }] = getTargetsWithSourceFilters({
-        isDash: false,
-        object: new Question(
+      const [{ id, name, target }] = getTargetsForQuestion(
+        new Question(
           createMockCard({
             dataset_query: {
               type: "native",
@@ -154,17 +153,15 @@ describe("metabase/lib/click-behavior", () => {
           }),
           metadata,
         ),
-        metadata: {},
-      });
+      );
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Variable");
       expect(target).toEqual({ type: "variable", id: "my_variable" });
     });
 
     it("should produce a template tag dimension target", () => {
-      const [{ id, name, target }] = getTargetsWithSourceFilters({
-        isDash: false,
-        object: new Question(
+      const [{ id, name, target }] = getTargetsForQuestion(
+        new Question(
           createMockCard({
             dataset_query: {
               type: "native",
@@ -186,8 +183,7 @@ describe("metabase/lib/click-behavior", () => {
           }),
           metadata,
         ),
-        metadata,
-      });
+      );
       expect(id).toEqual("foo123");
       expect(name).toEqual("My Field Filter");
       expect(target).toEqual({
@@ -282,13 +278,12 @@ describe("metabase/lib/click-behavior", () => {
             slug: "my_param",
             type: targetParameterType,
           };
-          const [{ sourceFilters }] = getTargetsWithSourceFilters({
-            isDash: true,
-            object: { parameters: [parameter] },
-            dashcard: {
+          const [{ sourceFilters }] = getTargetsForDashboard(
+            { parameters: [parameter] },
+            {
               dashboard_id: 111,
             },
-          });
+          );
 
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>
             sources.filter(sourceFilters[sourceType]),
@@ -340,9 +335,8 @@ describe("metabase/lib/click-behavior", () => {
         ],
       ]) {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
-          const [{ sourceFilters }] = getTargetsWithSourceFilters({
-            isDash: false,
-            object: new Question(
+          const [{ sourceFilters }] = getTargetsForQuestion(
+            new Question(
               createMockCard({
                 dataset_query: {
                   type: "native",
@@ -361,7 +355,7 @@ describe("metabase/lib/click-behavior", () => {
               }),
               metadata,
             ),
-          });
+          );
 
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>
             sources.filter(sourceFilters[sourceType]),
@@ -422,9 +416,8 @@ describe("metabase/lib/click-behavior", () => {
         ],
       ]) {
         it(`should filter sources for a ${field.base_type} dimension target`, () => {
-          const [{ sourceFilters }] = getTargetsWithSourceFilters({
-            isDash: false,
-            object: new Question(
+          const [{ sourceFilters }] = getTargetsForQuestion(
+            new Question(
               createMockCard({
                 dataset_query: {
                   type: "native",
@@ -446,7 +439,7 @@ describe("metabase/lib/click-behavior", () => {
               }),
               metadata,
             ),
-          });
+          );
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>
             sources.filter(sourceFilters[sourceType]),
           );

@@ -2,6 +2,8 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import type {
+  Dashboard,
+  DashboardCard,
   DatetimeUnit,
   Parameter,
   ParameterType,
@@ -20,6 +22,7 @@ import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
+import type Question from "metabase-lib/Question";
 
 export function getDataFromClicked({
   extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
@@ -79,91 +82,73 @@ function notRelativeDateOrRange({ type }: Parameter) {
   return type !== "date/range" && type !== "date/relative";
 }
 
-export function getTargetsWithSourceFilters({
-  isDash,
-  isAction,
-  dashcard,
-  object,
-}) {
-  if (isAction) {
-    return getTargetsForAction(object);
-  }
-  return isDash
-    ? getTargetsForDashboard(object, dashcard)
-    : getTargetsForQuestion(object);
-}
+export function getTargetsForQuestion(question: Question): Target[] {
+  const query = question.query();
+  return [...query.dimensionOptions().all(), ...query.variables()].map(o => {
+    let id, target;
+    if (o instanceof TemplateTagVariable || o instanceof TemplateTagDimension) {
+      let name;
+      ({ id, name } = o.tag());
+      target = { type: "variable", id: name };
+    } else {
+      const dimension = ["dimension", o.mbql()];
+      id = JSON.stringify(dimension);
+      target = { type: "dimension", id, dimension };
+    }
+    let parentType;
+    let parameterSourceFilter: SourceFilters["parameter"] = () => true;
+    const columnSourceFilter = c => isa(c.base_type, parentType);
+    if (o instanceof TemplateTagVariable) {
+      parentType = { text: Text, number: Number, date: Temporal }[o.tag().type];
+      parameterSourceFilter = parameter =>
+        variableFilterForParameter(parameter)(o);
+    } else if (o.field() != null) {
+      const { base_type } = o.field();
+      parentType =
+        [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
+      parameterSourceFilter = parameter =>
+        dimensionFilterForParameter(parameter)(o);
+    }
 
-function getTargetsForAction(action) {
-  const parameters = Object.values(action.parameters);
-  return parameters.map(parameter => {
-    const { id, name } = parameter;
     return {
       id,
-      name,
-      target: { type: "parameter", id },
-
-      // We probably don't want to allow everything
-      // and will need to add some filters eventually
+      target,
+      name: o.displayName({ includeTable: true }),
       sourceFilters: {
-        column: () => true,
-        parameter: () => true,
-        userAttribute: () => true,
+        column: columnSourceFilter,
+        parameter: parameterSourceFilter,
+        userAttribute: () => parentType === Text,
       },
     };
   });
 }
 
-function getTargetsForQuestion(question) {
-  const query = question.query();
-  return query
-    .dimensionOptions()
-    .all()
-    .concat(query.variables())
-    .map(o => {
-      let id, target;
-      if (
-        o instanceof TemplateTagVariable ||
-        o instanceof TemplateTagDimension
-      ) {
-        let name;
-        ({ id, name } = o.tag());
-        target = { type: "variable", id: name };
-      } else {
-        const dimension = ["dimension", o.mbql()];
-        id = JSON.stringify(dimension);
-        target = { type: "dimension", id, dimension };
-      }
-      let parentType;
-      let parameterSourceFilter = () => true;
-      const columnSourceFilter = c => isa(c.base_type, parentType);
-      if (o instanceof TemplateTagVariable) {
-        parentType = { text: Text, number: Number, date: Temporal }[
-          o.tag().type
-        ];
-        parameterSourceFilter = parameter =>
-          variableFilterForParameter(parameter)(o);
-      } else if (o.field() != null) {
-        const { base_type } = o.field();
-        parentType =
-          [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
-        parameterSourceFilter = parameter =>
-          dimensionFilterForParameter(parameter)(o);
-      }
-
-      return {
-        id,
-        target,
-        name: o.displayName({ includeTable: true }),
-        sourceFilters: {
-          column: columnSourceFilter,
-          parameter: parameterSourceFilter,
-          userAttribute: () => parentType === Text,
-        },
-      };
-    });
+interface SourceFilters {
+  column: (column: Column) => boolean;
+  parameter: (parameter: Parameter) => boolean;
+  userAttribute: (userAttribute) => boolean;
 }
 
-function getTargetsForDashboard(dashboard, dashcard) {
+interface ParameterTarget {
+  type: "parameter";
+  id: Parameter["id"];
+}
+
+interface Target {
+  id: Parameter["id"];
+  name: Parameter["name"];
+  target: ParameterTarget;
+  sourceFilters: SourceFilters;
+}
+
+export function getTargetsForDashboard(
+  dashboard: Dashboard,
+  dashcard: DashboardCard,
+): Target[] {
+  if (!dashboard.parameters) {
+    return [];
+  }
+
   return dashboard.parameters.map(parameter => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
