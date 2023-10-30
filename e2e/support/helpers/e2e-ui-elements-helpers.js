@@ -10,6 +10,10 @@ export function main() {
   return cy.get("main");
 }
 
+export function menu() {
+  return cy.findByRole("menu");
+}
+
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }

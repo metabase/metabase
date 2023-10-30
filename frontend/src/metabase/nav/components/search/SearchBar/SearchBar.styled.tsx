@@ -25,23 +25,34 @@ export const SearchBarRoot = styled.div`
   }
 `;
 
-export const SearchInputContainer = styled.div<{ isActive: boolean }>`
+export const SearchInputContainer = styled.div<{
+  isActive: boolean;
+}>`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   position: relative;
 
-  background-color: ${props =>
-    props.isActive ? color("bg-medium") : color("bg-light")};
+  ${({ isActive }) => {
+    if (isActive) {
+      return css`
+        background-color: ${color("bg-medium")};
+      `;
+    }
+    return css`
+      background-color: ${color("white")};
+
+      &:hover {
+        background-color: ${color("bg-light")};
+      }
+    `;
+  }}
+
   border: 1px solid ${color("border")};
 
   overflow: hidden;
 
   transition: background 150ms, width 0.2s;
-
-  &:hover {
-    background-color: ${color("bg-medium")};
-  }
 
   @media (prefers-reduced-motion) {
     transition: none;
@@ -69,7 +80,9 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   }
 `;
 
-export const SearchInput = styled.input<{ isActive: boolean }>`
+export const SearchInput = styled.input<{
+  isActive: boolean;
+}>`
   background-color: transparent;
   border: none;
   color: ${({ theme }) => theme.colors.text[2]};
@@ -106,7 +119,9 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
 
 const ICON_MARGIN = "10px";
 
-export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
+export const SearchIcon = styled(Icon)<{
+  isActive: boolean;
+}>`
   ${breakpointMaxSmall} {
     transition: margin 0.3s;
 

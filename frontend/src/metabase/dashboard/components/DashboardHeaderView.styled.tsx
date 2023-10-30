@@ -56,7 +56,6 @@ export const HeaderCaption = styled(EditableText)`
 export const HeaderBadges = styled.div`
   display: flex;
   align-items: center;
-  padding-left: 0.5rem;
   border-left: 1px solid transparent;
 
   ${breakpointMaxSmall} {

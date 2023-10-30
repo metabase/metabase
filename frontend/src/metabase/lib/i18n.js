@@ -1,4 +1,5 @@
 import { addLocale, useLocale } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import dayjs from "dayjs";
 
@@ -39,7 +40,7 @@ export function updateMomentStartOfWeek() {
 export function updateDayjsStartOfWeek() {
   const startOfWeekDay = getStartOfWeekDay();
   if (startOfWeekDay != null) {
-    dayjs.updateLocale(dayjs.locale(), { week: { dow: startOfWeekDay } });
+    dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
 }
 

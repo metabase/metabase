@@ -32,7 +32,7 @@ describe("SmartScalar", () => {
   describe("field selection", () => {
     const rows = [
       ["2019-10-01T00:00:00", 100, 200],
-      [("2019-11-01T00:00:00", 120, 220)],
+      ["2019-11-01T00:00:00", 120, 220],
     ];
     const insights = [
       {
@@ -53,30 +53,39 @@ describe("SmartScalar", () => {
     it("should use first non-date column (Count) by default", () => {
       setup(series({ rows, insights }));
       expect(screen.getByText("120")).toBeInTheDocument();
-      const previousValue = screen.getByText("20%");
-      expect(previousValue).toBeInTheDocument();
-      userEvent.hover(previousValue);
-      expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+      const lastChange = screen.getByText("20%");
+      expect(lastChange).toBeInTheDocument();
+      userEvent.hover(lastChange);
+      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+      expect(screen.getByText("100")).toBeInTheDocument();
     });
     it("should use Count when selected", () => {
       setup(series({ rows, insights, field: "Count" }));
       expect(screen.getByText("120")).toBeInTheDocument();
-      const previousValue = screen.getByText("20%");
-      expect(previousValue).toBeInTheDocument();
-      userEvent.hover(previousValue);
-      expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+      const lastChange = screen.getByText("20%");
+      expect(lastChange).toBeInTheDocument();
+      userEvent.hover(lastChange);
+      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+      expect(screen.getByText("100")).toBeInTheDocument();
     });
     it("should use Sum when selected", () => {
       setup(series({ rows, insights, field: "Sum" }));
       expect(screen.getByText("220")).toBeInTheDocument();
-      const previousValue = screen.getByText("10%");
-      expect(previousValue).toBeInTheDocument();
-      userEvent.hover(previousValue);
-      expect(screen.getByText("was 200 last month")).toBeInTheDocument();
+      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+      const lastChange = screen.getByText("10%");
+      expect(lastChange).toBeInTheDocument();
+      userEvent.hover(lastChange);
+      expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+      expect(screen.getByText("200")).toBeInTheDocument();
     });
   });
   it("should show 20% increase", () => {
-    const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 120)]];
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      ["2019-11-01T00:00:00", 120],
+    ];
     const insights = [
       {
         "last-value": 120,
@@ -90,16 +99,21 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }));
 
     expect(screen.getByText("120")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
 
-    const previousValue = screen.getByText("20%");
-    expect(previousValue).toBeInTheDocument();
+    const lastChange = screen.getByText("20%");
+    expect(lastChange).toBeInTheDocument();
 
-    userEvent.hover(previousValue);
-    expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+    userEvent.hover(lastChange);
+    expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
   });
 
   it("should show 20% decrease", () => {
-    const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 80)]];
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      ["2019-11-01T00:00:00", 80],
+    ];
     const insights = [
       {
         "last-value": 80,
@@ -113,16 +127,21 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }));
 
     expect(screen.getByText("80")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
 
-    const previousValue = screen.getByText("20%");
-    expect(previousValue).toBeInTheDocument();
+    const lastChange = screen.getByText("20%");
+    expect(lastChange).toBeInTheDocument();
 
-    userEvent.hover(previousValue);
-    expect(screen.getByText("was 100 last month")).toBeInTheDocument();
+    userEvent.hover(lastChange);
+    expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
+    expect(screen.getByText("100")).toBeInTheDocument();
   });
 
   it("should show 0% change", () => {
-    const rows = [["2019-10-01T00:00:00", 100], [("2019-11-01T00:00:00", 100)]];
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      ["2019-11-01T00:00:00", 100],
+    ];
     const insights = [
       {
         "last-value": 100,
@@ -136,6 +155,7 @@ describe("SmartScalar", () => {
     setup(series({ rows, insights }));
 
     expect(screen.getByText("100")).toBeInTheDocument();
+    expect(screen.getByText("Nov 2019")).toBeInTheDocument();
     expect(screen.getByText("No change from last month")).toBeInTheDocument();
   });
 
@@ -169,7 +189,7 @@ describe("SmartScalar", () => {
     const width = 200;
     const rows = [
       ["2019-10-01T00:00:00", 100],
-      [("2019-11-01T00:00:00", 81005)],
+      ["2019-11-01T00:00:00", 81005],
     ];
     const insights = [
       {
@@ -190,7 +210,7 @@ describe("SmartScalar", () => {
     const width = 200;
     const rows = [
       ["2019-10-01T00:00:00", 100],
-      [("2019-11-01T00:00:00", 810750.54)],
+      ["2019-11-01T00:00:00", 810750.54],
     ];
     const insights = [
       {

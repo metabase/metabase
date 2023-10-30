@@ -181,6 +181,7 @@ const AGGREGATED_ORDERS_COLUMNS = {
         "temporal-unit": "month",
       },
     ],
+    unit: "month",
   }),
 
   count: createMockColumn({
@@ -2124,11 +2125,11 @@ describe("drillThru", () => {
         },
         aggregation: [
           ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
-          ["avg", ["expression", "CustomTax"]],
+          ["avg", ["expression", "CustomTax", { "base-type": "type/Number" }]],
         ],
         breakout: [
           ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
-          ["expression", "CustomColumn"],
+          ["expression", "CustomColumn", { "base-type": "type/Integer" }],
         ],
       },
     };
