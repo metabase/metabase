@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -11,25 +10,35 @@ import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 
+import type { CollectionId, SearchListQuery } from "metabase-types/api";
+import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
+import type Questions from "metabase/entities/questions";
 import {
   EmptyStateContainer,
   QuestionListItem,
   PaginationControlsContainer,
 } from "./QuestionList.styled";
 
-QuestionList.propTypes = {
-  searchText: PropTypes.string,
-  collectionId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  onSelect: PropTypes.func.isRequired,
-  hasCollections: PropTypes.bool,
-};
+interface QuestionListProps {
+  searchText: string;
+  collectionId: CollectionId;
+  onSelect: BaseSelectListItemProps["onSelect"];
+  hasCollections: boolean;
+}
+
+interface SearchListLoaderProps {
+  list: typeof Questions[];
+  metadata: {
+    total: number;
+  };
+}
 
 export function QuestionList({
   searchText,
   collectionId,
   onSelect,
   hasCollections,
-}) {
+}: QuestionListProps) {
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -45,7 +54,7 @@ export function QuestionList({
   const trimmedSearchText = searchText.trim();
   const isSearching = !!trimmedSearchText;
 
-  let query = isSearching
+  let query: SearchListQuery = isSearching
     ? { q: trimmedSearchText }
     : { collection: collectionId };
 
@@ -68,7 +77,7 @@ export function QuestionList({
 
   return (
     <Search.ListLoader entityQuery={query} wrapped>
-      {({ list, metadata }) => {
+      {({ list, metadata }: SearchListLoaderProps) => {
         const shouldShowEmptyState =
           list.length === 0 && (isSearching || !hasCollections);
         if (shouldShowEmptyState) {
