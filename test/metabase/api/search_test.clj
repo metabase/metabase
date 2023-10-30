@@ -1457,6 +1457,6 @@
                     set))))
 
       (testing "getting models should return only models that are applied"
-        (is (= #{"dashboard" "collection" "card"}
-             (set (mt/user-http-request :rasta :get 200 "search/models" :q search-term
-                                            :filter_items_in_personal_collection "exclude" :models "dashboard"))))))))
+        (is (= #{"dashboard" "collection"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
+                                          :filter_items_in_personal_collection "exclude" :models "dashboard"))))))))

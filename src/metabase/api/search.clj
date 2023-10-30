@@ -143,7 +143,8 @@
          "exclude"
          (conj [:or]
                (into
-                [:and]
+                ;; TODO add test for this case, why test wasn't failed before?
+                [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
                [:= collection-id-column nil]))))))
@@ -500,7 +501,7 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived table-db-id created_at created_by last_edited_at last_edited_by
-   filter-items-in-personal-collection search_native_query verified]
+   filter_items_in_personal_collection search_native_query verified]
   {archived            [:maybe ms/BooleanValue]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
@@ -514,6 +515,7 @@
                                     :table-db-id         table-db-id
                                     :created-at          created_at
                                     :created-by          (set (u/one-or-many created_by))
+                                    :filter-items-in-personal-collection filter_items_in_personal_collection
                                     :last-edited-at      last_edited_at
                                     :last-edited-by      (set (u/one-or-many last_edited_by))
                                     :search-native-query search_native_query
