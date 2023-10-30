@@ -14,7 +14,14 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import Button from "metabase/core/components/Button";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
-import { canonicalCollectionId } from "metabase/collections/utils";
+
+import { useCollectionListQuery } from "metabase/common/hooks";
+
+import {
+  canonicalCollectionId,
+  isInstanceAnalyticsCollection,
+  getInstanceAnalyticsCustomCollection,
+} from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/lib/errors";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
@@ -51,7 +58,7 @@ interface SaveQuestionModalProps {
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId?: number;
+  initialCollectionId?: CollectionId;
 }
 
 interface FormValues {
@@ -77,6 +84,8 @@ export const SaveQuestionModal = ({
   multiStep,
   initialCollectionId,
 }: SaveQuestionModalProps) => {
+  const { data: collections } = useCollectionListQuery();
+
   const handleOverwrite = useCallback(
     async (originalQuestion: Question) => {
       const collectionId = canonicalCollectionId(
@@ -129,6 +138,20 @@ export const SaveQuestionModal = ({
   );
 
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
+
+  // we can't use null because that can be ID of the root collection
+  const instanceAnalyticsCollectionId =
+    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
+
+  if (
+    collections &&
+    originalQuestion?.collectionId() === instanceAnalyticsCollectionId
+  ) {
+    const customCollection = getInstanceAnalyticsCustomCollection(collections);
+    if (customCollection) {
+      initialCollectionId = customCollection.id;
+    }
+  }
 
   const initialValues: FormValues = {
     name: question.generateQueryDescription() || "",
