@@ -28,7 +28,7 @@ describe("issue 31766", () => {
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
-    }).then(({ body: { dashboard_id, question_id } }) => {
+    }).then(({ body: { dashboard_id, question_id, id: dashcard_id } }) => {
       const textCard = getTextCardDetails({
         row: 0,
         size_x: 24,
@@ -39,7 +39,7 @@ describe("issue 31766", () => {
         row: 2,
         size_x: 16,
         size_y: 6,
-        id: 2,
+        id: dashcard_id,
         card_id: question_id,
       };
 
