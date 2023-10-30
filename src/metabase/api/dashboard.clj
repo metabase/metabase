@@ -786,15 +786,15 @@
   "How many results to return when chain filtering"
   1000)
 
-(defn- find-template-tag
-  "Fetch the `:field` clause from `dashcard` referenced by `template-tag`.
+(defn- get-template-tag
+  "Fetch the `:field` clause from `dashcard` referenced by `:template-tag`.
 
-    (find-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
+    (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [dimension card]
   (when-let [tag (first (mbql.u/get-clause :template-tag dimension))]
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
-(defn- param->op [{:keys [type]}]
+(defn- param-type->op [type]
   (if (get-in mbql.s/parameter-types [type :operator])
     (keyword (name type))
     :=))
@@ -806,10 +806,10 @@
                               (mbql.u/get-clause :dimension)
                               first)]
         :when dimension
-        :let  [ttag      (find-template-tag dimension card)
-               dimension (if ttag
-                           (:dimension ttag)
-                           dimension)
+        :let  [dimension (condp mbql.u/is-clause? dimension
+                           :field        dimension
+                           :template-tag (:dimension (get-template-tag dimension card))
+                           (log/error "cannot handle this dimension" {:dimension dimension}))
                field-id  (or
                           ;; Get the field id from the field-clause if it contains it. This is the common case
                           ;; for mbql queries.
@@ -820,9 +820,8 @@
                           (:id (qp.util/field->field-info dimension (:result_metadata card))))]
         :when field-id]
     {:field-id field-id
-     :op       (param->op param)
-     :options  (merge (:options ttag)
-                      (:options param))}))
+     :op       (param-type->op (:type param))
+     :options  (:options param)}))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]

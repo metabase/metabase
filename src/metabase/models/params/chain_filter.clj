@@ -93,6 +93,18 @@
 ;; for [[memoize/ttl]] keys
 (comment mdb.connection/keep-me)
 
+(def Constraint
+  "Schema for a constraint on a field."
+  [:map
+   [:field-id ms/PositiveInt]
+   [:op :keyword]
+   [:value :any]
+   [:options {:optional true} [:maybe map?]]])
+
+(def Constraints
+  "Schema for a list of Constraints."
+  [:sequential Constraint])
+
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
   Restaurant -> Category instead of the usual Category -> Restuarant*)
@@ -113,10 +125,10 @@
      (types/temporal-field? (t2/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
 
-(defn- filter-clause
+(mu/defn ^:private filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
-  [source-table-id {:keys [field-id op value options]
-                    :or   {op :=}}]
+  [source-table-id
+   {:keys [field-id op value options]} :- Constraint]
   (let [field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (when-not (= this-field-table-id source-table-id)
                                           {:join-alias (joined-table-alias this-field-table-id)})])]
@@ -125,10 +137,8 @@
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))
       (cond-> [op field-clause]
-        true          (into (if (or (sequential? value)
-                                    (set? value))
-                              value
-                              [value]))
+        ;; we don't want to skip our value, even if its nil
+        true (into (if value (u/one-or-many value) [nil]))
         (seq options) (conj options)))))
 
 (defn- name-for-logging [model id]
@@ -357,14 +367,6 @@
    [:limit {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private max-results 1000)
-
-(def Constraints
-  "Schema for map of (other) Field ID -> value for additional constraints for the `chain-filter` results."
-  [:sequential [:map
-                [:field-id ms/PositiveInt]
-                [:op {:optional true} :keyword]
-                [:value :any]
-                [:options {:optional true} [:maybe map?]]]])
 
 (mu/defn ^:private chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
@@ -695,7 +697,7 @@
   (when (seq filter-field-ids)
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (for [id filter-field-ids]
-                                                {:field-id id :value nil})
+                                                {:field-id id :op := :value nil})
                                               nil)]
       (set (mbql.u/match (-> mbql-query :query :filter)
              [:field (id :guard integer?) _] id)))))

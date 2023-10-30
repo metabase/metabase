@@ -2954,12 +2954,13 @@
           (is (= {:values          [["American"] ["Comedy Club"] ["Dim Sum"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
-        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
-                                                  (:not-category-name param-keys) "American"
-                                                  (:category-contains param-keys) "m")]
-          (is (= {:values          [["Comedy Club"] ["Dim Sum"] ["Entertainment"]]
-                  :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+        (testing "contains is case insensitive"
+          (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
+                                                    (:not-category-name param-keys) "American"
+                                                    (:category-contains param-keys) "am")]
+            (is (= {:values          [["Latin American"] ["Ramen"]]
+                    :has_more_values false}
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))))))
 
 (deftest chain-filter-template-tags
   (testing "Chain filtering works for a native query"

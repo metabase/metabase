@@ -15,6 +15,7 @@
 (defn shorthand->constraint [field-id v]
   (if-not (vector? v)
     {:field-id field-id
+     :op       :=
      :value    v}
     (let [op      (when (keyword? (first v)) (first v))
           options (when (map? (last v)) (last v))
@@ -557,6 +558,7 @@
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
              (#'chain-filter/filter-clause $$checkins {:field-id %checkins.date
+                                                       :op       :=
                                                        :value    "past32weeks"}))))))
 
 (mt/defdataset nil-values-dataset
