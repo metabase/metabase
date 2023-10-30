@@ -25,8 +25,6 @@ export type StoreDashboardTab = DashboardTab & {
 export type StoreDashboard = Omit<Dashboard, "dashcards" | "tabs"> & {
   dashcards: DashCardId[];
   tabs?: StoreDashboardTab[];
-  // TODO: remove
-  dashCardTabMovements?: Record<DashCardId, DashcardTabMovement>;
 };
 
 export type StoreDashcard = DashboardCard & {
@@ -42,12 +40,6 @@ export type TabDeletion = {
   id: TabDeletionId;
   tabId: DashboardTabId;
   removedDashCardIds: DashCardId[];
-};
-// TODO: remove
-export type DashcardTabMovement = {
-  originalTabId: DashboardTabId;
-  originalRow: number;
-  originalCol: number;
 };
 
 export interface DashboardState {

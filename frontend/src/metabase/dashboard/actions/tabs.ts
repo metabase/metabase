@@ -23,6 +23,7 @@ import { checkNotNull } from "metabase/lib/types";
 
 import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
+import { getDashCardById } from "../selectors";
 import { getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
@@ -107,8 +108,7 @@ export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 export const moveDashCardToTab =
   ({ destinationTabId, dashCardId }: MoveDashCardToTabPayload) =>
   (dispatch: Dispatch, getState: GetState) => {
-    // TODO: use selector
-    const dashCard = getState().dashboard.dashcards[dashCardId];
+    const dashCard = getDashCardById(getState(), dashCardId);
 
     const originalCol = dashCard.col;
     const originalRow = dashCard.row;
@@ -132,8 +132,6 @@ export const moveDashCardToTab =
         },
       }),
     );
-
-    // TODO: (in other PR) analytics event here
   };
 
 const _moveDashCardToTab =
