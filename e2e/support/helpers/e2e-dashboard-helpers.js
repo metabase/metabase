@@ -318,14 +318,19 @@ export function getLinkCardDetails({
  * @param {Array=} option.parameter_mappings
  */
 export function getActionCardDetails({
+  id = getNextUnsavedDashboardCardId(),
+  col = 0,
+  row = 0,
   label = "Action card",
   action_id,
   parameter_mappings,
 } = {}) {
   return {
-    id: getNextUnsavedDashboardCardId(),
+    id,
     action_id,
     card_id: null,
+    col,
+    row,
     size_x: 4,
     size_y: 1,
     series: [],
