@@ -34,11 +34,15 @@
 (deftest card-query-test
   (mt/with-temp [User user {}
                  Card card {:creator_id (:id user)}]
-    (events/publish-event! :event/card-query {:object (assoc card :cached false :ignore_cache true) :user-id (:id user)})
+    (events/publish-event! :event/card-query {:cached       false
+                                              :ignore_cache true
+                                              :card-id      (:id card)
+                                              :user-id      (:id user)
+                                              :context      "dashboard"})
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)
-            :metadata {:cached false :ignore_cache true :context nil}}
+            :metadata {:cached false :ignore_cache true :context "dashboard"}}
            (t2/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user))))))
 
 (deftest table-read-test
@@ -85,19 +89,20 @@
         (mt/with-test-user :crowberto
           ;; ensure no views from any other tests/temp items exist
           (view-log/user-recent-views! [])
-          (doseq [{:keys [topic item]} [{:topic :event/card-query,     :item dataset} ; oldest view
-                                        {:topic :event/card-query,     :item dataset}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/dashboard-read, :item dash}
-                                        {:topic :event/card-query,     :item card1}
-                                        {:topic :event/dashboard-read, :item dash}
-                                        {:topic :event/table-read,     :item table1}
-                                        {:topic :event/card-query,     :item archived}
-                                        {:topic :event/table-read,     :item hidden-table}]]
+          (doseq [{:keys [topic event]} [{:topic :event/card-query     :event {:card-id (:id dataset)}} ; oldest view
+                                         {:topic :event/card-query     :event {:card-id (:id dataset)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/dashboard-read :event {:object dash}}
+                                         {:topic :event/card-query     :event {:card-id (:id card1)}}
+                                         {:topic :event/dashboard-read :event {:object dash}}
+                                         {:topic :event/table-read     :event {:object table1}}
+                                         {:topic :event/card-query     :event {:card-id (:id archived)}}
+                                         {:topic :event/table-read     :event {:object hidden-table}}]]
             (events/publish-event! topic
-                                   {:object item :user-id (mt/user->id :crowberto)}))
+                                   (assoc event :user-id (mt/user->id :crowberto))))
+
           (is (= [{:model "table" :model_id (u/the-id hidden-table)}
                   {:model "card" :model_id (u/the-id archived)}
                   {:model "table" :model_id (u/the-id table1)}
