@@ -460,6 +460,21 @@
                      query -1
                      (lib/expression-clause op args options))))))))
 
+(deftest ^:parallel truncate-frontend-filter-display-names-test
+  (let [created-at (meta/field-metadata :products :created-at)
+        created-at-with #(lib/with-temporal-bucket created-at %1)]
+    (check-display-names
+      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Jan 1 – Dec 31, 2023"}
+       {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 1–31, 2023"}
+       {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023"}
+       {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
+       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023, 12:00 AM"}])))
+
 (deftest ^:parallel exclude-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]

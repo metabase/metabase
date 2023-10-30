@@ -39,6 +39,7 @@
    [clojure.string :as str]
    [dev.debug-qp :as debug-qp]
    [dev.model-tracking :as model-tracking]
+   [dev.explain :as dev.explain]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
@@ -79,6 +80,8 @@
  [debug-qp
   process-query-debug
   pprint-sql]
+ [dev.explain
+  explain-query]
  [model-tracking
   track!
   untrack!
