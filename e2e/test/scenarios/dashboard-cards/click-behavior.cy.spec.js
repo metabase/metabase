@@ -340,7 +340,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
         "have.text",
-        "Created At is August 1–31, 2022",
+        "Created At is Aug 1–31, 2022",
       );
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
