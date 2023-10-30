@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 import type { CoordinateFilterOperatorName } from "metabase-lib";
-import { OPERATOR_OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS_MAP } from "./constants";
 
 export function findLatitudeColumns(query: Lib.Query, stageIndex: number) {
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
@@ -87,9 +87,7 @@ export function isFilterValid(
   operatorName: CoordinateFilterOperatorName,
   values: number[],
 ) {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
+  const option = OPERATOR_OPTIONS_MAP[operatorName];
   if (!option) {
     return false;
   }

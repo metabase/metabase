@@ -13,7 +13,7 @@ import { Footer } from "../Footer";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
-import { OPERATOR_OPTIONS } from "./constants";
+import { OPERATOR_OPTIONS, OPERATOR_OPTIONS_MAP } from "./constants";
 import { findSecondColumn, isFilterValid } from "./utils";
 import { CoordinateColumnSelect } from "./CoordinateColumnSelect";
 
@@ -45,12 +45,7 @@ export function CoordinateFilterPicker({
     findSecondColumn({ query, stageIndex, column, filter, operatorName }),
   );
 
-  const valueCount = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option?.valueCount ?? 0;
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0 } = OPERATOR_OPTIONS_MAP[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -58,17 +53,23 @@ export function CoordinateFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.CoordinateFilterOperatorName,
+    nextOperatorName: Lib.CoordinateFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues([]);
+    const nextOption = OPERATOR_OPTIONS_MAP[nextOperatorName];
+    const nextValues =
+      nextOperatorName === "inside"
+        ? []
+        : values.slice(0, nextOption.valueCount);
+
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
     setColumn2(
       findSecondColumn({
         query,
         stageIndex,
         column,
         filter,
-        operatorName: newOperatorName,
+        operatorName: nextOperatorName,
       }),
     );
   };
