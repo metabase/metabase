@@ -1,4 +1,4 @@
-import { restore, visitQuestion } from "e2e/support/helpers";
+import { restore, popover, visitQuestion } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -17,14 +17,14 @@ describe("issue 6010", () => {
       .then(({ body: { id } }) => visitQuestion(id));
 
     cy.get(".dot").eq(0).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/See these Orders/).click();
+
+    popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At is January 2024").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total is greater than 150").should("be.visible");
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.findByText("Total is greater than 150").should("be.visible");
+      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+    });
   });
 });
 

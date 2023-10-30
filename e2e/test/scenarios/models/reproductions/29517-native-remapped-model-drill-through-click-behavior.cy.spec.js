@@ -88,9 +88,8 @@ describe("issue 29517 - nested question based on native model with remapped valu
       .click();
     cy.wait("@dataset");
 
-    cy.findByTestId("qb-filters-panel").should(
-      "contain",
-      "Created At is May 2024",
+    cy.findByTestId("qb-filters-panel").findByText(
+      "Created At is May 1–31, 2024",
     );
 
     assertQueryBuilderRowCount(520);
