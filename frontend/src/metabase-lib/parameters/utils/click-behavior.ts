@@ -2,6 +2,7 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import type {
+  ClickBehavior,
   Dashboard,
   DashboardCard,
   DatetimeUnit,
@@ -188,32 +189,36 @@ function baseTypeFilterForParameterType(parameterType: string) {
     allowedTypes.some(allowedType => isa(baseType, allowedType));
 }
 
-export function clickBehaviorIsValid(clickBehavior) {
+export function clickBehaviorIsValid(
+  clickBehavior: ClickBehavior | undefined | null,
+): boolean {
   // opens drill-through menu
   if (clickBehavior == null) {
     return true;
   }
-  const {
-    type,
-    parameterMapping = {},
-    linkType,
-    targetId,
-    linkTemplate,
-  } = clickBehavior;
-  if (type === "crossfilter") {
-    return Object.keys(parameterMapping).length > 0;
+
+  if (clickBehavior.type === "crossfilter") {
+    return Object.keys(clickBehavior.parameterMapping || {}).length > 0;
   }
-  if (type === "action") {
+
+  if (clickBehavior.type === "action") {
     return isImplicitActionClickBehavior(clickBehavior);
   }
-  // if it's not a crossfilter/action, it's a link
-  if (linkType === "url") {
-    return (linkTemplate || "").length > 0;
+
+  if (clickBehavior.type === "link") {
+    const { linkType } = clickBehavior;
+
+    // if it's not a crossfilter/action, it's a link
+    if (linkType === "url") {
+      return (clickBehavior.linkTemplate || "").length > 0;
+    }
+
+    // if we're linking to a Metabase entity we just need a targetId
+    if (linkType === "dashboard" || linkType === "question") {
+      return clickBehavior.targetId != null;
+    }
   }
-  // if we're linking to a Metabase entity we just need a targetId
-  if (linkType === "dashboard" || linkType === "question") {
-    return targetId != null;
-  }
+
   // we've picked "link" without picking a link type
   return false;
 }
