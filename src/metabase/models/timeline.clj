@@ -7,7 +7,6 @@
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (def Timeline

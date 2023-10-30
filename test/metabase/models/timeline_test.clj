@@ -40,8 +40,8 @@
 
 (deftest balloon-icon-migration-test
   (testing "timelines with icon=balloons should use the default icon instead when selected"
-    (mt/with-temp [Timeline a {:icon "balloons"}
-                   Timeline b {:icon "cake"}]
+    (t2.with-temp/with-temp [Timeline a {:icon "balloons"}
+                             Timeline b {:icon "cake"}]
       (is (= timeline-event/default-icon
              (t2/select-one-fn :icon Timeline (u/the-id a))))
       (is (= "cake"
