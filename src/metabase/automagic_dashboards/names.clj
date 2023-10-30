@@ -84,7 +84,8 @@
                                 :day-of-year     (deferred-tru "day of year")
                                 :week-of-year    (deferred-tru "week")
                                 :month-of-year   (deferred-tru "month")
-                                :quarter-of-year (deferred-tru "quarter")}
+                                :quarter-of-year (deferred-tru "quarter")
+                                :year            (deferred-tru "year")}
                                qp.util/normalize-token))
 
 (defn field-name
