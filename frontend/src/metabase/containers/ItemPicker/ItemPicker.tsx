@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -106,10 +106,6 @@ function ItemPicker<TId>({
   const hideItems =
     showOnlyPersonalCollections && !isOpenCollectionInPersonalCollection;
 
-  useEffect(() => {
-    onOpenCollectionChange?.(openCollectionId);
-  }, [onOpenCollectionChange, openCollectionId]);
-
   const collections = useMemo(() => {
     let list = openCollection?.children || [];
 
@@ -141,8 +137,9 @@ function ItemPicker<TId>({
     () =>
       getCrumbs(openCollection, collectionsById, id => {
         setOpenCollectionId(id);
+        onOpenCollectionChange?.(id);
       }),
-    [openCollection, collectionsById],
+    [openCollection, collectionsById, onOpenCollectionChange],
   );
 
   const searchQuery = useMemo(() => {
