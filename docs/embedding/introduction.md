@@ -48,7 +48,7 @@ If you'd like to share your data with the good people of the internet, you can c
 
 ## Switching from static to interactive embedding
 
-You can, but it's not a flip of a switch. Both embedding methods have different code approaches you need to make: on interactive embedding you authenticate a user via single sign-on (SSO), while in static embedding you don't, so plan accordingly before choosing which embedding method you want to use for your use case.
+[Interactive embedding](./interactive-embedding.md) requires authentication via single sign-on (SSO), so you'll need to set that up both in your Metabase and in your application's server. Check out our [Interactive embedding quick start](https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start). 
 
 ## Further reading
 
