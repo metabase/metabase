@@ -363,4 +363,20 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
     saveDashboard();
     expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 2); // dashboard_tab_deleted
   });
+
+  it("should send snowplow events when cards are moved between tabs", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+
+    editDashboard();
+    createNewTab();
+    goToTab("Tab 1");
+
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT);
+
+    moveDashCardToTab({ tabName: "Tab 2" });
+
+    expectGoodSnowplowEvents(PAGE_VIEW_EVENT + 1);
+  });
 });

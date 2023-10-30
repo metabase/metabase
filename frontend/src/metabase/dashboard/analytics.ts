@@ -26,3 +26,10 @@ export const trackCardCreated = (type: CardTypes, dashboard_id: number) => {
     dashboard_id,
   });
 };
+
+export const trackCardMoved = (dashboardId: DashboardId) => {
+  trackSchemaEvent("dashboard", "1-1-2", {
+    event: `card_moved_to_tab`,
+    dashboard_id: dashboardId,
+  });
+};
