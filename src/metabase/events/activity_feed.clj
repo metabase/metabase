@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.activity :as activity :refer [Activity]]
+   [metabase.models.activity :as activity]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
@@ -20,9 +20,8 @@
 (derive :event/card-delete ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
-  [topic event]
-  (let [card                  (:object event)
-        {query :dataset_query
+  [topic {:keys [actor-id] card :object :as _event}]
+  (let [{query :dataset_query
          dataset? :dataset}   card
         query                 (when (seq query)
                                 (try (qp/preprocess query)
@@ -32,7 +31,7 @@
         table-id              (mbql.u/query->source-table-id query)]
     (activity/record-activity!
      {:topic       topic
-      :user-id     (:actor-id event)
+      :user-id     actor-id
       :model       (if dataset? "dataset" "card")
       :model-id    (:id card)
       :object      card
@@ -50,35 +49,32 @@
 (derive :event/dashboard-remove-cards ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
-  [topic event]
-  (let [dashboard             (:object event)
-        create-delete-details
-        #(select-keys (:object %) [:description :name])
-
-        add-remove-card-details
-        (fn [{:keys [object dashcards] :as _event}]
-          (let [card-ids             (map :card_id dashcards)
-                card-id->dashcard-id (into {} (map (juxt :card_id :id) dashcards))
-                dashboard            (select-keys object [:name :description])
-                ;; TODO: do we still even use this information? if not let just save dashcards as is
-                dashcards            (if (seq card-ids)
-                                       (->> (t2/select [:model/Card :id :name :description] :id [:in card-ids])
-                                            (map #(set/rename-keys % {:id :card_id}))
-                                            (map #(assoc % :id (get card-id->dashcard-id (:card_id %)))))
-                                       [])]
-            (assoc dashboard :dashcards dashcards)))]
-
+  [topic {:keys [dashcards actor-id] dashboard :object :as _event}]
+  (let [details   (case topic
+                    ;; dashboard events
+                    (:event/dashboard-create
+                     :event/dashboard-delete)
+                    (select-keys dashboard [:description :name])
+                    ;; dashboard card events
+                    (:event/dashboard-add-cards
+                     :event/dashboard-remove-cards)
+                    (let [card-ids             (map :card_id dashcards)
+                          card-id->dashcard-id (into {} (map (juxt :card_id :id) dashcards))
+                          dashboard            (select-keys dashboard [:name :description])
+                          ;; TODO: do we still even use this information? if not let just save dashcards as is
+                          dashcards            (if (seq card-ids)
+                                                 (->> (t2/select [:model/Card :id :name :description] :id [:in card-ids])
+                                                      (map #(set/rename-keys % {:id :card_id}))
+                                                      (map #(assoc % :id (get card-id->dashcard-id (:card_id %)))))
+                                                 [])]
+                      (assoc dashboard :dashcards dashcards)))]
     (activity/record-activity!
      {:topic    topic
       :model    "dashboard"
       :model-id (:id dashboard)
-      :user-id  (:actor-id event)
+      :user-id  actor-id
       :object   dashboard
-      :details  (case topic
-                  :event/dashboard-create       (create-delete-details event)
-                  :event/dashboard-delete       (create-delete-details event)
-                  :event/dashboard-add-cards    (add-remove-card-details event)
-                  :event/dashboard-remove-cards (add-remove-card-details event))})))
+      :details details})))
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
@@ -86,13 +82,12 @@
 (derive :event/metric-delete ::metric-event)
 
 (methodical/defmethod events/publish-event! ::metric-event
-  [topic event]
-  (let [metric      (:object event)
-        table-id    (:table_id metric)
+  [topic {:keys [actor-id] metric :object :as event}]
+  (let [table-id    (:table_id metric)
         database-id (table/table-id->database-id table-id)]
     (activity/record-activity!
      {:topic       topic
-      :user-id     (:actor-id event)
+      :user-id     actor-id
       :model       "metric"
       :model-id    (:id metric)
       :object      metric
@@ -106,28 +101,27 @@
 (derive :event/pulse-delete ::pulse-event)
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic event]
-  (let [pulse (:object event)]
-    (activity/record-activity!
-     {:topic    topic
-      :model    "pulse"
-      :model-id (:id pulse)
-      :user-id  (:actor-id event)
-      :object   pulse
-      :details  (select-keys pulse [:name])})))
+  [topic {:keys [actor-id] pulse :object :as _event}]
+  (activity/record-activity!
+   {:topic    topic
+    :model    "pulse"
+    :model-id (:id pulse)
+    :user-id  actor-id
+    :object   pulse
+    :details  (select-keys pulse [:name])}))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)
 (derive :event/alert-delete ::alert-event)
 
 (methodical/defmethod events/publish-event! ::alert-event
-  [topic event]
+  [topic {:keys [actor-id] alert :object :as _event}]
   ;; TODO alert schema require card
-  (let [{:keys [card] :as alert} (:object event)]
+  (let [{:keys [card]} alert]
     (activity/record-activity!
      ;; Alerts are centered around a card/question. Users always interact with the alert via the question
      {:topic      topic
-      :user-id    (:actor-id event)
+      :user-id    actor-id
       :model      "alert"
       :model-id   (:id card)
       :object     alert
@@ -139,18 +133,17 @@
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
-  [topic event]
-  (let [segment     (:object event)
-        table-id    (:table_id segment)
+  [topic {:keys [actor-id revision-message] segment :object :as _event}]
+  (let [table-id    (:table_id segment)
         database-id (table/table-id->database-id table-id)]
     (activity/record-activity!
      {:topic       topic
       :model       "segment"
       :model-id    (:id segment)
-      :user-id     (:actor-id event)
+      :user-id     actor-id
       :object      segment
       :details     (assoc (select-keys segment [:name :description])
-                          :revision_message  (:revision-message event))
+                          :revision_message revision-message)
       :database-id database-id
       :table-id    table-id})))
 
@@ -170,5 +163,5 @@
 
 (methodical/defmethod events/publish-event! ::install-event
   [_topic _event]
-  (when-not (t2/exists? Activity :topic "install")
-    (t2/insert! Activity, :topic "install", :model "install")))
+  (when-not (t2/exists? :model/Activity :topic "install")
+    (t2/insert! :model/Activity :topic "install" :model "install")))

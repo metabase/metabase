@@ -1445,7 +1445,7 @@
 
 (defn- dashcard-like-response
   [id]
-  (first (t2/hydrate (t2/select DashboardCard :id id) :series)))
+  (t2/hydrate (t2/select-one DashboardCard :id id) :series))
 
 (defn- current-cards
   "Returns the current ordered cards of a dashboard."

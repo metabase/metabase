@@ -80,22 +80,20 @@
 
 (methodical/defmethod events/publish-event! ::event
   "Handle processing for a single event notification received on the view-log-channel"
-  [topic event]
+  [topic {:keys [object actor-id] :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when event
-      (let [object                         (:object event)
-            model                          (events/topic->model topic)
-            model-id                       (:id object)
-            user-id                        (:actor-id event)
-            ;; `:context` comes
-            ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
-            ;; and it should only be present for `:event/card-query`
-            {:keys [context] :as metadata} (events/object->metadata object)]
-        (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
-                   ;; we don't want to count pinned card views
-                   ((complement #{:collection :dashboard}) context))
-          (update-users-recent-views! user-id model model-id))
-        (record-view! model model-id user-id metadata)))
-    (catch Throwable e
-      (log/warnf e "Failed to process activity event. %s" topic))))
+   (when event
+     (let [model                          (events/topic->model topic)
+           model-id                       (:id object)
+           ;; `:context` comes
+           ;; from [[metabase.query-processor.middleware.process-userland-query/add-and-save-execution-info-xform!]],
+           ;; and it should only be present for `:event/card-query`
+           {:keys [context] :as metadata} (events/object->metadata object)]
+       (when (and (#{:event/card-query :event/dashboard-read :event/table-read} topic)
+                  ;; we don't want to count pinned card views
+                  ((complement #{:collection :dashboard}) context))
+         (update-users-recent-views! actor-id model model-id))
+       (record-view! model model-id actor-id metadata)))
+   (catch Throwable e
+     (log/warnf e "Failed to process activity event. %s" topic))))

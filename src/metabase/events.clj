@@ -80,7 +80,10 @@
     (derive :event/database-create ::events)
     (methodical/defmethod events/publish-event! ::events
       [topic event]
-       ...)"
+       ...)
+
+  The schema for each event topic are defined in `metabase.events.schema`, makes sure to keep it up-to-date
+  if you're working on a new event topic or updating an existing one."
   {:arglists            '([topic event])
    :defmethod-arities   #{2}
    :dispatch-value-spec ::publish-event-dispatch-value}
@@ -118,9 +121,8 @@
      (assert (map? event)
              (format "Invalid event %s: event must be a map." (pr-str event)))
      (try
-      (if-let [schema (events.schema/topic->schema topic)]
-        (mu/validate-throw schema event)
-        (log/warn (format "Missing schema for topic: %s" topic)))
+      (when-let [schema (events.schema/topic->schema topic)]
+        (mu/validate-throw schema event))
       (next-method topic event)
       (catch Throwable e
         (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))

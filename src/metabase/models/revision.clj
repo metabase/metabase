@@ -158,8 +158,7 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn mdb.u/toucan-model?]
    id    :- pos-int?]
-  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
-  (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
+  (t2/select Revision :model (name model) :model_id id {:order-by [[:id :desc]]}))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
@@ -175,16 +174,16 @@
 (mu/defn push-revision!
   "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
   Returns `object` or `nil` if the object does not changed."
-  [info :- [:map {:closed true}
-            [:id                            pos-int?]
-            [:object                        :map]
-            [:entity                        [:fn mdb.u/toucan-model?]]
-            [:user-id                       pos-int?]
-            [:is-creation? {:optional true} [:maybe :boolean]]
-            [:message      {:optional true} [:maybe :string]]]]
-  (let [{:keys [id entity user-id object is-creation? message]
-         :or   {is-creation? false}} info
-        serialized-object (serialize-instance entity id (dissoc object :message))
+  [{:keys [id entity user-id object
+           is-creation? message]
+    :or   {is-creation? false}}     :- [:map {:closed true}
+                                        [:id                            pos-int?]
+                                        [:object                        :map]
+                                        [:entity                        [:fn mdb.u/toucan-model?]]
+                                        [:user-id                       pos-int?]
+                                        [:is-creation? {:optional true} [:maybe :boolean]]
+                                        [:message      {:optional true} [:maybe :string]]]]
+  (let [serialized-object (serialize-instance entity id (dissoc object :message))
         last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
@@ -194,15 +193,15 @@
     ;; so to be safe, we'll just compare them as string
     (when-not (= (json/generate-string serialized-object)
                  (json/generate-string last-object))
-     (t2/insert! Revision
-                 :model        (name entity)
-                 :model_id     id
-                 :user_id      user-id
-                 :object       serialized-object
-                 :is_creation  is-creation?
-                 :is_reversion false
-                 :message      message)
-     object)))
+      (t2/insert! Revision
+                  :model        (name entity)
+                  :model_id     id
+                  :user_id      user-id
+                  :object       serialized-object
+                  :is_creation  is-creation?
+                  :is_reversion false
+                  :message      message)
+      object)))
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."

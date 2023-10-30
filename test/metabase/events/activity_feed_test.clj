@@ -25,7 +25,6 @@
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
 
-
 (deftest card-create-test
   (testing :card-create
     (t2.with-temp/with-temp [Card card {:name "My Cool Card"}]

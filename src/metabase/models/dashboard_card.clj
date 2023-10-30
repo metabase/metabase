@@ -101,7 +101,7 @@
                                       :where     [:in :series.dashboardcard_id dashcard-ids]
                                       :order-by  [[:series.position :asc]]}) series
                                (group-by :dashboardcard_id series)
-                               (update-vals series #(map (fn [card](dissoc card :dashboardcard_id)) %))))]
+                               (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
     (map (fn [dashcard]
            (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
          dashcards)))
@@ -117,9 +117,8 @@
 (mu/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- ms/PositiveInt]
-  (-> (t2/select :model/DashboardCard :id id)
-      (t2/hydrate :series)
-      first))
+  (-> (t2/select-one :model/DashboardCard :id id)
+      (t2/hydrate :series)))
 
 (defn dashcard->multi-cards
   "Return the cards which are other cards with respect to this dashboard card

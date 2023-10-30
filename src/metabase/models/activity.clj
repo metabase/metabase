@@ -102,25 +102,40 @@
         :object      segment
         :database-id 1
         :table-id    13)"
-  [info :- [:map {:closed true}
-            [:topic                        :keyword]
-            [:user-id                      pos-int?]
-            [:model                        :string]
-            [:model-id                     pos-int?]
-            [:object      {:optional true} [:maybe :map]]
-            [:details     {:optional true} [:maybe :map]]
-            [:database-id {:optional true} [:maybe pos-int?]]
-            [:table-id    {:optional true} [:maybe pos-int?]]]]
-  (let [{:keys [topic object details database-id table-id user-id model model-id]} info
-        object (or object {})]
-    (first (t2/insert-returning-instances! Activity
-                                           ;; strip off the `:event/` namespace of the topic, added in 0.48.0
-                                           :topic       (keyword (name topic))
-                                           :user_id     user-id
-                                           :model       model
-                                           :model_id    model-id
-                                           :database_id database-id
-                                           :table_id    table-id
-                                           ;; TODO: test if this custom id is tracked
-                                           :custom_id   (:custom_id object)
-                                           :details     (or details object)))))
+  Takes the following kwargs:
+    :topic          Required.  The activity topic.
+    :user-id        Required.  ID of the `User` responsible for the activity.
+    :model          Required.  name of the model representing the activity.
+    :model-id       Required.  ID of the model representing the activity.
+    :object         Optional.  The activity object being saved.
+    :database-id    Optional.  ID of the `Database` related to the activity.
+    :table-id       Optional.  ID of the `Table` related to the activity.
+    :details        Optional.  Details of the activity.
+
+  ex: (record-activity!
+       :topic       :event/segment-update
+       :object      segment
+       :database-id 1
+       :table-id    13)"
+  [{:keys [topic object details database-id
+           table-id user-id model model-id]
+    :or   {object {}}}                      :- [:map {:closed true}
+                                                [:topic                        :keyword]
+                                                [:user-id                      pos-int?]
+                                                [:model                        :string]
+                                                [:model-id                     pos-int?]
+                                                [:object      {:optional true} [:maybe :map]]
+                                                [:details     {:optional true} [:maybe :map]]
+                                                [:database-id {:optional true} [:maybe pos-int?]]
+                                                [:table-id    {:optional true} [:maybe pos-int?]]]]
+  (first (t2/insert-returning-instances! Activity
+                                         ;; strip off the `:event/` namespace of the topic, added in 0.48.0
+                                         :topic       (keyword (name topic))
+                                         :user_id     user-id
+                                         :model       model
+                                         :model_id    model-id
+                                         :database_id database-id
+                                         :table_id    table-id
+                                         ;; TODO: test if this custom id is tracked
+                                         :custom_id   (:custom_id object)
+                                         :details     (or details object))))

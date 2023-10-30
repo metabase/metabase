@@ -10,26 +10,20 @@
 
 (defn- push-revision!
   [model
-   {object :object :as event}
+   {:keys [actor-id] object :object :as event}
    {:keys [is-creation?]
     :or   {is-creation? false}
     :as   _options}]
   (when event
     (try
-     (let [id      (or (:id object)
-                       (throw (ex-info "Event does not have ID associated with it"
-                                       {:mode model :event event})))
-           user-id (or (:actor-id event)
-                       (throw (ex-info "Event does not have ID associated with it"
-                                       {:mode model :event event})))]
-       (when-not (t2/instance-of? model object)
-         (throw (ex-info "object must be a model instance" {:object object :model model})))
-       (revision/push-revision! {:entity       model
-                                 :id           id
-                                 :object       object
-                                 :user-id      user-id
-                                 :is-creation? is-creation?
-                                 :message      (:revision-message event)}))
+     (when-not (t2/instance-of? model object)
+       (throw (ex-info "object must be a model instance" {:object object :model model})))
+     (revision/push-revision! {:entity       model
+                               :id           (:id object)
+                               :object       object
+                               :user-id      actor-id
+                               :is-creation? is-creation?
+                               :message      (:revision-message event)})
      (catch Throwable e
        (log/warnf e "Failed to process revision event for model %s" model)))))
 
