@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockDashboardState,
@@ -7,6 +9,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -173,14 +176,50 @@ describe("AddCardSideBar", () => {
         ).toBeInTheDocument();
       });
     });
+
+    it("should search dashboard only in public collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInRootCollection,
+      });
+
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        name: "question in public collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+            filter_items_in_personal_collection: "exclude",
+          },
+        },
+        {
+          data: [questionInPublicCollection],
+        },
+      );
+
+      expect(
+        await screen.findByText(questionInPublicCollection.name),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("dashboards in public collections", () => {
-    it("should show all questions", async () => {
-      const dashboardInPublicSubcollection = createMockDashboard({
-        collection: SUBCOLLECTION,
-      });
+    const dashboardInPublicSubcollection = createMockDashboard({
+      collection: SUBCOLLECTION,
+    });
 
+    it("should show all questions", async () => {
       const collectionItems = [
         createMockCollectionItem({
           id: getNextId(),
@@ -209,13 +248,50 @@ describe("AddCardSideBar", () => {
         ).toBeInTheDocument();
       });
     });
+
+    it("should search dashboard only in public collections", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPublicSubcollection,
+      });
+
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        name: "question in public collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+            filter_items_in_personal_collection: "exclude",
+          },
+        },
+        {
+          data: [questionInPublicCollection],
+        },
+      );
+
+      expect(
+        await screen.findByText(questionInPublicCollection.name),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("dashboards in personal collections", () => {
+    const dashboardInPersonalSubcollection = createMockDashboard({
+      collection: PERSONAL_SUBCOLLECTION,
+    });
+
     it("should show all collections", async () => {
-      const dashboardInPersonalSubcollection = createMockDashboard({
-        collection: PERSONAL_SUBCOLLECTION,
-      });
       await setup({
         collections: COLLECTIONS,
         dashboard: dashboardInPersonalSubcollection,
@@ -231,10 +307,6 @@ describe("AddCardSideBar", () => {
     });
 
     it("should show all questions", async () => {
-      const dashboardInPersonalSubcollection = createMockDashboard({
-        collection: PERSONAL_SUBCOLLECTION,
-      });
-
       const collectionItems = [
         createMockCollectionItem({
           id: getNextId(),
@@ -266,6 +338,59 @@ describe("AddCardSideBar", () => {
           }),
         ).toBeInTheDocument();
       });
+    });
+
+    it("should search all dashboards", async () => {
+      await setup({
+        collections: COLLECTIONS,
+        dashboard: dashboardInPersonalSubcollection,
+      });
+
+      const typedText = "dashboard";
+      userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
+      const baseQuery = {
+        models: ["card", "dataset"],
+        offset: 0,
+        limit: 50,
+      };
+      const questionInPublicCollection = createMockSearchResult({
+        id: 1,
+        name: "question in public collection",
+        model: "card",
+      });
+      const questionInPersonalCollection = createMockSearchResult({
+        id: 2,
+        name: "question in personal collection",
+        model: "card",
+      });
+      fetchMock.get(
+        {
+          url: "path:/api/search",
+          query: {
+            ...baseQuery,
+            q: typedText,
+          },
+        },
+        {
+          data: [questionInPublicCollection, questionInPersonalCollection],
+        },
+      );
+
+      expect(
+        await screen.findByText(questionInPublicCollection.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(questionInPersonalCollection.name),
+      ).toBeInTheDocument();
+
+      // There's no way to math a URL that a query param is not present
+      // with fetch-mock, so we have to assert it manually.
+      const call = fetchMock.lastCall("path:/api/search");
+      const urlObject = new URL(checkNotNull(call?.request?.url));
+      expect(urlObject.pathname).toEqual("/api/search");
+      expect(
+        urlObject.searchParams.get("filter_items_in_personal_collection"),
+      ).toEqual(null);
     });
   });
 });
