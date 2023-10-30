@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { getIn } from "icepick";
 
+import type { DatetimeUnit, ParameterType } from "metabase-types/api";
 import { parseTimestamp } from "metabase/lib/time";
 import {
   formatDateTimeForParameter,
@@ -280,7 +281,11 @@ export function formatSourceForTarget(
   return datum.value;
 }
 
-function formatDateForParameterType(value, parameterType, unit) {
+function formatDateForParameterType(
+  value: string,
+  parameterType: ParameterType,
+  unit: DatetimeUnit,
+): string {
   const m = parseTimestamp(value);
   if (!m.isValid()) {
     return String(value);
