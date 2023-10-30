@@ -116,5 +116,13 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
         },
       };
     },
+    variants: {
+      stretch: () => ({
+        body: {
+          display: "flex",
+          justifyContent: "space-between",
+        },
+      }),
+    },
   },
 });
