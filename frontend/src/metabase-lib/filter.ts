@@ -641,6 +641,7 @@ const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
 const TIME_FORMAT_MS = "HH:mm:SS.sss";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
+const UTC_OFFSET_REGEX = /(Z|[+-]\d\d:?\d\d)$/;
 
 function hasTimeParts(date: Date): boolean {
   return date.getHours() !== 0 || date.getMinutes() !== 0;
@@ -655,7 +656,9 @@ function serializeDateTime(date: Date): string {
 }
 
 function deserializeDateTime(value: string): Date | null {
-  const dateTime = moment(value, [DATE_TIME_FORMAT, DATE_FORMAT], true);
+  const dateTime = UTC_OFFSET_REGEX.test(value)
+    ? moment.parseZone(value, moment.ISO_8601, true)
+    : moment(value, moment.ISO_8601, true);
   if (!dateTime.isValid()) {
     return null;
   }
