@@ -96,4 +96,28 @@ describe("ExcludeDatePicker", () => {
       values: [0, 2, 17],
     });
   });
+
+  it("should allow to exclude empty values", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Is empty"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "not-null",
+      values: [],
+    });
+  });
+
+  it("should allow to exclude not empty values", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Is not empty"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "is-null",
+      values: [],
+    });
+  });
 });
