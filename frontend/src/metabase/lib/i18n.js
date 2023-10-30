@@ -61,7 +61,7 @@ function setLanguage(translationsObject) {
 
 const ARABIC_LOCALES = ["ar", "ar-sa"];
 
-function setLocalization(translationsObject) {
+export function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
   updateMomentLocale(language);
@@ -89,7 +89,7 @@ function updateMomentLocale(language) {
 }
 
 /**
- * Ensures that we consistently use latin numbers, even in Arabic locales.
+ * Ensures that we consistently use latin numbers in Arabic locales.
  * See https://github.com/metabase/metabase/issues/34271
  */
 function preverseLatinNumbersInMomentLocale(locale) {

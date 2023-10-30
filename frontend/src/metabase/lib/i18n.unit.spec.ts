@@ -1,27 +1,34 @@
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
-import "./i18n";
+import { setLocalization } from "./i18n";
 
-describe("preserveLatinNumbersInArabic", () => {
+function setup(language: string) {
+  setLocalization({
+    headers: { language, "plural-forms": "nplurals=2; plural=(n != 1);" },
+    translations: { "": {} },
+  });
+}
+
+describe("setLocalization", () => {
   it("should preserve latin numbers when formatting dates in 'ar' locale", () => {
-    moment.locale("ar");
-    const m = moment("2023-10-12T21:07:33.476Z");
+    setup("ar");
+    const m = moment.utc("2023-10-12T21:07:33.476Z");
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 2:07 م");
+    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
   });
 
   it("should preserve latin numbers when formatting dates in 'ar-sa' locale", () => {
-    moment.locale("ar-sa");
-    const m = moment("2023-10-12T21:07:33.476Z");
+    setup("ar-sa");
+    const m = moment.utc("2023-10-12T21:07:33.476Z");
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 2:07 م");
+    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
   });
 
-  it("should preserve latin number in the 'en' locale", () => {
-    moment.locale("en");
-    const m = moment("2023-10-12T21:07:33.476Z");
+  it("should preserve latin numbers in the 'en' locale", () => {
+    setup("en");
+    const m = moment.utc("2023-10-12T21:07:33.476Z");
 
-    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("October 12, 2023, 2:07 PM");
+    expect(m.format("MMMM D, YYYY, h:mm A")).toBe("October 12, 2023, 9:07 PM");
   });
 });
