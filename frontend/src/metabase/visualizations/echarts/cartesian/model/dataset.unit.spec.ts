@@ -1,5 +1,5 @@
 import { createMockColumn } from "metabase-types/api/mocks";
-import { sumMetric, getDatasetSeriesKey, groupDataset } from "./dataset";
+import { sumMetric, getDatasetKey, groupDataset } from "./dataset";
 
 describe("dataset transform functions", () => {
   describe("sumMetric", () => {
@@ -20,15 +20,15 @@ describe("dataset transform functions", () => {
     });
   });
 
-  describe("getDatasetSeriesKey", () => {
+  describe("getDatasetKey", () => {
     const column = createMockColumn({ name: "count" });
 
     it("should return the column name if breakoutValue is undefined", () => {
-      expect(getDatasetSeriesKey(column)).toBe("count");
+      expect(getDatasetKey(column)).toBe("count");
     });
 
     it("should return the breakoutValue concatenated with column name if breakoutValue is provided", () => {
-      expect(getDatasetSeriesKey(column, "breakoutValue")).toBe(
+      expect(getDatasetKey(column, "breakoutValue")).toBe(
         "breakoutValue:count",
       );
     });

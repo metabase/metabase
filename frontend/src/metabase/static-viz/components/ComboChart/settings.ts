@@ -14,10 +14,12 @@ import {
   getSeriesDefaultShowSeriesValues,
   SETTING_ID,
 } from "metabase/visualizations/shared/settings/series";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/option/series";
-import { getCartesianChartSeries } from "metabase/visualizations/echarts/cartesian/model";
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import { getDefaultStackingValue } from "metabase/visualizations/shared/settings/cartesian-chart";
+import {
+  getCardsColumns,
+  getCardsSeries,
+} from "metabase/visualizations/echarts/cartesian/model";
 
 const fillWithDefaultValue = (
   settings: Record<string, unknown>,
@@ -84,11 +86,16 @@ export const computeStaticComboChartSettings = (
   const mainCard = rawSeries[0].card;
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
-  const cardSeriesModels = getCartesianChartSeries(rawSeries, settings);
-  const seriesVizSettingsKeys = cardSeriesModels.flatMap(cardSeriesModel =>
-    cardSeriesModel.series.metrics.map(seriesModel =>
-      getSeriesVizSettingsKey(seriesModel, renderingContext.formatValue),
-    ),
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const seriesModels = getCardsSeries(
+    rawSeries,
+    cardsColumns,
+    settings,
+    renderingContext,
+  );
+
+  const seriesVizSettingsKeys = seriesModels.map(
+    seriesModel => seriesModel.vizSettingsKey,
   );
 
   settings[COLOR_SETTING_ID] = getSeriesColors(seriesVizSettingsKeys, settings);

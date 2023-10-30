@@ -13,25 +13,23 @@ export const getCartesianChartOption = (
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const echartsSeries = buildEChartsSeries(
-    chartModel.flatMap(cardModel => cardModel.series),
+    chartModel,
     settings,
     renderingContext,
   );
 
-  const echartsDataset = chartModel.map(cardModel => {
-    const dimensions = [
-      cardModel.series.dimension.dataKey,
-      ...cardModel.series.metrics.map(s => s.dataKey),
-    ];
-
-    return { source: cardModel.dataset, dimensions };
-  });
-
-  const mainCard = chartModel[0];
+  const dimensions = [
+    chartModel.dimensionModel.dataKey,
+    ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
+  ];
+  const echartsDataset = [
+    { source: chartModel.dataset, dimensions },
+    { source: chartModel.normalizedDataset, dimensions },
+  ];
 
   return {
     dataset: echartsDataset,
     series: echartsSeries,
-    ...buildAxes(mainCard.series, settings, renderingContext),
+    ...buildAxes(chartModel, settings, renderingContext),
   } as EChartsOption;
 };

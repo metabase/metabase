@@ -1,5 +1,5 @@
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ColumnFormatter } from "metabase/visualizations/shared/types/format";
 import { getOrderedSeries, getSeries } from "./data";
@@ -24,14 +24,14 @@ export const getTwoDimensionalChartSeries = (
   };
 };
 
-export const getLabelsMetricColumn = (chartColumns: ChartColumns) => {
+export const getLabelsMetricColumn = (chartColumns: CartesianChartColumns) => {
   // For multi-metrics charts we use the first metric column settings for formatting
   return "breakout" in chartColumns
     ? chartColumns.metric
     : chartColumns.metrics[0];
 };
 
-export const getChartMetrics = (chartColumns: ChartColumns) => {
+export const getChartMetrics = (chartColumns: CartesianChartColumns) => {
   return "breakout" in chartColumns
     ? [chartColumns.metric]
     : chartColumns.metrics;

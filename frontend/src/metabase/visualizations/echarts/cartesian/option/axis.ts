@@ -6,8 +6,11 @@ import type {
   RemappingHydratedDatasetColumn,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { CardSeriesModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+
 import { isNumeric } from "metabase-lib/types/utils/isa";
+
+const NORMALIZED_RANGE = { min: 0, max: 1 };
 
 const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
@@ -106,12 +109,13 @@ export const buildDimensionAxis = (
   };
 };
 
-const buildMetricsAxes = (
+const buildMetricAxis = (
   settings: ComputedVisualizationSettings,
   column: RemappingHydratedDatasetColumn,
+  position: "left" | "right",
   renderingContext: RenderingContext,
-): CartesianAxisOption[] => {
-  const { getColor } = renderingContext;
+  name?: string,
+): CartesianAxisOption => {
   const formatter = (value: unknown) => {
     return renderingContext.formatValue(value, {
       column,
@@ -119,45 +123,79 @@ const buildMetricsAxes = (
     });
   };
 
-  // TODO: support Y-axis split
-  return [
-    {
-      ...getAxisNameDefaultOption(
-        renderingContext,
-        40, // TODO: compute
-        settings["graph.y_axis.title_text"],
-      ),
-      splitLine: {
-        lineStyle: {
-          type: 5,
-          color: getColor("border"),
-        },
-      },
-      axisLabel: {
-        ...getTicksDefaultOption(renderingContext),
-        // @ts-expect-error TODO: figure out EChart types
-        formatter: (value: string) => {
-          return formatter(value);
-        },
+  const isNormalized = settings["stackable.stack_type"] === "normalized";
+  const range = isNormalized ? NORMALIZED_RANGE : {};
+
+  const percentageFormatter = (value: unknown) =>
+    renderingContext.formatValue(value, {
+      column: column,
+      number_style: "percent",
+    });
+
+  return {
+    ...range,
+    ...getAxisNameDefaultOption(
+      renderingContext,
+      40, // TODO: compute
+      name,
+    ),
+    splitLine: {
+      lineStyle: {
+        type: 5,
+        color: renderingContext.getColor("border"),
       },
     },
+    position,
+    axisLabel: {
+      ...getTicksDefaultOption(renderingContext),
+      // @ts-expect-error TODO: figure out EChart types
+      formatter: (value: string) => {
+        const formatterFn = isNormalized ? percentageFormatter : formatter;
+        return formatterFn(value);
+      },
+    },
+  };
+};
+
+const buildMetricsAxes = (
+  settings: ComputedVisualizationSettings,
+  leftAxisColumn: RemappingHydratedDatasetColumn | undefined,
+  rightAxisColumn: RemappingHydratedDatasetColumn | undefined,
+  renderingContext: RenderingContext,
+): CartesianAxisOption[] => {
+  return [
+    ...(leftAxisColumn != null
+      ? [
+          buildMetricAxis(
+            settings,
+            leftAxisColumn,
+            "left",
+            renderingContext,
+            settings["graph.y_axis.title_text"],
+          ),
+        ]
+      : []),
+    ...(rightAxisColumn != null
+      ? [buildMetricAxis(settings, rightAxisColumn, "right", renderingContext)]
+      : []),
   ];
 };
 
 export const buildAxes = (
-  cardSeriesModel: CardSeriesModel,
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
   return {
     xAxis: buildDimensionAxis(
       settings,
-      cardSeriesModel.dimension.column,
+      chartModel.dimensionModel.column,
       renderingContext,
     ),
     yAxis: buildMetricsAxes(
       settings,
-      cardSeriesModel.metrics[0].column,
+      chartModel.leftAxisColumn,
+      chartModel.rightAxisColumn,
       renderingContext,
     ),
   };

@@ -17,7 +17,7 @@ import type {
   ChartTicksFormatters,
   ValueFormatter,
 } from "metabase/visualizations/shared/types/format";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
@@ -115,7 +115,7 @@ export const formatStaticValue = (
 };
 
 export const getStaticFormatters = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
@@ -175,7 +175,7 @@ export const getStaticFormatters = (
 };
 
 export const getLabelsStaticFormatter = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;

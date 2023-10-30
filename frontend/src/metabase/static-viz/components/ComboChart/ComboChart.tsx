@@ -12,12 +12,14 @@ export const ComboChart = ({
   rawSeries,
   dashcardSettings,
   renderingContext,
+  width = WIDTH,
+  height = HEIGHT,
 }: IsomorphicStaticChartProps) => {
   const chart = init(null, null, {
     renderer: "svg",
     ssr: true,
-    width: WIDTH,
-    height: HEIGHT,
+    width,
+    height,
   });
 
   const computedVisualizationSettings = computeStaticComboChartSettings(
@@ -29,6 +31,7 @@ export const ComboChart = ({
   const chartModel = getCartesianChartModel(
     rawSeries,
     computedVisualizationSettings,
+    renderingContext,
   );
 
   const option = getCartesianChartOption(
@@ -42,7 +45,7 @@ export const ComboChart = ({
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString());
 
   return (
-    <svg width={WIDTH} height={HEIGHT}>
+    <svg width={width} height={height}>
       <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
     </svg>
   );

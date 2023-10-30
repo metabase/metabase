@@ -1,41 +1,21 @@
 import type { EChartsOption, RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 import type {
-  CardSeriesModel,
   SeriesModel,
+  CartesianChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
-  Formatter,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/core/utils/types";
 
-export const getSeriesVizSettingsKey = (
-  seriesModel: SeriesModel,
-  formatValue: Formatter,
-) => {
-  const { datasetIndex, cardName, column } = seriesModel;
-
-  const isMainDataset = datasetIndex === 0;
-  const prefix = isMainDataset || cardName == null ? "" : `${cardName}: `;
-
-  const key =
-    "breakoutValue" in seriesModel
-      ? formatValue(seriesModel.breakoutValue, {
-          column: seriesModel.breakoutColumn,
-        })
-      : column.name;
-
-  return prefix + key;
-};
-
 // HACK: creates a pseudo legacy series object to integrate with the `series` function in computed settings.
 // This workaround is necessary for generating a compatible key with `keyForSingleSeries` function,
 // ensuring the correct retrieval of series visualization settings based on the provided `seriesVizSettingsKey`.
 // Will be replaced with just a string key when implementing the dynamic line/area/bar.
-const createLegacySeriesObjectKey = (seriesVizSettingsKey: string) => ({
+export const createLegacySeriesObjectKey = (seriesVizSettingsKey: string) => ({
   card: {
     _seriesKey: seriesVizSettingsKey,
   },
@@ -83,14 +63,19 @@ const buildEChartsBarSeries = (
   seriesColor: string,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
+  yAxisIndex: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
-    settings["stackable.stack_type"] != null ? "bar" : undefined;
+    settings["stackable.stack_type"] != null ? `bar_${yAxisIndex}` : undefined;
+
+  const datasetIndex =
+    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "bar",
-    datasetIndex: seriesModel.datasetIndex,
+    yAxisIndex,
+    datasetIndex,
     stack: stackName,
     encode: {
       y: seriesModel.dataKey,
@@ -117,16 +102,21 @@ const buildEChartsLineAreaSeries = (
   seriesColor: string,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
+  yAxisIndex: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["line"] => {
   const display = seriesSettings?.display ?? "line";
 
   const stackName =
-    settings["stackable.stack_type"] != null ? "area" : undefined;
+    settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
+
+  const datasetIndex =
+    settings["stackable.stack_type"] === "normalized" ? 1 : 0;
 
   return {
     type: "line",
-    datasetIndex: seriesModel.datasetIndex,
+    yAxisIndex,
+    datasetIndex,
     showSymbol: seriesSettings["line.marker_enabled"] !== false,
     symbolSize: 6,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
@@ -155,48 +145,45 @@ const buildEChartsLineAreaSeries = (
 };
 
 export const buildEChartsSeries = (
-  cardSeriesModels: CardSeriesModel[],
+  chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption["series"] => {
-  return cardSeriesModels.flatMap(cardSeriesModel =>
-    cardSeriesModel.metrics
-      .map(seriesModel => {
-        const seriesVizSettingsKey = getSeriesVizSettingsKey(
-          seriesModel,
-          renderingContext.formatValue,
-        );
+  return chartModel.seriesModels
+    .map(seriesModel => {
+      const seriesSettings: SeriesSettings = settings.series(
+        createLegacySeriesObjectKey(seriesModel.vizSettingsKey),
+      );
+      const seriesColor =
+        settings?.["series_settings.colors"]?.[seriesModel.vizSettingsKey];
 
-        const seriesSettings: SeriesSettings = settings.series(
-          createLegacySeriesObjectKey(seriesVizSettingsKey),
-        );
-        const seriesColor =
-          settings?.["series_settings.colors"]?.[seriesVizSettingsKey];
+      const yAxisIndex = chartModel.yAxisSplit[0].includes(seriesModel.dataKey)
+        ? 0
+        : 1;
 
-        switch (seriesSettings.display) {
-          case "line":
-          case "area":
-            return buildEChartsLineAreaSeries(
-              seriesModel,
-              seriesSettings,
-              seriesColor,
-              settings,
-              cardSeriesModel.dimension.dataKey,
-              renderingContext,
-            );
-          case "bar":
-            return buildEChartsBarSeries(
-              seriesModel,
-              seriesSettings,
-              seriesColor,
-              settings,
-              cardSeriesModel.dimension.dataKey,
-              renderingContext,
-            );
-        }
-
-        return null;
-      })
-      .filter(isNotNull),
-  );
+      switch (seriesSettings.display) {
+        case "line":
+        case "area":
+          return buildEChartsLineAreaSeries(
+            seriesModel,
+            seriesSettings,
+            seriesColor,
+            settings,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
+            renderingContext,
+          );
+        case "bar":
+          return buildEChartsBarSeries(
+            seriesModel,
+            seriesSettings,
+            seriesColor,
+            settings,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
+            renderingContext,
+          );
+      }
+    })
+    .filter(isNotNull);
 };

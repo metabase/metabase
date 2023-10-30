@@ -1,14 +1,13 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
 
 export type DataKey = string;
+export type VizSettingsKey = string;
 
 export type RegularSeriesModel = {
   dataKey: DataKey;
-  datasetIndex: number;
+  vizSettingsKey: VizSettingsKey;
 
   cardId?: number;
-  cardName?: string;
 
   column: DatasetColumn;
   columnIndex: number;
@@ -22,15 +21,25 @@ export type BreakoutSeriesModel = RegularSeriesModel & {
 
 export type SeriesModel = RegularSeriesModel | BreakoutSeriesModel;
 
-export type CardSeriesModel = {
-  dimension: RegularSeriesModel;
-  metrics: SeriesModel[];
+export type DimensionModel = {
+  dataKey: DataKey;
+  column: DatasetColumn;
+  columnIndex: number;
 };
 
-export type CartesianChartCardModel = {
-  columns: ChartColumns;
-  series: CardSeriesModel;
-  dataset: Record<DataKey, RowValue>[];
-};
+export type GroupedDataset = Record<DataKey, RowValue>[];
+export type Extent = [number, number];
+export type SeriesExtents = Record<DataKey, Extent>;
 
-export type CartesianChartModel = CartesianChartCardModel[];
+export type AxisSplit = [DataKey[], DataKey[]];
+
+export type CartesianChartModel = {
+  dimensionModel: DimensionModel;
+  seriesModels: SeriesModel[];
+  dataset: GroupedDataset;
+  normalizedDataset: GroupedDataset;
+  yAxisSplit: AxisSplit;
+
+  leftAxisColumn?: DatasetColumn;
+  rightAxisColumn?: DatasetColumn;
+};

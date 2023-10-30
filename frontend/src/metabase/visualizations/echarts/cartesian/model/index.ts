@@ -1,57 +1,111 @@
 import type { RawSeries } from "metabase-types/api";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
 import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
-import { getCardSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
+import {
+  getCardSeriesModels,
+  getDimensionModel,
+} from "metabase/visualizations/echarts/cartesian/model/series";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import { groupDataset } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import {
+  getDatasetExtents,
+  getGroupedData,
+  getNormalizedDataset,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { getYAxisSplit } from "metabase/visualizations/echarts/cartesian/model/axis";
 
-export const getCartesianChartSeries = (
+const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
+
+export const getCardsColumns = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) => {
-  return rawSeries.map((cardDataset, index) => {
+  return rawSeries.map(({ data, card }) => {
     // When multiple cards are combined on a dashboard card, computed visualization settings contain
     // dimensions and metrics settings of the first card only which is not correct.
     // Using the raw visualization settings for that is safe because we can combine
     // only saved cards that have these settings.
     const shouldUseIndividualCardSettings = rawSeries.length > 0;
-    const columns = getCartesianChartColumns(
-      cardDataset.data.cols,
-      shouldUseIndividualCardSettings
-        ? cardDataset.card.visualization_settings
-        : settings,
+    return getCartesianChartColumns(
+      data.cols,
+      shouldUseIndividualCardSettings ? card.visualization_settings : settings,
     );
+  });
+};
 
-    const series = getCardSeriesModels(cardDataset, columns, index);
+export const getCardsSeries = (
+  rawSeries: RawSeries,
+  cardsColumns: CartesianChartColumns[],
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) => {
+  return rawSeries.flatMap((cardDataset, index) => {
+    const isFirstCard = index === 0;
+    const cardColumns = cardsColumns[index];
 
-    return {
-      columns,
-      series,
-    };
+    return getCardSeriesModels(
+      cardDataset,
+      cardColumns,
+      isFirstCard,
+      renderingContext,
+    );
   });
 };
 
 export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
 ): CartesianChartModel => {
-  return getCartesianChartSeries(rawSeries, settings).map(
-    (chartSeriesModel, index) => {
-      const { columns } = chartSeriesModel;
-      const cardData = rawSeries[index].data;
-      const breakoutIndex =
-        "breakout" in columns ? columns.breakout.index : undefined;
-      const dataset = groupDataset(
-        cardData.rows,
-        cardData.cols,
-        columns.dimension.index,
-        breakoutIndex,
-      );
+  const cardsColumns = getCardsColumns(rawSeries, settings);
 
-      return {
-        ...chartSeriesModel,
-        dataset,
-      };
-    },
+  const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
+  const seriesModels = getCardsSeries(
+    rawSeries,
+    cardsColumns,
+    settings,
+    renderingContext,
   );
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+  const dataset = getGroupedData(rawSeries, cardsColumns);
+  const extents = getDatasetExtents(seriesDataKeys, dataset);
+
+  const normalizedDataset = getNormalizedDataset(
+    dataset,
+    seriesDataKeys,
+    dimensionModel.dataKey,
+  );
+
+  const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
+    rawSeries[0].card.display,
+  );
+
+  const yAxisSplit = getYAxisSplit(
+    seriesModels,
+    extents,
+    settings,
+    isAutoSplitSupported,
+    renderingContext,
+  );
+
+  const [leftSeries, rightSeries] = yAxisSplit;
+  const leftAxisColumn = seriesModels.find(
+    seriesModel => seriesModel.dataKey === leftSeries[0],
+  )?.column;
+  const rightAxisColumn = seriesModels.find(
+    seriesModel => seriesModel.dataKey === rightSeries[0],
+  )?.column;
+
+  return {
+    dataset,
+    normalizedDataset,
+    seriesModels,
+    dimensionModel,
+    yAxisSplit,
+    leftAxisColumn,
+    rightAxisColumn,
+  };
 };

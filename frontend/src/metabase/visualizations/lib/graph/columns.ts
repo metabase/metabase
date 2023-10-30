@@ -55,12 +55,14 @@ export type MultipleMetricsChartColumns = {
   metrics: ColumnDescriptor[];
 };
 
-export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
+export type CartesianChartColumns =
+  | BreakoutChartColumns
+  | MultipleMetricsChartColumns;
 
 export const getCartesianChartColumns = (
   columns: RemappingHydratedDatasetColumn[],
   settings: Pick<VisualizationSettings, "graph.dimensions" | "graph.metrics">,
-): ChartColumns => {
+): CartesianChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
     (settings["graph.dimensions"] ?? []).filter(isNotNull),
     columns,
