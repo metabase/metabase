@@ -25,9 +25,9 @@
    timestamp    su/TemporalString
    time_matters (s/maybe s/Bool)
    timezone     s/Str
-   icon         (s/maybe timeline/Icons)
+   icon         (s/maybe timeline-event/Icon)
    timeline_id  su/IntGreaterThanZero
-   source       (s/maybe timeline-event/Sources)
+   source       (s/maybe timeline-event/Source)
    question_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   ;; deliberately not using api/check-404 so we can have a useful error message.
@@ -69,7 +69,7 @@
    timestamp    (s/maybe su/TemporalString)
    time_matters (s/maybe s/Bool)
    timezone     (s/maybe s/Str)
-   icon         (s/maybe timeline/Icons)
+   icon         (s/maybe timeline-event/Icon)
    timeline_id  (s/maybe su/IntGreaterThanZero)
    archived     (s/maybe s/Bool)}
   (let [existing (api/write-check TimelineEvent id)
