@@ -61,6 +61,18 @@
         (is (= "number of Venues where Name is Test"
                ;; Test specifically the un-normalized form (metabase#15737)
                (names/cell-title root ["=" ["field" %name nil] "Test"]))))
+      (testing "Should humanize greater than filter"
+        (is (= "number of Venues where Name is greater than Test"
+               (names/cell-title root [">" ["field" %name nil] "Test"]))))
+      (testing "Should humanize at least filter"
+        (is (= "number of Venues where Name is at least Test"
+               (names/cell-title root [">=" ["field" %name nil] "Test"]))))
+      (testing "Should humanize less than filter"
+        (is (= "number of Venues where Name is less than Test"
+               (names/cell-title root ["<" ["field" %name nil] "Test"]))))
+      (testing "Should humanize no more than filter"
+        (is (= "number of Venues where Name is no more than Test"
+               (names/cell-title root ["<=" ["field" %name nil] "Test"]))))
       (testing "Should humanize and filter"
         (is (= "number of Venues where Name is Test and Price is 0"
                (names/cell-title root ["and"
@@ -72,3 +84,45 @@
       (testing "Should humanize inside filter"
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
                (names/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
+
+(deftest ^:parallel cell-title-default-test
+  (mt/$ids venues
+    (let [query (query/adhoc-query {:query    {:source-table (mt/id :venues)
+                                               :aggregation  [:count]}
+                                    :type     :query
+                                    :database (mt/id)})
+          root  (magic/->root query)]
+      (testing "Just say \"relates to\" when we don't know what the operator is"
+        (is (= "number of Venues where Name relates to Test"
+               (names/cell-title root ["???" ["field" %name nil] "Test"])))))))
+
+(deftest ^:parallel cell-title-with-dates-comparison-test
+  (testing "Ensure cell titles with date comparisons display correctly"
+    (mt/$ids users
+      (let [query (query/adhoc-query {:query    {:source-table (mt/id :users)
+                                                 :aggregation  [:count]}
+                                      :type     :query
+                                      :database (mt/id)})
+            root  (magic/->root query)]
+        ;; The "on" might read a little odd here, but this would require a larger change to
+        ;; humanize-datetime which we probably should not do right now.
+        (testing "Should humanize temporal field with = test"
+          (is (= "number of Users where Last Login is on September 9, 1990"
+                 (names/cell-title root
+                                   ["=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+        (testing "Should humanize temporal field with > test"
+          (is (= "number of Users where Last Login is after on September 9, 1990"
+                 (names/cell-title root
+                                   [">" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+        (testing "Should humanize temporal field with < test"
+          (is (= "number of Users where Last Login is before on September 9, 1990"
+                 (names/cell-title root
+                                   ["<" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+        (testing "Should humanize temporal field with >= test"
+          (is (= "number of Users where Last Login is not before on September 9, 1990"
+                 (names/cell-title root
+                                   [">=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))
+        (testing "Should humanize temporal field with <= test"
+          (is (= "number of Users where Last Login is not after on September 9, 1990"
+                 (names/cell-title root
+                                   ["<=" ["field" %last_login {:temporal-unit :day}] "1990-09-09T12:30:00"]))))))))
