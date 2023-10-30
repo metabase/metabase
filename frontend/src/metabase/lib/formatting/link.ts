@@ -19,8 +19,8 @@ export interface ValueAndColumnForColumnNameDate {
   userAttribute: Record<string, { value: Value }>;
 }
 
-function formatValueForLinkTemplate(value: string, column: DatasetColumn) {
-  if (isDate(column) && column.unit) {
+function formatValueForLinkTemplate(value: Value, column: DatasetColumn) {
+  if (isDate(column) && column.unit && typeof value === "string") {
     return formatDateTimeForParameter(value, column.unit);
   }
   return value;
