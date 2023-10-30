@@ -51,7 +51,8 @@ export function useDashboardTabs({ location }: { location: Location }) {
       moveTabAction({
         sourceTabId:
           typeof activeId === "number" ? activeId : parseInt(activeId),
-        destTabId: typeof overId === "number" ? overId : parseInt(overId),
+        destinationTabId:
+          typeof overId === "number" ? overId : parseInt(overId),
       }),
     );
 
