@@ -1,5 +1,8 @@
 (ns metabase.query-processor.middleware.enterprise
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
+  (:require
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util.i18n :as i18n]))
 
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
@@ -50,4 +53,8 @@
   "'Around' middleware that handles `internal` type queries."
   metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
   [qp]
-  qp)
+  (fn [{query-type :type, :as query} xform context]
+    (when (= (keyword query-type) :internal)
+      (throw (ex-info (i18n/tru "Audit App queries are not enabled on this instance.")
+                      {:type qp.error-type/invalid-query})))
+    (qp query xform context)))
