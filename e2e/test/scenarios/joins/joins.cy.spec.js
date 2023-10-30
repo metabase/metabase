@@ -158,13 +158,9 @@ describe("scenarios > question > joined questions", () => {
     });
     visualize();
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      cy.findByTestId("qb-filters-panel")
-        .findByText(
-          `Question ${joinedQuestionId} - PRODUCT_ID → Category is Gadget`,
-        )
-        .should("be.visible");
-    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("question b - PRODUCT_ID → Category is Gadget")
+      .should("be.visible");
     cy.get(".ScalarValue").contains("Gadget").should("be.visible");
   });
 
@@ -238,11 +234,9 @@ describe("scenarios > question > joined questions", () => {
     visualize();
     queryBuilderMain().findByText("Sum Divide");
 
-    cy.get("@joinedQuestionId").then(joinedQuestionId => {
-      cy.findByTestId("qb-filters-panel")
-        .findByText(`Question ${joinedQuestionId} - Product → ID is 12`)
-        .should("be.visible");
-    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Q2 - Product → ID is 12")
+      .should("be.visible");
   });
 
   it("should handle joins on different stages", () => {
