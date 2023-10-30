@@ -630,6 +630,50 @@
             (mt/user-http-request :rasta :put 403 (alert-url alert)
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
 
+(deftest alert-event-test
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (t2.with-temp/with-temp [Collection collection {}
+                               Card       card {:name          "My question"
+                                                :display       "bar"
+                                                :collection_id (u/the-id collection)}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (with-alert-setup
+          (et/with-expected-messages 1
+            (let [alert-details {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                 :collection_id    (u/the-id collection)
+                                 :alert_condition  "goal"
+                                 :alert_above_goal true
+                                 :alert_first_only false
+                                 :channels         [daily-email-channel]}
+                  alert         (mt/user-http-request :rasta :post 200 "alert" alert-details)]
+              (testing "Creating alert also logs event."
+                (is (= {:topic    :alert-create
+                        :user_id  (mt/user->id :rasta)
+                        :model    "Card"
+                        :model_id (u/the-id alert)
+                        :details  {:archived     false
+                                   :name         "My question"
+                                   :card_id      (u/the-id card)
+                                   :parameters   []
+                                   :channel      ["email"]
+                                   :schedule     ["daily"]
+                                   :recipients   [[]]}}
+                       (audit-log-test/event :alert-create (u/the-id alert)))))
+              (testing "Updating alert also logs event."
+                (mt/user-http-request :crowberto :put 200 (alert-url alert) alert-details)
+                (is (= {:topic    :alert-update
+                        :user_id  (mt/user->id :crowberto)
+                        :model    "Card"
+                        :model_id (u/the-id alert)
+                        :details  {:archived   true
+                                   :name       "My question"
+                                   :card_id    (u/the-id card)
+                                   :parameters []
+                                   :channel    ["email"]
+                                   :schedule   ["daily"]
+                                   :recipients [[]]}}
+                       (audit-log-test/event :alert-update (u/the-id alert)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
