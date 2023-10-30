@@ -1,7 +1,10 @@
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import type { UiParameter } from "metabase-lib/parameters/types";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
+import {
+  hasFields,
+  isFieldFilterUiParameter,
+} from "metabase-lib/parameters/utils/parameter-fields";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 type FormattedParameterValueProps = {
@@ -19,7 +22,11 @@ function FormattedParameterValue({
     return placeholder;
   }
 
-  if (hasFields(parameter) && !isDateParameter(parameter)) {
+  if (
+    isFieldFilterUiParameter(parameter) &&
+    hasFields(parameter) &&
+    !isDateParameter(parameter)
+  ) {
     return (
       <ParameterFieldWidgetValue fields={parameter.fields} value={value} />
     );
