@@ -215,7 +215,10 @@
 (methodical/defmethod events/publish-event! ::database-update-event
   [topic event]
   (audit-log/record-event! topic
-                           (maybe-prepare-update-event-data event)
+                           (update-vals
+                            (maybe-prepare-update-event-data event)
+                            ;; Mysql returns :updated_at, but we can know that from the event itself.
+                            #(dissoc % :updated_at))
                            api/*current-user-id*
                            :model/Database
                            (:id event)))
