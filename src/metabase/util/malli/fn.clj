@@ -153,7 +153,7 @@
   (let [trace (.getStackTrace e)
         fixed-trace (into-array StackTraceElement
                                 (drop-while
-                                 #(str/starts-with? (.getClassName %)
+                                 #(str/starts-with? (.getClassName ^StackTraceElement %)
                                                     ;; this is... hacky, but it works.
                                                     (namespace ::x))
                                             trace))]
