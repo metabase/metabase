@@ -1,7 +1,11 @@
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import type { DatetimeUnit, ParameterType } from "metabase-types/api";
+import type {
+  DatetimeUnit,
+  Parameter,
+  ParameterType,
+} from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 import { parseTimestamp } from "metabase/lib/time";
 import {
@@ -71,7 +75,7 @@ export function getDataFromClicked({
 
 const { Text, Number, Temporal } = TYPE;
 
-function notRelativeDateOrRange({ type }) {
+function notRelativeDateOrRange({ type }: Parameter) {
   return type !== "date/range" && type !== "date/relative";
 }
 
