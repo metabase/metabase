@@ -1,7 +1,6 @@
 (ns metabase-enterprise.audit-db
   (:require
    [babashka.fs :as fs]
-   [clojure.core :as c]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.internal-user :as ee.internal-user]
@@ -9,15 +8,16 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.env :as mdb.env]
    [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [metabase.models.permissions :as perms])
-  (:import [java.util.jar JarEntry JarFile]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
 
