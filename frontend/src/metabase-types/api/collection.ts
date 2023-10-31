@@ -32,8 +32,8 @@ export type CollectionInstanceAnaltyicsConfig = {
 export interface Collection {
   id: CollectionId;
   name: string;
-  slug: string;
-  entity_id: string;
+  slug?: string;
+  entity_id?: string;
   description: string | null;
   can_write: boolean;
   archived: boolean;

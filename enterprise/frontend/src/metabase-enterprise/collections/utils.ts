@@ -29,4 +29,4 @@ export const getInstanceAnalyticsCustomCollection = (
   collections?.find?.(
     collection =>
       collection.entity_id === CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
-  );
+  ) ?? null;
