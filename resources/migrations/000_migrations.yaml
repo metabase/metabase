@@ -15642,6 +15642,26 @@ databaseChangeLog:
       rollback:
 
   - changeSet:
+      id: v48.00-027
+      author: qnkhuat
+      comment: 'Drop parameter_card.entity_id'
+      changes:
+        - dropColumn:
+            tableName: parameter_card
+            columnName: entity_id
+      rollback:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: parameter_card
+
+  - changeSet: 
       id: v48.00-028
       author: noahmoss
       comment: Added 0.48.0 - new view v_audit_log

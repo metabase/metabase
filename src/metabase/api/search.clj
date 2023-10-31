@@ -139,7 +139,7 @@
     query))
 
 (mu/defn ^:private replace-select :- :map
-  "Replace a select from query that has alias is `target-alias` with the `with` column, throw an error if
+  "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
   can't find the target select.
 
   This works with the assumption that `query` contains a list of select from [[select-clause-for-model]],
@@ -148,15 +148,16 @@
   This function then will replace the dummy column with alias is `target-alias` with the `with` column."
   [query        :- :map
    target-alias :- :keyword
-   with         :- [:or :keyword [:sequential :any]]]
-  (let [selects (:select query)
-        idx     (first (keep-indexed (fn [index item]
-                                       (when (and (coll? item)
-                                                  (= (last item) target-alias))
-                                         index))
-                                     selects))]
+   with         :- :keyword]
+  (let [selects     (:select query)
+        idx         (first (keep-indexed (fn [index item]
+                                           (when (and (coll? item)
+                                                      (= (last item) target-alias))
+                                             index))
+                                         selects))
+        with-select [with target-alias]]
     (if (some? idx)
-      (assoc query :select (m/replace-nth idx with selects))
+      (assoc query :select (m/replace-nth idx with-select selects))
       (throw (ex-info "Failed to replace selector" {:status-code  400
                                                     :target-alias target-alias
                                                     :with         with})))))
@@ -165,12 +166,23 @@
   [query :- :map
    model :- [:enum "card" "dataset" "dashboard" "metric"]]
   (-> query
-       (replace-select :last_editor_id [:r.user_id :last_editor_id])
-       (replace-select :last_edited_at [:r.timestamp :last_edited_at])
+       (replace-select :last_editor_id :r.user_id)
+       (replace-select :last_edited_at :r.timestamp)
        (sql.helpers/left-join [:revision :r]
                               [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                                [:= :r.most_recent true]
                                [:= :r.model (search.config/search-model->revision-model model)]])))
+
+(mu/defn ^:private with-moderated-status :- :map
+  [query :- :map
+   model :- [:enum "card" "dataset"]]
+  (-> query
+      (replace-select :moderated_status :mr.status)
+      (sql.helpers/left-join [:moderation_review :mr]
+                             [:and
+                              [:= :mr.moderated_item_type "card"]
+                              [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
+                              [:= :mr.most_recent true]])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Search Queries for each Toucan Model                                      |
@@ -191,7 +203,8 @@
                               [:= :bookmark.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
-      (with-last-editing-info model)))
+      (with-last-editing-info model)
+      (with-moderated-status model)))
 
 (defmethod search-query-for-model "action"
   [model search-ctx]

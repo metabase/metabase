@@ -449,6 +449,10 @@
           (is (= {:previous {:name "Original Database Name"}
                   :new      {:name "Updated Database Name"}}
                  (:details audit-log-entry))))))))
+          (is (partial=
+               {:previous {:name "Original Database Name"}
+                :new      {:name "Updated Database Name"}}
+               (:details audit-log-entry))))))))
 
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"

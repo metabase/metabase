@@ -14,10 +14,10 @@
 (deftest ^:parallel zoom-in-timeseries-e2e-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/count))
-                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :day))
+                  (lib/breakout (meta/field-metadata :products :category))
                   (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))]
     (is (=? {:stages [{:aggregation [[:count {}]]
-                       :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                       :breakout    [[:field {} (meta/id :products :category)]
                                      [:field {:temporal-unit :year} (meta/id :orders :created-at)]]}]}
             query))
     (let [columns    (lib/returned-columns query)
@@ -47,7 +47,7 @@
               (lib/display-info query -1 drill)))
       (let [query' (lib/drill-thru query drill)]
         (is (=? {:stages [{:aggregation [[:count {}]]
-                           :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                           :breakout    [[:field {} (meta/id :products :category)]
                                          [:field {:temporal-unit :quarter} (meta/id :orders :created-at)]]
                            :filters     [[:=
                                           {}
@@ -79,7 +79,7 @@
                   (lib/display-info query' -1 drill)))
           (let [query'' (lib/drill-thru query' drill)]
             (is (=? {:stages [{:aggregation [[:count {}]]
-                               :breakout    [[:field {:temporal-unit :day} (meta/id :orders :created-at)]
+                               :breakout    [[:field {} (meta/id :products :category)]
                                              [:field {:temporal-unit :month} (meta/id :orders :created-at)]]
                                ;; if we were SMART we could remove the first filter clause since it's not adding any
                                ;; value, but it won't hurt anything other than performance to keep it there. QP can

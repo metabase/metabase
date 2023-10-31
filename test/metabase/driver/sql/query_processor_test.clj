@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.core :as mc]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -1067,7 +1066,7 @@
             (sql.qp/with-driver-honey-sql-version driver/*driver*
               (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
                                  vec
-                                 (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
+                                 (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
                 (testing "this query should not have any parameters"
                   (is (mc/validate [:cat [:sequential :string]] sql-args)))))))))))
 
@@ -1083,11 +1082,11 @@
               "  FLOOR((ORDERS.QUANTITY / 10)) * 10"
               "ORDER BY"
               "  FLOOR((ORDERS.QUANTITY / 10)) * 10 ASC"]
-             (-> (mbql->native (lib.tu.macros/mbql-query orders
+             (->> (mbql->native (lib.tu.macros/mbql-query orders
                                  {:aggregation [[:count]]
                                   :breakout    [:binning-strategy $quantity :num-bins 10]}))
-                 (mdb.query/format-sql :h2)
-                 str/split-lines))))))
+                  (driver/prettify-native-form :h2)
+                  str/split-lines))))))
 
 (deftest ^:parallel make-nestable-sql-test
   (testing "Native sql query should be modified to be usable in subselect"
