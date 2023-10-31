@@ -33,7 +33,6 @@ const isInsertActionClickBehavior = (
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "insert" &&
-    "tableId" in value &&
     value.tableId === "number"
   );
 };
@@ -47,7 +46,6 @@ const isUpdateActionClickBehavior = (
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "update" &&
-    "objectDetailDashCardId" in value &&
     value.objectDetailDashCardId === "number"
   );
 };
@@ -61,7 +59,6 @@ const isDeleteActionClickBehavior = (
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "delete" &&
-    "objectDetailDashCardId" in value &&
     value.objectDetailDashCardId === "number"
   );
 };
