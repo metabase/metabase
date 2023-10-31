@@ -18,7 +18,7 @@ fk_target_field_id:
 dimensions: []
 custom_position: 0
 effective_type: type/Integer
-active: true
+active: false
 nfc_path: null
 parent_id: null
 serdes/meta:
@@ -32,11 +32,11 @@ serdes/meta:
   id: alert_question_id
 database_is_auto_increment: false
 json_unfolding: false
-position: 15
+position: 10
 visibility_type: normal
 preview_display: true
 display_name: Alert Question ID
-database_position: 15
+database_position: 10
 database_required: false
 created_at: '2023-06-08T14:05:44.460794Z'
 base_type: type/Integer

@@ -28,11 +28,11 @@ serdes/meta:
   id: first_name
 database_is_auto_increment: false
 json_unfolding: false
-position: 2
+position: 3
 visibility_type: normal
 preview_display: true
 display_name: First Name
-database_position: 2
+database_position: 3
 database_required: false
 created_at: '2023-06-08T14:05:41.008036Z'
 base_type: type/Text

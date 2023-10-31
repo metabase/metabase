@@ -4,7 +4,7 @@ collection_position: null
 table_id:
 - Internal Metabase Database
 - public
-- v_audit_log
+- v_view_log
 result_metadata: null
 database_id: Internal Metabase Database
 enable_embedding: false
@@ -19,47 +19,51 @@ dataset_query:
   database: Internal Metabase Database
   type: query
   query:
-    source-table: -lNDM3tJmuL5ltGbX0oyT
     joins:
-    - fields: all
-      alias: Question 34
+    - strategy: left-join
+      alias: Group Members - User
       condition:
       - =
       - - field
         - - Internal Metabase Database
           - public
-          - v_audit_log
+          - v_view_log
           - user_id
-        - null
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
           - v_group_members
           - user_id
-        - join-alias: Question 34
+        - base-type: type/Integer
+          join-alias: Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
     aggregation:
     - - distinct
       - - field
         - - Internal Metabase Database
           - public
-          - v_audit_log
+          - v_view_log
           - user_id
-        - null
+        - base-type: type/Integer
     breakout:
     - - field
-      - timestamp
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
+    source-table: P6Ityjj7igswKh4NgZZjz
     filter:
     - time-interval
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
-      - null
-    - -52
+      - base-type: type/DateTimeWithLocalTZ
+    - -2
     - week
     - include-current: false
 parameter_mappings: []

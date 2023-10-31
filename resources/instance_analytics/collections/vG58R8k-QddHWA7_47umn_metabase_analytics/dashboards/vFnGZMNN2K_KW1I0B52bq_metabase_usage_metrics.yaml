@@ -1,22 +1,12 @@
 description: Metrics around active users, content generation, views.
 archived: false
-collection_position: 2
+collection_position: 3
 dashcards:
 - size_x: 6
   dashboard_tab_id: null
   action_id: null
   col: 0
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: gYt6bo9DFKz6tSeDLxYVs
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: gYt6bo9DFKz6tSeDLxYVs
     target:
@@ -26,7 +16,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: gYt6bo9DFKz6tSeDLxYVs
   entity_id: Qv9D3jXGGbsyLURLlKoIG
   visualization_settings:
@@ -39,16 +29,6 @@ dashcards:
   action_id: null
   col: 6
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: t-4MnpU-Nn7Ph9GQT6zYb
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: t-4MnpU-Nn7Ph9GQT6zYb
     target:
@@ -58,7 +38,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: t-4MnpU-Nn7Ph9GQT6zYb
   entity_id: 8KV2R5mzQZ5ZqcSBAZhpi
   visualization_settings:
@@ -71,16 +51,6 @@ dashcards:
   action_id: null
   col: 12
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: kd1-A_wWOvlSuLDTFUpyb
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: kd1-A_wWOvlSuLDTFUpyb
     target:
@@ -90,7 +60,17 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
+  - parameter_id: 9112df7d
+    card_id: kd1-A_wWOvlSuLDTFUpyb
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - temporal-unit: default
   card_id: kd1-A_wWOvlSuLDTFUpyb
   entity_id: eMu8T8shqP6OiB_orPQb8
   visualization_settings:
@@ -110,7 +90,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   - parameter_id: ab0252fc
@@ -122,7 +102,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: p8ZML2ebd3ItzCyWsKXLa
   entity_id: vIa5qU52qmci1wnR4rYWm
   visualization_settings:
@@ -135,16 +115,6 @@ dashcards:
   action_id: null
   col: 12
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: DnNyT6EtIn-Zx8bHRFHbV
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - created_at
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: DnNyT6EtIn-Zx8bHRFHbV
     target:
@@ -167,16 +137,6 @@ dashcards:
   action_id: null
   col: 16
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: G7fFejjb7cgwYlUXSvf3K
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - created_at
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: G7fFejjb7cgwYlUXSvf3K
     target:
@@ -199,16 +159,6 @@ dashcards:
   action_id: null
   col: 20
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: ybsNZp-876qEMoA1U51dc
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - created_at
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: ybsNZp-876qEMoA1U51dc
     target:
@@ -238,7 +188,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   - parameter_id: ab0252fc
@@ -250,7 +200,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: fBr2cU-86t14YWbaS3r6-
   entity_id: GlI9CJywLBzdGgNkmhVWn
   visualization_settings:
@@ -270,7 +220,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   - parameter_id: ab0252fc
@@ -282,7 +232,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: T1vsVJUAfg30Fqiw4Dywa
   entity_id: 9QohNXoERBN4aKd--9LS7
   visualization_settings:
@@ -302,7 +252,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   - parameter_id: ab0252fc
@@ -314,7 +264,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   card_id: FUuJSuFo7wM6EoddmNsHf
   entity_id: Z4dzLFWHFKEEymbqcM2PA
   visualization_settings:
@@ -327,16 +277,6 @@ dashcards:
   action_id: null
   col: 12
   parameter_mappings:
-  - parameter_id: 9112df7d
-    card_id: p-z74CSp1IOs1rXwAcwcS
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - timestamp
-      - temporal-unit: default
   - parameter_id: ab0252fc
     card_id: p-z74CSp1IOs1rXwAcwcS
     target:
@@ -347,6 +287,17 @@ dashcards:
         - v_group_members
         - group_name
       - join-alias: Question 34
+  - parameter_id: 9112df7d
+    card_id: p-z74CSp1IOs1rXwAcwcS
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: p-z74CSp1IOs1rXwAcwcS
   entity_id: _iLvtXz7cnTL6NrcNxEtQ
   visualization_settings:

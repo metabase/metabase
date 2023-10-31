@@ -19,6 +19,69 @@ dataset_query:
   database: Internal Metabase Database
   type: query
   query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - updated_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - archived
+      - base-type: type/Boolean
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - tracked_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - recipient_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - recipients
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts_subscriptions
+        - recipient_external
+      - base-type: type/Text
+    joins:
+    - fields: none
+      strategy: left-join
+      alias: Content - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_alerts_subscriptions
+          - tracked_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - User
+      source-table: AxSackBiyXVRUzM_TyyQY
     source-table: 5ojUtU9iE-DCggHdFPIll
     filter:
     - =
@@ -27,49 +90,8 @@ dataset_query:
         - public
         - v_alerts_subscriptions
         - archived
-      - null
+      - base-type: type/Boolean
     - false
-    fields:
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - id
-      - null
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - created_at
-      - temporal-unit: default
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - updated_at
-      - temporal-unit: default
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - source-field:
-        - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - creator_id
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - recipient_type
-      - null
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts_subscriptions
-        - recipient_external
-      - null
 parameter_mappings: []
 serdes/meta:
 - model: Card
@@ -79,10 +101,9 @@ display: table
 entity_id: Bp2r19P5a9HjDTR4-VuZa
 collection_preview: true
 visualization_settings:
-  table.pivot_column: name
   table.cell_column: recipient_external
   table.columns:
-  - name: id
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -90,8 +111,8 @@ visualization_settings:
       - v_alerts_subscriptions
       - id
     - null
-    enabled: true
-  - name: created_at
+    name: id
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -99,8 +120,8 @@ visualization_settings:
       - v_alerts_subscriptions
       - created_at
     - temporal-unit: default
-    enabled: true
-  - name: updated_at
+    name: created_at
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -108,25 +129,16 @@ visualization_settings:
       - v_alerts_subscriptions
       - updated_at
     - temporal-unit: default
-    enabled: true
-  - name: name
+    name: updated_at
+  - enabled: true
     fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_alerts_subscriptions
-      - name
-    - null
-    enabled: false
-  - fieldRef:
     - field
     - - Internal Metabase Database
       - public
       - v_users
       - full_name
     - source-field: 988
-    enabled: true
-  - name: recipient_type
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -134,8 +146,8 @@ visualization_settings:
       - v_alerts_subscriptions
       - recipient_type
     - null
-    enabled: true
-  - name: recipient_external
+    name: recipient_type
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -143,7 +155,226 @@ visualization_settings:
       - v_alerts_subscriptions
       - recipient_external
     - null
+    name: recipient_external
+  - name: tracked_qualified_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - tracked_qualified_id
+    - base-type: type/Text
     enabled: true
+  - name: archived
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_alerts_subscriptions
+      - archived
+    - base-type: type/Boolean
+    enabled: true
+  - name: entity_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - User
+    enabled: true
+  - name: entity_qualified_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_qualified_id
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: entity_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: created_at_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - User
+    enabled: true
+  - name: updated_at_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - User
+    enabled: true
+  - name: creator_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+      join-alias: Content - User
+    enabled: true
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: description
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: collection_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_id
+    - base-type: type/Integer
+      join-alias: Content - User
+    enabled: true
+  - name: made_public_by_user
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+      join-alias: Content - User
+    enabled: true
+  - name: is_embedding_enabled
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+      join-alias: Content - User
+    enabled: true
+  - name: archived_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+      join-alias: Content - User
+    enabled: true
+  - name: action_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_type
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: action_model_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_model_id
+    - base-type: type/Integer
+      join-alias: Content - User
+    enabled: true
+  - name: collection_is_official
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_official
+    - base-type: type/Boolean
+      join-alias: Content - User
+    enabled: true
+  - name: collection_is_personal
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_personal
+    - base-type: type/Boolean
+      join-alias: Content - User
+    enabled: true
+  - name: question_viz_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_viz_type
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: question_database_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_database_id
+    - base-type: type/Text
+      join-alias: Content - User
+    enabled: true
+  - name: question_is_native
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_is_native
+    - base-type: type/Boolean
+      join-alias: Content - User
+    enabled: true
+  - name: event_timestamp
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - event_timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - User
+    enabled: true
+  table.pivot_column: archived
   column_settings: null
 metabase_version: null
 parameters: []

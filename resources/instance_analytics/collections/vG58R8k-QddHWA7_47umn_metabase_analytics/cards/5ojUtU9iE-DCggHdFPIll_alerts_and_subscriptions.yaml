@@ -1,49 +1,61 @@
 description: Data from alerts and subscriptions including recipients
 archived: false
-collection_position: 6
+collection_position: 7
 table_id:
 - Internal Metabase Database
 - public
 - v_alerts_subscriptions
 result_metadata:
 - description: null
-  semantic_type: type/PK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
+  semantic_type: null
   coercion_strategy: null
-  name: id
+  name: entity_id
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
     - v_alerts_subscriptions
-    - id
+    - entity_id
   - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
   - v_alerts_subscriptions
-  - id
+  - entity_id
   visibility_type: normal
-  display_name: ID
-  base_type: type/Text
+  display_name: Entity ID
+  base_type: type/Integer
 - description: null
-  semantic_type: type/Category
-  table_id:
+  semantic_type: null
+  coercion_strategy: null
+  name: entity_qualified_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - entity_qualified_id
+  - null
+  effective_type: type/Text
+  id:
   - Internal Metabase Database
   - public
   - v_alerts_subscriptions
+  - entity_qualified_id
+  visibility_type: normal
+  display_name: Entity Qualified ID
+  base_type: type/Text
+- description: null
+  semantic_type: type/Category
   coercion_strategy: null
   name: entity_type
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -52,8 +64,6 @@ result_metadata:
     - entity_type
   - null
   effective_type: type/Text
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -64,15 +74,11 @@ result_metadata:
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   unit: default
   name: created_at
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -81,8 +87,6 @@ result_metadata:
     - created_at
   - temporal-unit: default
   effective_type: type/DateTimeWithLocalTZ
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -93,15 +97,11 @@ result_metadata:
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/UpdatedTimestamp
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   unit: default
   name: updated_at
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -110,8 +110,6 @@ result_metadata:
     - updated_at
   - temporal-unit: default
   effective_type: type/DateTimeWithLocalTZ
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -122,14 +120,10 @@ result_metadata:
   base_type: type/DateTimeWithLocalTZ
 - description: null
   semantic_type: type/FK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   name: creator_id
   settings: null
-  source: fields
+  fk_target_field_id: 739
   field_ref:
   - field
   - - Internal Metabase Database
@@ -138,8 +132,6 @@ result_metadata:
     - creator_id
   - null
   effective_type: type/Integer
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -150,14 +142,10 @@ result_metadata:
   base_type: type/Integer
 - description: null
   semantic_type: type/Name
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   name: name
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -166,8 +154,6 @@ result_metadata:
     - name
   - null
   effective_type: type/Text
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -177,43 +163,11 @@ result_metadata:
   display_name: Name
   base_type: type/Text
 - description: null
-  semantic_type: type/Description
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: description
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - description
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - description
-  visibility_type: normal
-  display_name: Description
-  base_type: type/Text
-- description: null
   semantic_type: type/FK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   name: collection_id
   settings: null
-  source: fields
+  fk_target_field_id: 919
   field_ref:
   - field
   - - Internal Metabase Database
@@ -221,9 +175,7 @@ result_metadata:
     - v_alerts_subscriptions
     - collection_id
   - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
+  effective_type: type/Integer
   id:
   - Internal Metabase Database
   - public
@@ -231,45 +183,13 @@ result_metadata:
   - collection_id
   visibility_type: normal
   display_name: Collection ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: made_public_by_user
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - made_public_by_user
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - made_public_by_user
-  visibility_type: normal
-  display_name: Made Public By User
-  base_type: type/Text
+  base_type: type/Integer
 - description: null
   semantic_type: type/Category
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   name: archived
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -278,8 +198,6 @@ result_metadata:
     - archived
   - null
   effective_type: type/Boolean
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -290,182 +208,32 @@ result_metadata:
   base_type: type/Boolean
 - description: null
   semantic_type: null
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
-  name: is_official
+  name: tracked_qualified_id
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
     - public
     - v_alerts_subscriptions
-    - is_official
+    - tracked_qualified_id
   - null
   effective_type: type/Text
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
   - v_alerts_subscriptions
-  - is_official
+  - tracked_qualified_id
   visibility_type: normal
-  display_name: Is Official
+  display_name: Tracked Qualified ID
   base_type: type/Text
 - description: null
   semantic_type: type/Category
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: action_type
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - action_type
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - action_type
-  visibility_type: normal
-  display_name: Action Type
-  base_type: type/Text
-- description: null
-  semantic_type: null
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: action_model_id
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - action_model_id
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - action_model_id
-  visibility_type: normal
-  display_name: Action Model ID
-  base_type: type/Text
-- description: null
-  semantic_type: null
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: collection_is_personal
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - collection_is_personal
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - collection_is_personal
-  visibility_type: normal
-  display_name: Collection Is Personal
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: subscription_dashboard_id
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - subscription_dashboard_id
-  - null
-  effective_type: type/Text
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - subscription_dashboard_id
-  visibility_type: normal
-  display_name: Subscription Dashboard ID
-  base_type: type/Text
-- description: null
-  semantic_type: type/FK
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  coercion_strategy: null
-  name: alert_question_id
-  settings: null
-  source: fields
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_alerts_subscriptions
-    - alert_question_id
-  - null
-  effective_type: type/Integer
-  nfc_path: null
-  parent_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
-  - alert_question_id
-  visibility_type: normal
-  display_name: Alert Question ID
-  base_type: type/Integer
-- description: null
-  semantic_type: type/Category
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_alerts_subscriptions
   coercion_strategy: null
   name: recipient_type
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -474,8 +242,6 @@ result_metadata:
     - recipient_type
   - null
   effective_type: type/Text
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -485,15 +251,33 @@ result_metadata:
   display_name: Recipient Type
   base_type: type/Text
 - description: null
-  semantic_type: null
-  table_id:
+  semantic_type: type/Category
+  coercion_strategy: null
+  name: recipients
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_alerts_subscriptions
+    - recipients
+  - null
+  effective_type: type/Text
+  id:
   - Internal Metabase Database
   - public
   - v_alerts_subscriptions
+  - recipients
+  visibility_type: normal
+  display_name: Recipients
+  base_type: type/Text
+- description: null
+  semantic_type: null
   coercion_strategy: null
   name: recipient_external
   settings: null
-  source: fields
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -502,8 +286,6 @@ result_metadata:
     - recipient_external
   - null
   effective_type: type/Text
-  nfc_path: null
-  parent_id: null
   id:
   - Internal Metabase Database
   - public
@@ -523,12 +305,12 @@ embedding_params: null
 cache_ttl: null
 dataset_query:
   database: Internal Metabase Database
+  type: query
   query:
     source-table:
     - Internal Metabase Database
     - public
     - v_alerts_subscriptions
-  type: query
 parameter_mappings: []
 serdes/meta:
 - model: Card
