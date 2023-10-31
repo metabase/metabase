@@ -138,7 +138,7 @@
          "exclude"
          (conj [:or]
                (into
-                [:and #_[:= :collection.personal_owner_id nil]]
+                [:and [:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
                [:= collection-id-column nil]))))))

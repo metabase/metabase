@@ -1442,18 +1442,16 @@
       (testing "admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
-                 ["card" card-rasta]
                  ["collection" coll-sub-public]}
                (search :rasta "exclude"))))
 
       (testing "non-admin exclude"
         (is (= #{["dashboard" dash-public]
                  ["dashboard" dash-sub-public]
-                 ["card" card-rasta]
                  ["collection" coll-sub-public]}
                (search :rasta "exclude"))))
 
       (testing "getting models should return only models that are applied"
-        (is (= #{"dashboard" "dataset" "collection" "card"}
+        (is (= #{"dashboard" "collection"}
                (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
                                           :filter_items_in_personal_collection "exclude"))))))))
