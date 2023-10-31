@@ -207,7 +207,7 @@ describe("scenarios > dashboard > tabs", () => {
 
       cy.findAllByTestId("toast-undo").should("have.length", cards.length);
 
-      cy.log("undo toasts should be dismiss when saving");
+      cy.log("'Undo' toasts should be dismissed when saving the dashboard");
 
       saveDashboard();
 
