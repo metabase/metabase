@@ -103,10 +103,11 @@ function ItemPicker<TId>({
 
   const openCollection = collectionsById[openCollectionId];
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
-  const hideItems =
-    !searchString &&
-    showOnlyPersonalCollections &&
-    !isOpenCollectionInPersonalCollection;
+  const showItems = Boolean(
+    searchString ||
+      !showOnlyPersonalCollections ||
+      isOpenCollectionInPersonalCollection,
+  );
 
   const collections = useMemo(() => {
     let list = openCollection?.children || [];
@@ -257,7 +258,7 @@ function ItemPicker<TId>({
         style={style}
         allowFetch={
           // "personal" is a fake collection for admins that contains all other user's collections
-          openCollectionId !== "personal" && !hideItems
+          openCollectionId !== "personal" && showItems
         }
       >
         {children}

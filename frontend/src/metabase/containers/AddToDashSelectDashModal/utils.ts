@@ -25,6 +25,6 @@ export const getInitialOpenCollectionId = ({
   return coerceCollectionId(mostRecentlyViewedDashboard.collection_id);
 };
 
-function isInPublicCollection(dashboard: Dashboard | undefined) {
+export function isInPublicCollection(dashboard: Dashboard | undefined) {
   return !dashboard?.collection?.is_personal;
 }
