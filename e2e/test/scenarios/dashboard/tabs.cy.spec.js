@@ -204,6 +204,14 @@ describe("scenarios > dashboard > tabs", () => {
       goToTab("Tab 2");
 
       getDashboardCards().should("have.length", cards.length);
+
+      cy.findAllByTestId("toast-undo").should("have.length", cards.length);
+
+      cy.log("undo toasts should be dismiss when saving");
+
+      saveDashboard();
+
+      cy.findAllByTestId("toast-undo").should("have.length", 0);
     },
   );
 
