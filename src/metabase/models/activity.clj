@@ -1,7 +1,6 @@
 (ns metabase.models.activity
   (:require
    [metabase.api.common :as api]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
