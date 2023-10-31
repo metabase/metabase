@@ -383,6 +383,7 @@
     (t2.with-temp/with-temp
       [:model/Metric {m1-id :id} {:name "venues, count"
                                   :description "Metric doing count with no filtering."
+                                  :table_id (mt/id :venues)
                                   :definition (mt/$ids venues {:source-table $$venues
                                                                ;;;; Here we will be testing also correct handling 
                                                                ;;;; of unnamed aggregation.
@@ -390,6 +391,7 @@
        :model/Metric {m2-id :id} {:name "venues, sum price, cat id lt 50"
                                   :description (str "This is metric doing sum of price with filter for category id "
                                                     "less than 50.")
+                                  :table_id (mt/id :venues)
                                   :definition (mt/$ids venues {:source-table $$venues
                                                                :filter [:< $category_id 50]
                                                                :aggregation [[:sum $price]]})}
@@ -398,7 +400,8 @@
        :model/Metric {m3-id :id} {:name "venues, count metric div sum metric, cat id gt 30"
                                   :description (str "Metric that combines another metrics. "
                                                     "It divides values of `m1` by values of `m2`, filtering for "
-                                                    "category ids greater than 20")}]
+                                                    "category ids greater than 20")
+                                  :table_id (mt/id :venues)}]
       (t2/update! :model/Metric m3-id {:definition (mt/$ids venues
                                                             {:source-table $$venues
                                                              :filter [:> $category_id 20]
@@ -407,6 +410,9 @@
                                                                [:/ [:metric m1-id] [:metric m2-id]]
                                                                {:name "Metric dividing metric"
                                                                 :display-name "Metric dividing metric"}]]})})
+      (def m1 (t2/select :model/Metric :id m1-id))
+      (def m2 (t2/select :model/Metric :id m2-id))
+      (def m3 (t2/select :model/Metric :id m3-id))
       (let [query @(def q (mt/mbql-query venues
                             {:aggregation [[:metric m3-id]
                                            [:metric m2-id]
@@ -595,6 +601,7 @@
                 [16 2]]
                (mt/rows @(def post (qp/process-query query)))))))))
 
+;;;;;; TODO this
 ;;;; TODO: Still WIP, verify correctness, probably rewrite to just transformation checking, w/o execution!
 (deftest recursively-defined-metric-WIP-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -702,3 +709,70 @@
               _ @(def prep (qp/preprocess query))]
           (is (= nil 
                  (mt/rows @(def post (qp/process-query qqq))))))))))
+
+;;;; TODO: tests for broken cases!
+
+;;;; Expression stuff works!!! -- means I could take advantage of that. Will try to go down this road.
+(deftest duplicate-those-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing ""
+      (let [query @(def qqq (mt/mbql-query venues
+                                           {:source-table $$venues
+                                            :fields [$price [:expression "First one"] [:expression "Second one"]]
+                                            :expressions {"First one"  $price
+                                                          "Second one" $price}
+                                            :order-by [[:desc $price]]
+                                            :limit 3}))]
+        (is (= [[4 4 4] [4 4 4] [4 4 4]]
+               (mt/rows @(def post (qp/process-query qqq)))))))))
+
+;; code the cases that are faulty
+
+(deftest same-metric-as-only-metric-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "stuff"
+      (t2.with-temp/with-temp
+        [:model/Metric
+         {metric-id :id}
+         {:name "venues count"
+          :description "x"
+          :table_id (mt/id :venues)
+          :definition (mt/$ids venues {:source-table $$venues
+                                       :aggregation [[:count]]})}]
+        (let [query @(def qqq (mt/mbql-query venues
+                                {:aggregation [#_[:aggregation-options [:sum $price] {:name "sum price"
+                                                                                    :display-name "sum price"}]
+                                               [:aggregation-options [:metric metric-id] {:name "First one"
+                                                                                          :display-name "First one"}]
+                                               #_[:aggregation-options [:metric metric-id] {:name "Another"
+                                                                                          :display-name "Another"}]]
+                                 :breakout [$category_id]
+                                 :order-by [[:desc [:aggregation 0]]]
+                                 :limit 5}))]
+          (is (= nil
+                 (mt/rows @(def post (qp/process-query qqq))))))))))
+
+(comment
+  
+  )
+
+(deftest metric-with-aggregation-options-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "stuff"
+      (t2.with-temp/with-temp
+        [:model/Metric
+         {metric-id :id}
+         {:name "venues count"
+          :description "x"
+          :table_id (mt/id :venues)
+          :definition (mt/$ids venues {:source-table $$venues
+                                       :aggregation [[:count]]})}]
+        (let [query (mt/mbql-query venues
+                                   {:aggregation [[:aggregation-options [:metric metric-id] {:name "First one"
+                                                                                             :display-name "First one"}]]
+                                    :breakout [$category_id]
+                                    
+                                    :limit 5})
+              _ (def ppp (qp/preprocess query))]
+          (is (= nil
+                 (mt/rows (qp/process-query query)))))))))
