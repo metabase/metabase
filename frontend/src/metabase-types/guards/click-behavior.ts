@@ -28,6 +28,8 @@ const isInsertActionClickBehavior = (
   value: unknown,
 ): value is InsertActionClickBehavior => {
   return (
+    // TODO: Remove the next line when TypeScript is upgraded to 4.9+
+    // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "insert" &&
@@ -40,6 +42,8 @@ const isUpdateActionClickBehavior = (
   value: unknown,
 ): value is UpdateActionClickBehavior => {
   return (
+    // TODO: Remove the next line when TypeScript is upgraded to 4.9+
+    // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "update" &&
@@ -52,6 +56,8 @@ const isDeleteActionClickBehavior = (
   value: unknown,
 ): value is DeleteActionClickBehavior => {
   return (
+    // TODO: Remove the next line when TypeScript is upgraded to 4.9+
+    // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
     isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "delete" &&
