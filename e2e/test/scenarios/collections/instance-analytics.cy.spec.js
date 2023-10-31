@@ -126,7 +126,7 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       });
     });
 
-    it.skip("should not allow moving or archiving custom reports collection", () => {
+    it("should not allow moving or archiving custom reports collection", () => {
       navigationSidebar().within(() => {
         cy.findByText(ANALYTICS_COLLECTION_NAME).click();
         cy.findByText("Custom reports").click();
