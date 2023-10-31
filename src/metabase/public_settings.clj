@@ -73,7 +73,7 @@
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json
-  :audit   :getter
+  :audit   :never
   :default {}
   :doc     false)
 
