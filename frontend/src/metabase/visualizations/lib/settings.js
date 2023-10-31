@@ -244,31 +244,32 @@ export function mergeSettings(first = {}, second = {}) {
     }
   }
 
-  const findColumn = (colName, list) => {
-    return list.findIndex(({ name }) => name === colName);
-  };
-
   if (first["table.columns"] && second["table.columns"]) {
-    const firstTableColumns = first["table.columns"];
-    const secondTableColumns = second["table.columns"];
-
-    const addedColumns = firstTableColumns.filter(
-      ({ name }) => findColumn(name, secondTableColumns) === -1,
+    merged["table.columns"] = mergeTableColumns(
+      first["table.columns"],
+      second["table.columns"],
     );
-    const removedColumns = secondTableColumns
-      .filter(({ name }) => findColumn(name, firstTableColumns) === -1)
-      .map(({ name }) => name);
-
-    merged["table.columns"] = [
-      ...secondTableColumns.filter(
-        ({ name }) => !removedColumns.includes(name),
-      ),
-      ...addedColumns,
-    ];
   }
 
   return merged;
 }
+
+const mergeTableColumns = (firstTableColumns, secondTableColumns) => {
+  const addedColumns = firstTableColumns.filter(
+    ({ name }) => secondTableColumns.findIndex(col => col.name === name) === -1,
+  );
+  const removedColumns = secondTableColumns
+    .filter(
+      ({ name }) =>
+        firstTableColumns.findIndex(col => col.name === name) === -1,
+    )
+    .map(({ name }) => name);
+
+  return [
+    ...secondTableColumns.filter(({ name }) => !removedColumns.includes(name)),
+    ...addedColumns,
+  ];
+};
 
 export function getClickBehaviorSettings(settings) {
   const newSettings = {};
