@@ -6,12 +6,17 @@ import type {
   UpdateActionClickBehavior,
 } from "metabase-types/api";
 
+const isRecord = (
+  value: unknown,
+): value is Record<string | number | symbol, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
 const isBaseActionClickBehavior = (
   value: unknown,
 ): value is BaseActionClickBehavior => {
   return (
-    typeof value === "object" &&
-    value !== null &&
+    isRecord(value) &&
     "type" in value &&
     value.type === "action" &&
     "actionType" in value &&
@@ -23,6 +28,7 @@ const isInsertActionClickBehavior = (
   value: unknown,
 ): value is InsertActionClickBehavior => {
   return (
+    isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "insert" &&
     "tableId" in value &&
@@ -34,6 +40,7 @@ const isUpdateActionClickBehavior = (
   value: unknown,
 ): value is UpdateActionClickBehavior => {
   return (
+    isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "update" &&
     "objectDetailDashCardId" in value &&
@@ -45,6 +52,7 @@ const isDeleteActionClickBehavior = (
   value: unknown,
 ): value is DeleteActionClickBehavior => {
   return (
+    isRecord(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "delete" &&
     "objectDetailDashCardId" in value &&

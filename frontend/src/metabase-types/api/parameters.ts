@@ -38,7 +38,7 @@ export interface Parameter extends ParameterValuesConfig {
   id: ParameterId;
   name: string;
   "display-name"?: string;
-  type: ParameterType;
+  type: string;
   slug: string;
   sectionId?: string;
   default?: any;

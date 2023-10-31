@@ -10,7 +10,6 @@ import type {
   DatasetColumn,
   DatetimeUnit,
   Parameter,
-  ParameterType,
   ParameterValueOrArray,
   UserAttribute,
 } from "metabase-types/api";
@@ -334,7 +333,7 @@ export function formatSourceForTarget(
 
 function formatDateForParameterType(
   value: string,
-  parameterType: ParameterType,
+  parameterType: string,
   unit: DatetimeUnit | null,
 ): string {
   const m = parseTimestamp(value);
