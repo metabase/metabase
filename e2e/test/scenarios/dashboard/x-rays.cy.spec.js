@@ -280,6 +280,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
         });
 
         visitDashboardAndCreateTab({ dashboardId: dashboard_id });
+        cy.findByText("There's nothing here, yet.");
         cy.findByRole("tab", { name: "Tab 1" }).click();
 
         cy.get("circle").eq(0).click({ force: true });
