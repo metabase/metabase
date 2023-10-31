@@ -5,9 +5,9 @@ create or replace view v_audit_log as
 select
     id,
     case
-           when topic = 'card-create' then 'question-create'
-           when topic = 'card-delete' then 'question-delete'
-           when topic = 'card-update' then 'question-update'
+           when topic = 'card-create' then 'card-create'
+           when topic = 'card-delete' then 'card-delete'
+           when topic = 'card-update' then 'card-update'
            when topic = 'pulse-create' then 'subscription-create'
            when topic = 'pulse-delete' then 'subscription-delete'
            else topic
