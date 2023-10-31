@@ -57,14 +57,12 @@ const setup = ({
   ),
 } = {}) => {
   const onChange = jest.fn();
-  const onWidgetOverride = jest.fn();
 
   renderWithProviders(
     <ChartSettingAddRemoveColumns
       value={value}
-      question={question}
+      query={question._getMLv2Query()}
       onChange={onChange}
-      onWidgetOverride={onWidgetOverride}
     />,
   );
 
