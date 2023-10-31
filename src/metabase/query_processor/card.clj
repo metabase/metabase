@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
@@ -121,11 +120,11 @@
      (get-in query [:native :template-tags]))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
-  (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
+  (when-let [allowed-template-tag-types (get-in mbql.s/parameter-types [parameter-type :allowed-for])]
     (contains? allowed-template-tag-types widget-type)))
 
 (defn- allowed-parameter-types-for-template-tag-widget-type [widget-type]
-  (into #{} (for [[parameter-type {:keys [allowed-for]}] lib.schema.parameter/types
+  (into #{} (for [[parameter-type {:keys [allowed-for]}] mbql.s/parameter-types
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
@@ -141,7 +140,7 @@
   See [[metabase.mbql.schema/parameter-types]] for details."
   [parameter-name
    widget-type          :- ::lib.schema.template-tag/widget-type
-   parameter-value-type :- ::lib.schema.parameter/type]
+   parameter-value-type :- ::mbql.s/ParameterType]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"

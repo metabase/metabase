@@ -641,6 +641,30 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti prettify-native-form
+  "Pretty-format native form presumably coming from compiled query.
+  Used eg. in the API endpoint `/dataset/native`, to present the user with a nicely formatted query.
+
+  # How to use and extend this method?
+
+  At the time of writing, this method acts as identity for nosql drivers. However, story with sql drivers is a bit
+  different. To extend it for sql drivers, developers could use [[metabase.driver.sql.util/format-sql]]. Function
+  in question is implemented in a way, that developers, implemnting this multimethod can:
+  - Avoid implementing it completely, if their driver keyword representation corresponds to key in
+    [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
+  - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
+    to `:standardsql`'s value from the dialects map (eg `:h2`).
+  - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
+    representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
+  - Completly reimplement this method with their special formatting code."
+  {:added "0.48.0", :arglists '([driver native-form]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod prettify-native-form ::driver
+ [_ native-form]
+ native-form)
+
 (defmulti splice-parameters-into-native-query
   "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
 
