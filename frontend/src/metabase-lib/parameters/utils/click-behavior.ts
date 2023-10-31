@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { getIn } from "icepick";
 
 import type {
   ClickBehavior,
@@ -33,22 +32,22 @@ import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
 
+interface Target {
+  id: Parameter["id"];
+  name: Parameter["name"];
+  target: ClickBehaviorParameterTarget;
+  sourceFilters: SourceFilters;
+}
+
 interface SourceFilters {
   column: (column: DatasetColumn) => boolean;
   parameter: (parameter: Parameter) => boolean;
   userAttribute: (userAttribute: string) => boolean;
 }
 
-interface ParameterTarget {
-  type: "parameter";
-  id: Parameter["id"];
-}
-
-interface Target {
-  id: Parameter["id"];
-  name: Parameter["name"];
-  target: ParameterTarget;
-  sourceFilters: SourceFilters;
+interface ExtraData {
+  dashboard?: Dashboard;
+  dashboards?: Record<Dashboard["id"], Dashboard>;
 }
 
 export function getDataFromClicked({
@@ -314,7 +313,13 @@ function formatDateForParameterType(
 
 export function getTargetForQueryParams(
   target: ClickBehaviorParameterTarget,
-  { extraData, clickBehavior },
+  {
+    extraData,
+    clickBehavior,
+  }: {
+    extraData?: ExtraData;
+    clickBehavior: ClickBehavior;
+  },
 ) {
   if (target.type === "parameter") {
     const parameter = getParameter(target, { extraData, clickBehavior });
@@ -325,12 +330,29 @@ export function getTargetForQueryParams(
 
 function getParameter(
   target: ClickBehaviorParameterTarget,
-  { extraData, clickBehavior },
-) {
-  const parameterPath =
-    clickBehavior.type === "crossfilter"
-      ? ["dashboard", "parameters"]
-      : ["dashboards", clickBehavior.targetId, "parameters"];
-  const parameters = getIn(extraData, parameterPath) || [];
-  return parameters.find(p => p.id === target.id);
+  {
+    extraData,
+    clickBehavior,
+  }: {
+    extraData?: ExtraData;
+    clickBehavior: ClickBehavior;
+  },
+): Parameter | undefined {
+  if (clickBehavior.type === "crossfilter") {
+    const parameters = extraData?.dashboard?.parameters || [];
+    return parameters.find(parameter => parameter.id === target.id);
+  }
+
+  if (
+    clickBehavior.type === "link" &&
+    "linkType" in clickBehavior &&
+    (clickBehavior.linkType === "dashboard" ||
+      clickBehavior.linkType === "question")
+  ) {
+    const dashboard = (extraData?.dashboards || {})[clickBehavior.targetId];
+    const parameters = dashboard?.parameters || [];
+    return parameters.find(parameter => parameter.id === target.id);
+  }
+
+  return undefined;
 }
