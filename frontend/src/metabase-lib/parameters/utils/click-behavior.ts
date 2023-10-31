@@ -1,20 +1,6 @@
 import _ from "underscore";
+import { getIn } from "icepick";
 
-import type {
-  ClickBehavior,
-  ClickBehaviorDimensionTarget,
-  ClickBehaviorSource,
-  ClickBehaviorTarget,
-  Dashboard,
-  DashboardCard,
-  DatasetColumn,
-  DatetimeUnit,
-  Parameter,
-  ParameterValueOrArray,
-  UserAttribute,
-} from "metabase-types/api";
-import { isImplicitActionClickBehavior } from "metabase-types/guards";
-import type { ValueAndColumnForColumnNameDate } from "metabase/lib/formatting/link";
 import { parseTimestamp } from "metabase/lib/time";
 import {
   formatDateTimeForParameter,
@@ -24,48 +10,16 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
-import type { Dimension as DimensionType } from "metabase-lib/types";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
-import type Question from "metabase-lib/Question";
-import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
-import Field from "metabase-lib/metadata/Field";
-
-interface Target {
-  id: Parameter["id"];
-  name: Parameter["name"] | null | undefined;
-  target: ClickBehaviorTarget;
-  sourceFilters: SourceFilters;
-}
-
-interface SourceFilters {
-  column: (column: DatasetColumn) => boolean;
-  parameter: (parameter: Parameter) => boolean;
-  userAttribute: (userAttribute: string) => boolean;
-}
-
-interface ExtraData {
-  dashboard?: Dashboard;
-  dashboards?: Record<Dashboard["id"], Dashboard>;
-}
 
 export function getDataFromClicked({
-  extraData: { dashboard, parameterValuesBySlug = {}, userAttributes } = {},
+  extraData: { dashboard, parameterValuesBySlug, userAttributes } = {},
   dimensions = [],
   data = [],
-}: {
-  extraData?: {
-    dashboard?: Dashboard;
-    parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: UserAttribute[] | null;
-  };
-  dimensions?: DimensionType[];
-  data?: (ClickObjectDataRow & {
-    clickBehaviorValue?: ClickObjectDataRow["value"];
-  })[];
-}): ValueAndColumnForColumnNameDate {
+}) {
   const column = [
     ...dimensions,
     ...data.map(d => ({
@@ -75,132 +29,135 @@ export function getDataFromClicked({
     })),
   ]
     .filter(d => d.column != null)
-    .reduce<ValueAndColumnForColumnNameDate["column"]>(
-      (acc, { column, value }) => {
-        if (!column) {
-          return acc;
-        }
-
-        const name = column.name.toLowerCase();
-
-        if (acc[name] === undefined) {
-          return { ...acc, [name]: { value, column } };
-        }
-
-        return acc;
-      },
+    .reduce(
+      (acc, { column, value }) =>
+        acc[name] === undefined
+          ? { ...acc, [column.name.toLowerCase()]: { value, column } }
+          : acc,
       {},
     );
 
-  const dashboardParameters = (dashboard?.parameters || []).filter(
-    ({ slug }) => parameterValuesBySlug[slug] != null,
-  );
-
-  const parameterByName = Object.fromEntries(
-    dashboardParameters.map(({ name, slug }) => [
-      name.toLowerCase(),
-      { value: parameterValuesBySlug[slug] },
-    ]),
-  );
+  const parameterByName =
+    dashboard == null
+      ? {}
+      : _.chain(dashboard.parameters)
+          .filter(p => parameterValuesBySlug[p.slug] != null)
+          .map(p => [
+            p.name.toLowerCase(),
+            { value: parameterValuesBySlug[p.slug] },
+          ])
+          .object()
+          .value();
 
   const parameterBySlug = _.mapObject(parameterValuesBySlug, value => ({
     value,
   }));
 
-  const parameter = Object.fromEntries(
-    dashboardParameters.map(({ id, slug }) => [
-      id,
-      { value: parameterValuesBySlug[slug] },
-    ]),
-  );
+  const parameter =
+    dashboard == null
+      ? {}
+      : _.chain(dashboard.parameters)
+          .filter(p => parameterValuesBySlug[p.slug] != null)
+          .map(p => [p.id, { value: parameterValuesBySlug[p.slug] }])
+          .object()
+          .value();
 
-  const userAttribute = Object.fromEntries(
-    (userAttributes || []).map(value => [value, { value }]),
-  );
+  const userAttribute = _.mapObject(userAttributes, value => ({ value }));
 
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
 }
 
 const { Text, Number, Temporal } = TYPE;
 
-function notRelativeDateOrRange({ type }: Parameter) {
+function notRelativeDateOrRange({ type }) {
   return type !== "date/range" && type !== "date/relative";
 }
 
-export function getTargetsForQuestion(question: Question): Target[] {
-  const query = question.query();
-  return [...query.dimensionOptions().all(), ...query.variables()].map(o => {
-    let id, target: ClickBehaviorTarget;
-    if (o instanceof TemplateTagVariable || o instanceof TemplateTagDimension) {
-      let name;
-      ({ id, name } = o.tag());
-      target = { type: "variable", id: name };
-    } else if ("mbql" in o) {
-      const dimension: ClickBehaviorDimensionTarget["dimension"] = [
-        "dimension",
-        o.mbql(),
-      ];
-      id = JSON.stringify(dimension);
-      target = { type: "dimension", id, dimension };
-    } else {
-      throw new Error("Unknown target type");
-    }
-    let parentType: string | undefined | null;
-    let parameterSourceFilter: SourceFilters["parameter"] = () => true;
-    if (o instanceof TemplateTagVariable) {
-      const type = o.tag()?.type;
-      parentType = type
-        ? {
-            card: undefined,
-            dimension: undefined,
-            snippet: undefined,
-            text: Text,
-            number: Number,
-            date: Temporal,
-          }[type]
-        : undefined;
-      parameterSourceFilter = parameter =>
-        variableFilterForParameter(parameter)(o);
-    } else if ("field" in o) {
-      const field = o.field();
+export function getTargetsWithSourceFilters({
+  isDash,
+  isAction,
+  dashcard,
+  object,
+}) {
+  if (isAction) {
+    return getTargetsForAction(object);
+  }
+  return isDash
+    ? getTargetsForDashboard(object, dashcard)
+    : getTargetsForQuestion(object);
+}
 
-      if (field != null) {
-        const { base_type } = field;
-        parentType =
-          [Temporal, Number, Text].find(
-            t => typeof base_type === "string" && isa(base_type, t),
-          ) || base_type;
-        parameterSourceFilter = parameter =>
-          dimensionFilterForParameter(parameter)(o);
-      }
-    }
-
+function getTargetsForAction(action) {
+  const parameters = Object.values(action.parameters);
+  return parameters.map(parameter => {
+    const { id, name } = parameter;
     return {
       id,
-      target,
-      name:
-        o instanceof Field
-          ? o.displayName({ includeTable: true })
-          : o.displayName(),
+      name,
+      target: { type: "parameter", id },
+
+      // We probably don't want to allow everything
+      // and will need to add some filters eventually
       sourceFilters: {
-        column: column =>
-          Boolean(
-            column.base_type && parentType && isa(column.base_type, parentType),
-          ),
-        parameter: parameterSourceFilter,
-        userAttribute: () => parentType === Text,
+        column: () => true,
+        parameter: () => true,
+        userAttribute: () => true,
       },
     };
   });
 }
-export function getTargetsForDashboard(
-  dashboard: Dashboard,
-  dashcard: DashboardCard,
-): Target[] {
-  if (!dashboard.parameters) {
-    return [];
-  }
 
+function getTargetsForQuestion(question) {
+  const query = question.query();
+  return query
+    .dimensionOptions()
+    .all()
+    .concat(query.variables())
+    .map(o => {
+      let id, target;
+      if (
+        o instanceof TemplateTagVariable ||
+        o instanceof TemplateTagDimension
+      ) {
+        let name;
+        ({ id, name } = o.tag());
+        target = { type: "variable", id: name };
+      } else {
+        const dimension = ["dimension", o.mbql()];
+        id = JSON.stringify(dimension);
+        target = { type: "dimension", id, dimension };
+      }
+      let parentType;
+      let parameterSourceFilter = () => true;
+      const columnSourceFilter = c => isa(c.base_type, parentType);
+      if (o instanceof TemplateTagVariable) {
+        parentType = { text: Text, number: Number, date: Temporal }[
+          o.tag().type
+        ];
+        parameterSourceFilter = parameter =>
+          variableFilterForParameter(parameter)(o);
+      } else if (o.field() != null) {
+        const { base_type } = o.field();
+        parentType =
+          [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
+        parameterSourceFilter = parameter =>
+          dimensionFilterForParameter(parameter)(o);
+      }
+
+      return {
+        id,
+        target,
+        name: o.displayName({ includeTable: true }),
+        sourceFilters: {
+          column: columnSourceFilter,
+          parameter: parameterSourceFilter,
+          userAttribute: () => parentType === Text,
+        },
+      };
+    });
+}
+
+function getTargetsForDashboard(dashboard, dashcard) {
   return dashboard.parameters.map(parameter => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
@@ -224,7 +181,7 @@ export function getTargetsForDashboard(
   });
 }
 
-function baseTypeFilterForParameterType(parameterType: string) {
+function baseTypeFilterForParameterType(parameterType) {
   const [typePrefix] = parameterType.split("/");
   const allowedTypes = {
     date: [TYPE.Temporal],
@@ -236,69 +193,68 @@ function baseTypeFilterForParameterType(parameterType: string) {
     // default to showing everything
     return () => true;
   }
-  return (baseType: string | undefined) => {
-    if (typeof baseType === "undefined") {
-      return false;
-    }
-    return allowedTypes.some(allowedType => isa(baseType, allowedType));
-  };
+  return baseType =>
+    allowedTypes.some(allowedType => isa(baseType, allowedType));
 }
 
-export function clickBehaviorIsValid(
-  clickBehavior: ClickBehavior | undefined | null,
-): boolean {
+export function clickBehaviorIsValid(clickBehavior) {
   // opens drill-through menu
   if (clickBehavior == null) {
     return true;
   }
-
-  if (clickBehavior.type === "crossfilter") {
-    return Object.keys(clickBehavior.parameterMapping || {}).length > 0;
+  const {
+    type,
+    parameterMapping = {},
+    linkType,
+    targetId,
+    linkTemplate,
+  } = clickBehavior;
+  if (type === "crossfilter") {
+    return Object.keys(parameterMapping).length > 0;
   }
-
-  if (clickBehavior.type === "action") {
-    return isImplicitActionClickBehavior(clickBehavior);
+  if (type === "action") {
+    return isValidImplicitActionClickBehavior(clickBehavior);
   }
-
-  if (clickBehavior.type === "link") {
-    const { linkType } = clickBehavior;
-
-    // if it's not a crossfilter/action, it's a link
-    if (linkType === "url") {
-      return (clickBehavior.linkTemplate || "").length > 0;
-    }
-
-    // if we're linking to a Metabase entity we just need a targetId
-    if (linkType === "dashboard" || linkType === "question") {
-      return clickBehavior.targetId != null;
-    }
+  // if it's not a crossfilter/action, it's a link
+  if (linkType === "url") {
+    return (linkTemplate || "").length > 0;
   }
-
+  // if we're linking to a Metabase entity we just need a targetId
+  if (linkType === "dashboard" || linkType === "question") {
+    return targetId != null;
+  }
   // we've picked "link" without picking a link type
   return false;
 }
 
-export function formatSourceForTarget(
-  source: ClickBehaviorSource,
-  target: ClickBehaviorTarget,
-  {
-    data,
-    extraData,
-    clickBehavior,
-  }: {
-    data: ValueAndColumnForColumnNameDate;
-    extraData: ExtraData;
-    clickBehavior: ClickBehavior;
-  },
-) {
-  const datum = data[source.type][source.id.toLowerCase()] || {};
+function isValidImplicitActionClickBehavior(clickBehavior) {
   if (
-    "column" in datum &&
-    datum.column &&
-    isDate(datum.column) &&
-    typeof datum.value === "string"
+    !clickBehavior ||
+    clickBehavior.type !== "action" ||
+    !("actionType" in clickBehavior)
   ) {
-    const sourceDateUnit = datum.column.unit || null;
+    return false;
+  }
+  if (clickBehavior.actionType === "insert") {
+    return clickBehavior.tableId != null;
+  }
+  if (
+    clickBehavior.actionType === "update" ||
+    clickBehavior.actionType === "delete"
+  ) {
+    return typeof clickBehavior.objectDetailDashCardId === "number";
+  }
+  return false;
+}
+
+export function formatSourceForTarget(
+  source,
+  target,
+  { data, extraData, clickBehavior },
+) {
+  const datum = data[source.type][source.id.toLowerCase()] || [];
+  if (datum.column && isDate(datum.column)) {
+    const sourceDateUnit = datum.column.unit;
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
@@ -313,29 +269,18 @@ export function formatSourceForTarget(
     } else {
       // If the target is a dimension or variable, we serialize as a date to remove the timestamp
 
-      if (
-        typeof sourceDateUnit === "string" &&
-        ["week", "month", "quarter", "year"].includes(sourceDateUnit)
-      ) {
-        return formatDateToRangeForParameter(datum.value, sourceDateUnit);
+      if (["week", "month", "quarter", "year"].includes(datum.column.unit)) {
+        return formatDateToRangeForParameter(datum.value, datum.column.unit);
       }
 
-      return formatDateForParameterType(
-        datum.value,
-        "date/single",
-        sourceDateUnit,
-      );
+      return formatDateForParameterType(datum.value, "date/single");
     }
   }
 
   return datum.value;
 }
 
-function formatDateForParameterType(
-  value: string,
-  parameterType: string,
-  unit: DatetimeUnit | null,
-): string {
+function formatDateForParameterType(value, parameterType, unit) {
   const m = parseTimestamp(value);
   if (!m.isValid()) {
     return String(value);
@@ -354,16 +299,7 @@ function formatDateForParameterType(
   return value;
 }
 
-export function getTargetForQueryParams(
-  target: ClickBehaviorTarget,
-  {
-    extraData,
-    clickBehavior,
-  }: {
-    extraData: ExtraData;
-    clickBehavior: ClickBehavior;
-  },
-) {
+export function getTargetForQueryParams(target, { extraData, clickBehavior }) {
   if (target.type === "parameter") {
     const parameter = getParameter(target, { extraData, clickBehavior });
     return parameter && parameter.slug;
@@ -371,31 +307,11 @@ export function getTargetForQueryParams(
   return target.id;
 }
 
-function getParameter(
-  target: ClickBehaviorTarget,
-  {
-    extraData,
-    clickBehavior,
-  }: {
-    extraData: ExtraData;
-    clickBehavior: ClickBehavior;
-  },
-): Parameter | undefined {
-  if (clickBehavior.type === "crossfilter") {
-    const parameters = extraData.dashboard?.parameters || [];
-    return parameters.find(parameter => parameter.id === target.id);
-  }
-
-  if (
-    clickBehavior.type === "link" &&
-    "linkType" in clickBehavior &&
-    (clickBehavior.linkType === "dashboard" ||
-      clickBehavior.linkType === "question")
-  ) {
-    const dashboard = (extraData.dashboards || {})[clickBehavior.targetId];
-    const parameters = dashboard?.parameters || [];
-    return parameters.find(parameter => parameter.id === target.id);
-  }
-
-  return undefined;
+function getParameter(target, { extraData, clickBehavior }) {
+  const parameterPath =
+    clickBehavior.type === "crossfilter"
+      ? ["dashboard", "parameters"]
+      : ["dashboards", clickBehavior.targetId, "parameters"];
+  const parameters = getIn(extraData, parameterPath) || [];
+  return parameters.find(p => p.id === target.id);
 }
