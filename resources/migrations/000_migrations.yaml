@@ -15097,10 +15097,16 @@ databaseChangeLog:
             tableName: parameter_card
             columnName: entity_id
       rollback:
-        - sql:
-            sql: >-
-                ALTER TABLE parameter_card
-                ADD COLUMN IF NOT EXISTS entity_id CHAR(21) NULL;
+        - addColumn:
+            tableName: parameter_card
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
