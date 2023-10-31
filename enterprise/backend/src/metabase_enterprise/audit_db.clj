@@ -15,7 +15,8 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.models.permissions :as perms])
   (:import [java.util.jar JarEntry JarFile]))
 
 (set! *warn-on-reflection* true)
@@ -65,12 +66,6 @@
                        out (io/output-stream (str out-file))]
              (io/copy in out)))))))
 
-(defenterprise default-audit-db-id
-  "Default audit db id."
-  :feature :none
-  []
-  13371337)
-
 (def ^:private default-audit-collection-entity-id
   "Default audit collection entity (instance analytics) id."
   "vG58R8k-QddHWA7_47umn")
@@ -103,7 +98,7 @@
 
   - This uses a weird ID because some tests are hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since the IDs are sequential."
-  ([engine] (install-database! engine (default-audit-db-id)))
+  ([engine] (install-database! engine perms/audit-db-id))
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))

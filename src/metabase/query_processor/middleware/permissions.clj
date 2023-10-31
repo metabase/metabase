@@ -2,7 +2,6 @@
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.config :as config]
@@ -112,7 +111,7 @@
   [{database-id :database, :as outer-query} :- [:map [:database ::lib.schema.id/database]]]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (when (= (audit-db/default-audit-db-id) database-id)
+    (when (= perms/audit-db-id database-id)
      (check-audit-db-permissions outer-query))
     (cond
       *card-id*

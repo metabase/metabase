@@ -6,7 +6,7 @@
    [metabase.models.collection.graph :refer [update-graph!]]
    [metabase.models.collection.graph-test :refer [graph]]
    [metabase.models.database :refer [Database]]
-   [metabase.models.permissions :refer [Permissions table-query-path]]
+   [metabase.models.permissions :as perms :refer [Permissions table-query-path]]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.table :refer [Table]]
    [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -19,8 +19,8 @@
                    Database         {database-id :id} {}
                    Table            view-table        {:db_id database-id :name "v_users"}
                    Collection       collection        {}]
-      (with-redefs [audit-db/default-audit-db-id                (constantly database-id)
-                    audit-db/default-audit-collection           (constantly collection)]
+      (with-redefs [perms/audit-db-id                 database-id
+                    audit-db/default-audit-collection (constantly collection)]
         (testing "Adding instance analytics adds audit db permissions"
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
           (let [new-perms (t2/select-fn-set :object Permissions {:where [:= :group_id group-id]})]

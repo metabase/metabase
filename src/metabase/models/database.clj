@@ -52,7 +52,7 @@
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
-  (and (not (premium-features/enable-audit-app?)) (= database-id (perms/default-audit-db-id))))
+  (and (not (premium-features/enable-audit-app?)) (= database-id perms/audit-db-id)))
 
 (defmethod mi/can-read? Database
   ([instance]

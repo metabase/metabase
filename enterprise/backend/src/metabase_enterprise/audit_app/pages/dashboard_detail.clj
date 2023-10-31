@@ -9,7 +9,8 @@
    [metabase-enterprise.audit-db :as audit-db]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.models.permissions :as perms]))
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
 (mu/defmethod audit.i/internal-query ::views-by-time
@@ -51,7 +52,7 @@
                                    :join   [[:report_card :card] [:= :card.id :dc.card_id]]
                                    :where  [:and
                                             [:= :dc.dashboard_id dashboard-id]
-                                            [:not= :card.database_id (audit-db/default-audit-db-id)]]}]
+                                            [:not= :card.database_id perms/audit-db-id]]}]
                            cards/avg-exec-time
                            cards/views]
                :select    [[:card.id :card_id]
