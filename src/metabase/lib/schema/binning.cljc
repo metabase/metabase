@@ -11,16 +11,21 @@
 (mr/def ::strategy
   [:enum :bin-width :default :num-bins])
 
+(mr/def ::bin-width
+  pos?)
+
 (mr/def ::binning
-  [:and
+  [:merge
    [:map
-    [:strategy  [:ref ::strategy]]
-    [:bin-width {:optional true} pos?]
-    [:num-bins  {:optional true} ::lib.schema.common/positive-int]]
-   [:fn {:error/message "if :strategy is not :default, the matching key :bin-width or :num-bins must also be set"}
-    #(when-let [strat (:strategy %)]
-       (or (= strat :default)
-           (contains? % strat)))]])
+    [:strategy [:ref ::strategy]]]
+   [:multi {:dispatch :strategy
+            :error/fn (fn [{:keys [value]} _]
+                        (str "Invalid binning strategy" (pr-str value)))}
+    [:default   :map]
+    [:bin-width [:map
+                 [:bin-width [:ref ::bin-width]]]]
+    [:num-bins  [:map
+                 [:num-bins ::lib.schema.common/positive-int]]]]])
 
 (mr/def ::binning-option
   [:map

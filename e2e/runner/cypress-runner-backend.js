@@ -28,6 +28,7 @@ const CypressBackend = {
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
         "-Duser.timezone=US/Pacific",
         `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
+        "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}",
       ];
 
       const metabaseConfig = {

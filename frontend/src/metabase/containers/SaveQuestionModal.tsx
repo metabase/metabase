@@ -16,7 +16,7 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type { CollectionId } from "metabase-types/api";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type Question from "metabase-lib/Question";
