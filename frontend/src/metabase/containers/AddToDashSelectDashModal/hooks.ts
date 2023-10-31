@@ -1,8 +1,6 @@
 import { useAsync } from "react-use";
-import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import { ActivityApi } from "metabase/services";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { coerceCollectionId } from "metabase/collections/utils";
 
 export const useMostRecentlyViewedDashboard = () => {
   const {
@@ -18,30 +16,3 @@ export const useMostRecentlyViewedDashboard = () => {
 
   return { data, isLoading, error };
 };
-
-interface UseInitialOpenCollectionIdProps {
-  isQuestionInPersonalCollection: boolean;
-  mostRecentlyViewedDashboard: Dashboard | undefined;
-}
-
-export const useInitialOpenCollectionId = ({
-  isQuestionInPersonalCollection,
-  mostRecentlyViewedDashboard,
-}: UseInitialOpenCollectionIdProps): undefined | CollectionId => {
-  if (!mostRecentlyViewedDashboard) {
-    return undefined;
-  }
-
-  if (
-    isQuestionInPersonalCollection &&
-    isInPublicCollection(mostRecentlyViewedDashboard)
-  ) {
-    return ROOT_COLLECTION.id;
-  }
-
-  return coerceCollectionId(mostRecentlyViewedDashboard.collection_id);
-};
-
-function isInPublicCollection(dashboard: Dashboard | undefined) {
-  return !dashboard?.collection?.is_personal;
-}

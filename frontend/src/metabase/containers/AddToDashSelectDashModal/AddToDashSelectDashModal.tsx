@@ -17,10 +17,8 @@ import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/
 import { useSelector } from "metabase/lib/redux";
 import Collections from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
-import {
-  useInitialOpenCollectionId,
-  useMostRecentlyViewedDashboard,
-} from "./hooks";
+import { useMostRecentlyViewedDashboard } from "./hooks";
+import { getInitialOpenCollectionId } from "./utils";
 
 function mapStateToProps(state: State) {
   return {
@@ -48,7 +46,7 @@ const AddToDashSelectDashModal = ({
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
   const isQuestionInPersonalCollection = Boolean(card.collection?.is_personal);
-  const initialOpenCollectionId = useInitialOpenCollectionId({
+  const initialOpenCollectionId = getInitialOpenCollectionId({
     isQuestionInPersonalCollection,
     mostRecentlyViewedDashboard,
   });
