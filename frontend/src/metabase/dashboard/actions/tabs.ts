@@ -24,6 +24,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
+import { trackCardMoved } from "../analytics";
 import { getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
@@ -132,6 +133,8 @@ export const moveDashCardToTab =
         },
       }),
     );
+
+    trackCardMoved(dashCard.dashboard_id);
   };
 
 const _moveDashCardToTab =
