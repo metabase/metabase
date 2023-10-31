@@ -1,10 +1,11 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
+const DISMISS_ALL_UNDO = "metabase/questions/DISMISS_ALL_UNDO";
 const PERFORM_UNDO = "metabase/questions/PERFORM_UNDO";
 
 let nextUndoId = 0;
@@ -35,6 +36,8 @@ export const dismissUndo = createThunkAction(
     };
   },
 );
+
+export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
@@ -91,6 +94,8 @@ export default function (state = [], { type, payload, error }) {
       return state;
     }
     return state.filter(undo => undo.id !== payload);
+  } else if (type === DISMISS_ALL_UNDO) {
+    return [];
   }
   return state;
 }
