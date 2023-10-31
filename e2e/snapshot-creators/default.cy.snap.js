@@ -313,7 +313,7 @@ function getDefaultInstanceData() {
 
   instanceData.dashboards = [];
   for (const collection of instanceData.collections) {
-    cy.request(`/api/collection/${collection.id}?model=dashboard`).then(
+    cy.request(`/api/collection/${collection.id}/items?model=dashboard`).then(
       ({ body: { data: dashboards } }) => {
         for (const dashboard of dashboards) {
           cy.request(`/api/dashboard/${dashboard.id}`).then(
