@@ -46,32 +46,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- dashboards-list [filter-option]
-  (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
-                                                      (:all :archived)  true
-                                                      :mine [:= :creator_id api/*current-user-id*])
-                                                [:= :archived (= (keyword filter-option) :archived)]]
-                                     :order-by [:%lower.name]}) <>
-    (t2/hydrate <> :creator)
-    (filter mi/can-read? <>)))
-
-(api/defendpoint GET "/"
-  "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
-
-  *  `all`      - Return all Dashboards.
-  *  `mine`     - Return Dashboards created by the current user.
-  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
-  [f]
-  {f [:maybe [:enum "all" "mine" "archived"]]}
-  (let [dashboards (dashboards-list f)
-        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
-    (into []
-          (map (fn [{:keys [id] :as dashboard}]
-                 (if-let [edit-info (get edit-infos id)]
-                   (assoc dashboard :last-edit-info edit-info)
-                   dashboard)))
-          dashboards)))
-
 (api/defendpoint POST "/"
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
