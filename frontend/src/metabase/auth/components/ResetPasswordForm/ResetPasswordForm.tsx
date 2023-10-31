@@ -7,7 +7,7 @@ import { Form, FormProvider } from "metabase/forms";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import type { ResetPasswordData } from "../../types";
 import {
   PasswordFormMessage,

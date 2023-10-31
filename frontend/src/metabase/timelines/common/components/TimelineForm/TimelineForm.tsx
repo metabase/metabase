@@ -9,7 +9,7 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import type { TimelineData } from "metabase-types/api";
 import FormArchiveButton from "../FormArchiveButton";
 import { TimelineFormFooter } from "./TimelineForm.styled";
