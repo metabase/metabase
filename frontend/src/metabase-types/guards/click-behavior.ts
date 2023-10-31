@@ -6,7 +6,7 @@ import type {
   UpdateActionClickBehavior,
 } from "metabase-types/api";
 
-const isRecord = (
+const isObject = (
   value: unknown,
 ): value is Record<string | number | symbol, unknown> => {
   return typeof value === "object" && value !== null;
@@ -16,7 +16,7 @@ const isBaseActionClickBehavior = (
   value: unknown,
 ): value is BaseActionClickBehavior => {
   return (
-    isRecord(value) &&
+    isObject(value) &&
     "type" in value &&
     value.type === "action" &&
     "actionType" in value &&
@@ -30,7 +30,7 @@ const isInsertActionClickBehavior = (
   return (
     // TODO: Remove the next line when TypeScript is upgraded to 4.9+
     // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
-    isRecord(value) &&
+    isObject(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "insert" &&
     value.tableId === "number"
@@ -43,7 +43,7 @@ const isUpdateActionClickBehavior = (
   return (
     // TODO: Remove the next line when TypeScript is upgraded to 4.9+
     // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
-    isRecord(value) &&
+    isObject(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "update" &&
     value.objectDetailDashCardId === "number"
@@ -56,7 +56,7 @@ const isDeleteActionClickBehavior = (
   return (
     // TODO: Remove the next line when TypeScript is upgraded to 4.9+
     // @see https://devblogs.microsoft.com/typescript/announcing-typescript-4-9/#in-narrowing
-    isRecord(value) &&
+    isObject(value) &&
     isBaseActionClickBehavior(value) &&
     value.actionType === "delete" &&
     value.objectDetailDashCardId === "number"
