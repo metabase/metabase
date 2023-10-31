@@ -80,10 +80,10 @@
   (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]
-                                 (qp.streaming/streaming-response [context :json]
+                                 (qp.streaming/streaming-response [{:keys [rff context]} :json]
                                    (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
                                          rows     [[*number-of-cans*]]]
-                                     (qp.context/reducef (qp.context/rff context) context metadata rows))))
+                                     (qp.context/reducef rff context metadata rows))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
                                   {:response      (reify HttpServletResponse
