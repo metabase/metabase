@@ -2,7 +2,6 @@
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
