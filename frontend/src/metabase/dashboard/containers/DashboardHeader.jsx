@@ -40,6 +40,7 @@ import {
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import { getSetting } from "metabase/selectors/settings";
+import { dismissAllUndo } from "metabase/redux/undo";
 
 import { DashboardHeaderComponent } from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
@@ -70,6 +71,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
   toggleSidebar,
   addActionToDashboard,
+  dismissAllUndo,
 };
 
 class DashboardHeader extends Component {
@@ -109,6 +111,7 @@ class DashboardHeader extends Component {
     fetchDashboard: PropTypes.func.isRequired,
     updateDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
+    dismissAllUndo: PropTypes.func.isRequired,
 
     onEditingChange: PropTypes.func.isRequired,
     onRefreshPeriodChange: PropTypes.func.isRequired,
@@ -209,6 +212,9 @@ class DashboardHeader extends Component {
   }
 
   async onSave() {
+    // optimistically dismissing all the undos before the saving has finished
+    // clicking on them wouldn't do anything at this moment anyway
+    this.props.dismissAllUndo();
     await this.props.updateDashboardAndCards();
     this.onDoneEditing();
   }
