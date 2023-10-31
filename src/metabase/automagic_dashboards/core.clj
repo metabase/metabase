@@ -84,7 +84,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [clojure.zip :as zip]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
