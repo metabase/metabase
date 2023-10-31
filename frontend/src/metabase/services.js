@@ -143,13 +143,6 @@ export async function runQuestionQuery(
 }
 
 export const CardApi = {
-  list: GET("/api/card", (cards, { data }) =>
-    // HACK: support for the "q" query param until backend implements it
-    cards.filter(
-      card =>
-        !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
-    ),
-  ),
   create: POST("/api/card"),
   uploadCSV: POST("/api/card/from-csv", {
     formData: true,

@@ -9,7 +9,6 @@
    [clojure.tools.macro :as tools.macro]
    [clojurewerkz.quartzite.scheduler :as qs]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card :as api.card]
@@ -21,8 +20,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark
-            Collection
+    :refer [Collection
             Dashboard
             Database
             Field
@@ -33,8 +31,7 @@
             PulseChannelRecipient
             Table
             Timeline
-            TimelineEvent
-            ViewLog]]
+            TimelineEvent]]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -196,240 +193,8 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           FETCHING CARDS & FILTERING                                           |
+;;; |                                           GET /api/card/:card-id/series                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- card-returned? [model object-or-id card-or-id]
-  (contains? (set (for [card (mt/user-http-request :rasta :get 200 "card", :f model, :model_id (u/the-id object-or-id))]
-                    (u/the-id card)))
-             (u/the-id card-or-id)))
-
-(deftest filter-cards-by-db-test
-  (mt/with-temp [Database db {}
-                 :model/Card     card-1 {:database_id (mt/id)}
-                 :model/Card     card-2 {:database_id (u/the-id db)}]
-    (with-cards-in-readable-collection [card-1 card-2]
-      (is (= true
-             (card-returned? :database (mt/id) card-1)))
-      (is (= false
-             (card-returned? :database db      card-1)))
-      (is (= true
-             (card-returned? :database db      card-2))))))
-
-(deftest ^:parallel authentication-test
-  (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
-  (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
-
-(deftest ^:parallel model-id-requied-when-f-is-database-test
-  (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
-         (mt/user-http-request :crowberto :get 400 "card" :f :database))))
-
-(deftest filter-cards-by-table-test
-  (testing "Filter cards by table"
-    (mt/with-temp [Database db {}
-                   Table    table-1  {:db_id (u/the-id db)}
-                   Table    table-2  {:db_id (u/the-id db)}
-                   :model/Card     card-1   {:table_id (u/the-id table-1)}
-                   :model/Card     card-2   {:table_id (u/the-id table-2)}]
-      (with-cards-in-readable-collection [card-1 card-2]
-        (is (= true
-               (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
-        (is (= false
-               (card-returned? :table (u/the-id table-2) (u/the-id card-1))))
-        (is (= true
-               (card-returned? :table (u/the-id table-2) (u/the-id card-2))))))))
-
-;; Make sure `model_id` is required when `f` is :table
-(deftest ^:parallel model_id-requied-when-f-is-table
-  (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'table'"}}
-         (mt/user-http-request :crowberto :get 400 "card", :f :table))))
-
-(defn- do-with-card-views [card-or-id+username f]
-  (let [[f] (reduce
-             (fn [[f timestamp] [card-or-id username]]
-               [(fn []
-                  (let [card-id   (u/the-id card-or-id)
-                        card-name (t2/select-one-fn :name :model/Card :id card-id)]
-                    (testing (format "\nCard %d %s viewed by %s on %s" card-id (pr-str card-name) username timestamp)
-                      (t2.with-temp/with-temp [ViewLog _ {:model     "card"
-                                                          :model_id  card-id
-                                                          :user_id   (mt/user->id username)
-                                                          :timestamp timestamp}]
-                        (f)))))
-                (t/plus timestamp (t/days 1))])
-             [f (t/zoned-date-time)]
-             card-or-id+username)]
-    (f)))
-
-(defmacro ^:private with-card-views [card-or-id+username & body]
-  `(do-with-card-views ~(mapv vec (partition 2 card-or-id+username)) (fn [] ~@body)))
-
-(deftest filter-by-recent-test
-  (testing "GET /api/card?f=recent"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2"}
-                   :model/Card card-3 {:name "Card 3"}
-                   :model/Card card-4 {:name "Card 4"}]
-      ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be
-      ;; returned
-      (with-card-views [card-1 :rasta
-                        card-2 :trashbird
-                        card-3 :rasta
-                        card-4 :rasta
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
-          (testing "\nShould return cards that were recently viewed by current user only"
-            (let [recent-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :recent)
-                                         (map :name)
-                                         (filter #{"Card 1" "Card 2" "Card 3" "Card 4"}))]
-              (is (= ["Card 3" "Card 4" "Card 1"]
-                     recent-card-names)))))))))
-
-(deftest filter-by-popular-test
-  (testing "GET /api/card?f=popular"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2"}
-                   :model/Card card-3 {:name "Card 3"}]
-      ;; 3 entries for card 3, 2 for card 2, none for card 1,
-      (with-card-views [card-3 :rasta
-                        card-2 :trashbird
-                        card-2 :rasta
-                        card-3 :crowberto
-                        card-3 :rasta]
-        (with-cards-in-readable-collection [card-1 card-2 card-3]
-          (testing (str "`f=popular` should return cards sorted by number of ViewLog entries for all users; cards with "
-                        "no entries should be excluded")
-            (let [popular-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :popular)
-                                          (map :name)
-                                          (filter #{"Card 1" "Card 2" "Card 3"}))]
-              (is (= ["Card 3"
-                      "Card 2"]
-                     popular-card-names)))))))))
-
-(deftest filter-by-archived-test
-  (testing "GET /api/card?f=archived"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"}
-                   :model/Card card-2 {:name "Card 2", :archived true}
-                   :model/Card card-3 {:name "Card 3", :archived true}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= #{"Card 2" "Card 3"}
-               (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
-            "The set of Card returned with f=archived should be equal to the set of archived cards")))))
-
-(deftest filter-by-bookmarked-test
-  (testing "Filter by `bookmarked`"
-    (mt/with-temp [:model/Card         card-1 {:name "Card 1"}
-                   :model/Card         card-2 {:name "Card 2"}
-                   :model/Card         card-3 {:name "Card 3"}
-                   CardBookmark _ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}
-                   CardBookmark _ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
-        (is (= [{:name "Card 1"}]
-               (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
-                 (select-keys card [:name]))))))))
-
-(deftest filter-by-using-model
-  (testing "list cards using a model"
-    (mt/with-temp [:model/Card {model-id :id :as model} {:name "Model", :dataset true
-                                                         :dataset_query {:query {:source-table (mt/id :venues)
-                                                                                 :filter [:= [:field 1 nil] "1"]}}}
-                   ;; matching question
-                   :model/Card card-1 {:name "Card 1"
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}
-                   :model/Card {other-card-id :id} {}
-                   ;; source-table doesn't match
-                   :model/Card card-2 {:name "Card 2"
-                                       :dataset_query {:query {:source-table (str "card__" other-card-id)
-                                                               :filter [:= [:field 5 nil] (str "card__" model-id)]}}}
-                   ;; matching join
-                   :model/Card card-3 {:name "Card 3"
-                                       :dataset_query (let [alias (str "Question " model-id)]
-                                                        {:type :query
-                                                         :query {:joins [{:fields [[:field 35 {:join-alias alias}]]
-                                                                          :source-table (str "card__" model-id)
-                                                                          :condition [:=
-                                                                                      [:field 5 nil]
-                                                                                      [:field 33 {:join-alias alias}]]
-                                                                          :alias alias
-                                                                          :strategy :inner-join}]
-                                                                 :fields [[:field 9 nil]]
-                                                                 :source-table (str "card__" other-card-id)}
-                                                         :database (mt/id)})}
-                   ;; matching native query
-                   :model/Card card-4 {:name "Card 4"
-                                       :dataset_query {:type :native
-                                                       :native (let [model-ref (format "#%d-q1" model-id)]
-                                                                 {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                                 model-ref)
-                                                                  :template-tags {model-ref
-                                                                                  {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                   :name model-ref
-                                                                                   :display-name model-ref
-                                                                                   :type :card
-                                                                                   :card-id model-id}}})
-                                                       :database (mt/id)}}
-                   ;; native query reference doesn't match
-                   :model/Card card-5 {:name "Card 5"
-                                       :dataset_query {:type :native
-                                                       :native (let [model-ref (str "card__" model-id)
-                                                                     card-id other-card-id
-                                                                     card-ref (format "#%d-q1" card-id)]
-                                                                 {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                                 model-ref card-ref)
-                                                                  :template-tags {card-ref
-                                                                                  {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                   :name card-ref
-                                                                                   :display-name card-ref
-                                                                                   :type :card
-                                                                                   :card-id card-id}}})
-                                                       :database (mt/id)}}
-                   :model/Database {other-database-id :id} {}
-                   ;; database doesn't quite match
-                   :model/Card card-6 {:name "Card 6", :database_id other-database-id
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}
-                   ;; same as matching question, but archived
-                   :model/Card card-7 {:name "Card 7"
-                                       :archived true
-                                       :dataset_query {:query {:source-table (str "card__" model-id)}}}]
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
-        (is (= #{"Card 1" "Card 3" "Card 4"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_model :model_id model-id))))))))
-
-(deftest get-cards-with-last-edit-info-test
-  (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
-                 :model/Card {card-2-id :id} {:name "Card 2"}]
-    (with-cards-in-readable-collection [card-1-id card-2-id]
-      (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
-        (revision/push-revision!
-         :entity      :model/Card
-         :id          card-1-id
-         :user-id     user-id
-         :is_creation true
-         :object      {:id card-1-id}))
-
-      (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
-        (revision/push-revision!
-         :entity      :model/Card
-         :id          card-2-id
-         :user-id     user-id
-         :is_creation true
-         :object      {:id card-2-id}))
-      (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
-        (is (=? {:name           "Card 1"
-                 :last-edit-info {:id         (mt/user->id :rasta)
-                                  :email      "rasta@metabase.com"
-                                  :first_name "Rasta"
-                                  :last_name  "Toucan"
-                                  :timestamp  some?}}
-                (get results card-1-id)))
-        (is (=? {:name           "Card 2"
-                 :last-edit-info {:id         (mt/user->id :crowberto)
-                                  :email      "crowberto@metabase.com"
-                                  :first_name "Crowberto"
-                                  :last_name  "Corv"
-                                  :timestamp  some?}}
-                (get results card-2-id)))))))
 
 (deftest get-series-for-card-permission-test
   (t2.with-temp/with-temp
@@ -1054,6 +819,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest ^:parallel authentication-test
+  (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest fetch-card-test
   (testing "GET /api/card/:id"
