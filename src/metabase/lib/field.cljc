@@ -523,6 +523,14 @@
   [field-metadata :- lib.metadata/ColumnMetadata]
   (:id field-metadata))
 
+(mu/defn card-or-table-id :- [:maybe [:cat [:enum :card :table] ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+  "Find the card id or table id for a given ColumnMetadata or nil.
+   Returns a tuple of `[:card/:table id]`"
+  [{card-id :lib/card-id table-id :table-id} :- lib.metadata/ColumnMetadata]
+  (cond
+    card-id [:card card-id]
+    table-id [:table table-id]))
+
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.
   This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.

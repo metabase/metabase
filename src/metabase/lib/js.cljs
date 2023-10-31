@@ -145,6 +145,12 @@
   [field-metadata]
   (lib.core/field-id field-metadata))
 
+(defn ^:export card-or-table-id
+  "Find the card id or table id for a given ColumnMetadata or nil.
+   Returns a tuple of `[:card/:table id]`"
+  [field-metadata]
+  (clj->js (lib.core/card-or-table-id field-metadata) :keyword-fn u/qualified-name))
+
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
