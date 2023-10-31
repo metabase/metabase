@@ -15661,7 +15661,7 @@ databaseChangeLog:
                   unique: true
             tableName: parameter_card
 
-  - changeSet: 
+  - changeSet:
       id: v48.00-028
       author: noahmoss
       comment: Added 0.48.0 - new view v_audit_log
