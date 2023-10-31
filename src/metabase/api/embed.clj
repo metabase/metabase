@@ -237,7 +237,7 @@
   returned as the API endpoint result."
   {:style/indent 0}
   [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
-      :or   {qp (fn [query rff context]
+      :or   {qp (^:once fn* [query rff context]
                   (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
@@ -271,8 +271,8 @@
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
              query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          (fn [query rff context]
-                           (qp/process-query (qp/userland-query query) rff context))}}]
+             qp          (^:once fn* [query rff context]
+                          (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
@@ -329,8 +329,8 @@
   for this Card. Returns core.async channel to fetch the results."
   [unsigned-token export-format query-params & {:keys [constraints qp]
                                                 :or   {constraints (qp.constraints/default-query-constraints)
-                                                       qp          (fn [query rff context]
-                                                                     (qp/process-query (qp/userland-query query) rff context))}
+                                                       qp          (^:once fn* [query rff context]
+                                                                    (qp/process-query (qp/userland-query query) rff context))}
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -397,8 +397,8 @@
   [token dashcard-id card-id export-format query-params
    & {:keys [constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp          (fn [query rff context]
-                           (qp/process-query (qp/userland-query query) rff context))}}]
+             qp          (^:once fn* [query rff context]
+                          (qp/process-query (qp/userland-query query) rff context))}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)

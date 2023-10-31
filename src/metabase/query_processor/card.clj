@@ -192,11 +192,11 @@
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
   options."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp run ignore_cache]
+   & {:keys [parameters constraints context dashboard-id middleware qp run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp          (fn [query rff context]
-                           (qp/process-query (qp/userland-query query) rff context))}}]
+             qp          (^:once fn* [query rff context]
+                          (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [run   (or run
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
@@ -210,7 +210,7 @@
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
-                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
+                                         {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
                                          middleware))))
         info  (cond-> {:executed-by            api/*current-user-id*
                        :context                context

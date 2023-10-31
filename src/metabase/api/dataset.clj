@@ -50,7 +50,7 @@
    & {:keys [context export-format qp]
       :or   {context       :ad-hoc
              export-format :api
-             qp            (fn [query rff context]
+             qp            (^:once fn* [query rff context]
                              (qp/process-query
                               (qp/userland-query-with-default-constraints query)
                               rff
@@ -143,8 +143,8 @@
      query
      :export-format export-format
      :context       (export-format->context export-format)
-     :qp            (fn [query rff context]
-                      (qp/process-query (qp/userland-query query) rff context)))))
+     :qp            (^:once fn* [query rff context]
+                     (qp/process-query (qp/userland-query query) rff context)))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

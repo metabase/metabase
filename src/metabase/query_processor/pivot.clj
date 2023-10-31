@@ -143,14 +143,16 @@
   [query rf init info context]
   (if (a/poll! (qp.context/canceled-chan context))
     (ensure-reduced init)
-    (let [rff (fn [_]
+    (let [rff (fn [_metadata]
                 (fn
                   ([]        init)
                   ([acc]     acc)
                   ([acc row] (rf acc ((:row-mapping-fn context) row context)))))
           context {:canceled-chan (qp.context/canceled-chan context)}]
       (try
-        (qp/process-query-sync (qp/userland-query query info) rff context)
+        (let [query (cond-> query
+                      (seq info) (qp/userland-query info))]
+          (qp/process-query-sync query rff context))
         (catch Throwable e
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))
@@ -197,18 +199,19 @@
                                                                                e)
                                                                       context)))))
                                    acc     (-> (orig-executef driver query context respond)
-                                               (process-queries-append-results
-                                                more-queries @vrf info context))]
+                                               (process-queries-append-results more-queries @vrf info context))]
                                ;; completion arity can't be threaded because the value is derefed too early
                                (qp.context/reducedf (@vrf acc) context))))))}))
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
   [[{:keys [info], :as first-query} & more-queries] rff context]
-  (let [{:keys [rff context]} (append-queries-rff-and-context info rff context more-queries)]
-    (qp/process-query (qp/userland-query-with-default-constraints first-query) rff context)))
+  (let [{:keys [rff context]} (append-queries-rff-and-context info rff context more-queries)
+        first-query           (cond-> first-query
+                                (seq info) qp/userland-query-with-default-constraints)]
+    (qp/process-query first-query rff context)))
 
-(defn pivot-options
+(defn- pivot-options
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
   [query viz-settings]

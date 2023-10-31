@@ -950,7 +950,7 @@ saved later when it is ready."
   (qp.card/run-query-for-card-async
    card-id :api
    :parameters   parameters
-   :ignore_cache ignore_cache
+   :ignore-cache ignore_cache
    :dashboard-id dashboard_id
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
@@ -1038,9 +1038,9 @@ saved later when it is ready."
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
   (qp.card/run-query-for-card-async card-id :api
-                            :parameters   parameters
-                            :qp           qp.pivot/run-pivot-query
-                            :ignore_cache ignore_cache))
+                                    :parameters   parameters
+                                    :qp           qp.pivot/run-pivot-query
+                                    :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this

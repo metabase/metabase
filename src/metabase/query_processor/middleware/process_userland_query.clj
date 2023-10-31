@@ -131,8 +131,9 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn save-query-execution-middleware
-  "Userland-only: Record a `QueryExecution` entry in the application database when this query is finished running."
+(defn save-query-execution-and-add-running-time
+  "Userland-only: Record a `QueryExecution` entry in the application database when this query is finished running; add
+  extra info like `running_time` and `started_at` to the results."
   [qp]
   (fn [query rff {:keys [raisef], :as context}]
     (if-not (get-in query [:middleware :userland-query?])

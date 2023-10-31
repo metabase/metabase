@@ -2374,7 +2374,7 @@
                   :collections       s/Any}
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
-(deftest pivot-card-test
+(deftest ^:parallel pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
@@ -2390,7 +2390,7 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest dataset-card
+(deftest ^:parallel dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
     (t2.with-temp/with-temp [:model/Card card {:display       :bar
                                                :dataset_query (mbql-count-query)}]

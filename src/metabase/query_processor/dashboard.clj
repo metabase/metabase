@@ -160,7 +160,7 @@
   met before returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/run-query-for-card-async]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters ignore_cache constraints parameters middleware]}])}
+  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters ignore-cache constraints parameters middleware]}])}
   [& {:keys [dashboard-id card-id dashcard-id parameters export-format]
       :or   {export-format :api}
       :as   options}]
@@ -170,7 +170,7 @@
   (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
-                         {:ignore_cache false
+                         {:ignore-cache false
                           :constraints  (qp.constraints/default-query-constraints)
                           :context      :dashboard}
                          options

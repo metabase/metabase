@@ -41,7 +41,7 @@
 
   ([query context]
    (let [query  (qp/userland-query query)
-         result (mt/test-qp-middleware process-userland-query/save-query-execution-middleware query {} [] context)]
+         result (mt/test-qp-middleware process-userland-query/save-query-execution-and-add-running-time query {} [] context)]
      (if-not (map? result)
        result
        (update (:metadata result) :running_time int?)))))
@@ -118,7 +118,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (mt/test-qp-middleware process-userland-query/save-query-execution-middleware {:query? true} {} [] nil)
+      (mt/test-qp-middleware process-userland-query/save-query-execution-and-add-running-time {:query? true} {} [] nil)
       (is (zero? @*viewlog-call-count*)))))
 
 (defn- async-middleware [qp]
@@ -135,7 +135,7 @@
     (with-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
-          (let [out-chan (mt/test-qp-middleware [process-userland-query/save-query-execution-middleware async-middleware]
+          (let [out-chan (mt/test-qp-middleware [process-userland-query/save-query-execution-and-add-running-time async-middleware]
                                                 {} {} []
                                                 {:canceled-chan canceled-chan
                                                  :async?        true

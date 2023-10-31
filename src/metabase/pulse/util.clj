@@ -23,16 +23,16 @@
     (try
       (when-let [{query :dataset_query, :as card} (t2/select-one Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
-              process-query (fn []
-                              (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query
-                                 (qp/userland-query-with-default-constraints
-                                  (assoc query :middleware {:process-viz-settings? true
-                                                            :js-int-to-string?     false})
-                                  (merge {:executed-by pulse-creator-id
-                                          :context     :pulse
-                                          :card-id     card-id}
-                                         options)))))
+              process-query (^:once fn* []
+                             (binding [qp.perms/*card-id* card-id]
+                               (qp/process-query
+                                (qp/userland-query-with-default-constraints
+                                 (assoc query :middleware {:process-viz-settings? true
+                                                           :js-int-to-string?     false})
+                                 (merge {:executed-by pulse-creator-id
+                                         :context     :pulse
+                                         :card-id     card-id}
+                                        options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id
                                 (process-query))

@@ -120,6 +120,13 @@
 (when config/tests-available?
   (classloader/require 'metabase.query-processor-test.test-mlv2))
 
+(def ^:private Query
+  [:and
+   :map
+   [:fn
+    {:error/message "Valid, possibly denormalized, query map"}
+    (some-fn :lib/type :type #(get % "lib/type") #(get % "type"))]])
+
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
 
@@ -247,7 +254,7 @@
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    (resolve 'ee.audit/handle-internal-queries)
    ;; userland queries only: save a QueryExecution
-   #'process-userland-query/save-query-execution-middleware
+   #'process-userland-query/save-query-execution-and-add-running-time
    #'normalize/normalize
    ;; userland queries only: catch Exceptions and return a special error response
    #'catch-exceptions/catch-exceptions])
@@ -305,22 +312,17 @@
   ([query context]
    (process-query query nil context))
 
-  ([{:keys [async?], :as query} :- :map
+  ([{:keys [async?], :as query} :- Query
     rff                         :- [:maybe fn?]
-    context                     :- [:maybe
-                                    [:and
-                                     :map
-                                     [:fn
-                                      {:error/message ":rff should no longer be included in context, pass it as a separate argument."}
-                                      (complement :rff)]]]]
+    context                     :- [:maybe :map]]
    (let [rff     (or rff qp.reducible/default-rff)
          context (or context (qp.context.default/default-context))]
      ((if async? process-query-async process-query-sync) query rff context))))
 
-(defn preprocess
+(mu/defn preprocess :- Query
   "Return the fully preprocessed form for `query`, the way it would look immediately
   before [[mbql-to-native/mbql->native]] is called."
-  [query]
+  [query :- Query]
   (let [qp (qp.reducible/combine-middleware
             (conj (vec around-middleware)
                   prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
@@ -375,24 +377,27 @@
   (let [driver (driver.u/database->driver (:database (preprocess query)))]
     (driver/splice-parameters-into-native-query driver (compile query))))
 
-(mu/defn userland-query :- :map
+(mu/defn userland-query :- Query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
   behavior:
 
   1. Exceptions are caught, and a special error shape is returned (see [[catch-exceptions/catch-exceptions]])
 
   2. A `QueryExecution` is saved in the application database (see
-     [[process-userland-query/save-query-execution-middleware]])"
+     [[process-userland-query/save-query-execution-and-add-running-time]])
+
+  3. A few extra keys like `:running_time` and `:started_at` are added to the QP
+     response (see [[process-userland-query/save-query-execution-and-add-running-time]])"
   ([query]
    (userland-query query nil))
 
-  ([query :- :map
+  ([query :- Query
     info  :- [:maybe mbql.s/Info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
        (update :info merge info))))
 
-(mu/defn userland-query-with-default-constraints :- :map
+(mu/defn userland-query-with-default-constraints :- Query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
   as those for [[userland-query]], *plus* the default userland constraints (limits) are applied --
   see [[qp.constraints/add-default-userland-constraints]].
@@ -401,7 +406,7 @@
   ([query]
    (userland-query-with-default-constraints query nil))
 
-  ([query :- :map
+  ([query :- Query
     info  :- [:maybe mbql.s/Info]]
    (-> query
        (userland-query info)

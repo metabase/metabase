@@ -151,8 +151,8 @@
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
   [card-id export-format parameters & {:keys [qp]
-                                       :or   {qp (fn [query rff context]
-                                                   (qp/process-query (qp/userland-query query) rff context))}
+                                       :or   {qp (^:once fn* [query rff context]
+                                                  (qp/process-query (qp/userland-query query) rff context))}
                                        :as   options}]
   {:pre [(integer? card-id)]}
   ;; run this query with full superuser perms
@@ -161,11 +161,11 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (mw.session/as-admin
-   (m/mapply qp.card/run-query-for-card-async card-id export-format
-             :parameters parameters
-             :context    :public-question
-             :run        (run-query-for-card-with-id-async-run-fn qp export-format)
-             options)))
+    (m/mapply qp.card/run-query-for-card-async card-id export-format
+              :parameters parameters
+              :context    :public-question
+              :run        (run-query-for-card-with-id-async-run-fn qp export-format)
+              options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
@@ -267,8 +267,8 @@
   Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
   [& {:keys [export-format parameters qp]
-      :or   {qp     (fn [query rff context]
-                      (qp/process-query (qp/userland-query query) rff context))
+      :or   {qp            (^:once fn* [query rff context]
+                            (qp/process-query (qp/userland-query query) rff context))
              export-format :api}
       :as   options}]
   (let [options (merge
@@ -284,7 +284,7 @@
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
     (mw.session/as-admin
-     (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
+      (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public

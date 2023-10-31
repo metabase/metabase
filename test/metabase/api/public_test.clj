@@ -1514,9 +1514,8 @@
                           (apply client/client :get 202 (pivot-dashcard-url dash card dashcard) query-parameters))]
                   (testing "without parameters"
                     (let [result (results)]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       ;; [[metabase.api.public/transform-results]] should remove `row_count`
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
@@ -1533,9 +1532,8 @@
                                                                      :slug   :state
                                                                      :target [:dimension (mt/$ids $orders.user_id->people.state)]
                                                                      :value  ["CA" "WA"]}]))]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
                       (is (= 6 (count (get-in result [:data :cols]))))
