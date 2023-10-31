@@ -775,13 +775,14 @@ class Question {
     const tableColumns = this.setting("table.columns");
     if (
       tableColumns &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       return this.updateSettings({
         "table.columns": [
           ...tableColumns.filter(
-            column => !addedColumnNames.includes(column.name),
+            column =>
+              !removedColumnNames.includes(column.name) &&
+              !addedColumnNames.includes(column.name),
           ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);
