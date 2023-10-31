@@ -223,13 +223,18 @@
   (.toDays (t/duration before after)))
 
 (defn- matches-time? [input]
-  (re-matches #"\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
+  (re-matches #"^\d\d:\d\d(?::\d\d(?:\.\d+)?)?$" input))
 
 (defn- matches-date? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\d" input))
+  (re-matches #"^\d\d\d\d-\d\d-\d\d$" input))
 
 (defn- matches-date-time? [input]
-  (re-matches #"\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?" input))
+  (re-matches #"^\d\d\d\d-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|-\d\d:\d\d)?$" input))
+
+(defn- coerce-local-date-time [input]
+  (cond-> input
+    (re-find #"(?:Z|-\d\d:\d\d)$" input) (t/offset-date-time)
+    :always (localize)))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
@@ -242,7 +247,7 @@
           t (cond
               time? (t/local-time input)
               date? (t/local-date input)
-              date-time? (t/local-date-time input))]
+              date-time? (coerce-local-date-time input))]
       (if t
         (case unit
           :day-of-week (t/format "EEEE" t)
@@ -282,8 +287,8 @@
 
       (and (matches-date-time? temporal-value-1)
            (matches-date-time? temporal-value-2))
-      (let [lhs (t/local-date-time temporal-value-1)
-            rhs (t/local-date-time temporal-value-2)
+      (let [lhs (coerce-local-date-time temporal-value-1)
+            rhs (coerce-local-date-time temporal-value-2)
             year-matches? (= (t/year lhs) (t/year rhs))
             month-matches? (= (t/month lhs) (t/month rhs))
             day-matches? (= (t/day-of-month lhs) (t/day-of-month rhs))
