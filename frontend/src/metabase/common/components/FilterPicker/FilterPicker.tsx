@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 
 import { Box } from "metabase/ui";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -42,7 +42,7 @@ const MIN_WIDTH = 300;
 export function FilterPicker({
   query,
   stageIndex,
-  filter,
+  filter: initialFilter,
   filterIndex,
   legacyQuery,
   legacyFilter,
@@ -50,6 +50,8 @@ export function FilterPicker({
   onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
+  const [filter, setFilter] = useState(initialFilter);
+
   const [column, setColumn] = useState(
     getInitialColumn(query, stageIndex, filter),
   );
@@ -61,9 +63,20 @@ export function FilterPicker({
     isExpressionEditorInitiallyOpen(query, stageIndex, column, filter),
   );
 
+  const isNewFilter = !initialFilter;
+
+  useLayoutEffect(() => {
+    setFilter(initialFilter);
+  }, [initialFilter]);
+
   const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
     onSelect(filter);
     onClose?.();
+  };
+
+  const handleColumnSelect = (column: Lib.ColumnMetadata) => {
+    setColumn(column);
+    setFilter(undefined);
   };
 
   const checkItemIsSelected = useCallback(
@@ -110,7 +123,7 @@ export function FilterPicker({
           query={query}
           stageIndex={stageIndex}
           checkItemIsSelected={checkItemIsSelected}
-          onColumnSelect={setColumn}
+          onColumnSelect={handleColumnSelect}
           onSegmentSelect={handleChange}
           onExpressionSelect={openExpressionEditor}
         />
@@ -128,6 +141,7 @@ export function FilterPicker({
           stageIndex={stageIndex}
           column={column}
           filter={filter}
+          isNew={isNewFilter}
           onChange={handleChange}
           onBack={() => setColumn(undefined)}
         />

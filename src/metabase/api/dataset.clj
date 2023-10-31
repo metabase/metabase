@@ -6,7 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -164,13 +164,11 @@
    pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
-          driver          (driver.u/database->driver database)
-          ;; Format the query unless we explicitly do not want to
-          formatted-query (if (false? pretty)
-                            q
-                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
-      (assoc compiled :query formatted-query))))
+    (let [driver (driver.u/database->driver database)
+          prettify (partial driver/prettify-native-form driver)
+          compiled (qp/compile-and-splice-parameters query)]
+      (cond-> compiled
+        (not (false? pretty)) (update :query prettify)))))
 
 (api/defendpoint POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

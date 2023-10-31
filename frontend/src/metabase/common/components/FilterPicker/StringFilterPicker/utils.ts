@@ -5,9 +5,7 @@ export function isFilterValid(
   operatorName: StringFilterOperatorName,
   values: string[],
 ) {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
+  const option = OPERATOR_OPTIONS[operatorName];
   if (!option) {
     return false;
   }

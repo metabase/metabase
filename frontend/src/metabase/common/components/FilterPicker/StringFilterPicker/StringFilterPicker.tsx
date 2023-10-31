@@ -21,6 +21,7 @@ export function StringFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -42,12 +43,8 @@ export function StringFilterPicker({
   const [values, setValues] = useState(filterParts?.values ?? []);
   const [options, setOptions] = useState(filterParts?.options ?? {});
 
-  const { valueCount, hasCaseSensitiveOption } = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option ?? { valueCount: 0, hasCaseSensitiveOption: false };
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0, hasCaseSensitiveOption = false } =
+    OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -55,11 +52,16 @@ export function StringFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.StringFilterOperatorName,
+    nextOperatorName: Lib.StringFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues([]);
-    setOptions({});
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName] ?? {};
+
+    const nextValues = values.slice(0, nextOption.valueCount);
+    const nextOptions = nextOption.hasCaseSensitiveOption ? options : {};
+
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
+    setOptions(nextOptions);
   };
 
   const handleFilterChange = () => {
@@ -109,7 +111,7 @@ export function StringFilterPicker({
           disabled={!isValid}
           onClick={handleFilterChange}
         >
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
     </>

@@ -18,6 +18,7 @@ import { TabList } from "./SpecificDatePicker.styled";
 export interface SpecificDatePickerProps {
   value?: SpecificDatePickerValue;
   availableOperators: ReadonlyArray<DatePickerOperator>;
+  isNew: boolean;
   onChange: (value: SpecificDatePickerValue) => void;
   onBack: () => void;
 }
@@ -25,6 +26,7 @@ export interface SpecificDatePickerProps {
 export function SpecificDatePicker({
   value: initialValue,
   availableOperators,
+  isNew,
   onChange,
   onBack,
 }: SpecificDatePickerProps) {
@@ -33,7 +35,6 @@ export function SpecificDatePicker({
   }, [availableOperators]);
 
   const [value, setValue] = useState(() => initialValue ?? getDefaultValue());
-  const isNew = initialValue == null;
 
   const handleTabChange = (tabValue: string | null) => {
     const tab = tabs.find(tab => tab.operator === tabValue);

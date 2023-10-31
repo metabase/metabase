@@ -19,6 +19,7 @@ export function NumberFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -39,12 +40,7 @@ export function NumberFilterPicker({
 
   const [values, setValues] = useState(filterParts?.values ?? []);
 
-  const valueCount = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option?.valueCount ?? 0;
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -52,10 +48,12 @@ export function NumberFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.NumberFilterOperatorName,
+    nextOperatorName: Lib.NumberFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues([]);
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
+    const nextValues = values.slice(0, nextOption.valueCount);
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
   };
 
   const handleFilterChange = () => {
@@ -91,7 +89,7 @@ export function NumberFilterPicker({
           disabled={!isValid}
           onClick={handleFilterChange}
         >
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
     </>

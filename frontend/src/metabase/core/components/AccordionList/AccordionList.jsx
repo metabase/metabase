@@ -356,7 +356,7 @@ export default class AccordionList extends Component {
 
     const searchRow = this.getRows().findIndex(row => row.type === "search");
 
-    if (searchRow >= 0) {
+    if (searchRow >= 0 && this.isVirtualized()) {
       this._list.scrollToRow(searchRow);
     }
   };
