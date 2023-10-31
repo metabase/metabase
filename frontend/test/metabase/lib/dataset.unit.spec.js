@@ -132,7 +132,9 @@ describe("metabase/util/dataset", () => {
         .syncColumnsAndSettings(prevQuestion);
 
       expect(prevQuestion.setting("table.columns")).toHaveLength(3);
-      expect(newQuestion.setting("table.columns")).toHaveLength(2);
+      expect(newQuestion.setting("table.columns")).toEqual(
+        prevQuestion.setting("table.columns").slice(0, 2),
+      );
     });
 
     it("adds columns to table.columns when a column is added to a query", () => {
@@ -166,7 +168,14 @@ describe("metabase/util/dataset", () => {
         .syncColumnsAndSettings(prevQuestion);
 
       expect(prevQuestion.setting("table.columns")).toHaveLength(2);
-      expect(newQuestion.setting("table.columns")).toHaveLength(3);
+      expect(newQuestion.setting("table.columns")).toEqual([
+        ...prevQuestion.setting("table.columns"),
+        createMockTableColumnOrderSetting({
+          name: "VENDOR",
+          fieldRef: ["field", PRODUCTS.VENDOR, null],
+          enabled: true,
+        }),
+      ]);
     });
   });
 
