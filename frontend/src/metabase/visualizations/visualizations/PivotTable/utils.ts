@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import { sumArray } from "metabase/core/utils/arrays";
+import { sumArray } from "metabase/lib/arrays";
 
 import type {
   Card,
