@@ -38,86 +38,98 @@ function setup({
 
 describe("DateIntervalPicker", () => {
   describe("past", () => {
-    describe("interval", () => {
-      it("should change the past interval", () => {
-        const { onChange } = setup();
+    it("should change the past interval", () => {
+      const { onChange } = setup();
 
-        const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "20");
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "20");
 
-        expect(onChange).toHaveBeenLastCalledWith({
-          type: "relative",
-          value: -20,
-          unit: "day",
-        });
-      });
-
-      it("should change the past interval with a negative value", () => {
-        const { onChange } = setup();
-
-        const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "-10");
-
-        expect(onChange).toHaveBeenLastCalledWith({
-          type: "relative",
-          value: -10,
-          unit: "day",
-        });
-      });
-
-      it("should coerce zero", () => {
-        const { onChange } = setup();
-
-        const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "0");
-        userEvent.tab();
-
-        expect(onChange).toHaveBeenLastCalledWith({
-          type: "relative",
-          value: -1,
-          unit: "day",
-        });
-      });
-
-      it("should ignore empty values", () => {
-        const { onChange } = setup();
-
-        const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.tab();
-
-        expect(input).toHaveValue("30");
-        expect(onChange).not.toHaveBeenCalled();
-      });
-
-      it("should ignore invalid values", () => {
-        const { onChange } = setup();
-
-        const input = screen.getByLabelText("Interval");
-        userEvent.clear(input);
-        userEvent.type(input, "abc");
-        userEvent.tab();
-
-        expect(input).toHaveValue("30");
-        expect(onChange).not.toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: "relative",
+        value: -20,
+        unit: "day",
       });
     });
 
-    describe("unit", () => {
-      it("should allow to change the unit", () => {
-        const { onChange } = setup();
+    it("should change the past interval with a negative value", () => {
+      const { onChange } = setup();
 
-        userEvent.click(screen.getByDisplayValue("days"));
-        userEvent.click(screen.getByText("years"));
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "-10");
 
-        expect(onChange).toHaveBeenCalledWith({
-          type: "relative",
-          value: -30,
-          unit: "year",
-        });
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: "relative",
+        value: -10,
+        unit: "day",
+      });
+    });
+
+    it("should coerce zero", () => {
+      const { onChange } = setup();
+
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "0");
+      userEvent.tab();
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: "relative",
+        value: -1,
+        unit: "day",
+      });
+    });
+
+    it("should ignore empty values", () => {
+      const { onChange } = setup();
+
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.tab();
+
+      expect(input).toHaveValue("30");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should ignore invalid values", () => {
+      const { onChange } = setup();
+
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "abc");
+      userEvent.tab();
+
+      expect(input).toHaveValue("30");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should allow to change the unit", () => {
+      const { onChange } = setup();
+
+      userEvent.click(screen.getByLabelText("Unit"));
+      userEvent.click(screen.getByText("years"));
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "relative",
+        value: -30,
+        unit: "year",
+      });
+    });
+
+    it("should allow to include the current unit", async () => {
+      const { onChange } = setup();
+
+      userEvent.click(screen.getByLabelText("Options"));
+      userEvent.click(await screen.findByText("Include today"));
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "relative",
+        value: -30,
+        unit: "day",
+        options: {
+          "include-current": true,
+        },
       });
     });
   });
