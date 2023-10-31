@@ -188,7 +188,6 @@ export const ModelIndexApi = {
 };
 
 export const DashboardApi = {
-  list: GET("/api/dashboard"),
   // creates a new empty dashboard
   create: POST("/api/dashboard"),
   // saves a complete transient dashboard
