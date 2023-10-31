@@ -1,9 +1,9 @@
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
-  setupSearchEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardCollectionItemsEndpoint,
 } from "__support__/server-mocks";
@@ -12,6 +12,7 @@ import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockSearchResult,
   createMockUser,
 } from "metabase-types/api/mocks";
 import type { Card, Collection, Dashboard } from "metabase-types/api";
@@ -85,10 +86,21 @@ const COLLECTIONS = [
   PERSONAL_SUBCOLLECTION,
 ];
 
-const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
+const CARD_IN_ROOT_COLLECTION = createMockCard({
+  id: 1,
+  name: "Model Uno",
+  dataset: true,
+});
+
+const CARD_IN_PUBLIC_COLLECTION = createMockCard({
+  id: 1,
+  name: "Model Uno",
+  dataset: true,
+  collection: COLLECTION,
+});
 
 const CARD_IN_PERSONAL_COLLECTION = createMockCard({
-  id: 2,
+  id: 3,
   name: "Card in a personal collection",
   dataset: true,
   collection: PERSONAL_COLLECTION,
@@ -104,7 +116,7 @@ interface SetupOpts {
 }
 
 const setup = async ({
-  card = CARD,
+  card = CARD_IN_ROOT_COLLECTION,
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
   mostRecentlyViewedDashboard = undefined,
@@ -115,7 +127,7 @@ const setup = async ({
     new Set([dashboard, mostRecentlyViewedDashboard].filter(isNotNull)),
   );
 
-  setupSearchEndpoints([]);
+  // setupSearchEndpoints([]);
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupDashboardCollectionItemsEndpoint(dashboards);
   setupCollectionByIdEndpoint({ collections, error });
@@ -647,6 +659,147 @@ describe("AddToDashSelectDashModal", () => {
               }),
             ).toBeInTheDocument();
           });
+        });
+      });
+    });
+
+    describe("search dashboards", () => {
+      describe("questions in the root collection (public collection)", () => {
+        it("should search questions only in public collections", async () => {
+          await setup({
+            card: CARD_IN_ROOT_COLLECTION,
+          });
+
+          const typedText = "question";
+          const dashboardInPublicCollection = createMockSearchResult({
+            name: "dashboard in public collection",
+            model: "dashboard",
+          });
+          fetchMock.get(
+            {
+              url: "path:/api/search",
+              query: {
+                models: "dashboard",
+                q: typedText,
+              },
+            },
+            {
+              data: [dashboardInPublicCollection],
+            },
+          );
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            "question{enter}",
+          );
+
+          expect(
+            await screen.findByText(dashboardInPublicCollection.name),
+          ).toBeInTheDocument();
+
+          // There's no way to math a URL that a query param is not present
+          // with fetch-mock, so we have to assert it manually.
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(
+            urlObject.searchParams.get("filter_items_in_personal_collection"),
+          ).toEqual(null);
+        });
+      });
+
+      describe("questions in public collections", () => {
+        it("should search questions only in public collections", async () => {
+          await setup({
+            card: CARD_IN_PUBLIC_COLLECTION,
+          });
+
+          const typedText = "question";
+          const dashboardInPublicCollection = createMockSearchResult({
+            name: "dashboard in public collection",
+            model: "dashboard",
+          });
+          fetchMock.get(
+            {
+              url: "path:/api/search",
+              query: {
+                models: "dashboard",
+                q: typedText,
+              },
+            },
+            {
+              data: [dashboardInPublicCollection],
+            },
+          );
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            "question{enter}",
+          );
+
+          expect(
+            await screen.findByText(dashboardInPublicCollection.name),
+          ).toBeInTheDocument();
+
+          // There's no way to math a URL that a query param is not present
+          // with fetch-mock, so we have to assert it manually.
+          const call = fetchMock.lastCall("path:/api/search");
+          const urlObject = new URL(checkNotNull(call?.request?.url));
+          expect(urlObject.pathname).toEqual("/api/search");
+          expect(
+            urlObject.searchParams.get("filter_items_in_personal_collection"),
+          ).toEqual(null);
+        });
+      });
+
+      describe("questions in personal collections", () => {
+        it("should search all questions", async () => {
+          await setup({
+            card: CARD_IN_PERSONAL_COLLECTION,
+          });
+
+          const typedText = "question";
+          const dashboardInPublicCollection = createMockSearchResult({
+            id: 1,
+            name: "dashboard in public collection",
+            model: "dashboard",
+          });
+          const dashboardInPersonalCollection = createMockSearchResult({
+            id: 2,
+            name: "dashboard in personal collection",
+            model: "dashboard",
+          });
+          fetchMock.get(
+            {
+              url: "path:/api/search",
+              query: {
+                models: "dashboard",
+                q: typedText,
+                filter_items_in_personal_collection: "only",
+              },
+            },
+            {
+              data: [
+                dashboardInPublicCollection,
+                dashboardInPersonalCollection,
+              ],
+            },
+          );
+
+          userEvent.click(screen.getByRole("button", { name: "Search" }));
+          userEvent.type(
+            screen.getByPlaceholderText("Search"),
+            "question{enter}",
+          );
+
+          expect(
+            await screen.findByText(dashboardInPublicCollection.name),
+          ).toBeInTheDocument();
+          expect(
+            screen.getByText(dashboardInPersonalCollection.name),
+          ).toBeInTheDocument();
         });
       });
     });
