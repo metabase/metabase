@@ -208,8 +208,12 @@ function baseTypeFilterForParameterType(parameterType: string) {
     // default to showing everything
     return () => true;
   }
-  return (baseType: string) =>
-    allowedTypes.some(allowedType => isa(baseType, allowedType));
+  return (baseType: string | undefined) => {
+    if (typeof baseType === "undefined") {
+      return false;
+    }
+    return allowedTypes.some(allowedType => isa(baseType, allowedType));
+  };
 }
 
 export function clickBehaviorIsValid(
