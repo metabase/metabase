@@ -2,10 +2,9 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [metabase.models.permissions :as perms]))
+   [metabase.util.malli :as mu]))
 
 ;; WITH table_executions AS (
 ;;     SELECT t.id AS table_id, count(*) AS executions
@@ -83,5 +82,5 @@
                            [[:lower :t.name]   :asc]]
                 :where    [:and
                            [:= :t.active true]
-                           [:not= :t.db_id (audit-db/default-audit-db-id)]]}
+                           [:not= :t.db_id perms/audit-db-id]]}
                (common/add-search-clause query-string :db.name :t.schema :t.name :t.display_name)))}))

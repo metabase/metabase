@@ -6,11 +6,10 @@
    [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail
     :as card-and-dash-detail]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
-   [metabase-enterprise.audit-db :as audit-db]
    [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.permissions :as perms]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase.models.permissions :as perms]))
+   [metabase.util.malli.schema :as ms]))
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
 (mu/defmethod audit.i/internal-query ::views-by-time

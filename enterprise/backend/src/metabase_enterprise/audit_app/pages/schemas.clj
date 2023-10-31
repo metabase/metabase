@@ -2,10 +2,9 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]
-   [metabase.models.permissions :as perms]))
+   [metabase.util.malli :as mu]))
 
 ;; WITH counts AS (
 ;;     SELECT db."name" AS db_name, t."schema" AS db_schema

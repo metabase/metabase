@@ -1,14 +1,15 @@
 (ns metabase-enterprise.audit-db-test
-  (:require [babashka.fs :as fs]
-            [clojure.java.io :as io]
-            [clojure.test :refer [deftest is]]
-            [metabase-enterprise.audit-db :as audit-db]
-            [metabase.core :as mbc]
-            [metabase.models.database :refer [Database]]
-            [metabase.task :as task]
-            [metabase.test :as mt]
-            [toucan2.core :as t2]
-            [metabase.models.permissions :as perms]))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest is]]
+   [metabase-enterprise.audit-db :as audit-db]
+   [metabase.core :as mbc]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.permissions :as perms]
+   [metabase.task :as task]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (defmacro with-audit-db-restoration [& body]
   `(let [original-audit-db# (t2/select-one Database :is_audit true)]
