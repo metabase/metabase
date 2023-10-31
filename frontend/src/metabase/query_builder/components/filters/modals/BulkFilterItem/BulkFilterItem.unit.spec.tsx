@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { createMockField } from "metabase-types/api/mocks";
 import {
   ORDERS,

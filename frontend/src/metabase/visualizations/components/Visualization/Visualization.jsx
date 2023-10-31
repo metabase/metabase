@@ -466,6 +466,7 @@ class Visualization extends PureComponent {
                 settings={settings}
                 icon={headerIcon}
                 actionButtons={extra}
+                width={width}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun

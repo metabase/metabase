@@ -42,11 +42,12 @@
 (deftest audit-db-content-is-installed-when-found
   (mt/test-drivers #{:postgres}
     (with-audit-db-restoration
-      (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics_skip")]
-        (is (str/ends-with? (str audit-db/analytics-root-dir-resource)
-                            "instance_analytics_skip"))
-        (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
-        (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
-            "Audit DB is installed.")
-        (is (not= 0 (t2/count 'Card {:where [:= :database_id 13371337]}))
-            "Cards should be created for Audit DB when the content is there.")))))
+      (mt/with-model-cleanup [:model/Dashboard :model/Card]
+        (with-redefs [audit-db/analytics-root-dir-resource (io/resource "instance_analytics_skip")]
+          (is (str/ends-with? (str audit-db/analytics-root-dir-resource)
+                              "instance_analytics_skip"))
+          (is (= :metabase-enterprise.audit-db/installed (audit-db/ensure-audit-db-installed!)))
+          (is (= 13371337 (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+              "Audit DB is installed.")
+          (is (not= 0 (t2/count 'Card {:where [:= :database_id 13371337]}))
+              "Cards should be created for Audit DB when the content is there."))))))

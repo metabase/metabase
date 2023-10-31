@@ -24,6 +24,7 @@ import type {
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type { SearchFilterComponent } from "metabase/search/types";
 import type Question from "metabase-lib/Question";
 
 import type Database from "metabase-lib/metadata/Database";
@@ -159,8 +160,11 @@ export const PLUGIN_COLLECTIONS = {
   ): AuthorityLevelMenuItem[] => [],
 };
 
-type CollectionAuthorityLevelIcon = ComponentType<
-  Omit<IconProps, "name" | "tooltip"> & { collection: Collection }
+export type CollectionAuthorityLevelIcon = ComponentType<
+  Omit<IconProps, "name" | "tooltip"> & {
+    collection: Pick<Collection, "authority_level">;
+    tooltip?: "default" | "belonging";
+  }
 >;
 
 type FormCollectionAuthorityLevelPicker = ComponentType<
@@ -285,4 +289,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
+};
+
+export const PLUGIN_CONTENT_VERIFICATION = {
+  VerifiedFilter: {} as SearchFilterComponent<"verified">,
 };

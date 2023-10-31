@@ -7,7 +7,6 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
@@ -27,6 +26,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   isMetric,
   isDimension,
@@ -77,29 +77,30 @@ export default class Table extends Component {
       widget: "toggle",
       inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
-      getDefault: ([{ card, data }]) =>
-        data &&
-        data.cols.length === 3 &&
-        Q_DEPRECATED.isStructured(card.dataset_query) &&
-        data.cols.filter(isMetric).length === 1 &&
-        data.cols.filter(isDimension).length === 2,
+      getDefault: ([{ card, data }]) => {
+        if (
+          !data ||
+          data.cols.length !== 3 ||
+          !Q_DEPRECATED.isStructured(card.dataset_query) ||
+          data.cols.filter(isMetric).length !== 1 ||
+          data.cols.filter(isDimension).length !== 2
+        ) {
+          return false;
+        }
+
+        return getDefaultPivotColumn(data.cols, data.rows) != null;
+      },
     },
     "table.pivot_column": {
       section: t`Columns`,
       title: t`Pivot column`,
       widget: "field",
-      getDefault: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ],
-        settings,
-      ) => {
-        const col = _.min(cols.filter(isDimension), col =>
-          getColumnCardinality(cols, rows, cols.indexOf(col)),
-        );
-        return col && col.name;
+      getDefault: ([
+        {
+          data: { cols, rows },
+        },
+      ]) => {
+        return getDefaultPivotColumn(cols, rows)?.name;
       },
       getProps: (
         [

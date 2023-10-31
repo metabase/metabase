@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import type { LocationDescriptorObject } from "history";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { extractEntityId } from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
 import type { CardId } from "metabase-types/api";
