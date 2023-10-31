@@ -19,7 +19,6 @@ const isBaseActionClickBehavior = (
     isObject(value) &&
     "type" in value &&
     value.type === "action" &&
-    "actionType" in value &&
     typeof value.actionType === "string"
   );
 };
