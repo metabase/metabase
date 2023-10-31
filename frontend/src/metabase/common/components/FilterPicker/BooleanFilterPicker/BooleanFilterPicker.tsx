@@ -33,8 +33,8 @@ export function BooleanFilterPicker({
     getOptionType(query, stageIndex, filter),
   );
 
-  const [isExpanded, setIsExpanded] = useState(() =>
-    options.some(option => option.type === optionType && option.isAdvanced),
+  const [isExpanded, setIsExpanded] = useState(
+    () => OPTIONS[optionType].isAdvanced,
   );
 
   const visibleOptions = useMemo(() => {

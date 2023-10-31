@@ -87,9 +87,7 @@ export function isFilterValid(
   operatorName: CoordinateFilterOperatorName,
   values: number[],
 ) {
-  const option = OPERATOR_OPTIONS.find(
-    option => option.operator === operatorName,
-  );
+  const option = OPERATOR_OPTIONS[operatorName];
   if (!option) {
     return false;
   }

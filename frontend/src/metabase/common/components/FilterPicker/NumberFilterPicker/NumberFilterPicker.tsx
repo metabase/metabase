@@ -40,12 +40,7 @@ export function NumberFilterPicker({
 
   const [values, setValues] = useState(filterParts?.values ?? []);
 
-  const valueCount = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option?.valueCount ?? 0;
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -53,10 +48,12 @@ export function NumberFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.NumberFilterOperatorName,
+    nextOperatorName: Lib.NumberFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues([]);
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
+    const nextValues = values.slice(0, nextOption.valueCount);
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
   };
 
   const handleFilterChange = () => {
