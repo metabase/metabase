@@ -1,3 +1,5 @@
+drop view if exists v_group_members;
+
 create or replace view v_group_members as
 select
     user_id,

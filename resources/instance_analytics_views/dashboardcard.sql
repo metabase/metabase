@@ -1,3 +1,5 @@
+drop view if exists v_dashboardcard;
+
 create or replace view v_dashboardcard AS
 select
     id as entity_id,

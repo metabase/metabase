@@ -1,3 +1,5 @@
+drop view if exists v_content;
+
 create or replace view v_content as
 select
     action.id as entity_id,
@@ -47,11 +49,7 @@ select
 union
 select
     report_card.id as entity_id,
-    concat(
-        case when dataset
-            then 'model_'
-            else 'question_'
-        end, id) as entity_qualified_id,
+    concat('card_', id) as entity_qualified_id,
     case when dataset then 'model' else 'question' end as entity_type,
     created_at,
     updated_at,

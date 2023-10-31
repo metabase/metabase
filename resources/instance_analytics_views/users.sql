@@ -1,3 +1,5 @@
+drop view if exists v_users;
+
 create or replace view v_users as
 select
     id as user_id,

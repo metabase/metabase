@@ -1,3 +1,5 @@
+drop view if exists v_audit_log;
+
 create or replace view v_audit_log as
 (
 select
@@ -16,8 +18,8 @@ select
        lower(model) as entity_type,
        model_id as entity_id,
        case
-           when model = 'Dataset' then concat('model_', cast(model_id as text))
-           when model = 'Card' then concat('question_', cast(model_id as text))
+           when model = 'Dataset' then concat('card_', cast(model_id as text))
+           when model = 'Card' then concat('card_', cast(model_id as text))
            when model = 'Pulse' then concat('subscription_', cast(model_id as text))
            when model_id is null then null
            else concat(lower(model), '_', model_id)
