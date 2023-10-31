@@ -1,3 +1,5 @@
+drop view if exists v_alerts_subscriptions;
+
 create or replace view v_alerts_subscriptions as
 with agg_recipients as (
     select
@@ -21,13 +23,10 @@ select
     name,
     collection_id as collection_id,
     archived,
-    case when
-        dashboard_id is not null then
-        dashboard_id
-        end as subscription_dashboard_id,
-    case when card_id is not null then
-        card_id
-        end as alert_question_id,
+    case
+        when dashboard_id is not null then ('dashboard_' || dashboard_id)
+        when  card_id is not null then ('card_' || card_id)
+        end as tracked_qualified_id,
     channel_type as recipient_type,
     agg_recipients.recipients,
     details as recipient_external
