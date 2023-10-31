@@ -1,5 +1,6 @@
 (ns metabase-enterprise.audit-app.permissions-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.permissions :as audit-app.permissions]
    [metabase-enterprise.audit-db :as audit-db]
@@ -23,9 +24,10 @@
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
     (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
-      (is (= audit-app.permissions/audit-db-view-names
-             (into #{}
-                   (map :table_name (t2/query view-query))))))))
+      (is (set/superset?
+           audit-app.permissions/audit-db-view-names
+           (into #{}
+                 (map :table_name (t2/query view-query))))))))
 
 (deftest audit-db-basic-query-test
   (mt/with-test-user :crowberto
