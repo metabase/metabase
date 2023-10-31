@@ -2,8 +2,9 @@ import _ from "underscore";
 
 import type {
   ClickBehavior,
-  ClickBehaviorParameterSource,
-  ClickBehaviorParameterTarget,
+  ClickBehaviorDimensionTarget,
+  ClickBehaviorSource,
+  ClickBehaviorTarget,
   Dashboard,
   DashboardCard,
   DatasetColumn,
@@ -24,7 +25,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
-import type { Dimension } from "metabase-lib/types";
+import type { Dimension as DimensionType } from "metabase-lib/types";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
@@ -36,7 +37,7 @@ import Field from "metabase-lib/metadata/Field";
 interface Target {
   id: Parameter["id"];
   name: Parameter["name"] | null | undefined;
-  target: ClickBehaviorParameterTarget;
+  target: ClickBehaviorTarget;
   sourceFilters: SourceFilters;
 }
 
@@ -61,7 +62,7 @@ export function getDataFromClicked({
     parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
     userAttributes?: UserAttribute[] | null;
   };
-  dimensions: Dimension[];
+  dimensions: DimensionType[];
   data: (ClickObjectDataRow & {
     clickBehaviorValue: ClickObjectDataRow["value"];
   })[];
@@ -130,17 +131,22 @@ function notRelativeDateOrRange({ type }: Parameter) {
 export function getTargetsForQuestion(question: Question): Target[] {
   const query = question.query();
   return [...query.dimensionOptions().all(), ...query.variables()].map(o => {
-    let id, target;
+    let id, target: ClickBehaviorTarget;
     if (o instanceof TemplateTagVariable || o instanceof TemplateTagDimension) {
       let name;
       ({ id, name } = o.tag());
       target = { type: "variable", id: name };
-    } else {
-      const dimension = ["dimension", o.mbql()];
+    } else if ("mbql" in o) {
+      const dimension: ClickBehaviorDimensionTarget["dimension"] = [
+        "dimension",
+        o.mbql(),
+      ];
       id = JSON.stringify(dimension);
       target = { type: "dimension", id, dimension };
+    } else {
+      throw new Error("Unknown target type");
     }
-    let parentType: string | undefined;
+    let parentType: string | undefined | null;
     let parameterSourceFilter: SourceFilters["parameter"] = () => true;
     if (o instanceof TemplateTagVariable) {
       const type = o.tag()?.type;
@@ -156,12 +162,18 @@ export function getTargetsForQuestion(question: Question): Target[] {
         : undefined;
       parameterSourceFilter = parameter =>
         variableFilterForParameter(parameter)(o);
-    } else if (o.field() != null) {
-      const { base_type } = o.field();
-      parentType =
-        [Temporal, Number, Text].find(t => isa(base_type, t)) || base_type;
-      parameterSourceFilter = parameter =>
-        dimensionFilterForParameter(parameter)(o);
+    } else if ("field" in o) {
+      const field = o.field();
+
+      if (field != null) {
+        const { base_type } = field;
+        parentType =
+          [Temporal, Number, Text].find(
+            t => typeof base_type === "string" && isa(base_type, t),
+          ) || base_type;
+        parameterSourceFilter = parameter =>
+          dimensionFilterForParameter(parameter)(o);
+      }
     }
 
     return {
@@ -173,7 +185,9 @@ export function getTargetsForQuestion(question: Question): Target[] {
           : o.displayName(),
       sourceFilters: {
         column: column =>
-          column.base_type && parentType && isa(column.base_type, parentType),
+          Boolean(
+            column.base_type && parentType && isa(column.base_type, parentType),
+          ),
         parameter: parameterSourceFilter,
         userAttribute: () => parentType === Text,
       },
@@ -266,8 +280,8 @@ export function clickBehaviorIsValid(
 }
 
 export function formatSourceForTarget(
-  source: ClickBehaviorParameterSource,
-  target: ClickBehaviorParameterTarget,
+  source: ClickBehaviorSource,
+  target: ClickBehaviorTarget,
   {
     data,
     extraData,
@@ -342,7 +356,7 @@ function formatDateForParameterType(
 }
 
 export function getTargetForQueryParams(
-  target: ClickBehaviorParameterTarget,
+  target: ClickBehaviorTarget,
   {
     extraData,
     clickBehavior,
@@ -359,7 +373,7 @@ export function getTargetForQueryParams(
 }
 
 function getParameter(
-  target: ClickBehaviorParameterTarget,
+  target: ClickBehaviorTarget,
   {
     extraData,
     clickBehavior,
