@@ -314,7 +314,8 @@
        x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
-(defn- singular-cell-dimensions
+(defn- singular-cell-dimension-field-ids
+  "Return the set of ids referenced in a cell query"
   [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]
             (case (some-> op qp.util/normalize-token)
@@ -489,7 +490,7 @@
            ;; Why do we need (or do we) the last remove form?
            :filters (->> dashboard_filters
                          (mapcat (comp :matches grounded-dimensions))
-                         (remove (comp (singular-cell-dimensions root) id-or-name)))
+                         (remove (comp (singular-cell-dimension-field-ids root) id-or-name)))
            :cards dashcards)))
 
 (def ^:private ^:const ^Long max-related 8)
@@ -779,23 +780,15 @@
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
 
-(defn- key-in?
-  "Recursively finds key in coll, returns true or false"
-  [coll k]
-  (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-             (loop [x coll-zip]
-               (when-not (zip/end? x)
-                 (if (k (zip/node x)) true (recur (zip/next x))))))))
-
 (defn- splice-in
-  [join-statement card-member]
-  (let [query (get-in card-member [:card :dataset_query :query])]
-    (if (key-in? query :join-alias)
-      ;; Always in the top level even if the join-alias is found deep in there
-      (assoc-in card-member [:card :dataset_query :query :joins] join-statement)
-      card-member)))
+  "If the dashcard is a query card, ensure the joins are present."
+  [join-statement dashcard]
+  (if (get-in dashcard [:card :dataset_query :query])
+    ;; Always in the top level even if the join-alias is found deep in there
+    (assoc-in dashcard [:card :dataset_query :query :joins] join-statement)
+    dashcard))
 
-(defn- maybe-enrich-joins
+(defn- preserve-joins
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
   [entity dashboard]
   (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
@@ -826,7 +819,7 @@
                                     (let [title (tru "A closer look at {0}" (names/cell-title root cell-query))]
                                       {:transient_name title
                                        :name           title})))))]
-    (maybe-enrich-joins (:entity root) transient-dash)))
+    (preserve-joins (:entity root) transient-dash)))
 
 (defmethod automagic-analysis Card
   [card {:keys [cell-query] :as opts}]
