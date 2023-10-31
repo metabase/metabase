@@ -72,7 +72,7 @@
                                             :user_id          (mt/user->id :rasta)}]
       (mt/with-temporary-setting-values [email-from-address "metamailman@metabase.com"]
         (mt/with-fake-inbox
-          (with-redefs [messages/render-pulse-email  (fn [_ _ _ [{:keys [result]}] _]
+          (with-redefs [messages/render-pulse-email  (fn [_timezone _pulse _dashboard [{:keys [result]}, :as _parts] _non-user-email]
                                                        [{:result result}])
                         email/bcc-enabled? (constantly false)]
             (mt/with-test-user nil

@@ -479,7 +479,7 @@
                       (create-slack-attachment-data parts))})
 
 (defmethod notification :default
-  [_ _ {:keys [channel_type]}]
+  [_alert-or-pulse _parts {:keys [channel_type], :as _channel}]
   (throw (UnsupportedOperationException. (tru "Unrecognized channel type {0}" (pr-str channel_type)))))
 
 (defn- parts->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} parts]
@@ -627,8 +627,9 @@
   the Pulse.
 
    Example:
-       (send-pulse! pulse)                       Send to all Channels
-       (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
+
+    (send-pulse! pulse)                    ; Send to all Channels
+    (send-pulse! pulse :channel-ids [312]) ; Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (t2/select-one Dashboard :id dashboard_id)

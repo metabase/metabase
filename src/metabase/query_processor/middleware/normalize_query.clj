@@ -6,6 +6,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -21,8 +22,6 @@
 (defn- normalize* [query]
   (try
     (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
-          _          (assert query-type
-                             (format "Invalid query, missing query :type or :lib/type: %s" (pr-str query)))
           normalized (case query-type
                        :mbql/query      ; pMBQL pipeline query
                        (lib.convert/->legacy-MBQL (lib/normalize query))
@@ -31,7 +30,11 @@
                        (mbql.normalize/normalize query)
 
                        :internal
-                       (normalize-audit-app-query query))]
+                       (normalize-audit-app-query query)
+
+                       #_else
+                       (throw (ex-info (i18n/tru "Invalid query, missing query :type or :lib/type")
+                                       {:query query, :type qp.error-type/invalid-query})))]
       (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str normalized))
       normalized)
     (catch Throwable e
