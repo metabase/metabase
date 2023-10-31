@@ -19,7 +19,6 @@ dataset_query:
   database: Internal Metabase Database
   type: query
   query:
-    source-table: -lNDM3tJmuL5ltGbX0oyT
     aggregation:
     - - count
     order-by:
@@ -43,16 +42,17 @@ dataset_query:
           - public
           - v_audit_log
           - user_id
-        - null
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
           - v_users
           - user_id
-        - join-alias: Question 1
+        - base-type: type/Integer
+          join-alias: Question 1
       source-table: 0wVIfjBJWclD0lKeABYYl
     - fields: all
-      source-table: lTp-ATFsCUFEr9I0fMEaO
+      alias: Question 34
       condition:
       - =
       - - field
@@ -60,14 +60,15 @@ dataset_query:
           - public
           - v_audit_log
           - user_id
-        - null
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
           - v_group_members
           - user_id
-        - join-alias: Question 34
-      alias: Question 34
+        - base-type: type/Integer
+          join-alias: Question 34
+      source-table: lTp-ATFsCUFEr9I0fMEaO
     breakout:
     - - field
       - - Internal Metabase Database
@@ -76,6 +77,13 @@ dataset_query:
         - full_name
       - base-type: type/Text
         join-alias: Question 1
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - user_id
+      - base-type: type/Integer
+    source-table: -lNDM3tJmuL5ltGbX0oyT
     filter:
     - =
     - - field
@@ -83,7 +91,7 @@ dataset_query:
         - public
         - v_audit_log
         - topic
-      - null
+      - base-type: type/Text
     - question-create
 parameter_mappings: []
 serdes/meta:
@@ -106,6 +114,15 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: Question 1
+    enabled: true
+  - name: user_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_audit_log
+      - user_id
+    - base-type: type/Integer
     enabled: true
   - name: count
     fieldRef:

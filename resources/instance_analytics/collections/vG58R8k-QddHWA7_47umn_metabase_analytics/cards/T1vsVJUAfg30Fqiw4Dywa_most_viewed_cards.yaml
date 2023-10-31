@@ -4,7 +4,7 @@ collection_position: null
 table_id:
 - Internal Metabase Database
 - public
-- v_audit_log
+- v_view_log
 result_metadata: null
 database_id: Internal Metabase Database
 enable_embedding: false
@@ -19,11 +19,51 @@ dataset_query:
   database: Internal Metabase Database
   type: query
   query:
+    joins:
+    - strategy: left-join
+      alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    - strategy: left-join
+      alias: Content - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
     aggregation:
     - - count
     breakout:
     - - field
-      - model_id
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_id
       - base-type: type/Integer
     - - field
       - - Internal Metabase Database
@@ -31,55 +71,20 @@ dataset_query:
         - v_content
         - name
       - base-type: type/Text
-        join-alias: Question 35
-    joins:
-    - alias: Question 34
-      fields: all
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - null
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - join-alias: Question 34
-      source-table: lTp-ATFsCUFEr9I0fMEaO
-    - fields: all
-      alias: Question 35
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - model_id
-        - null
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - id
-        - join-alias: Question 35
-      source-table: AxSackBiyXVRUzM_TyyQY
+        join-alias: Content - Entity Qualified
     order-by:
     - - desc
       - - aggregation
         - 0
-    source-table: -lNDM3tJmuL5ltGbX0oyT
+    source-table: P6Ityjj7igswKh4NgZZjz
     filter:
     - =
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
-        - model
-      - null
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
     - card
 parameter_mappings: []
 serdes/meta:
@@ -90,13 +95,38 @@ display: table
 entity_id: T1vsVJUAfg30Fqiw4Dywa
 collection_preview: true
 visualization_settings:
-  graph.dimensions:
-  - model_id
   graph.show_goal: false
   graph.show_values: true
-  table.pivot_column: model_id
-  table.cell_column: count
   table.pivot: false
+  table.columns:
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: entity_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_view_log
+      - entity_id
+    - base-type: type/Integer
+    enabled: true
+  - name: count
+    fieldRef:
+    - aggregation
+    - 0
+    enabled: true
+  table.cell_column: count
+  graph.metrics:
+  - count
+  table.pivot_column: model_id
   column_settings:
     '["name","count"]':
       show_mini_bar: true
@@ -104,8 +134,12 @@ visualization_settings:
       column_title: Question ID
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Question 35"}]]'
     : column_title: Question Name
-  graph.metrics:
-  - count
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Question name
+    '["ref",["field",["Internal Metabase Database","public","v_view_log","entity_id"],{"base-type":"type/Integer"}]]':
+      column_title: Question ID
+  graph.dimensions:
+  - model_id
 metabase_version: null
 parameters: []
 dataset: false

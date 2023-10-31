@@ -4,7 +4,7 @@ collection_position: null
 table_id:
 - Internal Metabase Database
 - public
-- v_audit_log
+- v_view_log
 result_metadata: null
 database_id: Internal Metabase Database
 enable_embedding: false
@@ -16,18 +16,42 @@ made_public_by_id: null
 embedding_params: null
 cache_ttl: null
 dataset_query:
+  database: Internal Metabase Database
+  type: query
   query:
+    joins:
+    - strategy: left-join
+      alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
     aggregation:
     - - distinct
       - - field
         - - Internal Metabase Database
           - public
-          - v_audit_log
+          - v_view_log
           - user_id
-        - null
+        - base-type: type/Integer
     breakout:
     - - field
-      - timestamp
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
     - - field
@@ -36,28 +60,8 @@ dataset_query:
         - v_group_members
         - group_name
       - base-type: type/Text
-        join-alias: Question 34
-    joins:
-    - alias: Question 34
-      fields: all
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - null
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - join-alias: Question 34
-      source-table: lTp-ATFsCUFEr9I0fMEaO
-    source-table: -lNDM3tJmuL5ltGbX0oyT
-  type: query
-  database: Internal Metabase Database
+        join-alias: Group Members - User
+    source-table: P6Ityjj7igswKh4NgZZjz
 parameter_mappings: []
 serdes/meta:
 - model: Card

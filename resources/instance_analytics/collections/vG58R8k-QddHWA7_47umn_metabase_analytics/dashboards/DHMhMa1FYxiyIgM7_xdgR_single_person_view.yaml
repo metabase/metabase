@@ -1,6 +1,6 @@
 description: Check what a user saw and done
 archived: false
-collection_position: 4
+collection_position: 5
 dashcards:
 - size_x: 5
   dashboard_tab_id: null
@@ -222,9 +222,9 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_users
+        - v_view_log
         - user_id
-      - join-alias: Question 1
+      - null
   - parameter_id: 4a221c3a
     card_id: 5HQS2xXAPF4hOFudut_Tg
     target:
@@ -234,7 +234,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: d53443e8
     card_id: 5HQS2xXAPF4hOFudut_Tg
     target:
@@ -244,7 +244,7 @@ dashcards:
         - public
         - v_users
         - email
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: 50670f9e
     card_id: 5HQS2xXAPF4hOFudut_Tg
     target:
@@ -254,7 +254,7 @@ dashcards:
         - public
         - v_users
         - is_active
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: ba4cf986
     card_id: 5HQS2xXAPF4hOFudut_Tg
     target:
@@ -262,7 +262,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   card_id: 5HQS2xXAPF4hOFudut_Tg
@@ -284,9 +284,9 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_users
+        - v_view_log
         - user_id
-      - join-alias: Question 1
+      - null
   - parameter_id: 4a221c3a
     card_id: ezcT88-OmH-5HFOFNqmX7
     target:
@@ -296,7 +296,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: d53443e8
     card_id: ezcT88-OmH-5HFOFNqmX7
     target:
@@ -306,7 +306,7 @@ dashcards:
         - public
         - v_users
         - email
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: 50670f9e
     card_id: ezcT88-OmH-5HFOFNqmX7
     target:
@@ -316,7 +316,7 @@ dashcards:
         - public
         - v_users
         - is_active
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: ba4cf986
     card_id: ezcT88-OmH-5HFOFNqmX7
     target:
@@ -324,7 +324,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   card_id: ezcT88-OmH-5HFOFNqmX7
@@ -466,7 +466,8 @@ dashcards:
   card_id: zn_VtBXm5-teZmXpwGcNu
   entity_id: wOrRB7IdN-LE7vDvBziuE
   visualization_settings:
-    column_settings: null
+    column_settings:
+      '["ref",["field",["Internal Metabase Database","public","v_group_members","group_id"],null]]': {}
   size_y: 7
   created_at: '2023-06-15T02:00:30.798995Z'
   row: 15
@@ -484,7 +485,7 @@ dashcards:
         - public
         - v_users
         - user_id
-      - join-alias: Question 1
+      - join-alias: People - User
   - parameter_id: 4a221c3a
     card_id: Vm-4GYORvVbGu9jHVLfg1
     target:
@@ -494,7 +495,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - User
   - parameter_id: d53443e8
     card_id: Vm-4GYORvVbGu9jHVLfg1
     target:
@@ -504,7 +505,7 @@ dashcards:
         - public
         - v_users
         - email
-      - join-alias: Question 1
+      - join-alias: People - User
   - parameter_id: 50670f9e
     card_id: Vm-4GYORvVbGu9jHVLfg1
     target:
@@ -514,7 +515,7 @@ dashcards:
         - public
         - v_users
         - is_active
-      - join-alias: Question 1
+      - join-alias: People - User
   - parameter_id: ba4cf986
     card_id: Vm-4GYORvVbGu9jHVLfg1
     target:
@@ -522,7 +523,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   card_id: Vm-4GYORvVbGu9jHVLfg1
@@ -586,7 +587,8 @@ dashcards:
         - public
         - v_audit_log
         - timestamp
-      - temporal-unit: default
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
   card_id: Z18i0B5CgOe66-YScAZdx
   entity_id: Hl9iWmzW05hbW9efp0-Ya
   visualization_settings:
@@ -606,9 +608,9 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_users
+        - v_view_log
         - user_id
-      - join-alias: Question 1
+      - null
   - parameter_id: 4a221c3a
     card_id: lh0sbjKcm9BhiiHPpPxRa
     target:
@@ -618,7 +620,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: d53443e8
     card_id: lh0sbjKcm9BhiiHPpPxRa
     target:
@@ -628,7 +630,7 @@ dashcards:
         - public
         - v_users
         - email
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: 50670f9e
     card_id: lh0sbjKcm9BhiiHPpPxRa
     target:
@@ -637,8 +639,8 @@ dashcards:
       - - Internal Metabase Database
         - public
         - v_users
-        - is_admin
-      - join-alias: Question 1
+        - is_active
+      - join-alias: People - Creator
   - parameter_id: ba4cf986
     card_id: lh0sbjKcm9BhiiHPpPxRa
     target:
@@ -646,7 +648,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   card_id: lh0sbjKcm9BhiiHPpPxRa
@@ -668,9 +670,9 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_users
+        - v_view_log
         - user_id
-      - join-alias: Question 1
+      - null
   - parameter_id: 4a221c3a
     card_id: 9shJ0y29V5o1lOSDL4ImJ
     target:
@@ -680,7 +682,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: d53443e8
     card_id: 9shJ0y29V5o1lOSDL4ImJ
     target:
@@ -690,7 +692,7 @@ dashcards:
         - public
         - v_users
         - email
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: 50670f9e
     card_id: 9shJ0y29V5o1lOSDL4ImJ
     target:
@@ -700,7 +702,7 @@ dashcards:
         - public
         - v_users
         - is_active
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: ba4cf986
     card_id: 9shJ0y29V5o1lOSDL4ImJ
     target:
@@ -708,7 +710,7 @@ dashcards:
     - - field
       - - Internal Metabase Database
         - public
-        - v_audit_log
+        - v_view_log
         - timestamp
       - temporal-unit: default
   card_id: 9shJ0y29V5o1lOSDL4ImJ
@@ -722,7 +724,7 @@ tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 show_in_getting_started: false
-name: Single user view
+name: Single person view
 caveats: null
 creator_id: internal@metabase.com
 made_public_by_id: null
@@ -731,7 +733,7 @@ cache_ttl: null
 serdes/meta:
 - model: Dashboard
   id: DHMhMa1FYxiyIgM7_xdgR
-  label: single_user_view
+  label: single_person_view
 position: null
 entity_id: DHMhMa1FYxiyIgM7_xdgR
 parameters:
