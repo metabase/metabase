@@ -263,10 +263,15 @@ export function formatSourceForTarget(
     extraData: ExtraData;
     clickBehavior: ClickBehavior;
   },
-): string {
+) {
   const datum = data[source.type][source.id.toLowerCase()] || {};
-  if ("column" in datum && datum.column && isDate(datum.column)) {
-    const sourceDateUnit = datum.column.unit;
+  if (
+    "column" in datum &&
+    datum.column &&
+    isDate(datum.column) &&
+    typeof datum.value === "string"
+  ) {
+    const sourceDateUnit = datum.column.unit || null;
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
@@ -302,7 +307,7 @@ export function formatSourceForTarget(
 function formatDateForParameterType(
   value: string,
   parameterType: ParameterType,
-  unit: DatetimeUnit,
+  unit: DatetimeUnit | null,
 ): string {
   const m = parseTimestamp(value);
   if (!m.isValid()) {
