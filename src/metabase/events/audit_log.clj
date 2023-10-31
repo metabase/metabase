@@ -20,8 +20,8 @@
     (let [new (dissoc event :audit-log/previous)
           [previous-only new-only _both] (data/diff previous new)
           updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-      {:new-value (select-keys new updated-keys)
-       :previous-value (select-keys previous updated-keys)})
+      {:new-value (dissoc (select-keys new updated-keys) :updated_at)
+       :previous-value (dissoc (select-keys previous updated-keys) :updated_at)})
     event))
 
 (derive ::card-event ::event)
@@ -201,6 +201,7 @@
 (derive ::database-event ::event)
 (derive :event/database-create ::database-event)
 (derive :event/database-delete ::database-event)
+(derive :event/database-update ::database-event)
 (derive :event/database-manual-sync ::database-event)
 (derive :event/database-manual-scan ::database-event)
 (derive :event/database-discard-field-values ::database-event)
@@ -208,17 +209,3 @@
 (methodical/defmethod events/publish-event! ::database-event
   [topic database]
   (audit-log/record-event! topic database))
-
-(derive ::database-update-event ::event)
-(derive :event/database-update ::database-update-event)
-
-(methodical/defmethod events/publish-event! ::database-update-event
-  [topic event]
-  (audit-log/record-event! topic
-                           (update-vals
-                            (maybe-prepare-update-event-data event)
-                            ;; Mysql returns :updated_at, but we can know that from the event itself.
-                            #(dissoc % :updated_at))
-                           api/*current-user-id*
-                           :model/Database
-                           (:id event)))

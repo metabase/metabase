@@ -3,6 +3,7 @@
   distinct from the Activity and View Log models, which predate this namespace, and which power specific API endpoints
   used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
+   [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
@@ -35,6 +36,24 @@
   [model]
   (some-> model name))
 
+(defn update-event?
+  "Returns true when this object represents an _update_. We handle updates differently: we include the updated previous
+  and new values in details."
+  [event] (:audit-log/previous event))
+
+(defn prepare-update-event-details
+  "Return a map with previous and new versions of the updated `object`, _keeping only fields that changed_, and passing
+  them through model-details to ellide sensative or noisy details."
+  [object unqualified-topic]
+  (let [previous                       (:audit-log/previous object)
+        new                            (dissoc object :audit-log/previous)
+        previous-details               (-> previous (model-details unqualified-topic))
+        new-details                    (-> new (model-details unqualified-topic))
+        changed-keys                   (let [[old new _both] (data/diff previous-details new-details)]
+                                            (distinct (concat (keys old) (keys new))))]
+    {:new-value      (select-keys new-details changed-keys)
+     :previous-value (select-keys previous-details changed-keys)}))
+
 (defn record-event!
   "Record an event in the Audit Log.
 
@@ -58,11 +77,12 @@
 
   ([topic object user-id model model-id]
    (let [unqualified-topic (keyword (name topic))
-         model-name        (model-name model)
          details           (cond
-                             (:raw? object) (dissoc object :raw?)
-                             (t2/model object) (model-details object unqualified-topic)
-                             :else (or object {}))]
+                             (update-event? object) (prepare-update-event-details object unqualified-topic)
+                             (t2/model object)      (model-details object unqualified-topic)
+                             object                 object
+                             :else                  {})
+         model-name        (model-name model)]
      (t2/insert! :model/AuditLog
                  :topic    unqualified-topic
                  :details  details

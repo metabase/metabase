@@ -384,6 +384,6 @@
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
-(defmethod audit-log/model-details Database
+(defmethod audit-log/model-details :model/Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
