@@ -77,7 +77,7 @@ export function StringFilterPicker({
 
   return (
     <>
-      <Header>
+      <Header data-testid="string-filter-picker">
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
           value={operatorName}

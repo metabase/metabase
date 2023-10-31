@@ -70,7 +70,7 @@ export function NumberFilterPicker({
 
   return (
     <>
-      <Header>
+      <Header data-testid="number-filter-picker">
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
           value={operatorName}

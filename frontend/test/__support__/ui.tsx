@@ -167,6 +167,10 @@ export function getIcon(name: string) {
   return screen.getByLabelText(`${name} icon`);
 }
 
+export function getIcons(name: string) {
+  return screen.getAllByLabelText(`${name} icon`);
+}
+
 export function queryIcon(name: string, role: ByRoleMatcher = "img") {
   return screen.queryByRole(role, { name: `${name} icon` });
 }
