@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { t } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import type { Moment } from "moment-timezone";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

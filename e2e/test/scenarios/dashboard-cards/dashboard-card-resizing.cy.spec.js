@@ -1,6 +1,5 @@
 import _ from "underscore";
 import {
-  createLinkCard,
   editDashboard,
   getDashboardCard,
   popover,
@@ -344,8 +343,8 @@ const createLinkDashboard = () => {
   });
 
   editDashboard();
-  createLinkCard();
-  createLinkCard();
+  cy.icon("link").click();
+  cy.icon("link").click();
 
   const entityCard = getDashboardCard(0);
   const customCard = getDashboardCard(1);

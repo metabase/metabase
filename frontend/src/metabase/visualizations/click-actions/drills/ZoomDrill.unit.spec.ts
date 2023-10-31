@@ -12,7 +12,7 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
 import ZoomDrill from "./ZoomDrill";
 

@@ -938,3 +938,14 @@
                     first
                     :joins
                     (map :alias))))))))
+
+(deftest ^:parallel remove-first-in-long-series-of-join-test
+  (testing "Recursive join removal (#35049)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :reviews))
+                    (lib/join (meta/table-metadata :products))
+                    (lib/join (lib/join-clause (meta/table-metadata :orders) [(lib/= (lib/with-join-alias (meta/field-metadata :products :id) "Products")
+                                                                                     (lib/with-join-alias (meta/field-metadata :orders :product-id) "Orders"))]))
+                    (lib/join (meta/table-metadata :people)))]
+      (is (=?
+            {:stages [(complement :joins)]}
+            (lib/remove-clause query -1 (first (lib/joins query))))))))

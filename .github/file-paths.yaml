@@ -42,6 +42,13 @@ frontend_all: &frontend_all
   - *frontend_sources
   - *frontend_specs
 
+backend_ci: &backend_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/actions/test-driver/**"
+  - ".github/workflows/backend.yml"
+  - ".github/workflows/drivers.yml"
+
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
   - "**/presto_jdbc.clj"
@@ -66,7 +73,7 @@ backend_specs: &backend_specs
 
 backend_all: &backend_all
   - *default
-  - *ci
+  - *backend_ci
   - *backend_sources
   - *backend_specs
 
@@ -85,6 +92,7 @@ e2e_all:
   - *default
   - *ci
   - *sources
+  - *e2e_specs
 
 snowplow:
   - *ci

@@ -1088,7 +1088,7 @@ describe("availableDrillThrus", () => {
       columnName: "count",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 77, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 77,
         tableName: "Orders",
       },
     },
@@ -1099,7 +1099,7 @@ describe("availableDrillThrus", () => {
       columnName: "sum",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 1, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 1, // This is not really a row count, rather the sum value.
         tableName: "Orders",
       },
     },
@@ -1110,7 +1110,7 @@ describe("availableDrillThrus", () => {
       columnName: "max",
       expectedParameters: {
         type: "drill-thru/underlying-records",
-        rowCount: 2, // FIXME: (metabase#32108) this should return real count of rows
+        rowCount: 2, // max is null in the AGGREGATED_ORDERS_ROW_VALUES; that defaults to 2.
         tableName: "Orders",
       },
     },
@@ -2125,11 +2125,11 @@ describe("drillThru", () => {
         },
         aggregation: [
           ...(AGGREGATED_ORDERS_DATASET_QUERY.query.aggregation || []),
-          ["avg", ["expression", "CustomTax"]],
+          ["avg", ["expression", "CustomTax", { "base-type": "type/Number" }]],
         ],
         breakout: [
           ...(AGGREGATED_ORDERS_DATASET_QUERY.query.breakout || []),
-          ["expression", "CustomColumn"],
+          ["expression", "CustomColumn", { "base-type": "type/Integer" }],
         ],
       },
     };
