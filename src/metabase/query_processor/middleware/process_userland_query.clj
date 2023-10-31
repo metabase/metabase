@@ -131,26 +131,29 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
-(defn process-userland-query
-  "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
-  etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
+(defn save-query-execution-middleware
+  "Userland-only: Record a `QueryExecution` entry in the application database when this query is finished running."
   [qp]
   (fn [query rff {:keys [raisef], :as context}]
-    (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
-          execution-info (query-execution-info query)]
-      (letfn [(rff* [metadata]
-                (add-and-save-execution-info-xform! execution-info (rff metadata)))
-              (raisef* [^Throwable e context]
-                (save-failed-query-execution!
-                  execution-info
-                  (or
-                    (some-> e (.getCause) (.getMessage))
-                    (.getMessage e)))
-                (raisef (ex-info (.getMessage e)
-                          {:query-execution execution-info}
-                          e)
-                        context))]
-        (try
-          (qp query rff* (assoc context :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff context)
+      (do
+        (assert (fn? raisef) "Incomplete query processor context!")
+        (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
+              execution-info (query-execution-info query)]
+          (letfn [(rff* [metadata]
+                    (add-and-save-execution-info-xform! execution-info (rff metadata)))
+                  (raisef* [^Throwable e context]
+                    (save-failed-query-execution!
+                     execution-info
+                     (or
+                      (some-> e (.getCause) ex-message)
+                      (ex-message e)))
+                    (raisef (ex-info (ex-message e)
+                                     {:query-execution execution-info}
+                                     e)
+                            context))]
+            (try
+              (qp query rff* (assoc context :raisef raisef*))
+              (catch Throwable e
+                (raisef* e context)))))))))

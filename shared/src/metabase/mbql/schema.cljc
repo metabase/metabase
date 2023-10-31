@@ -1690,8 +1690,8 @@
    ;; Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware.
    ;; If true, this will override the `:max-results` and `:max-results-bare-rows` values in [[Constraints]].
    [:disable-max-results? {:optional true} :boolean]
-   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in the
-   ;; `process-userland-query` middleware for such queries -- results are returned in a slightly different format, and
+   ;; Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in
+   ;; certain userland-only middleware for such queries -- results are returned in a slightly different format, and
    ;; QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
    [:userland-query? {:optional true} [:maybe :boolean]]
    ;; Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
@@ -1731,12 +1731,9 @@
   #?(:clj bytes?
      :cljs :any))
 
-;; TODO - this schema is somewhat misleading because if you use a function like
-;; `qp/process-query-and-save-with-max-results-constraints!` some of these keys (e.g. `:context`) are in fact required
-(def ^:private Info
-  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
-  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
-  based on this information, don't do it!"
+;; TODO - this schema is somewhat misleading because if you use a function
+;; like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
+(mr/def ::Info
   [:map
    ;; These keys are nice to pass in if you're running queries on the backend and you know these values. They aren't
    ;; used for permissions checking or anything like that so don't try to be sneaky
@@ -1751,10 +1748,16 @@
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    [:metadata/dataset-metadata {:optional true} [:maybe [:sequential [:map-of :any :any]]]]
-   ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
-   ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
-   ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
+   ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
+   ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
+   ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them
    [:query-hash                {:optional true} [:maybe Hash]]])
+
+(def Info
+  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
+  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
+  based on this information, don't do it!"
+  [:ref ::Info])
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

@@ -47,10 +47,14 @@
 
 (defn- run-query-async
   [{:keys [database], :as query}
-   & {:keys [context export-format qp-runner]
+   & {:keys [context export-format qp]
       :or   {context       :ad-hoc
              export-format :api
-             qp-runner     qp/process-query-and-save-with-max-results-constraints!}}]
+             qp            (fn [query rff context]
+                             (qp/process-query
+                              (qp/userland-query-with-default-constraints query)
+                              rff
+                              context))}}]
   (when (and (not= (:type query) "internal")
              (not= database lib.schema.id/saved-questions-virtual-database-id))
     (when-not database
@@ -72,7 +76,7 @@
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
       (qp.streaming/streaming-response [{:keys [rff context]} export-format]
-        (qp-runner query info rff context)))))
+        (qp (update query :info merge  info) rff context)))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -139,7 +143,8 @@
      query
      :export-format export-format
      :context       (export-format->context export-format)
-     :qp-runner     qp/process-query-and-save-execution!)))
+     :qp            (fn [query rff context]
+                      (qp/process-query (qp/userland-query query) rff context)))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -183,9 +188,9 @@
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [{:keys [rff context]} :api]
       (qp.pivot/run-pivot-query (assoc query
-                                       :async? true
-                                       :constraints (qp.constraints/default-query-constraints))
-                                info
+                                       :async?      true
+                                       :constraints (qp.constraints/default-query-constraints)
+                                       :info        info)
                                 rff
                                 context))))
 

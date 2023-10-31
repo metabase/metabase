@@ -25,13 +25,14 @@
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false})
-                                 (merge {:executed-by pulse-creator-id
-                                         :context     :pulse
-                                         :card-id     card-id}
-                                        options))))
+                                (qp/process-query
+                                 (qp/userland-query-with-default-constraints
+                                  (assoc query :middleware {:process-viz-settings? true
+                                                            :js-int-to-string?     false})
+                                  (merge {:executed-by pulse-creator-id
+                                          :context     :pulse
+                                          :card-id     card-id}
+                                         options)))))
               result        (if pulse-creator-id
                               (mw.session/with-current-user pulse-creator-id
                                 (process-query))

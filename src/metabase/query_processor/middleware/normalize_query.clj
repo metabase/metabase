@@ -6,9 +6,17 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(mu/defn ^:private normalize-audit-app-query :- [:map
+                                                 [:type [:= :internal]]]
+  [query :- :map]
+  (-> query
+      (update-keys keyword)
+      (update :type keyword)))
 
 (defn- normalize* [query]
   (try
@@ -20,7 +28,10 @@
                        (lib.convert/->legacy-MBQL (lib/normalize query))
 
                        (:query :native)
-                       (mbql.normalize/normalize query))]
+                       (mbql.normalize/normalize query)
+
+                       :internal
+                       (normalize-audit-app-query query))]
       (log/tracef "Normalized query:\n%s\n=>\n%s" (u/pprint-to-str query) (u/pprint-to-str normalized))
       normalized)
     (catch Throwable e

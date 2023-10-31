@@ -82,9 +82,8 @@
                    :middleware    {:process-viz-settings? true
                                    :js-int-to-string?     false}
                    :run           (fn [query info]
-                                    (qp/process-query-and-save-with-max-results-constraints!
-                                     (assoc query :async? false)
-                                     info)))]
+                                    (qp/process-query
+                                     (qp/userland-query-with-default-constraints (assoc query :async? false) info))))]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? result))
         {:card     card
          :dashcard dashcard

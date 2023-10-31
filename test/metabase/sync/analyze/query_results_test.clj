@@ -41,7 +41,7 @@
 
 (defn- query->result-metadata
   [query-map]
-  (let [results (qp/process-userland-query query-map)]
+  (let [results (qp/process-query (qp/userland-query query-map))]
     (when (= (:status results) :failed)
       (throw (ex-info "Query Failed" results)))
     (->> results

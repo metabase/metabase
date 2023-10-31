@@ -135,14 +135,14 @@
 
 (defn- run-query-for-card-with-id-async-run-fn
   "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
-  [qp-runner export-format]
+  [qp export-format]
   (fn [query info]
     (qp.streaming/streaming-response [{:keys [rff], {:keys [reducedf], :as context} :context}
                                       export-format
                                       (u/slugify (:card-name info))]
       (let [context  (assoc context :reducedf (public-reducedf reducedf))
             in-chan  (mw.session/as-admin
-                       (qp-runner query info rff context))
+                       (qp (update query :info merge info) rff context))
             out-chan (a/promise-chan (map transform-results))]
         (async.u/promise-pipe in-chan out-chan)
         out-chan))))
@@ -150,8 +150,9 @@
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [card-id export-format parameters & {:keys [qp-runner]
-                                       :or   {qp-runner qp/process-query-and-save-execution!}
+  [card-id export-format parameters & {:keys [qp]
+                                       :or   {qp (fn [query rff context]
+                                                   (qp/process-query (qp/userland-query query) rff context))}
                                        :as   options}]
   {:pre [(integer? card-id)]}
   ;; run this query with full superuser perms
@@ -163,7 +164,7 @@
    (m/mapply qp.card/run-query-for-card-async card-id export-format
              :parameters parameters
              :context    :public-question
-             :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
+             :run        (run-query-for-card-with-id-async-run-fn qp export-format)
              options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
@@ -261,12 +262,13 @@
 
   * `parameters`    - MBQL query parameters, either already parsed or as a serialized JSON string
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
-  * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
+  * `qp`            - QP function to run the query with. Default [[qp/process-query]] + [[qp/userland-context]]
 
   Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
-  [& {:keys [export-format parameters qp-runner]
-      :or   {qp-runner     qp/process-query-and-save-execution!
+  [& {:keys [export-format parameters qp]
+      :or   {qp     (fn [query rff context]
+                      (qp/process-query (qp/userland-query query) rff context))
              export-format :api}
       :as   options}]
   (let [options (merge
@@ -276,8 +278,8 @@
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
-                  :qp-runner     qp-runner
-                  :run           (run-query-for-card-with-id-async-run-fn qp-runner export-format)})]
+                  :qp            qp
+                  :run           (run-query-for-card-with-id-async-run-fn qp export-format)})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
@@ -602,7 +604,8 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
+  (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword)
+                                             :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -619,7 +622,8 @@
      :card-id       card-id
      :dashcard-id   dashcard-id
      :export-format :api
-     :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
+     :parameters    parameters
+     :qp            qp.pivot/run-pivot-query)))
 
 (def ^:private action-execution-throttle
   "Rate limit at 1 action per second on a per action basis.

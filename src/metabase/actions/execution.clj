@@ -212,9 +212,10 @@
         card (t2/select-one Card :id (:model_id action))
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
-                 (qp/process-query-and-save-execution!
-                  (qp.card/query-for-card card prefetch-parameters nil nil)
-                  info))
+                 (qp/process-query
+                  (qp/userland-query
+                   (qp.card/query-for-card card prefetch-parameters nil nil)
+                   info)))
         ;; only expose values for fields that are not hidden
         hidden-param-ids (keep #(when (:hidden %) (:id %))
                                (vals (get-in action [:visualization_settings :fields])))

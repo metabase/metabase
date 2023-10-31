@@ -1038,8 +1038,8 @@ saved later when it is ready."
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
   (qp.card/run-query-for-card-async card-id :api
-                            :parameters parameters,
-                            :qp-runner qp.pivot/run-pivot-query
+                            :parameters   parameters
+                            :qp           qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"

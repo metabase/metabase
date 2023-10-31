@@ -236,16 +236,17 @@
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
   {:style/indent 0}
-  [& {:keys [export-format card-id embedding-params token-params query-params qp-runner constraints options]
-      :or   {qp-runner qp/process-query-and-save-execution!}}]
+  [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
+      :or   {qp (fn [query rff context]
+                  (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/run-query-for-card-with-id-async
               card-id export-format parameters
-              :context :embedded-question,
-              :constraints constraints,
-              :qp-runner qp-runner,
+              :context     :embedded-question
+              :constraints constraints
+              :qp          qp
               options)))
 
 
@@ -268,9 +269,10 @@
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
   {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
-             query-params constraints qp-runner]
+             query-params constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp-runner   qp/process-query-and-save-execution!}}]
+             qp          (fn [query rff context]
+                           (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
@@ -281,7 +283,7 @@
      :dashcard-id   dashcard-id
      :export-format export-format
      :parameters    parameters
-     :qp-runner     qp-runner
+     :qp            qp
      :context       :embedded-dashboard
      :constraints   constraints)))
 
@@ -325,9 +327,10 @@
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
-  [unsigned-token export-format query-params & {:keys [constraints qp-runner]
+  [unsigned-token export-format query-params & {:keys [constraints qp]
                                                 :or   {constraints (qp.constraints/default-query-constraints)
-                                                       qp-runner   qp/process-query-and-save-execution!}
+                                                       qp          (fn [query rff context]
+                                                                     (qp/process-query (qp/userland-query query) rff context))}
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -337,7 +340,7 @@
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
       :query-params      query-params
-      :qp-runner         qp-runner
+      :qp                qp
       :constraints       constraints
       :options           options)))
 
@@ -392,9 +395,10 @@
   Returns a `StreamingResponse`."
   {:style/indent 1}
   [token dashcard-id card-id export-format query-params
-   & {:keys [constraints qp-runner]
+   & {:keys [constraints qp]
       :or   {constraints (qp.constraints/default-query-constraints)
-             qp-runner   qp/process-query-and-save-execution!}}]
+             qp          (fn [query rff context]
+                           (qp/process-query (qp/userland-query query) rff context))}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -407,7 +411,7 @@
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
       :constraints      constraints
-      :qp-runner        qp-runner)))
+      :qp               qp)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -665,7 +669,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp-runner qp.pivot/run-pivot-query))
+  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -673,6 +677,6 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
+  (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query))
 
 (api/define-routes)

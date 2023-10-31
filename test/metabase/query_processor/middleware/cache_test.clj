@@ -13,7 +13,6 @@
    [metabase.models.query :as query :refer [Query]]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -333,7 +332,7 @@
                     cache/min-duration-ms                               (constantly 0)]
         (with-mock-cache [save-chan]
           (t2/delete! Query :query_hash q-hash)
-          (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
+          (is (not (:cached (qp/process-query (qp/userland-query query)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
           (u/deref-with-timeout called-promise 500)
           (is (= 1 @save-query-execution-count))
@@ -341,7 +340,7 @@
           (let [avg-execution-time (query/average-execution-time-ms q-hash)]
             (is (number? avg-execution-time))
             ;; rerun query getting cached results
-            (is (:cached (qp/process-userland-query query (context.default/default-context))))
+            (is (:cached (qp/process-query (qp/userland-query query))))
             (mt/wait-for-result save-chan)
             (is (= 2 @save-query-execution-count)
                 "Saving execution times of a cache lookup")

@@ -3,13 +3,15 @@
 
     (metabase.query-processor/process-query {:type :query, :database 1, :query {:source-table 2}})
 
-  Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
-  `process-userland-query` (see documentation below)."
+  Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
+  use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
   (:refer-clojure :exclude [compile])
   (:require
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.context.default :as qp.context.default]
@@ -96,8 +98,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -125,6 +126,7 @@
     (f query) -> query"
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.perms/remove-permissions-key
+   #'qp.constraints/add-default-userland-constraints
    #'validate/validate-query
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
@@ -243,8 +245,12 @@
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
+   (resolve 'ee.audit/handle-internal-queries)
+   ;; userland queries only: save a QueryExecution
+   #'process-userland-query/save-query-execution-middleware
    #'normalize/normalize
-   (resolve 'ee.audit/handle-internal-queries)])
+   ;; userland queries only: catch Exceptions and return a special error response
+   #'catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 ;; query -> preprocessed = around + pre-process
@@ -320,7 +326,7 @@
                   prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
             (fn [query _rff _context]
               (preprocess* query)))]
-    (qp query nil nil)))
+    (qp (m/dissoc-in query [:middleware :userland-query?]) nil nil)))
 
 (defn- restore-join-aliases [preprocessed-query]
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
@@ -355,7 +361,7 @@
                   prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
             (fn [query _rff _context]
               (mbql-to-native/query->native-form (preprocess* query))))]
-    (qp query nil nil)))
+    (qp (m/dissoc-in query [:middleware :userland-query?]) nil nil)))
 
 (defn compile-and-splice-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
@@ -369,64 +375,34 @@
   (let [driver (driver.u/database->driver (:database (preprocess query)))]
     (driver/splice-parameters-into-native-query driver (compile query))))
 
+(mu/defn userland-query :- :map
+  "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
+  behavior:
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      Userland Queries (Public Interface)                                       |
-;;; +----------------------------------------------------------------------------------------------------------------+
+  1. Exceptions are caught, and a special error shape is returned (see [[catch-exceptions/catch-exceptions]])
 
-;; The difference between `process-query` and the versions below is that the ones below are meant to power various
-;; things like API endpoints and pulses, while `process-query` is more of a low-level internal function.
-;;
-(def userland-middleware
-  "The default set of middleware applied to 'userland' queries ran via [[process-query-and-save-execution!]] (i.e., via
-  the REST API). This middleware has the pattern
+  2. A `QueryExecution` is saved in the application database (see
+     [[process-userland-query/save-query-execution-middleware]])"
+  ([query]
+   (userland-query query nil))
 
-    (f (f query rff context)) -> (f query rff context)"
-  (concat
-   default-middleware
-   [#'qp.constraints/add-default-userland-constraints
-    #'process-userland-query/process-userland-query
-    #'catch-exceptions/catch-exceptions]))
+  ([query :- :map
+    info  :- [:maybe mbql.s/Info]]
+   (-> query
+       (assoc-in [:middleware :userland-query?] true)
+       (update :info merge info))))
 
-(def ^{:arglists '([query] [query context] [query rff context])} ^:private process-userland-query-async
-  "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  (base-qp userland-middleware))
+(mu/defn userland-query-with-default-constraints :- :map
+  "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
+  as those for [[userland-query]], *plus* the default userland constraints (limits) are applied --
+  see [[qp.constraints/add-default-userland-constraints]].
 
-(def ^{:arglists '([query] [query context] [query rff context])} process-userland-query-sync
-  "Like [[process-query-sync]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  (qp.reducible/sync-qp process-userland-query-async))
+  This ultimately powers most of the REST API entrypoints into the QP."
+  ([query]
+   (userland-query-with-default-constraints query nil))
 
-(defn process-userland-query
-  "Like [[process-query]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  {:arglists '([query] [query context] [query rff context])}
-  [{:keys [async?], :as query} & args]
-  (apply (if async? process-userland-query-async process-userland-query-sync)
-         query
-         args))
-
-(s/defn process-query-and-save-execution!
-  "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, etc). Returns
-  results in a format appropriate for consumption by FE client. Saves QueryExecution row in application DB."
-  ([query info]
-   (process-userland-query (assoc query :info info)))
-
-  ([query info context]
-   (process-userland-query (assoc query :info info) context))
-
-  ([query info rff context]
-   (process-userland-query (assoc query :info info) rff context)))
-
-(defn- add-default-constraints [query]
-  (assoc-in query [:middleware :add-default-userland-constraints?] true))
-
-(s/defn process-query-and-save-with-max-results-constraints!
-  "Same as [[process-query-and-save-execution!]] but will include the default max rows returned as a constraint. (This
-  function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
-  ([query info]
-   (process-query-and-save-execution! (add-default-constraints query) info))
-
-  ([query info context]
-   (process-query-and-save-execution! (add-default-constraints query) info context))
-
-  ([query info rff context]
-   (process-query-and-save-execution! (add-default-constraints query) info rff context)))
+  ([query :- :map
+    info  :- [:maybe mbql.s/Info]]
+   (-> query
+       (userland-query info)
+       (assoc-in [:middleware :add-default-userland-constraints?] true))))

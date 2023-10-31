@@ -184,7 +184,7 @@
 
     (api/defendpoint-schema GET \"/whatever\" []
       (qp.streaming/streaming-response [{:keys [rff context]} :json]
-        (qp/process-query-and-save-with-max-results-constraints! (assoc query :async true) rff context)))
+        (qp/process-query (qp/userland-query-with-default-constraints (assoc query :async true)) rff context)))
 
   Handles either async or sync QP results, but you should prefer returning sync results so we can handle query
   cancelations properly."

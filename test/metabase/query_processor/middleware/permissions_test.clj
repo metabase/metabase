@@ -252,11 +252,12 @@
                           :actual-permissions   #{}
                           :permissions-error?   true
                           :type                 qp.error-type/missing-required-permissions}}
-              (qp/process-userland-query
-               {:database (mt/id)
-                :type     :query
-                :query    {:source-table (mt/id :venues)
-                           :limit        1}}))))))
+              (qp/process-query
+               (qp/userland-query
+                {:database (mt/id)
+                 :type     :query
+                 :query    {:source-table (mt/id :venues)
+                            :limit        1}})))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
@@ -311,8 +312,10 @@
                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                      (qp/process-userland-query (mt/mbql-query nil
-                                                                   {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+                                      (qp/process-query
+                                       (qp/userland-query
+                                        (mt/mbql-query nil
+                                          {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."

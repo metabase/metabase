@@ -150,24 +150,28 @@
   exceptions to the `result-chan`."
   [qp]
   (fn [query rff context]
-    (let [extra-info (delay
-                      {:native       (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/compile) query))
-                       :preprocessed (u/ignore-exceptions
-                                      ((resolve 'metabase.query-processor/preprocess) query))})]
-      (letfn [(raisef* [e context]
-                ;; format the Exception and return it
-                (let [formatted-exception (format-exception* query e @extra-info)]
-                  (log/error (str (trs "Error processing query: {0}"
-                                       (or (:error formatted-exception)
-                                           ;; log in server locale, respond in user locale
-                                           (trs "Error running query")))
-                                  "\n" (u/pprint-to-str formatted-exception)))
-                  ;; ensure always a message on the error otherwise FE thinks query was successful.  (#23258, #23281)
-                  (qp.context/resultf (update formatted-exception
-                                              :error (fnil identity (trs "Error running query")))
-                                      context)))]
-        (try
-          (qp query rff (assoc context :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff context)
+      (do
+        (assert (:resultf context) "Incomplete query processor context!")
+        (let [extra-info (delay
+                           {:native       (u/ignore-exceptions
+                                            ((resolve 'metabase.query-processor/compile) query))
+                            :preprocessed (u/ignore-exceptions
+                                            ((resolve 'metabase.query-processor/preprocess) query))})]
+          (letfn [(raisef* [e context]
+                    ;; format the Exception and return it
+                    (let [formatted-exception (format-exception* query e @extra-info)]
+                      (log/error (str (trs "Error processing query: {0}"
+                                           (or (:error formatted-exception)
+                                               ;; log in server locale, respond in user locale
+                                               (trs "Error running query")))
+                                      "\n" (u/pprint-to-str formatted-exception)))
+                      ;; ensure always a message on the error otherwise FE thinks query was successful.  (#23258, #23281)
+                      (qp.context/resultf (update formatted-exception
+                                                  :error (fnil identity (trs "Error running query")))
+                                          context)))]
+            (try
+              (qp query rff (assoc context :raisef raisef*))
+              (catch Throwable e
+                (raisef* e context)))))))))

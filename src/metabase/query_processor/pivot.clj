@@ -150,9 +150,7 @@
                   ([acc row] (rf acc ((:row-mapping-fn context) row context)))))
           context {:canceled-chan (qp.context/canceled-chan context)}]
       (try
-        (if info
-          (qp/process-userland-query-sync (assoc query :info info) rff context)
-          (qp/process-query-sync (dissoc query :info) rff context))
+        (qp/process-query-sync (qp/userland-query query info) rff context)
         (catch Throwable e
           (log/error e (trs "Error processing additional pivot table query"))
           (throw e))))))
@@ -206,11 +204,9 @@
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
-  [[first-query & more-queries] info rff context]
+  [[{:keys [info], :as first-query} & more-queries] rff context]
   (let [{:keys [rff context]} (append-queries-rff-and-context info rff context more-queries)]
-    (if info
-      (qp/process-query-and-save-with-max-results-constraints! first-query info rff context)
-      (qp/process-query (dissoc first-query :info) rff context))))
+    (qp/process-query (qp/userland-query-with-default-constraints first-query) rff context)))
 
 (defn pivot-options
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
@@ -234,28 +230,24 @@
   ([query]
    (run-pivot-query query nil))
 
-  ([query info]
-   (run-pivot-query query info nil))
+  ([query context]
+   (run-pivot-query query nil context))
 
-  ([query info context]
-   (run-pivot-query query info nil context))
-
-  ([query info rff context]
-   (binding [qp.perms/*card-id* (get info :card-id)]
+  ([query rff context]
+   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
        (let [context                 (merge (context.default/default-context) context)
              rff                     (or rff qp.reducible/default-rff)
              query                   (mbql.normalize/normalize query)
              pivot-options           (or
                                       (not-empty (select-keys query [:pivot-rows :pivot-cols]))
-                                      (pivot-options query (get info :visualization-settings)))
+                                      (pivot-options query (get-in query [:info :visualization-settings])))
              main-breakout           (:breakout (:query query))
              col-determination-query (add-grouping-field query main-breakout 0)
              all-expected-cols       (qp/query->expected-cols col-determination-query)
              all-queries             (generate-queries query pivot-options)]
          (process-multiple-queries
           all-queries
-          info
           rff
           (assoc context
                  ;; this function needs to be executed at the start of every new query to

@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events :as events]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query
@@ -39,7 +40,8 @@
    (process-userland-query query nil))
 
   ([query context]
-   (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
+   (let [query  (qp/userland-query query)
+         result (mt/test-qp-middleware process-userland-query/save-query-execution-middleware query {} [] context)]
      (if-not (map? result)
        result
        (update (:metadata result) :running_time int?)))))
@@ -50,32 +52,32 @@
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
           "sanity check")
-      (is (= {:status                 :completed
-              :data                   {}
-              :row_count              0
-              :database_id            nil
-              :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-              :json_query             query
-              :average_execution_time nil
-              :context                nil
-              :running_time           true}
-             (process-userland-query query))
+      (is (=? {:status                 :completed
+               :data                   {}
+               :row_count              0
+               :database_id            nil
+               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :json_query             query
+               :average_execution_time nil
+               :context                nil
+               :running_time           true}
+              (process-userland-query query))
           "Result should have query execution info")
-      (is (= {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
-              :database_id  nil
-              :result_rows  0
-              :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-              :executor_id  nil
-              :json_query   query
-              :native       false
-              :pulse_id     nil
-              :card_id      nil
-              :action_id    nil
-              :context      nil
-              :running_time true
-              :cache_hit    false
-              :dashboard_id nil}
-             (qe))
+      (is (=? {:hash         "29f0bca06d6679e873b1f5a3a36dac18a5b4642c6545d24456ad34b1cad4ecc6"
+               :database_id  nil
+               :result_rows  0
+               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id  nil
+               :json_query   query
+               :native       false
+               :pulse_id     nil
+               :card_id      nil
+               :action_id    nil
+               :context      nil
+               :running_time true
+               :cache_hit    false
+               :dashboard_id nil}
+              (qe))
           "QueryExecution should be saved"))))
 
 (deftest failure-test
@@ -87,21 +89,21 @@
            (process-userland-query query {:runf (fn [_ _ context]
                                                   (qp.context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
                                                                      context))})))
-      (is (= {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
-              :database_id  nil
-              :error        "Oops!"
-              :result_rows  0
-              :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-              :executor_id  nil
-              :json_query   query
-              :native       false
-              :pulse_id     nil
-              :action_id    nil
-              :card_id      nil
-              :context      nil
-              :running_time true
-              :dashboard_id nil}
-             (qe))
+      (is (=? {:hash         "d673f355de41679623bfcbda4923d29c1ca64aec6314d79de0369bea2ac246d1"
+               :database_id  nil
+               :error        "Oops!"
+               :result_rows  0
+               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id  nil
+               :json_query   query
+               :native       false
+               :pulse_id     nil
+               :action_id    nil
+               :card_id      nil
+               :context      nil
+               :running_time true
+               :dashboard_id nil}
+              (qe))
           "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (def ^:private ^:dynamic *viewlog-call-count* nil)
@@ -116,7 +118,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+      (mt/test-qp-middleware process-userland-query/save-query-execution-middleware {:query? true} {} [] nil)
       (is (zero? @*viewlog-call-count*)))))
 
 (defn- async-middleware [qp]
@@ -133,7 +135,7 @@
     (with-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
-          (let [out-chan (mt/test-qp-middleware [process-userland-query/process-userland-query async-middleware]
+          (let [out-chan (mt/test-qp-middleware [process-userland-query/save-query-execution-middleware async-middleware]
                                                 {} {} []
                                                 {:canceled-chan canceled-chan
                                                  :async?        true

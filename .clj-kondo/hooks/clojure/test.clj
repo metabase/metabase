@@ -109,8 +109,6 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
-     metabase.query-processor/process-query-and-save-execution!
-     metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
 
 (defn- node->qualified-symbol [node]

@@ -39,16 +39,12 @@
 (defn- merge-default-constraints [constraints]
   (merge (default-query-constraints) constraints))
 
-(defn- add-default-userland-constraints*
-  "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."
-  [{{:keys [add-default-userland-constraints?]} :middleware, :as query}]
-  (cond-> query
-    add-default-userland-constraints? (update :constraints (comp ensure-valid-constraints merge-default-constraints))))
-
 (defn add-default-userland-constraints
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
-  use with [[metabase.query-processor/process-query-and-save-with-max-results-constraints!]], which ultimately powers
+  use with [[metabase.query-processor/userland-query-with-default-constraints]], which ultimately powers
   most QP API endpoints."
-  [qp]
-  (fn [query rff context]
-    (qp (add-default-userland-constraints* query) rff context)))
+  [query]
+  (cond-> query
+    (and (get-in query [:middleware :userland-query?])
+         (get-in query [:middleware :add-default-userland-constraints?]))
+    (update :constraints (comp ensure-valid-constraints merge-default-constraints))))

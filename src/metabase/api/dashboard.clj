@@ -1035,6 +1035,6 @@
              {:dashboard-id dashboard-id
               :card-id      card-id
               :dashcard-id  dashcard-id
-              :qp-runner    qp.pivot/run-pivot-query})))
+              :qp           qp.pivot/run-pivot-query})))
 
 (api/define-routes)

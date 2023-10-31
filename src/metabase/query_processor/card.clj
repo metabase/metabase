@@ -192,17 +192,18 @@
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
   options."
   [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
+   & {:keys [parameters constraints context dashboard-id middleware qp run ignore_cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
-             qp-runner   qp/process-query-and-save-execution!}}]
+             qp          (fn [query rff context]
+                           (qp/process-query (qp/userland-query query) rff context))}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [run   (or run
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
                   ;; customize the `context` passed to the QP
                   (^:once fn* [query info]
                    (qp.streaming/streaming-response [{:keys [rff context]} export-format (u/slugify (:card-name info))]
-                     (qp-runner query info rff context))))
+                     (qp (update query :info merge info) rff context))))
         card  (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id
                                               :dataset :result_metadata :visualization_settings]
                                              :id card-id))

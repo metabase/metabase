@@ -191,9 +191,9 @@
                                                  :lon-field lon-field-ref})
 
         {:keys [status], {:keys [rows cols]} :data, :as result}
-        (qp/process-query-and-save-execution! updated-query
-                                              {:executed-by api/*current-user-id*
-                                               :context     :map-tiles})
+        (qp/process-query
+         (qp/userland-query updated-query {:executed-by api/*current-user-id*
+                                           :context     :map-tiles}))
 
         lat-key (qp.util/field-ref->key lat-field-ref)
         lon-key (qp.util/field-ref->key lon-field-ref)

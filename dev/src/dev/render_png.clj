@@ -11,7 +11,8 @@
    [metabase.pulse.render :as render]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]))
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [toucan2.core :as t2]))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- os
@@ -45,16 +46,17 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
+  (let [{query :dataset_query, :as card} (t2/select-one card/Card :id card-id)
         user                             (t2/select-one user/User)
+        info                             {:executed-by (:id user)
+                                          :context     :pulse
+                                          :card-id     card-id}
         query-results                    (binding [qp.perms/*card-id* nil]
-                                           (qp/process-query-and-save-execution!
-                                            (-> dataset_query
+                                           (qp/process-query
+                                            (-> query
+                                                (qp/userland-query info)
                                                 (assoc :async? false)
-                                                (assoc-in [:middleware :process-viz-settings?] true))
-                                            {:executed-by (:id user)
-                                             :context     :pulse
-                                             :card-id     card-id}))
+                                                (assoc-in [:middleware :process-viz-settings?] true))))
         png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                           card
                                                                           query-results
@@ -68,7 +70,7 @@
 (defn open-hiccup-as-html [hiccup]
   (let [html-str (hiccup/html hiccup)
         tmp-file (java.io.File/createTempFile "card-html" ".html")]
-    (with-open [w (clojure.java.io/writer tmp-file)]
+    (with-open [w (io/writer tmp-file)]
       (.write w html-str))
     (.deleteOnExit tmp-file)
     (open tmp-file)))
@@ -92,4 +94,3 @@
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
       open-hiccup-as-html))
-
