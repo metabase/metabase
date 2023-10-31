@@ -31,10 +31,11 @@ import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
+import Field from "metabase-lib/metadata/Field";
 
 interface Target {
   id: Parameter["id"];
-  name: Parameter["name"];
+  name: Parameter["name"] | null | undefined;
   target: ClickBehaviorParameterTarget;
   sourceFilters: SourceFilters;
 }
@@ -139,11 +140,20 @@ export function getTargetsForQuestion(question: Question): Target[] {
       id = JSON.stringify(dimension);
       target = { type: "dimension", id, dimension };
     }
-    let parentType;
+    let parentType: string | undefined;
     let parameterSourceFilter: SourceFilters["parameter"] = () => true;
-    const columnSourceFilter = c => isa(c.base_type, parentType);
     if (o instanceof TemplateTagVariable) {
-      parentType = { text: Text, number: Number, date: Temporal }[o.tag().type];
+      const type = o.tag()?.type;
+      parentType = type
+        ? {
+            card: undefined,
+            dimension: undefined,
+            snippet: undefined,
+            text: Text,
+            number: Number,
+            date: Temporal,
+          }[type]
+        : undefined;
       parameterSourceFilter = parameter =>
         variableFilterForParameter(parameter)(o);
     } else if (o.field() != null) {
@@ -157,9 +167,13 @@ export function getTargetsForQuestion(question: Question): Target[] {
     return {
       id,
       target,
-      name: o.displayName({ includeTable: true }),
+      name:
+        o instanceof Field
+          ? o.displayName({ includeTable: true })
+          : o.displayName(),
       sourceFilters: {
-        column: columnSourceFilter,
+        column: column =>
+          column.base_type && parentType && isa(column.base_type, parentType),
         parameter: parameterSourceFilter,
         userAttribute: () => parentType === Text,
       },
