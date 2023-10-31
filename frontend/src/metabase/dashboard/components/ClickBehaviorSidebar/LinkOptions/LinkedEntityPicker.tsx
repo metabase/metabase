@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDashboardQuery } from "metabase/common/hooks";
 import { Icon } from "metabase/core/components/Icon";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -129,7 +130,8 @@ function LinkedEntityPicker({
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
-  const { linkType } = clickBehavior;
+  const { linkType, targetId } = clickBehavior;
+  const isDash = linkType === "dashboard";
   const hasSelectedTarget = clickBehavior.targetId != null;
   const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
@@ -156,6 +158,12 @@ function LinkedEntityPicker({
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
+
+  const { data: dashboard } = useDashboardQuery({
+    enabled: isDash,
+    id: targetId,
+  });
+  const dashboardTabs = dashboard?.tabs || [];
 
   return (
     <div>
@@ -187,9 +195,14 @@ function LinkedEntityPicker({
           )}
         </ModalWithTrigger>
       </div>
+
+      {isDash && dashboardTabs.length > 1 && (
+        <div>{dashboardTabs.map(({ name }) => name).join(", ")}</div>
+      )}
+
       {hasSelectedTarget && (
         <TargetClickMappings
-          isDash={linkType === "dashboard"}
+          isDash={isDash}
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           updateSettings={updateSettings}
