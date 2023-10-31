@@ -94,29 +94,23 @@ export function getDataFromClicked({
     ({ slug }) => parameterValuesBySlug[slug] != null,
   );
 
-  const parameterByName =
-    dashboard == null
-      ? {}
-      : Object.fromEntries(
-          dashboardParameters.map(({ name, slug }) => [
-            name.toLowerCase(),
-            { value: parameterValuesBySlug[slug] },
-          ]),
-        );
+  const parameterByName = Object.fromEntries(
+    dashboardParameters.map(({ name, slug }) => [
+      name.toLowerCase(),
+      { value: parameterValuesBySlug[slug] },
+    ]),
+  );
 
   const parameterBySlug = _.mapObject(parameterValuesBySlug, value => ({
     value,
   }));
 
-  const parameter =
-    dashboard == null
-      ? {}
-      : Object.fromEntries(
-          dashboardParameters.map(({ id, slug }) => [
-            id,
-            { value: parameterValuesBySlug[slug] },
-          ]),
-        );
+  const parameter = Object.fromEntries(
+    dashboardParameters.map(({ id, slug }) => [
+      id,
+      { value: parameterValuesBySlug[slug] },
+    ]),
+  );
 
   const userAttribute = Object.fromEntries(
     (userAttributes || []).map(value => [value, { value }]),
