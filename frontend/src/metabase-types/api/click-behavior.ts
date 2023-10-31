@@ -1,26 +1,48 @@
-import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  FieldReference,
+  ParameterId,
+  TemplateTagName,
+} from "metabase-types/api";
 
 // Used to set values for question filters
 // Example: "[\"dimension\",[\"field\",17,null]]"
 type StringifiedDimension = string;
 
-export interface ClickBehaviorParameterSource {
+export interface ClickBehaviorSource {
   id: ParameterId | StringifiedDimension;
   name: string;
   type: "column" | "parameter";
 }
 
-export interface ClickBehaviorParameterTarget {
-  id: ParameterId | StringifiedDimension;
-  type: "parameter" | "dimension";
+export interface ClickBehaviorDimensionTarget {
+  id: StringifiedDimension;
+  type: "dimension";
+  dimension: ["dimension", FieldReference | null | undefined];
 }
+
+export interface ClickBehaviorParameterTarget {
+  id: ParameterId;
+  type: "parameter";
+}
+
+export interface ClickBehaviorVariableTarget {
+  id: TemplateTagName;
+  type: "variable";
+}
+
+export type ClickBehaviorTarget =
+  | ClickBehaviorDimensionTarget
+  | ClickBehaviorParameterTarget
+  | ClickBehaviorVariableTarget;
 
 export type ClickBehaviorParameterMapping = Record<
   ParameterId | StringifiedDimension,
   {
     id: ParameterId | StringifiedDimension;
-    source: ClickBehaviorParameterSource;
-    target: ClickBehaviorParameterTarget;
+    source: ClickBehaviorSource;
+    target: ClickBehaviorTarget;
   }
 >;
 
