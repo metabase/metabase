@@ -1,6 +1,7 @@
-import _ from "underscore";
 import { createMockMetadata } from "__support__/metadata";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
+import { checkNotNull } from "metabase/lib/types";
+import type { FieldId, TemplateTagType } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -26,6 +27,7 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
+import type Field from "metabase-lib/metadata/Field";
 import Question from "metabase-lib/Question";
 import {
   getDataFromClicked,
@@ -68,10 +70,12 @@ const metadata = createMockMetadata({
   ],
 });
 
-const productId = metadata.field(PRODUCTS.ID);
-const productTitle = metadata.field(PRODUCTS.TITLE);
-const productFloatCategory = metadata.field(FLOAT_CATEGORY_FIELD.id);
-const productCreatedAt = metadata.field(PRODUCTS.CREATED_AT);
+const productId = checkNotNull(metadata.field(PRODUCTS.ID));
+const productTitle = checkNotNull(metadata.field(PRODUCTS.TITLE));
+const productFloatCategory = checkNotNull(
+  metadata.field(FLOAT_CATEGORY_FIELD.id),
+);
+const productCreatedAt = checkNotNull(metadata.field(PRODUCTS.CREATED_AT));
 
 const emptyData = {
   column: {},
@@ -214,7 +218,7 @@ describe("metabase/lib/click-behavior", () => {
           "type/Boolean",
           "type/Enum",
           "type/Text",
-        ].map(base_type => ({ base_type })),
+        ].map(base_type => createMockColumn({ base_type })),
         parameter: [
           "id",
           "category",
@@ -224,40 +228,43 @@ describe("metabase/lib/click-behavior", () => {
           "date/relative",
           "date/all-options",
           "date/month-year",
-        ].map(type => ({ type })),
-        userAttribute: [{ name: "attr" }],
+        ].map(type => createMockParameter({ type })),
+        userAttribute: ["attr"],
       };
 
       for (const [targetParameterType, expectedSources] of [
         [
           "id",
           {
-            column: [{ base_type: "type/Integer" }],
-            parameter: [{ type: "id" }],
-            userAttribute: [{ name: "attr" }],
+            column: [createMockColumn({ base_type: "type/Integer" })],
+            parameter: [createMockParameter({ type: "id" })],
+            userAttribute: ["attr"],
           },
         ],
         [
           "category",
           {
-            column: [{ base_type: "type/Integer" }, { base_type: "type/Text" }],
-            parameter: [{ type: "category" }],
-            userAttribute: [{ name: "attr" }],
+            column: [
+              createMockColumn({ base_type: "type/Integer" }),
+              createMockColumn({ base_type: "type/Text" }),
+            ],
+            parameter: [createMockParameter({ type: "category" })],
+            userAttribute: ["attr"],
           },
         ],
         [
           "location/state",
           {
-            column: [{ base_type: "type/Text" }],
-            parameter: [{ type: "location/state" }],
-            userAttribute: [{ name: "attr" }],
+            column: [createMockColumn({ base_type: "type/Text" })],
+            parameter: [createMockParameter({ type: "location/state" })],
+            userAttribute: ["attr"],
           },
         ],
         [
           "date/relative",
           {
             column: [],
-            parameter: [{ type: "date/relative" }],
+            parameter: [createMockParameter({ type: "date/relative" })],
             userAttribute: [],
           },
         ],
@@ -265,7 +272,7 @@ describe("metabase/lib/click-behavior", () => {
           "date/range",
           {
             column: [],
-            parameter: [{ type: "date/range" }],
+            parameter: [createMockParameter({ type: "date/range" })],
             userAttribute: [],
           },
         ],
@@ -273,11 +280,11 @@ describe("metabase/lib/click-behavior", () => {
           "date/single",
           {
             column: [
-              { base_type: "type/Time" },
-              { base_type: "type/Date" },
-              { base_type: "type/DateTime" },
+              createMockColumn({ base_type: "type/Time" }),
+              createMockColumn({ base_type: "type/Date" }),
+              createMockColumn({ base_type: "type/DateTime" }),
             ],
-            parameter: [{ type: "date/single" }],
+            parameter: [createMockParameter({ type: "date/single" })],
             userAttribute: [],
           },
         ],
@@ -294,9 +301,13 @@ describe("metabase/lib/click-behavior", () => {
             createMockDashboardCard({ dashboard_id: 111 }),
           );
 
-          const filteredSources = _.mapObject(sources, (sources, sourceType) =>
-            sources.filter(sourceFilters[sourceType]),
-          );
+          const filteredSources = {
+            column: sources.column.filter(sourceFilters.column),
+            parameter: sources.parameter.filter(sourceFilters.parameter),
+            userAttribute: sources.userAttribute.filter(
+              sourceFilters.userAttribute,
+            ),
+          };
 
           expect(filteredSources).toEqual(expectedSources);
         });
@@ -306,26 +317,26 @@ describe("metabase/lib/click-behavior", () => {
         [
           "text",
           {
-            column: [{ base_type: "type/Text" }],
+            column: [createMockColumn({ base_type: "type/Text" })],
             parameter: [
-              { type: "id" },
-              { type: "category" },
-              { type: "location/state" },
+              createMockParameter({ type: "id" }),
+              createMockParameter({ type: "category" }),
+              createMockParameter({ type: "location/state" }),
             ],
-            userAttribute: [{ name: "attr" }],
+            userAttribute: ["attr"],
           },
         ],
         [
           "number",
           {
             column: [
-              { base_type: "type/Integer" },
-              { base_type: "type/Float" },
+              createMockColumn({ base_type: "type/Integer" }),
+              createMockColumn({ base_type: "type/Float" }),
             ],
             parameter: [
-              { type: "id" },
-              { type: "category" },
-              { type: "location/state" },
+              createMockParameter({ type: "id" }),
+              createMockParameter({ type: "category" }),
+              createMockParameter({ type: "location/state" }),
             ],
             userAttribute: [],
           },
@@ -334,20 +345,20 @@ describe("metabase/lib/click-behavior", () => {
           "date",
           {
             column: [
-              { base_type: "type/Time" },
-              { base_type: "type/Date" },
-              { base_type: "type/DateTime" },
+              createMockColumn({ base_type: "type/Time" }),
+              createMockColumn({ base_type: "type/Date" }),
+              createMockColumn({ base_type: "type/DateTime" }),
             ],
-            parameter: [{ type: "date/single" }],
+            parameter: [createMockParameter({ type: "date/single" })],
             userAttribute: [],
           },
         ],
-      ]) {
+      ] as [TemplateTagType, Record<string, unknown>][]) {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
           const [{ sourceFilters }] = getTargetsForQuestion(
             new Question(
               createMockCard({
-                dataset_query: {
+                dataset_query: createMockNativeDatasetQuery({
                   type: "native",
                   native: {
                     query: "{{foo}}",
@@ -360,15 +371,19 @@ describe("metabase/lib/click-behavior", () => {
                       },
                     },
                   },
-                },
+                }),
               }),
               metadata,
             ),
           );
 
-          const filteredSources = _.mapObject(sources, (sources, sourceType) =>
-            sources.filter(sourceFilters[sourceType]),
-          );
+          const filteredSources = {
+            column: sources.column.filter(sourceFilters.column),
+            parameter: sources.parameter.filter(sourceFilters.parameter),
+            userAttribute: sources.userAttribute.filter(
+              sourceFilters.userAttribute,
+            ),
+          };
 
           expect(filteredSources).toEqual(expectedSources);
         });
@@ -378,19 +393,19 @@ describe("metabase/lib/click-behavior", () => {
         [
           productTitle,
           {
-            column: [{ base_type: "type/Text" }],
-            parameter: [{ type: "category" }],
-            userAttribute: [{ name: "attr" }],
+            column: [createMockColumn({ base_type: "type/Text" })],
+            parameter: [createMockParameter({ type: "category" })],
+            userAttribute: ["attr"],
           },
         ],
         [
           productFloatCategory,
           {
             column: [
-              { base_type: "type/Integer" },
-              { base_type: "type/Float" },
+              createMockColumn({ base_type: "type/Integer" }),
+              createMockColumn({ base_type: "type/Float" }),
             ],
-            parameter: [{ type: "category" }],
+            parameter: [createMockParameter({ type: "category" })],
             userAttribute: [],
           },
         ],
@@ -398,10 +413,10 @@ describe("metabase/lib/click-behavior", () => {
           productId,
           {
             column: [
-              { base_type: "type/Integer" },
-              { base_type: "type/Float" },
+              createMockColumn({ base_type: "type/Integer" }),
+              createMockColumn({ base_type: "type/Float" }),
             ],
-            parameter: [{ type: "id" }],
+            parameter: [createMockParameter({ type: "id" })],
             userAttribute: [],
           },
         ],
@@ -409,33 +424,32 @@ describe("metabase/lib/click-behavior", () => {
           productCreatedAt,
           {
             column: [
-              { base_type: "type/Time" },
-              { base_type: "type/Date" },
-              { base_type: "type/DateTime" },
+              createMockColumn({ base_type: "type/Time" }),
+              createMockColumn({ base_type: "type/Date" }),
+              createMockColumn({ base_type: "type/DateTime" }),
             ],
             parameter: [
-              { type: "date/single" },
-              { type: "date/range" },
-              { type: "date/relative" },
-              { type: "date/all-options" },
-              { type: "date/month-year" },
+              createMockParameter({ type: "date/single" }),
+              createMockParameter({ type: "date/range" }),
+              createMockParameter({ type: "date/relative" }),
+              createMockParameter({ type: "date/all-options" }),
+              createMockParameter({ type: "date/month-year" }),
             ],
             userAttribute: [],
           },
         ],
-      ]) {
+      ] as [Field, Record<string, unknown>][]) {
         it(`should filter sources for a ${field.base_type} dimension target`, () => {
           const [{ sourceFilters }] = getTargetsForQuestion(
             new Question(
               createMockCard({
-                dataset_query: {
-                  type: "native",
+                dataset_query: createMockNativeDatasetQuery({
                   native: {
                     query: "{{my_field_filter}}",
                     "template-tags": {
                       my_field_filter: {
                         default: undefined,
-                        dimension: ["field", field.id, null],
+                        dimension: ["field", field.id as FieldId, null],
                         "display-name": "My Field Filter",
                         id: "foo123",
                         name: "my_field_filter",
@@ -444,14 +458,19 @@ describe("metabase/lib/click-behavior", () => {
                       },
                     },
                   },
-                },
+                }),
               }),
               metadata,
             ),
           );
-          const filteredSources = _.mapObject(sources, (sources, sourceType) =>
-            sources.filter(sourceFilters[sourceType]),
-          );
+
+          const filteredSources = {
+            column: sources.column.filter(sourceFilters.column),
+            parameter: sources.parameter.filter(sourceFilters.parameter),
+            userAttribute: sources.userAttribute.filter(
+              sourceFilters.userAttribute,
+            ),
+          };
 
           expect(filteredSources).toEqual(expectedSources);
         });
