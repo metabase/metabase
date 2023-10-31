@@ -3,7 +3,7 @@ import { render, screen } from "__support__/ui";
 import type { DateIntervalValue } from "../types";
 import { DateIntervalPicker } from "./DateIntervalPicker";
 
-const DEFAULT_VALUE: DateIntervalValue = {
+const DEFAULT_PAST_VALUE: DateIntervalValue = {
   type: "relative",
   value: -30,
   unit: "day",
@@ -16,7 +16,7 @@ interface SetupOpts {
 }
 
 function setup({
-  value = DEFAULT_VALUE,
+  value = DEFAULT_PAST_VALUE,
   isNew = false,
   canUseRelativeOffsets = false,
 }: SetupOpts = {}) {
@@ -37,71 +37,88 @@ function setup({
 }
 
 describe("DateIntervalPicker", () => {
-  describe("past interval", () => {
-    it("should change the past interval", () => {
-      const { onChange } = setup();
+  describe("past", () => {
+    describe("interval", () => {
+      it("should change the past interval", () => {
+        const { onChange } = setup();
 
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.type(input, "20");
+        const input = screen.getByLabelText("Interval");
+        userEvent.clear(input);
+        userEvent.type(input, "20");
 
-      expect(onChange).toHaveBeenLastCalledWith({
-        type: "relative",
-        value: -20,
-        unit: "day",
+        expect(onChange).toHaveBeenLastCalledWith({
+          type: "relative",
+          value: -20,
+          unit: "day",
+        });
+      });
+
+      it("should change the past interval with a negative value", () => {
+        const { onChange } = setup();
+
+        const input = screen.getByLabelText("Interval");
+        userEvent.clear(input);
+        userEvent.type(input, "-10");
+
+        expect(onChange).toHaveBeenLastCalledWith({
+          type: "relative",
+          value: -10,
+          unit: "day",
+        });
+      });
+
+      it("should coerce zero", () => {
+        const { onChange } = setup();
+
+        const input = screen.getByLabelText("Interval");
+        userEvent.clear(input);
+        userEvent.type(input, "0");
+        userEvent.tab();
+
+        expect(onChange).toHaveBeenLastCalledWith({
+          type: "relative",
+          value: -1,
+          unit: "day",
+        });
+      });
+
+      it("should ignore empty values", () => {
+        const { onChange } = setup();
+
+        const input = screen.getByLabelText("Interval");
+        userEvent.clear(input);
+        userEvent.tab();
+
+        expect(input).toHaveValue("30");
+        expect(onChange).not.toHaveBeenCalled();
+      });
+
+      it("should ignore invalid values", () => {
+        const { onChange } = setup();
+
+        const input = screen.getByLabelText("Interval");
+        userEvent.clear(input);
+        userEvent.type(input, "abc");
+        userEvent.tab();
+
+        expect(input).toHaveValue("30");
+        expect(onChange).not.toHaveBeenCalled();
       });
     });
 
-    it("should change the past interval with a negative value", () => {
-      const { onChange } = setup();
+    describe("unit", () => {
+      it("should allow to change the unit", () => {
+        const { onChange } = setup();
 
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.type(input, "-10");
+        userEvent.click(screen.getByDisplayValue("days"));
+        userEvent.click(screen.getByText("years"));
 
-      expect(onChange).toHaveBeenLastCalledWith({
-        type: "relative",
-        value: -10,
-        unit: "day",
+        expect(onChange).toHaveBeenCalledWith({
+          type: "relative",
+          value: -30,
+          unit: "year",
+        });
       });
-    });
-
-    it("should coerce zero", () => {
-      const { onChange } = setup();
-
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.type(input, "0");
-      userEvent.tab();
-
-      expect(onChange).toHaveBeenLastCalledWith({
-        type: "relative",
-        value: -1,
-        unit: "day",
-      });
-    });
-
-    it("should ignore empty values", () => {
-      const { onChange } = setup();
-
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.tab();
-
-      expect(input).toHaveValue("30");
-      expect(onChange).not.toHaveBeenCalled();
-    });
-
-    it("should ignore invalid values", () => {
-      const { onChange } = setup();
-
-      const input = screen.getByLabelText("Interval");
-      userEvent.clear(input);
-      userEvent.type(input, "abc");
-      userEvent.tab();
-
-      expect(input).toHaveValue("30");
-      expect(onChange).not.toHaveBeenCalled();
     });
   });
 });
