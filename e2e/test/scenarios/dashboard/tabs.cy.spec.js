@@ -366,13 +366,13 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
   });
 
   it("should send snowplow events when cards are moved between tabs", () => {
-    const CARD_MOVE_EVENT_NAME = "card_moved_to_tab";
+    const cardMovedEventName = "card_moved_to_tab";
 
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     expectGoodSnowplowEvent(
       {
-        event: CARD_MOVE_EVENT_NAME,
+        event: cardMovedEventName,
       },
       0,
     );
@@ -385,7 +385,7 @@ describeWithSnowplow("scenarios > dashboard > tabs", () => {
 
     expectGoodSnowplowEvent(
       {
-        event: CARD_MOVE_EVENT_NAME,
+        event: cardMovedEventName,
       },
       1,
     );
