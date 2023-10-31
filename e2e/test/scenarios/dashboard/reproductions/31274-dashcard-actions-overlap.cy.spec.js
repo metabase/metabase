@@ -2,13 +2,12 @@ import {
   editDashboard,
   restore,
   visitDashboard,
-  createLinkCard,
-  createTextCard,
+  getTextCardDetails,
 } from "e2e/support/helpers";
 
 const createTextCards = length => {
   return Array.from({ length }).map((_, index) => {
-    return createTextCard({
+    return getTextCardDetails({
       size_x: 2,
       size_y: 2,
       row: (length - index - 1) * 2,
@@ -58,7 +57,7 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    createLinkCard();
+    cy.icon("link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(

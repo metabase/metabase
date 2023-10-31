@@ -10,10 +10,21 @@ import type {
   DashboardTab,
   DashboardTabId,
 } from "metabase-types/api";
-import type { DashboardState, TabDeletionId } from "metabase-types/store";
+import type {
+  DashboardState,
+  Dispatch,
+  GetState,
+  SelectedTabId,
+  TabDeletionId,
+} from "metabase-types/store";
 import { INITIALIZE } from "metabase/dashboard/actions/core";
+import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
+import { checkNotNull } from "metabase/lib/types";
 
+import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
+import { getDashCardById } from "../selectors";
+import { getExistingDashCards } from "./utils";
 
 type CreateNewTabPayload = { tabId: DashboardTabId };
 type DeleteTabPayload = {
@@ -26,9 +37,19 @@ type UndoDeleteTabPayload = {
 type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
 type MoveTabPayload = {
   sourceTabId: DashboardTabId;
-  destTabId: DashboardTabId;
+  destinationTabId: DashboardTabId;
 };
 type SelectTabPayload = { tabId: DashboardTabId | null };
+type MoveDashCardToTabPayload = {
+  dashCardId: DashCardId;
+  destinationTabId: DashboardTabId;
+};
+type UndoMoveDashCardToTabPayload = {
+  dashCardId: DashCardId;
+  originalCol: number;
+  originalRow: number;
+  originalTabId: number;
+};
 type SaveCardsAndTabsPayload = {
   cards: DashboardCard[];
   tabs: DashboardTab[];
@@ -41,6 +62,9 @@ const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const MOVE_TAB = "metabase/dashboard/MOVE_TAB";
 const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
+const MOVE_DASHCARD_TO_TAB = "metabase/dashboard/MOVE_DASHCARD_TO_TAB";
+const UNDO_MOVE_DASHCARD_TO_TAB =
+  "metabase/dashboard/UNDO_MOVE_DASHCARD_TO_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
 const INIT_TABS = "metabase/dashboard/INIT_TABS";
 
@@ -60,6 +84,18 @@ export function createNewTab() {
   return createNewTabAction({ tabId });
 }
 
+export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
+
+function _selectTab({
+  state,
+  tabId,
+}: {
+  state: Draft<DashboardState>;
+  tabId: SelectedTabId;
+}) {
+  state.selectedTabId = tabId;
+}
+
 export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
 
 export const undoDeleteTab =
@@ -69,7 +105,41 @@ export const renameTab = createAction<RenameTabPayload>(RENAME_TAB);
 
 export const moveTab = createAction<MoveTabPayload>(MOVE_TAB);
 
-export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
+export const moveDashCardToTab =
+  ({ destinationTabId, dashCardId }: MoveDashCardToTabPayload) =>
+  (dispatch: Dispatch, getState: GetState) => {
+    const dashCard = getDashCardById(getState(), dashCardId);
+
+    const originalCol = dashCard.col;
+    const originalRow = dashCard.row;
+    const originalTabId = checkNotNull(dashCard.dashboard_tab_id);
+
+    dispatch(_moveDashCardToTab({ destinationTabId, dashCardId }));
+
+    dispatch(
+      addUndo({
+        message: t`Card moved`,
+        undo: true,
+        action: () => {
+          dispatch(
+            undoMoveDashCardToTab({
+              dashCardId,
+              originalCol,
+              originalRow,
+              originalTabId,
+            }),
+          );
+        },
+      }),
+    );
+  };
+
+const _moveDashCardToTab =
+  createAction<MoveDashCardToTabPayload>(MOVE_DASHCARD_TO_TAB);
+
+export const undoMoveDashCardToTab = createAction<UndoMoveDashCardToTabPayload>(
+  UNDO_MOVE_DASHCARD_TO_TAB,
+);
 
 export const saveCardsAndTabs =
   createAction<SaveCardsAndTabsPayload>(SAVE_CARDS_AND_TABS);
@@ -80,7 +150,7 @@ function getPrevDashAndTabs({
   state,
   filterRemovedTabs = false,
 }: {
-  state: Draft<DashboardState>;
+  state: Draft<DashboardState> | DashboardState;
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
@@ -127,7 +197,7 @@ export const tabsReducer = createReducer<DashboardState>(
       (state, { payload: { tabId } }) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs({ state });
         if (!dashId || !prevDash) {
-          throw Error(
+          throw new Error(
             `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
           );
         }
@@ -181,7 +251,7 @@ export const tabsReducer = createReducer<DashboardState>(
         });
         const tabToRemove = prevTabs.find(({ id }) => id === tabId);
         if (!prevDash || !tabToRemove) {
-          throw Error(
+          throw new Error(
             `DELETE_TAB was dispatched but either prevDash (${prevDash}), or tabToRemove (${tabToRemove}) is null/undefined`,
           );
         }
@@ -221,7 +291,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
       const removedTab = prevTabs.find(({ id }) => id === tabId);
       if (!removedTab) {
-        throw Error(
+        throw new Error(
           `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
         );
       }
@@ -241,7 +311,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const tabToRenameIndex = prevTabs.findIndex(({ id }) => id === tabId);
 
       if (tabToRenameIndex === -1) {
-        throw Error(
+        throw new Error(
           `RENAME_TAB was dispatched but tabToRenameIndex (${tabToRenameIndex}) is invalid`,
         );
       }
@@ -251,15 +321,17 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(
       moveTab,
-      (state, { payload: { sourceTabId, destTabId } }) => {
+      (state, { payload: { sourceTabId, destinationTabId } }) => {
         const { prevDash, prevTabs } = getPrevDashAndTabs({ state });
         const sourceTabIndex = prevTabs.findIndex(
           ({ id }) => id === sourceTabId,
         );
-        const destTabIndex = prevTabs.findIndex(({ id }) => id === destTabId);
+        const destTabIndex = prevTabs.findIndex(
+          ({ id }) => id === destinationTabId,
+        );
 
         if (!prevDash || sourceTabIndex === -1 || destTabIndex === -1) {
-          throw Error(
+          throw new Error(
             `MOVE_TAB was dispatched but either prevDash (${JSON.stringify(
               prevDash,
             )}), sourceTabIndex (${sourceTabIndex}) or destTabIndex (${destTabIndex}) is invalid`,
@@ -271,8 +343,42 @@ export const tabsReducer = createReducer<DashboardState>(
     );
 
     builder.addCase(selectTab, (state, { payload: { tabId } }) => {
-      state.selectedTabId = tabId;
+      _selectTab({ state, tabId });
     });
+
+    builder.addCase(
+      _moveDashCardToTab,
+      (state, { payload: { dashCardId, destinationTabId } }) => {
+        const dashCard = state.dashcards[dashCardId];
+        const dashboardId = checkNotNull(state.dashboardId);
+
+        const { row, col } = getPositionForNewDashCard(
+          getExistingDashCards(state, dashboardId, destinationTabId),
+          dashCard.size_x,
+          dashCard.size_y,
+        );
+        dashCard.row = row;
+        dashCard.col = col;
+
+        dashCard.dashboard_tab_id = destinationTabId;
+        dashCard.isDirty = true;
+      },
+    );
+
+    builder.addCase(
+      undoMoveDashCardToTab,
+      (
+        state,
+        { payload: { dashCardId, originalCol, originalRow, originalTabId } },
+      ) => {
+        const dashCard = state.dashcards[dashCardId];
+
+        dashCard.row = originalRow;
+        dashCard.col = originalCol;
+        dashCard.dashboard_tab_id = originalTabId;
+        dashCard.isDirty = true;
+      },
+    );
 
     builder.addCase(
       saveCardsAndTabs,
@@ -282,7 +388,7 @@ export const tabsReducer = createReducer<DashboardState>(
           filterRemovedTabs: true,
         });
         if (!prevDash) {
-          throw Error(
+          throw new Error(
             `SAVE_CARDS_AND_TABS was dispatched but prevDash (${prevDash}) is null`,
           );
         }

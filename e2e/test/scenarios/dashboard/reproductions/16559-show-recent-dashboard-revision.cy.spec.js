@@ -6,6 +6,7 @@ import {
   popover,
   restore,
   sidebar,
+  rightSidebar,
   toggleDashboardInfoSidebar,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -70,7 +71,7 @@ describe("issue 16559", () => {
       .should("be.visible");
 
     cy.log("Toggle auto-apply filters");
-    cy.findByLabelText("Auto-apply filters").click();
+    rightSidebar().findByText("Auto-apply filters").click();
     cy.findByTestId("dashboard-history-list")
       .findAllByRole("listitem")
       .eq(0)

@@ -82,17 +82,22 @@ filters:
 groups:
 - Overview:
     title: Summary
+    score: 90
 - Singletons:
     title: These are the same for all [[this.short-name]]
+    score: 50
 - ByTime:
     title: "These [[this.short-name]] across time"
     comparison_title: How they compare across time
+    score: 80
 - Geographical:
     title: Where these [[this.short-name]] are
     comparison_title: How they compare across location
+    score: 85
 - General:
     title: How these [[this.short-name]] are distributed
     comparison_title: How they compare by distribution
+    score: 70
 dashboard_filters:
 - Timestamp
 - Date
