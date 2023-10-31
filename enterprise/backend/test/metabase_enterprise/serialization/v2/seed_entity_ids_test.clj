@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.seed-entity-ids
     :as v2.seed-entity-ids]
+   [metabase.config :as config]
    [metabase.models :refer [Collection]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -46,3 +47,52 @@
                        (v2.seed-entity-ids/seed-entity-ids!))))
               (is (= nil
                      (entity-id))))))))))
+
+(deftest entity-models-test
+  (testing "Sanity check: list of models that does not need an entity_id column,
+           if this test fails, check if it really needs it.
+           If yes, makes surethe exported data includes `:entity_id` column
+           or the model implements [[serdes/hash-fields]] (#35097)"
+    (is (= (cond-> #{:model/MetricImportantField
+                     :model/ModerationReview
+                     :model/CollectionBookmark
+                     :model/Secret
+                     :model/GroupTableAccessPolicy
+                     :model/FieldValues
+                     :model/ModelIndex
+                     :model/DashboardCardSeries
+                     :model/ParameterCard
+                     :model/QueryAction
+                     :model/ImplicitAction
+                     :model/User
+                     :model/Revision
+                     :model/PermissionsRevision
+                     :model/CardBookmark
+                     :model/CollectionPermissionGraphRevision
+                     :model/BookmarkOrdering
+                     :model/ModelIndexValue
+                     :model/PermissionsGroupMembership
+                     :model/ViewLog
+                     :model/Field
+                     :model/QueryCache
+                     :model/ApplicationPermissionsRevision
+                     :model/LoginHistory
+                     :model/Database
+                     :model/Session
+                     :model/Permissions
+                     :model/TaskHistory
+                     :model/Setting
+                     :model/Activity
+                     :model/PulseChannelRecipient
+                     :model/TablePrivileges
+                     :model/TimelineEvent
+                     :model/PersistedInfo
+                     :model/HTTPAction
+                     :model/QueryExecution
+                     :model/DashboardBookmark
+                     :model/Table
+                     :model/Query
+                     :model/PermissionsGroup}
+             config/ee-available?
+             (conj :model/ConnectionImpersonation))
+           (set/difference (set (v2.seed-entity-ids/toucan-models)) (#'v2.seed-entity-ids/entity-id-models))))))
