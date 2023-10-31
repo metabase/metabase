@@ -15,7 +15,7 @@ export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   can_write: boolean;
 
   database_id?: DatabaseId;
-  collection?: Collection;
+  collection?: Collection | null;
   collection_id: number | null;
 
   result_metadata: Field[];

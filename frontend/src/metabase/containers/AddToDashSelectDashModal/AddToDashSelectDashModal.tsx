@@ -15,7 +15,7 @@ import type { State } from "metabase-types/store";
 import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import { useSelector } from "metabase/lib/redux";
-import Collections from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import { getInitialOpenCollectionId } from "./utils";
@@ -45,7 +45,10 @@ const AddToDashSelectDashModal = ({
 
   const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
   const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
-  const isQuestionInPersonalCollection = Boolean(card.collection?.is_personal);
+  const questionCollection = card.collection ?? ROOT_COLLECTION;
+  const isQuestionInPersonalCollection = Boolean(
+    questionCollection.is_personal,
+  );
   const initialOpenCollectionId = getInitialOpenCollectionId({
     isQuestionInPersonalCollection,
     mostRecentlyViewedDashboard,

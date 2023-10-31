@@ -10,36 +10,30 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
-// Do not import from "metabase/entities/collections" to avoid circular dependency
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
-import { createMockCollection } from "./collection";
 
-export const createMockCard = (opts?: Partial<Card>): Card => {
-  const rootCollection = createMockCollection(ROOT_COLLECTION);
-  return {
-    id: 1,
-    name: "Question",
-    description: null,
-    display: "table",
-    public_uuid: null,
-    dataset_query: createMockStructuredDatasetQuery(),
-    visualization_settings: createMockVisualizationSettings(),
-    result_metadata: [],
-    dataset: false,
-    can_write: true,
-    cache_ttl: null,
-    collection: rootCollection,
-    collection_id: null,
-    last_query_start: null,
-    average_query_time: null,
-    archived: false,
-    ...opts,
-  };
-};
+export const createMockCard = (opts?: Partial<Card>): Card => ({
+  id: 1,
+  name: "Question",
+  description: null,
+  display: "table",
+  public_uuid: null,
+  dataset_query: createMockStructuredDatasetQuery(),
+  visualization_settings: createMockVisualizationSettings(),
+  result_metadata: [],
+  dataset: false,
+  can_write: true,
+  cache_ttl: null,
+  collection: null,
+  collection_id: null,
+  last_query_start: null,
+  average_query_time: null,
+  archived: false,
+  ...opts,
+});
 
 export const createMockPublicCard = (
   opts?: Partial<PublicCard>,
