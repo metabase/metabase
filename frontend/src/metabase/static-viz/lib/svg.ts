@@ -1,5 +1,5 @@
 // eslint-disable-next-line import/no-unresolved -- vscode is confused since only @types/hast is installed
-import type { Element } from "hast";
+import type { Element, ElementContent } from "hast";
 import { fromHtml } from "hast-util-from-html";
 import { toHtml } from "hast-util-to-html";
 
@@ -28,6 +28,24 @@ const transformSvgForOutline = (svgString: string) => {
 };
 
 /**
+ * Recursive ast traversal helper for `patchDominantBaseline`
+ */
+function patchNode(node: ElementContent) {
+  if (node.type !== "element") {
+    return;
+  }
+
+  if (
+    node.tagName === "text" &&
+    node.properties.dominantBaseline === "central"
+  ) {
+    node.properties.dy = "0.5em";
+  }
+
+  node.children.forEach(child => patchNode(child));
+}
+
+/**
  * Fixes `<text>` elements not being vertically centered due to Batik not
  * supporting the `dominant-baseline` property.
  */
@@ -35,17 +53,7 @@ export function patchDominantBaseline(svgString: string) {
   const svgElem = fromHtml(svgString, { fragment: true, space: "svg" })
     .children[0] as Element;
 
-  svgElem.children.forEach(child => {
-    if (
-      child.type !== "element" ||
-      child.tagName !== "text" ||
-      child.properties.dominantBaseline !== "central"
-    ) {
-      return;
-    }
-
-    child.properties.dy = "0.5em";
-  });
+  patchNode(svgElem);
 
   return toHtml(svgElem, { space: "svg" });
 }
