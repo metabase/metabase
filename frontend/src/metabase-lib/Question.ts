@@ -780,7 +780,9 @@ class Question {
       return this.updateSettings({
         "table.columns": [
           ...tableColumns.filter(
-            column => !removedColumnNames.includes(column.name),
+            column =>
+              !removedColumnNames.includes(column.name) &&
+              !addedColumnNames.includes(column.name),
           ),
           ...addedColumnNames.map(name => {
             const dimension = query.columnDimensionWithName(name);

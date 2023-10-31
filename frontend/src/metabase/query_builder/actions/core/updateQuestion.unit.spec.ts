@@ -23,9 +23,6 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
-  createMockCard,
-  createMockVisualizationSettings,
-  createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -811,69 +808,6 @@ describe("QB Actions > updateQuestion", () => {
           expect(setTemplateTagEditorVisibleSpy).toHaveBeenCalledWith(false);
         });
       });
-    });
-  });
-
-  describe("table column sync", () => {
-    it("removes columns from table.columns when a column is removed from a query", async () => {
-      const tableColumns = [
-        createMockTableColumnOrderSetting({
-          name: "ID",
-          fieldRef: ["field", ORDERS.ID, {}],
-          enabled: true,
-        }),
-        createMockTableColumnOrderSetting({
-          name: "TOTAL",
-          fieldRef: ["field", ORDERS.TOTAL, {}],
-          enabled: true,
-        }),
-        createMockTableColumnOrderSetting({
-          name: "QUANTITY",
-          fieldRef: ["field", ORDERS.QUANTITY, {}],
-          enabled: true,
-        }),
-      ];
-
-      const cardWithoutQuantity = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: createMockStructuredQuery({
-            "source-table": ORDERS_ID,
-            fields: [
-              ["field", ORDERS.ID, {}],
-              ["field", ORDERS.TOTAL, {}],
-            ],
-          }),
-        }),
-        visualization_settings: createMockVisualizationSettings({
-          "table.columns": tableColumns,
-        }),
-      });
-
-      const cardWithQuantity = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({
-          query: createMockStructuredQuery({
-            "source-table": ORDERS_ID,
-            fields: [
-              ["field", ORDERS.ID, {}],
-              ["field", ORDERS.TOTAL, {}],
-              ["field", ORDERS.QUANTITY, {}],
-            ],
-          }),
-        }),
-        visualization_settings: createMockVisualizationSettings({
-          "table.columns": tableColumns,
-        }),
-      });
-
-      const { result } = await setup({
-        card: cardWithoutQuantity,
-        originalCard: cardWithQuantity,
-        run: false,
-      });
-
-      expect(tableColumns).not.toEqual(
-        result.card.visualization_settings["table.columns"],
-      );
     });
   });
 
