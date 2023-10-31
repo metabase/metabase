@@ -13,24 +13,27 @@
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
    all of the audit db, we query the audit db using the names of each view that starts with v_."
-  #{"v_users" "v_content" "v_group_members" "v_alerts_subscriptions" "v_activity" "v_audit_log", "v_dashboardcard"})
+  #{"v_users" "v_content" "v_group_members" "v_alerts_subscriptions" "v_audit_log", "v_dashboardcard"})
 
 (defenterprise check-audit-db-permissions
   "Checks that a given query is not a native query, and only includes table IDs corresponding to the audit views
   listed above. (These should be the only tables present in the DB anyway, but this is an extra check as a fallback measure)."
   :feature :audit-app
-  [{database-id :database, query :query :as _outer-query}]
+  [{query-type :type, database-id :database, query :query :as outer-query}]
   ;; query->source-table-ids returns a set of table IDs and/or the ::query-perms/native keyword
+  (when (= query-type :native)
+    (throw (ex-info (tru "Native queries are not allowed on the audit database")
+                    outer-query)))
   (let [table-ids-or-native-kw (query-perms/query->source-table-ids query)]
     (qp.store/with-metadata-provider database-id
       (doseq [table-id table-ids-or-native-kw]
         (when (= table-id ::query-perms/native)
           (throw (ex-info (tru "Native queries are not allowed on the audit database")
-                          query)))
+                          outer-query)))
         (when-not (audit-db-view-names
                    (:name (lib.metadata/table (qp.store/metadata-provider) table-id)))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
-                          query)))))))
+                          outer-query)))))))
 
 (defenterprise update-audit-collection-permissions!
   "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
