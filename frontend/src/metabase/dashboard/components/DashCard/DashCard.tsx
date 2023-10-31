@@ -115,6 +115,10 @@ function DashCard({
 }: DashCardProps) {
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  const cardWidth = cardRootRef.current?.getBoundingClientRect().width;
+  const actionsWidth = actionsRef.current?.getBoundingClientRect().width;
 
   const handlePreviewToggle = useCallback(() => {
     setIsPreviewingCard(wasPreviewingCard => !wasPreviewingCard);
@@ -250,8 +254,15 @@ function DashCard({
 
   const renderDashCardActions = useCallback(() => {
     if (isEditingDashboardLayout) {
+      const actionsBiggerThanCard =
+        actionsWidth != null && cardWidth != null && actionsWidth > cardWidth;
+      // to avoid having actions buttons outside of the viewport
+      const leftAlignActions = dashcard.col <= 2 && actionsBiggerThanCard;
+
       return (
         <DashboardCardActionsPanel
+          ref={actionsRef}
+          leftAlign={leftAlignActions}
           onMouseDown={preventDragging}
           data-testid="dashboardcard-actions-panel"
         >
@@ -291,6 +302,8 @@ function DashCard({
     onUpdateVisualizationSettings,
     handlePreviewToggle,
     handleShowClickBehaviorSidebar,
+    actionsWidth,
+    cardWidth,
   ]);
 
   return (

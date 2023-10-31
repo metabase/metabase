@@ -174,6 +174,9 @@ describe("scenarios > dashboard > tabs", () => {
       const cards = [
         getTextCardDetails({
           text: "Text card",
+          // small card aligned to the left so that move icon is out of the viewport
+          // unless the left alignment logic kicks in
+          size_x: 1,
         }),
         getHeadingCardDetails({
           text: "Heading card",
