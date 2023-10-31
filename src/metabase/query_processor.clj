@@ -175,11 +175,15 @@
 (def ^:private execution-middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
+    (f qp) -> qp
+
+  e.g.
+
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
    #'qp.perms/check-query-permissions
-   #'qp.middleware.enterprise/check-download-permissions
-   #'qp.middleware.enterprise/maybe-apply-column-level-perms-check])
+   #'qp.middleware.enterprise/check-download-permissions-middleware
+   #'qp.middleware.enterprise/maybe-apply-column-level-perms-check-middleware])
 
 (def ^:private post-processing-middleware
   "Post-processing middleware that transforms results. Has the form
@@ -238,7 +242,7 @@
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'normalize/normalize
-   #'qp.middleware.enterprise/handle-internal-queries])
+   #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 ;; query -> preprocessed = around + pre-process
