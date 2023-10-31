@@ -16,8 +16,9 @@ made_public_by_id: null
 embedding_params: null
 cache_ttl: null
 dataset_query:
+  database: Internal Metabase Database
+  type: query
   query:
-    source-table: AxSackBiyXVRUzM_TyyQY
     joins:
     - fields: all
       alias: Question 34
@@ -28,13 +29,14 @@ dataset_query:
           - public
           - v_content
           - creator_id
-        - null
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
           - v_group_members
           - user_id
-        - join-alias: Question 34
+        - base-type: type/Integer
+          join-alias: Question 34
       source-table: lTp-ATFsCUFEr9I0fMEaO
     aggregation:
     - - count
@@ -43,17 +45,27 @@ dataset_query:
       - created_at
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
+    source-table: AxSackBiyXVRUzM_TyyQY
     filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_type
-      - null
-    - question
-  type: query
-  database: Internal Metabase Database
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_type
+        - base-type: type/Text
+      - question
+    - - time-interval
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - created_at
+        - base-type: type/DateTimeWithLocalTZ
+      - -2
+      - week
+      - include-current: false
 parameter_mappings: []
 serdes/meta:
 - model: Card

@@ -28,11 +28,11 @@ serdes/meta:
   id: parameter_mappings
 database_is_auto_increment: false
 json_unfolding: false
-position: 11
+position: 10
 visibility_type: normal
 preview_display: false
 display_name: Parameter Mappings
-database_position: 11
+database_position: 10
 database_required: false
 created_at: '2023-09-21T13:22:50.069446Z'
 base_type: type/Text

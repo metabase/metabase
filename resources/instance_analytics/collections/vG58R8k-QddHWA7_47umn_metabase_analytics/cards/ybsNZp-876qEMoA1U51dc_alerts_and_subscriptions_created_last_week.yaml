@@ -19,7 +19,6 @@ dataset_query:
   database: Internal Metabase Database
   type: query
   query:
-    source-table: 5ojUtU9iE-DCggHdFPIll
     aggregation:
     - - count
     breakout:
@@ -28,8 +27,8 @@ dataset_query:
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
     joins:
-    - fields: all
-      source-table: lTp-ATFsCUFEr9I0fMEaO
+    - alias: Question 34
+      fields: all
       condition:
       - =
       - - field
@@ -37,14 +36,37 @@ dataset_query:
           - public
           - v_alerts_subscriptions
           - creator_id
-        - null
+        - base-type: type/Integer
       - - field
         - - Internal Metabase Database
           - public
           - v_group_members
           - user_id
-        - join-alias: Question 34
-      alias: Question 34
+        - base-type: type/Integer
+          join-alias: Question 34
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+    source-table: 5ojUtU9iE-DCggHdFPIll
+    filter:
+    - and
+    - - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - group_name
+        - base-type: type/Text
+          join-alias: Question 34
+      - All Users
+    - - time-interval
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_alerts_subscriptions
+          - created_at
+        - base-type: type/DateTimeWithLocalTZ
+      - -2
+      - week
+      - include-current: false
 parameter_mappings: []
 serdes/meta:
 - model: Card

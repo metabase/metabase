@@ -1,6 +1,6 @@
 description: All Metabase users including active and deactivated users.
 archived: false
-collection_position: 8
+collection_position: 9
 table_id:
 - Internal Metabase Database
 - public
@@ -11,6 +11,7 @@ result_metadata:
   coercion_strategy: null
   name: user_id
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -32,6 +33,7 @@ result_metadata:
   coercion_strategy: null
   name: email
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -53,6 +55,7 @@ result_metadata:
   coercion_strategy: null
   name: first_name
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -74,6 +77,7 @@ result_metadata:
   coercion_strategy: null
   name: last_name
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -95,6 +99,7 @@ result_metadata:
   coercion_strategy: null
   name: full_name
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -117,6 +122,7 @@ result_metadata:
   unit: default
   name: date_joined
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -139,6 +145,7 @@ result_metadata:
   unit: default
   name: last_login
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -161,6 +168,7 @@ result_metadata:
   unit: default
   name: updated_at
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -182,6 +190,7 @@ result_metadata:
   coercion_strategy: null
   name: is_admin
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -203,6 +212,7 @@ result_metadata:
   coercion_strategy: null
   name: is_active
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -224,6 +234,7 @@ result_metadata:
   coercion_strategy: null
   name: sso_source
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -245,6 +256,7 @@ result_metadata:
   coercion_strategy: null
   name: locale
   settings: null
+  fk_target_field_id: null
   field_ref:
   - field
   - - Internal Metabase Database
@@ -265,7 +277,7 @@ database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
-name: Users
+name: People
 creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
@@ -282,7 +294,7 @@ parameter_mappings: []
 serdes/meta:
 - model: Card
   id: 0wVIfjBJWclD0lKeABYYl
-  label: users
+  label: people
 display: table
 entity_id: 0wVIfjBJWclD0lKeABYYl
 collection_preview: true

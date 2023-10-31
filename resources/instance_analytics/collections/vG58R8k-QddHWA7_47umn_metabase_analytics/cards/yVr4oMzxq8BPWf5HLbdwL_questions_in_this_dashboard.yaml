@@ -25,9 +25,18 @@ dataset_query:
         - - Internal Metabase Database
           - public
           - v_content
+          - entity_id
+        - base-type: type/Integer
+          join-alias: Content - Question
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
           - name
-        - join-alias: Question 35
-      alias: Question 35
+        - base-type: type/Text
+          join-alias: Content - Question
+      strategy: left-join
+      alias: Content - Question
       condition:
       - =
       - - field
@@ -35,43 +44,29 @@ dataset_query:
           - public
           - v_dashboardcard
           - question_id
-        - null
+        - base-type: type/Text
       - - field
         - - Internal Metabase Database
           - public
           - v_content
-          - id
-        - join-alias: Question 35
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Question
       source-table: AxSackBiyXVRUzM_TyyQY
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - join-alias: Question 35_2
-      alias: Question 35_2
-      condition:
-      - =
+    order-by:
+    - - asc
       - - field
         - - Internal Metabase Database
           - public
           - v_dashboardcard
-          - dashboard_id
-        - null
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - id
-        - join-alias: Question 35_2
-      source-table: AxSackBiyXVRUzM_TyyQY
+          - updated_at
+        - base-type: type/DateTimeWithLocalTZ
     fields:
     - - field
       - - Internal Metabase Database
         - public
         - v_dashboardcard
-        - dashboard_id
+        - entity_qualified_id
       - base-type: type/Text
     source-table: pKdvc0pwu1zDi8NqnyJkt
 parameter_mappings: []
@@ -83,8 +78,9 @@ display: table
 entity_id: yVr4oMzxq8BPWf5HLbdwL
 collection_preview: true
 visualization_settings:
+  table.cell_column: name
   table.columns:
-  - name: dashboard_id
+  - enabled: true
     fieldRef:
     - field
     - - Internal Metabase Database
@@ -92,6 +88,56 @@ visualization_settings:
       - v_dashboardcard
       - dashboard_id
     - base-type: type/Text
+    name: dashboard_id
+  - name: entity_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: created_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: updated_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: entity_type_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: creator_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+      join-alias: Content - Dashboard
     enabled: true
   - name: name_2
     fieldRef:
@@ -100,7 +146,372 @@ visualization_settings:
       - public
       - v_content
       - name
-    - join-alias: Question 35_2
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: description_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: collection_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_id
+    - base-type: type/Integer
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: made_public_by_user_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: is_embedding_enabled_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: archived_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: action_type_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_type
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: action_model_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_model_id
+    - base-type: type/Integer
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: collection_is_official_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_official
+    - base-type: type/Boolean
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: collection_is_personal_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_personal
+    - base-type: type/Boolean
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: question_viz_type_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_viz_type
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: question_database_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_database_id
+    - base-type: type/Text
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: question_is_native_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_is_native
+    - base-type: type/Boolean
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: event_timestamp_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - event_timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Dashboard
+    enabled: true
+  - name: dashboardtab_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - dashboardtab_id
+    - base-type: type/Text
+    enabled: true
+  - name: parameter_mappings
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - parameter_mappings
+    - base-type: type/Text
+    enabled: true
+  - name: question_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - question_id
+    - base-type: type/Text
+    enabled: true
+  - name: size_x
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - size_x
+    - base-type: type/Integer
+    enabled: true
+  - name: size_y
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - size_y
+    - base-type: type/Integer
+    enabled: true
+  - name: visualization_settings
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - visualization_settings
+    - base-type: type/Text
+    enabled: true
+  - name: entity_qualified_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_qualified_id
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: entity_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: created_at_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Question
+    enabled: true
+  - name: updated_at_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Question
+    enabled: true
+  - name: creator_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+      join-alias: Content - Question
+    enabled: true
+  - name: description
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: collection_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_id
+    - base-type: type/Integer
+      join-alias: Content - Question
+    enabled: true
+  - name: made_public_by_user
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+      join-alias: Content - Question
+    enabled: true
+  - name: is_embedding_enabled
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+      join-alias: Content - Question
+    enabled: true
+  - name: archived
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+      join-alias: Content - Question
+    enabled: true
+  - name: action_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_type
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: action_model_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_model_id
+    - base-type: type/Integer
+      join-alias: Content - Question
+    enabled: true
+  - name: collection_is_official
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_official
+    - base-type: type/Boolean
+      join-alias: Content - Question
+    enabled: true
+  - name: collection_is_personal
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_personal
+    - base-type: type/Boolean
+      join-alias: Content - Question
+    enabled: true
+  - name: question_viz_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_viz_type
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: question_database_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_database_id
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: question_is_native
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_is_native
+    - base-type: type/Boolean
+      join-alias: Content - Question
+    enabled: true
+  - name: event_timestamp
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - event_timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Question
     enabled: true
   - name: name
     fieldRef:
@@ -109,10 +520,29 @@ visualization_settings:
       - public
       - v_content
       - name
-    - join-alias: Question 35
+    - base-type: type/Text
+      join-alias: Content - Question
+    enabled: true
+  - name: entity_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Question
+    enabled: true
+  - name: entity_qualified_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_dashboardcard
+      - entity_qualified_id
+    - base-type: type/Text
     enabled: true
   table.pivot_column: name_2
-  table.cell_column: name
   column_settings:
     '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
       column_title: Dashboard Name

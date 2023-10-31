@@ -28,11 +28,11 @@ serdes/meta:
   id: is_active
 database_is_auto_increment: false
 json_unfolding: false
-position: 9
+position: 10
 visibility_type: normal
 preview_display: true
 display_name: Is Active
-database_position: 9
+database_position: 10
 database_required: false
 created_at: '2023-06-08T14:05:41.008036Z'
 base_type: type/Boolean
