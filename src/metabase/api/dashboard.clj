@@ -791,7 +791,7 @@
 
     (get-template-tag [:template-tag :company] some-dashcard) ; -> [:field 100 nil]"
   [dimension card]
-  (when-let [tag (first (mbql.u/get-clause :template-tag dimension))]
+  (when-let [[_ tag] (mbql.u/check-clause :template-tag dimension)]
     (get-in card [:dataset_query :native :template-tags (u/qualified-name tag)])))
 
 (defn- param-type->op [type]
@@ -802,13 +802,13 @@
 (mu/defn ^:private param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
-        :let  [dimension (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                              (mbql.u/get-clause :dimension)
-                              first)]
+        :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                  (mbql.u/check-clause :dimension))]
         :when dimension
-        :let  [dimension (condp mbql.u/is-clause? dimension
+        :let  [ttag      (get-template-tag dimension card)
+               dimension (condp mbql.u/is-clause? dimension
                            :field        dimension
-                           :template-tag (:dimension (get-template-tag dimension card))
+                           :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
                field-id  (or
                           ;; Get the field id from the field-clause if it contains it. This is the common case
@@ -821,7 +821,8 @@
         :when field-id]
     {:field-id field-id
      :op       (param-type->op (:type param))
-     :options  (:options param)}))
+     :options  (merge (:options ttag)
+                      (:options param))}))
 
 (mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]

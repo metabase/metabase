@@ -52,11 +52,15 @@
      ((set k-or-ks) (first x))
      (= k-or-ks (first x)))))
 
-(defn get-clause
-  "If `(is-clause? x)` is correct, get the value of `x`."
+(defn check-clause
+  "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
+
+    (check-clause :count [:count 10]) ; => [:count 10]
+    (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
+    (check-clause :sum [:count 10]) ; => nil"
   [k-or-ks x]
   (when (is-clause? k-or-ks x)
-    (rest x)))
+    x))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
