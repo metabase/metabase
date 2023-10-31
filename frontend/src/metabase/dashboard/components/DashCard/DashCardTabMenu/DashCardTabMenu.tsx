@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { DashCardId } from "metabase-types/api";
 import { Divider, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -22,6 +22,13 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
   const tabsToShow = useMemo(() => {
     return tabs.filter(t => t.id !== selectedTabId);
   }, [selectedTabId, tabs]);
+
+  const moveDashcard = useCallback(
+    (destinationTabId: number) => {
+      dispatch(moveDashCardToTab({ dashCardId, destinationTabId }));
+    },
+    [dashCardId, dispatch],
+  );
 
   if (!showMenu) {
     return null;
@@ -46,9 +53,7 @@ export function DashCardTabMenu({ dashCardId }: DashCardTabMenuProps) {
               <Menu.Item
                 maw={300}
                 key={tab.id}
-                onClick={() =>
-                  dispatch(moveDashCardToTab({ dashCardId, destTabId: tab.id }))
-                }
+                onClick={() => moveDashcard(tab.id)}
               >
                 {tab.name}
               </Menu.Item>
