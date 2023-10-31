@@ -1,19 +1,30 @@
 (ns metabase-enterprise.audit-app.permissions
   (:require
-   [metabase-enterprise.audit-db
-    :refer [default-audit-collection]]
+   [metabase-enterprise.audit-db :refer [default-audit-collection]]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
    [metabase.shared.util.i18n :refer [tru]]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def audit-db-view-names
   "Used for giving granular permissions into the audit db. Instead of granting permissions to
    all of the audit db, we query the audit db using the names of each view that starts with v_."
-  #{"v_users" "v_content" "v_group_members" "v_alerts_subscriptions" "v_audit_log" "v_dashboardcard" "v_view_log" "v_databases" "v_tables" "v_fields" "v_query_log" "v_task_log"})
+  #{"v_users"
+    "v_content"
+    "v_group_members"
+    "v_alerts_subscriptions"
+    "v_audit_log"
+    "v_dashboardcard"
+    "v_view_log"
+    "v_databases"
+    "v_tables"
+    "v_fields"
+    "v_query_log"
+    "v_task_log"})
 
 (defenterprise check-audit-db-permissions
   "Checks that a given query is not a native query, and only includes table IDs corresponding to the audit views
@@ -31,7 +42,7 @@
           (throw (ex-info (tru "Native queries are not allowed on the audit database")
                           outer-query)))
         (when-not (audit-db-view-names
-                   (:name (lib.metadata/table (qp.store/metadata-provider) table-id)))
+                   (u/lower-case-en (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
                           outer-query)))))))
 
