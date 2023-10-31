@@ -16,7 +16,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   - parameter_id: 124adfb8
     card_id: MUXrck2HHcd2TIRuPfK0v
     target:
@@ -26,7 +26,7 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
   - parameter_id: '5e162806'
     card_id: MUXrck2HHcd2TIRuPfK0v
     target:
@@ -36,7 +36,7 @@ dashcards:
         - public
         - v_users
         - is_active
-      - join-alias: Question 1
+      - join-alias: People - Creator
   card_id: MUXrck2HHcd2TIRuPfK0v
   entity_id: 9Lnv8dgtICiNt2yl2WV0x
   visualization_settings:
@@ -58,7 +58,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - User
   - parameter_id: 124adfb8
     card_id: _lfXwss_MckZBidbcJsgk
     target:
@@ -68,7 +68,17 @@ dashcards:
         - public
         - v_users
         - full_name
-      - join-alias: Question 1
+      - join-alias: People - Creator
+  - parameter_id: '5e162806'
+    card_id: _lfXwss_MckZBidbcJsgk
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
   card_id: _lfXwss_MckZBidbcJsgk
   entity_id: mtP6yOJW7VaU9DV5lxwAw
   visualization_settings:

@@ -28,11 +28,11 @@ serdes/meta:
   id: updated_at
 database_is_auto_increment: false
 json_unfolding: false
-position: 5
+position: 6
 visibility_type: normal
 preview_display: true
 display_name: Updated At
-database_position: 5
+database_position: 6
 database_required: false
 created_at: '2023-09-21T13:22:50.069446Z'
 base_type: type/DateTimeWithLocalTZ

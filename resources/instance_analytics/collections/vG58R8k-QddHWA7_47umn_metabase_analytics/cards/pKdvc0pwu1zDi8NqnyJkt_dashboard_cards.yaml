@@ -1,15 +1,15 @@
 description: Each row is a dashboard card. Can be a question or a text card.
 archived: false
-collection_position: 9
+collection_position: 10
 table_id:
 - Internal Metabase Database
 - public
 - v_dashboardcard
 result_metadata:
 - description: null
-  semantic_type: type/PK
+  semantic_type: null
   coercion_strategy: null
-  name: id
+  name: entity_id
   settings: null
   fk_target_field_id: null
   field_ref:
@@ -17,16 +17,38 @@ result_metadata:
   - - Internal Metabase Database
     - public
     - v_dashboardcard
-    - id
+    - entity_id
+  - base-type: type/Integer
+  effective_type: type/Integer
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - entity_id
+  visibility_type: normal
+  display_name: Entity ID
+  base_type: type/Integer
+- description: null
+  semantic_type: null
+  coercion_strategy: null
+  name: entity_qualified_id
+  settings: null
+  fk_target_field_id: null
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - entity_qualified_id
   - base-type: type/Text
   effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_dashboardcard
-  - id
+  - entity_qualified_id
   visibility_type: normal
-  display_name: ID
+  display_name: Entity Qualified ID
   base_type: type/Text
 - description: null
   semantic_type: type/FK
@@ -143,50 +165,6 @@ result_metadata:
   display_name: Updated At
   base_type: type/DateTimeWithLocalTZ
 - description: null
-  semantic_type: type/Category
-  coercion_strategy: null
-  name: size_x
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_dashboardcard
-    - size_x
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_dashboardcard
-  - size_x
-  visibility_type: normal
-  display_name: Size X
-  base_type: type/Integer
-- description: null
-  semantic_type: null
-  coercion_strategy: null
-  name: size_y
-  settings: null
-  fk_target_field_id: null
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_dashboardcard
-    - size_y
-  - base-type: type/Integer
-  effective_type: type/Integer
-  id:
-  - Internal Metabase Database
-  - public
-  - v_dashboardcard
-  - size_y
-  visibility_type: normal
-  display_name: Size Y
-  base_type: type/Integer
-- description: null
   semantic_type: type/SerializedJSON
   coercion_strategy: null
   name: visualization_settings
@@ -252,7 +230,13 @@ dataset_query:
       - - Internal Metabase Database
         - public
         - v_dashboardcard
-        - id
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - entity_qualified_id
       - base-type: type/Text
     - - field
       - - Internal Metabase Database
@@ -284,18 +268,6 @@ dataset_query:
         - v_dashboardcard
         - updated_at
       - base-type: type/DateTimeWithLocalTZ
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - size_x
-      - base-type: type/Integer
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - size_y
-      - base-type: type/Integer
     - - field
       - - Internal Metabase Database
         - public

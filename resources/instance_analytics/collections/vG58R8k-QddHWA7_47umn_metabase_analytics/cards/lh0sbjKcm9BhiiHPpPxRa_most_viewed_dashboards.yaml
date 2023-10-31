@@ -4,7 +4,7 @@ collection_position: null
 table_id:
 - Internal Metabase Database
 - public
-- v_audit_log
+- v_view_log
 result_metadata: null
 database_id: Internal Metabase Database
 enable_embedding: false
@@ -16,70 +16,44 @@ made_public_by_id: null
 embedding_params: null
 cache_ttl: null
 dataset_query:
+  database: Internal Metabase Database
+  type: query
   query:
-    source-table: -lNDM3tJmuL5ltGbX0oyT
     joins:
-    - fields:
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - id
-        - join-alias: Question 35
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - join-alias: Question 35
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - description
-        - join-alias: Question 35
-      alias: Question 35
+    - strategy: left-join
+      alias: Content - Entity Qualified
       condition:
       - =
       - - field
         - - Internal Metabase Database
           - public
-          - v_audit_log
-          - model_id
-        - null
+          - v_view_log
+          - entity_qualified_id
+        - base-type: type/Text
       - - field
         - - Internal Metabase Database
           - public
           - v_content
-          - id
-        - join-alias: Question 35
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
-    - fields: none
-      source-table: 0wVIfjBJWclD0lKeABYYl
+    - strategy: left-join
+      alias: People - Creator
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_audit_log
-          - user_id
-        - null
+        - creator_id
+        - base-type: type/Integer
+          join-alias: Content - Entity Qualified
       - - field
         - - Internal Metabase Database
           - public
           - v_users
           - user_id
-        - join-alias: Question 1
-      alias: Question 1
-    filter:
-    - =
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_audit_log
-        - topic
-      - null
-    - dashboard-view
+        - base-type: type/Integer
+          join-alias: People - Creator
+      source-table: 0wVIfjBJWclD0lKeABYYl
     aggregation:
     - - count
     breakout:
@@ -88,19 +62,35 @@ dataset_query:
         - public
         - v_content
         - name
-      - join-alias: Question 35
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
     order-by:
     - - desc
       - - aggregation
         - 0
-  type: query
-  database: Internal Metabase Database
+    source-table: P6Ityjj7igswKh4NgZZjz
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
+    - dashboard
 parameter_mappings: []
 serdes/meta:
 - model: Card
   id: lh0sbjKcm9BhiiHPpPxRa
   label: most_viewed_dashboards
-display: row
+display: table
 entity_id: lh0sbjKcm9BhiiHPpPxRa
 collection_preview: true
 visualization_settings:
@@ -125,24 +115,6 @@ visualization_settings:
       - id
     - join-alias: Question 35
     enabled: true
-  - name: name
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - join-alias: Question 35
-    enabled: true
-  - name: description
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - description
-    - join-alias: Question 35
-    enabled: true
   - name: user_id
     fieldRef:
     - field
@@ -152,6 +124,205 @@ visualization_settings:
       - user_id
     - join-alias: Question 1
     enabled: false
+  - name: entity_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: entity_qualified_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_qualified_id
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: entity_type_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_type
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: created_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: updated_at
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - updated_at
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: creator_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - creator_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: description
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - description
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: collection_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: made_public_by_user
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - made_public_by_user
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: is_embedding_enabled
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - is_embedding_enabled
+    - base-type: type/Boolean
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: archived
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - archived
+    - base-type: type/Boolean
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: action_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_type
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: action_model_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - action_model_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: collection_is_official
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_official
+    - base-type: type/Boolean
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: collection_is_personal
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - collection_is_personal
+    - base-type: type/Boolean
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: question_viz_type
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_viz_type
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: question_database_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_database_id
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: question_is_native
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - question_is_native
+    - base-type: type/Boolean
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: event_timestamp
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - event_timestamp
+    - base-type: type/DateTimeWithLocalTZ
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: user_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_users
+      - user_id
+    - join-alias: People - Creator
+    enabled: true
   - name: email
     fieldRef:
     - field
@@ -159,8 +330,8 @@ visualization_settings:
       - public
       - v_users
       - email
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: first_name
     fieldRef:
     - field
@@ -168,8 +339,8 @@ visualization_settings:
       - public
       - v_users
       - first_name
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: last_name
     fieldRef:
     - field
@@ -177,8 +348,8 @@ visualization_settings:
       - public
       - v_users
       - last_name
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: full_name
     fieldRef:
     - field
@@ -186,8 +357,8 @@ visualization_settings:
       - public
       - v_users
       - full_name
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: date_joined
     fieldRef:
     - field
@@ -195,8 +366,8 @@ visualization_settings:
       - public
       - v_users
       - date_joined
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: last_login
     fieldRef:
     - field
@@ -204,17 +375,17 @@ visualization_settings:
       - public
       - v_users
       - last_login
-    - join-alias: Question 1
-    enabled: false
-  - name: updated_at
+    - join-alias: People - Creator
+    enabled: true
+  - name: updated_at_2
     fieldRef:
     - field
     - - Internal Metabase Database
       - public
       - v_users
       - updated_at
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: is_admin
     fieldRef:
     - field
@@ -222,8 +393,8 @@ visualization_settings:
       - public
       - v_users
       - is_admin
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: is_active
     fieldRef:
     - field
@@ -231,8 +402,8 @@ visualization_settings:
       - public
       - v_users
       - is_active
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: sso_source
     fieldRef:
     - field
@@ -240,8 +411,8 @@ visualization_settings:
       - public
       - v_users
       - sso_source
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
   - name: locale
     fieldRef:
     - field
@@ -249,8 +420,28 @@ visualization_settings:
       - public
       - v_users
       - locale
-    - join-alias: Question 1
-    enabled: false
+    - join-alias: People - Creator
+    enabled: true
+  - name: name
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - name
+    - base-type: type/Text
+      join-alias: Content - Entity Qualified
+    enabled: true
+  - name: entity_id
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_content
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Content - Entity Qualified
+    enabled: true
   graph.dimensions:
   - name
   column_settings:
@@ -263,6 +454,12 @@ visualization_settings:
       column_title: Dashboard name
     '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
       column_title: Description
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard name
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard ID
+    '["name","count"]':
+      show_mini_bar: true
   graph.metrics:
   - count
 metabase_version: null

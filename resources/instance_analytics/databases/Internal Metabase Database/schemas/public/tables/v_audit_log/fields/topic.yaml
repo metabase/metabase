@@ -1,5 +1,5 @@
 description: null
-database_type: text
+database_type: varchar
 semantic_type: type/Category
 table_id:
 - Internal Metabase Database

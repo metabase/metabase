@@ -14,7 +14,7 @@ fk_target_field_id: null
 dimensions: []
 custom_position: 0
 effective_type: type/Integer
-active: true
+active: false
 nfc_path: null
 parent_id: null
 serdes/meta:
