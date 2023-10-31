@@ -66,10 +66,10 @@
 
 (defmethod mi/can-write? :model/Database
   ([instance]
-   (and (not= (u/the-id instance) (perms/default-audit-db-id))
+   (and (not= (u/the-id instance) perms/audit-db-id)
         ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
   ([model pk]
-   (and (not= pk (perms/default-audit-db-id))
+   (and (not= pk perms/audit-db-id)
         ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
 
 (defn- schedule-tasks!
