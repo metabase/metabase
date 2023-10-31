@@ -15983,6 +15983,8 @@ databaseChangeLog:
                   model_id,
                   '{}'
               FROM activity;
+      rollback: # not necessary
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
