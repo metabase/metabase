@@ -64,6 +64,14 @@
      false
      (mi/current-user-has-partial-permissions? :read model pk))))
 
+(defmethod mi/can-write? :model/Database
+  ([instance]
+   (and (not= (u/the-id instance) (perms/default-audit-db-id))
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
+  ([model pk]
+   (and (not= pk (perms/default-audit-db-id))
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
+
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
