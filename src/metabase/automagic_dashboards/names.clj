@@ -84,7 +84,8 @@
                                 :day-of-year     (deferred-tru "day of year")
                                 :week-of-year    (deferred-tru "week")
                                 :month-of-year   (deferred-tru "month")
-                                :quarter-of-year (deferred-tru "quarter")}
+                                :quarter-of-year (deferred-tru "quarter")
+                                :year            (deferred-tru "year")}
                                qp.util/normalize-token))
 
 (defn field-name
@@ -139,6 +140,38 @@
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 
+(defmethod humanize-filter-value :>=
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is not before {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is at least {1}" field-name value))))
+
+(defmethod humanize-filter-value :>
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is after {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is greater than {1}" field-name value))))
+
+(defmethod humanize-filter-value :<=
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is not after {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is no more than {1}" field-name value))))
+
+(defmethod humanize-filter-value :<
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} is before {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} is less than {1}" field-name value))))
+
 (defmethod humanize-filter-value :between
   [root [_ field-reference min-value max-value]]
   (tru "{0} is between {1} and {2}" (field-name root field-reference) min-value max-value))
@@ -154,6 +187,14 @@
   (->> clauses
        (map (partial humanize-filter-value root))
        join-enumeration))
+
+(defmethod humanize-filter-value :default
+  [root [_ field-reference value]]
+  (let [field      (magic.util/field-reference->field root field-reference)
+        field-name (field-name field)]
+    (if (isa? ((some-fn :effective_type :base_type) field) :type/Temporal)
+      (tru "{0} relates to {1}" field-name (humanize-datetime value (:unit field)))
+      (tru "{0} relates to {1}" field-name value))))
 
 (defn cell-title
   "Return a cell title given a root object and a cell query."

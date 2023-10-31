@@ -752,7 +752,7 @@
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar_255              [[:varchar 255]]
+    ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
     ::upload/int-pk                   [:bigint :primary-key]
@@ -761,7 +761,8 @@
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]))
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]

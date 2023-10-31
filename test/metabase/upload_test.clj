@@ -13,6 +13,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.upload :as upload]
+   [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -20,16 +21,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type         ::upload/boolean)
-(def ^:private int-type          ::upload/int)
-(def ^:private float-type        ::upload/float)
-(def ^:private vchar-type        ::upload/varchar_255)
-(def ^:private date-type         ::upload/date)
-(def ^:private datetime-type     ::upload/datetime)
-(def ^:private text-type         ::upload/text)
-(def ^:private int-pk-type       ::upload/int-pk)
-(def ^:private ai-int-pk-type    ::upload/auto-incrementing-int-pk)
-(def ^:private string-pk-type    ::upload/string-pk)
+(def ^:private bool-type      ::upload/boolean)
+(def ^:private int-type       ::upload/int)
+(def ^:private float-type     ::upload/float)
+(def ^:private vchar-type     ::upload/varchar-255)
+(def ^:private date-type      ::upload/date)
+(def ^:private datetime-type  ::upload/datetime)
+(def ^:private offset-dt-type ::upload/offset-datetime)
+(def ^:private text-type      ::upload/text)
+(def ^:private int-pk-type    ::upload/int-pk)
+(def ^:private ai-int-pk-type ::upload/auto-incrementing-int-pk)
+(def ^:private string-pk-type ::upload/string-pk)
 
 (defn- do-with-mysql-local-infile-activated
   "Helper for [[with-mysql-local-infile-activated]]"
@@ -58,6 +60,7 @@
 
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
+          ;; Number-related
           [["0.0"        0              float-type "."]
            ["0.0"        0              float-type ".,"]
            ["0,0"        0              float-type ",."]
@@ -114,17 +117,20 @@
            ["₿42.243646" 42.243646      float-type ".,"]
            ["-99.99¢"    -99.99         float-type ".,"]
            ["."          "."            vchar-type]
+           ;; String-related
            [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
-           ["2022-01-01"                    #t "2022-01-01"       date-type]
-           ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
-           ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
-           ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
+           ;; Date-related
+           [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-01-01T01:00:00 "           #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.00 "        #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.000000000 " #t "2022-01-01T01:00"       datetime-type]
+           [" 2022-01-01T01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]]]
     (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
       (let [type   (upload/value->type string-value)
-            parser (#'upload/upload-type->parser type)]
+            parser (#'upload-parsing/upload-type->parser type)]
         (testing (format "\"%s\" is a %s" string-value type)
           (is (= expected-type
                  type)))
@@ -133,28 +139,31 @@
                  (parser string-value))))))))
 
 (deftest ^:parallel type-coalescing-test
-  (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
-                                    [bool-type     int-type      int-type]
-                                    [bool-type     date-type     vchar-type]
-                                    [bool-type     datetime-type vchar-type]
-                                    [bool-type     vchar-type    vchar-type]
-                                    [bool-type     text-type     text-type]
-                                    [int-type      bool-type     int-type]
-                                    [int-type      float-type    float-type]
-                                    [int-type      date-type     vchar-type]
-                                    [int-type      datetime-type vchar-type]
-                                    [int-type      vchar-type    vchar-type]
-                                    [int-type      text-type     text-type]
-                                    [float-type    vchar-type    vchar-type]
-                                    [float-type    text-type     text-type]
-                                    [float-type    date-type     vchar-type]
-                                    [float-type    datetime-type vchar-type]
-                                    [date-type     datetime-type datetime-type]
-                                    [date-type     vchar-type    vchar-type]
-                                    [date-type     text-type     text-type]
-                                    [datetime-type vchar-type    vchar-type]
-                                    [datetime-type text-type     text-type]
-                                    [vchar-type    text-type     text-type]]]
+  (doseq [[type-a          type-b        expected]
+          [[bool-type      bool-type     bool-type]
+           [bool-type      int-type      int-type]
+           [bool-type      date-type     vchar-type]
+           [bool-type      datetime-type vchar-type]
+           [bool-type      vchar-type    vchar-type]
+           [bool-type      text-type     text-type]
+           [int-type       bool-type     int-type]
+           [int-type       float-type    float-type]
+           [int-type       date-type     vchar-type]
+           [int-type       datetime-type vchar-type]
+           [int-type       vchar-type    vchar-type]
+           [int-type       text-type     text-type]
+           [float-type     vchar-type    vchar-type]
+           [float-type     text-type     text-type]
+           [float-type     date-type     vchar-type]
+           [float-type     datetime-type vchar-type]
+           [date-type      datetime-type datetime-type]
+           [date-type      vchar-type    vchar-type]
+           [date-type      text-type     text-type]
+           [datetime-type  vchar-type    vchar-type]
+           [offset-dt-type vchar-type    vchar-type]
+           [datetime-type  text-type     text-type]
+           [offset-dt-type text-type     text-type]
+           [vchar-type     text-type     text-type]]]
     (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
@@ -323,6 +332,18 @@
               (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
                               "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
                               "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
+
+(deftest ^:parallel detect-schema-offset-datetimes-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Dates"
+      (is (= (with-ai-id {:offset_datetime offset-dt-type
+                          :not_datetime   vchar-type})
+             (upload/detect-schema
+              (csv-file-with ["Offset Datetime,Not Datetime"
+                              "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
+                              "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
+                              "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"])))))))
+
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "File name is slugified"
@@ -421,6 +442,38 @@
                       ;; db position is 1; 0 is for the auto-inserted ID
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
             (is (some? table))))))))
+
+(deftest load-from-csv-offset-datetime-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (with-redefs [driver/db-default-timezone (constantly "Z")
+                      upload/current-database    (constantly (mt/db))]
+          (let [datetime-pairs [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
+                                ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
+                                ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
+                                ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
+                                ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
+                                ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
+                                ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
+                                ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]]]
+            (with-mysql-local-infile-activated
+              (upload/load-from-csv!
+               driver/*driver*
+               (mt/id)
+               "upload_test"
+               (csv-file-with (into ["offset_datetime"] (map first datetime-pairs)))))
+            (testing "Fields exists after sync"
+              (sync/sync-database! (mt/db))
+              (let [table (t2/select-one Table :db_id (mt/id))]
+                (is (=? {:name #"(?i)upload_test"} table))
+                (testing "Check the offset datetime column the correct base_type"
+                  (is (=? {:name      #"(?i)offset_datetime"
+                           :base_type :type/DateTimeWithLocalTZ}
+                          ;; db position is 1; 0 is for the auto-inserted ID
+                          (t2/select-one Field :database_position 1 :table_id (:id table)))))
+                (is (= (map second datetime-pairs)
+                       (map second (rows-for-table table))))))))))))
 
 (deftest load-from-csv-boolean-test
   (testing "Upload a CSV file"

@@ -9,7 +9,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
@@ -530,7 +529,7 @@
             (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
                             {:driver driver
                              :type   qp.error-type/driver
-                             :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                             :sql    (str/split-lines (driver/prettify-native-form driver sql))
                              :params params}
                             e))))
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
@@ -682,7 +681,7 @@
                                   (catch Throwable e
                                     (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                     {:driver driver
-                                                     :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                     :sql    (str/split-lines (driver/prettify-native-form driver sql))
                                                      :params params
                                                      :type   qp.error-type/invalid-query}
                                                     e))))]

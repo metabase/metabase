@@ -2,6 +2,7 @@ import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import {
+  getFields,
   hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/parameters/utils/parameter-fields";
@@ -28,7 +29,7 @@ function FormattedParameterValue({
     !isDateParameter(parameter)
   ) {
     return (
-      <ParameterFieldWidgetValue fields={parameter.fields} value={value} />
+      <ParameterFieldWidgetValue fields={getFields(parameter)} value={value} />
     );
   }
 
