@@ -12,7 +12,7 @@ export function getPieChartLegend(
   width: number,
   top: number,
 ) {
-  if (!settings["pie.show_legend"]) {
+  if (!settings["pie.show_legend"] || chartModel.slices.length <= 1) {
     return { legendHeight: 0, Legend: () => null };
   }
 
