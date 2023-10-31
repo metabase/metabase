@@ -25,8 +25,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
-            ViewLog]]
+    :refer [Card Collection Database PersistedInfo Pulse Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
