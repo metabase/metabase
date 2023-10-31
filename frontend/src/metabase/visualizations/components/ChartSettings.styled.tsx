@@ -44,18 +44,18 @@ export const SectionWarnings = styled(Warnings)`
 export const ChartSettingsRoot = styled.div`
   display: flex;
   flex-grow: 1;
-  overflow-y: auto;
+  height: 100%;
 `;
 
 export const ChartSettingsMenu = styled.div`
   flex: 1 0 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 `;
 
 export const ChartSettingsListContainer = styled.div`
   position: relative;
-  overflow-y: auto;
   padding: 2rem 0;
 `;
 

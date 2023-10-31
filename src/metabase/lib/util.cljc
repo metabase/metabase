@@ -114,7 +114,7 @@
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage.
    For the [:fields] location if only expressions remain, dissoc from stage."
-  [stage location target-clause]
+  [stage location target-clause stage-number]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (lib.options/uuid target-clause)
@@ -132,6 +132,7 @@
                         {:error ::cannot-remove-final-join-condition
                          :conditions (get-in stage location)
                          :join (get-in stage (pop location))
+                         :stage-number stage-number
                          :stage stage}))
 
         (= [:joins :fields] [first-loc last-loc])

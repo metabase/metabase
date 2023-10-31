@@ -20,7 +20,7 @@ import {
   createMockCard,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import ActionCreatorModal from "./ActionCreatorModal";
 

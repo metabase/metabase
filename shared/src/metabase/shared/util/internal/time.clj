@@ -325,19 +325,21 @@
   "Given a `n` `unit` time interval and the current date, return a string representing the date-time range.
    Provide an `offset-n` and `offset-unit` time interval to change the date used relative to the current date.
    `options` is a map and supports `:include-current` to include the current given unit of time in the range."
-  [n unit offset-n offset-unit {:keys [include-current]}]
-  (let [offset-now (cond-> (now)
-                     (neg? n) (apply-offset n unit)
-                     (and (pos? n) (not include-current)) (apply-offset 1 unit)
-                     (and offset-n offset-unit) (apply-offset offset-n offset-unit))
-        pos-n (cond-> (abs n)
-                include-current inc)
-        date-ranges (map (if (#{:hour :minute} unit)
-                           #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
-                           #(str (t/local-date %)))
-                         (common/to-range offset-now
-                                          {:unit unit
-                                           :n pos-n
-                                           :offset-n offset-n
-                                           :offset-unit offset-unit}))]
-    (apply format-diff date-ranges)))
+  ([n unit offset-n offset-unit opts]
+   (format-relative-date-range (now) n unit offset-n offset-unit opts))
+  ([t n unit offset-n offset-unit {:keys [include-current]}]
+   (let [offset-now (cond-> t
+                      (neg? n) (apply-offset n unit)
+                      (and (pos? n) (not include-current)) (apply-offset 1 unit)
+                      (and offset-n offset-unit) (apply-offset offset-n offset-unit))
+         pos-n (cond-> (abs n)
+                 include-current inc)
+         date-ranges (map (if (#{:hour :minute} unit)
+                            #(t/format "yyyy-MM-dd'T'HH:mm" (t/local-date-time %))
+                            #(str (t/local-date %)))
+                          (common/to-range offset-now
+                                           {:unit unit
+                                            :n pos-n
+                                            :offset-n offset-n
+                                            :offset-unit offset-unit}))]
+     (apply format-diff date-ranges))))

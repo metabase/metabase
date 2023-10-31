@@ -5,15 +5,19 @@ import {
   screen,
   within,
   waitForLoaderToBeRemoved,
+  waitFor,
 } from "__support__/ui";
 import {
+  setupCollectionsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
   createMockCollectionItem,
   createMockModelObject,
   createMockRecentItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -21,7 +25,7 @@ import {
 } from "metabase-types/store/mocks";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 const TEST_SEARCH_RESULTS: CollectionItem[] = [
   "Card ABC",
@@ -61,6 +65,8 @@ const setup = ({
 
   setupSearchEndpoints(searchResultItems);
   setupRecentViewsEndpoints(recentViewsItems);
+  setupUsersEndpoints([createMockUser()]);
+  setupCollectionsEndpoints({ collections: [] });
 
   const { history } = renderWithProviders(
     <Route path="*" component={SearchBar} />,
@@ -120,8 +126,18 @@ describe("SearchBar", () => {
       userEvent.click(getSearchBar());
       userEvent.type(getSearchBar(), "BC");
 
+      // wait for dropdown to open
+      await waitForLoaderToBeRemoved();
+
       const resultItems = await screen.findAllByTestId("search-result-item");
       expect(resultItems.length).toBe(2);
+
+      // wait for all of the elements of the search result to load
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("info-text-collection-loading-text"),
+        ).not.toBeInTheDocument();
+      });
 
       // There are two search results, each with a link to `Our analytics`,
       // so we want to navigate to the search result, then the collection link.
@@ -133,7 +149,7 @@ describe("SearchBar", () => {
         );
 
         expect(filteredElement).not.toBeUndefined();
-        expect(filteredElement).toHaveFocus();
+        expect(screen.getByText(cardName)).toHaveFocus();
 
         userEvent.tab();
 
@@ -159,6 +175,36 @@ describe("SearchBar", () => {
       });
 
       expect(getSearchBar()).toHaveValue("");
+    });
+  });
+
+  describe("persisting search filters", () => {
+    it("should keep URL search filters when changing the text query", () => {
+      const { history } = setup({
+        initialRoute: "/search?q=foo&type=card",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar&type=card");
+    });
+
+    it("should not keep URL search filters when not in the search app", () => {
+      const { history } = setup({
+        initialRoute: "/collection/root?q=foo&type=card&type=dashboard",
+      });
+
+      userEvent.clear(getSearchBar());
+      userEvent.type(getSearchBar(), "bar{enter}");
+
+      const location = history.getCurrentLocation();
+
+      expect(location.pathname).toEqual("search");
+      expect(location.search).toEqual("?q=bar");
     });
   });
 });
