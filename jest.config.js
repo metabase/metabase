@@ -17,7 +17,7 @@ const config = {
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
   },
   transformIgnorePatterns: [
-    "<rootDir>/node_modules/(?!rehype-external-links/)",
+    "<rootDir>/node_modules/(?!(rehype-external-links|hast.*|devlop|property-information|comma-separated-tokens|space-separated-tokens|vfile|vfile-message|html-void-elements|stringify-entities|character-entities-html4)/)",
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
