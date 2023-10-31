@@ -4,19 +4,23 @@ import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 // Example: "[\"dimension\",[\"field\",17,null]]"
 type StringifiedDimension = string;
 
+export interface ClickBehaviorParameterSource {
+  id: ParameterId | StringifiedDimension;
+  name: string;
+  type: "column" | "parameter";
+}
+
+export interface ClickBehaviorParameterTarget {
+  id: ParameterId | StringifiedDimension;
+  type: "parameter" | "dimension";
+}
+
 export type ClickBehaviorParameterMapping = Record<
   ParameterId | StringifiedDimension,
   {
     id: ParameterId | StringifiedDimension;
-    source: {
-      id: ParameterId | StringifiedDimension;
-      name: string;
-      type: "column" | "parameter";
-    };
-    target: {
-      id: ParameterId | StringifiedDimension;
-      type: "parameter" | "dimension";
-    };
+    source: ClickBehaviorParameterSource;
+    target: ClickBehaviorParameterTarget;
   }
 >;
 

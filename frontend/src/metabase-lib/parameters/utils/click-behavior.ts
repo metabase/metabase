@@ -3,6 +3,8 @@ import { getIn } from "icepick";
 
 import type {
   ClickBehavior,
+  ClickBehaviorParameterSource,
+  ClickBehaviorParameterTarget,
   Dashboard,
   DashboardCard,
   DatasetColumn,
@@ -251,8 +253,8 @@ export function clickBehaviorIsValid(
 }
 
 export function formatSourceForTarget(
-  source,
-  target,
+  source: ClickBehaviorParameterSource,
+  target: ClickBehaviorParameterTarget,
   { data, extraData, clickBehavior },
 ): string {
   const datum = data[source.type][source.id.toLowerCase()] || [];
@@ -310,7 +312,10 @@ function formatDateForParameterType(
   return value;
 }
 
-export function getTargetForQueryParams(target, { extraData, clickBehavior }) {
+export function getTargetForQueryParams(
+  target: ClickBehaviorParameterTarget,
+  { extraData, clickBehavior },
+) {
   if (target.type === "parameter") {
     const parameter = getParameter(target, { extraData, clickBehavior });
     return parameter && parameter.slug;
@@ -318,7 +323,10 @@ export function getTargetForQueryParams(target, { extraData, clickBehavior }) {
   return target.id;
 }
 
-function getParameter(target, { extraData, clickBehavior }) {
+function getParameter(
+  target: ClickBehaviorParameterTarget,
+  { extraData, clickBehavior },
+) {
   const parameterPath =
     clickBehavior.type === "crossfilter"
       ? ["dashboard", "parameters"]
