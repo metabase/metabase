@@ -7,19 +7,28 @@
 (deftest ^:parallel floor-to-test
   (are [x expected] (= expected
                        (#'lib.binning.util/floor-to 1.0 x))
-    1   1.0
-    1.1 1.0
-    1.8 1.0))
+    1    1.0
+    1.1  1.0
+    1.8  1.0
+    -1   -1.0
+    -1.1 -2.0
+    -1.8 -2.0))
 
 (deftest ^:parallel ceil-to-test
   (are [precision x expected] (= expected
                                  (#'lib.binning.util/ceil-to precision x))
-    1.0  1    1.0
-    1.0  1.1  2.0
-    1.0  1.8  2.0
-    15.0 1.0  15.0
-    15.0 15.0 15.0
-    15.0 16.0 30.0))
+    1.0  1     1.0
+    1.0  1.1   2.0
+    1.0  1.8   2.0
+    15.0 1.0   15.0
+    15.0 15.0  15.0
+    15.0 16.0  30.0
+    1.0  -1    -1.0
+    1.0  -1.1  -1.0
+    1.0  -1.8  -1.0
+    15.0 -1.0  -0.0
+    15.0 -15.0 -15.0
+    15.0 -16.0 -15.0))
 
 (deftest ^:parallel nicer-bin-width-test
   (are [min max num-bins expected] (= expected

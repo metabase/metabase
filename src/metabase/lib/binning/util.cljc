@@ -54,15 +54,13 @@
 
 (defn- ceil-to
   [precision x]
-  (let [scale (/ precision)]
-    (/  (math/ceil (* x scale)) scale)))
+  (* (math/ceil (/ x precision)) precision))
 
 (defn- floor-to
   [precision x]
-  (let [scale (/ precision)]
-    (/ (math/floor (* x scale)) scale)))
+  (* (math/floor (/ x precision)) precision))
 
-(def ^:private ^:const pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
+(def ^:private pleasing-numbers [1 1.25 2 2.5 3 5 7.5 10])
 
 (mu/defn nicer-bin-width :- ::lib.schema.binning/bin-width
   "Calculate the bin width we should use for `:num-bins` binning based on `min-value` and `max-value`, taken from a
