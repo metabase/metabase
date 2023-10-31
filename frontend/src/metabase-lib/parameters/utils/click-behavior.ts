@@ -61,9 +61,9 @@ export function getDataFromClicked({
     parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
     userAttributes?: UserAttribute[] | null;
   };
-  dimensions: DimensionType[];
-  data: (ClickObjectDataRow & {
-    clickBehaviorValue: ClickObjectDataRow["value"];
+  dimensions?: DimensionType[];
+  data?: (ClickObjectDataRow & {
+    clickBehaviorValue?: ClickObjectDataRow["value"];
   })[];
 }): ValueAndColumnForColumnNameDate {
   const column = [
