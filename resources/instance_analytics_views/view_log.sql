@@ -2,7 +2,7 @@ drop view if exists v_view_log;
 
 create or replace view v_view_log as
 (
-SELECT
+select
     id,
     timestamp,
     user_id,
@@ -10,5 +10,5 @@ SELECT
     model_id as entity_id,
     (model || '_' || model_id) as entity_qualified_id,
     metadata as details
-FROM view_log
+from view_log
 )
