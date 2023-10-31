@@ -309,22 +309,22 @@ function getDefaultInstanceData() {
 
   cy.request("/api/collection").then(({ body: collections }) => {
     instanceData.collections = collections;
-  });
 
-  instanceData.dashboards = [];
-  for (const collection of instanceData.collections) {
-    cy.request(`/api/collection/${collection.id}/items?model=dashboard`).then(
-      ({ body: { data: dashboards } }) => {
+    instanceData.dashboards = [];
+    for (const collection of collections) {
+      cy.request(
+        `/api/collection/${collection.id}/items?models=dashboard`,
+      ).then(({ body: { data: dashboards } }) => {
         for (const dashboard of dashboards) {
-          cy.request(`/api/dashboard/${dashboard.id}`).then(
-            ({ body: fullDashboard }) => {
-              instanceData.dashboards.push(fullDashboard);
-            },
-          );
+          if (!instanceData.dashboards.find(d => d.id === dashboard.id)) {
+            cy.request(`/api/dashboard/${dashboard.id}`).then(response => {
+              instanceData.dashboards.push(response.body);
+            });
+          }
         }
-      },
-    );
-  }
+      });
+    }
+  });
 
   return instanceData;
 }
