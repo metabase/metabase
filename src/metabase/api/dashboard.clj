@@ -403,49 +403,6 @@
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(api/defendpoint PUT "/:id"
-  "Update a Dashboard.
-
-  Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
-  permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
-  superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl]
-            :as dash-updates} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   description             [:maybe :string]
-   caveats                 [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]
-   enable_embedding        [:maybe :boolean]
-   embedding_params        [:maybe ms/EmbeddingParams]
-   parameters              [:maybe [:sequential ms/Parameter]]
-   position                [:maybe ms/PositiveInt]
-   archived                [:maybe :boolean]
-   collection_id           [:maybe ms/PositiveInt]
-   collection_position     [:maybe ms/PositiveInt]
-   cache_ttl               [:maybe ms/PositiveInt]}
-  (let [dash-before-update (api/write-check :model/Dashboard id)]
-    ;; Do various permissions checks as needed
-    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
-    (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (t2/with-transaction [_conn]
-      ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-      ;; adjust the collection position of other dashboards in the collection
-      (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
-      ;; non-nil
-      (when-let [updates (not-empty (u/select-keys-when dash-updates
-                                                        :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                                   :embedding_params :archived :auto_apply_filters}))]
-        (t2/update! Dashboard id updates))))
-  ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal])]
-    (events/publish-event! :event/dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
-    (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
-
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
@@ -630,62 +587,79 @@
     (events/publish-event! :event/dashboard-update-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids updated-tab-ids})))
 
-(api/defendpoint PUT "/:id/cards"
-  "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
-
-    {:cards        [{:id                 ... ; DashboardCard ID
-                     :size_x             ...
-                     :size_y             ...
-                     :row                ...
-                     :col                ...
-                     :parameter_mappings ...
-                     :series             [{:id 123
-                                           ...}]}
-                     ...]
-     :tabs [{:id       ... ; DashboardTab ID
-                     :name     ...}]}"
-  [id :as {{:keys [cards tabs]} :body}]
-  {id           ms/PositiveInt
-   cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
-   ;; tabs should be required in production, making it optional because lots of
-   ;; e2e tests curerntly doesn't include it
-   tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+(api/defendpoint PUT "/:id"
+  "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
+  structure as the response from `GET /api/dashboard/:id`."
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+                   embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
+            :as dash-updates} :body}]
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   enable_embedding        [:maybe :boolean]
+   embedding_params        [:maybe ms/EmbeddingParams]
+   parameters              [:maybe [:sequential ms/Parameter]]
+   position                [:maybe ms/PositiveInt]
+   archived                [:maybe :boolean]
+   collection_id           [:maybe ms/PositiveInt]
+   collection_position     [:maybe ms/PositiveInt]
+   cache_ttl               [:maybe ms/PositiveInt]
+   dashcards               [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
+   tabs                    [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
                       (t2/hydrate [:dashcards :series :card] :tabs))
+        dash-before-update dashboard
         new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) tabs)]
+    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
+    (check-allowed-to-change-embedding dash-before-update dash-updates)
     (when (and (seq (:tabs dashboard))
-               (not (every? #(some? (:dashboard_tab_id %)) cards)))
+               (not (every? #(some? (:dashboard_tab_id %)) dashcards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
     (api/check-500
-      (let [changes-stats (atom nil)]
-        (t2/with-transaction [_conn]
-          (let [{:keys [old->new-tab-id
-                        deleted-tab-ids]
-                 :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
-                deleted-tab-ids          (set deleted-tab-ids)
-                current-cards            (cond->> (:dashcards dashboard)
-                                           (seq deleted-tab-ids)
-                                           (remove (fn [card]
-                                                     (contains? deleted-tab-ids (:dashboard_tab_id card)))))
-                new-cards                (cond->> cards
+     (let [changes-stats (atom nil)]
+       (t2/with-transaction [_conn]
+         ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+         ;; adjust the collection position of other dashboards in the collection
+         (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+         ;; non-nil
+         (when-let [updates (not-empty (u/select-keys-when dash-updates
+                                                           :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                                           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                                      :embedding_params :archived :auto_apply_filters}))]
+           (t2/update! Dashboard id updates))
+         (let [{:keys [old->new-tab-id
+                       deleted-tab-ids]
+                :as tabs-changes-stats} (dashboard-tab/do-update-tabs! (:id dashboard) (:tabs dashboard) new-tabs)
+               deleted-tab-ids          (set deleted-tab-ids)
+               current-cards            (cond->> (:dashcards dashboard)
+                                          (seq deleted-tab-ids)
+                                          (remove (fn [dashcard]
+                                                    (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))))
+               new-cards                (cond->> dashcards
                                            ;; fixup the temporary tab ids with the real ones
-                                           (seq old->new-tab-id)
-                                           (map (fn [card]
-                                                  (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
-                                                    (assoc card :dashboard_tab_id real-tab-id)
-                                                    card))))
-                dashcards-changes-stats  (do-update-dashcards! dashboard current-cards new-cards)]
-            (reset! changes-stats
-                    (merge
-                      (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
-                      (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
+                                          (seq old->new-tab-id)
+                                          (map (fn [card]
+                                                 (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
+                                                   (assoc card :dashboard_tab_id real-tab-id)
+                                                   card))))
+               _ (sc.api/spy)
+               dashcards-changes-stats  (do-update-dashcards! dashboard current-cards new-cards)]
+           (reset! changes-stats
+                   (merge
+                    (select-keys tabs-changes-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids :total-num-tabs])
+                    (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards :updated-dashcards])))))
         ;; trigger events out of tx so rows are committed and visible from other threads
-        (track-dashcard-and-tab-events!  id @changes-stats)
-        true))
-   {:cards (t2/hydrate (dashboard/dashcards id) :series)
-    :tabs  (dashboard/tabs id)}))
+       (track-dashcard-and-tab-events! id @changes-stats)
+       true))
+    (u/prog1 (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal] :dashcards :tabs)
+             (events/publish-event! :event/dashboard-update (assoc <> :actor_id api/*current-user-id*))
+             (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."

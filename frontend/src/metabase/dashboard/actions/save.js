@@ -5,14 +5,13 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { DashboardApi, CardApi } from "metabase/services";
+import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { getDashboardBeforeEditing } from "../selectors";
 
 import { fetchDashboard } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
-import { saveCardsAndTabs } from "./tabs";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
   "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
@@ -93,10 +92,9 @@ export const updateDashboardAndCards = createThunkAction(
           .map(async dc => CardApi.update(dc.card)),
       );
 
-      const dashcardsToUpdate = dashboard.dashcards.filter(dc => !dc.isRemoved);
-      const updateCardsAndTabs = DashboardApi.updateCardsAndTabs({
-        dashId: dashboard.id,
-        cards: dashcardsToUpdate.map(dc => ({
+      const dashcardsToUpdate = dashboard.dashcards
+        .filter(dc => !dc.isRemoved)
+        .map(dc => ({
           id: dc.id,
           card_id: dc.card_id,
           dashboard_tab_id: dc.dashboard_tab_id,
@@ -108,24 +106,20 @@ export const updateDashboardAndCards = createThunkAction(
           series: dc.series,
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
-        })),
-        tabs: (dashboard.tabs ?? [])
-          .filter(tab => !tab.isRemoved)
-          .map(({ id, name }) => ({
-            id,
-            name,
-          })),
-      });
-
-      updateCardsAndTabs.then(updatedCardsAndTabs => {
-        dispatch(saveCardsAndTabs(updatedCardsAndTabs));
-      });
-
-      // Make two parallel requests: one to update the dashboard and another for the dashcards and tabs
-      await Promise.all([
-        updateCardsAndTabs,
-        dispatch(Dashboards.actions.update(dashboard)),
-      ]);
+        }));
+      const tabsToUpdate = (dashboard.tabs ?? [])
+        .filter(tab => !tab.isRemoved)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }));
+      await dispatch(
+        Dashboards.actions.update({
+          ...dashboard,
+          dashcards: dashcardsToUpdate,
+          tabs: tabsToUpdate,
+        }),
+      );
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
