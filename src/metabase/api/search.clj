@@ -113,16 +113,11 @@
   (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
         collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
                                   collection-id-column
-                                  visible-collections)
-        honeysql-query           (cond-> honeysql-query
-                                   true
-                                   (sql.helpers/where collection-filter-clause [:= :collection.namespace nil])
-
-                                   (some? filter-items-in-personal-collection)
-                                   identity)]
-
-    ;; add a JOIN against Collection *unless* the source table is already Collection
+                                  visible-collections)]
     (cond-> honeysql-query
+      true
+      (sql.helpers/where  collection-filter-clause [:= :collection.namespace nil])
+      ;; add a JOIN against Collection *unless* the source table is already Collection
       (not= collection-id-column :collection.id)
       (sql.helpers/left-join [:collection :collection]
                              [:= collection-id-column :collection.id])
@@ -143,8 +138,7 @@
          "exclude"
          (conj [:or]
                (into
-                ;; TODO add test for this case, why test wasn't failed before?
-                [:and [:= :collection.personal_owner_id nil]]
+                [:and #_[:= :collection.personal_owner_id nil]]
                 (for [id (t2/select-pks-set :model/Collection :personal_owner_id [:not= nil])]
                   [:not-like :collection.location (format "/%d/%%" id)]))
                [:= collection-id-column nil]))))))
