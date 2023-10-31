@@ -12,6 +12,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.context.default :as qp.context.default]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit
     :as qp.add-default-temporal-unit]
@@ -95,9 +96,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s]
    [metabase.util.malli :as mu]
-   [metabase.query-processor.context.default :as qp.context.default]))
+   [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -388,7 +388,7 @@
     #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 
-(def ^{:arglists '([query] [query context] [query rff context])} process-userland-query-async
+(def ^{:arglists '([query] [query context] [query rff context])} ^:private process-userland-query-async
   "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (base-qp userland-middleware))
 
