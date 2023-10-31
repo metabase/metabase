@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.seed-entity-ids-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.seed-entity-ids
