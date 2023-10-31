@@ -237,6 +237,14 @@
       (doseq [update-card to-update]
         (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
 
+(defn- remove-invalid-dashcards
+  "Given a list of dashcards, remove any dashcard that link to cards that are either archived or not exist."
+  [dashcards]
+  (let [cards-ids       (remove nil? (map :card_id dashcards))
+        active-card-ids (when-let [card-ids (seq cards-ids)]
+                          (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))]
+    (filter #(or (nil? (:card_id %)) (contains? active-card-ids (:card_id %))) dashcards)))
+
 (defmethod revision/revert-to-revision! :model/Dashboard
   [_model dashboard-id _user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
@@ -247,6 +255,8 @@
                                                     :model/DashboardTab :dashboard_id dashboard-id)
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
         serialized-cards          (cond->> serialized-cards
+                                    true
+                                    remove-invalid-dashcards
                                     ;; in case reverting result in new tabs being created,
                                     ;; we need to remap the tab-id
                                     (seq old->new-tab-id)
