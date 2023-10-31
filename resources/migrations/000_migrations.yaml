@@ -15098,6 +15098,20 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v47.00-058
+      author: qnkhuat
+      comment: 'Drop parameter_card.entity_id'
+      changes:
+        - dropColumn:
+            tableName: parameter_card
+            columnName: entity_id
+      rollback:
+        - sql:
+            sql: >-
+                ALTER TABLE parameter_card
+                ADD COLUMN IF NOT EXISTS entity_id CHAR(21) NULL;
+
+  - changeSet:
       id: v48.00-001
       author: qnkhuat
       comment: Added 0.47.0 - Migrate database.options to database.settings
@@ -15529,7 +15543,13 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-027
       author: qnkhuat
+      validCheckSum: ANY
       comment: 'Drop parameter_card.entity_id'
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: parameter_card
+            columnName: entity_id
       changes:
         - dropColumn:
             tableName: parameter_card
