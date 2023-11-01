@@ -15726,14 +15726,14 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-032
       author: noahmoss
-      comment: Added 0.48.0 - new view v_alerts_subscriptions
+      comment: Added 0.48.0 - new view v_subscriptoins
       changes:
         - sqlFile:
             path: instance_analytics_views/subscriptions/v1/subscriptions.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_alerts_subscriptions;
+            sql: drop view if exists v_subscriptoins;
 
   - changeSet:
       id: v48.00-033
@@ -15746,6 +15746,78 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: drop view if exists v_users;
+
+  - changeSet:
+      id: v48.00-035
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_alerts
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v1/alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_alerts;
+
+  - changeSet:
+      id: v48.00-036
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_databases
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/databases/v1/databases.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_databases;
+
+  - changeSet:
+      id: v48.00-037
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_fields
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/fields/v1/fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_fields;
+
+  - changeSet:
+      id: v48.00-038
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_query_log
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v1/query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_query_log;
+
+  - changeSet:
+      id: v48.00-039
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_tables
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tables/v1/tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_tables;
+
+  - changeSet:
+      id: v48.00-040
+      author: noahmoss
+      comment: Added 0.48.0 - new view v_view_log
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v1/view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_view_log;
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

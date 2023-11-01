@@ -1,7 +1,9 @@
 drop view if exists v_users;
-create view v_users as
+
+create or replace view v_users as
 select
     id as user_id,
+    concat('user_', id) as entity_qualified_id,
     email,
     first_name,
     last_name,
@@ -13,4 +15,4 @@ select
     is_active,
     sso_source,
     locale
-    from core_user;
+    from core_user

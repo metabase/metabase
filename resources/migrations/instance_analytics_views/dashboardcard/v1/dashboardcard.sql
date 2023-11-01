@@ -1,23 +1,16 @@
 drop view if exists v_dashboardcard;
-create view v_dashboardcard AS
+
+create or replace view v_dashboardcard AS
 select
-    concat('dashboardcard_', id) as id,
-    concat('dashboard_', dashboard_id) as dashboard_id,
-    case
-        when dashboard_tab_id is not null
-        then concat('dashboardtab_', dashboard_tab_id)
-        end as dashboardtab_id,
-    case
-        when card_id is not null
-        then concat('question_', card_id)
-        end as question_id,
+    id as entity_id,
+    'dashboardcard_' || id as entity_qualified_id,
+    'dashboard_' || dashboard_id as dashboard_qualified_id,
+    'dashboardtab_' || dashboard_tab_id as dashboardtab_id,
+    'card_' || card_id as card_qualified_id,
     created_at,
     updated_at,
     size_x,
     size_y,
-    row,
-    col,
     visualization_settings,
     parameter_mappings
 from report_dashboardcard
-order by dashboard_id;
