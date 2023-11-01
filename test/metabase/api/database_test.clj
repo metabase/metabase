@@ -447,8 +447,8 @@
             "A db update occured")
         (let [audit-log-entry (mt/latest-audit-log-entry)]
           (is (partial=
-               {:previous {:name "Original Database Name"}
-                :new      {:name "Updated Database Name"}}
+               {:previous-value {:name "Original Database Name"}
+                :new-value      {:name "Updated Database Name"}}
                (:details audit-log-entry))))))))
 
 (deftest disallow-updating-h2-database-details-test
