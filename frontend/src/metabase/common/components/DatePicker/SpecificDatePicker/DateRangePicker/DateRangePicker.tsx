@@ -29,10 +29,13 @@ export function DateRangePicker({
   );
   const [hasEndDate, setHasEndDate] = useState(true);
 
-  const handleRangeChange = ([startDate, endDate]: DatesRangeValue) => {
-    setHasEndDate(endDate != null);
-    if (startDate && endDate) {
-      onChange([startDate, endDate]);
+  const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
+    setHasEndDate(newEndDate != null);
+    if (newStartDate && newEndDate) {
+      onChange([
+        setDatePart(startDate, newStartDate),
+        setDatePart(endDate, newEndDate),
+      ]);
     }
   };
 
