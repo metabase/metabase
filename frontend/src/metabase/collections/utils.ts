@@ -24,8 +24,9 @@ export function isInstanceAnalyticsCollection(
   collection: Partial<Collection>,
 ): boolean {
   return (
+    collection &&
     PLUGIN_COLLECTIONS.getCollectionType(collection).type ===
-    "instance-analytics"
+      "instance-analytics"
   );
 }
 
