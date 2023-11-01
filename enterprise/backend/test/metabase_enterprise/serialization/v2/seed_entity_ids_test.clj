@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.seed-entity-ids
     :as v2.seed-entity-ids]
-   [metabase.config :as config]
    [metabase.models :refer [Collection]]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
