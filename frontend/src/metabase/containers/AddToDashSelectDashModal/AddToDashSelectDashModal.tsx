@@ -92,6 +92,7 @@ const AddToDashSelectDashModal = ({
   if (shouldCreateDashboard) {
     return (
       <CreateDashboardModal
+        showOnlyPersonalCollections={isQuestionInPersonalCollection}
         collectionId={card.collection_id}
         onCreate={navigateToDashboard}
         onClose={() => setShouldCreateDashboard(false)}

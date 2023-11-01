@@ -33,6 +33,7 @@ export interface FormCollectionPickerProps
   type?: "collections" | "snippet-collections";
   initialOpenCollectionId?: CollectionId;
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  showOnlyPersonalCollections?: boolean;
 }
 
 function ItemName({
@@ -58,6 +59,7 @@ function FormCollectionPicker({
   type = "collections",
   initialOpenCollectionId,
   onOpenCollectionChange,
+  showOnlyPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -120,18 +122,20 @@ function FormCollectionPicker({
             onOpenCollectionChange?.(id);
             setOpenCollectionId(id);
           }}
+          showOnlyPersonalCollections={showOnlyPersonalCollections}
         >
           <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
         </PopoverItemPicker>
       );
     },
     [
-      value,
       type,
+      value,
       width,
-      setValue,
       initialOpenCollectionId,
+      showOnlyPersonalCollections,
       openCollectionId,
+      setValue,
       onOpenCollectionChange,
     ],
   );
