@@ -74,7 +74,7 @@ describe("SingleDatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15, 10, 20));
   });
 
-  it("should allow to add time", () => {
+  it("should be able to add time", () => {
     const { onChange } = setup();
 
     userEvent.click(screen.getByText("Add time"));
@@ -85,7 +85,7 @@ describe("SingleDatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10, 10, 20));
   });
 
-  it("should allow to update the time", () => {
+  it("should be able to update the time", () => {
     const { onChange } = setup({
       value: DATE_TIME,
     });
@@ -97,7 +97,7 @@ describe("SingleDatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 0, 10, 20, 30));
   });
 
-  it("should allow to remove time", () => {
+  it("should be able to remove time", () => {
     const { onChange } = setup({
       value: DATE_TIME,
     });

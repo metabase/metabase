@@ -121,4 +121,60 @@ describe("SingleDatePicker", () => {
       new Date(2020, 6, 15, 20, 30),
     ]);
   });
+
+  it("should be able to add time", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Add time"));
+    const input = screen.getByLabelText("Start time");
+    userEvent.clear(input);
+    userEvent.type(input, "11:20");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      new Date(2020, 0, 10, 11, 20),
+      END_DATE,
+    ]);
+  });
+
+  it("should be able to update the start time", () => {
+    const { onChange } = setup({
+      value: [START_DATE_TIME, END_DATE_TIME],
+    });
+
+    const input = screen.getByLabelText("Start time");
+    userEvent.clear(input);
+    userEvent.type(input, "11:20");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      new Date(2020, 0, 10, 11, 20),
+      END_DATE_TIME,
+    ]);
+  });
+
+  it("should be able to update the end time", () => {
+    const { onChange } = setup({
+      value: [START_DATE_TIME, END_DATE_TIME],
+    });
+
+    const input = screen.getByLabelText("End time");
+    userEvent.clear(input);
+    userEvent.type(input, "11:20");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      START_DATE_TIME,
+      new Date(2020, 1, 9, 11, 20),
+    ]);
+  });
+
+  it("should be able to remove time", () => {
+    const { onChange } = setup({
+      value: [START_DATE_TIME, END_DATE_TIME],
+    });
+
+    userEvent.click(screen.getByText("Remove time"));
+
+    expect(screen.queryByLabelText("Start time")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("End time")).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith([START_DATE, END_DATE]);
+  });
 });
