@@ -3,7 +3,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { SingleDatePicker } from "./SingleDatePicker";
 
 const DATE = new Date(2020, 0, 10);
-const DATETIME = new Date(2020, 0, 10, 10, 20);
+const DATE_TIME = new Date(2020, 0, 10, 10, 20);
 
 interface SetupOpts {
   value?: Date;
@@ -42,7 +42,7 @@ describe("SingleDatePicker", () => {
 
   it("should be able to set the date via the calendar when there is time", () => {
     const { onChange } = setup({
-      value: DATETIME,
+      value: DATE_TIME,
     });
 
     userEvent.click(screen.getByText("12"));
@@ -63,7 +63,7 @@ describe("SingleDatePicker", () => {
 
   it("should be able to set the date via the input when there is time", () => {
     const { onChange } = setup({
-      value: DATETIME,
+      value: DATE_TIME,
     });
 
     const input = screen.getByLabelText("Date");
@@ -87,7 +87,7 @@ describe("SingleDatePicker", () => {
 
   it("should allow to update the time", () => {
     const { onChange } = setup({
-      value: DATETIME,
+      value: DATE_TIME,
     });
 
     const input = screen.getByLabelText("Time");
@@ -99,7 +99,7 @@ describe("SingleDatePicker", () => {
 
   it("should allow to remove time", () => {
     const { onChange } = setup({
-      value: DATETIME,
+      value: DATE_TIME,
     });
 
     userEvent.click(screen.getByText("Remove time"));

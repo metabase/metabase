@@ -38,7 +38,7 @@ describe("SingleDatePicker", () => {
     jest.setSystemTime(new Date(2020, 0, 15));
   });
 
-  it("should be able to set the date via the calendar", () => {
+  it("should be able to set the date range via the calendar", () => {
     const { onChange } = setup();
 
     const calendars = screen.getAllByRole("table");
@@ -51,7 +51,7 @@ describe("SingleDatePicker", () => {
     ]);
   });
 
-  it("should be able to set the date via the calendar when there is time", () => {
+  it("should be able to set the date range via the calendar when there is time", () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });
@@ -60,9 +60,65 @@ describe("SingleDatePicker", () => {
     userEvent.click(within(calendars[0]).getByText("12"));
     userEvent.click(within(calendars[1]).getByText("5"));
 
-    expect(onChange).toHaveBeenCalledWith([
+    expect(onChange).toHaveBeenLastCalledWith([
       new Date(2020, 0, 12, 5, 20),
       new Date(2020, 1, 5, 20, 30),
+    ]);
+  });
+
+  it("should be able to set the date range start via the input", () => {
+    const { onChange } = setup();
+
+    const input = screen.getByLabelText("Start date");
+    userEvent.clear(input);
+    userEvent.type(input, "Feb 15, 2020");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      new Date(2020, 1, 15),
+      END_DATE,
+    ]);
+  });
+
+  it("should be able to set the date range start via the input when there is time", () => {
+    const { onChange } = setup({
+      value: [START_DATE_TIME, END_DATE],
+    });
+
+    const input = screen.getByLabelText("Start date");
+    userEvent.clear(input);
+    userEvent.type(input, "Feb 15, 2020");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      new Date(2020, 1, 15, 5, 20),
+      END_DATE,
+    ]);
+  });
+
+  it("should be able to set the date range end via the input", () => {
+    const { onChange } = setup();
+
+    const input = screen.getByLabelText("End date");
+    userEvent.clear(input);
+    userEvent.type(input, "Jul 15, 2020");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      START_DATE,
+      new Date(2020, 6, 15),
+    ]);
+  });
+
+  it("should be able to set the date range end via the input when there is time", () => {
+    const { onChange } = setup({
+      value: [START_DATE, END_DATE_TIME],
+    });
+
+    const input = screen.getByLabelText("End date");
+    userEvent.clear(input);
+    userEvent.type(input, "Jul 15, 2020");
+
+    expect(onChange).toHaveBeenLastCalledWith([
+      START_DATE,
+      new Date(2020, 6, 15, 20, 30),
     ]);
   });
 });
