@@ -1,6 +1,6 @@
 description: Metrics around active users, content generation, views.
 archived: false
-collection_position: 3
+collection_position: 1
 dashcards:
 - size_x: 6
   dashboard_tab_id: null

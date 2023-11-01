@@ -1,6 +1,6 @@
 description: Each row is a dashboard card. Can be a question or a text card.
 archived: false
-collection_position: 10
+collection_position: 14
 table_id:
 - Internal Metabase Database
 - public
@@ -53,24 +53,24 @@ result_metadata:
 - description: null
   semantic_type: type/FK
   coercion_strategy: null
-  name: dashboard_id
+  name: dashboard_qualified_id
   settings: null
-  fk_target_field_id: 919
+  fk_target_field_id: 1484
   field_ref:
   - field
   - - Internal Metabase Database
     - public
     - v_dashboardcard
-    - dashboard_id
+    - dashboard_qualified_id
   - base-type: type/Text
   effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_dashboardcard
-  - dashboard_id
+  - dashboard_qualified_id
   visibility_type: normal
-  display_name: Dashboard ID
+  display_name: Dashboard Qualified ID
   base_type: type/Text
 - description: null
   semantic_type: null
@@ -97,24 +97,24 @@ result_metadata:
 - description: null
   semantic_type: type/FK
   coercion_strategy: null
-  name: question_id
+  name: card_qualified_id
   settings: null
-  fk_target_field_id: 919
+  fk_target_field_id: 1484
   field_ref:
   - field
   - - Internal Metabase Database
     - public
     - v_dashboardcard
-    - question_id
+    - card_qualified_id
   - base-type: type/Text
   effective_type: type/Text
   id:
   - Internal Metabase Database
   - public
   - v_dashboardcard
-  - question_id
+  - card_qualified_id
   visibility_type: normal
-  display_name: Question ID
+  display_name: Card Qualified ID
   base_type: type/Text
 - description: null
   semantic_type: type/CreationTimestamp
@@ -212,7 +212,7 @@ database_id: Internal Metabase Database
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn
 query_type: query
-name: Dashboard Cards
+name: Dashboard cards
 creator_id: internal@metabase.com
 made_public_by_id: null
 embedding_params: null
@@ -242,7 +242,7 @@ dataset_query:
       - - Internal Metabase Database
         - public
         - v_dashboardcard
-        - dashboard_id
+        - dashboard_qualified_id
       - base-type: type/Text
     - - field
       - - Internal Metabase Database
@@ -254,7 +254,7 @@ dataset_query:
       - - Internal Metabase Database
         - public
         - v_dashboardcard
-        - question_id
+        - card_qualified_id
       - base-type: type/Text
     - - field
       - - Internal Metabase Database

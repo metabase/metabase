@@ -1,6 +1,6 @@
 description: null
 database_type: text
-semantic_type: null
+semantic_type: type/FK
 table_id:
 - Internal Metabase Database
 - public
@@ -10,7 +10,11 @@ name: tracked_qualified_id
 has_field_values: auto-list
 settings: null
 caveats: null
-fk_target_field_id: null
+fk_target_field_id:
+- Internal Metabase Database
+- public
+- v_content
+- entity_qualified_id
 dimensions: []
 custom_position: 0
 effective_type: type/Text

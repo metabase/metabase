@@ -92,7 +92,7 @@ dataset_query:
         - v_audit_log
         - topic
       - base-type: type/Text
-    - question-create
+    - card-create
 parameter_mappings: []
 serdes/meta:
 - model: Card
