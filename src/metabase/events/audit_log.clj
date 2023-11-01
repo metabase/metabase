@@ -6,8 +6,7 @@
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [metabase.models.user :as user]))
+   [toucan2.core :as t2]))
 
 (derive ::event :metabase/event)
 

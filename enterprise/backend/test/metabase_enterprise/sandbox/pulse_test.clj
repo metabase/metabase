@@ -138,7 +138,6 @@
                                :filters    []}}
                    (audit-log-test/event :alert-send)))))))))
 
-
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"
     (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues
