@@ -437,6 +437,7 @@
             (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
+<<<<<<< HEAD
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (t2.with-temp/with-temp [Database {db-id :id}]
@@ -450,6 +451,23 @@
                   :new-value      {:name "Updated Database Name"}}
                  (:details audit-log-entry))))))))
 
+||||||| 3e57230b1c
+=======
+(deftest update-database-audit-log-test
+  (testing "Check that we get audit log entries that match the db when updating a Database"
+    (t2.with-temp/with-temp [Database {db-id :id}]
+      (with-redefs [driver/can-connect? (constantly true)]
+        (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
+            "A db update occured")
+        (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
+            "A db update occured")
+        (let [audit-log-entry (mt/latest-audit-log-entry)]
+          (is (partial=
+               {:previous {:name "Original Database Name"}
+                :new      {:name "Updated Database Name"}}
+               (:details audit-log-entry))))))))
+
+>>>>>>> 9783b8b58979b3fc6339e5d78becf8f3f2bb0763
 (deftest disallow-updating-h2-database-details-test
   (testing "PUT /api/database/:id"
     (letfn [(update! [db request-body]

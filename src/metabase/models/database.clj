@@ -49,6 +49,7 @@
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
 
+<<<<<<< HEAD
 (defn- should-read-audit-db?
   "Audit Database should only be fetched if audit app is enabled."
   [database-id]
@@ -64,6 +65,32 @@
      false
      (mi/current-user-has-partial-permissions? :read model pk))))
 
+||||||| 3e57230b1c
+=======
+(defn- should-read-audit-db?
+  "Audit Database should only be fetched if audit app is enabled."
+  [database-id]
+  (and (not (premium-features/enable-audit-app?)) (= database-id (perms/default-audit-db-id))))
+
+(defmethod mi/can-read? Database
+  ([instance]
+   (if (should-read-audit-db? (:id instance))
+     false
+     (mi/current-user-has-partial-permissions? :read instance)))
+  ([model pk]
+   (if (should-read-audit-db? pk)
+     false
+     (mi/current-user-has-partial-permissions? :read model pk))))
+
+(defmethod mi/can-write? :model/Database
+  ([instance]
+   (and (not= (u/the-id instance) (perms/default-audit-db-id))
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
+  ([model pk]
+   (and (not= pk (perms/default-audit-db-id))
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
+
+>>>>>>> 9783b8b58979b3fc6339e5d78becf8f3f2bb0763
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
@@ -383,7 +410,15 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
+<<<<<<< HEAD
 
 (defmethod audit-log/model-details :model/Database
   [database _event-type]
   (select-keys database [:id :name :engine]))
+||||||| 3e57230b1c
+=======
+
+(defmethod audit-log/model-details Database
+  [database _event-type]
+  (select-keys database [:id :name :engine]))
+>>>>>>> 9783b8b58979b3fc6339e5d78becf8f3f2bb0763

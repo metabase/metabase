@@ -1229,6 +1229,7 @@
     (testing "Check that non-superusers are denied access to resending invites"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 (format "user/%d/send_invite" (mt/user->id :crowberto))))))))
+<<<<<<< HEAD
 
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
@@ -1264,3 +1265,43 @@
                 :details  {:previous-value {:common_name "John Cena", :last_name "Cena", :first_name "John"},
                            :new-value {:common_name "Johnny Appleseed", :last_name "Appleseed", :first_name "Johnny"}}}
                (audit-log-test/event :user-update id)))))))
+||||||| 3e57230b1c
+=======
+
+(deftest user-activate-deactivate-event-test
+  (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+          (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
+            (mt/user-http-request :crowberto :delete 200 (format "user/%s" id))
+            (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" id))
+            (is (= [{:topic    :user-deactivated
+                     :user_id  (mt/user->id :crowberto)
+                     :model    "User"
+                     :model_id id
+                     :details  {}}
+                    {:topic    :user-reactivated
+                     :user_id  (mt/user->id :crowberto)
+                     :model    "User"
+                     :model_id id
+                     :details  {}}]
+                   [(audit-log-test/event :user-deactivated id)
+                    (audit-log-test/event :user-reactivated id)])))))))
+
+(deftest user-update-event-test
+  (testing "User Updates via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog]
+      (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
+                                                  :last_name  "Cena"}]
+          (testing "PUT /api/user/:id"
+            (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
+                                  {:first_name "Johnny" :last_name "Appleseed"})
+            (is (= {:topic    :user-update
+                    :user_id  (mt/user->id :crowberto)
+                    :model    "User"
+                    :model_id id
+                    :details  {:first_name "Johnny"
+                               :last_name "Appleseed"}}
+                   (audit-log-test/event :user-update id))))))))
+>>>>>>> 9783b8b58979b3fc6339e5d78becf8f3f2bb0763
