@@ -1,23 +1,19 @@
 description: null
 database_type: int4
-semantic_type: type/FK
+semantic_type: type/Category
 table_id:
 - Internal Metabase Database
 - public
 - v_alerts_subscriptions
 coercion_strategy: null
 name: collection_id
-has_field_values: null
+has_field_values: auto-list
 settings: null
 caveats: null
-fk_target_field_id:
-- Internal Metabase Database
-- public
-- v_content
-- id
+fk_target_field_id: null
 dimensions: []
 custom_position: 0
-effective_type: type/Text
+effective_type: type/Integer
 active: true
 nfc_path: null
 parent_id: null
