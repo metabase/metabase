@@ -41,11 +41,13 @@ const BABEL_CONFIG = {
 };
 
 const CSS_CONFIG = {
-  localIdentName: devMode
+  importLoaders: 1,
+  modules: {
+    mode: 'global',
+    localIdentName: devMode
     ? "[name]__[local]___[hash:base64:5]"
     : "[hash:base64:5]",
-  importLoaders: 1,
-  modules: 'global'
+  }
 };
 
 const config = (module.exports = {
