@@ -1,9 +1,5 @@
 (ns metabase.query-processor.context
-  "Interface for the QP context/utility functions for using the things in the context correctly.
-
-  The default implementations of all these functions live in [[metabase.query-processor.context.default]]; refer to
-  those when overriding individual functions. Some wiring for the [[clojure.core.async]] channels takes place in
-  [[metabase.query-processor.reducible]]."
+  "Interface for the QP context/utility functions for using the things in the context correctly."
   (:require
    [clojure.core.async :as a]
    [metabase.async.util :as async.u]
@@ -261,6 +257,8 @@
         (resultf ::timed-out context)))
     chan))
 
+;; TODO -- rename to [[context]] or [[default-context]] or something that makes it clearer this will not turn an async
+;; context back into a sync one.
 (mu/defn sync-context :- ::context
   ([]
    (sync-context nil))

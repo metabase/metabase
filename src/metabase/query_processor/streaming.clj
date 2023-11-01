@@ -4,7 +4,6 @@
    [metabase.async.streaming-response :as streaming-response]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
@@ -143,13 +142,16 @@
       (let [{:keys [rff context]} (qp.streaming/streaming-context-and-rff :csv os canceled-chan)]
         (qp/process-query query rff context)))"
   ([export-format os]
-   (let [results-writer (qp.si/streaming-results-writer export-format os)]
-     {:context (merge (context.default/default-context)
-                      {:reducedf (streaming-reducedf results-writer os)})
-      :rff     (streaming-rff results-writer)}))
+   (streaming-context-and-rff export-format os nil))
 
   ([export-format os canceled-chan]
-   (assoc-in (streaming-context-and-rff export-format os) [:context :canceled-chan] canceled-chan)))
+   (let [results-writer (qp.si/streaming-results-writer export-format os)]
+     {:context (qp.context/async-context
+                (merge
+                 {:reducedf (streaming-reducedf results-writer os)}
+                 (when canceled-chan
+                   {:canceled-chan canceled-chan})))
+      :rff     (streaming-rff results-writer)})))
 
 (defn- await-async-result [out-chan canceled-chan]
   ;; if we get a cancel message, close `out-chan` so the query will be canceled

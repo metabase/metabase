@@ -5,7 +5,6 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.resolve-database-and-driver
@@ -239,7 +238,7 @@
   ([query rff context]
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
      (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
-       (let [context                 (merge (context.default/default-context) context)
+       (let [context                 (qp.context/sync-context context)
              rff                     (or rff qp.reducible/default-rff)
              query                   (mbql.normalize/normalize query)
              pivot-options           (or

@@ -7,7 +7,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -49,7 +50,7 @@
   (letfn [(reducef* [rff context metadata reducible-rows]
             (with-open [w (io/writer filename)]
               (binding [*out* w]
-                (context.default/default-reducef rff context metadata reducible-rows))))]
+                (#'qp.context/default-reducef rff context metadata reducible-rows))))]
     {:rff     print-rows-rff
      :context {:reducef reducef*}}))
 
@@ -178,16 +179,15 @@
                        (lazy-seq [Integer/MAX_VALUE])]]]
           (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
             (letfn [(process-query [& {:as additional-options}]
-                      (:post
-                       (mt/test-qp-middleware
-                        qp/default-middleware
-                        (merge
-                         {:database (mt/id)
-                          :type     :query
-                          :query    {:source-table (mt/id :venues)
-                                     :fields       [[:field (mt/id :venues :id) nil]]}}
-                         additional-options)
-                        rows)))]
+                      (let [query (merge
+                                   {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :venues)
+                                               :fields       [[:field (mt/id :venues :id) nil]]}}
+                                   additional-options)
+                            rff   (qp.postprocess/post-processing-rff query qp.reducible/default-rff)
+                            rf    (rff nil)]
+                        (transduce identity rf rows)))]
               (is (= [[1]
                       [2147483647]]
                      (process-query)))

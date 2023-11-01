@@ -1,12 +1,13 @@
 (ns metabase.driver.druid.client-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.driver.util :as driver.u]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context.default :as default]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]))
+  (:require
+   [clojure.core.async :as a]
+   [clojure.test :refer :all]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.util :as driver.u]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]))
 
 (set! *warn-on-reflection* true)
 
@@ -40,7 +41,7 @@
                                                                 (reset! executed-query query)
                                                                 [])]
           (qp/process-query-sync query)
-          (is (partial= {:context {:timeout default/query-timeout-ms}}
+          (is (partial= {:context {:timeout qp.context/query-timeout-ms}}
                         @executed-query)))))))
 
 (deftest ssh-tunnel-test

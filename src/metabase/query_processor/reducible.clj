@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [metabase.async.util :as async.u]
    [metabase.query-processor.context :as qp.context]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -57,14 +56,6 @@
     qp
     middleware)))
 
-;; Why isn't this just done automatically when we create the context in [[context.default/default-context]]? The timeout
-;; could be subject to change so it makes sense to wait until we actually run the query to wire stuff up. Also, since
-;; we're doing
-;;
-;;    (merge (context.default/default-context) context)
-;;
-;; all over the place, it probably reduces overhead a bit to not run around adding a bunch of timeouts to channels we
-;; don't end up using.
 (defn- ^:deprecated wire-up-context-channels!
   "Wire up the core.async channels in a QP `context`
 
@@ -119,7 +110,7 @@
 
     ([query rff context]
      {:pre [(map? query) ((some-fn nil? map?) context)]}
-     (let [context (doto (merge (context.default/default-context) context)
+     (let [context (doto context
                      wire-up-context-channels!)
            rff     (or rff default-rff)
            thunk   (fn [] (try
