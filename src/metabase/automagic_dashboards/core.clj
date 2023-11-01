@@ -779,19 +779,15 @@
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
 
-(defn- splice-in
-  "If the dashcard is a query card, ensure the joins are present."
-  [join-statement dashcard]
-  (if (get-in dashcard [:card :dataset_query :query])
-    ;; Always in the top level even if the join-alias is found deep in there
-    (assoc-in dashcard [:card :dataset_query :query :joins] join-statement)
-    dashcard))
-
 (defn- preserve-joins
   "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
   [entity dashboard]
   (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
-    (update dashboard :dashcards #(map (partial splice-in join-statement) %))
+    (letfn [(splice-joins [dashcard]
+              (cond-> dashcard
+                (get-in dashcard [:card :dataset_query :query])
+                (assoc-in [:card :dataset_query :query :joins] join-statement)))]
+      (update dashboard :dashcards (partial map splice-joins)))
     dashboard))
 
 (defn- query-based-analysis

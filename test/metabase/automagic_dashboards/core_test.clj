@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.combination :as combination]
    [metabase.automagic-dashboards.comparison :as comparison]
@@ -1499,13 +1500,14 @@
                                                             (mapcat (comp :matches ground-dimensions))
                                                             (remove (comp (#'magic/singular-cell-dimension-field-ids root) #'magic/id-or-name)))
                                               :cards dashcards)
-                final-dashboard             (populate/create-dashboard base-dashboard show)]
+                final-dashboard             (populate/create-dashboard base-dashboard show)
+                strip-ids                   (partial walk/prewalk (fn [v] (cond-> v (map? v) (dissoc :id :card_id))))]
             (is (pos? (count (:dashcards final-dashboard))))
-            (is (= (count (:dashcards final-dashboard))
-                   (count (:dashcards (#'magic/generate-dashboard base-context template
-                                        {:dimensions ground-dimensions
-                                         :metrics    grounded-metrics
-                                         :filters    ground-filters})))))))))))
+            (is (= (strip-ids (:dashcards final-dashboard))
+                   (strip-ids (:dashcards (#'magic/generate-dashboard base-context template
+                                            {:dimensions ground-dimensions
+                                             :metrics    grounded-metrics
+                                             :filters    ground-filters})))))))))))
 
 (deftest adhoc-query-with-explicit-joins-14793-test
   (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
