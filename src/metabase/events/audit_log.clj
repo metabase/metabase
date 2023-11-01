@@ -6,7 +6,8 @@
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.models.user :as user]))
 
 (derive ::event :metabase/event)
 
@@ -103,6 +104,8 @@
 (derive :event/alert-unsubscribe ::pulse-event)
 (derive :event/subscription-create ::pulse-event)
 (derive :event/subscription-update ::pulse-event)
+(derive :event/subscription-send ::pulse-event)
+(derive :event/alert-send ::pulse-event)
 
 (defn- create-details-map [pulse name is-alert parent]
   (let [channels  (:channels pulse)
@@ -116,12 +119,15 @@
      :recipients (map :recipients channels)}))
 
 (methodical/defmethod events/publish-event! ::pulse-event
-  [topic {:keys [id details] :as object}]
+  [topic {:keys [id user details] :as object}]
   ;; Check if topic is a pulse or not (can be an unsubscribe event, which only contains email)
-  (let [details-map (if (some? id)
+  (let [user-id     (if (some? user)
+                      user
+                      api/*current-user-id*)
+        details-map (if (some? id)
                       (create-details-map object (:name object) false (:dashboard_id object))
                       details)]
-    (audit-log/record-event! topic details-map api/*current-user-id* :model/Pulse id)))
+    (audit-log/record-event! topic details-map user-id :model/Pulse id)))
 
 (derive ::alert-event ::event)
 (derive :event/alert-create ::alert-event)

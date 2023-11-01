@@ -437,6 +437,36 @@
               :details     {:email "test"}}
              (event "subscription-unsubscribe-undo"))))))
 
+(deftest subscription-send-event-test
+  (testing :subscription-send
+    (mt/with-model-cleanup [:model/AuditLog]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/subscription-send {:user    (mt/user->id :lucky)
+                                                         :details {:recipients [[{:email "test"}]]
+                                                                   :filters    []}}))
+      (is (= {:topic       :subscription-send
+              :user_id     (mt/user->id :lucky)
+              :model       "Pulse"
+              :model_id    nil
+              :details     {:recipients [[{:email "test"}]]
+                            :filters    []}}
+             (event "subscription-send"))))))
+
+(deftest alert-send-event-test
+  (testing :alert-send
+    (mt/with-model-cleanup [:model/AuditLog]
+      (mt/with-test-user :rasta
+        (events/publish-event! :event/alert-send {:user    (mt/user->id :lucky)
+                                                  :details {:recipients [[{:email "test"}]]
+                                                            :filters    []}}))
+      (is (= {:topic       :alert-send
+              :user_id     (mt/user->id :lucky)
+              :model       "Pulse"
+              :model_id    nil
+              :details     {:recipients [[{:email "test"}]]
+                            :filters    []}}
+             (event "alert-send"))))))
+
 (deftest alert-unsubscribe-event-test
   (testing :alert-unsubscribe
     (mt/with-model-cleanup [:model/AuditLog]
