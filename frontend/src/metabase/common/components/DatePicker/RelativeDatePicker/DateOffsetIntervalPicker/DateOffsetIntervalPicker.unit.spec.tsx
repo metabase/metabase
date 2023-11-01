@@ -248,5 +248,19 @@ describe("DateOffsetIntervalPicker", () => {
           : "Dec 19, 2019 – Jan 17, 2020";
       expect(screen.getByText(rangeText)).toBeInTheDocument();
     });
+
+    it("should be able to remove the offset", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      userEvent.click(screen.getByLabelText("Remove offset"));
+
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultValue,
+        offsetValue: undefined,
+        offsetUnit: undefined,
+      });
+    });
   });
 });
