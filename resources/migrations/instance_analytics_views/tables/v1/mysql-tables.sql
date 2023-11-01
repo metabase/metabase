@@ -11,6 +11,6 @@ select
     description,
     active,
     db_id as database_id,
-    schema,
+    `schema`,
     is_upload
 from metabase_table;

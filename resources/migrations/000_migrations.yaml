@@ -15726,10 +15726,19 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-032
       author: noahmoss
-      comment: Added 0.48.0 - new view v_subscriptions
+      comment: Added 0.48.0 - new view v_subscriptions for postgres
       changes:
         - sqlFile:
-            path: instance_analytics_views/subscriptions/v1/subscriptions.sql
+            dbms: postgresql
+            path: instance_analytics_views/subscriptions/v1/postgres-subscriptions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/subscriptions/v1/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/subscriptions/v1/h2-subscriptions.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15753,7 +15762,16 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_alerts
       changes:
         - sqlFile:
-            path: instance_analytics_views/alerts/v1/alerts.sql
+            dbms: postgres,h2
+            path: instance_analytics_views/alerts/v1/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v1/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v1/h2-alerts.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -15801,7 +15819,12 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_tables
       changes:
         - sqlFile:
+            dbms: postgresql,h2
             path: instance_analytics_views/tables/v1/tables.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tables/v1/mysql-tables.sql
             relativeToChangelogFile: true
       rollback:
         - sql:

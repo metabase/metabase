@@ -15,4 +15,4 @@ select
     is_active,
     sso_source,
     locale
-    from core_user
+    from core_user;

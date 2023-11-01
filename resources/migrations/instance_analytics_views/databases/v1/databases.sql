@@ -2,7 +2,7 @@ drop view if exists v_databases;
 
 create or replace view v_databases as
 select id                as entity_id,
-       'database_' || id as entity_qualified_id,
+       concat('database_', id) as entity_qualified_id,
        created_at,
        updated_at,
        name,
@@ -17,4 +17,4 @@ select id                as entity_id,
        creator_id,
        dbms_version      as db_version
 from metabase_database
-    where id <> 13371337
+    where id <> 13371337;
