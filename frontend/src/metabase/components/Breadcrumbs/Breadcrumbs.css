@@ -47,7 +47,7 @@
 }
 
 :local(.sidebarBreadcrumbs) {
-  composes: flex from "style";
+  composes: flex from "~style";
   composes: breadcrumbs;
   color: var(--sidebar-breadcrumbs-color);
   max-width: 100%;

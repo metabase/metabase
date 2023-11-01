@@ -1,5 +1,5 @@
 :local(.parameter) {
-  composes: flex align-center from "style";
+  composes: flex align-center from "~style";
   font-weight: 600;
   min-height: 30px;
   min-width: 150px;
@@ -7,7 +7,7 @@
 }
 
 :local(.nameInput) {
-  composes: flex align-center from "style";
+  composes: flex align-center from "~style";
   min-height: 30px;
   min-width: 150px;
   color: var(--color-text-medium);
@@ -84,7 +84,7 @@
 }
 
 :local(.name) {
-  composes: mr1 from "style";
+  composes: mr1 from "~style";
   font-size: 16px;
   font-weight: bold;
   color: var(--color-text-medium);
@@ -98,7 +98,7 @@
 
 :local(.editButton),
 :local(.removeButton) {
-  composes: flex align-center cursor-pointer from "style";
+  composes: flex align-center cursor-pointer from "~style";
 }
 
 :local(.editButton:hover) {

@@ -45,6 +45,7 @@ const CSS_CONFIG = {
     ? "[name]__[local]___[hash:base64:5]"
     : "[hash:base64:5]",
   importLoaders: 1,
+  modules: 'global'
 };
 
 const config = (module.exports = {
