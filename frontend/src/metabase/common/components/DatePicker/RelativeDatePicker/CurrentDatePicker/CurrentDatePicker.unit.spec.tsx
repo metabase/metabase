@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { RelativeDatePickerValue } from "../../types";
 import { CurrentDatePicker } from "./CurrentDatePicker";
 
@@ -16,7 +16,7 @@ interface SetupOpts {
 function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
   const onChange = jest.fn();
 
-  render(<CurrentDatePicker value={value} onChange={onChange} />);
+  renderWithProviders(<CurrentDatePicker value={value} onChange={onChange} />);
 
   return { onChange };
 }

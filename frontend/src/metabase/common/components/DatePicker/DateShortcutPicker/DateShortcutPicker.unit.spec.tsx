@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_OPERATORS, DATE_PICKER_SHORTCUTS } from "../constants";
 import type { DatePickerOperator, DatePickerShortcut } from "../types";
 import { DateShortcutPicker } from "./DateShortcutPicker";
@@ -16,7 +16,7 @@ function setup({
   const onChange = jest.fn();
   const onSelectType = jest.fn();
 
-  render(
+  renderWithProviders(
     <DateShortcutPicker
       availableOperators={availableOperators}
       availableShortcuts={availableShortcuts}

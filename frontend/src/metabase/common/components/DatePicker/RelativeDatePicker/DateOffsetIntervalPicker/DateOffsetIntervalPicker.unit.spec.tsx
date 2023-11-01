@@ -1,35 +1,33 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DateIntervalValue, IntervalDirection } from "../types";
-import { DateIntervalPicker } from "./DateIntervalPicker";
+import type { IntervalDirection, DateOffsetIntervalValue } from "../types";
+import { DateOffsetIntervalPicker } from "./DateOffsetIntervalPicker";
 
-function getDefaultValue(direction: IntervalDirection): DateIntervalValue {
+function getDefaultValue(
+  direction: IntervalDirection,
+): DateOffsetIntervalValue {
   return {
     type: "relative",
     value: direction === "last" ? -30 : 30,
     unit: "day",
+    offsetValue: -14,
+    offsetUnit: "day",
   };
 }
 
 interface SetupOpts {
-  value: DateIntervalValue;
+  value: DateOffsetIntervalValue;
   isNew?: boolean;
-  canUseRelativeOffsets?: boolean;
 }
 
-function setup({
-  value,
-  isNew = false,
-  canUseRelativeOffsets = false,
-}: SetupOpts) {
+function setup({ value, isNew = false }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
   renderWithProviders(
-    <DateIntervalPicker
+    <DateOffsetIntervalPicker
       value={value}
       isNew={isNew}
-      canUseRelativeOffsets={canUseRelativeOffsets}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
@@ -38,7 +36,7 @@ function setup({
   return { onChange, onSubmit };
 }
 
-describe("DateIntervalPicker", () => {
+describe("DateOffsetIntervalPicker", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2020, 0, 1));
@@ -131,49 +129,7 @@ describe("DateIntervalPicker", () => {
       expect(onChange).toHaveBeenCalledWith({
         ...defaultValue,
         unit: "year",
-      });
-    });
-
-    it("should allow to include the current unit", async () => {
-      const { onChange } = setup({
-        value: defaultValue,
-      });
-
-      userEvent.click(screen.getByLabelText("Options"));
-      userEvent.click(await screen.findByText("Include today"));
-
-      expect(onChange).toHaveBeenCalledWith({
-        ...defaultValue,
-        options: {
-          "include-current": true,
-        },
-      });
-    });
-
-    it("should not allow to add relative offsets by default", async () => {
-      setup({
-        value: defaultValue,
-      });
-
-      userEvent.click(screen.getByLabelText("Options"));
-      expect(await screen.findByText("Include today")).toBeInTheDocument();
-      expect(screen.queryByText("Starting from…")).not.toBeInTheDocument();
-    });
-
-    it("should allow to a relative offset if enabled", async () => {
-      const { onChange } = setup({
-        value: defaultValue,
-        canUseRelativeOffsets: true,
-      });
-
-      userEvent.click(screen.getByLabelText("Options"));
-      userEvent.click(await screen.findByText("Starting from…"));
-
-      expect(onChange).toHaveBeenLastCalledWith({
-        ...defaultValue,
-        offsetUnit: "day",
-        offsetValue: direction === "last" ? -7 : 7,
-        options: undefined,
+        offsetUnit: "year",
       });
     });
 
@@ -181,22 +137,10 @@ describe("DateIntervalPicker", () => {
       setup({
         value: defaultValue,
       });
-
       const rangeText =
-        direction === "last" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
-      expect(screen.getByText(rangeText)).toBeInTheDocument();
-    });
-
-    it("should display the actual date range with include current", () => {
-      setup({
-        value: {
-          ...defaultValue,
-          options: { "include-current": true },
-        },
-      });
-
-      const rangeText =
-        direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
+        direction === "last"
+          ? "Nov 18 – Dec 17, 2019"
+          : "Dec 19, 2019 – Jan 17, 2020";
       expect(screen.getByText(rangeText)).toBeInTheDocument();
     });
   });

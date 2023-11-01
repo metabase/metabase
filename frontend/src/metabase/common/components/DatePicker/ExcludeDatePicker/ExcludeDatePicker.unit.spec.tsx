@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_OPERATORS,
   DATE_PICKER_EXTRACTION_UNITS,
@@ -19,7 +19,7 @@ function setup({
   const onChange = jest.fn();
   const onBack = jest.fn();
 
-  render(
+  renderWithProviders(
     <ExcludeDatePicker
       availableOperators={availableOperators}
       availableUnits={availableUnits}
