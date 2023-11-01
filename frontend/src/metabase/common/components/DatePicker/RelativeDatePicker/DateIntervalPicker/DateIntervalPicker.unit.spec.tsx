@@ -39,8 +39,8 @@ function setup({
 }
 
 describe("DateIntervalPicker", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
+  beforeAll(() => {
+    jest.useFakeTimers({ advanceTimers: true });
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 

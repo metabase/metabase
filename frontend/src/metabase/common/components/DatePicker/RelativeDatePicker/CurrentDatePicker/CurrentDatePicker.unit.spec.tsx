@@ -22,7 +22,7 @@ function setup({ value = DEFAULT_VALUE }: SetupOpts = {}) {
 }
 
 describe("CurrentDatePicker", () => {
-  beforeEach(() => {
+  beforeAll(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2020, 0, 1));
   });
