@@ -19,7 +19,8 @@
       (update-keys keyword)
       (update :type keyword)))
 
-(defn- normalize* [query]
+(mu/defn normalize-preprocessing-middleware :- :map
+  [query :- :map]
   (try
     (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
           normalized (case query-type
@@ -43,10 +44,10 @@
                        :query query}
                       e)))))
 
-(defn normalize
+(defn normalize-around-middleware
   "Middleware that converts a query into a normalized, canonical form, including things like converting all identifiers
   into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to
   simplifiy the logic in the QP steps following this."
   [qp]
   (fn [query rff context]
-    (qp (normalize* query) rff context)))
+    (qp (normalize-preprocessing-middleware query) rff context)))

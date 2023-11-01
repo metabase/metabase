@@ -3,7 +3,8 @@
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
    [metabase.models.setting :as setting]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]))
 
 (def ^:private ^:const default-max-results-bare-rows 2000)
 
@@ -39,11 +40,11 @@
 (defn- merge-default-constraints [constraints]
   (merge (default-query-constraints) constraints))
 
-(defn add-default-userland-constraints
+(mu/defn add-default-userland-constraints :- :map
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
   use with [[metabase.query-processor/userland-query-with-default-constraints]], which ultimately powers
   most QP API endpoints."
-  [query]
+  [query :- :map]
   (cond-> query
     (and (get-in query [:middleware :userland-query?])
          (get-in query [:middleware :add-default-userland-constraints?]))

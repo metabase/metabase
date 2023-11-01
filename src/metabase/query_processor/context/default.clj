@@ -1,4 +1,4 @@
-(ns metabase.query-processor.context.default
+(ns ^:deprecated metabase.query-processor.context.default
   (:require
    [clojure.core.async :as a]
    [metabase.config :as config]
@@ -9,7 +9,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]))
 
-(def query-timeout-ms
+(def ^:deprecated query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
   ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
   ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
@@ -19,10 +19,10 @@
      20
      3)))
 
-(defn- default-reducedf [reduced-result context]
+(defn- ^:deprecated default-reducedf [reduced-result context]
   (qp.context/resultf reduced-result context))
 
-(defn default-reducef
+(defn ^:deprecated default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
   function inside the custom impl instead of attempting to duplicate the logic. See
   [[metabase.query-processor.reducible-test/write-rows-to-file-test]] for an example of a custom implementation."
@@ -39,18 +39,18 @@
                                                    context)))]
       (qp.context/reducedf reduced-rows context))))
 
-(defn- default-runf [query rff context]
+(defn- ^:deprecated default-runf [query rff context]
   (try
     (qp.context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
                                                          (qp.context/reducef rff context metadata reducible-rows)))
     (catch Throwable e
       (qp.context/raisef e context))))
 
-(defn- default-raisef [e context]
+(defn- ^:deprecated default-raisef [e context]
   {:pre [(instance? Throwable e)]}
   (qp.context/resultf e context))
 
-(defn- default-resultf [result context]
+(defn- ^:deprecated default-resultf [result context]
   (if (nil? result)
     (do
       (log/error (ex-info (trs "Unexpected nil result") {}))
@@ -59,7 +59,7 @@
       (a/>!! out-chan result)
       (a/close! out-chan))))
 
-(defn- default-timeoutf
+(defn- ^:deprecated default-timeoutf
   [context]
   (let [timeout (qp.context/timeout context)]
     (log/debug (trs "Query timed out after {0}, raising timeout exception." (u/format-milliseconds timeout)))
@@ -68,7 +68,7 @@
                                  :type   qp.error-type/timed-out})
                        context)))
 
-(defn default-context
+(defn ^:deprecated default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
   {::complete?    true

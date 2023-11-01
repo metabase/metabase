@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.resolve-database-and-driver
+(ns ^:deprecated metabase.query-processor.middleware.resolve-database-and-driver
   (:require
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]

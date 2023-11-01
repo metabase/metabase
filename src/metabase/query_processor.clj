@@ -7,104 +7,22 @@
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
   (:refer-clojure :exclude [compile])
   (:require
-   [medley.core :as m]
    [metabase.config :as config]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.query-processor.context.default :as qp.context.default]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.add-default-temporal-unit
-    :as qp.add-default-temporal-unit]
-   [metabase.query-processor.middleware.add-dimension-projections
-    :as qp.add-dimension-projections]
-   [metabase.query-processor.middleware.add-implicit-clauses
-    :as qp.add-implicit-clauses]
-   [metabase.query-processor.middleware.add-implicit-joins
-    :as qp.add-implicit-joins]
-   [metabase.query-processor.middleware.add-rows-truncated
-    :as qp.add-rows-truncated]
-   [metabase.query-processor.middleware.add-source-metadata
-    :as qp.add-source-metadata]
-   [metabase.query-processor.middleware.add-timezone-info
-    :as qp.add-timezone-info]
-   [metabase.query-processor.middleware.annotate :as annotate]
-   [metabase.query-processor.middleware.auto-bucket-datetimes
-    :as qp.auto-bucket-datetimes]
-   [metabase.query-processor.middleware.auto-parse-filter-values
-    :as auto-parse-filter-values]
-   [metabase.query-processor.middleware.binning :as binning]
-   [metabase.query-processor.middleware.cache :as cache]
-   [metabase.query-processor.middleware.catch-exceptions
-    :as catch-exceptions]
-   [metabase.query-processor.middleware.check-features :as check-features]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.middleware.cumulative-aggregations
-    :as qp.cumulative-aggregations]
-   [metabase.query-processor.middleware.desugar :as desugar]
-   [metabase.query-processor.middleware.enterprise
-    :as qp.middleware.enterprise]
-   [metabase.query-processor.middleware.escape-join-aliases
-    :as escape-join-aliases]
-   [metabase.query-processor.middleware.expand-macros :as expand-macros]
-   [metabase.query-processor.middleware.fetch-source-query
-    :as fetch-source-query]
-   [metabase.query-processor.middleware.fix-bad-references
-    :as fix-bad-refs]
-   [metabase.query-processor.middleware.format-rows :as format-rows]
-   [metabase.query-processor.middleware.large-int-id :as large-int-id]
-   [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.execute :as qp.execute]
+   [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
+   [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.optimize-temporal-filters
-    :as optimize-temporal-filters]
-   [metabase.query-processor.middleware.parameters :as parameters]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.persistence :as qp.persistence]
-   [metabase.query-processor.middleware.pre-alias-aggregations
-    :as qp.pre-alias-aggregations]
-   [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses
-    :as prevent-infinite-recursive-preprocesses]
-   [metabase.query-processor.middleware.process-userland-query
-    :as process-userland-query]
-   [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing
-    :as reconcile-bucketing]
-   [metabase.query-processor.middleware.resolve-database-and-driver
-    :as qp.resolve-database-and-driver]
-   [metabase.query-processor.middleware.resolve-fields
-    :as qp.resolve-fields]
-   [metabase.query-processor.middleware.resolve-joined-fields
-    :as resolve-joined-fields]
-   [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-   [metabase.query-processor.middleware.resolve-referenced
-    :as qp.resolve-referenced]
-   [metabase.query-processor.middleware.resolve-source-table
-    :as qp.resolve-source-table]
-   [metabase.query-processor.middleware.results-metadata
-    :as results-metadata]
-   [metabase.query-processor.middleware.splice-params-in-response
-    :as splice-params-in-response]
-   [metabase.query-processor.middleware.store :as store]
-   [metabase.query-processor.middleware.upgrade-field-literals
-    :as upgrade-field-literals]
-   [metabase.query-processor.middleware.validate :as validate]
-   [metabase.query-processor.middleware.validate-temporal-bucketing
-    :as validate-temporal-bucketing]
-   [metabase.query-processor.middleware.visualization-settings
-    :as viz-settings]
-   [metabase.query-processor.middleware.wrap-value-literals
-    :as qp.wrap-value-literals]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+   [metabase.query-processor.postprocess :as qp.postprocess]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.util.malli :as mu]))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                QUERY PROCESSOR                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
 ;;; namespace, so it's only around when running with `:dev` or the like.
@@ -114,114 +32,6 @@
 ;;; without even knowing about it. So it's better to have this actually error if in cases where it SHOULD be working.
 (when config/tests-available?
   (classloader/require 'metabase.query-processor-test.test-mlv2))
-
-(def ^:private pre-processing-middleware
-  "Pre-processing middleware. Has the form
-
-    (f query) -> query"
-  ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'qp.perms/remove-permissions-key
-   #'qp.constraints/add-default-userland-constraints
-   #'validate/validate-query
-   #'expand-macros/expand-macros
-   #'qp.resolve-referenced/resolve-referenced-card-resources
-   #'parameters/substitute-parameters
-   #'qp.resolve-source-table/resolve-source-tables
-   #'qp.auto-bucket-datetimes/auto-bucket-datetimes
-   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'qp.add-source-metadata/add-source-metadata-for-source-queries
-   #'upgrade-field-literals/upgrade-field-literals
-   #'qp.middleware.enterprise/apply-sandboxing
-   #'qp.persistence/substitute-persisted-query
-   #'qp.add-implicit-clauses/add-implicit-clauses
-   #'qp.add-dimension-projections/add-remapped-columns
-   #'qp.resolve-fields/resolve-fields
-   #'binning/update-binning-strategy
-   #'desugar/desugar
-   #'qp.add-default-temporal-unit/add-default-temporal-unit
-   #'qp.add-implicit-joins/add-implicit-joins
-   #'resolve-joins/resolve-joins
-   #'resolve-joined-fields/resolve-joined-fields
-   #'fix-bad-refs/fix-bad-references
-   #'escape-join-aliases/escape-join-aliases
-   ;; yes, this is called a second time, because we need to handle any joins that got added
-   #'qp.middleware.enterprise/apply-sandboxing
-   #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
-   #'qp.pre-alias-aggregations/pre-alias-aggregations
-   #'qp.wrap-value-literals/wrap-value-literals
-   #'auto-parse-filter-values/auto-parse-filter-values
-   #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'optimize-temporal-filters/optimize-temporal-filters
-   #'limit/add-default-limit
-   #'qp.middleware.enterprise/apply-download-limit
-   #'check-features/check-features])
-
-(defn- preprocess*
-  "All [[pre-processing-middleware]] combined into a single function. This still needs to be ran in the context
-  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
-  this with the [[around-middleware]]."
-  [query]
-  (reduce
-   (fn [query middleware]
-     (u/prog1 (cond-> query
-                middleware middleware)
-       (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
-   query
-   pre-processing-middleware))
-
-(def ^:private compile-middleware
-  "Middleware for query compilation. Happens after pre-processing. Has the form
-
-    (f (f query rff context)) -> (f query rff context)"
-  [#'mbql-to-native/mbql->native])
-
-(def ^:private execution-middleware
-  "Middleware that happens after compilation, AROUND query execution itself. Has the form
-
-    (f qp) -> qp
-
-  e.g.
-
-    (f (f query rff context)) -> (f query rff context)"
-  [#'cache/maybe-return-cached-results
-   #'qp.perms/check-query-permissions
-   #'qp.middleware.enterprise/check-download-permissions-middleware
-   #'qp.middleware.enterprise/maybe-apply-column-level-perms-check-middleware])
-
-(def ^:private post-processing-middleware
-  "Post-processing middleware that transforms results. Has the form
-
-    (f preprocessed-query rff) -> rff
-
-  Where `rff` has the form
-
-    (f metadata) -> rf"
-  [#'results-metadata/record-and-return-metadata!
-   (resolve 'metabase.query-processor-test.test-mlv2/post-processing-middleware)
-   #'limit/limit-result-rows
-   #'qp.middleware.enterprise/limit-download-result-rows
-   #'qp.add-rows-truncated/add-rows-truncated
-   #'splice-params-in-response/splice-params-in-response
-   #'qp.add-timezone-info/add-timezone-info
-   #'qp.middleware.enterprise/merge-sandboxing-metadata
-   #'qp.add-dimension-projections/remap-results
-   #'format-rows/format-rows
-   #'large-int-id/convert-id-to-string
-   #'viz-settings/update-viz-settings
-   #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns
-   #'annotate/add-column-info])
-;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
-
-(defn apply-post-processing-middleware
-  "Apply post-processing middleware to `rff`. Returns an rff."
-  [query rff]
-  (reduce
-   (fn [rff middleware]
-     (u/prog1 (cond->> rff
-                middleware (middleware query))
-       (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))
-   rff
-   post-processing-middleware))
 
 (def around-middleware
   "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
@@ -238,68 +48,32 @@
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'fetch-source-query/resolve-card-id-source-tables
-   #'qp.resolve-database-and-driver/resolve-driver-and-database-local-values
-   #'store/initialize-store
-   #'qp.resolve-database-and-driver/resolve-database
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    (resolve 'metabase.query-processor-test.test-mlv2/around-middleware)
    #'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
    ;; userland queries only: save a QueryExecution
    #'process-userland-query/save-query-execution-and-add-running-time
-   #'normalize/normalize
+   #'normalize/normalize-around-middleware
    ;; userland queries only: catch Exceptions and return a special error response
    #'catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
-;; query -> preprocessed = around + pre-process
-;; query -> native       = around + pre-process + compile
-;; query -> results      = around + pre-process + compile + execute + post-process = default-middleware
+(defn- async-context [context]
+  context)
 
-(def default-middleware
-  "The default set of middleware applied to queries ran via [[process-query]].
-  NOTE: if you add any new middleware groups, you may need to modify [[dev.debug-qp/default-debug-middleware]] as well,
-  so that [[dev.debug-qp/process-query-debug]] still works as expected."
-  (letfn [(combined-pre-process [qp]
-            (fn combined-pre-process* [query rff context]
-              (qp (preprocess* query) rff context)))
-          (combined-post-process [qp]
-            (fn combined-post-process* [query rff context]
-              (qp query (apply-post-processing-middleware query rff) context)))]
-    (into
-     []
-     (comp cat (keep identity))
-     [execution-middleware      ; → → execute → → ↓
-      compile-middleware        ; ↑ compile       ↓
-      [combined-post-process]   ; ↑               ↓ post-process
-      [combined-pre-process]    ; ↑ pre-process   ↓
-      around-middleware])))     ; ↑ query         ↓ results
-
-
-;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
-;; middleware is changed. Outside of dev only build the QP once for performance/locality
-(defn- base-qp [middleware]
-  (letfn [(qp []
-            (qp.reducible/async-qp (qp.reducible/combine-middleware middleware)))]
-    (if config/is-dev?
-      (fn [& args]
-        (apply (qp) args))
-      (qp))))
-
-(def ^{:arglists '([query] [query context] [query rff context])} process-query-async
-  "Process a query asynchronously, returning a `core.async` channel that is called with the final result (or Throwable)."
-  (base-qp default-middleware))
-
-(def ^{:arglists '([query] [query context] [query rff context])} process-query-sync
-  "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
-  (qp.reducible/sync-qp process-query-async))
+(defn- process-query* [query rff context]
+  (let [preprocessed (qp.preprocess/preprocess query)
+        compiled     (qp.compile/compile preprocessed)
+        rff          (qp.postprocess/post-processing-rff preprocessed rff)]
+    (qp.execute/execute compiled rff context)))
 
 (mu/defn process-query
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
   ([query]
-   (process-query query nil))
+   (process-query query nil nil))
 
   ([query context]
    (process-query query nil context))
@@ -307,67 +81,23 @@
   ([{:keys [async?], :as query} :- :map
     rff                         :- [:maybe fn?]
     context                     :- [:maybe :map]]
-   (let [rff     (or rff qp.reducible/default-rff)
-         context (or context (qp.context.default/default-context))]
-     ((if async? process-query-async process-query-sync) query rff context))))
+   (qp.setup/with-qp-setup [query query]
+     (let [rff     (or rff qp.reducible/default-rff)
+           context (if async?
+                     (qp.context/async-context context)
+                     (qp.context/sync-context context))
+           qp      (reduce
+                     (fn [qp middleware]
+                       (middleware qp))
+                     process-query*
+                     around-middleware)]
+       (try
+         (qp query rff context)
+         (catch Throwable e
+           (qp.context/raisef e context)))))))
 
-(mu/defn preprocess :- :map
-  "Return the fully preprocessed form for `query`, the way it would look immediately
-  before [[mbql-to-native/mbql->native]] is called."
-  [query :- :map]
-  (let [qp (qp.reducible/combine-middleware
-            (conj (vec around-middleware)
-                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
-            (fn [query _rff _context]
-              (preprocess* query)))]
-    (qp (m/dissoc-in query [:middleware :userland-query?]) nil nil)))
+;; NOCOMMIT
 
-(defn- restore-join-aliases [preprocessed-query]
-  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
-    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
-
-(defn query->expected-cols
-  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
-  it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
-  queries with native source queries won't work, since we don't need the results."
-  [{query-type :type, :as query}]
-  (when-not (= (mbql.u/normalize-token query-type) :query)
-    (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-                    {:type qp.error-type/qp})))
-  ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
-  ;; check where this is used.
-  (qp.store/with-metadata-provider (qp.resolve-database-and-driver/resolve-database-id query)
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
-      (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (->> (annotate/merged-column-info preprocessed nil)
-             ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
-             ;; directly we can stop stripping these out
-             (mapv (fn [col]
-                     (dissoc col :lib/external_remap :lib/internal_remap)))
-             not-empty)))))
-
-(defn compile
-  "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
-  SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
-  [query]
-  (let [qp (qp.reducible/combine-middleware
-            (conj (vec around-middleware)
-                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
-            (fn [query _rff _context]
-              (mbql-to-native/query->native-form (preprocess* query))))]
-    (qp (m/dissoc-in query [:middleware :userland-query?]) nil nil)))
-
-(defn compile-and-splice-parameters
-  "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
-  itself as literals. This is used to power features such as 'Convert this Question to SQL'.
-  (Currently, this function is mostly used by tests and in the
-  REPL; [[splice-params-in-response/splice-params-in-response]] middleware handles similar functionality for queries
-  that are actually executed.)"
-  [query]
-  ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
-  ;; ID is the virtual DB identifier
-  (let [driver (driver.u/database->driver (:database (preprocess query)))]
-    (driver/splice-parameters-into-native-query driver (compile query))))
 
 (mu/defn userland-query :- :map
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
@@ -403,3 +133,40 @@
    (-> query
        (userland-query info)
        (assoc-in [:middleware :add-default-userland-constraints?] true))))
+
+;;;; DEPRECATED
+
+(defn ^:deprecated process-query-async
+  "DEPRECATED: use [[process-query]] directly."
+  ([query]
+   (process-query-async query nil))
+
+  ([query context]
+   (process-query-async query nil context))
+
+  ([query rff context]
+   (process-query query rff (async-context context))))
+
+(def ^{:arglists '([query] [query context] [query rff context])} ^:deprecated process-query-sync
+  "DEPRECATED: use [[process-query]] instead."
+  process-query)
+
+(mu/defn ^:deprecated preprocess :- :map
+  "DEPRECATED: use [[qp.preprocess/preprocess]] instead."
+  [query :- :map]
+  (qp.preprocess/preprocess query))
+
+(defn ^:deprecated query->expected-cols
+  "DEPRECATED: use [[qp.preprocess/query->expected-cols]] instead."
+  [query]
+  (qp.preprocess/query->expected-cols query))
+
+(defn ^:deprecated compile
+  "DEPRECATED: use [[qp.compile/compile]] instead."
+  [query]
+  (:native (qp.compile/compile query)))
+
+(defn ^:deprecated compile-and-splice-parameters
+  "DEPRECATED: use [[qp.compile/compile-and-splice-parameters]] instead."
+  [query]
+  (qp.compile/compile-and-splice-parameters query))
