@@ -533,7 +533,7 @@
           (is (= {:model_id id
                   :user_id  (mt/user->id :rasta)
                   :details  (assoc (select-keys new-user [:first_name :last_name :email])
-                                   :user_group_memberships [{:id 1}])
+                                   :user_group_memberships [{:id 1 :is_group_manager false}])
                   :topic    :user-invited
                   :model    "User"}
                  (event :user-invited id))))))))
