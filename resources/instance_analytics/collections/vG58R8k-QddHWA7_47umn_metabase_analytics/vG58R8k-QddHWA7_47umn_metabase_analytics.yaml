@@ -6,7 +6,7 @@ name: Metabase analytics
 personal_owner_id: null
 type: instance-analytics
 parent_id: null
-color: #ff00ff
+color: '#ff00ff'
 serdes/meta:
 - model: Collection
   id: vG58R8k-QddHWA7_47umn
