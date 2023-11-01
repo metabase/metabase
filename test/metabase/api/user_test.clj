@@ -1263,6 +1263,6 @@
                     :user_id  (mt/user->id :crowberto)
                     :model    "User"
                     :model_id id
-                    :details  {:first_name "Johnny"
-                               :last_name "Appleseed"}}
+                    :details  {:previous-value {:last_name "Cena", :first_name "John"},
+                               :new-value {:first_name "Johnny", :last_name "Appleseed"}}}
                    (audit-log-test/event :user-update id))))))))

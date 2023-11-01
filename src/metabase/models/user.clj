@@ -432,12 +432,12 @@
 
 (defmethod audit-log/model-details :model/User
   [entity event-type]
-  (case event-type
-    :user-update               (:changes entity)
-    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
-                                            [:groups :first_name :last_name :email
-                                             :invite_method :sso_source
-                                             :user_group_memberships])
-    :password-reset-initiated  (select-keys entity [:token])
-    :password-reset-successful (select-keys entity [:token])
-    {}))
+  (let [relevant-keys [:groups :first_name :last_name :email
+                       :invite_method :sso_source
+                       :user_group_memberships]]
+    (case event-type
+      :user-update               (select-keys entity relevant-keys)
+      :user-invited              (select-keys (t2/hydrate entity :user_group_memberships) relevant-keys)
+      :password-reset-initiated  (select-keys entity [:token])
+      :password-reset-successful (select-keys entity [:token])
+      {})))
