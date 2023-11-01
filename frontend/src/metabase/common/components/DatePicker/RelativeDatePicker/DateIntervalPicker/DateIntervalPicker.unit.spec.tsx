@@ -1,25 +1,27 @@
 import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
-import type { DateIntervalValue } from "../types";
+import type { DateIntervalValue, IntervalDirection } from "../types";
 import { DateIntervalPicker } from "./DateIntervalPicker";
 
-const DEFAULT_PAST_VALUE: DateIntervalValue = {
-  type: "relative",
-  value: -30,
-  unit: "day",
-};
+function getDefaultValue(direction: IntervalDirection): DateIntervalValue {
+  return {
+    type: "relative",
+    value: direction === "last" ? -30 : 30,
+    unit: "day",
+  };
+}
 
 interface SetupOpts {
-  value?: DateIntervalValue;
+  value: DateIntervalValue;
   isNew?: boolean;
   canUseRelativeOffsets?: boolean;
 }
 
 function setup({
-  value = DEFAULT_PAST_VALUE,
+  value,
   isNew = false,
   canUseRelativeOffsets = false,
-}: SetupOpts = {}) {
+}: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
@@ -37,9 +39,11 @@ function setup({
 }
 
 describe("DateIntervalPicker", () => {
-  describe("past", () => {
-    it("should change the past interval", () => {
-      const { onChange } = setup();
+  describe.each<IntervalDirection>(["last", "next"])("%s", direction => {
+    it("should change the interval", () => {
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       const input = screen.getByLabelText("Interval");
       userEvent.clear(input);
@@ -47,13 +51,15 @@ describe("DateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "relative",
-        value: -20,
+        value: direction === "last" ? -20 : 20,
         unit: "day",
       });
     });
 
-    it("should change the past interval with a negative value", () => {
-      const { onChange } = setup();
+    it("should change the interval with a negative value", () => {
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       const input = screen.getByLabelText("Interval");
       userEvent.clear(input);
@@ -61,13 +67,15 @@ describe("DateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "relative",
-        value: -10,
+        value: direction === "last" ? -10 : 10,
         unit: "day",
       });
     });
 
     it("should coerce zero", () => {
-      const { onChange } = setup();
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       const input = screen.getByLabelText("Interval");
       userEvent.clear(input);
@@ -76,13 +84,15 @@ describe("DateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "relative",
-        value: -1,
+        value: direction === "last" ? -1 : 1,
         unit: "day",
       });
     });
 
     it("should ignore empty values", () => {
-      const { onChange } = setup();
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       const input = screen.getByLabelText("Interval");
       userEvent.clear(input);
@@ -93,7 +103,9 @@ describe("DateIntervalPicker", () => {
     });
 
     it("should ignore invalid values", () => {
-      const { onChange } = setup();
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       const input = screen.getByLabelText("Interval");
       userEvent.clear(input);
@@ -105,27 +117,31 @@ describe("DateIntervalPicker", () => {
     });
 
     it("should allow to change the unit", () => {
-      const { onChange } = setup();
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       userEvent.click(screen.getByLabelText("Unit"));
       userEvent.click(screen.getByText("years"));
 
       expect(onChange).toHaveBeenCalledWith({
         type: "relative",
-        value: -30,
+        value: direction === "last" ? -30 : 30,
         unit: "year",
       });
     });
 
     it("should allow to include the current unit", async () => {
-      const { onChange } = setup();
+      const { onChange } = setup({
+        value: getDefaultValue(direction),
+      });
 
       userEvent.click(screen.getByLabelText("Options"));
       userEvent.click(await screen.findByText("Include today"));
 
       expect(onChange).toHaveBeenCalledWith({
         type: "relative",
-        value: -30,
+        value: direction === "last" ? -30 : 30,
         unit: "day",
         options: {
           "include-current": true,
@@ -134,7 +150,9 @@ describe("DateIntervalPicker", () => {
     });
 
     it("should not allow to add relative offsets by default", async () => {
-      setup();
+      setup({
+        value: getDefaultValue(direction),
+      });
 
       userEvent.click(screen.getByLabelText("Options"));
       expect(await screen.findByText("Include today")).toBeInTheDocument();
@@ -143,6 +161,7 @@ describe("DateIntervalPicker", () => {
 
     it("should allow to a relative offset if enabled", async () => {
       const { onChange } = setup({
+        value: getDefaultValue(direction),
         canUseRelativeOffsets: true,
       });
 
@@ -151,10 +170,10 @@ describe("DateIntervalPicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith({
         type: "relative",
-        value: -30,
+        value: direction === "last" ? -30 : 30,
         unit: "day",
         offsetUnit: "day",
-        offsetValue: -7,
+        offsetValue: direction === "last" ? -7 : 7,
         options: undefined,
       });
     });
