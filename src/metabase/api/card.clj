@@ -608,20 +608,6 @@ saved later when it is ready."
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(defn- publish-card-update!
-  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
-  events)."
-  [card archived?]
-  (let [event (cond
-                ;; card was archived
-                (and archived?
-                     (not (:archived card))) :event/card-archive
-                ;; card was unarchived
-                (and (false? archived?)
-                     (:archived card))       :event/card-unarchive
-                :else                        :event/card-update)]
-    (events/publish-event! event card)))
-
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
        (:archived new-card)))
@@ -771,7 +757,7 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*})
+    (events/publish-event! :event/card-update {:object card})
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
