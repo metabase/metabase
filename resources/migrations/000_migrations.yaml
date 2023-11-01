@@ -15729,8 +15729,8 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_alerts_subscriptions
       changes:
         - sqlFile:
-          path: instance_analytics_views/subscriptions/v1/subscriptions.sql
-          relativeToChangelogFile: true
+            path: instance_analytics_views/subscriptions/v1/subscriptions.sql
+            relativeToChangelogFile: true
       rollback:
         - sql:
             sql: drop view if exists v_alerts_subscriptions;
@@ -15741,8 +15741,8 @@ databaseChangeLog:
       comment: Added 0.48.0 - new view v_users
       changes:
         - sqlFile:
-          path: instance_analytics_views/users/v1/users.sql
-          relativeToChangelogFile: true
+            path: instance_analytics_views/users/v1/users.sql
+            relativeToChangelogFile: true
       rollback:
         - sql:
             sql: drop view if exists v_users;
