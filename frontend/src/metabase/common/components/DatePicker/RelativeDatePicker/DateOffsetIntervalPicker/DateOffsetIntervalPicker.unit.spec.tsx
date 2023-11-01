@@ -133,6 +133,94 @@ describe("DateOffsetIntervalPicker", () => {
       });
     });
 
+    it("should change the offset interval", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Starting from interval");
+      userEvent.clear(input);
+      userEvent.type(input, "20");
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...defaultValue,
+        offsetValue: direction === "last" ? -20 : 20,
+      });
+    });
+
+    it("should change the offset interval with a negative value", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Starting from interval");
+      userEvent.clear(input);
+      userEvent.type(input, "-10");
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...defaultValue,
+        offsetValue: direction === "last" ? -10 : 10,
+      });
+    });
+
+    it("should accept zero offset interval", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Starting from interval");
+      userEvent.clear(input);
+      userEvent.type(input, "0");
+      userEvent.tab();
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...defaultValue,
+        offsetValue: 0,
+      });
+    });
+
+    it("should ignore an empty offset interval", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Starting from interval");
+      userEvent.clear(input);
+      userEvent.tab();
+
+      expect(input).toHaveValue("14");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should ignore invalid offset values", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const input = screen.getByLabelText("Interval");
+      userEvent.clear(input);
+      userEvent.type(input, "abc");
+      userEvent.tab();
+
+      expect(input).toHaveValue("30");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should allow to change the offset unit", () => {
+      const { onChange } = setup({
+        value: defaultValue,
+      });
+
+      const unitText = direction === "last" ? "years ago" : "years from now";
+      userEvent.click(screen.getByLabelText("Starting from unit"));
+      userEvent.click(screen.getByText(unitText));
+
+      expect(onChange).toHaveBeenCalledWith({
+        ...defaultValue,
+        offsetUnit: "year",
+      });
+    });
+
     it("should display the actual date range", () => {
       setup({
         value: defaultValue,
