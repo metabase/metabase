@@ -3,10 +3,6 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Paper, Title } from "metabase/ui";
 
-<Link to="/admin/settings/email" className="link text-bold">
-  Email Settings
-</Link>;
-
 export const SMTPConnectionCard = () => {
   return (
     <Box data-testid="smtp-connection-card" w="100%" mb="2.5rem" ml="1rem">
