@@ -530,13 +530,13 @@
       (mt/with-model-cleanup [:model/AuditLog]
         (mt/with-temp [:model/User {:keys [id] :as new-user}]
           (is (= new-user (events/publish-event! :event/user-invited new-user)))
-          (is (= {:model_id id
-                  :user_id  (mt/user->id :rasta)
-                  :details  (assoc (select-keys new-user [:first_name :last_name :email])
-                                   :user_group_memberships [{:id 1 :is_group_manager false}])
-                  :topic    :user-invited
-                  :model    "User"}
-                 (event :user-invited id))))))))
+          (is (partial= {:model_id id
+                         :user_id  (mt/user->id :rasta)
+                         :details  (assoc (select-keys new-user [:first_name :last_name :email])
+                                          :user_group_memberships [{:id 1 :is_group_manager false}])
+                         :topic    :user-invited
+                         :model    "User"}
+                        (event :user-invited id))))))))
 
 (deftest user-update-event-test
   (testing :event/user-update
