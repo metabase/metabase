@@ -15100,13 +15100,13 @@ databaseChangeLog:
         - addColumn:
             tableName: parameter_card
             columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
