@@ -49,6 +49,34 @@ describe("RelativeDatePicker", () => {
     },
   );
 
+  it("should not lose values when navigating from Past to Next tab", () => {
+    setup();
+
+    userEvent.clear(screen.getByLabelText("Interval"));
+    userEvent.type(screen.getByLabelText("Interval"), "20");
+    userEvent.click(screen.getByLabelText("Next"));
+    expect(screen.getByLabelText("Interval")).toHaveValue("20");
+
+    userEvent.click(screen.getByLabelText("Past"));
+    expect(screen.getByLabelText("Interval")).toHaveValue("20");
+  });
+
+  it("should not lose offset values when navigating from Past to Next tab", async () => {
+    setup({
+      canUseRelativeOffsets: true,
+    });
+
+    userEvent.click(screen.getByLabelText("Options"));
+    userEvent.click(await screen.findByText("Starting from…"));
+    userEvent.clear(screen.getByLabelText("Starting from interval"));
+    userEvent.type(screen.getByLabelText("Starting from interval"), "20");
+    userEvent.click(screen.getByLabelText("Next"));
+    expect(screen.getByLabelText("Starting from interval")).toHaveValue("20");
+
+    userEvent.click(screen.getByLabelText("Past"));
+    expect(screen.getByLabelText("Starting from interval")).toHaveValue("20");
+  });
+
   it("should allow to submit a current value", () => {
     const { onChange } = setup();
 
