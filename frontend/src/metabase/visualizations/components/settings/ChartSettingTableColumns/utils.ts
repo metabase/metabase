@@ -129,7 +129,6 @@ export const getAdditionalMetadataColumns = (
 const getColumnGroupName = (
   displayInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo,
 ) => {
-  // console.log(displayInfo)
   const columnInfo = displayInfo as Lib.ColumnDisplayInfo;
   const tableInfo = displayInfo as Lib.TableDisplayInfo;
   return columnInfo.fkReferenceName || tableInfo.displayName;
