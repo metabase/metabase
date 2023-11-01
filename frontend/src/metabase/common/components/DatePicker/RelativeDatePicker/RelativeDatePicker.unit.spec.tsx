@@ -61,4 +61,74 @@ describe("RelativeDatePicker", () => {
       unit: "week",
     });
   });
+
+  it("should allow to submit a past value", () => {
+    const { onChange } = setup();
+
+    const input = screen.getByLabelText("Interval");
+    userEvent.clear(input);
+    userEvent.type(input, "20");
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: -20,
+      unit: "day",
+    });
+  });
+
+  it("should allow to submit a past value with an offset", async () => {
+    const { onChange } = setup({
+      canUseRelativeOffsets: true,
+    });
+
+    userEvent.click(screen.getByLabelText("Options"));
+    userEvent.click(await screen.findByText("Starting from…"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: -30,
+      unit: "day",
+      offsetValue: -7,
+      offsetUnit: "day",
+      options: undefined,
+    });
+  });
+
+  it("should allow to submit a next value", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Next"));
+    const input = screen.getByLabelText("Interval");
+    userEvent.clear(input);
+    userEvent.type(input, "20");
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: 20,
+      unit: "day",
+    });
+  });
+
+  it("should allow to submit a next value with an offset", async () => {
+    const { onChange } = setup({
+      canUseRelativeOffsets: true,
+    });
+
+    userEvent.click(screen.getByText("Next"));
+    userEvent.click(screen.getByLabelText("Options"));
+    userEvent.click(await screen.findByText("Starting from…"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: 30,
+      unit: "day",
+      offsetValue: 7,
+      offsetUnit: "day",
+      options: undefined,
+    });
+  });
 });
