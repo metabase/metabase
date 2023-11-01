@@ -8,6 +8,7 @@ import {
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
+const PEOPLE_MODEL_NAME = "People";
 
 describeEE("scenarios > Instance Analytics Collection", () => {
   describe("admin", () => {
@@ -27,9 +28,11 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       cy.visit("/");
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
       cy.findByTestId("pinned-items")
-        .findByText("Users")
+        .findByText(PEOPLE_MODEL_NAME)
         .scrollIntoView()
         .click();
+
+      cy.wait("@datasetQuery");
 
       cy.findByTestId("TableInteractive-root").within(() => {
         cy.findByTextEnsureVisible("admin@metabase.test");
@@ -44,9 +47,15 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
       cy.findByTestId("pinned-items")
-        .findByText("Users")
+        .findByText(PEOPLE_MODEL_NAME)
         .scrollIntoView()
         .click();
+
+      cy.wait("@datasetQuery");
+
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("Last Name").click();
+      });
 
       popover().findByText("Filter by this column").click();
       cy.wait("@fieldValues");
@@ -54,9 +63,7 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       popover().button("Add filter").click();
 
       cy.wait("@datasetQuery");
-      cy.findByTestId("question-row-count").findByText("Showing 6 rows");
 
-      cy.wait("@datasetQuery");
       cy.findByTestId("question-row-count").findByText("Showing 6 rows");
 
       cy.findByTestId("qb-header").findByText("Save").click();
@@ -77,9 +84,11 @@ describeEE("scenarios > Instance Analytics Collection", () => {
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
       cy.findByTestId("pinned-items")
-        .findByText("Users")
+        .findByText(PEOPLE_MODEL_NAME)
         .scrollIntoView()
         .click();
+
+      cy.wait("@datasetQuery");
 
       cy.findByTestId("qb-header").icon("ellipsis").click();
 
@@ -103,7 +112,7 @@ describeEE("scenarios > Instance Analytics Collection", () => {
 
       navigationSidebar().findByText(ANALYTICS_COLLECTION_NAME).click();
 
-      cy.findByTestId("pinned-items").findByText("Single user view").click();
+      cy.findByTestId("pinned-items").findByText("Single person view").click();
 
       cy.findByTestId("dashboard-header").findByText("Make a copy").click();
 
