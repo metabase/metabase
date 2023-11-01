@@ -136,6 +136,7 @@ function FormCollectionPicker({
         >
           {showCreateNewCollectionOption && (
             <CreateCollectionOnTheGoButton
+              showOnlyPersonalCollections={showOnlyPersonalCollections}
               openCollectionId={openCollectionId}
             />
           )}
