@@ -520,14 +520,32 @@
    display name with join alias. That is not desired for fields comming from metrics, because they come from internal
    joins."
   [{:keys [breakout aggregation] :as _metrics-query} metadatas join-alias]
+  (tap> ["provides args" _metrics-query metadatas join-alias])
+  ;;;; this should go like
+  ;; --- from ags
+  ;; --- from breakout?
+  ;;  bc if nested, it could appear in breakout instead.
+
+  ;; this logic is probably all wrong...
+
   (let [fields-from-ags (doto (map clause->field aggregation (subvec metadatas (count breakout)))
                           (as-> $ (assert (= (count aggregation) (count $)) "Aggregation count mismatch.")))
         fields-to-provide (->> fields-from-ags
+                               
+                               ;;; here i need somehow adjust it to use expressions...
+                               ;; rework!!
+
+                               ;;; here i must match the field of underlying expressino push down implementation
+                               ;; i think
+
+                               ;;; so i need those CONT HERE!!!!!!!!!!!
+
                                (into (filterv clause-with-metric-opt? breakout))
                                (map #(update % 2 assoc
                                               :join-alias join-alias
                                               ::annotate/avoid-display-name-prefix? true)))]
-    (m/index-by metric-field-opt fields-to-provide)))
+    (doto (m/index-by metric-field-opt fields-to-provide)
+      (as-> $ (tap> ["provides result" $])))))
 
 (defn- join-metrics-query
   "Joins [[metrics-query]] into original query.
@@ -598,15 +616,21 @@
                             m/assoc-some ::metric (metric-field-opt ag) ::original-name))
   )
 
-;; TODO: be consistent with returns, true or false!
+
+;;;; DONE
 (defn- one-and-only-metric?
-  "Determine if aggregation consists of one and only metric, hence will later be swapped for a field and moved
-   to breakout during transformation of a query containing metrics."
+  "Determine if aggregation consists of one metric only, possibly wrapped in `:aggregation-options`."
   [ag]
-  (mbql.u/match-one ag
-    [:metric _]
-    (or (empty? &parents)
-        (= [:aggregation-options] &parents))))
+  (boolean (mbql.u/match-one ag
+             [:metric _]
+             (or (empty? &parents)
+                 (= [:aggregation-options] &parents)))))
+
+(comment
+  ;;;; TODO: This into test?
+  (one-and-only-metric? [:aggregation-options [:metric 10] {}])
+  (one-and-only-metric? [:aggregation-options [:+ 10 [:metric 10]] {}])
+  )
 
 (defn- swap-metric-clauses-in-aggregation
   "Transform one aggregation containing metrics clauses.
@@ -614,12 +638,9 @@
    [[metrics-query]]s. If aggregation contains only one metric and nothing else, it is swapped for field, that 
    will be moved to breakout later by [[move-ag-fields-to-breakout]]."
   [query ag]
-  (tap> ["swap-metric-clauses-in-aggregation" query ag])
-  (doto (if (one-and-only-metric? ag)
-          #_(let [] (swap-ag-for-field ag (::metric-id->field query)))
-          (swap-ag-for-field ag (::metric-id->field query))
-          (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id])))
-    (as-> $ (tap> ["swap-metric-clauses-in-aggregation result" $]))))
+  (if (one-and-only-metric? ag)
+    (swap-ag-for-field ag (::metric-id->field query))
+    (mbql.u/replace ag [:metric id] (get-in query [::metric-id->field id]))))
 
 (comment
   
@@ -739,9 +760,6 @@
             :metabase.query-processor.middleware.expand-macros/ordered-clauses-for-fields [[:breakout 0] [:aggregation 0]]})
             )
 
-(defn- construct-expression-name
-  [])
-
 ;;;; There are multiple cases to consider
 ;;;; 1. ag opts with display-name
 ;;;; 2. ag opts with name
@@ -752,6 +770,7 @@
   ;; stored field options!
   ;; This needs either original stuff or metric name
   ;; code original stuff only first
+
 (defn- name-for-field
   [existing-expression-names field]
   (def fff field)
@@ -760,16 +779,16 @@
         original-name-for-field (or (::original-display-name opts)
                                     (::original-name opts)
                                     (::metric-name opts)
-                                    "kokocit" ;; tmp
                                     (throw (ex-info (tru "Unable to choose name for field.")
                                                     {:type qp.error-type/invalid-query
+                                                     :used-names existing-expression-names
                                                      :field field})))
         name-already-taken? (some #(re-matches (re-pattern (str "\\Q" original-name-for-field "\\E")) %)
                                   existing-expression-names)]
     (if-not name-already-taken?
       original-name-for-field
-      (let [similar-names @(def sns (keep #(re-find (re-pattern (str "\\Q" original-name-for-field "\\E \\((\\d+)\\)")) %)
-                                          existing-expression-names))
+      (let [similar-names (keep #(re-find (re-pattern (str "\\Q" original-name-for-field "\\E \\((\\d+)\\)")) %)
+                                existing-expression-names)
             highest-index (try (apply max (map (fn [[_ index-str]] (Integer/parseInt index-str))
                                                similar-names))
                                (catch Throwable _
@@ -796,30 +815,7 @@
   (key-for)
   )
 
-(defn- not-empty-or-some? [x]
-  (or (and (coll? x)
-           (not-empty x))
-      (some? x)))
-
-(defn- empty-or-nil? [x]
-  (or (and (coll? x)
-           (empty? x))
-      (nil? x)))
-
-;;;; update-dissoc makes more sense
-(defn- update-some [m k f & args]
-  (let [x (apply f (get m k) args)]
-    (def xxx x)
-    (if (empty-or-nil? x)
-      m
-      (assoc m k x))))
-
-u/assoc-dissoc
-#_(defn assoc-or-dissoc [m k v]
-  )
-
-;;;; First I'm considering that aggregations will be modified to fields
-(defn- add-fields-from-aggregations-to-expressions
+(defn- move-fields-from-aggregations-to-expressions
   [query]
   (let [expressions (:expressions query)
         expr-keys (keys expressions)
@@ -850,15 +846,71 @@ u/assoc-dissoc
   (add-fields-from-aggregations-to-expressions qq)
   )
 
+(defn- desired-name-for-field
+  "Choose name for a field being renamed during metric aggregation to field transformation.
+   Field is expected to have at least some of the following keys set in field options:
+   - ::display-name from ag
+   - ::name from ag
+   - ::metric-name from metric.
+   "
+  [[_ _ field-opts]]
+  (or (::display-name field-opts)
+      (::name field-opts)
+      (::metric-name field-opts)))
+
+
+;; LOOKS OK
+(defn- name-for-renamed-field
+  "Name for field that was result of metrics aggregation transformation."
+  [used-names desired-name]
+  (if-not (contains? used-names desired-name)
+    desired-name
+    (let [similar-pattern (re-pattern (str "(?<=\\Q" desired-name "\\E \\()\\d+(?=\\))"))
+          similar-names-indices (into [] (comp (keep (partial re-find similar-pattern))
+                                               (map #(Integer/parseInt %)))
+                                      used-names)
+          new-index (inc (apply max 0 similar-names-indices))]
+      (str desired-name " (" new-index ")"))))
+
+(comment
+  (re-find (re-pattern (str "(?<=\\Q" "desired-name" "\\E \\()\\d+(?=\\))")) "desired-name (10)")
+  )
+
+(defn- fields->renaming-map+order
+  [used-names fields]
+  (loop [[[_ _ field-opts :as field] & rest-fields] fields
+         used-names (set used-names)
+         result {:ordered-names []
+                 :name->field {}}]
+    (if (nil? field-opts)
+      result
+      (let [desired-name (desired-name-for-field field)
+            new-name (name-for-renamed-field used-names desired-name)]
+        (recur rest-fields
+               (conj used-names new-name)
+               (-> result
+                   (update :ordered-names conj new-name)
+                   (assoc-in [:name->field new-name] field)))))))
+
 (defn- swap-metric-clauses
-  "Swap metric clauses in aggregation clauses of `query`. For details refer to [[swap-metric-clauses-in-aggregation]].
-   It is guaranteed that :aggregations are not empty, because this functions is to be called only on query, that
-   contains metric clauses, hence aggregations."
-  [query]
-  (let [with-swapped (update query :aggregation (partial mapv #(swap-metric-clauses-in-aggregation query %)))]
-    ;;;; this is bleh -- probably right!
-    (-> with-swapped
-        add-fields-from-aggregations-to-expressions)))
+  "! Query is expected to have metrics queries joined in and ::metric-id->field set."
+  [{:keys [aggregation expressions breakout] :as query}]
+  (tap> ["swap-metric-clauses args"
+         query])
+  (let [swapped-ags (doto (map (partial swap-metric-clauses-in-aggregation query) aggregation)
+                      (as-> $ (tap> ["swap-metric-clauses in ag" $])))
+        {:keys [remaining-ags fields-from-ags]}
+        (group-by (fn [[type]] (case type :field :fields-from-ags :remaining-ags)) swapped-ags)
+        {:keys [ordered-names name->field]}
+        (fields->renaming-map+order (keys expressions) fields-from-ags)
+        ordered-expression-references (mapv (partial vector :expression) ordered-names)]
+    (tap> ["swap-metric-clauses other stuff"
+           remaining-ags fields-from-ags ordered-expression-references name->field])
+    (doto (-> query
+              (u/assoc-dissoc :aggregation (not-empty (vec remaining-ags)))
+              (m/assoc-some :expressions (not-empty (merge expressions name->field)))
+              (m/assoc-some :breakout (not-empty (into (vec breakout) ordered-expression-references))))
+      (as-> $ (tap> ["swap-metric-clauses result" $])))))
 
 
 (comment
@@ -875,9 +927,7 @@ u/assoc-dissoc
   (cond (nil? ag)
         acc
 
-        ;; here I could use one and only metric
         (one-and-only-metric? ag)
-        #_(= :field type)
         (recur (inc breakout-idx) ag-idx ags (conj acc [:breakout breakout-idx]))
 
         :else
@@ -895,67 +945,40 @@ u/assoc-dissoc
     (assoc query ::ordered-clauses-for-fields
            (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
-#_(defn- move-ag-fields-to-breakout
-  "Move fields, which are currently in :aggregation and are result of [[swap-metric-clauses]], into :breakout."
-  [query]
-  ;;;; This is also no good!
-  #_(dotap> "move-ag-fields-to-breakout" query)
-  
-  (let [{:keys [aggregation breakout]}
-        (group-by (fn [[type]]
-                    (if (= :field type) :breakout :aggregation))
-                  (:aggregation query))]
-  
-    (cond-> query
-      (seq aggregation) (assoc :aggregation aggregation)
-      (empty? aggregation) (dissoc :aggregation)
-      (seq breakout) (-> (update :breakout #(into (vec %1) %2) breakout)))))
-
-;;;; TODO: Do I have breakout done at this point? I mean, ready to just copy?
-(defn- this-is-temporary [query [clause-type clause-index :as clause-ref]]
+;;;; TODO: docstring!
+(defn- clause-ref->order-by-element
+  "Only expressions are in breakout! aggregation"
+  [query [clause-type :as clause-ref]]
   (case clause-type
     :breakout (get-in query clause-ref)
     clause-ref))
 
+;;;; TODO: Docstring!
 (defn- update-order-by-ag-refs
-  ;;;; TODO: my precondition is wrong here!
-  ;;;;         allowed values = fields, aggregation references, expression references!
   "`:order-by` contains references to aggregations, breakout or expressions. Metric expansion could cause some
    aggregations becoming breakout fields. This function ensures aggregation indices in order by clause are updated
-   accordingly."
-  [{breakout :breakout
-    ;;;; ordered clauses for fields are not usable here...
-    ordered-clauses-for-fields ::ordered-clauses-for-fields
-    :as query}]
-  (def uo-query query)
+   accordingly.
+   
+   Rewrite
+   Expects aggregations processed. And ::ordered-clauses-for-fields set."
+  [{::keys [ordered-clauses-for-fields] :as query}]
   (assert (and (vector? ordered-clauses-for-fields)
                (seq ordered-clauses-for-fields))
-    "Expected not empty vector of `ordered-clauses-for-fields`.")
-  ;;;; this also sets "[:breakout 1] -- but for that, there should be direct reference!"
+          (trs "Expected not empty vector of `ordered-clauses-for-fields`."))
   (let [original-ag-index->clause-ref (subvec ordered-clauses-for-fields (::original-breakout-count query))]
     (mbql.u/replace-in query [:order-by]
-                       [:aggregation idx]
-                       #_(original-ag-index->clause-ref idx)
-                       (this-is-temporary query (original-ag-index->clause-ref idx))))
-  )
+      [:aggregation idx]
+      (clause-ref->order-by-element query (original-ag-index->clause-ref idx)))))
 
-
-
+;;;; DONE
 (defn- metric-infos->metrics-queries
-  "Transforms metric infos into metrics query. Groupping (partitioning in practice) of metrics is further described
-   in namespace docstring, section [# Metrics and filters or segments]."
+  "Transforms metric infos into metrics queries."
   [original-query metric-infos]
   (->> metric-infos
        (map (partial expand-and-combine-filters original-query))
        (sort-by (comp :filter :definition))
        (partition-by (comp :filter :definition))
-       
        (mapv (partial metrics-query original-query))))
-
-(defn- swap-breakout [query]
-  (mbql.u/replace-in query [:order-by]
-                     [:breakout index]
-                     (get-in query [:breakout index])))
 
 ;;;; TODO: mutually recursive metrics definition guard!
 ;;;; TODO: Robust expressions handling!
@@ -967,9 +990,6 @@ u/assoc-dissoc
                     {:type qp.error-type/invalid-query
                      :query query
                      :depth *expansion-depth*})))
-  ;;;; TODO: Why it does not make sense to check for unexpanded in source-query?
-  ;;;;       Because metrics are associated to specific table. And should not be used with queries containing
-  ;;;;       `:source-query`.
   (assert (empty? (metrics (:joins query))) "Joins contain unexpanded metrics.")
   (if-let [metric-infos (metrics! query)]
     (let [with-joined-metrics-queries (->> metric-infos
@@ -979,22 +999,17 @@ u/assoc-dissoc
           (assoc ::original-breakout-count (count (:breakout query)))
           (infer-ordered-clauses-for-fields)
           (swap-metric-clauses)
-          ;;;; this is just noise and does not have to be here
-          (dissoc ::metric-id->field)
-          ;;;; THIS MUST COME AFTER MOVE...
-          (update-order-by-ag-refs)
-          
-          #_(move-ag-fields-to-breakout)
-          
-          #_(swap-breakout)
-
-          #_(doto (as-> $ (def xix $)))
-          ))
+          ;;;; TODO: confirm it is safe to remove this guy!
+          #_(dissoc ::metric-id->field)
+          (update-order-by-ag-refs)))
     query))
 
 (defn- clause-ref->field
   "Transform clause reference of format [type index] to field usable in wrapping query."
   [{:keys [breakout] :as query} metadatas [clause-type index :as clause-ref]]
+  (def www query)
+  (def m+m metadatas)
+  (def crcr clause-ref)
   (clause->field (get-in query clause-ref) (metadatas (+ index (case clause-type
                                                                  :aggregation (count breakout)
                                                                  0)))))
@@ -1013,6 +1028,287 @@ u/assoc-dissoc
        :source-metadata metadatas})
     inner-query))
 
+(comment
+  {:limit 5,
+   :joins
+   [{:alias "metric__0",
+     :strategy :left-join,
+     :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__0"}]],
+     :source-query
+     {:source-table 9,
+      :breakout [[:field 85 nil]],
+      :aggregation
+      [[:aggregation-options
+        [:count]
+        {:display-name "venues, count",
+         :name "venues, count",
+         :metabase.query-processor.middleware.expand-macros/metric 87,
+         :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+         :metabase.query-processor.middleware.expand-macros/original-name nil,
+         :metabase.query-processor.middleware.expand-macros/metric-name "venues, count"}]]},
+     :source-metadata
+     [{:semantic_type :type/FK,
+       :table_id 9,
+       :coercion_strategy nil,
+       :name "CATEGORY_ID",
+       :settings nil,
+       :field_ref [:field 85 nil],
+       :effective_type :type/Integer,
+       :nfc_path nil,
+       :parent_id nil,
+       :id 85,
+       :display_name "Category ID",
+       :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+       :base_type :type/Integer}
+      {:name "venues, count",
+       :display_name "venues, count",
+       :base_type :type/Integer,
+       :semantic_type :type/Quantity,
+       :field_ref [:aggregation 0]}],
+     :fields :all}
+    {:alias "metric__512610d6",
+     :strategy :left-join,
+     :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__512610d6"}]],
+     :source-query
+     {:source-table 9,
+      :breakout [[:field 85 nil]],
+      :filter [:< [:field 85 nil] 50],
+      :aggregation
+      [[:aggregation-options
+        [:sum [:field 84 nil]]
+        {:display-name "venues, sum price, cat id lt 50",
+         :name "venues, sum price, cat id lt 50",
+         :metabase.query-processor.middleware.expand-macros/metric 88,
+         :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+         :metabase.query-processor.middleware.expand-macros/original-name nil,
+         :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50"}]]},
+     :source-metadata
+     [{:semantic_type :type/FK,
+       :table_id 9,
+       :coercion_strategy nil,
+       :name "CATEGORY_ID",
+       :settings nil,
+       :field_ref [:field 85 nil],
+       :effective_type :type/Integer,
+       :nfc_path nil,
+       :parent_id nil,
+       :id 85,
+       :display_name "Category ID",
+       :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+       :base_type :type/Integer}
+      {:name "venues, sum price, cat id lt 50",
+       :display_name "venues, sum price, cat id lt 50",
+       :base_type :type/Integer,
+       :settings nil,
+       :field_ref [:aggregation 0]}],
+     :fields :all}
+    {:alias "metric__f2a8054d",
+     :strategy :left-join,
+     :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__f2a8054d"}]],
+     :source-query
+     {:source-table 9,
+      :breakout [[:field 85 nil]],
+      :filter [:> [:field 85 nil] 20],
+      :aggregation
+      [[:aggregation-options
+        [:/
+         [:field
+          "venues, count"
+          {:base-type :type/Integer,
+           :display-name "venues, count",
+           :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+           :metabase.query-processor.middleware.expand-macros/metric 87,
+           :join-alias "metric__f2a8054d",
+           :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]
+         [:field
+          "venues, sum price, cat id lt 50"
+          {:base-type :type/Integer,
+           :display-name "venues, sum price, cat id lt 50",
+           :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50",
+           :metabase.query-processor.middleware.expand-macros/metric 88,
+           :join-alias "metric__dbe80f1b",
+           :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]]
+        {:name "Metric dividing metric",
+         :display-name "Metric dividing metric",
+         :metabase.query-processor.middleware.expand-macros/metric 89,
+         :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+         :metabase.query-processor.middleware.expand-macros/original-name nil,
+         :metabase.query-processor.middleware.expand-macros/metric-name
+         "venues, count metric div sum metric, cat id gt 30"}]],
+      :joins
+      [{:alias "metric__f2a8054d",
+        :strategy :left-join,
+        :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__f2a8054d"}]],
+        :source-query
+        {:source-table 9,
+         :filter [:> [:field 85 nil] 20],
+         :breakout [[:field 85 nil]],
+         :aggregation
+         [[:aggregation-options
+           [:count]
+           {:display-name "venues, count",
+            :name "venues, count",
+            :metabase.query-processor.middleware.expand-macros/metric 87,
+            :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+            :metabase.query-processor.middleware.expand-macros/original-name nil,
+            :metabase.query-processor.middleware.expand-macros/metric-name "venues, count"}]]},
+        :source-metadata
+        [{:semantic_type :type/FK,
+          :table_id 9,
+          :coercion_strategy nil,
+          :name "CATEGORY_ID",
+          :settings nil,
+          :field_ref [:field 85 nil],
+          :effective_type :type/Integer,
+          :nfc_path nil,
+          :parent_id nil,
+          :id 85,
+          :display_name "Category ID",
+          :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+          :base_type :type/Integer}
+         {:name "venues, count",
+          :display_name "venues, count",
+          :base_type :type/Integer,
+          :semantic_type :type/Quantity,
+          :field_ref [:aggregation 0]}],
+        :fields :all}
+       {:alias "metric__dbe80f1b",
+        :strategy :left-join,
+        :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__dbe80f1b"}]],
+        :source-query
+        {:source-table 9,
+         :filter [:and [:> [:field 85 nil] 20] [:< [:field 85 nil] 50]],
+         :breakout [[:field 85 nil]],
+         :aggregation
+         [[:aggregation-options
+           [:sum [:field 84 nil]]
+           {:display-name "venues, sum price, cat id lt 50",
+            :name "venues, sum price, cat id lt 50",
+            :metabase.query-processor.middleware.expand-macros/metric 88,
+            :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+            :metabase.query-processor.middleware.expand-macros/original-name nil,
+            :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50"}]]},
+        :source-metadata
+        [{:semantic_type :type/FK,
+          :table_id 9,
+          :coercion_strategy nil,
+          :name "CATEGORY_ID",
+          :settings nil,
+          :field_ref [:field 85 nil],
+          :effective_type :type/Integer,
+          :nfc_path nil,
+          :parent_id nil,
+          :id 85,
+          :display_name "Category ID",
+          :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+          :base_type :type/Integer}
+         {:name "venues, sum price, cat id lt 50",
+          :display_name "venues, sum price, cat id lt 50",
+          :base_type :type/Integer,
+          :settings nil,
+          :field_ref [:aggregation 0]}],
+        :fields :all}],
+      :metabase.query-processor.middleware.expand-macros/metric-id->field
+      {87
+       [:field
+        "venues, count"
+        {:base-type :type/Integer,
+         :display-name "venues, count",
+         :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+         :metabase.query-processor.middleware.expand-macros/metric 87,
+         :join-alias "metric__f2a8054d",
+         :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}],
+       88
+       [:field
+        "venues, sum price, cat id lt 50"
+        {:base-type :type/Integer,
+         :display-name "venues, sum price, cat id lt 50",
+         :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50",
+         :metabase.query-processor.middleware.expand-macros/metric 88,
+         :join-alias "metric__dbe80f1b",
+         :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]},
+      :metabase.query-processor.middleware.expand-macros/original-breakout-count 1},
+     :source-metadata
+     [{:semantic_type :type/FK,
+       :table_id 9,
+       :coercion_strategy nil,
+       :name "CATEGORY_ID",
+       :settings nil,
+       :field_ref [:field 85 nil],
+       :effective_type :type/Integer,
+       :nfc_path nil,
+       :parent_id nil,
+       :id 85,
+       :display_name "Category ID",
+       :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+       :base_type :type/Integer}
+      {:name "Metric dividing metric",
+       :display_name "Metric dividing metric",
+       :base_type :type/Float,
+       :field_ref [:aggregation 0]}],
+     :fields :all}],
+   :source-table 9,
+   :expressions
+   {"venues, count metric div sum metric, cat id gt 30"
+    [:field
+     "Metric dividing metric"
+     {:base-type :type/Float,
+      :display-name "Metric dividing metric",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, count metric div sum metric, cat id gt 30",
+      :metabase.query-processor.middleware.expand-macros/metric 89,
+      :join-alias "metric__f2a8054d",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}],
+    "venues, sum price, cat id lt 50"
+    [:field
+     "venues, sum price, cat id lt 50"
+     {:base-type :type/Integer,
+      :display-name "venues, sum price, cat id lt 50",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50",
+      :metabase.query-processor.middleware.expand-macros/metric 88,
+      :join-alias "metric__512610d6",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}],
+    "venues, count"
+    [:field
+     "venues, count"
+     {:base-type :type/Integer,
+      :display-name "venues, count",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+      :metabase.query-processor.middleware.expand-macros/metric 87,
+      :join-alias "metric__0",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]},
+   :metabase.query-processor.middleware.expand-macros/original-breakout-count 1,
+   :breakout [[:field 85 nil]],
+   :order-by [[:asc [:field 85 nil]]],
+   :metabase.query-processor.middleware.expand-macros/metric-id->field
+   {87
+    [:field
+     "venues, count"
+     {:base-type :type/Integer,
+      :display-name "venues, count",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+      :metabase.query-processor.middleware.expand-macros/metric 87,
+      :join-alias "metric__0",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}],
+    88
+    [:field
+     "venues, sum price, cat id lt 50"
+     {:base-type :type/Integer,
+      :display-name "venues, sum price, cat id lt 50",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, sum price, cat id lt 50",
+      :metabase.query-processor.middleware.expand-macros/metric 88,
+      :join-alias "metric__512610d6",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}],
+    89
+    [:field
+     "Metric dividing metric"
+     {:base-type :type/Float,
+      :display-name "Metric dividing metric",
+      :metabase.query-processor.middleware.expand-macros/metric-name "venues, count metric div sum metric, cat id gt 30",
+      :metabase.query-processor.middleware.expand-macros/metric 89,
+      :join-alias "metric__f2a8054d",
+      :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]}}
+  )
+
 ;;;; TODO: add test!
 (defn- remove-metrics-internals [query]
   (walk/postwalk
@@ -1022,8 +1318,6 @@ u/assoc-dissoc
                ::original-breakout-count ::original-display-name ::original-name ::metric-name)
        form))
    query))
-
-
 
 ;;;; TODO: Add something like `remove-metric-internals`. That's necessary because if there are some metrics
 ;;;;       expanded in deeper levels of query either in joins or source query, no wrapping occurs and queries
