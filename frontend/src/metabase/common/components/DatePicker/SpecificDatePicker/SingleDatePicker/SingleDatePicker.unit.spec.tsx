@@ -2,15 +2,15 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import { SingleDatePicker } from "./SingleDatePicker";
 
+const DATE = new Date(2020, 0, 10);
+const DATETIME = new Date(2020, 0, 10, 10, 20);
+
 interface SetupOpts {
   value?: Date;
   isNew?: boolean;
 }
 
-function setup({
-  value = new Date(2020, 0, 10),
-  isNew = false,
-}: SetupOpts = {}) {
+function setup({ value = DATE, isNew = false }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
 
@@ -42,7 +42,7 @@ describe("SingleDatePicker", () => {
 
   it("should be able to set the date with time via the calendar", () => {
     const { onChange } = setup({
-      value: new Date(2020, 0, 10, 10, 20),
+      value: DATETIME,
     });
 
     userEvent.click(screen.getByText("12"));
@@ -63,7 +63,7 @@ describe("SingleDatePicker", () => {
 
   it("should be able to set the date with time via the input", () => {
     const { onChange } = setup({
-      value: new Date(2020, 0, 10, 10, 20),
+      value: DATETIME,
     });
 
     const input = screen.getByLabelText("Date");
@@ -87,7 +87,7 @@ describe("SingleDatePicker", () => {
 
   it("should allow to update the time", () => {
     const { onChange } = setup({
-      value: new Date(2020, 0, 10, 10, 20),
+      value: DATETIME,
     });
 
     const input = screen.getByLabelText("Time");
@@ -99,7 +99,7 @@ describe("SingleDatePicker", () => {
 
   it("should allow to remove time", () => {
     const { onChange } = setup({
-      value: new Date(2020, 0, 10, 10, 20),
+      value: DATETIME,
     });
 
     userEvent.click(screen.getByText("Remove time"));
