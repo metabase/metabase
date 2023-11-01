@@ -7,7 +7,7 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   dashboard: t`Dashboard`,
   database: t`Database`,
   dataset: t`Model`,
-  "indexed-entity": t`Indexed Entity`,
+  "indexed-entity": t`Indexed record`,
   metric: t`Metric`,
   pulse: t`Pulse`,
   segment: t`Segment`,
