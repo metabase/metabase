@@ -218,7 +218,6 @@
   DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
-    (def dashboard-cards dashboard-cards)
     (t2/with-transaction [_conn]
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 DashboardCard
