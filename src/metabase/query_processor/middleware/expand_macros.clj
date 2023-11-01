@@ -461,12 +461,12 @@
     (when (clause-with-metric-opt? form)
       (::metric (form 2))))
 
-(defn- metric-field-opts [form]
+#_(defn- metric-field-opts [form]
   (when (clause-with-metric-opt? form)
     (doto (select-keys (nth form 2) metric-field-opts-keys)
       (as-> $ (tap> ["metric-field-opt result" $])))))
 
-(defn- clause->field
+#_(defn- clause->field
   "Transform `clause` of some source-query to field usable in joining or parent query.
    Conveys ::metric field option of aggregation and field, so fields are usable in [[provides]]"
   [[clause-type :as clause] metadata]
@@ -478,18 +478,19 @@
                                                               (as-> $ (tap> ["mfo" $])))))
     (as-> $ (tap> ["clause->field result" $]))))
 
-(defn metrics-query-join-condition
-  "Generate join condition used to join [[metrics-query]] into original query.
-   Used by [[metrics-join]]. For explanation of modelling join on breakout fields equality refer to this ns docstring,
-   section [## `metrics-query`s are joined to the containing (original) query]."
-  [join-alias joining-query metrics-query-metadata]
+(declare clause->field)
+
+(defn- metrics-query-join-condition
+
+  [join-alias joining-query joined-query metrics-query-metadata]
   (let [conditions (for [[index breakout] (map vector (range) (:breakout joining-query))]
-                     [:= breakout (-> (clause->field breakout (metrics-query-metadata index))
+                     [:= breakout 
+                      (-> (clause->field joined-query breakout (metrics-query-metadata index))
                                       (mbql.u/update-field-options assoc :join-alias join-alias))])]
     ;;;; TODO: Using [:= 1 1] as condition is problematic. Hence changed to [:= [:+ 1 1] 2]. [:= 1 1] is changed 
     ;;;;       to [:= [:field 1 nil] 1] during preprocess and main cultprit is some middleware. Investigate!
     ;;;; TODO: condp -> case?
-    (condp = (count conditions)
+    (case (count conditions)
       0 [:= [:+ 1 1] 2]
       1 (first conditions)
       (into [:and] conditions))))
@@ -506,13 +507,13 @@
         metrics-query-metadata (mbql-query->metadata metrics-query)]
     {:alias join-alias
      :strategy :left-join
-     :condition (metrics-query-join-condition join-alias query metrics-query-metadata)
+     :condition (metrics-query-join-condition join-alias query metrics-query metrics-query-metadata)
      :source-query metrics-query
      :source-metadata metrics-query-metadata
      :fields :all}))
 
 ;;;; This also does not work if I consider multiple aggregations pointing to metric
-(defn- provides
+#_(defn- provides
   "Generate mapping of metric id to field.
    Takes breakout and aggregation of query. Further checks which of those clauses contain `::metric` key in options.
    Presence of that key signals that clause represents column for some metric. Clauses from aggregations are
@@ -546,6 +547,117 @@
                                               ::annotate/avoid-display-name-prefix? true)))]
     (doto (m/index-by metric-field-opt fields-to-provide)
       (as-> $ (tap> ["provides result" $])))))
+
+;;; looks okish
+(defn- clause->field
+  "Transform clauses from `query`'s :breakout or :aggregation into fields that can be used in joining query.
+   Meant to be used with aggregation options."
+  [query [type :as clause] {base-type :base_type name :name :as _metadata}]
+  (tap> ["clause->field args" query clause _metadata])
+  ;;;; exception or assert?
+  (def ttt type)
+  (def wq query)
+  (def cc clause)
+  (def md _metadata)
+  #_(assert (contains? #{:field :aggregation-options :expression} type) "Clause type not supported.")
+  (case type
+    :field clause
+    (let [opts (case type
+                 :expression (let [expression-name (second clause)]
+                               (or (get-in query [:expressions expression-name 2])
+                                   (throw (ex-info (tru "Missing options for field in expression.")
+                                                   {:type qp.error-type/qp
+                                                    :expression-name expression-name
+                                                    :query query}))))
+               ;;;; :aggregation-options -> else
+               ;;;; bc field and breakout has it a same way
+                 (or (get clause 2)
+                     (throw (ex-info (tru "Options for clause unavailable.")
+                                     {:type qp.error-type/qp}))))]
+      [:field name (merge opts {:base-type base-type})])))
+
+(comment
+  
+  (clause->field
+   {:source-table 9,
+    :filter [:> [:field 85 nil] 20],
+    :breakout [[:field 85 {:base-type :type/Integer}]],
+    :expressions {"px10" [:* [:field 84 nil] 10]},
+    :aggregation
+    [[:aggregation-options
+      [:count]
+      {:display-name "venues, count",
+       :name "venues, count",
+       :metabase.query-processor.middleware.expand-macros/metric 4,
+       :metabase.query-processor.middleware.expand-macros/original-display-name nil,
+       :metabase.query-processor.middleware.expand-macros/original-name nil,
+       :metabase.query-processor.middleware.expand-macros/metric-name "venues, count"}]]}
+   [:field 85 {:base-type :type/Integer}]
+   {:semantic_type :type/FK,
+    :table_id 9,
+    :coercion_strategy nil,
+    :name "CATEGORY_ID",
+    :settings nil,
+    :field_ref [:field 85 {:base-type :type/Integer}],
+    :effective_type :type/Integer,
+    :nfc_path nil,
+    :parent_id nil,
+    :id 85,
+    :display_name "Category ID",
+    :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+    :base_type :type/Integer})
+  )
+
+(defn- provides
+  "Return map of metric-id -> field usable in joining query."
+  [{:keys [breakout aggregation] :as query} metadatas join-alias]
+  (tap> ["provides args" query metadatas join-alias])
+  (doto (let [original-breakout-count (or (::original-breakout-count query) (count breakout))
+              fields (map (partial clause->field query)
+                          (into (subvec breakout original-breakout-count)
+                                aggregation)
+                          (subvec metadatas original-breakout-count))]
+    ;;;; TODO: assertion that every field has a name and metric from where it came from?
+    ;;;; TODO: remove original breakout !!!! 
+          (m/index-by #(get-in % [2 ::metric])
+                      (mapv #(update % 2 assoc
+                                     :join-alias join-alias
+                                     ::annotate/avoid-display-name-prefix? true)
+                            fields)))
+    (as-> $ (tap> ["provides result" $]))))
+
+(comment
+  (provides {:source-table 9,
+             :breakout [[:field 85 nil]],
+             :aggregation
+             [[:aggregation-options
+               [:count]
+               {:display-name "venues, count",
+                :name "venues, count",
+                :metabase.query-processor.middleware.expand-macros/metric 142,
+                :metabase.query-processor.middleware.expand-macros/original-display-name "Just nesting",
+                :metabase.query-processor.middleware.expand-macros/original-name "Just nesting",
+                :metabase.query-processor.middleware.expand-macros/metric-name "venues, count"}]]}
+            [{:semantic_type :type/FK,
+              :table_id 9,
+              :coercion_strategy nil,
+              :name "CATEGORY_ID",
+              :settings nil,
+              :field_ref [:field 85 nil],
+              :effective_type :type/Integer,
+              :nfc_path nil,
+              :parent_id nil,
+              :id 85,
+              :display_name "Category ID",
+              :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+              :base_type :type/Integer}
+             {:name "venues, count",
+              :display_name "venues, count",
+              :base_type :type/Integer,
+              :semantic_type :type/Quantity,
+              :field_ref [:aggregation 0]}]
+            "metric__0"
+            ))
 
 (defn- join-metrics-query
   "Joins [[metrics-query]] into original query.
@@ -974,11 +1086,17 @@
 (defn- metric-infos->metrics-queries
   "Transforms metric infos into metrics queries."
   [original-query metric-infos]
+  (def oqoq original-query)
+  (def mimi metric-infos)
   (->> metric-infos
        (map (partial expand-and-combine-filters original-query))
        (sort-by (comp :filter :definition))
        (partition-by (comp :filter :definition))
        (mapv (partial metrics-query original-query))))
+
+(comment
+  (metrics-query oqoq mimi)
+  )
 
 ;;;; TODO: mutually recursive metrics definition guard!
 ;;;; TODO: Robust expressions handling!
@@ -1010,7 +1128,8 @@
   (def www query)
   (def m+m metadatas)
   (def crcr clause-ref)
-  (clause->field (get-in query clause-ref) (metadatas (+ index (case clause-type
+  ;;;; metadatas -- b..., a...
+  (clause->field query (get-in query clause-ref) (metadatas (+ index (case clause-type
                                                                  :aggregation (count breakout)
                                                                  0)))))
 

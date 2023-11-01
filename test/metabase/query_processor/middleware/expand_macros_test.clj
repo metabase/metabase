@@ -601,7 +601,7 @@
                 [16 2]]
                (mt/rows @(def post (qp/process-query query)))))))))
 
-;;;;;; TODO this
+;;;;;; TODO this :::::::::::::::::::: exception!!!
 ;;;; TODO: Still WIP, verify correctness, probably rewrite to just transformation checking, w/o execution!
 (deftest recursively-defined-metric-WIP-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
