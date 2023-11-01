@@ -814,7 +814,7 @@
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test")
+      (mt/user-http-request :crowberto :get 200 "search?q=test" :is_global_search true)
       (is (=? {:data {"event"                "new_search_query"
                       "runtime_milliseconds" pos?}
                :user-id (str (mt/user->id :crowberto))}
