@@ -18,6 +18,6 @@ select
     database_id,
     'database_' || database_id as database_qualified_id,
     cache_hit,
-    action_id
-    'action_' || action_id as database_qualified_id,
+    action_id,
+    'action_' || action_id as action_qualified_id
 from query_execution

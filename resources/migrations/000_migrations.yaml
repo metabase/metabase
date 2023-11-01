@@ -15689,10 +15689,10 @@ databaseChangeLog:
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
-            path: instance_analytics_views/audit_log/v1/mysql-audit_log.sql
+            path: instance_analytics_views/content/v1/mysql-content.sql
             relativeToChangelogFile: true
         - sqlFile:
-            dbms: postgresql
+            dbms: h2
             path: instance_analytics_views/content/v1/h2-content.sql
             relativeToChangelogFile: true
       rollback:
