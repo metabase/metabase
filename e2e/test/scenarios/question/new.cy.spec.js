@@ -321,6 +321,7 @@ describe("scenarios > question > new", () => {
     const myPersonalCollection = "My personal collection";
 
     beforeEach(() => {
+      cy.intercept("POST", "/api/card").as("createQuestion");
       cy.createCollection(collectionInRoot);
       cy.createDashboard(dashboardInRoot);
       // Can't use `startNewQuestion` because it's missing `display: "table"` and
@@ -341,6 +342,7 @@ describe("scenarios > question > new", () => {
       popover().findByText("My personal collection").click();
       modal().within(() => {
         cy.button("Save").click();
+        cy.wait("@createQuestion");
         cy.button("Yes please!").click();
 
         cy.findByText("Add this question to a dashboard").should("be.visible");
@@ -361,6 +363,7 @@ describe("scenarios > question > new", () => {
       cy.log("default selected collection is the root collection");
       modal().within(() => {
         cy.button("Save").click();
+        cy.wait("@createQuestion");
         cy.button("Yes please!").click();
 
         cy.findByText("Add this question to a dashboard").should("be.visible");
