@@ -74,13 +74,24 @@ export const DashCardCardParameterMapperButton = ({
   const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
+    console.log("isVirtual: ", isVirtual);
+
     if (isVirtual) {
       return true;
     }
 
+    console.log("!card.dataset_query: ", !card.dataset_query);
+
+    console.log(card.dataset_query)
+
     if (!card.dataset_query) {
       return false;
     }
+
+    console.log(
+      "question.query().isEditable()",
+      new Question(card, metadata).query().isEditable(),
+    );
 
     const question = new Question(card, metadata);
     return question.query().isEditable();
@@ -90,6 +101,13 @@ export const DashCardCardParameterMapperButton = ({
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
     useMemo(() => {
+      console.log({
+        hasPermissionsToMap,
+        isDisabled,
+        isVirtual,
+        selectedMappingOption,
+        target,
+      })
       if (!hasPermissionsToMap) {
         return {
           buttonVariant: "unauthed",

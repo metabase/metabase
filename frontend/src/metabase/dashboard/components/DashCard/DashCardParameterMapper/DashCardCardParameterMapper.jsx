@@ -93,16 +93,19 @@ export function DashCardCardParameterMapper({
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
 
-  const availableCardsWithoutEditingParameter = useMemo(
-    () =>
-      Object.values(dashcards).filter(
-        dashcard =>
-          !dashcard.parameter_mappings?.some(
-            mapping => mapping.parameter_id === editingParameter.id,
-          ),
-      ),
-    [dashcards, editingParameter.id],
-  );
+  const availableCardsWithoutEditingParameter = useMemo(() => {
+    if (!dashcards) {
+      return [];
+    }
+
+    return Object.values(dashcards).filter(
+      dashcard =>
+        !isVirtualDashCard(dashcard) &&
+        !dashcard.parameter_mappings?.some(
+          mapping => mapping.parameter_id === editingParameter.id,
+        ),
+    );
+  }, [dashcards, editingParameter.id]);
 
   const setParameterMappingsForMatchingCards = useCallback(
     target => {

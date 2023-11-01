@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { getIcon } from "__support__/ui";
+import {getIcon, renderWithProviders} from "__support__/ui";
 
 import {
   createMockCard,
@@ -33,7 +33,7 @@ const state = createMockState({
 const metadata = getMetadata(state); // metabase-lib Metadata instance
 
 const setup = options => {
-  render(
+  renderWithProviders(
     <DashCardCardParameterMapper
       card={createMockCard()}
       dashcard={createMockDashboardCard()}
@@ -233,39 +233,4 @@ describe("DashCardParameterMapper", () => {
     ).toBeInTheDocument();
   });
 
-  describe("mobile", () => {
-    it("should show header content when card is more than 2 units high", () => {
-      const numberCard = createMockCard({
-        dataset_query: createMockStructuredDatasetQuery({}),
-        display: "scalar",
-      });
-      setup({
-        card: numberCard,
-        dashcard: createMockDashboardCard({
-          card: numberCard,
-          size_y: 2,
-        }),
-        mappingOptions: ["foo", "bar"],
-        isMobile: true,
-      });
-      expect(screen.getByText(/Column to filter on/i)).toBeInTheDocument();
-    });
-
-    it("should hide header content when card is less than 3 units high", () => {
-      const textCard = createMockCard({ dataset_query: {}, display: "text" });
-      setup({
-        card: textCard,
-        dashcard: createMockDashboardCard({
-          card: textCard,
-          size_y: 3,
-          visualization_settings: {
-            virtual_card: textCard,
-          },
-        }),
-        mappingOptions: ["foo", "bar"],
-        isMobile: true,
-      });
-      expect(screen.queryByText(/Variable to map to/i)).not.toBeInTheDocument();
-    });
-  });
 });

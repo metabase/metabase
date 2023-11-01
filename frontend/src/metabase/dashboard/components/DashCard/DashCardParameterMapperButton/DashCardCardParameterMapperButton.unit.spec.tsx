@@ -13,6 +13,7 @@ import {
   createMockDatabase,
   createMockField,
   createMockParameter,
+  createMockStructuredQuery,
   createMockTable,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
@@ -47,10 +48,10 @@ const TEST_QUESTION = createMockCard({
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
-    query: {
+    query: createMockStructuredQuery({
       "source-table": TEST_TABLE.id,
       limit: 1,
-    },
+    }),
   },
 });
 
