@@ -104,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
