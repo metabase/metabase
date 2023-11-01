@@ -542,11 +542,14 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-model-cleanup [:model/AuditLog]
-        (let [event (assoc (mt/fetch-user :lucky) :changes {:last_name "Charms"})]
+        (let [user (mt/fetch-user :lucky)
+              event (assoc user :audit-log/previous
+                           (assoc user :last_name "Sparrow"))]
           (is (= event (events/publish-event! :event/user-update event))))
         (is (= {:model_id (mt/user->id :lucky)
                 :user_id  (mt/user->id :rasta)
-                :details  {:last_name "Charms"}
+                :details  {:new-value {:last_name "Pigeon"}
+                           :previous-value {:last_name "Sparrow"}}
                 :topic    :user-update
                 :model    "User"}
                (event :user-update (mt/user->id :lucky))))))))
