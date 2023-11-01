@@ -39,6 +39,11 @@ function setup({
 }
 
 describe("DateIntervalPicker", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2020, 0, 1));
+  });
+
   describe.each<IntervalDirection>(["last", "next"])("%s", direction => {
     it("should change the interval", () => {
       const { onChange } = setup({
@@ -176,6 +181,31 @@ describe("DateIntervalPicker", () => {
         offsetValue: direction === "last" ? -7 : 7,
         options: undefined,
       });
+    });
+
+    it("should display the actual date range", () => {
+      setup({
+        value: getDefaultValue(direction),
+      });
+
+      const rangeText =
+        direction === "last" ? "Dec 2–31, 2019" : "Jan 2–31, 2020";
+      expect(screen.getByText(rangeText)).toBeInTheDocument();
+    });
+
+    it("should display the actual date range with include current", () => {
+      setup({
+        value: {
+          type: "relative",
+          value: direction === "last" ? -30 : 30,
+          unit: "day",
+          options: { "include-current": true },
+        },
+      });
+
+      const rangeText =
+        direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
+      expect(screen.getByText(rangeText)).toBeInTheDocument();
     });
   });
 });
