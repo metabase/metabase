@@ -15,7 +15,7 @@
     {:data {:cols [...], :rows [...]}, :row_count ...}"
   [metadata]
   (let [row-count (volatile! 0)
-        rows      (volatile! [])]
+        rows      (volatile! (transient []))]
     (fn default-rf
       ([]
        {:data metadata})
@@ -26,11 +26,11 @@
        (-> (unreduced result)
            (assoc :row_count @row-count
                   :status :completed)
-           (assoc-in [:data :rows] @rows)))
+           (assoc-in [:data :rows] (persistent! @rows))))
 
       ([result row]
        (vswap! row-count inc)
-       (vswap! rows conj row)
+       (vswap! rows conj! row)
        result))))
 
 (defn ^:deprecated identity-qp
