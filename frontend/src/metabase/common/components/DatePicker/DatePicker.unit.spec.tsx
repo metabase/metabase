@@ -65,4 +65,43 @@ describe("DatePicker", () => {
       values: [new Date(2020, 1, 20)],
     });
   });
+
+  it("should add an exclude date filter", () => {
+    const { onChange } = setup({ isNew: true });
+
+    userEvent.click(screen.getByText("Exclude…"));
+    userEvent.click(screen.getByText("Days of the week…"));
+    userEvent.click(screen.getByText("Monday"));
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "!=",
+      values: [1],
+      unit: "day-of-week",
+    });
+  });
+
+  it("should update an exclude date filter", () => {
+    const { onChange } = setup({
+      value: {
+        type: "exclude",
+        operator: "!=",
+        values: [1],
+        unit: "day-of-week",
+      },
+    });
+
+    userEvent.click(screen.getByText("Monday"));
+    userEvent.click(screen.getByText("Wednesday"));
+    userEvent.click(screen.getByText("Friday"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "exclude",
+      operator: "!=",
+      values: [3, 5],
+      unit: "day-of-week",
+    });
+  });
 });
