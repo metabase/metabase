@@ -85,7 +85,13 @@ export const QueryColumnSelector = ({
   return (
     <>
       {!addRemoveColumns && (
-        <Text fw={700} mb="0.5rem" fs="0.875em">{t`Columns`}</Text>
+        <Text
+          component="label"
+          display="block"
+          fw={700}
+          mb="0.5rem"
+          fs="0.875em"
+        >{t`Columns`}</Text>
       )}
       <Button
         variant="subtle"

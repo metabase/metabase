@@ -99,14 +99,14 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("Subtotal-hide-button").click();
       cy.findByTestId("Tax-hide-button").click();
 
-      getSidebarColumns().eq("3").as("total").contains("Total");
+      getSidebarColumns().eq("5").as("total").contains("Total");
 
       moveColumnDown(cy.get("@total"), -2);
 
-      getSidebarColumns().eq("1").should("contain.text", "Total");
+      getSidebarColumns().eq("3").should("contain.text", "Total");
 
       getVisibleSidebarColumns()
-        .eq("9")
+        .eq("11")
         .as("title")
         .should("have.text", "Products → Title");
 

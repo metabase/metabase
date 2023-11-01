@@ -65,7 +65,13 @@ export const DatasetColumnSelector = ({
 
   return (
     <>
-      <Text fw={700} mb="0.5rem" fz="0.875rem">{t`Columns`}</Text>
+      <Text
+        component="label"
+        display="block"
+        fw={700}
+        mb="0.5rem"
+        fs="0.875em"
+      >{t`Columns`}</Text>
       <TableColumnSelector
         columnItems={columnItems}
         getColumnName={({ datasetColumn }) => getColumnName(datasetColumn)}

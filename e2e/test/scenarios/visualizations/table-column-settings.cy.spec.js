@@ -732,7 +732,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const taxColumn = {
           column: "Tax",
           columnName: `Question ${card.id} → Tax`,
-          table: `question ${card.id}`,
+          table: `test question 2`,
           scrollTimes: 3,
         };
 
@@ -754,7 +754,7 @@ describe("scenarios > visualizations > table column settings", () => {
         const mathColumn = {
           column: "Math",
           columnName: `Question ${card.id} → Math`,
-          table: `question ${card.id}`,
+          table: `test question`,
           scrollTimes: 2,
         };
 

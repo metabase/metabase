@@ -155,9 +155,6 @@ export const ChartSettingAddRemoveColumns = ({
 
   return (
     <div>
-      {/* <Button variant="subtle" pl="0" onClick={() => onWidgetOverride(null)}>
-        Done picking columns
-      </Button> */}
       <TextInput
         value={search}
         onChange={e => setSearch(e.target.value)}
