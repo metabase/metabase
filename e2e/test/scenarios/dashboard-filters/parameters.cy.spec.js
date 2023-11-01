@@ -13,12 +13,12 @@ import {
 import {
   ORDERS_DASHBOARD_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 
-const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
-  SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -595,31 +595,29 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   describe("when auto-applying filters across cards with matching fields", () => {
-    it("should automatically apply filters to cards with matching fields", () => {
+    beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
-        // add the same question twice
-        updateDashboardCards({
-          dashboard_id: id,
-          cards: [
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 4,
-              size_x: 5,
-              size_y: 4,
-            },
-          ],
-        });
+    });
 
-        visitDashboard(id);
+    it("should automatically apply filters to cards with matching fields", () => {
+      createDashboardWithCards([
+        {
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 5,
+          size_y: 4,
+        },
+        {
+          card_id: ORDERS_COUNT_QUESTION_ID,
+          row: 0,
+          col: 4,
+          size_x: 5,
+          size_y: 4,
+        },
+      ]).then(dashboardId => {
+        visitDashboard(dashboardId);
+        cy.wait("@dashboard");
       });
 
       cy.icon("pencil").click();
@@ -642,30 +640,24 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     it("should not automatically apply filters to cards that already have a parameter, despite matching fields", () => {
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
-        // add the same question twice
-        updateDashboardCards({
-          dashboard_id: id,
-          cards: [
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 4,
-              size_x: 5,
-              size_y: 4,
-            },
-          ],
-        });
-
-        visitDashboard(id);
+      createDashboardWithCards([
+        {
+          card_id: ORDERS_BY_YEAR_QUESTION_ID,
+          row: 0,
+          col: 0,
+          size_x: 5,
+          size_y: 4,
+        },
+        {
+          card_id: ORDERS_COUNT_QUESTION_ID,
+          row: 0,
+          col: 4,
+          size_x: 5,
+          size_y: 4,
+        },
+      ]).then(dashboardId => {
+        visitDashboard(dashboardId);
+        cy.wait("@dashboard");
       });
 
       cy.icon("pencil").click();
@@ -698,48 +690,29 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     it("should not automatically apply filters to cards that don't have a matching field", () => {
-      cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.createQuestionAndDashboard({
-        questionDetails: {
-          name: "Reviews table",
-          query: {
-            "source-table": REVIEWS_ID,
-            limit: 1,
+      cy.createQuestion({
+        name: "Products Table",
+        query: { "source-table": PRODUCTS_ID, limit: 1 },
+      }).then(({ body: { id: questionId } }) => {
+        createDashboardWithCards([
+          {
+            card_id: ORDERS_BY_YEAR_QUESTION_ID,
+            row: 0,
+            col: 0,
+            size_x: 5,
+            size_y: 4,
           },
-        },
-        dashboardDetails: {
-          name: "Test Dashboard",
-          parameters: [
-            {
-              id: "1f97c149",
-              name: "ID",
-              slug: "id",
-              type: "id",
-            },
-          ],
-        },
-      }).then(({ body: { id, card_id, dashboard_id } }) => {
-        updateDashboardCards({
-          dashboard_id,
-          cards: [
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-            {
-              card_id,
-              row: 6,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-          ],
+          {
+            card_id: questionId,
+            row: 0,
+            col: 4,
+            size_x: 5,
+            size_y: 4,
+          },
+        ]).then(dashboardId => {
+          visitDashboard(dashboardId);
+          cy.wait("@dashboard");
         });
-
-        visitDashboard(id);
       });
 
       cy.icon("pencil").click();
@@ -760,6 +733,8 @@ describe("scenarios > dashboard > parameters", () => {
         cy.findByText("Select…").should("exist");
       });
     });
+
+    it("should not apply filters to cards that are disabled", () => {});
   });
 });
 
@@ -769,4 +744,15 @@ function isFilterSelected(filter, bool) {
       .findByRole("checkbox")
       .should(`${bool === false ? "not." : ""}be.checked`),
   );
+}
+
+function createDashboardWithCards(cards) {
+  return cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
+    updateDashboardCards({
+      dashboard_id: id,
+      cards,
+    });
+
+    cy.wrap(id).as("dashboardId");
+  });
 }

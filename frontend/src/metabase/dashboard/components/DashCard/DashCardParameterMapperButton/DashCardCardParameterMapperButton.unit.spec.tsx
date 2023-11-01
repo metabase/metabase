@@ -9,17 +9,22 @@ import type {
 import {
   createMockCard,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDatabase,
   createMockField,
   createMockParameter,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
-import { TEST_DASHBOARD_STATE } from "metabase/dashboard/components/DashboardTabs/test-utils";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 import { DashCardCardParameterMapperButton } from "metabase/dashboard/components/DashCard/DashCardParameterMapperButton/DashCardCardParameterMapperButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { checkNotNull } from "metabase/lib/types";
+
+const TEST_DASHBOARD_ID = 1;
 
 const TEST_TARGET_FIELD = createMockField({ id: 1, name: "ID" });
 
@@ -28,33 +33,75 @@ const TEST_DIMENSION_TARGET: ParameterDimensionTarget = [
   ["field", Number(TEST_TARGET_FIELD.id), null],
 ];
 
+const TEST_INVALID_DIMENSION_TARGET: ParameterDimensionTarget = [
+  "dimension",
+  ["field", -1, null],
+];
+
 const TEST_TABLE = createMockTable({
   id: ORDERS_ID,
   fields: [TEST_TARGET_FIELD],
 });
 
-const TEST_DASHBOARD = createMockDashboard();
-
-const TEST_CARD = TEST_DASHBOARD_STATE.dashcards[1].card;
-const TEST_DASHCARD: DashboardCard = TEST_DASHBOARD_STATE.dashcards[1];
-const TEST_VIRTUAL_DASHCARD: DashboardCard = {
-  ...TEST_DASHCARD,
-  visualization_settings: {
-    virtual_card: { ...TEST_CARD, display: "link" },
+const TEST_QUESTION = createMockCard({
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": TEST_TABLE.id,
+      limit: 1,
+    },
   },
-};
+});
 
-const TEST_UNAUTHORIZED_CARD = createMockCard({
+const TEST_UNAUTHORIZED_QUESTION = createMockCard({
   dataset_query: undefined,
 });
 
+const TEST_DASHCARD: DashboardCard = createMockDashboardCard({
+  dashboard_id: TEST_DASHBOARD_ID,
+  card: TEST_QUESTION,
+  size_y: 10,
+});
+
+const TEST_VIRTUAL_DASHCARD = createMockDashboardCard({
+  ...TEST_DASHCARD,
+  visualization_settings: {
+    virtual_card: { display: "text" },
+  },
+});
+
+const TEST_DASHBOARD_PARAMETER = createMockParameter();
+
+const TEST_DASHBOARD = createMockDashboard({
+  id: TEST_DASHBOARD_ID,
+  parameters: [TEST_DASHBOARD_PARAMETER],
+});
+
 const TEST_DB = createMockDatabase({
-  id: checkNotNull(TEST_CARD.dataset_query.database),
+  id: checkNotNull(TEST_QUESTION.dataset_query.database),
+});
+
+const MOCK_DASHBOARD_STATE = createMockDashboardState({
+  dashboardId: TEST_DASHBOARD_ID,
+  dashboards: {
+    [TEST_DASHBOARD_ID]: {
+      ...TEST_DASHBOARD,
+      dashcards: [TEST_DASHCARD.id],
+    },
+  },
+  dashcards: {
+    [TEST_DASHCARD.id]: TEST_DASHCARD,
+  },
+  sidebar: {
+    name: SIDEBAR_NAME.editParameter,
+    props: { parameterId: TEST_DASHBOARD_PARAMETER.id },
+  },
 });
 
 const setup = ({
   dashcard = TEST_DASHCARD,
-  card = TEST_CARD,
+  card = TEST_QUESTION,
   isDisabled = false,
   isMobile = false,
   target = undefined,
@@ -72,19 +119,7 @@ const setup = ({
       tables: [TEST_TABLE],
       dashboards: [TEST_DASHBOARD],
     }),
-    dashboard: {
-      ...TEST_DASHBOARD_STATE,
-      dashboards: {
-        1: {
-          ...TEST_DASHBOARD_STATE.dashboards[1],
-          parameters: [createMockParameter()],
-        },
-      },
-      sidebar: {
-        name: SIDEBAR_NAME.editParameter,
-        props: { parameterId: "1" },
-      },
-    },
+    dashboard: MOCK_DASHBOARD_STATE,
   });
 
   const handleChangeTargetMock = jest.fn();
@@ -107,7 +142,7 @@ const setup = ({
 describe("DashCardCardParameterMapperButton", () => {
   describe("the different states of the button", () => {
     it("should display 'unauthorized' message if the user doesn't have permission to map parameters", () => {
-      setup({ card: TEST_UNAUTHORIZED_CARD });
+      setup({ card: TEST_UNAUTHORIZED_QUESTION });
       const targetButton = screen.getByRole("button");
       expect(targetButton).toHaveAttribute(
         "aria-label",
@@ -140,7 +175,7 @@ describe("DashCardCardParameterMapperButton", () => {
     });
 
     it("should display 'Unknown field' if a target is provided but a mapping option isn't found", () => {
-      setup({ target: ["dimension", ["field", -1, null]] });
+      setup({ target: TEST_INVALID_DIMENSION_TARGET });
       expect(screen.getByText("Unknown Field")).toBeInTheDocument();
       expect(screen.getByLabelText("close icon")).toBeInTheDocument();
     });
@@ -165,12 +200,8 @@ describe("DashCardCardParameterMapperButton", () => {
       expect(screen.getByText("Column to filter on")).toBeInTheDocument();
     });
 
-    it("should not display a header if isMobile is true", () => {
+    it("should not display a header if isMobile is true and card height is too small", () => {
       setup({
-        dashcard: {
-          ...TEST_DASHCARD,
-          card: { ...TEST_DASHCARD.card, display: "link" },
-        },
         isMobile: true,
       });
       expect(screen.queryByText("Column to filter on")).not.toBeInTheDocument();
