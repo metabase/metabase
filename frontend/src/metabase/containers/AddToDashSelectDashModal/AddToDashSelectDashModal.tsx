@@ -69,8 +69,8 @@ const AddToDashSelectDashModal = ({
     }),
   );
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
-  const hideCreateNewDashboardOption =
-    isQuestionInPersonalCollection && !isOpenCollectionInPersonalCollection;
+  const showCreateNewDashboardOption =
+    !isQuestionInPersonalCollection || isOpenCollectionInPersonalCollection;
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -125,7 +125,7 @@ const AddToDashSelectDashModal = ({
         collectionId={initialOpenCollectionId}
         value={mostRecentlyViewedDashboardQuery.data?.id}
       />
-      {!hideCreateNewDashboardOption && (
+      {showCreateNewDashboardOption && (
         <Link onClick={() => setShouldCreateDashboard(true)} to="">
           <LinkContent>
             <Icon name="add" className="mx1" />

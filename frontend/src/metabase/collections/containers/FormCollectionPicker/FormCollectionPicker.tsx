@@ -20,6 +20,7 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { useSelector } from "metabase/lib/redux";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -98,6 +99,15 @@ function FormCollectionPicker({
 
   const [openCollectionId, setOpenCollectionId] =
     useState<CollectionId>("root");
+  const openCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
+  );
+
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showCreateNewCollectionOption =
+    !showOnlyPersonalCollections || isOpenCollectionInPersonalCollection;
 
   const renderContent = useCallback(
     ({ closePopover }) => {
@@ -124,7 +134,11 @@ function FormCollectionPicker({
           }}
           showOnlyPersonalCollections={showOnlyPersonalCollections}
         >
-          <CreateCollectionOnTheGoButton openCollectionId={openCollectionId} />
+          {showCreateNewCollectionOption && (
+            <CreateCollectionOnTheGoButton
+              openCollectionId={openCollectionId}
+            />
+          )}
         </PopoverItemPicker>
       );
     },
@@ -134,6 +148,7 @@ function FormCollectionPicker({
       width,
       initialOpenCollectionId,
       showOnlyPersonalCollections,
+      showCreateNewCollectionOption,
       openCollectionId,
       setValue,
       onOpenCollectionChange,
