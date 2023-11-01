@@ -10,20 +10,6 @@
 
 (derive ::event :metabase/event)
 
-(defn maybe-prepare-update-event-data
-  "When `:audit-db/previous` is present in the event-data, we return a map with previous and new versions of the
-  objects, _keeping only fields that changed_.
-
-  If `:audit-db/previous` is missing, this is a noop."
-  [event]
-  (if-let [previous (:audit-log/previous event)]
-    (let [new (dissoc event :audit-log/previous)
-          [previous-only new-only _both] (data/diff previous new)
-          updated-keys (distinct (concat (keys previous-only) (keys new-only)))]
-      {:new-value (dissoc (select-keys new updated-keys) :updated_at)
-       :previous-value (dissoc (select-keys previous updated-keys) :updated_at)})
-    event))
-
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
 (derive :event/card-update ::card-event)
@@ -88,22 +74,15 @@
 
 (derive ::metric-event ::event)
 (derive :event/metric-create ::metric-event)
+(derive :event/metric-update ::metric-event)
 (derive :event/metric-delete ::metric-event)
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic object]
-  (audit-log/record-event! topic object))
-
-(derive ::metric-update-event ::event)
-(derive :event/metric-update ::metric-update-event)
-(methodical/defmethod events/publish-event! ::metric-update-event
-  [topic metric]
-  (audit-log/record-event! topic
-                           (maybe-prepare-update-event-data
-                            (dissoc metric :creator))
-                           api/*current-user-id*
-                           :model/Metric
-                           (:id metric)))
+  (audit-log/record-event!
+   topic
+   (cond-> object
+     (= topic :event/metric-update) (dissoc :creator))))
 
 (derive ::pulse-event ::event)
 (derive :event/pulse-create ::pulse-event)
@@ -146,28 +125,17 @@
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
+(derive :event/segment-update ::segment-event)
 (derive :event/segment-delete ::segment-event)
 
 (methodical/defmethod events/publish-event! ::segment-event
   [topic segment]
   (audit-log/record-event! topic segment))
 
-(derive ::segment-update-event ::event)
-(derive :event/segment-update ::segment-update-event)
-
-(methodical/defmethod events/publish-event! ::segment-update-event
-  [topic segment]
-  (audit-log/record-event! topic
-                           (maybe-prepare-update-event-data
-                            (dissoc segment :creator))
-                           api/*current-user-id*
-                           :model/Segment
-                           (:id segment)))
-
 (derive ::user-event ::event)
 (derive :event/user-joined ::user-event)
 (derive :event/user-invited ::user-event)
-
+(derive :event/user-update ::user-event)
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)
@@ -179,16 +147,6 @@
            (or (nil? id)
                (pos-int? id)))]}
   (audit-log/record-event! topic object))
-
-(derive ::user-update-event ::event)
-(derive :event/user-update ::user-update-event)
-(methodical/defmethod events/publish-event! ::user-update-event
-  [topic event]
-  (audit-log/record-event! topic
-                           (-> event (dissoc :changes) maybe-prepare-update-event-data)
-                           api/*current-user-id*
-                           :model/User
-                           (:id event)))
 
 (derive ::install-event ::event)
 (derive :event/install ::install-event)
