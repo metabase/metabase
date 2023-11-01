@@ -83,7 +83,7 @@ Metabase recognizes the following field types:
 
 ### Fields types in models
 
-You can set field types for models, which helps Metabase understand how to work with data in models built using SQL. You can configure fields to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
+You can set field types for models, which helps Metabase understand how to work with data in models built using SQL. You can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
 
 ### X-rays
 
