@@ -64,10 +64,16 @@ export const SMTPConnectionForm = ({
 
   const handleUpdateEmailSettings = useCallback(
     async formData => {
-      await dispatch(updateEmailSettings(formData));
+      try {
+        await dispatch(updateEmailSettings(formData));
 
-      if (!isEmailConfigured) {
-        dispatch(push("/admin/settings/email"));
+        if (!isEmailConfigured) {
+          dispatch(push("/admin/settings/email"));
+        }
+      } catch (error: any) {
+        formRef.current?.setFormErrors(
+          formRef.current?.handleFormErrors(error),
+        );
       }
     },
     [dispatch, isEmailConfigured],
