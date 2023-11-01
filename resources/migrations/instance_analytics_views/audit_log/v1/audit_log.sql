@@ -1,4 +1,5 @@
-create or replace view v_audit_log as
+drop view if exists v_audit_log;
+create view v_audit_log as
 (
 select row_number() over (order by timestamp) as id, source.*
 from (select case
@@ -39,4 +40,4 @@ from (select case
                  end as model_id,
              details
       from activity) AS source
-    )
+    );

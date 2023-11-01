@@ -1,4 +1,5 @@
-create or replace view v_users as
+drop view if exists v_users;
+create view v_users as
 select
     id as user_id,
     email,
@@ -12,4 +13,4 @@ select
     is_active,
     sso_source,
     locale
-    from core_user
+    from core_user;

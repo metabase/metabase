@@ -1,4 +1,5 @@
-create or replace view v_alerts_subscriptions as
+drop view if exists v_alerts_subscriptions;
+create view v_alerts_subscriptions as
 select
     concat(
         case when dashboard_id is not null
@@ -25,4 +26,4 @@ select
     from pulse
         left join pulse_card on pulse.id = pulse_card.pulse_id
         left join pulse_channel on pulse.id = pulse_channel.pulse_id
-    where pulse_card.dashboard_card_id is null
+    where pulse_card.dashboard_card_id is null;

@@ -1,4 +1,5 @@
-create or replace view v_dashboardcard AS
+drop view if exists v_dashboardcard;
+create view v_dashboardcard AS
 select
     concat('dashboardcard_', id) as id,
     concat('dashboard_', dashboard_id) as dashboard_id,
@@ -19,4 +20,4 @@ select
     visualization_settings,
     parameter_mappings
 from report_dashboardcard
-order by dashboard_id
+order by dashboard_id;

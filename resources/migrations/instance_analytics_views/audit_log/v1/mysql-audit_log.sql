@@ -1,4 +1,4 @@
-drop view v_audit_log;
+drop view if exists v_audit_log;
 create view v_audit_log as
 (
 select uuid() as id, source.*

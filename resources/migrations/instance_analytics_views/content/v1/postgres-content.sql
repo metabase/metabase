@@ -1,4 +1,5 @@
-create or replace view v_content as
+drop view if exists v_content;
+create view v_content as
 select
     concat('action_', id) as id,
     'action' as entity_type,
