@@ -13,6 +13,7 @@
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
    [metabase.models.model-index :as model-index]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
@@ -370,6 +371,22 @@
                    DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       (is (= dashboard-count-results
              (set (unsorted-search-request-data :rasta :q "dashboard-count")))))))
+
+(deftest moderated-status-test
+  (let [search-term "moderated-status-test"]
+    (mt/with-temp [:model/Card {card-id :id} {:name "moderated-status-test"}]
+      ;; an item could have multiple moderation-review, and it's current status is defined as
+      ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
+      ;; test result return the most recent status and don't duplicate the result
+      (doseq [status ["verified" nil "verified"]]
+        (moderation-review/create-review! {:moderated_item_id   card-id
+                                           :moderated_item_type "card"
+                                           :moderator_id        (mt/user->id :crowberto)
+                                           :status              status}))
+      (is (=? [{:id               card-id
+                :model            "card"
+                :moderated_status "verified"}]
+              (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term)))))))
 
 (deftest permissions-test
   (testing (str "Ensure that users without perms for the root collection don't get results NOTE: Metrics and segments "
@@ -1384,4 +1401,57 @@
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
        (testing "`archived-string` is 'true'"
          (is (= #{"action"}
-                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+              (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+
+(deftest filter-items-in-personal-collection-test
+  (let [search-term "filter-items-in-personal-collection"
+        rasta-personal-coll-id     (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
+        crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))
+        search                      (fn [user filter-type]
+                                      (->> (mt/user-http-request user :get 200 "search" :q search-term
+                                                                 :filter_items_in_personal_collection filter-type)
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))]
+    (mt/with-temp
+      [:model/Collection {coll-sub-public :id}     {:location "/" :name search-term}
+       :model/Dashboard  {dash-public :id}         {:collection_id nil :name search-term}
+       :model/Dashboard  {dash-sub-public :id}     {:collection_id coll-sub-public :name search-term}
+       :model/Collection {coll-sub-rasta :id}      {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
+       :model/Card       {card-rasta :id}          {:collection_id rasta-personal-coll-id :name search-term}
+       :model/Card       {card-sub-rasta :id}      {:collection_id coll-sub-rasta :name search-term}
+       :model/Collection {coll-sub-crowberto :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
+       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :dataset true :name search-term}
+       :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :dataset true :name search-term}]
+
+      (testing "admin only"
+        (is (= #{["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-crowberto]
+                 ["collection" coll-sub-rasta]}
+               (search :crowberto "only"))))
+
+      (testing "non-admin only"
+        (is (= #{["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-rasta]}
+               (search :rasta "only"))))
+
+      (testing "admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]}
+               (search :rasta "exclude"))))
+
+      (testing "non-admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]}
+               (search :rasta "exclude"))))
+
+      (testing "getting models should return only models that are applied"
+        (is (= #{"dashboard" "collection"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
+                                          :filter_items_in_personal_collection "exclude"))))))))

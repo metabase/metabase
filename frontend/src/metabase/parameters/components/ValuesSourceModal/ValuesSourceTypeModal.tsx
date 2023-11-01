@@ -25,10 +25,7 @@ import type Question from "metabase-lib/Question";
 import type Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import type {
-  FieldFilterUiParameter,
-  UiParameter,
-} from "metabase-lib/parameters/types";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
@@ -98,7 +95,7 @@ const ValuesSourceTypeModal = ({
       {sourceType === null ? (
         <FieldSourceModal
           // if sourceType === null the parameter must have fields
-          parameter={parameter as FieldFilterUiParameter}
+          parameter={parameter}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
           onFetchParameterValues={onFetchParameterValues}
@@ -173,7 +170,7 @@ const SourceTypeOptions = ({
 };
 
 interface FieldSourceModalProps {
-  parameter: FieldFilterUiParameter;
+  parameter: UiParameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (

@@ -1,5 +1,6 @@
 (ns metabase.driver-test
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
@@ -70,3 +71,34 @@
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
     (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
+
+(deftest nonsql-dialects-return-original-query-test
+  (mt/test-driver :mongo
+    (testing "Passing a mongodb query through [[driver/prettify-native-form]] returns the original query (#31122)"
+      (let [query [{"$group"  {"_id" {"created_at" {"$let" {"vars" {"parts" {"$dateToParts" {"timezone" "UTC"
+                                                                                             "date"     "$created_at"}}}
+                                                            "in"   {"$dateFromParts" {"timezone" "UTC"
+                                                                                      "year"     "$$parts.year"
+                                                                                      "month"    "$$parts.month"
+                                                                                      "day"      "$$parts.day"}}}}}
+                               "sum" {"$sum" "$tax"}}}
+                   {"$sort"    {"_id" 1}}
+                   {"$project" {"_id" false
+                                "created_at" "$_id.created_at"
+                                "sum" true}}]
+            formatted-query (driver/prettify-native-form :mongo query)]
+
+        (testing "Formatting a non-sql query returns the same query"
+          (is (= query formatted-query)))
+
+        ;; TODO(qnkhuat): do we really need to handle case where wrong driver is passed?
+        (let [;; This is a mongodb query, but if you pass in the wrong driver it will attempt the format
+              ;; This is a corner case since the system should always be using the right driver
+              weird-formatted-query (driver/prettify-native-form :postgres (json/generate-string query))]
+          (testing "The wrong formatter will change the format..."
+            (is (not= query weird-formatted-query)))
+          (testing "...but the resulting data is still the same"
+            ;; Bottom line - Use the right driver, but if you use the wrong
+            ;; one it should be harmless but annoying
+            (is (= query
+                   (json/parse-string weird-formatted-query)))))))))
