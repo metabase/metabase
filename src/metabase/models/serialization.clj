@@ -13,6 +13,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.string :as str]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -506,6 +507,44 @@
   {:arglists '([ingested])}
   ingested-model)
 
+(comment
+  ;; pg
+  (mapv #(into {} %) (t2/query "select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = 'collection'"))
+
+  ;; mysql
+  "DESCRIBE name_of_table;"
+
+  ;; h2
+  ;; ????
+  )
+
+(defn fields-for-table [table]
+  (mapv #(into {} %)
+        (t2/query (str "select column_name, data_type, character_maximum_length from INFORMATION_SCHEMA.COLUMNS where table_name = '" table "';"))))
+
+(defn model-field-cover
+  "Returns exhaustive list of fields for an ingested-model. Fields that aren't in this list will produce errors if
+  they get inserted."
+  [ingested]
+  (let [model-name (->> ingested ingested-model u/lower-case-en)
+        ;; pg only:
+        field-cover (fields-for-table model-name)]
+
+    (set (map (comp keyword :column_name) field-cover))))
+
+(defn drop-excess-keys
+  "Given an ingested entity, removes keys that will not 'fit' into the current schema, because the column no longer
+  exists. This can happen when serialization dumps generated on an earlier version of Metabase are loaded into a
+  later version of Metabase, when a column gets removed. (At the time of writing I am seeing this happen with
+  color on collections)."
+  [ingested]
+  (cond
+    (= "Collection" (ingested-model ingested))
+    (select-keys ingested (model-field-cover ingested))
+
+    ;; more to come
+    :else ingested))
+
 (defn load-xform-basics
   "Performs the usual steps for an incoming entity:
   - Drop :serdes/meta
@@ -514,7 +553,7 @@
 
   This is a mirror (but not precise inverse) of [[extract-one-basics]]."
   [ingested]
-  (dissoc ingested :serdes/meta))
+  (-> ingested drop-excess-keys (dissoc :serdes/meta)))
 
 (defmethod load-xform :default [ingested]
   (load-xform-basics ingested))
@@ -580,6 +619,7 @@
 (defmethod load-one! :default [ingested maybe-local]
   (let [model    (ingested-model ingested)
         adjusted (load-xform ingested)]
+    (println [model maybe-local adjusted])
     (binding [mi/*deserializing?* true]
       (if (nil? maybe-local)
         (load-insert! model adjusted)
