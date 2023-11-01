@@ -1,5 +1,5 @@
 :local(.sidebar) {
-  composes: py2 from "~style";
+  composes: py2 from "metabase/css/core/index.css";
   width: 30%;
   max-width: 500px;
   background-color: var(--color-bg-light);
@@ -12,12 +12,12 @@
 
 :local(.item),
 :local(.sectionTitle) {
-  composes: flex align-center from "~style";
-  composes: py1 mb1 from "~style";
+  composes: flex align-center from "metabase/css/core/index.css";
+  composes: py1 mb1 from "metabase/css/core/index.css";
 }
 
 :local(.item) {
-  composes: rounded pl2 from "~style";
+  composes: rounded pl2 from "metabase/css/core/index.css";
   font-size: 1em;
   color: var(--color-text-light);
 }
@@ -27,8 +27,8 @@
 }
 
 :local(.sectionTitle) {
-  composes: my1 from "~style";
-  composes: text-bold from "~style";
+  composes: my1 from "metabase/css/core/index.css";
+  composes: text-bold from "metabase/css/core/index.css";
   font-size: 16px;
 }
 
@@ -49,12 +49,12 @@
 }
 
 :local(.divider) {
-  composes: my2 from "~style";
-  composes: border-bottom from "~style";
+  composes: my2 from "metabase/css/core/index.css";
+  composes: border-bottom from "metabase/css/core/index.css";
 }
 
 :local(.name) {
-  composes: ml2 text-bold from "~style";
+  composes: ml2 text-bold from "metabase/css/core/index.css";
   color: var(--color-text-medium);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -67,5 +67,5 @@
 }
 
 :local(.icon) {
-  composes: flex-no-shrink from "~style";
+  composes: flex-no-shrink from "metabase/css/core/index.css";
 }

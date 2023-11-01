@@ -1,5 +1,5 @@
 :local(.usefulQuestions) {
-  composes: mt1 from "~style";
+  composes: mt1 from "metabase/css/core/index.css";
   color: var(--color-brand);
   font-size: 16px;
 }

@@ -5,21 +5,21 @@
 }
 
 :local(.guideEmpty) {
-  composes: flex full justify-center from "~style";
+  composes: flex full justify-center from "metabase/css/core/index.css";
   padding-top: 75px;
 }
 
 :local(.guideEmptyBody) {
-  composes: text-centered from "~style";
+  composes: text-centered from "metabase/css/core/index.css";
   max-width: 400px;
 }
 
 :local(.guideEmptyMessage) {
-  composes: text-dark text-paragraph text-centered mt3 from "~style";
+  composes: text-dark text-paragraph text-centered mt3 from "metabase/css/core/index.css";
 }
 
 :local(.columnHeader) {
-  composes: flex flex-full from "~style";
+  composes: flex flex-full from "metabase/css/core/index.css";
   padding-top: 20px;
   padding-bottom: 20px;
 }
@@ -30,7 +30,7 @@
 }
 
 :local(.schemaSeparator) {
-  composes: text-light mt2 from "~style";
+  composes: text-light mt2 from "metabase/css/core/index.css";
   margin-left: var(--icon-width);
   font-size: 18px;
 }
@@ -49,7 +49,7 @@
 }
 
 :local(.guideLeftPadded) {
-  composes: flex full justify-center from "~style";
+  composes: flex full justify-center from "metabase/css/core/index.css";
 }
 
 :local(.guideLeftPadded)::before {
@@ -78,7 +78,7 @@
 }
 
 :local(.guideTitleBody) {
-  composes: full text-dark text-bold from "~style";
+  composes: full text-dark text-bold from "metabase/css/core/index.css";
   composes: guideLeftPaddedBody;
 }
 
@@ -88,47 +88,47 @@
 }
 
 :local(.guideSeeAllBody) {
-  composes: flex full text-dark text-bold mt4 from "~style";
+  composes: flex full text-dark text-bold mt4 from "metabase/css/core/index.css";
   composes: guideLeftPaddedBody;
 }
 
 :local(.guideSeeAllLink) {
-  composes: flex-full block no-decoration py1 border-top from "~style";
+  composes: flex-full block no-decoration py1 border-top from "metabase/css/core/index.css";
 }
 
 :local(.guideContact) {
-  composes: mt4 from "~style";
+  composes: mt4 from "metabase/css/core/index.css";
   composes: guideLeftPadded;
   margin-bottom: 100px;
 }
 
 :local(.guideContactBody) {
-  composes: full from "~style";
+  composes: full from "metabase/css/core/index.css";
   composes: guideLeftPaddedBody;
   font-size: 16px;
 }
 
 :local(.guideEditHeader) {
-  composes: full text-body my4 from "~style";
+  composes: full text-body my4 from "metabase/css/core/index.css";
   max-width: 550px;
   color: var(--color-text-dark);
 }
 
 :local(.guideEditHeaderTitle) {
-  composes: text-bold mb2 from "~style";
+  composes: text-bold mb2 from "metabase/css/core/index.css";
   font-size: 24px;
 }
 
 :local(.guideEditCards) {
-  composes: mt2 mb4 from "~style";
+  composes: mt2 mb4 from "metabase/css/core/index.css";
 }
 
 :local(.guideEditCard) {
-  composes: input p4 from "~style";
+  composes: input p4 from "metabase/css/core/index.css";
 }
 
 :local(.guideEditLabel) {
-  composes: block text-bold mb2 from "~style";
+  composes: block text-bold mb2 from "metabase/css/core/index.css";
   font-size: 16px;
   color: var(--title-color);
 }
@@ -138,21 +138,21 @@
 }
 
 :local(.guideEditTitle) {
-  composes: block text-body text-bold from "~style";
+  composes: block text-body text-bold from "metabase/css/core/index.css";
   color: var(--title-color);
   font-size: 16px;
   margin-top: 50px;
 }
 
 :local(.guideEditSubtitle) {
-  composes: text-body from "~style";
+  composes: text-body from "metabase/css/core/index.css";
   color: var(--color-text-light);
   font-size: 16px;
   max-width: 700px;
 }
 
 :local(.guideEditAddButton) {
-  composes: flex full my2 pl4 from "~style";
+  composes: flex full my2 pl4 from "metabase/css/core/index.css";
   padding-right: 3.5rem;
 }
 
@@ -170,7 +170,7 @@
 }
 
 :local(.guideEditTextarea) {
-  composes: text-dark input p2 from "~style";
+  composes: text-dark input p2 from "metabase/css/core/index.css";
   resize: none;
   font-size: 16px;
   width: 100%;
@@ -179,7 +179,7 @@
 }
 
 :local(.guideEditContact) {
-  composes: flex from "~style";
+  composes: flex from "metabase/css/core/index.css";
 }
 
 :local(.guideEditContactName) {
@@ -194,7 +194,7 @@
 }
 
 :local(.guideEditInput) {
-  composes: full text-dark input p2 from "~style";
+  composes: full text-dark input p2 from "metabase/css/core/index.css";
   font-size: 16px;
   display: block;
 }

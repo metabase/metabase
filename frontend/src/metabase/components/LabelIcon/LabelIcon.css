@@ -1,16 +1,16 @@
 :local(.colorIcon) {
-  composes: inline-block from "~style";
+  composes: inline-block from "metabase/css/core/index.css";
   width: 18px;
   height: 18px;
   border-radius: 3px;
 }
 
 :local(.emojiIcon) {
-  composes: text-centered from "~style";
+  composes: text-centered from "metabase/css/core/index.css";
   font-size: 20px;
 }
 
 :local(.icon) {
-  composes: transition-color from "~style";
+  composes: transition-color from "metabase/css/core/index.css";
   color: currentColor;
 }

@@ -1,5 +1,5 @@
 :local(.editHeader) {
-  composes: text-white flex align-center from "~style";
+  composes: text-white flex align-center from "metabase/css/core/index.css";
   position: absolute;
   top: 0;
   left: 0;
@@ -9,7 +9,7 @@
 }
 
 :local(.editHeaderButtons) {
-  composes: flex-align-right from "~style";
+  composes: flex-align-right from "metabase/css/core/index.css";
 }
 
 :local(.editHeaderButton) {

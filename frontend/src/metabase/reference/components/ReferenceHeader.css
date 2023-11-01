@@ -3,25 +3,25 @@
 }
 
 :local(.headerBody) {
-  composes: flex flex-full text-dark text-bold from "~style";
+  composes: flex flex-full text-dark text-bold from "metabase/css/core/index.css";
   overflow: hidden;
   align-items: center;
   border-color: var(--color-border);
 }
 
 :local(.headerTextInput) {
-  composes: p1 from "~style";
+  composes: p1 from "metabase/css/core/index.css";
   font-size: 18px;
   color: var(--title-color);
   max-width: 550px;
 }
 
 :local(.subheader) {
-  composes: mt1 mb2 from "~style";
+  composes: mt1 mb2 from "metabase/css/core/index.css";
 }
 
 :local(.subheaderBody) {
-  composes: text-medium text-bold from "~style";
+  composes: text-medium text-bold from "metabase/css/core/index.css";
   font-size: 14px;
 }
 
@@ -36,7 +36,7 @@
 }
 
 :local(.headerSchema) {
-  composes: text-light absolute from "~style";
+  composes: text-light absolute from "metabase/css/core/index.css";
   top: -10px;
   font-size: 12px;
 }

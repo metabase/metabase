@@ -1,20 +1,20 @@
 :local(.formula) {
-  composes: bordered rounded from "~style";
+  composes: bordered rounded from "metabase/css/core/index.css";
   background-color: var(--color-bg-light);
   cursor: pointer;
 }
 
 :local(.formulaHeader) {
-  composes: flex align-center text-brand py1 px2 from "~style";
+  composes: flex align-center text-brand py1 px2 from "metabase/css/core/index.css";
 }
 
 :local(.formulaTitle) {
-  composes: ml2 from "~style";
+  composes: ml2 from "metabase/css/core/index.css";
   font-size: 16px;
 }
 
 :local(.formulaDefinitionInner) {
-  composes: p2 from "~style";
+  composes: p2 from "metabase/css/core/index.css";
 }
 
 .formulaDefinition {

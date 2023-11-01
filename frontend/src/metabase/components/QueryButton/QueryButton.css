@@ -1,8 +1,8 @@
 :local(.queryButton) {
-  composes: flex align-center no-decoration text-brand py1 from "~style";
+  composes: flex align-center no-decoration text-brand py1 from "metabase/css/core/index.css";
 }
 
 :local(.queryButtonText) {
-  composes: flex-full ml2 from "~style";
+  composes: flex-full ml2 from "metabase/css/core/index.css";
   max-width: 100%;
 }
