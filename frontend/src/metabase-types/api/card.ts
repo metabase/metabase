@@ -4,6 +4,7 @@ import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
+import type { Collection } from "./collection";
 
 export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
@@ -14,6 +15,7 @@ export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   can_write: boolean;
 
   database_id?: DatabaseId;
+  collection?: Collection | null;
   collection_id: number | null;
 
   result_metadata: Field[];

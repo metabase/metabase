@@ -63,7 +63,7 @@ export interface CollectionItem {
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
-  collection?: Collection;
+  collection?: Collection | null;
   display?: CardDisplayType;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
