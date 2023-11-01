@@ -12,6 +12,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -97,7 +98,7 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(mu/defn resolve-field-id :- lib.metadata/ColumnMetadata
+(mu/defn resolve-field-id :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available.
 
@@ -118,13 +119,13 @@
        nil))))
 
 (mu/defn ^:private column-join-alias :- [:maybe :string]
-  [column :- lib.metadata/ColumnMetadata]
+  [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
-(mu/defn ^:private plausible-matches-for-name :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
   [ref-name   :- :string
    join-alias :- [:maybe :string]
-   columns    :- [:sequential lib.metadata/ColumnMetadata]]
+   columns    :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (clojure.core/= (column-join-alias %) join-alias))
                          columns))
@@ -132,10 +133,10 @@
                     (clojure.core/= (column-join-alias %) join-alias))
               columns)))
 
-(mu/defn ^:private plausible-matches-for-id :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn ^:private plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [ref-id     :- :int
    join-alias :- [:maybe :string]
-   columns    :- [:sequential lib.metadata/ColumnMetadata]
+   columns    :- [:sequential ::lib.schema.metadata/column]
    generous?  :- [:maybe :boolean]]
   (or (not-empty (filter #(and (clojure.core/= (:id %) ref-id)
                                ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
@@ -148,9 +149,9 @@
         (not-empty (filter #(clojure.core/= (:id %) ref-id) columns)))
       []))
 
-(mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
-   columns :- [:sequential lib.metadata/ColumnMetadata]]
+   columns :- [:sequential ::lib.schema.metadata/column]]
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
     (if-not (next no-implicit)
       (first no-implicit)
@@ -159,9 +160,9 @@
                        :columns columns})))
     nil))
 
-(mu/defn ^:private disambiguate-matches-no-alias :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
-   columns :- [:sequential lib.metadata/ColumnMetadata]]
+   columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
   ;; ignore the source alias on columns with :source/card or :source/fields
   (if-let [no-alias (not-empty (remove #(and (column-join-alias %)
@@ -177,9 +178,9 @@
     ;; written. If this case causes issues, that logic may need rewriting.
     nil))
 
-(mu/defn ^:private disambiguate-matches :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private disambiguate-matches :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
-   columns :- [:sequential lib.metadata/ColumnMetadata]]
+   columns :- [:sequential ::lib.schema.metadata/column]]
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
     (if join-alias
       ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
@@ -194,7 +195,7 @@
 (def ^:private FindMatchingColumnOptions
   [:map [:generous? {:optional true} :boolean]])
 
-(mu/defn find-matching-column :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref` and a list of `columns`, finds the column that best matches this ref.
 
   Matching is based on finding the basically plausible matches first. There is often zero or one plausible matches, and
@@ -222,7 +223,7 @@
    (find-matching-column a-ref columns {}))
 
   ([[ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
-    columns                          :- [:sequential lib.metadata/ColumnMetadata]
+    columns                          :- [:sequential ::lib.schema.metadata/column]
     {:keys [generous?]}              :- FindMatchingColumnOptions]
    (case ref-kind
      ;; Aggregations are referenced by the UUID of the column being aggregated.
@@ -231,13 +232,13 @@
                                  columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
-       :field)     (let [plausible (if (string? ref-id)
-                                     (plausible-matches-for-name ref-id (:join-alias opts) columns)
-                                     (plausible-matches-for-id   ref-id (:join-alias opts) columns generous?))]
-                     (case (count plausible)
-                       0 nil
-                       1 (first plausible)
-                       (disambiguate-matches a-ref plausible)))
+      :field)     (let [plausible (if (string? ref-id)
+                                    (plausible-matches-for-name ref-id (:join-alias opts) columns)
+                                    (plausible-matches-for-id   ref-id (:join-alias opts) columns generous?))]
+                    (case (count plausible)
+                      0 nil
+                      1 (first plausible)
+                      (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
   ([query stage-number a-ref columns]
@@ -246,7 +247,7 @@
   ([query                              :- [:maybe ::lib.schema/query]
     stage-number                       :- :int
     [_ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
-    columns                            :- [:sequential lib.metadata/ColumnMetadata]
+    columns                            :- [:sequential ::lib.schema.metadata/column]
     opts                               :- FindMatchingColumnOptions]
    (or (find-matching-column a-ref columns opts)
        ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
@@ -268,7 +269,7 @@
   Throws if there are multiple, ambiguous matches.
 
   Returns the matching ref, or nil if no plausible matches are found."
-  [column :- lib.metadata/ColumnMetadata
+  [column :- ::lib.schema.metadata/column
    refs   :- [:sequential ::lib.schema.ref/ref]]
   (let [ref-tails (group-by ref-id-or-name refs)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
@@ -293,7 +294,7 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    needles      :- [:sequential ::lib.schema.ref/ref]
-   haystack     :- [:sequential lib.metadata/ColumnMetadata]]
+   haystack     :- [:sequential ::lib.schema.metadata/column]]
   (let [by-column (into {}
                         (map-indexed (fn [index column]
                                        [column index]))
@@ -303,7 +304,7 @@
       (get by-column matched -1))))
 
 ;; TODO: Refactor this away. Handle legacy refs in `lib.js`, then call [[find-matching-column]] directly.
-(mu/defn find-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn find-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
   "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
   FE names for similar functions."
   ([query legacy-ref metadatas]
@@ -312,7 +313,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     legacy-ref   :- some?
-    metadatas    :- [:maybe [:sequential lib.metadata/ColumnMetadata]]]
+    metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns

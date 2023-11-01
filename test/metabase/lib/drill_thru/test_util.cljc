@@ -108,7 +108,11 @@
      (when (= click-type :cell)
        {:value      value
         :row        (for [[column-name value] row
-                          :let [column (by-name column-name)]]
+                          :let [column (or (by-name column-name)
+                                           (throw (ex-info
+                                                   (lib.util/format "Invalid row: no column named %s in query returned-columns"
+                                                                    (pr-str column-name))
+                                                   {:column-name column-name, :returned-columns (keys by-name)})))]]
                       {:column     column
                        :column-ref (get refs column-name)
                        :value      value})
@@ -147,7 +151,7 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
-(mu/defn test-returns-drill :- ::lib.schema.drill-thru/drill-thru
+(mu/defn test-returns-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Test that a certain drill gets returned. Returns the drill."
   [{:keys [drill-type query-table column-name click-type query-type expected]
     :or   {query-table "ORDERS"}
@@ -203,12 +207,11 @@
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
   [{:keys [expected-query drill-args], :as test-case} :- DrillApplicationTestCase]
-  (let [{:keys [query]} (query-and-row-for-test-case test-case)
-        drill           (test-returns-drill test-case)]
-
-    (testing (str "Should return expected query when applying the drill"
-                  "\nQuery = \n" (u/pprint-to-str query)
-                  "\nDrill = \n" (u/pprint-to-str drill))
-      (let [query' (apply lib/drill-thru query -1 drill drill-args)]
-        (is (=? expected-query
-                query'))))))
+  (let [{:keys [query]} (query-and-row-for-test-case test-case)]
+    (when-let [drill (test-returns-drill test-case)]
+      (testing (str "Should return expected query when applying the drill"
+                    "\nQuery = \n" (u/pprint-to-str query)
+                    "\nDrill = \n" (u/pprint-to-str drill))
+        (let [query' (apply lib/drill-thru query -1 drill drill-args)]
+          (is (=? expected-query
+                  query')))))))

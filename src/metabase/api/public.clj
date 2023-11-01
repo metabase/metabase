@@ -137,14 +137,15 @@
   "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
   [qp-runner export-format]
   (fn [query info]
-    (qp.streaming/streaming-response
-     [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
-     (let [context  (assoc context :reducedf (public-reducedf reducedf))
-           in-chan  (mw.session/as-admin
-                     (qp-runner query info context))
-           out-chan (a/promise-chan (map transform-results))]
-       (async.u/promise-pipe in-chan out-chan)
-       out-chan))))
+    (qp.streaming/streaming-response [{:keys [rff], {:keys [reducedf], :as context} :context}
+                                      export-format
+                                      (u/slugify (:card-name info))]
+      (let [context  (assoc context :reducedf (public-reducedf reducedf))
+            in-chan  (mw.session/as-admin
+                       (qp-runner query info rff context))
+            out-chan (a/promise-chan (map transform-results))]
+        (async.u/promise-pipe in-chan out-chan)
+        out-chan))))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
