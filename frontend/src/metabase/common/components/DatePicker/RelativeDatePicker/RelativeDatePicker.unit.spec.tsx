@@ -48,4 +48,17 @@ describe("RelativeDatePicker", () => {
       expect(toTab).toHaveAttribute("aria-selected", "true");
     },
   );
+
+  it("should allow to submit a current value", () => {
+    const { onChange } = setup();
+
+    userEvent.click(screen.getByText("Current"));
+    userEvent.click(screen.getByText("Week"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: "current",
+      unit: "week",
+    });
+  });
 });
