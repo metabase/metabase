@@ -17,3 +17,5 @@ select id                as entity_id,
        creator_id,
        dbms_version      as db_version
 from metabase_database
+    where id <> 13371337
+
