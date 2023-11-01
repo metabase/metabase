@@ -4,7 +4,7 @@ schema: public
 show_in_getting_started: false
 name: v_alerts_subscriptions
 caveats: null
-active: true
+active: false
 db_id: Internal Metabase Database
 serdes/meta:
 - model: Database

@@ -1,5 +1,5 @@
 description: null
-database_type: int4
+database_type: text
 semantic_type: type/FK
 table_id:
 - Internal Metabase Database
@@ -32,12 +32,12 @@ serdes/meta:
   id: subscription_dashboard_id
 database_is_auto_increment: false
 json_unfolding: false
-position: 9
+position: 14
 visibility_type: normal
 preview_display: true
 display_name: Subscription Dashboard ID
-database_position: 9
+database_position: 14
 database_required: false
 created_at: '2023-06-08T14:05:44.460794Z'
-base_type: type/Integer
+base_type: type/Text
 points_of_interest: null
