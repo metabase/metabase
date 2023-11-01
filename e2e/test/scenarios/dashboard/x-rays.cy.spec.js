@@ -10,6 +10,7 @@ import {
   visitDashboardAndCreateTab,
   popover,
   getDashboardCards,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -278,14 +279,14 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
             visualization_settings: {},
           },
         });
-
-        visitDashboardAndCreateTab({ dashboardId: dashboard_id });
+        visitDashboardAndCreateTab({ dashboardId: dashboard_id, save: false });
         cy.findByRole("tab", { name: "Tab 1" }).click();
+        saveDashboard();
 
         cy.get("circle").eq(0).click({ force: true });
         popover().findByText("Automatic insights…").click();
         popover().findByText("X-ray").click();
-        cy.wait("@dataset", { timeout: 30000 });
+        cy.wait("@dataset", { timeout: 60000 });
 
         // Ensure charts actually got rendered
         cy.get("text.x-axis-label").contains("Created At");

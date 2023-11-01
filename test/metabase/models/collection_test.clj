@@ -1260,7 +1260,7 @@
                                   (-> (t2/select-one :model/Collection id-or-ids)
                                       (t2/hydrate :is_personal)
                                       :is_personal)
-                                  (as-> (t2/select :model/Collection :id [:in id-or-ids]) collections
+                                  (as-> (t2/select :model/Collection :id [:in id-or-ids] {:order-by [:id]}) collections
                                     (t2/hydrate collections :is_personal)
                                     (map :is_personal collections))))]
 

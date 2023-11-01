@@ -52,10 +52,12 @@ function createDashboardDetails({ parameters }) {
   };
 }
 
-const TOAST_TIMEOUT = 20000;
+const TOAST_TIMEOUT = 16000;
 
 const TOAST_MESSAGE =
   "You can make this dashboard snappier by turning off auto-applying filters.";
+
+const filterToggleLabel = "Auto-apply filters";
 
 describe(
   "scenarios > dashboards > filters > auto apply",
@@ -98,9 +100,9 @@ describe(
         );
         toggleDashboardInfoSidebar();
         rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters").click();
+          cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
-          cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+          cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
         filterWidget().findByText("Gadget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
@@ -130,9 +132,9 @@ describe(
         filterWidget().findByText("Widget").should("be.visible");
         dashboardParametersContainer().button("Apply").should("be.visible");
         rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters").click();
+          cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
-          cy.findByLabelText("Auto-apply filters").should("be.checked");
+          cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
         filterWidget().findByText("Widget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
@@ -147,9 +149,9 @@ describe(
           cy.button("Update filter").click();
         });
         rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters").click();
+          cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
-          cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+          cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
         filterWidget().findByText("2 selections").should("be.visible");
         cy.get("@cardQuery.all").should("have.length", 5);
@@ -230,9 +232,10 @@ describe(
           "parameter with default value should still be applied after turning auto-apply filter off",
         );
         rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters").should("be.checked").click();
+          cy.findByLabelText(filterToggleLabel).should("be.checked");
+          cy.findByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
-          cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+          cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
 
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
@@ -252,11 +255,10 @@ describe(
           "should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated",
         );
         rightSidebar().within(() => {
-          cy.findByLabelText("Auto-apply filters")
-            .should("not.be.checked")
-            .click();
+          cy.findByLabelText(filterToggleLabel).should("not.be.checked");
+          cy.findAllByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");
-          cy.findByLabelText("Auto-apply filters").should("be.checked");
+          cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
 
         getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
@@ -276,7 +278,7 @@ describe(
 
         toggleDashboardInfoSidebar();
         rightSidebar()
-          .findByLabelText("Auto-apply filters")
+          .findByLabelText(filterToggleLabel)
           .should("not.be.checked");
         // Gadget
         const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
@@ -311,7 +313,7 @@ describe(
 
         toggleDashboardInfoSidebar();
         rightSidebar()
-          .findByLabelText("Auto-apply filters")
+          .findByLabelText(filterToggleLabel)
           .should("not.be.checked");
         filterWidget().findByText("Gadget").should("be.visible");
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
@@ -389,9 +391,7 @@ describe(
         cy.wait("@cardQuery");
 
         toggleDashboardInfoSidebar();
-        rightSidebar()
-          .findByLabelText("Auto-apply filters")
-          .should("be.disabled");
+        rightSidebar().findByLabelText(filterToggleLabel).should("be.disabled");
       });
 
       it("should not display a toast even when a dashboard takes longer than 15s to load", () => {
@@ -553,7 +553,7 @@ describe(
 
           toggleDashboardInfoSidebar();
           rightSidebar()
-            .findByLabelText("Auto-apply filters")
+            .findByLabelText(filterToggleLabel)
             .should("not.be.checked");
           filterWidget().findByText("Gadget").should("be.visible");
 
@@ -627,9 +627,9 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
-      cy.findByLabelText("Auto-apply filters").click();
+      cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
-      cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+      cy.findByLabelText(filterToggleLabel).should("not.be.checked");
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS + 1,
       );
@@ -646,9 +646,9 @@ describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
-      cy.findByLabelText("Auto-apply filters").click();
+      cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
-      cy.findByLabelText("Auto-apply filters").should("be.checked");
+      cy.findByLabelText(filterToggleLabel).should("be.checked");
       expectGoodSnowplowEvents(
         NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
       );
