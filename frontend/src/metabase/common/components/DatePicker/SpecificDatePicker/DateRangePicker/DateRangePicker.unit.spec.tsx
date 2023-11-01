@@ -51,7 +51,7 @@ describe("SingleDatePicker", () => {
     ]);
   });
 
-  it("should be able to set the date with time via the calendar", () => {
+  it("should be able to set the date via the calendar when there is time", () => {
     const { onChange } = setup({
       value: [START_DATE_TIME, END_DATE_TIME],
     });

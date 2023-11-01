@@ -40,7 +40,7 @@ describe("SingleDatePicker", () => {
     expect(onChange).toHaveBeenCalledWith(new Date(2020, 0, 12));
   });
 
-  it("should be able to set the date with time via the calendar", () => {
+  it("should be able to set the date via the calendar when there is time", () => {
     const { onChange } = setup({
       value: DATETIME,
     });
@@ -61,7 +61,7 @@ describe("SingleDatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith(new Date(2020, 1, 15));
   });
 
-  it("should be able to set the date with time via the input", () => {
+  it("should be able to set the date via the input when there is time", () => {
     const { onChange } = setup({
       value: DATETIME,
     });
