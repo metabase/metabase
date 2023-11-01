@@ -221,6 +221,23 @@ describe("DateOffsetIntervalPicker", () => {
       });
     });
 
+    it("should only show offset units larger or equal to the current one", () => {
+      setup({
+        value: {
+          ...defaultValue,
+          unit: "month",
+        },
+      });
+
+      userEvent.click(screen.getByLabelText("Starting from unit"));
+
+      expect(screen.getByText(/months/)).toBeInTheDocument();
+      expect(screen.getByText(/quarters/)).toBeInTheDocument();
+      expect(screen.getByText(/years/)).toBeInTheDocument();
+      expect(screen.queryByText(/hours/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/days/)).not.toBeInTheDocument();
+    });
+
     it("should display the actual date range", () => {
       setup({
         value: defaultValue,
