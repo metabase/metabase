@@ -16,7 +16,7 @@ made_public_by_id: null
 embedding_params: null
 cache_ttl: null
 dataset_query:
-  type: query
+  database: Internal Metabase Database
   query:
     source-table: -lNDM3tJmuL5ltGbX0oyT
     aggregation:
@@ -54,8 +54,8 @@ dataset_query:
         - v_audit_log
         - topic
       - null
-    - question-create
-  database: Internal Metabase Database
+    - card-create
+  type: query
 parameter_mappings: []
 serdes/meta:
 - model: Card

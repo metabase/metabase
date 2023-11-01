@@ -32,11 +32,11 @@ serdes/meta:
   id: alert_question_id
 database_is_auto_increment: false
 json_unfolding: false
-position: 10
+position: 15
 visibility_type: normal
 preview_display: true
 display_name: Alert Question ID
-database_position: 10
+database_position: 15
 database_required: false
 created_at: '2023-06-08T14:05:44.460794Z'
 base_type: type/Integer

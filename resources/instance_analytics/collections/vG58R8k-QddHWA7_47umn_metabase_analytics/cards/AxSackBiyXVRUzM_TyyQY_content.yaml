@@ -1,13 +1,13 @@
 description: All Metabase content including questions, models, dashboards, events, and collections
 archived: false
-collection_position: 8
+collection_position: 12
 table_id:
 - Internal Metabase Database
 - public
 - v_content
 result_metadata:
 - description: null
-  semantic_type: null
+  semantic_type: type/PK
   coercion_strategy: null
   name: entity_id
   settings: null
@@ -29,7 +29,7 @@ result_metadata:
   display_name: Entity ID
   base_type: type/Integer
 - description: null
-  semantic_type: null
+  semantic_type: type/PK
   coercion_strategy: null
   name: entity_qualified_id
   settings: null

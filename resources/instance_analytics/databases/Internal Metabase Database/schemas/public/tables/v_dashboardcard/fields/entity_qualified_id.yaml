@@ -1,6 +1,6 @@
 description: null
 database_type: text
-semantic_type: null
+semantic_type: type/PK
 table_id:
 - Internal Metabase Database
 - public

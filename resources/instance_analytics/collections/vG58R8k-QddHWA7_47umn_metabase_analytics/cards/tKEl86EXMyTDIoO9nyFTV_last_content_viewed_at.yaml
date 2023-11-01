@@ -1,0 +1,54 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Last content viewed at
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    aggregation:
+    - - max
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+          temporal-unit: minute
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_qualified_id
+      - base-type: type/Text
+    source-table: P6Ityjj7igswKh4NgZZjz
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: tKEl86EXMyTDIoO9nyFTV
+  label: last_content_viewed_at
+display: table
+entity_id: tKEl86EXMyTDIoO9nyFTV
+collection_preview: true
+visualization_settings:
+  table.cell_column: max
+  column_settings: null
+metabase_version: vUNKNOWN (901f705)
+parameters: []
+dataset: false
+created_at: '2023-11-01T11:47:58.374394Z'
+public_uuid: null

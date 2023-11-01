@@ -1,6 +1,6 @@
 description: Each row describes a question, model, table or dashboard view
 archived: false
-collection_position: 2
+collection_position: 3
 table_id:
 - Internal Metabase Database
 - public
@@ -178,6 +178,14 @@ dataset_query:
     - Internal Metabase Database
     - public
     - v_view_log
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
 parameter_mappings: []
 serdes/meta:
 - model: Card

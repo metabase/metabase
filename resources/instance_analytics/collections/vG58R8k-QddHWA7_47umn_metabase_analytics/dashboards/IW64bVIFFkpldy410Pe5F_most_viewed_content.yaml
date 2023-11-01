@@ -1,6 +1,6 @@
 description: Look for the most relevant content in your Metabase
 archived: false
-collection_position: 1
+collection_position: 2
 dashcards:
 - size_x: 12
   dashboard_tab_id: null
@@ -41,7 +41,7 @@ dashcards:
   entity_id: 9Lnv8dgtICiNt2yl2WV0x
   visualization_settings:
     column_settings: null
-  size_y: 6
+  size_y: 9
   created_at: '2023-08-18T19:09:24.116624Z'
   row: 0
 - size_x: 12
@@ -83,9 +83,51 @@ dashcards:
   entity_id: mtP6yOJW7VaU9DV5lxwAw
   visualization_settings:
     column_settings: null
-  size_y: 6
+  size_y: 9
   created_at: '2023-08-18T19:13:18.392443Z'
   row: 0
+- size_x: 12
+  dashboard_tab_id: null
+  action_id: null
+  col: 0
+  parameter_mappings:
+  - parameter_id: 27bf158b
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
+  - parameter_id: 124adfb8
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - parameter_id: '5e162806'
+    card_id: ItdtatOMd0uUEpvx7tDAC
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  card_id: ItdtatOMd0uUEpvx7tDAC
+  entity_id: QkKyZ0hyV3s5T8UERDFOI
+  visualization_settings:
+    column_settings: null
+  size_y: 9
+  created_at: '2023-11-01T12:02:06.300855Z'
+  row: 9
 tabs: []
 enable_embedding: false
 collection_id: vG58R8k-QddHWA7_47umn

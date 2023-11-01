@@ -1,0 +1,92 @@
+description: null
+archived: false
+collection_position: null
+table_id:
+- Internal Metabase Database
+- public
+- v_users
+result_metadata: null
+database_id: Internal Metabase Database
+enable_embedding: false
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+name: Person detail
+creator_id: internal@metabase.com
+made_public_by_id: null
+embedding_params: null
+cache_ttl: null
+dataset_query:
+  database: Internal Metabase Database
+  type: query
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - date_joined
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - last_login
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - updated_at
+      - base-type: type/DateTime
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_admin
+      - base-type: type/Boolean
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - base-type: type/Boolean
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - sso_source
+      - base-type: type/Text
+    source-table: 0wVIfjBJWclD0lKeABYYl
+parameter_mappings: []
+serdes/meta:
+- model: Card
+  id: uEf4gbDzXkj9q1uvkaTny
+  label: person_detail
+display: object
+entity_id: uEf4gbDzXkj9q1uvkaTny
+collection_preview: true
+visualization_settings:
+  column_settings: null
+metabase_version: vUNKNOWN (ad99d37)
+parameters: []
+dataset: false
+created_at: '2023-11-01T01:27:12.07356Z'
+public_uuid: null

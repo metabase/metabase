@@ -459,6 +459,8 @@ visualization_settings:
     : column_title: Question name
     ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
     : column_title: Question ID
+    '["name","count"]':
+      show_mini_bar: true
   graph.metrics:
   - count
 metabase_version: null
