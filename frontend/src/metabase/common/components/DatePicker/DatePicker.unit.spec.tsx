@@ -1,0 +1,68 @@
+import userEvent from "@testing-library/user-event";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { DatePickerValue } from "./types";
+import { DatePicker } from "./DatePicker";
+
+interface SetupOpts {
+  value?: DatePickerValue;
+  isNew?: boolean;
+}
+
+function setup({ value, isNew = false }: SetupOpts = {}) {
+  const onChange = jest.fn();
+
+  renderWithProviders(
+    <DatePicker value={value} isNew={isNew} onChange={onChange} />,
+  );
+
+  return { onChange };
+}
+
+describe("DatePicker", () => {
+  it("should add a filter via shortcut", () => {
+    const { onChange } = setup({ isNew: true });
+
+    userEvent.click(screen.getByText("Today"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: "current",
+      unit: "day",
+    });
+  });
+
+  it("should add a specific date filter", () => {
+    const { onChange } = setup({ isNew: true });
+
+    userEvent.click(screen.getByText("Specific dates…"));
+    userEvent.click(screen.getByText("After"));
+    userEvent.clear(screen.getByLabelText("Date"));
+    userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "specific",
+      operator: ">",
+      values: [new Date(2020, 1, 15)],
+    });
+  });
+
+  it("should update a specific date filter", () => {
+    const { onChange } = setup({
+      value: {
+        type: "specific",
+        operator: ">",
+        values: [new Date(2020, 1, 15)],
+      },
+    });
+
+    userEvent.click(screen.getByText("20"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "specific",
+      operator: ">",
+      values: [new Date(2020, 1, 20)],
+    });
+  });
+});
