@@ -6,13 +6,23 @@ import { DatePicker } from "./DatePicker";
 interface SetupOpts {
   value?: DatePickerValue;
   isNew?: boolean;
+  canUseRelativeOffsets?: boolean;
 }
 
-function setup({ value, isNew = false }: SetupOpts = {}) {
+function setup({
+  value,
+  isNew = false,
+  canUseRelativeOffsets = false,
+}: SetupOpts = {}) {
   const onChange = jest.fn();
 
   renderWithProviders(
-    <DatePicker value={value} isNew={isNew} onChange={onChange} />,
+    <DatePicker
+      value={value}
+      isNew={isNew}
+      canUseRelativeOffsets={canUseRelativeOffsets}
+      onChange={onChange}
+    />,
   );
 
   return { onChange };
@@ -63,6 +73,46 @@ describe("DatePicker", () => {
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 20)],
+    });
+  });
+
+  it("should add a relative date filter", () => {
+    const { onChange } = setup({ isNew: true });
+
+    userEvent.click(screen.getByText("Relative dates…"));
+    userEvent.clear(screen.getByLabelText("Interval"));
+    userEvent.type(screen.getByLabelText("Interval"), "20");
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: -20,
+      unit: "day",
+      offsetValue: undefined,
+      offsetUnit: undefined,
+    });
+  });
+
+  it("should update a relative date filter", () => {
+    const { onChange } = setup({
+      value: {
+        type: "relative",
+        value: -20,
+        unit: "day",
+        offsetValue: undefined,
+        offsetUnit: undefined,
+      },
+    });
+
+    userEvent.click(screen.getByText("Next"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(onChange).toHaveBeenCalledWith({
+      type: "relative",
+      value: 20,
+      unit: "day",
+      offsetValue: undefined,
+      offsetUnit: undefined,
     });
   });
 
