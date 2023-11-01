@@ -7,6 +7,7 @@ describe("scenarios > admin > settings > email settings", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setupSMTP();
   });
 
   it("should be able to save email settings", () => {
@@ -94,8 +95,6 @@ describe("scenarios > admin > settings > email settings", () => {
     "should send a test email for a valid SMTP configuration",
     { tags: "@external" },
     () => {
-      setupSMTP();
-
       cy.visit("/admin/settings/email/smtp");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send test email").click();
