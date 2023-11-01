@@ -15112,15 +15112,15 @@ databaseChangeLog:
             columnName: entity_id
       rollback:
         - addColumn:
-          tableName: parameter_card
-          columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
+            tableName: parameter_card
+            columns:
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: true
+                    unique: true
 
   - changeSet:
       id: v48.00-001
