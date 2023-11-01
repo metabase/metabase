@@ -132,5 +132,31 @@ describe("DateIntervalPicker", () => {
         },
       });
     });
+
+    it("should not allow to add relative offsets by default", async () => {
+      setup();
+
+      userEvent.click(screen.getByLabelText("Options"));
+      expect(await screen.findByText("Include today")).toBeInTheDocument();
+      expect(screen.queryByText("Starting from…")).not.toBeInTheDocument();
+    });
+
+    it("should allow to a relative offset if enabled", async () => {
+      const { onChange } = setup({
+        canUseRelativeOffsets: true,
+      });
+
+      userEvent.click(screen.getByLabelText("Options"));
+      userEvent.click(await screen.findByText("Starting from…"));
+
+      expect(onChange).toHaveBeenLastCalledWith({
+        type: "relative",
+        value: -30,
+        unit: "day",
+        offsetUnit: "day",
+        offsetValue: -7,
+        options: undefined,
+      });
+    });
   });
 });
