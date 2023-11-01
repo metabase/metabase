@@ -81,6 +81,10 @@ Metabase recognizes the following field types:
 
 ## Using field types in Metabase
 
+### Fields types in models
+
+You can set field types for models, which helps Metabase understand how to work with data in models built using SQL.
+
 ### X-rays
 
 When you [X-ray](../exploration-and-organization/x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
