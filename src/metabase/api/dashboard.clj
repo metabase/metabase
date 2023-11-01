@@ -650,7 +650,6 @@
                                                  (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                    (assoc card :dashboard_tab_id real-tab-id)
                                                    card))))
-               _ (sc.api/spy)
                dashcards-changes-stats  (do-update-dashcards! dashboard current-cards new-cards)]
            (reset! changes-stats
                    (merge
