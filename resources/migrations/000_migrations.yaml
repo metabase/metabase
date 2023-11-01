@@ -15726,14 +15726,14 @@ databaseChangeLog:
   - changeSet:
       id: v48.00-032
       author: noahmoss
-      comment: Added 0.48.0 - new view v_subscriptoins
+      comment: Added 0.48.0 - new view v_subscriptions
       changes:
         - sqlFile:
             path: instance_analytics_views/subscriptions/v1/subscriptions.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
-            sql: drop view if exists v_subscriptoins;
+            sql: drop view if exists v_subscriptions;
 
   - changeSet:
       id: v48.00-033
