@@ -1,7 +1,6 @@
 (ns metabase.events.audit-log
   "This namespace is responsible for publishing events to the audit log. "
   (:require
-   [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]

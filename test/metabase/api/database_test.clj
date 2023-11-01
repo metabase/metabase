@@ -445,19 +445,6 @@
             "A db update occured")
         (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
             "A db update occured")
-        (let [audit-log-entry (mt/latest-audit-log-entry "database-update")]
-          (is (= {:previous-value {:name "Original Database Name"}
-                  :new-value      {:name "Updated Database Name"}}
-                 (:details audit-log-entry))))))))
-
-(deftest update-database-audit-log-test
-  (testing "Check that we get audit log entries that match the db when updating a Database"
-    (t2.with-temp/with-temp [Database {db-id :id}]
-      (with-redefs [driver/can-connect? (constantly true)]
-        (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
-            "A db update occured")
-        (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
-            "A db update occured")
         (let [audit-log-entry (mt/latest-audit-log-entry)]
           (is (partial=
                {:previous {:name "Original Database Name"}
