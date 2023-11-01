@@ -22,6 +22,7 @@ export function CoordinateFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -44,12 +45,7 @@ export function CoordinateFilterPicker({
     findSecondColumn({ query, stageIndex, column, filter, operatorName }),
   );
 
-  const valueCount = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option?.valueCount ?? 0;
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -57,17 +53,23 @@ export function CoordinateFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.CoordinateFilterOperatorName,
+    nextOperatorName: Lib.CoordinateFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues([]);
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
+    const nextValues =
+      nextOperatorName === "inside"
+        ? []
+        : values.slice(0, nextOption.valueCount);
+
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
     setColumn2(
       findSecondColumn({
         query,
         stageIndex,
         column,
         filter,
-        operatorName: newOperatorName,
+        operatorName: nextOperatorName,
       }),
     );
   };
@@ -129,7 +131,7 @@ export function CoordinateFilterPicker({
           disabled={!isValid}
           onClick={handleFilterChange}
         >
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
     </>

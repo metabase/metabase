@@ -15,6 +15,7 @@ export function BooleanFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
@@ -32,8 +33,8 @@ export function BooleanFilterPicker({
     getOptionType(query, stageIndex, filter),
   );
 
-  const [isExpanded, setIsExpanded] = useState(() =>
-    options.some(option => option.type === optionType && option.isAdvanced),
+  const [isExpanded, setIsExpanded] = useState(
+    () => OPTIONS[optionType].isAdvanced,
   );
 
   const visibleOptions = useMemo(() => {
@@ -78,7 +79,7 @@ export function BooleanFilterPicker({
       <Divider />
       <Group p="sm" position="right">
         <Button variant="filled" onClick={handleSubmit}>
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Group>
     </div>

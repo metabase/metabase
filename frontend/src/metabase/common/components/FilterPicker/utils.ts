@@ -8,7 +8,7 @@ export function getAvailableOperatorOptions<
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-  pickerOptions: T[],
+  pickerOptions: Record<string, T>,
 ) {
   const columnOperatorInfos = Lib.filterableColumnOperators(column).map(
     operator => Lib.displayInfo(query, stageIndex, operator),
@@ -17,7 +17,7 @@ export function getAvailableOperatorOptions<
   const columnOperatorsByName = _.indexBy(columnOperatorInfos, "shortName");
   const columnOperatorNames = Object.keys(columnOperatorsByName);
 
-  const supportedPickerOptions = pickerOptions.filter(option =>
+  const supportedPickerOptions = Object.values(pickerOptions).filter(option =>
     columnOperatorNames.includes(option.operator),
   );
 

@@ -16,6 +16,7 @@ import { OPERATOR_OPTIONS } from "./constants";
 import {
   getDefaultValue,
   getDefaultValuesForOperator,
+  getNextValues,
   isFilterValid,
 } from "./utils";
 
@@ -24,6 +25,7 @@ export function TimeFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -47,12 +49,7 @@ export function TimeFilterPicker({
     filterParts?.values ?? getDefaultValuesForOperator(operatorName),
   );
 
-  const valueCount = useMemo(() => {
-    const option = availableOperators.find(
-      option => option.operator === operatorName,
-    );
-    return option?.valueCount ?? 0;
-  }, [availableOperators, operatorName]);
+  const { valueCount = 0 } = OPERATOR_OPTIONS[operatorName] ?? {};
 
   const isValid = useMemo(
     () => isFilterValid(operatorName, values),
@@ -60,10 +57,12 @@ export function TimeFilterPicker({
   );
 
   const handleOperatorChange = (
-    newOperatorName: Lib.TimeFilterOperatorName,
+    nextOperatorName: Lib.TimeFilterOperatorName,
   ) => {
-    setOperatorName(newOperatorName);
-    setValues(getDefaultValuesForOperator(newOperatorName));
+    const nextOption = OPERATOR_OPTIONS[nextOperatorName];
+    const nextValues = getNextValues(values, nextOption.valueCount);
+    setOperatorName(nextOperatorName);
+    setValues(nextValues);
   };
 
   const handleFilterChange = () => {
@@ -102,7 +101,7 @@ export function TimeFilterPicker({
           disabled={!isValid}
           onClick={handleFilterChange}
         >
-          {filter ? t`Update filter` : t`Add filter`}
+          {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
     </>

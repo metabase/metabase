@@ -16,6 +16,7 @@ export function DateFilterPicker({
   stageIndex,
   column,
   filter,
+  isNew,
   onChange,
   onBack,
 }: FilterPickerWidgetProps) {
@@ -50,6 +51,7 @@ export function DateFilterPicker({
         </BackButton>
       }
       canUseRelativeOffsets
+      isNew={isNew}
       onChange={handleChange}
     />
   );

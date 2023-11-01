@@ -17,6 +17,7 @@ import { TabList } from "./RelativeDatePicker.styled";
 interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   canUseRelativeOffsets: boolean;
+  isNew: boolean;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -24,12 +25,12 @@ interface RelativeDatePickerProps {
 export function RelativeDatePicker({
   value: initialValue,
   canUseRelativeOffsets,
+  isNew,
   onChange,
   onBack,
 }: RelativeDatePickerProps) {
   const [value, setValue] = useState(initialValue ?? DEFAULT_VALUE);
   const direction = getDirection(value);
-  const isNew = initialValue == null;
 
   const handleTabChange = (tabValue: string | null) => {
     const tab = TABS.find(tab => tab.direction === tabValue);

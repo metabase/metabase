@@ -98,6 +98,7 @@ function setup({
       stageIndex={0}
       column={column}
       filter={filter}
+      isNew={!filter}
       onChange={onChange}
       onBack={onBack}
     />,
@@ -110,6 +111,11 @@ function setup({
   }
 
   return { query, column, getNextFilterParts, onChange, onBack };
+}
+
+async function setOperator(operator: string) {
+  userEvent.click(screen.getByLabelText("Filter operator"));
+  userEvent.click(await screen.findByText(operator));
 }
 
 describe("TimeFilterPicker", () => {
@@ -328,13 +334,49 @@ describe("TimeFilterPicker", () => {
       });
       const { getNextFilterParts } = setup(opts);
 
-      userEvent.click(screen.getByDisplayValue("Before"));
-      userEvent.click(await screen.findByText("After"));
+      await setOperator("After");
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
       expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([getDefaultValue()]);
+      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+    });
+
+    it("should re-use values when changing an operator", async () => {
+      setup(
+        createFilteredQuery({
+          operator: "between",
+          values: [
+            dayjs("11:15", "HH:mm").toDate(),
+            dayjs("12:30", "HH:mm").toDate(),
+          ],
+        }),
+      );
+      const updateButton = screen.getByRole("button", {
+        name: "Update filter",
+      });
+
+      expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("12:30")).toBeInTheDocument();
+
+      await setOperator("Before");
+
+      expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("12:30")).not.toBeInTheDocument();
+      expect(updateButton).toBeEnabled();
+
+      await setOperator("Is empty");
+
+      expect(screen.queryByDisplayValue("11:15")).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue("12:30")).not.toBeInTheDocument();
+      expect(updateButton).toBeEnabled();
+
+      await setOperator("After");
+
+      expect(screen.getByDisplayValue("00:00")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("11:15")).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue("12:30")).not.toBeInTheDocument();
+      expect(updateButton).toBeEnabled();
     });
 
     it("should handle invalid filter value", () => {
