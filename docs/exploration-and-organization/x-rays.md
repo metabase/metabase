@@ -8,9 +8,9 @@ redirect_from:
 
 X-rays are a fast and easy way to get automatic insights and explorations of your data.
 
-## Viewing X-rays by clicking on charts or tables
+## Viewing X-rays by clicking charts, models, or tables
 
-One great way to explore your data in general in Metabase is to click on points of interest in charts or tables, which shows you ways to further explore that point.
+One great way to explore your data in general in Metabase is to click on points of interest in charts, models, or tables.
 
 ![X-ray action in drill-through menu](./images/drill-through.png)
 
