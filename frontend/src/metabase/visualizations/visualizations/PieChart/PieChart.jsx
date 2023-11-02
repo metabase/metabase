@@ -592,7 +592,7 @@ export default class PieChart extends Component {
                       className={cx({
                         "cursor-pointer": isClickable,
                       })}
-                      onClick={handleSliceClick}
+                      onClick={e => handleSliceClick(e, index)}
                       data-testid="slice"
                     />
                   );
