@@ -9,16 +9,16 @@ import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
-import {
-  useCollectionQuery,
-  useMostRecentlyViewedDashboard,
-} from "metabase/common/hooks";
-import { coerceCollectionId } from "metabase/collections/utils";
+import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Card, CollectionId, Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
+import { useSelector } from "metabase/lib/redux";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
+import { useMostRecentlyViewedDashboard } from "./hooks";
+import { getInitialOpenCollectionId } from "./utils";
 
 function mapStateToProps(state: State) {
   return {
@@ -35,7 +35,7 @@ interface AddToDashSelectDashModalProps {
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
 
-export const AddToDashSelectDashModal = ({
+const AddToDashSelectDashModal = ({
   card,
   dashboards,
   onClose,
@@ -43,17 +43,34 @@ export const AddToDashSelectDashModal = ({
 }: AddToDashSelectDashModalProps) => {
   const [shouldCreateDashboard, setShouldCreateDashboard] = useState(false);
 
-  const mostRecentDashboardQuery = useMostRecentlyViewedDashboard();
-
-  const collectionId = coerceCollectionId(
-    mostRecentDashboardQuery.data?.collection_id,
+  const mostRecentlyViewedDashboardQuery = useMostRecentlyViewedDashboard();
+  const mostRecentlyViewedDashboard = mostRecentlyViewedDashboardQuery.data;
+  const questionCollection = card.collection ?? ROOT_COLLECTION;
+  const isQuestionInPersonalCollection = Boolean(
+    questionCollection.is_personal,
   );
-  // when collectionId is null and loading is completed, show root collection
-  // as user didnt' visit any dashboard last 24hrs
-  const collectionQuery = useCollectionQuery({
-    id: collectionId,
-    enabled: collectionId !== undefined,
+  const initialOpenCollectionId = getInitialOpenCollectionId({
+    isQuestionInPersonalCollection,
+    mostRecentlyViewedDashboard,
   });
+  // when collectionId is null and loading is completed, show root collection
+  // as user didn't visit any dashboard last 24hrs
+  const collectionQuery = useCollectionQuery({
+    id: initialOpenCollectionId,
+    enabled: initialOpenCollectionId !== undefined,
+  });
+
+  const [openCollectionId, setOpenCollectionId] = useState<
+    CollectionId | undefined
+  >();
+  const openCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
+  );
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const hideCreateNewDashboardOption =
+    isQuestionInPersonalCollection && !isOpenCollectionInPersonalCollection;
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -83,8 +100,8 @@ export const AddToDashSelectDashModal = ({
   }
 
   const isLoading =
-    mostRecentDashboardQuery.isLoading || collectionQuery.isLoading;
-  const error = mostRecentDashboardQuery.error ?? collectionQuery.error;
+    mostRecentlyViewedDashboardQuery.isLoading || collectionQuery.isLoading;
+  const error = mostRecentlyViewedDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -101,19 +118,24 @@ export const AddToDashSelectDashModal = ({
       onClose={onClose}
     >
       <DashboardPicker
+        onOpenCollectionChange={setOpenCollectionId}
+        showOnlyPersonalCollections={isQuestionInPersonalCollection}
         onChange={onDashboardSelected}
-        collectionId={collectionId}
-        value={mostRecentDashboardQuery.data?.id}
+        collectionId={initialOpenCollectionId}
+        value={mostRecentlyViewedDashboardQuery.data?.id}
       />
-      <Link onClick={() => setShouldCreateDashboard(true)} to="">
-        <LinkContent>
-          <Icon name="add" className="mx1" />
-          <h4>{t`Create a new dashboard`}</h4>
-        </LinkContent>
-      </Link>
+      {!hideCreateNewDashboardOption && (
+        <Link onClick={() => setShouldCreateDashboard(true)} to="">
+          <LinkContent>
+            <Icon name="add" className="mx1" />
+            <h4>{t`Create a new dashboard`}</h4>
+          </LinkContent>
+        </Link>
+      )}
     </ModalContent>
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(AddToDashSelectDashModal);
+export const ConnectedAddToDashSelectDashModal = connect(mapStateToProps)(
+  AddToDashSelectDashModal,
+);

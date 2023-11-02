@@ -22,7 +22,6 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
@@ -507,9 +506,7 @@
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
-  (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
-    ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/pulse-create (retrieve-pulse pulse-id))))
+  (retrieve-pulse (create-notification-and-add-cards-and-channels! kvs cards channels)))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -518,7 +515,7 @@
                (assoc :skip_if_empty true, :creator_id creator-id)
                (create-notification-and-add-cards-and-channels! [card-id] channels))]
     ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/alert-create (retrieve-alert id))))
+    (retrieve-alert id)))
 
 (mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]

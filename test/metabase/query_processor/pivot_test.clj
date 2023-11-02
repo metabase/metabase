@@ -230,7 +230,7 @@
               ([acc] acc)
               ([acc _] (inc acc))))]
     (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil {:rff rff})))))
+           (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil rff nil)))))
 
 (deftest parameters-query-test
   (mt/dataset sample-dataset

@@ -1,13 +1,13 @@
 (ns metabase.models.activity
   (:require
    [metabase.api.common :as api]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -83,37 +83,43 @@
 ;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to
 ;; user error.
 
-(defn record-activity!
+(mu/defn record-activity!
   "Inserts a new `Activity` entry.
 
    Takes the following kwargs:
      :topic          Required.  The activity topic.
+     :user-id        Required.  ID of the `User` responsible for the activity.
+     :model          Required.  name of the model representing the activity.
+     :model-id       Required.  ID of the model representing the activity.
      :object         Optional.  The activity object being saved.
      :database-id    Optional.  ID of the `Database` related to the activity.
      :table-id       Optional.  ID of the `Table` related to the activity.
-     :details-fn     Optional.  Gets called with `object` as the arg and the result is saved as the `:details` of the Activity.
-     :user-id        Optional.  ID of the `User` responsible for the activity.  defaults to (events/object->user-id object)
-     :model          Optional.  name of the model representing the activity.  defaults to (events/topic->model topic)
-     :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
+     :details        Optional.  Details of the activity.
 
    ex: (record-activity!
         :topic       :event/segment-update
         :object      segment
         :database-id 1
-        :table-id    13
-        :details-fn  #(dissoc % :some-key))"
-  [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
-  {:pre [(keyword? topic)]}
-  (let [object (or object {})]
-    (first (t2/insert-returning-instances! Activity
-                                           ;; strip off the `:event/` namespace of the topic, added in 0.48.0
-                                           :topic       (keyword (name topic))
-                                           :user_id     (or user-id (events/object->user-id object))
-                                           :model       (or model (events/topic->model topic))
-                                           :model_id    (or model-id (events/object->model-id topic object))
-                                           :database_id database-id
-                                           :table_id    table-id
-                                           :custom_id   (:custom_id object)
-                                           :details     (if (fn? details-fn)
-                                                          (details-fn object)
-                                                          object)))))
+        :table-id    13)"
+  [{:keys [topic object details database-id
+           table-id user-id model model-id]
+    :or   {object {}}}                      :- [:map {:closed true}
+                                                [:topic                        :keyword]
+                                                [:user-id                      pos-int?]
+                                                [:model                        :string]
+                                                [:model-id                     pos-int?]
+                                                [:object      {:optional true} [:maybe :map]]
+                                                [:details     {:optional true} [:maybe :map]]
+                                                [:database-id {:optional true} [:maybe pos-int?]]
+                                                [:table-id    {:optional true} [:maybe pos-int?]]]]
+  (first (t2/insert-returning-instances! Activity
+                                         ;; strip off the `:event/` namespace of the topic, added in 0.48.0
+                                         :topic       (keyword (name topic))
+                                         :user_id     user-id
+                                         :model       model
+                                         :model_id    model-id
+                                         :database_id database-id
+                                         :table_id    table-id
+                                         ;; TODO: test if this custom id is tracked
+                                         :custom_id   (:custom_id object)
+                                         :details     (or details object))))

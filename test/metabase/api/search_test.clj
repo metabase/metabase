@@ -937,11 +937,11 @@
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
                                     [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Metric lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
-           :entity      model
-           :id          id
-           :user-id     user-id
-           :is_creation true
-           :object      {:id id}))
+           {:entity       model
+            :id           id
+            :user-id      user-id
+            :is-creation? true
+            :object       {:id id}}))
 
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
@@ -1074,11 +1074,11 @@
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Metric metric-id]]]
         (revision/push-revision!
-         :entity      model
-         :id          id
-         :user-id     (mt/user->id :rasta)
-         :is_creation true
-         :object      {:id id}))
+         {:entity       model
+          :id           id
+          :user-id      (mt/user->id :rasta)
+          :is-creation? true
+          :object       {:id id}}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
@@ -1099,11 +1099,11 @@
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                             [:model/Dashboard dash-id] [:model/Metric metric-id]]]
           (revision/push-revision!
-           :entity      model
-           :id          id
-           :user-id     (mt/user->id :rasta)
-           :is_creation true
-           :object      {:id id}))
+           {:entity       model
+            :id           id
+            :user-id      (mt/user->id :rasta)
+            :is-creation? true
+            :object       {:id id}}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
                    :available_models
@@ -1354,18 +1354,18 @@
                                     :name       search-term}]
 
       (revision/push-revision!
-       :entity      :model/Card
-       :id          card-id-1
-       :user-id     user-id-1
-       :is_creation true
-       :object      {:id card-id-1})
+       {:entity       :model/Card
+        :id           card-id-1
+        :user-id      user-id-1
+        :is-creation? true
+        :object       {:id card-id-1}})
 
       (revision/push-revision!
-       :entity      :model/Card
-       :id          card-id-2
-       :user-id     user-id-2
-       :is_creation true
-       :object      {:id card-id-2})
+       {:entity       :model/Card
+        :id           card-id-2
+        :user-id      user-id-2
+        :is-creation? true
+        :object       {:id card-id-2}})
 
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
@@ -1401,4 +1401,57 @@
                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
        (testing "`archived-string` is 'true'"
          (is (= #{"action"}
-                (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+              (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+
+(deftest filter-items-in-personal-collection-test
+  (let [search-term "filter-items-in-personal-collection"
+        rasta-personal-coll-id     (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
+        crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))
+        search                      (fn [user filter-type]
+                                      (->> (mt/user-http-request user :get 200 "search" :q search-term
+                                                                 :filter_items_in_personal_collection filter-type)
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))]
+    (mt/with-temp
+      [:model/Collection {coll-sub-public :id}     {:location "/" :name search-term}
+       :model/Dashboard  {dash-public :id}         {:collection_id nil :name search-term}
+       :model/Dashboard  {dash-sub-public :id}     {:collection_id coll-sub-public :name search-term}
+       :model/Collection {coll-sub-rasta :id}      {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
+       :model/Card       {card-rasta :id}          {:collection_id rasta-personal-coll-id :name search-term}
+       :model/Card       {card-sub-rasta :id}      {:collection_id coll-sub-rasta :name search-term}
+       :model/Collection {coll-sub-crowberto :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
+       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :dataset true :name search-term}
+       :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :dataset true :name search-term}]
+
+      (testing "admin only"
+        (is (= #{["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-crowberto]
+                 ["collection" coll-sub-rasta]}
+               (search :crowberto "only"))))
+
+      (testing "non-admin only"
+        (is (= #{["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-rasta]}
+               (search :rasta "only"))))
+
+      (testing "admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]}
+               (search :rasta "exclude"))))
+
+      (testing "non-admin exclude"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]}
+               (search :rasta "exclude"))))
+
+      (testing "getting models should return only models that are applied"
+        (is (= #{"dashboard" "collection"}
+               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
+                                          :filter_items_in_personal_collection "exclude"))))))))
