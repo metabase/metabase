@@ -1,4 +1,5 @@
 import type {
+  Collection,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -14,6 +15,7 @@ export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
+  collection?: Collection | null;
   collection_id: number | null;
   name: string;
   description: string | null;
