@@ -33,5 +33,6 @@ create index idx_user_full_name
 create index idx_view_log_timestamp
     on view_log(timestamp);
 
+
 create index idx_view_log_entity_qualified_id
     on view_log((concat(model, '_', model_id)));
