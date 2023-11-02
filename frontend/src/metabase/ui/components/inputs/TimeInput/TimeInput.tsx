@@ -12,7 +12,7 @@ export type TimeInputProps = Omit<
 > & {
   value?: Date | null;
   defaultValue?: Date | null;
-  onChange?: (value: Date | null) => void;
+  onChange?: (value: Date) => void;
 };
 
 export function TimeInput({
@@ -31,7 +31,9 @@ export function TimeInput({
     setInputValue(newInputValue);
 
     const newValue = parseValue(newInputValue);
-    onChange?.(newValue);
+    if (newValue != null) {
+      onChange?.(newValue);
+    }
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
