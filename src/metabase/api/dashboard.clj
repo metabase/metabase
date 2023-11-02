@@ -589,28 +589,11 @@
     (events/publish-event! :event/dashboard-update-tabs
                            {:id dashboard-id :actor_id api/*current-user-id* :tab-ids updated-tab-ids})))
 
-(api/defendpoint PUT "/:id"
-  "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
-            :as dash-updates} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   description             [:maybe :string]
-   caveats                 [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]
-   enable_embedding        [:maybe :boolean]
-   embedding_params        [:maybe ms/EmbeddingParams]
-   parameters              [:maybe [:sequential ms/Parameter]]
-   position                [:maybe ms/PositiveInt]
-   archived                [:maybe :boolean]
-   collection_id           [:maybe ms/PositiveInt]
-   collection_position     [:maybe ms/PositiveInt]
-   cache_ttl               [:maybe ms/PositiveInt]
-   dashcards               [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
-   tabs                    [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+(defn- update-dashboard
+  "Updates a dashboard."
+  [id {:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+              embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
+       :as dash-updates}]
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
                       (t2/hydrate [:dashcards :series :card] :tabs))
@@ -630,10 +613,12 @@
          (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
          ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
          ;; non-nil
-         (when-let [updates (not-empty (u/select-keys-when dash-updates
-                                                           :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                                           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                                      :embedding_params :archived :auto_apply_filters}))]
+         (when-let [updates (not-empty
+                             (u/select-keys-when
+                              dash-updates
+                              :present #{:description :position :collection_id :collection_position :cache_ttl}
+                              :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                         :embedding_params :archived :auto_apply_filters}))]
            (t2/update! Dashboard id updates))
          (let [{:keys [old->new-tab-id
                        deleted-tab-ids]
@@ -658,9 +643,57 @@
         ;; trigger events out of tx so rows are committed and visible from other threads
        (track-dashcard-and-tab-events! id @changes-stats)
        true))
-    (u/prog1 (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal] :dashcards :tabs)
+    (u/prog1 (t2/hydrate (t2/select-one :model/Dashboard :id id) [:collection :is_personal] [:dashcards :series] :tabs)
              (events/publish-event! :event/dashboard-update (assoc <> :actor_id api/*current-user-id*))
              (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
+
+(api/defendpoint PUT "/:id"
+  "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
+  structure as the response from `GET /api/dashboard/:id`."
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+                   embedding_params position archived collection_id collection_position cache_ttl dashcards tabs]
+            :as dash-updates} :body}]
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
+   description             [:maybe :string]
+   caveats                 [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]
+   enable_embedding        [:maybe :boolean]
+   embedding_params        [:maybe ms/EmbeddingParams]
+   parameters              [:maybe [:sequential ms/Parameter]]
+   position                [:maybe ms/PositiveInt]
+   archived                [:maybe :boolean]
+   collection_id           [:maybe ms/PositiveInt]
+   collection_position     [:maybe ms/PositiveInt]
+   cache_ttl               [:maybe ms/PositiveInt]
+   dashcards               [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
+   tabs                    [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (update-dashboard id dash-updates))
+
+(api/defendpoint PUT "/:id/cards"
+  "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
+
+    {:cards        [{:id                 ... ; DashboardCard ID
+                     :size_x             ...
+                     :size_y             ...
+                     :row                ...
+                     :col                ...
+                     :parameter_mappings ...
+                     :series             [{:id 123
+                                           ...}]}
+                     ...]
+     :tabs [{:id       ... ; DashboardTab ID
+                     :name     ...}]}"
+  [id :as {{:keys [cards tabs]} :body}]
+  {id           ms/PositiveInt
+   cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
+   ;; tabs should be required in production, making it optional because lots of
+   ;; e2e tests curerntly doesn't include it
+   tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
+    {:cards (:dashcards dashboard)
+     :tabs  (:tabs dashboard)}))
 
 (api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
