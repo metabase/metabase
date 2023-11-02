@@ -47,6 +47,7 @@ export const getCardsSeriesModels = (
   cardsColumns: CartesianChartColumns[],
   renderingContext: RenderingContext,
 ) => {
+  const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
     const isFirstCard = index === 0;
     const cardColumns = cardsColumns[index];
@@ -55,6 +56,8 @@ export const getCardsSeriesModels = (
       cardDataset,
       cardColumns,
       isFirstCard,
+      hasMultipleCards,
+      settings,
       renderingContext,
     );
   });

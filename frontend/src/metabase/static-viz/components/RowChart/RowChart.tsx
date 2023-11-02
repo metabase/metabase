@@ -95,6 +95,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
       color: seriesColors[series.seriesKey],
     })),
     WIDTH,
+    0,
     LEGEND_FONT.lineHeight,
     LEGEND_FONT.size,
     LEGEND_FONT.weight,
@@ -105,7 +106,7 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
 
   return (
     <svg width={WIDTH} height={fullChartHeight} fontFamily="Lato">
-      {legend && (
+      {legend.items.length > 0 && (
         <Legend
           items={legend.items}
           top={CHART_PADDING}

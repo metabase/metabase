@@ -217,9 +217,11 @@ describe("dataset transform functions", () => {
         dataKey: DataKey,
         index: number,
       ): SeriesModel => ({
-        dataKey: "key1",
-        legacySeriesSettingsObjectKey: "key1",
-        vizSettingsKey: "key1",
+        dataKey,
+        name: `name for ${dataKey}`,
+        color: "red",
+        legacySeriesSettingsObjectKey: dataKey,
+        vizSettingsKey: dataKey,
         column: createMockColumn({ name: dataKey }),
         columnIndex: index,
       });
