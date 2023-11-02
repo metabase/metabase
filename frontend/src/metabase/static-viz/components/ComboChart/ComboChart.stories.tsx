@@ -16,8 +16,6 @@ const Template: ComponentStory<typeof ComboChart> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  width: 1000,
-  height: 600,
   rawSeries: questions.autoYSplit as any,
   dashcardSettings: {},
   renderingContext: {

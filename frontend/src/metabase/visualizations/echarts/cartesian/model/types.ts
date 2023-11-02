@@ -4,6 +4,8 @@ export type DataKey = string;
 export type VizSettingsKey = string;
 
 export type RegularSeriesModel = {
+  name: string;
+  color: string;
   dataKey: DataKey;
   vizSettingsKey: VizSettingsKey;
 

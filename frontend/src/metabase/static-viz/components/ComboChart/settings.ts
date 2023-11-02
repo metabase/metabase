@@ -5,14 +5,14 @@ import type {
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 
 import {
-  COLOR_SETTING_ID,
+  SERIES_COLORS_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
   getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
   getSeriesDefaultShowSeriesValues,
-  SETTING_ID,
+  SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
@@ -40,7 +40,7 @@ const getSeriesFunction = (
   keys: string[],
 ) => {
   return (legacySeriesObject: any) => {
-    const seriesSettings = settings[SETTING_ID] ?? {};
+    const seriesSettings = settings[SERIES_SETTING_KEY] ?? {};
     const key = legacySeriesObject.card._seriesKey;
     const singleSeriesSettings = seriesSettings[key] ?? {};
 
@@ -101,7 +101,10 @@ export const computeStaticComboChartSettings = (
     seriesModel => seriesModel.vizSettingsKey,
   );
 
-  settings[COLOR_SETTING_ID] = getSeriesColors(seriesVizSettingsKeys, settings);
+  settings[SERIES_COLORS_SETTING_KEY] = getSeriesColors(
+    seriesVizSettingsKeys,
+    settings,
+  );
   settings.series = getSeriesFunction(
     rawSeries,
     settings,

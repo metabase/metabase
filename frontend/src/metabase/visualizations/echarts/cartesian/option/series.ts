@@ -48,7 +48,6 @@ const buildEChartsLabelOptions = (
 const buildEChartsBarSeries = (
   seriesModel: SeriesModel,
   seriesSettings: SeriesSettings,
-  seriesColor: string,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
@@ -73,7 +72,7 @@ const buildEChartsBarSeries = (
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
     itemStyle: {
-      color: seriesColor,
+      color: seriesModel.color,
     },
   };
 };
@@ -81,7 +80,6 @@ const buildEChartsBarSeries = (
 const buildEChartsLineAreaSeries = (
   seriesModel: SeriesModel,
   seriesSettings: SeriesSettings,
-  seriesColor: string,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
@@ -115,7 +113,7 @@ const buildEChartsLineAreaSeries = (
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
     itemStyle: {
-      color: seriesColor,
+      color: seriesModel.color,
     },
   };
 };
@@ -130,8 +128,6 @@ export const buildEChartsSeries = (
       const seriesSettings: SeriesSettings = settings.series(
         seriesModel.legacySeriesSettingsObjectKey,
       );
-      const seriesColor =
-        settings?.["series_settings.colors"]?.[seriesModel.vizSettingsKey];
 
       const yAxisIndex = chartModel.yAxisSplit[0].includes(seriesModel.dataKey)
         ? 0
@@ -143,7 +139,6 @@ export const buildEChartsSeries = (
           return buildEChartsLineAreaSeries(
             seriesModel,
             seriesSettings,
-            seriesColor,
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
@@ -153,7 +148,6 @@ export const buildEChartsSeries = (
           return buildEChartsBarSeries(
             seriesModel,
             seriesSettings,
-            seriesColor,
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,

@@ -48,6 +48,7 @@ export const getCardsSeries = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
+  const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
     const isFirstCard = index === 0;
     const cardColumns = cardsColumns[index];
@@ -56,6 +57,8 @@ export const getCardsSeries = (
       cardDataset,
       cardColumns,
       isFirstCard,
+      hasMultipleCards,
+      settings,
       renderingContext,
     );
   });
