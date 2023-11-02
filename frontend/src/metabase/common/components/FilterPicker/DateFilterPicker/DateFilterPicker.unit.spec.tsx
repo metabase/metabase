@@ -14,38 +14,23 @@ function findDateColumn(query: Lib.Query) {
   return findColumn("PRODUCTS", "CREATED_AT");
 }
 
-function createFilteredQuery({
-  operator = "=",
-  values = [],
-}: Partial<Lib.SpecificDateFilterParts>) {
-  const initialColumn = createQuery();
-  const column = findDateColumn(initialColumn);
-
-  const clause = Lib.specificDateFilterClause(initialColumn, STAGE_INDEX, {
-    operator,
-    column,
-    values,
-  });
-
-  const query = Lib.filter(initialColumn, STAGE_INDEX, clause);
+function createFilteredQuery(
+  initialQuery: Lib.Query,
+  clause: Lib.ExpressionClause,
+) {
+  const query = Lib.filter(initialQuery, STAGE_INDEX, clause);
   const [filter] = Lib.filters(query, STAGE_INDEX);
-
-  return { query, column, filter };
+  return { query, filter };
 }
 
 interface SetupOpts {
-  query?: Lib.Query;
-  column?: Lib.ColumnMetadata;
+  query: Lib.Query;
+  column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   isNew?: boolean;
 }
 
-function setup({
-  query = createQuery(),
-  column = findDateColumn(query),
-  filter,
-  isNew = false,
-}: SetupOpts = {}) {
+function setup({ query, column, filter, isNew = false }: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
@@ -92,8 +77,13 @@ function setup({
 }
 
 describe("DateFilterPicker", () => {
+  const initialQuery = createQuery();
+  const column = findDateColumn(initialQuery);
+
   it("should add a filter via shortcut", () => {
     const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
+      query: initialQuery,
+      column,
       isNew: true,
     });
 
@@ -109,6 +99,8 @@ describe("DateFilterPicker", () => {
 
   it("should add a specific date filter", () => {
     const { getNextFilterColumnName, getNextSpecificFilterParts } = setup({
+      query: initialQuery,
+      column,
       isNew: true,
     });
 
@@ -127,10 +119,12 @@ describe("DateFilterPicker", () => {
   });
 
   it("should update a specific date filter", () => {
-    const { query, column, filter } = createFilteredQuery({
+    const clause = Lib.specificDateFilterClause(initialQuery, STAGE_INDEX, {
       operator: "=",
+      column,
       values: [new Date(2020, 1, 15)],
     });
+    const { query, filter } = createFilteredQuery(initialQuery, clause);
     const { getNextFilterColumnName, getNextSpecificFilterParts } = setup({
       query,
       column,
