@@ -73,11 +73,16 @@ export function getDashboardDrillUrl(clicked) {
     clickBehavior,
   );
 
-  const queryParams = getParameterValuesBySlug(parameterMapping, {
+  const parametersQueryParams = getParameterValuesBySlug(parameterMapping, {
     data,
     extraData,
     clickBehavior,
   });
+
+  const queryParams =
+    typeof clickBehavior.tabId === "undefined"
+      ? parametersQueryParams
+      : { ...parametersQueryParams, tab: clickBehavior.tabId };
 
   const path = Urls.dashboard({ id: targetId });
   return `${path}?${querystring.stringify(queryParams)}`;
