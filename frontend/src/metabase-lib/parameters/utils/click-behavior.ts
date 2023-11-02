@@ -31,7 +31,6 @@ import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
-import Field from "metabase-lib/metadata/Field";
 
 interface Target {
   id: Parameter["id"];
@@ -178,10 +177,7 @@ export function getTargetsForQuestion(question: Question): Target[] {
     return {
       id,
       target,
-      name:
-        o instanceof Field
-          ? o.displayName({ includeTable: true })
-          : o.displayName(),
+      name: o.displayName({ includeTable: true }),
       sourceFilters: {
         column: column =>
           Boolean(
