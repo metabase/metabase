@@ -13,7 +13,9 @@
 
 (methodical/defmethod events/publish-event! :around ::event
   [topic card]
-  (when (premium-features/enable-audit-app?)
+  (when (or (premium-features/enable-audit-app?)
+            ;; Cloud Starters won't have the Audit App enabled, but we want to log events in case they upgrade to premium
+            (premium-features/is-hosted?))
     (next-method topic card)))
 
 (defn maybe-prepare-update-event-data
