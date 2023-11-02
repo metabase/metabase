@@ -2,6 +2,7 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  deleteTab,
   editDashboard,
   getActionCardDetails,
   getBrokenUpTextMatcher,
@@ -47,7 +48,9 @@ const COLUMN_INDEX = {
 };
 
 const FIRST_TAB = { id: 1, name: "first" };
+const FIRST_TAB_SLUG = `${FIRST_TAB.id}-${FIRST_TAB.name}`;
 const SECOND_TAB = { id: 2, name: "second" };
+const THIRD_TAB = { id: 3, name: "third" };
 const SECOND_TAB_SLUG = `${SECOND_TAB.id}-${SECOND_TAB.name}`;
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -309,12 +312,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.request("PUT", `/api/dashboard/${targetDashboardId}/cards`, {
           cards: [],
-          tabs: [FIRST_TAB, SECOND_TAB],
+          tabs: [FIRST_TAB, SECOND_TAB, THIRD_TAB],
         });
       });
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: card }) => {
           visitDashboard(card.dashboard_id);
+          cy.wrap(card.dashboard_id).as("dashboardId");
         },
       );
 
@@ -322,7 +326,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
-      cy.get("aside").findByText("Select a dashboard tab").should("exist");
       cy.get("aside")
         .findByLabelText("Select a dashboard tab")
         .should("have.value", FIRST_TAB.name)
@@ -343,6 +346,40 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(
             `?tab=${SECOND_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
+          );
+        });
+      });
+
+      cy.log("click behavior should still work after removing target tab");
+      editDashboard();
+      deleteTab(SECOND_TAB.name);
+      saveDashboard();
+
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      editDashboard();
+      getDashboardCard().realHover().icon("click").click();
+      cy.get("aside")
+        .findByLabelText("Select a dashboard tab")
+        .should("have.value", FIRST_TAB.name)
+        .click();
+      cy.get("header").button("Cancel").click();
+      // migrateDeletedTab and migrateUndefinedDashboardTabId cause
+      // detection of changes even though user did not change anything
+      modal().button("Discard changes").click();
+      cy.button("Cancel").should("not.exist");
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .should("have.length", 1)
+        .should("contain.text", POINT_COUNT);
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?tab=${FIRST_TAB_SLUG}&${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`,
           );
         });
       });
