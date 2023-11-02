@@ -141,14 +141,29 @@ function LinkedEntityPicker({
 
   const handleSelectLinkTargetEntityId = useCallback(
     targetId => {
-      const nextSettings = { ...clickBehavior, targetId };
       const isNewTargetEntity = targetId !== clickBehavior.targetId;
-      if (isNewTargetEntity) {
-        // For new target entity, parameter mappings for the previous link target
-        // don't make sense and have to be reset
-        nextSettings.parameterMapping = {};
+
+      if (!isNewTargetEntity) {
+        return;
       }
-      updateSettings(nextSettings);
+
+      // For new target entity, parameter mappings for the previous link target
+      // don't make sense and have to be reset.
+      // The same goes for tabId when changing dashboard link target.
+      if (clickBehavior.linkType === "dashboard") {
+        updateSettings({
+          ...clickBehavior,
+          targetId,
+          parameterMapping: {},
+          tabId: undefined,
+        });
+      } else {
+        updateSettings({
+          ...clickBehavior,
+          targetId,
+          parameterMapping: {},
+        });
+      }
     },
     [clickBehavior, updateSettings],
   );
