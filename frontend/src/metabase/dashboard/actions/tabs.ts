@@ -3,13 +3,10 @@ import type { Draft } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { arrayMove } from "@dnd-kit/sortable";
 
-import { normalize } from "normalizr";
 import type {
   DashCardId,
   DashboardId,
   DashboardTabId,
-  DashboardTab,
-  DashboardCard,
 } from "metabase-types/api";
 import type {
   DashboardState,
@@ -22,7 +19,6 @@ import { INITIALIZE } from "metabase/dashboard/actions/core";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
 import Dashboards from "metabase/entities/dashboards";
-import { DashboardSchema } from "metabase/schema";
 import { addUndo } from "metabase/redux/undo";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
 import { getDashCardById } from "../selectors";
@@ -376,9 +372,8 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
       const { dashboard } = payload;
-      const entities = normalize(dashboard, DashboardSchema).entities;
-      const newDashcards = entities.dashcards as DashboardCard[];
-      const newTabs = entities.tabs as DashboardTab[];
+      const newDashcards = dashboard.dashcards;
+      const newTabs = dashboard.tabs;
 
       const { prevDash, prevTabs } = getPrevDashAndTabs({
         state,
@@ -391,12 +386,12 @@ export const tabsReducer = createReducer<DashboardState>(
       }
 
       // 1. Replace temporary with real dashcard ids
-      const prevCards = prevDash.dashcards.filter(
+      const prevDashcardIds = prevDash.dashcards.filter(
         id => !state.dashcards[id].isRemoved,
       );
 
-      prevCards.forEach((oldId, index) => {
-        const prevDashcardData = state.dashcardData[oldId];
+      prevDashcardIds.forEach((prevId, index) => {
+        const prevDashcardData = state.dashcardData[prevId];
 
         if (prevDashcardData) {
           state.dashcardData[newDashcards[index].id] = prevDashcardData;
