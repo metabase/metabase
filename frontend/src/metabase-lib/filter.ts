@@ -659,12 +659,12 @@ function serializeDateTime(date: Date): string {
 function deserializeDateTime(value: string): Date | null {
   const dateTime = UTC_OFFSET_REGEX.test(value)
     ? moment.parseZone(value, moment.ISO_8601, true)
-    : moment(value, moment.ISO_8601, true);
+    : moment.utc(value, moment.ISO_8601, true);
   if (!dateTime.isValid()) {
     return null;
   }
 
-  return dateTime.toDate();
+  return dateTime.local(true).toDate();
 }
 
 function serializeTime(value: Date): string {
