@@ -40,7 +40,6 @@ import {
 
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
-    cy.in;
     restore();
     cy.signInAsAdmin();
   });

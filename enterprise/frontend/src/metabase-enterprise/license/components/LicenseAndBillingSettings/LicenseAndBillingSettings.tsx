@@ -132,7 +132,7 @@ const LicenseAndBillingSettings = ({
           <>
             <Text color="text.1">
               {t`To manage your billing preferences, please email `}
-              <Anchor span href="mailto:billing@metabase.com">
+              <Anchor href="mailto:billing@metabase.com">
                 billing@metabase.com
               </Anchor>
             </Text>

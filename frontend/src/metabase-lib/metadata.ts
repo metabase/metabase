@@ -181,3 +181,10 @@ export function visibleColumns(
 ): ColumnMetadata[] {
   return ML.visible_columns(query, stageIndex);
 }
+
+export function returnedColumns(
+  query: Query,
+  stageIndex: number,
+): ColumnMetadata[] {
+  return ML.returned_columns(query, stageIndex);
+}

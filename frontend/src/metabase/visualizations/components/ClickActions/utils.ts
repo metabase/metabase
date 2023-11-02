@@ -76,13 +76,6 @@ export const getGroupedAndSortedActions = (
     });
     delete groupedClickActions["sum"];
   }
-  if (groupedClickActions["sort"]?.length === 1) {
-    // restyle the Formatting action when there is only one option
-    groupedClickActions["sort"][0] = {
-      ...groupedClickActions["sort"][0],
-      buttonType: "horizontal",
-    };
-  }
 
   return _.chain(groupedClickActions)
     .pairs()
@@ -163,9 +156,7 @@ export const getSectionContentDirection = (
     }
 
     case "sort": {
-      if (actions.length > 1) {
-        return "row";
-      }
+      return "row";
     }
   }
 
