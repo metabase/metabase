@@ -12,6 +12,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.plugins.classloader :as classloader]
+   [metabase.query-processor.context.default :as qp.context.default]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-default-temporal-unit
     :as qp.add-default-temporal-unit]
@@ -95,6 +96,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -287,15 +289,27 @@
   "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
   (qp.reducible/sync-qp process-query-async))
 
-(defn process-query
+(mu/defn process-query
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  {:arglists '([query] [query context] [query rff context])}
-  [{:keys [async?], :as query} & args]
-  (apply (if async? process-query-async process-query-sync)
-         query
-         args))
+  ([query]
+   (process-query query nil))
+
+  ([query context]
+   (process-query query nil context))
+
+  ([{:keys [async?], :as query} :- :map
+    rff                         :- [:maybe fn?]
+    context                     :- [:maybe
+                                    [:and
+                                     :map
+                                     [:fn
+                                      {:error/message ":rff should no longer be included in context, pass it as a separate argument."}
+                                      (complement :rff)]]]]
+   (let [rff     (or rff qp.reducible/default-rff)
+         context (or context (qp.context.default/default-context))]
+     ((if async? process-query-async process-query-sync) query rff context))))
 
 (defn preprocess
   "Return the fully preprocessed form for `query`, the way it would look immediately
@@ -374,17 +388,17 @@
     #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 
-(def ^{:arglists '([query] [query context])} process-userland-query-async
+(def ^{:arglists '([query] [query context] [query rff context])} ^:private process-userland-query-async
   "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (base-qp userland-middleware))
 
-(def ^{:arglists '([query] [query context])} process-userland-query-sync
+(def ^{:arglists '([query] [query context] [query rff context])} process-userland-query-sync
   "Like [[process-query-sync]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (qp.reducible/sync-qp process-userland-query-async))
 
 (defn process-userland-query
   "Like [[process-query]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  {:arglists '([query] [query context])}
+  {:arglists '([query] [query context] [query rff context])}
   [{:keys [async?], :as query} & args]
   (apply (if async? process-userland-query-async process-userland-query-sync)
          query
@@ -397,7 +411,10 @@
    (process-userland-query (assoc query :info info)))
 
   ([query info context]
-   (process-userland-query (assoc query :info info) context)))
+   (process-userland-query (assoc query :info info) context))
+
+  ([query info rff context]
+   (process-userland-query (assoc query :info info) rff context)))
 
 (defn- add-default-constraints [query]
   (assoc-in query [:middleware :add-default-userland-constraints?] true))
@@ -409,4 +426,7 @@
    (process-query-and-save-execution! (add-default-constraints query) info))
 
   ([query info context]
-   (process-query-and-save-execution! (add-default-constraints query) info context)))
+   (process-query-and-save-execution! (add-default-constraints query) info context))
+
+  ([query info rff context]
+   (process-query-and-save-execution! (add-default-constraints query) info rff context)))

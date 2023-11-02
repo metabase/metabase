@@ -11,6 +11,7 @@ import {
   modal,
   setTokenFeatures,
   describeOSS,
+  queryBuilderHeader,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
@@ -308,6 +309,70 @@ describe("scenarios > question > new", () => {
       cy.findByText("Save").click();
     });
     cy.get("header").findByText(NEW_COLLECTION);
+  });
+
+  describe("add to a dashboard", () => {
+    const collectionInRoot = {
+      name: "Collection in root collection",
+    };
+    const dashboardInRoot = {
+      name: "Dashboard in root collection",
+    };
+    const myPersonalCollection = "My personal collection";
+
+    beforeEach(() => {
+      cy.intercept("POST", "/api/card").as("createQuestion");
+      cy.createCollection(collectionInRoot);
+      cy.createDashboard(dashboardInRoot);
+      // Can't use `startNewQuestion` because it's missing `display: "table"` and
+      // adding that will fail a lot of other tests and I don't want to deal with that yet.
+      cy.visit("/");
+      cy.findByTestId("app-bar").button("New").click();
+      popover().findByText("Question").click();
+    });
+
+    it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      queryBuilderHeader().button("Save").click();
+      modal().findByTestId("select-button").click();
+      popover().findByText("My personal collection").click();
+      modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@createQuestion");
+        cy.button("Yes please!").click();
+
+        cy.findByText("Add this question to a dashboard").should("be.visible");
+        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText(collectionInRoot.name).should("not.exist");
+        cy.findByText(dashboardInRoot.name).should("not.exist");
+        cy.findByText("Create a new dashboard").should("not.exist");
+      });
+    });
+
+    it("should show all collections when selecting a dashboard for a question in a public collection", () => {
+      popover().within(() => {
+        cy.findByText("Raw Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      queryBuilderHeader().button("Save").click();
+      cy.log("default selected collection is the root collection");
+      modal().within(() => {
+        cy.button("Save").click();
+        cy.wait("@createQuestion");
+        cy.button("Yes please!").click();
+
+        cy.findByText("Add this question to a dashboard").should("be.visible");
+        cy.findByText(myPersonalCollection).should("be.visible");
+        cy.findByText(collectionInRoot.name).should("be.visible");
+        cy.findByText(dashboardInRoot.name).should("be.visible");
+        cy.findByText("Create a new dashboard").should("be.visible");
+      });
+    });
   });
 });
 

@@ -26,21 +26,21 @@
 
 (defn- create-card-revision! [card-id is-creation? user]
   (revision/push-revision!
-    :object       (t2/select-one Card :id card-id)
+   {:object       (t2/select-one Card :id card-id)
     :entity       Card
     :id           card-id
     :user-id      (test.users/user->id user)
-    :is-creation? is-creation?))
+    :is-creation? is-creation?}))
 
 (defn- create-dashboard-revision!
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation? user]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (test.users/user->id user)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (test.users/user->id user)
+    :is-creation? is-creation?}))
 
 ;;; # GET /revision
 
@@ -289,7 +289,7 @@
 
       ;; 7. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
-        (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
+        (revision/revert! {:entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}
@@ -345,7 +345,7 @@
 
       ;; 6. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
-        (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
+        (revision/revert! {:entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 
       (is (= [{:description          "reverted to an earlier version.",
                :has_multiple_changes false}
@@ -391,7 +391,7 @@
 
           ;; 2. revert to an earlier revision
           (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
-            (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
+            (revision/revert! {:entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 
           (is (= [{:description          "est revenu à une version antérieure."
                    :has_multiple_changes false}
@@ -424,7 +424,7 @@
       (create-dashboard-revision! dashboard-id false :crowberto)
 
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
-        (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
+        (revision/revert! {:entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 
       (is (= [{:description          "reverted to an earlier version."
                :has_multiple_changes false}

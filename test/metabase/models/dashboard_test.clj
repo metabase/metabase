@@ -104,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
@@ -435,11 +435,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (defn- revert-to-previous-revision
   "Revert to a previous revision for a model.
@@ -452,7 +452,7 @@
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"

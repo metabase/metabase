@@ -166,7 +166,7 @@
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (when database
-        (events/publish-event! :event/database-create database))
+        (events/publish-event! :event/database-create {:object database :user-id user-id}))
       (->> {:user-id user-id}
            (events/publish-event! :event/user-login)
            (events/publish-event! :event/user-joined))
