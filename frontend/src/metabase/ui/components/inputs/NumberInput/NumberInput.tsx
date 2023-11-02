@@ -1,24 +1,17 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { ChangeEvent, FocusEvent } from "react";
 import type { NumberInputProps } from "@mantine/core";
-import { useUncontrolled } from "@mantine/hooks";
 import { TextInput } from "../TextInput";
 
 export function NumberInput({
-  value: controlledValue,
+  value,
   defaultValue,
   onChange,
   onFocus,
   onBlur,
   ...props
 }: NumberInputProps) {
-  const [value, setValue] = useUncontrolled({
-    value: controlledValue,
-    defaultValue,
-    finalValue: "",
-    onChange,
-  });
-  const [inputValue, setInputValue] = useState(formatValue(value));
+  const [inputValue, setInputValue] = useState(formatValue(defaultValue ?? ""));
   const [isFocused, setIsFocused] = useState(false);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -26,25 +19,29 @@ export function NumberInput({
     setInputValue(newInputValue);
 
     const newValue = parseValue(newInputValue);
-    setValue(newValue);
+    onChange?.(newValue);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    setInputValue(formatValue(value));
     setIsFocused(true);
     onFocus?.(event);
   };
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    setInputValue(formatValue(value));
     setIsFocused(false);
     onBlur?.(event);
   };
 
+  useLayoutEffect(() => {
+    if (value != null && !isFocused) {
+      setInputValue(formatValue(value));
+    }
+  }, [value, isFocused]);
+
   return (
     <TextInput
       {...props}
-      value={isFocused ? inputValue : formatValue(value)}
+      value={inputValue}
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
