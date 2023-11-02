@@ -937,11 +937,11 @@
                                     [:model/Card lucky-card-id lucky-user-id] [:model/Card lucky-model-id lucky-user-id]
                                     [:model/Dashboard lucky-dash-id lucky-user-id] [:model/Metric lucky-metric-id lucky-user-id]]]
           (revision/push-revision!
-           :entity      model
-           :id          id
-           :user-id     user-id
-           :is_creation true
-           :object      {:id id}))
+           {:entity       model
+            :id           id
+            :user-id      user-id
+            :is-creation? true
+            :object       {:id id}}))
 
         (testing "Able to filter by last editor"
           (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
@@ -1074,11 +1074,11 @@
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Metric metric-id]]]
         (revision/push-revision!
-         :entity      model
-         :id          id
-         :user-id     (mt/user->id :rasta)
-         :is_creation true
-         :object      {:id id}))
+         {:entity       model
+          :id           id
+          :user-id      (mt/user->id :rasta)
+          :is-creation? true
+          :object       {:id id}}))
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
@@ -1099,11 +1099,11 @@
         (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                             [:model/Dashboard dash-id] [:model/Metric metric-id]]]
           (revision/push-revision!
-           :entity      model
-           :id          id
-           :user-id     (mt/user->id :rasta)
-           :is_creation true
-           :object      {:id id}))
+           {:entity       model
+            :id           id
+            :user-id      (mt/user->id :rasta)
+            :is-creation? true
+            :object       {:id id}}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
                    :available_models
@@ -1354,18 +1354,18 @@
                                     :name       search-term}]
 
       (revision/push-revision!
-       :entity      :model/Card
-       :id          card-id-1
-       :user-id     user-id-1
-       :is_creation true
-       :object      {:id card-id-1})
+       {:entity       :model/Card
+        :id           card-id-1
+        :user-id      user-id-1
+        :is-creation? true
+        :object       {:id card-id-1}})
 
       (revision/push-revision!
-       :entity      :model/Card
-       :id          card-id-2
-       :user-id     user-id-2
-       :is_creation true
-       :object      {:id card-id-2})
+       {:entity       :model/Card
+        :id           card-id-2
+        :user-id      user-id-2
+        :is-creation? true
+        :object       {:id card-id-2}})
 
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]

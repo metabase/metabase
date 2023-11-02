@@ -786,7 +786,7 @@
                                           (sync.schedules/default-randomized-schedule)))
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
-        (events/publish-event! :event/database-create <>)
+        (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
                                {:database engine, :database-id (u/the-id <>), :source :admin}))
@@ -949,7 +949,7 @@
           (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
-          (events/publish-event! :event/database-update db)
+          (events/publish-event! :event/database-update {:object db})
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 
@@ -963,7 +963,7 @@
   (api/check-superuser)
   (api/let-404 [db (t2/select-one Database :id id)]
     (t2/delete! Database :id id)
-    (events/publish-event! :event/database-delete db))
+    (events/publish-event! :event/database-delete {:object db}))
   api/generic-204-no-content)
 
 
