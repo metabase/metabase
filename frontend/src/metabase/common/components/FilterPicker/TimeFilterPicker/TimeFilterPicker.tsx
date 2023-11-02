@@ -76,7 +76,7 @@ export function TimeFilterPicker({
   };
 
   return (
-    <>
+    <div data-testid="time-filter-picker">
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
@@ -104,7 +104,7 @@ export function TimeFilterPicker({
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
-    </>
+    </div>
   );
 }
 

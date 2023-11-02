@@ -50,7 +50,7 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <div>
+    <div data-testid="boolean-filter-picker">
       <BackButton onClick={onBack}>{columnInfo.longDisplayName}</BackButton>
       <Divider />
       <Radio.Group value={optionType} onChange={handleOptionChange}>

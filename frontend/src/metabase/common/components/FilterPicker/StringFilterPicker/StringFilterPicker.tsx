@@ -78,7 +78,7 @@ export function StringFilterPicker({
   const canHaveManyValues = !Number.isFinite(valueCount);
 
   return (
-    <>
+    <div data-testid="string-filter-picker">
       <Header>
         <BackButton onClick={onBack}>{columnName}</BackButton>
         <FilterOperatorPicker
@@ -114,7 +114,7 @@ export function StringFilterPicker({
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
       </Footer>
-    </>
+    </div>
   );
 }
 
