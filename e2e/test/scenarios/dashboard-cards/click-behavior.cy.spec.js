@@ -190,6 +190,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("exist");
       cy.get("aside").button("Done").click();
 
@@ -225,6 +226,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
       addTextParameter();
       cy.get("aside").button("Done").click();
@@ -266,6 +268,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
       cy.get("aside").findByText("No available targets").should("not.exist");
       addTextParameter();
       addTimeParameter();
@@ -738,6 +741,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCountToDashboardMapping().should("not.exist");
         cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
         addDashboardDestination();
+        cy.get("aside")
+          .findByText("Select a dashboard tab")
+          .should("not.exist");
         cy.get("aside").findByText("No available targets").should("not.exist");
         addTextParameter();
         addTimeParameter();
