@@ -52,10 +52,8 @@ export type ClickBehaviorType =
   | "crossfilter"
   | "link";
 
-export type CustomDestinationClickBehaviorEntity = "dashboard" | "question";
-
 export type CustomDestinationClickBehaviorLinkType =
-  | CustomDestinationClickBehaviorEntity
+  | EntityCustomDestinationClickBehavior["linkType"]
   | "url";
 
 export interface CrossFilterClickBehavior {
@@ -63,10 +61,21 @@ export interface CrossFilterClickBehavior {
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
-export interface EntityCustomDestinationClickBehavior {
+export type EntityCustomDestinationClickBehavior =
+  | DashboardCustomDestinationClickBehavior
+  | QuestionCustomDestinationClickBehavior;
+
+export interface DashboardCustomDestinationClickBehavior {
   type: "link";
-  linkType: CustomDestinationClickBehaviorEntity;
-  targetId: CardId | DashboardId;
+  linkType: "dashboard";
+  targetId: DashboardId;
+  parameterMapping?: ClickBehaviorParameterMapping;
+}
+
+export interface QuestionCustomDestinationClickBehavior {
+  type: "link";
+  linkType: "question";
+  targetId: CardId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
