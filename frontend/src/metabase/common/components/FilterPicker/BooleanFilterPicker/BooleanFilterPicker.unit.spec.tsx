@@ -1,66 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createMockField } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  createOrdersTable,
-  createPeopleTable,
-  PEOPLE_ID,
-} from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  createQueryWithBooleanFilter,
+  findBooleanColumn,
+  storeInitialState,
+} from "../test-utils";
 import { BooleanFilterPicker } from "./BooleanFilterPicker";
-
-const BOOLEAN_FIELD = createMockField({
-  id: 100,
-  table_id: PEOPLE_ID,
-  name: "IS_ACTIVE",
-  display_name: "Is Active",
-  base_type: "type/Boolean",
-  effective_type: "type/Boolean",
-  semantic_type: null,
-});
-
-const _peopleFields = createPeopleTable().fields?.filter(checkNotNull) ?? [];
-
-const database = createSampleDatabase({
-  tables: [
-    createOrdersTable(),
-    createPeopleTable({ fields: [..._peopleFields, BOOLEAN_FIELD] }),
-  ],
-});
-
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [database],
-  }),
-});
-
-const metadata = getMetadata(storeInitialState);
-
-function findBooleanColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("PEOPLE", "IS_ACTIVE");
-}
-
-function createFilteredQuery({
-  operator = "=",
-  values = [true],
-}: Partial<Lib.BooleanFilterParts> = {}) {
-  const initialQuery = createQuery({ metadata });
-  const column = findBooleanColumn(initialQuery);
-
-  const clause = Lib.booleanFilterClause({ operator, column, values });
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, column, filter };
-}
 
 type SetupOpts = {
   query?: Lib.Query;
@@ -69,7 +17,7 @@ type SetupOpts = {
 };
 
 function setup({
-  query = createQuery({ metadata }),
+  query = createQuery(),
   column = findBooleanColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -181,7 +129,7 @@ describe("BooleanFilterPicker", () => {
   describe("existing filter", () => {
     it("should render a list of options", () => {
       setup(
-        createFilteredQuery({
+        createQueryWithBooleanFilter({
           operator: "=",
           values: [false],
         }),
@@ -204,7 +152,7 @@ describe("BooleanFilterPicker", () => {
 
     it("shouldn't hide is-empty and not-empty options if they're in use", () => {
       setup(
-        createFilteredQuery({
+        createQueryWithBooleanFilter({
           operator: "is-null",
           values: [],
         }),
@@ -221,7 +169,7 @@ describe("BooleanFilterPicker", () => {
       "should create a filter with the '%s' option",
       (title, { expectedOperator, expectedValues, isAdvanced }) => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery(),
+          createQueryWithBooleanFilter(),
         );
 
         if (isAdvanced) {
@@ -241,7 +189,7 @@ describe("BooleanFilterPicker", () => {
     );
 
     it("should go back", () => {
-      const { onBack, onChange } = setup(createFilteredQuery());
+      const { onBack, onChange } = setup(createQueryWithBooleanFilter());
       userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

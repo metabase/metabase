@@ -1,53 +1,15 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  createQueryWithCoordinateFilter,
+  findLatitudeColumn,
+  findLongitudeColumn,
+  storeInitialState,
+} from "../test-utils";
 import { CoordinateFilterPicker } from "./CoordinateFilterPicker";
-
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  }),
-});
-
-const metadata = getMetadata(storeInitialState);
-
-function findLatitudeColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("PEOPLE", "LATITUDE");
-}
-
-function findLongitudeColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("PEOPLE", "LONGITUDE");
-}
-
-function createFilteredQuery({
-  operator = "=",
-  values = [0],
-  ...rest
-}: Partial<Lib.CoordinateFilterParts> = {}) {
-  const initialQuery = createQuery({ metadata });
-  const column = findLatitudeColumn(initialQuery);
-
-  const clause = Lib.coordinateFilterClause({
-    operator,
-    column,
-    values,
-    ...rest,
-  });
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, column, filter };
-}
 
 const NUMERIC_TEST_CASES: Array<[string, number]> = [
   ["negative integer", -24],
@@ -83,7 +45,7 @@ type SetupOpts = {
 };
 
 function setup({
-  query = createQuery({ metadata }),
+  query = createQuery(),
   column = findLatitudeColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -285,7 +247,7 @@ describe("CoordinateFilterPicker", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should render a filter with a %s value",
         (title, value) => {
-          const opts = createFilteredQuery({
+          const opts = createQueryWithCoordinateFilter({
             operator: ">",
             values: [value],
           });
@@ -301,7 +263,10 @@ describe("CoordinateFilterPicker", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should update a filter with a %s value",
         async (title, value) => {
-          const opts = createFilteredQuery({ operator: ">", values: [100] });
+          const opts = createQueryWithCoordinateFilter({
+            operator: ">",
+            values: [100],
+          });
           const { getNextFilterParts, getNextFilterColumnNames } = setup(opts);
 
           await setOperator("Greater than");
@@ -326,7 +291,7 @@ describe("CoordinateFilterPicker", () => {
       it.each(BETWEEN_TEST_CASES)(
         "should render a filter with %i to %i values",
         (leftValue, rightValue) => {
-          const opts = createFilteredQuery({
+          const opts = createQueryWithCoordinateFilter({
             operator: "between",
             values: [leftValue, rightValue],
           });
@@ -347,7 +312,7 @@ describe("CoordinateFilterPicker", () => {
       it.each(BETWEEN_TEST_CASES)(
         "should update a filter with %i to %i values",
         async (leftValue, rightValue) => {
-          const opts = createFilteredQuery({
+          const opts = createQueryWithCoordinateFilter({
             operator: "between",
             values: [0, 100],
           });
@@ -378,9 +343,12 @@ describe("CoordinateFilterPicker", () => {
     });
 
     describe("with four values", () => {
-      const opts = createFilteredQuery({
+      const query = createQuery();
+      const opts = createQueryWithCoordinateFilter({
+        query,
         operator: "inside",
-        longitudeColumn: findLongitudeColumn(createQuery({ metadata })),
+        column: findLatitudeColumn(query),
+        longitudeColumn: findLongitudeColumn(query),
         values: [42, -24, -42, 24],
       });
 
@@ -438,7 +406,10 @@ describe("CoordinateFilterPicker", () => {
     describe("with many values", () => {
       it("should update a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup(
-          createFilteredQuery({ operator: "=", values: [-1, 0, 1, 2] }),
+          createQueryWithCoordinateFilter({
+            operator: "=",
+            values: [-1, 0, 1, 2],
+          }),
         );
 
         userEvent.type(
@@ -458,7 +429,7 @@ describe("CoordinateFilterPicker", () => {
     });
 
     it("should list operators", async () => {
-      setup(createFilteredQuery({ operator: "<" }));
+      setup(createQueryWithCoordinateFilter({ operator: "<" }));
 
       userEvent.click(screen.getByDisplayValue("Less than"));
       const listbox = await screen.findByRole("listbox");
@@ -471,7 +442,7 @@ describe("CoordinateFilterPicker", () => {
     });
 
     it("should change an operator", async () => {
-      const opts = createFilteredQuery({
+      const opts = createQueryWithCoordinateFilter({
         operator: "<",
         values: [11],
       });
@@ -490,7 +461,9 @@ describe("CoordinateFilterPicker", () => {
     });
 
     it("should re-use values when changing an operator", async () => {
-      setup(createFilteredQuery({ operator: "=", values: [-100, 200] }));
+      setup(
+        createQueryWithCoordinateFilter({ operator: "=", values: [-100, 200] }),
+      );
       const updateButton = screen.getByRole("button", {
         name: "Update filter",
       });
@@ -530,7 +503,7 @@ describe("CoordinateFilterPicker", () => {
     });
 
     it("should go back", () => {
-      const { onBack, onChange } = setup(createFilteredQuery());
+      const { onBack, onChange } = setup(createQueryWithCoordinateFilter());
       userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();

@@ -1,41 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import {
+  createQuery,
+  findNumericColumn,
+  createQueryWithNumberFilter,
+  storeInitialState,
+} from "../test-utils";
 import { NumberFilterPicker } from "./NumberFilterPicker";
-
-const storeInitialState = createMockState({
-  entities: createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  }),
-});
-
-const metadata = getMetadata(storeInitialState);
-
-function findNumericColumn(query: Lib.Query) {
-  const columns = Lib.filterableColumns(query, 0);
-  const findColumn = columnFinder(query, columns);
-  return findColumn("ORDERS", "TOTAL");
-}
-
-function createFilteredQuery({
-  operator = "=",
-  values = [0],
-}: Partial<Lib.NumberFilterParts> = {}) {
-  const initialQuery = createQuery({ metadata });
-  const column = findNumericColumn(initialQuery);
-
-  const clause = Lib.numberFilterClause({ operator, column, values });
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-
-  return { query, column, filter };
-}
 
 const NUMERIC_TEST_CASES: Array<[string, number]> = [
   ["negative integer", -24],
@@ -72,7 +45,7 @@ type SetupOpts = {
 };
 
 function setup({
-  query = createQuery({ metadata }),
+  query = createQuery(),
   column = findNumericColumn(query),
   filter,
 }: SetupOpts = {}) {
@@ -257,11 +230,12 @@ describe("NumberFilterPicker", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should render a filter with a %s value",
         (title, value) => {
-          const opts = createFilteredQuery({
-            operator: ">",
-            values: [value],
-          });
-          setup(opts);
+          setup(
+            createQueryWithNumberFilter({
+              operator: ">",
+              values: [value],
+            }),
+          );
 
           expect(screen.getByText("Total")).toBeInTheDocument();
           expect(screen.getByDisplayValue("Greater than")).toBeInTheDocument();
@@ -273,8 +247,12 @@ describe("NumberFilterPicker", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should update a filter with a %s value",
         async (title, value) => {
-          const opts = createFilteredQuery({ operator: ">", values: [1000] });
-          const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
+          const { getNextFilterParts, getNextFilterColumnName } = setup(
+            createQueryWithNumberFilter({
+              operator: ">",
+              values: [1000],
+            }),
+          );
 
           await setOperator("Greater than");
           userEvent.type(
@@ -298,11 +276,12 @@ describe("NumberFilterPicker", () => {
       it.each(BETWEEN_TEST_CASES)(
         "should render a filter with %i to %i values",
         (leftValue, rightValue) => {
-          const opts = createFilteredQuery({
-            operator: "between",
-            values: [leftValue, rightValue],
-          });
-          setup(opts);
+          setup(
+            createQueryWithNumberFilter({
+              operator: "between",
+              values: [leftValue, rightValue],
+            }),
+          );
 
           expect(screen.getByText("Total")).toBeInTheDocument();
           expect(screen.getByDisplayValue("Between")).toBeInTheDocument();
@@ -319,11 +298,12 @@ describe("NumberFilterPicker", () => {
       it.each(BETWEEN_TEST_CASES)(
         "should update a filter with %i to %i values",
         async (leftValue, rightValue) => {
-          const opts = createFilteredQuery({
-            operator: "between",
-            values: [0, 1000],
-          });
-          const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
+          const { getNextFilterParts, getNextFilterColumnName } = setup(
+            createQueryWithNumberFilter({
+              operator: "between",
+              values: [0, 1000],
+            }),
+          );
           const updateButton = screen.getByRole("button", {
             name: "Update filter",
           });
@@ -352,7 +332,7 @@ describe("NumberFilterPicker", () => {
     describe("with many values", () => {
       it("should update a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery({ operator: "=", values: [-1, 0, 1, 2] }),
+          createQueryWithNumberFilter({ operator: "=", values: [-1, 0, 1, 2] }),
         );
 
         userEvent.type(
@@ -373,7 +353,9 @@ describe("NumberFilterPicker", () => {
 
     describe("without a value", () => {
       it("should render a filter with no values", () => {
-        setup(createFilteredQuery({ operator: "not-null", values: [] }));
+        setup(
+          createQueryWithNumberFilter({ operator: "not-null", values: [] }),
+        );
 
         expect(screen.getByText("Total")).toBeInTheDocument();
         expect(screen.getByDisplayValue("Not empty")).toBeInTheDocument();
@@ -382,7 +364,7 @@ describe("NumberFilterPicker", () => {
 
       it("should update a filter with no values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createFilteredQuery({ operator: "not-null", values: [] }),
+          createQueryWithNumberFilter({ operator: "not-null", values: [] }),
         );
 
         await setOperator("Is empty");
@@ -399,7 +381,7 @@ describe("NumberFilterPicker", () => {
     });
 
     it("should list operators", async () => {
-      setup(createFilteredQuery({ operator: "<" }));
+      setup(createQueryWithNumberFilter({ operator: "<" }));
 
       userEvent.click(screen.getByDisplayValue("Less than"));
       const listbox = await screen.findByRole("listbox");
@@ -412,11 +394,12 @@ describe("NumberFilterPicker", () => {
     });
 
     it("should change an operator", async () => {
-      const opts = createFilteredQuery({
-        operator: "<",
-        values: [11],
-      });
-      const { getNextFilterParts, getNextFilterColumnName } = setup(opts);
+      const { getNextFilterParts, getNextFilterColumnName } = setup(
+        createQueryWithNumberFilter({
+          operator: "<",
+          values: [11],
+        }),
+      );
 
       await setOperator("Greater than");
       userEvent.click(screen.getByText("Update filter"));
@@ -431,7 +414,7 @@ describe("NumberFilterPicker", () => {
     });
 
     it("should re-use values when changing an operator", async () => {
-      setup(createFilteredQuery({ operator: "=", values: [10, 20] }));
+      setup(createQueryWithNumberFilter({ operator: "=", values: [10, 20] }));
       const updateButton = screen.getByRole("button", {
         name: "Update filter",
       });
@@ -465,7 +448,7 @@ describe("NumberFilterPicker", () => {
     });
 
     it("should go back", () => {
-      const { onBack, onChange } = setup(createFilteredQuery());
+      const { onBack, onChange } = setup(createQueryWithNumberFilter());
       userEvent.click(screen.getByLabelText("Back"));
       expect(onBack).toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
