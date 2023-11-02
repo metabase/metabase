@@ -184,7 +184,7 @@ describe("metabase/lib/click-behavior", () => {
                 query: "{{my_field_filter}}",
                 "template-tags": {
                   my_field_filter: {
-                    default: undefined,
+                    default: null,
                     dimension: ["field", PRODUCTS.CATEGORY, null],
                     "display-name": "My Field Filter",
                     id: "foo123",
@@ -448,7 +448,7 @@ describe("metabase/lib/click-behavior", () => {
                     query: "{{my_field_filter}}",
                     "template-tags": {
                       my_field_filter: {
-                        default: undefined,
+                        default: null,
                         dimension: ["field", field.id as FieldId, null],
                         "display-name": "My Field Filter",
                         id: "foo123",
