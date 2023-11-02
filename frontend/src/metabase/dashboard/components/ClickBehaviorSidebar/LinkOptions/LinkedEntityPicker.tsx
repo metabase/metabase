@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { useDashboardQuery } from "metabase/common/hooks";
@@ -23,7 +23,9 @@ import type {
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
+  DashboardTab,
 } from "metabase-types/api";
+import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
@@ -33,6 +35,7 @@ import {
   SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
 } from "./LinkOptions.styled";
+import { DashboardTabSelect } from "./LinkedEntityPicker.styled";
 
 const LINK_TARGETS = {
   question: {
@@ -50,6 +53,8 @@ const LINK_TARGETS = {
     getPickerButtonLabel: () => t`Pick a dashboard…`,
   },
 };
+
+const NO_DASHBOARD_TABS: DashboardTab[] = [];
 
 function PickerControl({
   clickBehavior,
@@ -163,7 +168,33 @@ function LinkedEntityPicker({
     enabled: isDash,
     id: targetId,
   });
-  const dashboardTabs = dashboard?.tabs || [];
+  const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
+  const dashboardTabsOptions = dashboardTabs.map(tab => ({
+    label: tab.name,
+    value: String(tab.id),
+  }));
+  const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
+  const dashboardTabId = isDash
+    ? clickBehavior.tabId ?? defaultDashboardTabId
+    : undefined;
+
+  const handleDashboardTabChange = (value: string) => {
+    if (!isDash) {
+      throw new Error("This should never happen");
+    }
+
+    updateSettings({ ...clickBehavior, tabId: Number(value) });
+  };
+
+  useEffect(() => {
+    if (
+      isDash &&
+      typeof clickBehavior.tabId === "undefined" &&
+      isNotNull(defaultDashboardTabId)
+    ) {
+      updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+    }
+  }, [isDash, clickBehavior, defaultDashboardTabId, updateSettings]);
 
   return (
     <div>
@@ -197,7 +228,12 @@ function LinkedEntityPicker({
       </div>
 
       {isDash && dashboardTabs.length > 1 && (
-        <div>{dashboardTabs.map(({ name }) => name).join(", ")}</div>
+        <DashboardTabSelect
+          data={dashboardTabsOptions}
+          label={t`Select a dashboard tab`}
+          value={String(dashboardTabId)}
+          onChange={handleDashboardTabChange}
+        />
       )}
 
       {hasSelectedTarget && (
