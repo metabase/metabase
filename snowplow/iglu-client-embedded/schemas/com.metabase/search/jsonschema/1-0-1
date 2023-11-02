@@ -14,7 +14,7 @@
       "type": "string",
       "enum": [
         "new_search_query",
-        "search_results_filtered"
+        "new_filtered_search_query"
       ],
       "maxLength": 1024
     },
@@ -27,7 +27,7 @@
       "minimum": 0,
       "maximum": 2147483647
     },
-    "content_type": {
+    "models": {
       "description": "Filter for entity types (question, database, model, etc.)",
       "type": [
         "array",
@@ -48,43 +48,43 @@
         "maxLength": 1024
       }
     },
-    "creator": {
-      "description": "Filter for created by a user",
+    "created_by": {
+      "description": "Whether the query contains a created_by filter",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "last_editor": {
-      "description": "Filter for last edited by a user",
+    "last_edited_by": {
+      "description": "Whether the query contains a last_edited_by filter",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "creation_date": {
-      "description": "Filter for a time when a user creates an entity",
+    "created_at": {
+      "description": "Whether the query contains a created_at filter",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "last_edit_date": {
-      "description": "Filter for a time when a user last edited an entity",
+    "last_edited_at": {
+      "description": "Whether the query contains a last_edited_at filter",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "verified_items": {
-      "description": "Filter for entities that have been marked as verified",
+    "verified": {
+      "description": "Whether the query contains a verified filter",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "search_native_queries": {
-      "description": "Toggles whether search should include SQL and/or native queries",
+    "search_native_query": {
+      "description": "Whether the query enable search the content of native queries",
       "type": [
         "boolean",
         "null"

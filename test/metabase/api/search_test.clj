@@ -814,20 +814,69 @@
 (deftest snowplow-new-search-query-event-test
   (testing "Send a snowplow event when a new global search query is made"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/user-http-request :crowberto :get 200 "search?q=test" :is_global_search true)
+      (mt/user-http-request :crowberto :get 200 "search?q=test" :context "global-search")
       (is (=? {:data {"event"                "new_search_query"
                       "runtime_milliseconds" pos?}
                :user-id (str (mt/user->id :crowberto))}
               (last (snowplow-test/pop-event-data-and-user-id!))))))
+
   (testing "Don't send a snowplow event if the search isn't global"
     (snowplow-test/with-fake-snowplow-collector
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :models "table")
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
-    (snowplow-test/with-fake-snowplow-collector
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!)))
+
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :table_db_id (mt/id))
-      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
-    (snowplow-test/with-fake-snowplow-collector
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!)))
+
       (mt/user-http-request :crowberto :get 200 "search" :q "test" :archived true)
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!)))
+
+      (testing "even when context is global-search but query has a models filter"
+        (mt/user-http-request :crowberto :get 200 "search" :q "test" :models "table" :context "global-search")
+        (is (empty? (snowplow-test/pop-event-data-and-user-id!)))))))
+
+(deftest snowplow-new-filtered-search-query-event-test
+  (testing "Send a snowplow event when a new filtered search query is made"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-app"
+                            :models "card")
+      (is (=? {:data {"event"                "new_filtered_search_query"
+                      "runtime_milliseconds" pos?
+                      "created_at"           false
+                      "created_by"           false
+                      "last_edited_at"       false
+                      "last_edited_by"       false
+                      "models"               ["card"]
+                      "search_native_query"  false
+                      "verified"             false}
+               :user-id (str (mt/user->id :crowberto))}
+              (last (snowplow-test/pop-event-data-and-user-id!)))))
+
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-app"
+                            :models "card" :models "dashboard"
+                            :created_at "2000-01-01" :created_by (mt/user->id :crowberto)
+                            :last_edited_at "2000-01-01" :last_edited_by (mt/user->id :crowberto)
+                            :search_native_query true)
+      (is (=? {:data {"event"                "new_filtered_search_query"
+                      "runtime_milliseconds" pos?
+                      "created_at"           true
+                      "created_by"           true
+                      "last_edited_at"       true
+                      "last_edited_by"       true
+                      "models"               ["card" "dashboard"]
+                      "search_native_query"  true
+                      "verified"             false}
+               :user-id (str (mt/user->id :crowberto))}
+              (last (snowplow-test/pop-event-data-and-user-id!))))))
+
+  (snowplow-test/with-fake-snowplow-collector
+    (testing "Don't send a snowplow event if the doesn't have any advanced filters"
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :context "filtered-app")
+      (is (empty? (snowplow-test/pop-event-data-and-user-id!))))
+
+    (testing "Don't send a snowplow event if the doesn't have the correct context"
+      (mt/user-http-request :crowberto :get 200 "search" :q "test" :created_at "2000-01-01")
       (is (empty? (snowplow-test/pop-event-data-and-user-id!))))))
 
 ;; ------------------------------------------------ Filter Tests ------------------------------------------------ ;;

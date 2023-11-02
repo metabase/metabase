@@ -525,13 +525,14 @@
   to `table_db_id`.
   To specify a list of models, pass in an array to `models`.
   "
-  [q archived created_at created_by table_db_id models last_edited_at last_edited_by
+  [q archived context created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection search_native_query verified]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
    models                              [:maybe [:or SearchableModel [:sequential SearchableModel]]]
    filter_items_in_personal_collection [:maybe [:enum "only" "exclude"]]
+   context                             [:maybe [:enum "global-search" "filtered-app"]]
    created_at                          [:maybe ms/NonBlankString]
    created_by                          [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    last_edited_at                      [:maybe ms/NonBlankString]
@@ -558,12 +559,31 @@
                              :offset              mw.offset-paging/*offset*
                              :search-native-query search_native_query
                              :verified            verified}))
-        duration   (- (System/currentTimeMillis) start-time)]
-    ;; Only track global searches
-    (when (and (nil? models)
+        duration   (- (System/currentTimeMillis) start-time)
+        has-advanced-filters (some some?
+                                   [models created_by created_at last_edited_by
+                                    last_edited_at search_native_query verified])]
+    (cond
+     ;; This is meant to track the performance of "Whole app search"
+     ;; On the UI, it's only accessible when you type on the nav search bar
+     (and (= context "global-search")
+          (not has-advanced-filters) (nil? models) (nil? table_db_id) (not archived))
+     (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration})
+
+     ;; Track search that are made from the advanced search page
+     (and (= context "filtered-app") has-advanced-filters)
+     (when (and (nil? models)
                (nil? table_db_id)
                (not archived))
-      (snowplow/track-event! ::snowplow/new-search-query api/*current-user-id* {:runtime-milliseconds duration}))
+      (snowplow/track-event! ::snowplow/new-filtered-search-query api/*current-user-id*
+                            {:runtime-milliseconds duration
+                             :models               (u/one-or-many models)
+                             :created-by           (some? created_by)
+                             :created-at           (some? created_at)
+                             :last-edited-by       (some? last_edited_by)
+                             :last-edited-at       (some? last_edited_at)
+                             :verified             (some? verified)
+                             :search-native-query  (some? search_native_query)})))
     results))
 
 (api/define-routes)

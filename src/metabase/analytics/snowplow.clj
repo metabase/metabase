@@ -209,6 +209,7 @@
    ::new-event-created              ::timeline
    ::new-task-history               ::task
    ::new-search-query               ::search
+   ::new-filtered-search-query      ::search
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
@@ -231,4 +232,4 @@
             ^SelfDescribing event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
-        (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
+        (log/error e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
