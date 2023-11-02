@@ -749,7 +749,7 @@
           (is (= nil 
                  (mt/rows @(def post (qp/process-query qqq))))))))))
 
-;;;; TODAY: make this ok
+;;;; TODO: make this to check also names!
 (deftest same-metric-as-only-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "stuff"
@@ -788,7 +788,6 @@
                                    {:aggregation [[:aggregation-options [:metric metric-id] {:name "First one"
                                                                                              :display-name "First one"}]]
                                     :breakout [$category_id]
-                                    
                                     :limit 5})
               _ (def ppp (qp/preprocess query))]
           (is (= nil
