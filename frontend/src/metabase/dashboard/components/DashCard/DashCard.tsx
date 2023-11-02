@@ -257,6 +257,7 @@ function DashCard({
           onMouseDown={preventDragging}
           data-testid="dashboardcard-actions-panel"
           isDashCardTabMenuOpen={isDashCardTabMenuOpen}
+          onLeftEdge={dashcard.col === 0}
         >
           <DashCardActionButtons
             series={series}
