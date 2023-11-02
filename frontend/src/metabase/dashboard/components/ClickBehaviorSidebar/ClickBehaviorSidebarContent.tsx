@@ -32,7 +32,7 @@ interface Props {
   onTypeSelectorVisibilityChange: (isVisible: boolean) => void;
 }
 
-function ClickBehaviorSidebar({
+function ClickBehaviorSidebarContent({
   dashboard,
   dashcard,
   dashcardData,
@@ -92,4 +92,4 @@ function ClickBehaviorSidebar({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebar;
+export default ClickBehaviorSidebarContent;
