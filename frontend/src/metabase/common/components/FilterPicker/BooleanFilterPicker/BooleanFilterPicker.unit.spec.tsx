@@ -90,8 +90,7 @@ function setup({
   );
 
   function getNextFilterParts() {
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-    const [filter] = lastCall;
+    const [filter] = onChange.mock.lastCall;
     return Lib.booleanFilterParts(query, 0, filter);
   }
 
@@ -162,8 +161,11 @@ describe("BooleanFilterPicker", () => {
         userEvent.click(screen.getByRole("button", { name: "Add filter" }));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toEqual(expectedOperator);
-        expect(filterParts?.values).toEqual(expectedValues);
+        expect(filterParts).toMatchObject({
+          operator: expectedOperator,
+          column: expect.anything(),
+          values: expectedValues,
+        });
         expect(getNextFilterColumnName()).toBe("User → Is Active");
       },
     );
@@ -229,8 +231,11 @@ describe("BooleanFilterPicker", () => {
         userEvent.click(screen.getByRole("button", { name: "Update filter" }));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toEqual(expectedOperator);
-        expect(filterParts?.values).toEqual(expectedValues);
+        expect(filterParts).toMatchObject({
+          operator: expectedOperator,
+          column: expect.anything(),
+          values: expectedValues,
+        });
         expect(getNextFilterColumnName()).toBe("User → Is Active");
       },
     );
