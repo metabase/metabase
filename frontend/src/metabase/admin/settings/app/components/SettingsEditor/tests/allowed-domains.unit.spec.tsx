@@ -16,6 +16,7 @@ async function setupAllowedDomains() {
     ],
     settingValues: createMockSettings({
       "subscription-allowed-domains": "somedomain.com",
+      "email-configured?": true,
     }),
     initialRoute: EMAIL_URL,
   });

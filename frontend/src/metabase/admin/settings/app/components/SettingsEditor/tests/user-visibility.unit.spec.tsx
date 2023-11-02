@@ -14,6 +14,7 @@ async function setupUserVisibility() {
     settings: [createMockSettingDefinition({ key: "user-visibility" })],
     settingValues: createMockSettings({
       "user-visibility": "all",
+      "email-configured?": true,
     }),
     initialRoute: EMAIL_URL,
   });
