@@ -1,3 +1,2 @@
-export { NumberInput } from "@mantine/core";
+export { NumberInput } from "./NumberInput";
 export type { NumberInputProps } from "@mantine/core";
-export { getNumberInputOverrides } from "./NumberInput.styled";

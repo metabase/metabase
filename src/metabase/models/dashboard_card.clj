@@ -226,11 +226,11 @@
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
       (let [dashboard-card-ids (t2/insert-returning-pks!
-                                 DashboardCard
-                                 (for [dashcard dashboard-cards]
-                                   (merge {:parameter_mappings []
-                                           :visualization_settings {}}
-                                          (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
+                                DashboardCard
+                                (for [dashcard dashboard-cards]
+                                  (merge {:parameter_mappings []
+                                          :visualization_settings {}}
+                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard

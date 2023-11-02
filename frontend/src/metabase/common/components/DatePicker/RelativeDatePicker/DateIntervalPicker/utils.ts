@@ -15,7 +15,7 @@ export function setDefaultOffset(value: DateIntervalValue): DateIntervalValue {
     ...value,
     offsetValue: DEFAULT_OFFSETS[value.unit] * Math.sign(value.value),
     offsetUnit: value.unit,
-    options: {},
+    options: undefined,
   };
 }
 

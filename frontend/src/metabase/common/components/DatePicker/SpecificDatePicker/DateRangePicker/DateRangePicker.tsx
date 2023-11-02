@@ -29,10 +29,13 @@ export function DateRangePicker({
   );
   const [hasEndDate, setHasEndDate] = useState(true);
 
-  const handleRangeChange = ([startDate, endDate]: DatesRangeValue) => {
-    setHasEndDate(endDate != null);
-    if (startDate && endDate) {
-      onChange([startDate, endDate]);
+  const handleRangeChange = ([newStartDate, newEndDate]: DatesRangeValue) => {
+    setHasEndDate(newEndDate != null);
+    if (newStartDate && newEndDate) {
+      onChange([
+        setDatePart(startDate, newStartDate),
+        setDatePart(endDate, newEndDate),
+      ]);
     }
   };
 
@@ -64,20 +67,30 @@ export function DateRangePicker({
           <FlexDateInput
             value={startDate}
             popoverProps={{ opened: false }}
+            aria-label={t`Start date`}
             onChange={handleStartDateChange}
           />
           <Text c="text.0">{t`and`}</Text>
           <FlexDateInput
             value={endDate}
             popoverProps={{ opened: false }}
+            aria-label={t`End date`}
             onChange={handleEndDateChange}
           />
         </Group>
         {hasTime && (
           <Group align="center">
-            <FlexTimeInput value={startDate} onChange={handleStartTimeChange} />
+            <FlexTimeInput
+              value={startDate}
+              aria-label={t`Start time`}
+              onChange={handleStartTimeChange}
+            />
             <Text c="text.0">{t`and`}</Text>
-            <FlexTimeInput value={endDate} onChange={handleEndTimeChange} />
+            <FlexTimeInput
+              value={endDate}
+              aria-label={t`End time`}
+              onChange={handleEndTimeChange}
+            />
           </Group>
         )}
         <DatePicker
