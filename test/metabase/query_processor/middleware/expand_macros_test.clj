@@ -43,6 +43,11 @@
                          [:> [:field 4 nil] 1]]]
              :breakout [[:field 17 nil]]}))))))
 
+(comment
+  (require '[mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/segments-test])
+  )
+
 (deftest nested-segments-test
   (t2.with-temp/with-temp
     [:model/Segment {s1-id :id} {:table_id   (mt/id :venues)
@@ -58,6 +63,11 @@
     (testing "Expansion of mutually recursive segments causes an exception"
       (is (thrown? Exception (#'expand-macros/expand-metrics-and-segments
                               (mt/mbql-query venues {:filter [:segment s2-id]})))))))
+
+(comment
+  (require '[ mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/nested-segments-test])
+  )
 
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"
@@ -98,6 +108,12 @@
                 :breakout     [[:field 17 nil]]
                 :order-by     [[:asc [:field 1 nil]]]})))))))
 
+(comment
+  (require '[mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/nested-segments-test])
+  )
+
+;;;; Mock data -> real data
 (deftest metric-with-no-filter-test
   (testing "metric w/ no filter definition"
     (t2.with-temp/with-temp [:model/Metric {metric-1-id :id} {:name       "My Metric"
@@ -114,6 +130,11 @@
                 :filter      [:= [:field 5 nil] "abc"]
                 :breakout    [[:field 17 nil]]
                 :order-by    [[:asc [:field 1 nil]]]})))))))
+
+(comment
+  (require '[mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/metric-with-no-filter-test])
+  )
 
 (deftest metric-with-nested-segments-test
   (testing "metric w/ nested segments"
@@ -147,6 +168,11 @@
                                [:segment segment-2-id]]
                 :breakout     [[:field 17 nil]]
                 :order-by     [[:asc [:field 1 nil]]]})))))))
+
+(comment
+  (require '[mb.hawk.core :as hawk])
+  (hawk/run-tests [#'metabase.query-processor.middleware.expand-macros-test/metric-with-nested-segments-test])
+  )
 
 (deftest metric-with-multiple-aggregation-syntax-test
   (testing "Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly"
@@ -335,48 +361,30 @@
 ;;     (testing "bla"
 ;;       (mt/mbql-query venues))))
 
-;;;; TODO: metric-query-unexpanded-segments-test, expect exception
+;;;; - [ ] metric-query-unexpanded-segments-test, expect exception
 
-;;;; TODO: no breakout, one breakout, multiple breakouts (join condition) -- variadic :and
+;;;; - [ ] no breakout, one breakout, multiple breakouts (join condition) -- variadic :and
 
-;;;; TODO: verify that there are enough join conditions generated
+;;;; - [ ] verify that there are enough join conditions generated
 
-;;;; TODO: filter expandsion
+;;;; - [ ] filter expandsion
 
-;;;; TODO: duplicit naming
+;;;; - [ ] duplicit naming
 
-;;;; TODO: proper ordering test
+;;;; - [ ] proper ordering test
 
-;;;; TODO: transform-aggregation
+;;;; - [ ] transform-aggregation
 
-;;;; TODO: metric in nested join
+;;;; - [ ] metric in nested join
 
-;;;; TODO: metric in source-query
+;;;; - [ ] metric in source-query
 
-;;;; TODO: metric in saved query
+;;;; - [ ] metric in saved query
 
-;;;; TODO: use of metrics with named expressions, maybe think of order by updates
-
-
-;;;; TODO: :order-by handling some aggregation would have to become fields... maybe :breakout...
-
-
-;;;; TODO is that metadata computation recursive --- not but using join metrics to generate double join alias display name
-
-
-;;;; TODO: metric in model?
-
-
-
-
-;;;; TODO: i could modify metadata
-;;;;         - name is normally used, and display name is overriden
-;;;;         - options contain
-;;;;           - source-metric for some fields (to create that map) ---- this way i could operate on metadata generated
-;;;;           - 
+;;;; - [ ] use of metrics with named expressions, maybe think of order by updates
 
 ;;;; This test sample query which I'm using during development. Test will probably be factored out later.
-;;;; TODO: Verify following test actaully checks for correct values.
+;;;; TODO: Double check correctness of values.
 (deftest multiple-metrics-wip-test
   ;; TODO: Consider other features that should be tested for, to support metrics expansion correctly!
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -410,6 +418,7 @@
                                                                [:/ [:metric m1-id] [:metric m2-id]]
                                                                {:name "Metric dividing metric"
                                                                 :display-name "Metric dividing metric"}]]})})
+      ;; for setting non temp metrics in app db
       (def m1 (t2/select :model/Metric :id m1-id))
       (def m2 (t2/select :model/Metric :id m2-id))
       (def m3 (t2/select :model/Metric :id m3-id))
@@ -438,8 +447,7 @@
        {id :id}
        {:name "venues, count"
         :description "Metric doing count with no filtering."
-        :definition (mt/$ids venues {:source-table $$venues
-                                     :aggregation [[:count]]})}]
+        :definition (mt/$ids venues {:aggregation [[:count]]})}]
       (testing "Query containing metric returns correct results"
         (testing "no query filter, no breakout"
           (let [_q @(def qqq (mt/mbql-query venues {:aggregation [[:metric id]]}))]
@@ -466,9 +474,21 @@
                                                  :filter [:> $category_id 10]})
                       (mt/formatted-rows [int])))))))))
 
-;;;; TODO: Check correctness of results by comparing with equivalent aggregation query.
+(comment
+  (mt/with-db (t2/select-one :model/Database :id 2)
+    (mt/with-everything-store
+      (t2.with-temp/with-temp
+        [:model/Metric
+         {id :id}
+         {:name "some metric"
+          :definition {:aggregation [[:count]]}}]
+        (def mm (t2/select-one :model/Metric :id id))
+        (mt/run-mbql-query venues {:aggregation [[:metric id]]}))))
+  mm
+  )
+
+;;;; TODO: Double check values!
 ;;;; TODO: Here make more tests for expansion rather then query execution.
-;;;; TODO: Wrong!
 (deftest metric-with-filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -505,7 +525,7 @@
                                                  :filter [:< $category_id 6]})
                       (mt/formatted-rows [int int])))))))))
 
-;;;; TODO: Check correctness of results by comparing with equivalent aggregation query.
+;;;; TODO: Double check values!
 ;;;; TODO: Here make more tests for expansion rather then query execution.
 ;;;; NOTE: Prev testing: Filter in query is correctly combined with segment filter in metric
 ;;;; TODO: Wrong!
@@ -549,8 +569,7 @@
                                                      :order-by [[:asc $category_id]]
                                                      :limit 5})))))))))
 
-;;;; TODO: Isn't it overkill to test returned result? Maybe checking just transformation is sufficient.
-;;;; TODO: Check correctness of data returned!
+;;;; TODO: Double check values!
 (deftest metric-with-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -569,7 +588,6 @@
                                                      :breakout [[:expression "cat+10"]]
                                                      :order-by [[:asc $category_id]]
                                                      :limit 5})))))
-        ;;;; TODO: Follo
         (testing "Expression in breakout with other fields"
           (is (= [[2 12 8] [3 13 2] [4 14 2] [5 15 7] [6 16 2]] ;; data ok
                  @(def x (mt/rows (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]}
@@ -577,6 +595,27 @@
                                                              :breakout [$category_id [:expression "cat+10"]]
                                                              :order-by [[:asc $category_id]]
                                                              :limit 5}))))))))))
+
+(comment
+
+  (mt/with-db (t2/select-one :model/Database :id 2)
+    (mt/with-everything-store
+      (t2.with-temp/with-temp
+        [:model/Metric
+         {metric-id :id}
+         {:name "venues, count"
+          :description "Metric doing count with no filtering."
+          :definition (mt/$ids venues {:source-table $$venues
+                                       :aggregation [[:count]]})}]
+        (def mm (t2/select-one :model/Metric :id metric-id))
+        (mt/run-mbql-query venues {:expressions {"cat+10" [:+ $category_id 10]
+                                                 "redundant expression" [:+ $category_id 111]}
+                                   :aggregation [[:metric metric-id]]
+                                   :breakout [[:expression "cat+10"]]
+                                   :order-by [[:asc $category_id]]
+                                   :limit 5}))))
+  mm
+  )
 
 ;;;; TODO: verify, but looks ok-ish
 (deftest expression-in-breakout-of-metric-query-test
@@ -601,8 +640,8 @@
                 [16 2]]
                (mt/rows @(def post (qp/process-query query)))))))))
 
-;;;;;; TODO this :::::::::::::::::::: exception!!!
-;;;; TODO: Still WIP, verify correctness, probably rewrite to just transformation checking, w/o execution!
+
+;;;; TODO: Just transform, no exec?
 (deftest recursively-defined-metric-WIP-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (t2.with-temp/with-temp
@@ -710,24 +749,7 @@
           (is (= nil 
                  (mt/rows @(def post (qp/process-query qqq))))))))))
 
-;;;; TODO: tests for broken cases!
-
-;;;; Expression stuff works!!! -- means I could take advantage of that. Will try to go down this road.
-(deftest duplicate-those-fields-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-    (testing ""
-      (let [query @(def qqq (mt/mbql-query venues
-                                           {:source-table $$venues
-                                            :fields [$price [:expression "First one"] [:expression "Second one"]]
-                                            :expressions {"First one"  $price
-                                                          "Second one" $price}
-                                            :order-by [[:desc $price]]
-                                            :limit 3}))]
-        (is (= [[4 4 4] [4 4 4] [4 4 4]]
-               (mt/rows @(def post (qp/process-query qqq)))))))))
-
-;; code the cases that are faulty
-
+;;;; TODAY: make this ok
 (deftest same-metric-as-only-metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "stuff"
@@ -740,22 +762,17 @@
           :definition (mt/$ids venues {:source-table $$venues
                                        :aggregation [[:count]]})}]
         (let [query @(def qqq (mt/mbql-query venues
-                                {:aggregation [#_[:aggregation-options [:sum $price] {:name "sum price"
-                                                                                    :display-name "sum price"}]
-                                               [:aggregation-options [:metric metric-id] {:name "First one"
+                                {:aggregation [[:aggregation-options [:metric metric-id] {:name "First one"
                                                                                           :display-name "First one"}]
-                                               #_[:aggregation-options [:metric metric-id] {:name "Another"
+                                               [:aggregation-options [:metric metric-id] {:name "Another"
                                                                                           :display-name "Another"}]]
                                  :breakout [$category_id]
                                  :order-by [[:desc [:aggregation 0]]]
                                  :limit 5}))]
-          (is (= nil
+          (is (= [[7 10 10] [50 10 10] [40 9 9] [2 8 8] [5 7 7]]
                  (mt/rows @(def post (qp/process-query qqq))))))))))
 
-(comment
-  
-  )
-
+;;;; This should be checking the transformation
 (deftest metric-with-aggregation-options-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "stuff"
@@ -776,3 +793,39 @@
               _ (def ppp (qp/preprocess query))]
           (is (= nil
                  (mt/rows (qp/process-query query)))))))))
+
+(comment
+  (-> (ns-publics 'metabase.query-processor.middleware.expand-macros-test) vals (->> (filter #(re-find #"test$" (str %)))) vec)
+
+  (require 'mb.hawk.core)
+  (mb.hawk.core/run-tests some-tests)
+
+  (def some-tests [#_#'metabase.query-processor.middleware.expand-macros-test/nested-segments-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/metric-with-aggregation-options-test
+                   #'metabase.query-processor.middleware.expand-macros-test/metric-with-segment-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/include-display-name-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/metric-with-multiple-aggregation-syntax-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/basic-expansion-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/named-metrics-test
+                   #'metabase.query-processor.middleware.expand-macros-test/metrics-joins-data-source-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/metric-test
+                   #'metabase.query-processor.middleware.expand-macros-test/multiple-metrics-wip-test
+                   #'metabase.query-processor.middleware.expand-macros-test/metrics-in-joined-card-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/aggregation-with-expression-using-one-metric-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/segments-in-share-clauses-test
+                   #'metabase.query-processor.middleware.expand-macros-test/simple-metric-test
+                   #'metabase.query-processor.middleware.expand-macros-test/duplicate-those-fields-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/segments-test
+                   #'metabase.query-processor.middleware.expand-macros-test/expression-in-breakout-of-metric-query-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/metric-with-nested-segments-test
+                   #'metabase.query-processor.middleware.expand-macros-test/metric-with-expression-test
+                   #'metabase.query-processor.middleware.expand-macros-test/metric-with-filter-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/dont-expand-ga-metrics-test
+                   #'metabase.query-processor.middleware.expand-macros-test/recursively-defined-metric-WIP-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/dont-expand-ga-segments-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/metric-with-no-filter-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/use-metric-filter-definition-test
+                   #_#'metabase.query-processor.middleware.expand-macros-test/expand-macros-in-nested-queries-test
+                   ;;;; TODO
+                   #_#'metabase.query-processor.middleware.expand-macros-test/same-metric-as-only-metric-test])
+  )
