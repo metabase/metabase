@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { useDashboardQuery } from "metabase/common/hooks";
@@ -183,10 +183,6 @@ function LinkedEntityPicker({
     id: targetId,
   });
   const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
-  const dashboardTabsOptions = dashboardTabs.map(tab => ({
-    label: tab.name,
-    value: String(tab.id),
-  }));
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDash
     ? clickBehavior.tabId ?? defaultDashboardTabId
@@ -201,6 +197,19 @@ function LinkedEntityPicker({
 
     updateSettings({ ...clickBehavior, tabId: Number(value) });
   };
+
+  useEffect(
+    function migrateUndefinedDashboardTabId() {
+      if (
+        isDash &&
+        typeof clickBehavior.tabId === "undefined" &&
+        typeof defaultDashboardTabId !== "undefined"
+      ) {
+        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+      }
+    },
+    [clickBehavior, defaultDashboardTabId, isDash, updateSettings],
+  );
 
   return (
     <div>
@@ -235,7 +244,10 @@ function LinkedEntityPicker({
 
       {isDash && dashboardTabs.length > 1 && (
         <DashboardTabSelect
-          data={dashboardTabsOptions}
+          data={dashboardTabs.map(tab => ({
+            label: tab.name,
+            value: String(tab.id),
+          }))}
           label={t`Select a dashboard tab`}
           value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
