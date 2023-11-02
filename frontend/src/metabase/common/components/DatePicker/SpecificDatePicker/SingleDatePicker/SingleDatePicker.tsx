@@ -54,10 +54,17 @@ export function SingleDatePicker({
           value={value}
           date={date}
           popoverProps={{ opened: false }}
+          aria-label={t`Date`}
           onChange={handleDateChange}
           onDateChange={setDate}
         />
-        {hasTime && <TimeInput value={value} onChange={handleTimeChange} />}
+        {hasTime && (
+          <TimeInput
+            value={value}
+            aria-label={t`Time`}
+            onChange={handleTimeChange}
+          />
+        )}
         <Stack align="center">
           <DatePicker
             value={value}

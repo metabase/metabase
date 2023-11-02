@@ -29,8 +29,12 @@ export function setOffsetInterval(
   value: DateOffsetIntervalValue,
   offsetValue: number,
 ): DateOffsetIntervalValue {
-  const sign = Math.sign(value.value);
-  return { ...value, offsetValue: Math.max(Math.abs(offsetValue), 1) * sign };
+  if (offsetValue === 0) {
+    return { ...value, offsetValue: 0 };
+  } else {
+    const sign = Math.sign(value.value);
+    return { ...value, offsetValue: Math.max(Math.abs(offsetValue), 0) * sign };
+  }
 }
 
 export function setOffsetUnit(

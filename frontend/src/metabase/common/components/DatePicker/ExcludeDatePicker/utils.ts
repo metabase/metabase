@@ -88,7 +88,6 @@ export function getExcludeOperatorValue(
   return {
     type: "exclude",
     operator,
-    unit: null,
     values: [],
   };
 }
