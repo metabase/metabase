@@ -112,8 +112,14 @@ describe("ExpressionWidget", () => {
       // enter in expression editor should not trigger "onChangeExpression" as popover is not valid with empty "name"
       expect(onChangeExpression).toHaveBeenCalledTimes(0);
 
-      // The name must not be empty and must not consist of spaces only.
-      userEvent.type(expressionNameInput, "       ");
+      // The name must not be empty
+      userEvent.type(expressionNameInput, "");
+      expect(doneButton).toBeDisabled();
+
+      // The name must not consist of spaces only.
+      userEvent.type(expressionNameInput, " ");
+      expect(doneButton).toBeDisabled();
+      userEvent.type(expressionNameInput, "\t\t");
       expect(doneButton).toBeDisabled();
 
       userEvent.clear(expressionNameInput);
