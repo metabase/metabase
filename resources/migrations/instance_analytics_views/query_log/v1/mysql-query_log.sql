@@ -4,7 +4,7 @@ create or replace view v_query_log as
 select
     id as entity_id,
     started_at,
-    cast(running_time as float) / 1000 as running_time_seconds,
+    cast(running_time as double) / 1000 as running_time_seconds,
     result_rows,
     native as is_native,
     context as query_source,
