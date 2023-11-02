@@ -70,6 +70,7 @@ export function BooleanFilterPicker({
         <Button
           c="text.1"
           variant="subtle"
+          aria-label={t`More options`}
           rightIcon={<Icon name="chevrondown" />}
           onClick={() => setIsExpanded(true)}
         >
