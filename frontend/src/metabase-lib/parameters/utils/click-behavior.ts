@@ -160,7 +160,7 @@ export function getTargetsForQuestion(question: Question): Target[] {
         : undefined;
       parameterSourceFilter = parameter =>
         variableFilterForParameter(parameter)(o);
-    } else if ("field" in o) {
+    } else {
       const field = o.field();
 
       if (field != null) {
