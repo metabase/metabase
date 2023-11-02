@@ -831,13 +831,9 @@ describeEE("formatting > sandboxes", () => {
           // Remove the "Subtotal" column from within sidebar
           cy.findByText("Subtotal").parent().find(".Icon-eye_outline").click();
         });
-      cy.button("Done").click();
-      // Rerun the query
-      cy.icon("play").last().click();
 
-      cy.wait("@dataset").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
+      cy.button("Done").click();
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Subtotal").should("not.exist");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

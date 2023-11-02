@@ -326,7 +326,7 @@
   [n unit]
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
-      (lib.core/describe-relative-datetime n unit)))
+    (lib.core/describe-relative-datetime n unit)))
 
 (defn ^:export aggregate
   "Adds an aggregation to query."
@@ -398,14 +398,14 @@
   [a-query stage-number an-expression-clause]
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
     (walk/postwalk
-      (fn [node]
-        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
-          (let [{:keys [operator options args]} node]
-            #js {:operator (name operator)
-                 :options (clj->js (select-keys options [:case-sensitive :include-current]))
-                 :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
-          node))
-      parts)))
+     (fn [node]
+       (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
+         (let [{:keys [operator options args]} node]
+           #js {:operator (name operator)
+                :options (clj->js (select-keys options [:case-sensitive :include-current]))
+                :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
+         node))
+     parts)))
 
 (defn ^:export is-column-metadata
   "Returns true if arg is a a ColumnMetadata"
@@ -505,6 +505,14 @@
         vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
     (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+
+(defn ^:export returned-columns
+  "Return a sequence of column metadatas for columns returned by the query."
+  [a-query stage-number]
+  (let [stage (lib.util/query-stage a-query stage-number)]
+    (->> (lib.metadata.calculation/returned-columns a-query stage-number stage)
+         (map #(assoc % :selected? true))
+         to-array)))
 
 (defn ^:export legacy-field-ref
   "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
