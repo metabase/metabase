@@ -13,12 +13,6 @@ export const args = {
   disabled: false,
   readOnly: false,
   withAsterisk: false,
-  min: undefined,
-  max: undefined,
-  step: undefined,
-  hideControls: true,
-  precision: undefined,
-  decimalSeparator: undefined,
 };
 
 export const sampleArgs = {
@@ -27,8 +21,6 @@ export const sampleArgs = {
   description: "Constant line added as a marker to the chart",
   placeholder: "0",
   error: "required",
-  min: 0,
-  max: 100,
 };
 
 export const argTypes = {
@@ -60,24 +52,6 @@ export const argTypes = {
   },
   withAsterisk: {
     control: { type: "boolean" },
-  },
-  min: {
-    control: { type: "number" },
-  },
-  max: {
-    control: { type: "number" },
-  },
-  step: {
-    control: { type: "number" },
-  },
-  hideControls: {
-    control: { type: "boolean" },
-  },
-  precision: {
-    control: { type: "number" },
-  },
-  decimalSeparator: {
-    control: { type: "text" },
   },
 };
 
@@ -228,68 +202,6 @@ ReadOnlyMd.args = {
   <Story name="Read only, md">{ReadOnlyMd}</Story>
 </Canvas>
 
-#### Min / max
-
-export const MinMaxMd = args => IconTemplate.bind({});
-MinMaxMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  min: sampleArgs.min,
-  max: sampleArgs.max,
-};
-
-<Canvas>
-  <Story name="Min / max, md">{MinMaxMd}</Story>
-</Canvas>
-
-#### Controls
-
-export const ControlsMd = IconTemplate.bind({});
-ControlsMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: `${sampleArgs.min} to ${sampleArgs.max}`,
-  min: sampleArgs.min,
-  max: sampleArgs.max,
-  hideControls: false,
-};
-
-<Canvas>
-  <Story name="Controls, md">{ControlsMd}</Story>
-</Canvas>
-
-#### Precision and decimal separator
-
-export const PrecisionMd = IconTemplate.bind({});
-PrecisionMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  precision: 2,
-  decimalSeparator: ".",
-};
-
-<Canvas>
-  <Story name="Precision and decimal separator, md">{PrecisionMd}</Story>
-</Canvas>
-
-#### Parser and formatter
-
-export const ParserFormatterMd = IconTemplate.bind({});
-VariantTemplate.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  parser: value => value.replace(/^\$/, ""),
-  formatter: value => (value != null ? `$${value}` : "$"),
-};
-
-<Canvas>
-  <Story name="Parser and formatter, md">{ParserFormatterMd}</Story>
-</Canvas>
-
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
@@ -384,52 +296,4 @@ ReadOnlyXs.args = {
 
 <Canvas>
   <Story name="Read only, xs">{ReadOnlyXs}</Story>
-</Canvas>
-
-#### Min / max
-
-export const MinMaxXs = args => VariantTemplate.bind({});
-MinMaxXs.args = {
-  ...MinMaxMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Min / max, xs">{MinMaxXs}</Story>
-</Canvas>
-
-#### Controls
-
-export const ControlsXs = VariantTemplate.bind({});
-ControlsXs.args = {
-  ...ControlsMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Controls, xs">{ControlsXs}</Story>
-</Canvas>
-
-#### Precision and decimal separator
-
-export const PrecisionXs = VariantTemplate.bind({});
-PrecisionXs.args = {
-  ...PrecisionMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Precision and decimal separator, xs">{PrecisionXs}</Story>
-</Canvas>
-
-#### Parser and formatter
-
-export const ParserFormatterXs = VariantTemplate.bind({});
-ParserFormatterXs.args = {
-  ...ParserFormatterMd.args,
-  size: "xs",
-};
-
-<Canvas>
-  <Story name="Parser and formatter, xs">{ParserFormatterXs}</Story>
 </Canvas>
