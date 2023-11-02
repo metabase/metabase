@@ -8,7 +8,7 @@ import {
 } from "metabase/lib/redux";
 
 import { createEntity, undo } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls/dashboards";
 import { color } from "metabase/lib/colors";
 
 import { addUndo } from "metabase/redux/undo";
