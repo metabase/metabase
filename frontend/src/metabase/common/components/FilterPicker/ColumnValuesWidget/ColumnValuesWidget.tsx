@@ -3,6 +3,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import * as Lib from "metabase-lib";
+import LegacyDimension from "metabase-lib/Dimension";
 
 interface ColumnValuesWidgetProps<T> {
   value: T[];
@@ -21,8 +22,14 @@ export function ColumnValuesWidget<T extends string | number>({
 
   const fields = useMemo(() => {
     const fieldId = Lib._fieldId(column);
-    const tableId = Lib._cardOrTableId(column);
-    const field = metadata.field(fieldId, tableId);
+    if (typeof fieldId === "number") {
+      const tableId = Lib._cardOrTableId(column);
+      const field = metadata.field(fieldId, tableId);
+      return field ? [field] : [];
+    }
+    const fieldRef = Lib.legacyFieldRef(column);
+    const dimension = LegacyDimension.parseMBQL(fieldRef, metadata);
+    const field = dimension?.field?.();
     return field ? [field] : [];
   }, [column, metadata]);
 
