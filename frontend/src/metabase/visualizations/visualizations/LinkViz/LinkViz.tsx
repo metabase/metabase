@@ -144,7 +144,11 @@ function LinkVizInner({
   if (isEditing && !isEditingParameter) {
     return (
       <EditLinkCardWrapper data-testid="custom-edit-text-link">
-        <Popover opened={inputIsFocused && !isUrlString(url)}>
+        <Popover
+          opened={inputIsFocused && !isUrlString(url)}
+          withinPortal={false}
+          zIndex={1}
+        >
           <Popover.Target>
             <Input
               fullWidth
