@@ -1,16 +1,19 @@
-import { useLayoutEffect, useState } from "react";
-import type { ChangeEvent, FocusEvent } from "react";
+import { forwardRef, useLayoutEffect, useState } from "react";
+import type { ChangeEvent, FocusEvent, Ref } from "react";
 import type { NumberInputProps } from "@mantine/core";
 import { TextInput } from "../TextInput";
 
-export function NumberInput({
-  value,
-  defaultValue = value,
-  onChange,
-  onFocus,
-  onBlur,
-  ...props
-}: NumberInputProps) {
+export const NumberInput = forwardRef(function NumberInput(
+  {
+    value,
+    defaultValue = value,
+    onChange,
+    onFocus,
+    onBlur,
+    ...props
+  }: NumberInputProps,
+  ref: Ref<HTMLInputElement>,
+) {
   const [inputValue, setInputValue] = useState(formatValue(defaultValue ?? ""));
   const [isFocused, setIsFocused] = useState(false);
 
@@ -41,13 +44,14 @@ export function NumberInput({
   return (
     <TextInput
       {...props}
+      ref={ref}
       value={inputValue}
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
     />
   );
-}
+});
 
 function parseValue(value: string) {
   const number = parseFloat(value);
