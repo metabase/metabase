@@ -29,6 +29,17 @@
                   :model_id model-id
                   {:order-by [[:id :desc]]})))
 
+(defn view
+  "Find the view from the ViewLog table for the given :model and model-id"
+  ([model]
+   (view model nil))
+
+  ([model model-id]
+   (t2/select-one [:model/ViewLog :user_id :model :model_id :metadata]
+                  :model    (u/lower-case-en (name model))
+                  :model_id model-id
+                  {:order-by [[:id :desc]]})))
+
 (deftest card-create-test
   (testing :card-create
     (mt/with-model-cleanup [:model/AuditLog]

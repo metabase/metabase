@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.events.audit-log-test :as audit-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [CardBookmark
@@ -3122,3 +3123,30 @@
                              "event"       "csv_upload_failed"}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))))))))
+
+(deftest card-read-event-test
+  (testing "Card reads(views) via the API are recorded in the audit log"
+    (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/ViewLog]
+      (t2.with-temp/with-temp [:model/Card {:keys [id] :as card} {:name "My Cool Card" :dataset false}]
+        (testing "GET /api/card/:id"
+          ;; 'view' a card via the API
+          (mt/user-http-request :crowberto :get 200 (format "card/%s" id))
+          ;; it should be recorded in the audit log
+          (is (partial= {:topic    :card-read
+                         :user_id  (mt/user->id :crowberto)
+                         :model    "Card"
+                         :model_id id
+                         :details  {:context       "card"
+                                    :model?        false
+                                    :has_access    true
+                                    :error_message nil}}
+                        (audit-log-test/event :card-read id)))
+          ;; it should also be recorded in the view log
+          (is (partial= {:user_id  (mt/user->id :crowberto)
+                         :model    "card"
+                         :model_id id
+                         :metadata {:context       "card"
+                                    :model?        false
+                                    :has_access    true
+                                    :error_message nil}}
+                        (audit-log-test/view :model/card id))))))))

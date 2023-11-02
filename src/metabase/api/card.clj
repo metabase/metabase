@@ -25,8 +25,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
-            ViewLog]]
+    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -118,7 +117,7 @@
 ;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.
 (defmethod cards-for-filter-option* :recent
   [_]
-  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%max.timestamp :max]]
+  (cards-with-ids (map :model_id (t2/select [:model/ViewLog :model_id [:%max.timestamp :max]]
                                    :model   "card"
                                    :user_id api/*current-user-id*
                                    {:group-by [:model_id]
@@ -130,7 +129,7 @@
 ;; being).
 (defmethod cards-for-filter-option* :popular
   [_]
-  (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%count.* :count]]
+  (cards-with-ids (map :model_id (t2/select [:model/ViewLog :model_id [:%count.* :count]]
                                    :model "card"
                                    {:group-by [:model_id]
                                     :order-by [[:count :desc]]}))))
