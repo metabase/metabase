@@ -11,7 +11,10 @@ async function setupUserVisibility() {
   await setup({
     hasEnterprisePlugins: true,
     tokenFeatures: createMockTokenFeatures({ email_restrict_recipients: true }),
-    settings: [createMockSettingDefinition({ key: "user-visibility" })],
+    settings: [
+      createMockSettingDefinition({ key: "user-visibility" }),
+      createMockSettingDefinition({ key: "email-configured?" }),
+    ],
     settingValues: createMockSettings({
       "user-visibility": "all",
       "email-configured?": true,

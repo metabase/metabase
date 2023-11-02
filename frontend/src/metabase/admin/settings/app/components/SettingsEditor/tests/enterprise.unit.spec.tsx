@@ -139,9 +139,11 @@ describe("SettingsEditor", () => {
       await setupEnterprise({
         settings: [
           createMockSettingDefinition({ key: "subscription-allowed-domains" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
         ],
         settingValues: createMockSettings({
           "subscription-allowed-domains": "somedomain.com",
+          "email-configured?": true,
         }),
         initialRoute: EMAIL_URL,
       });
@@ -155,8 +157,14 @@ describe("SettingsEditor", () => {
   describe("subscription user visibility", () => {
     it("should not be visible", async () => {
       await setupEnterprise({
-        settings: [createMockSettingDefinition({ key: "user-visibility" })],
-        settingValues: createMockSettings({ "user-visibility": "all" }),
+        settings: [
+          createMockSettingDefinition({ key: "user-visibility" }),
+          createMockSettingDefinition({ key: "email-configured?" }),
+        ],
+        settingValues: createMockSettings({
+          "user-visibility": "all",
+          "email-configured?": true,
+        }),
         initialRoute: EMAIL_URL,
       });
 

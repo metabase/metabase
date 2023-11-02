@@ -13,6 +13,7 @@ async function setupAllowedDomains() {
     tokenFeatures: createMockTokenFeatures({ email_allow_list: true }),
     settings: [
       createMockSettingDefinition({ key: "subscription-allowed-domains" }),
+      createMockSettingDefinition({ key: "email-configured?" }),
     ],
     settingValues: createMockSettings({
       "subscription-allowed-domains": "somedomain.com",
