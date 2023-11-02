@@ -18,6 +18,7 @@ import type { State } from "metabase-types/store";
 
 import type {
   CollectionPickerItem,
+  FilterItemsInPersonalCollection,
   PickerItem,
   PickerModel,
   PickerValue,
@@ -33,7 +34,7 @@ interface OwnProps<TId> {
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
-  showOnlyPersonalCollections?: boolean;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue<TId>) => void;
@@ -86,7 +87,7 @@ function ItemPicker<TId>({
   className,
   showSearch = true,
   showScroll = true,
-  showOnlyPersonalCollections = false,
+  filterPersonalCollections,
   style,
   onChange,
   getCollectionIcon,
@@ -105,7 +106,7 @@ function ItemPicker<TId>({
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
   const showItems = Boolean(
     searchString ||
-      !showOnlyPersonalCollections ||
+      filterPersonalCollections !== "only" ||
       isOpenCollectionInPersonalCollection,
   );
 
@@ -124,7 +125,7 @@ function ItemPicker<TId>({
     const collectionItems = list
       .filter(canWriteToCollectionOrChildren)
       .filter(
-        showOnlyPersonalCollections
+        filterPersonalCollections === "only"
           ? collection => collection.is_personal
           : _.identity,
       )
@@ -134,7 +135,7 @@ function ItemPicker<TId>({
       }));
 
     return collectionItems as CollectionPickerItem<TId>[];
-  }, [openCollection, models, showOnlyPersonalCollections]);
+  }, [openCollection, models, filterPersonalCollections]);
 
   const crumbs = useMemo(
     () =>
@@ -150,7 +151,7 @@ function ItemPicker<TId>({
 
     if (searchString) {
       query.q = searchString;
-      if (showOnlyPersonalCollections) {
+      if (filterPersonalCollections === "only") {
         query.filter_items_in_personal_collection = "only";
       }
     } else {
@@ -162,7 +163,7 @@ function ItemPicker<TId>({
     }
 
     return query;
-  }, [searchString, models, showOnlyPersonalCollections, openCollectionId]);
+  }, [searchString, models, filterPersonalCollections, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
     (item: PickerItem<TId>) => {
