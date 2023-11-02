@@ -82,7 +82,12 @@ describe("issue 23293", () => {
  * @param {("add"|"remove")} action
  */
 function modifyColumn(columnName, action) {
-  const icon = action === "add" ? "add" : "eye_outline";
-  const iconSelector = `.Icon-${icon}`;
-  cy.findAllByRole("listitem", { name: columnName }).find(iconSelector).click();
+  cy.findByRole("button", { name: "Add or remove columns" }).click();
+  if (action === "add") {
+    cy.findByLabelText(columnName).should("not.be.checked").click();
+  } else {
+    cy.findByLabelText(columnName).should("be.checked").click();
+  }
+
+  cy.findByRole("button", { name: "Done picking columns" }).click();
 }
