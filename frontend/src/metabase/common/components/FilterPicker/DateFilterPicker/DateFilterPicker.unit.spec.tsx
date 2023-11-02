@@ -141,4 +141,26 @@ describe("DateFilterPicker", () => {
       values: [new Date(2020, 1, 20)],
     });
   });
+
+  it("should add a relative date filter", () => {
+    const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
+      query: initialQuery,
+      column,
+      isNew: true,
+    });
+
+    userEvent.click(screen.getByText("Relative dates…"));
+    userEvent.clear(screen.getByLabelText("Interval"));
+    userEvent.type(screen.getByLabelText("Interval"), "20");
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+    expect(getNextRelativeFilterParts()).toMatchObject({
+      column: expect.anything(),
+      value: -20,
+      bucket: "day",
+      offsetValue: null,
+      offsetBucket: null,
+    });
+  });
 });
