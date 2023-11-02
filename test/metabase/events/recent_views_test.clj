@@ -16,7 +16,7 @@
 (deftest card-query-test
   (mt/with-temp [Card card {:creator_id (mt/user->id :rasta)}]
     (mt/with-test-user :rasta
-      (events/publish-event! :event/card-query {:card_id (u/id card) :cached false :ignore_cache true})
+      (events/publish-event! :event/card-read {:card_id (u/id card) :context "card" :has_access true})
       (is (= {:user_id  (mt/user->id :rasta)
               :model    "card"
               :model_id (:id card)}

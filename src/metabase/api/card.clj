@@ -209,7 +209,12 @@
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read <>)))))
+        ;; TODO api/read-check ensures we only ever get here if access is true
+        ;; if we want to record card view attempts (adding error message)
+        ;; this has to be reworked to publish an event even when a read check fails.
+        (events/publish-event! :event/card-read (assoc <>
+                                                       :has_access true
+                                                       :error_message nil))))))
 
 (defn- card-columns-from-names
   [card names]
