@@ -402,19 +402,19 @@
     (with-cards-in-readable-collection [card-1-id card-2-id]
       (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
         (revision/push-revision!
-         :entity      :model/Card
-         :id          card-1-id
-         :user-id     user-id
-         :is_creation true
-         :object      {:id card-1-id}))
+         {:entity       :model/Card
+          :id           card-1-id
+          :user-id      user-id
+          :is-creation? true
+          :object       {:id card-1-id}}))
 
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
         (revision/push-revision!
-         :entity      :model/Card
-         :id          card-2-id
-         :user-id     user-id
-         :is_creation true
-         :object      {:id card-2-id}))
+         {:entity       :model/Card
+          :id           card-2-id
+          :user-id      user-id
+          :is-creation? true
+          :object       {:id card-2-id}}))
       (let [results (m/index-by :id (mt/user-http-request :rasta :get 200 "card"))]
         (is (=? {:name           "Card 1"
                  :last-edit-info {:id         (mt/user->id :rasta)
@@ -808,7 +808,7 @@
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
-        (let [card        (card-with-name-and-query)]
+        (let [card (card-with-name-and-query)]
           (is (= 1234
                  (:cache_ttl (mt/user-http-request :rasta
                                                    :post
