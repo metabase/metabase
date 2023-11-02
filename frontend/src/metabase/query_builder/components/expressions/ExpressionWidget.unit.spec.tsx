@@ -116,10 +116,12 @@ describe("ExpressionWidget", () => {
       userEvent.type(expressionNameInput, "");
       expect(doneButton).toBeDisabled();
 
-      // The name must not consist of spaces only.
+      // The name must not consist of spaces or tabs only.
       userEvent.type(expressionNameInput, " ");
       expect(doneButton).toBeDisabled();
-      userEvent.type(expressionNameInput, "\t\t");
+      userEvent.type(expressionNameInput, "\t");
+      expect(doneButton).toBeDisabled();
+      userEvent.type(expressionNameInput, "  \t\t");
       expect(doneButton).toBeDisabled();
 
       userEvent.clear(expressionNameInput);
