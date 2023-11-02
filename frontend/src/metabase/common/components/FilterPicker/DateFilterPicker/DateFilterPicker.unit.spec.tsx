@@ -191,4 +191,25 @@ describe("DateFilterPicker", () => {
       offsetBucket: null,
     });
   });
+
+  it("should add an exclude date filter", () => {
+    const { getNextFilterColumnName, getNextExcludeFilterParts } = setup({
+      query: initialQuery,
+      column,
+      isNew: true,
+    });
+
+    userEvent.click(screen.getByText("Exclude…"));
+    userEvent.click(screen.getByText("Days of the week…"));
+    userEvent.click(screen.getByText("Monday"));
+    userEvent.click(screen.getByText("Add filter"));
+
+    expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+    expect(getNextExcludeFilterParts()).toMatchObject({
+      column: expect.anything(),
+      operator: "!=",
+      values: [1],
+      bucket: "day-of-week",
+    });
+  });
 });
