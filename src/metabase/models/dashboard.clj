@@ -216,11 +216,19 @@
 
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
-  (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
-      (assoc :cards (vec (for [dashboard-card (dashcards dashboard)]
-                           (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
-                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
-      (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) (tabs dashboard)))))
+  (let [dashcards (or (:dashcards dashboard)
+                      (dashcards dashboard))
+        dashcards (when (seq dashcards)
+                    (if (contains? (first dashcards) :series)
+                      dashcards
+                      (t2/hydrate dashcards :series)))
+        tabs  (or (:tabs dashboard)
+                  (tabs dashboard))]
+    (-> (apply dissoc dashboard excluded-columns-for-dashboard-revision)
+        (assoc :cards (vec (for [dashboard-card dashcards]
+                             (-> (apply dissoc dashboard-card excluded-columns-for-dashcard-revision)
+                                 (assoc :series (mapv :id (:series dashboard-card)))))))
+        (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) tabs)))))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
@@ -428,7 +436,7 @@
                                                                 :dataset_query
                                                                 result-metadata-for-query)))
                             (dissoc :id))))]
-      (events/publish-event! :event/card-create card)
+      (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
       (t2/hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- ensure-unique-collection-name

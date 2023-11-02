@@ -9,6 +9,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.config :as config]
    [metabase.email :as email]
+   [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -136,8 +137,10 @@
      ;; check that and fix it if needed
      (api/maybe-reconcile-collection-position! pulse-data)
      ;; ok, now create the Pulse
-     (api/check-500
-      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+     (let [pulse (api/check-500
+                  (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
+       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+       pulse))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
