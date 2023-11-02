@@ -16,13 +16,13 @@
   "Will remove or grant audit db (AppDB) permissions, if the instance analytics permissions changes."
   :feature :audit-app
   [group-id changes]
-    (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
-        (when change-id
-          (let [change-permissions! (case type
-                                      :read  perms/grant-permissions!
-                                      :none  perms/delete-related-permissions!
-                                      :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                             {:status-code 400})))
-                view-tables         (t2/select :model/Table :db_id (default-audit-db-id) :name [:in audit-db-view-names])]
-            (doseq [table view-tables]
-              (change-permissions! group-id (perms/table-query-path table)))))))
+  (let [[change-id type] (first (filter #(= (first %) (:id (default-audit-collection))) changes))]
+    (when change-id
+      (let [change-permissions! (case type
+                                  :read  perms/grant-permissions!
+                                  :none  perms/delete-related-permissions!
+                                  :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                         {:status-code 400})))
+            view-tables         (t2/select :model/Table :db_id (default-audit-db-id) :name [:in audit-db-view-names])]
+        (doseq [table view-tables]
+          (change-permissions! group-id (perms/table-query-path table)))))))
