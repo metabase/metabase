@@ -55,7 +55,7 @@ export type ClickBehaviorType =
 
 export type CustomDestinationClickBehaviorLinkType =
   | EntityCustomDestinationClickBehavior["linkType"]
-  | "url";
+  | ArbitraryCustomDestinationClickBehavior["linkType"];
 
 export interface CrossFilterClickBehavior {
   type: "crossfilter";
