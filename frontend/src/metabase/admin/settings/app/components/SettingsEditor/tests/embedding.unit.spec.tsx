@@ -19,21 +19,26 @@ const setupEmbedding = async (opts?: SetupOpts) => {
 };
 
 describe("SettingsEditor", () => {
-  it("should allow to configure the origin for interactive embedding", async () => {
+  it("should allow to configure the origin and SameSite cookie setting for interactive embedding", async () => {
     await setupEmbedding({
       settings: [
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
+        createMockSettingDefinition({ key: "session-cookie-samesite" }),
       ],
       settingValues: createMockSettings({
         "enable-embedding": true,
+        "session-cookie-samesite": "lax",
       }),
     });
 
     userEvent.click(screen.getByText("Embedding"));
     userEvent.click(screen.getByText("Interactive embedding"));
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+
     expect(screen.getByText("Authorized origins")).toBeInTheDocument();
+    expect(screen.getByText("SameSite cookie setting")).toBeInTheDocument();
+
     expect(
       screen.queryByText(/some of our paid plans/),
     ).not.toBeInTheDocument();
