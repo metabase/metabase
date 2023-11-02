@@ -105,8 +105,8 @@
 
    ### Preserving original order of query columns
 
-   [[infer-ordered-clauses-for-fields]] analyzes contents of `:aggregation` after [[swap-metric-clauses]] and adds
-   ::ordered-clauses-for-fields key to the transformed query. Value of this key is vector where index is order
+   [[infer-ordered-clause-refs-for-fields]] analyzes contents of `:aggregation` after [[swap-metric-clauses]] and adds
+   ::ordered-clause-refs-for-fields key to the transformed query. Value of this key is vector where index is order
    of columns from original query and value is reference to clause representing that column after transformation. Value
    has a form [clause-type index], eg. [:breakout 2].
 
@@ -134,7 +134,7 @@
    
    Metric one aggregation would become a breakout field during transformation. That would change the order of
    the result columns. Because of that [[maybe-warp-in-ordering-query]] is used. It wraps transformerd query
-   into ordering query and uses `::ordered-clauses-for-fields` to recreate original order of query columns.
+   into ordering query and uses `::ordered-clause-refs-for-fields` to recreate original order of query columns.
 
    # Naming of metrics columns
 
@@ -326,12 +326,12 @@
 
 ;;;; METRICS REVAMP
 
-;;;; TODO: correct the keys!!!
+;;;; TODO: which keys do we really need?
 (defn- remove-metrics-internals [query]
   (walk/postwalk
    (fn [form]
      (if (map? form)
-       (dissoc form ::metric-id ::metric-id->field ::ordered-clauses-for-fields
+       (dissoc form ::metric-id ::metric-id->field ::ordered-clause-refs-for-fields
                ::original-breakout-count ::original-display-name ::original-name ::metric-name)
        form))
    query))
@@ -407,17 +407,17 @@
             query))]
     (binding [*expansion-depth* (inc *expansion-depth*)]
       (-> (expand-metrics* metrics-query-expanded-this-level)
-          ;;;; `::ordered-clauses-for-fields` is removed because it is relevant only in top level call
+          ;;;; `::ordered-clause-refs-for-fields` is removed because it is relevant only in top level call
           ;;;;   ie. in expand-metrics.
           ;;;; TODO maybe remove, just noise...
-          (dissoc ::ordered-clauses-for-fields)))))
+          (dissoc ::ordered-clause-refs-for-fields)))))
 
 (defn- query->join-alias [query]
   (->> query :filter hash-hex-str (str "metric__")))
 
 (defn- clause->field
-  "Transform clauses from `query`'s :breakout or :aggregation into fields that can be used in joining query.
-   "
+  ;;;; clauses from breakout or aggregation
+  ;;;; respect field options in source clause
   [query [type :as clause] {base-type :base_type name :name :as _metadata}]
   (def xq [query clause _metadata])
   ;;;; it is heavily overloaded but looks working
@@ -639,7 +639,7 @@
         (m/assoc-some :expressions (not-empty (merge expressions name->field)))
         (m/assoc-some :breakout (not-empty (into (vec breakout) ordered-expression-references))))))
 
-(defn- ordered-clauses-for-fields
+(defn- ordered-clause-refs-for-fields
   "Something"
   [breakout-idx ag-idx [[_type :as ag] & ags] acc]
   (cond (nil? ag)
@@ -651,13 +651,13 @@
         :else
         (recur breakout-idx (inc ag-idx) ags (conj acc [:aggregation ag-idx]))))
 
-(defn- infer-ordered-clauses-for-fields
+(defn- infer-ordered-clause-refs-for-fields
   "Something"
   [{:keys [breakout] :as query}]
   (let [orig-breakout-count (count breakout)
         clauses-from-orig-breakout (mapv #(vector :breakout %) (range orig-breakout-count))]
-    (assoc query ::ordered-clauses-for-fields
-           (ordered-clauses-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
+    (assoc query ::ordered-clause-refs-for-fields
+           (ordered-clause-refs-for-fields orig-breakout-count 0 (:aggregation query) clauses-from-orig-breakout))))
 
 ;;;; TODO: docstring!
 (defn- clause-ref->order-by-element
@@ -669,12 +669,12 @@
 
 ;;;; TODO: Docstring!
 (defn- update-order-by-ag-refs
-  "Expects aggregations processed. And ::ordered-clauses-for-fields set."
-  [{::keys [ordered-clauses-for-fields] :as query}]
-  (assert (and (vector? ordered-clauses-for-fields)
-               (seq ordered-clauses-for-fields))
-          (trs "Expected not empty vector of `ordered-clauses-for-fields`."))
-  (let [original-ag-index->clause-ref (subvec ordered-clauses-for-fields (::original-breakout-count query))]
+  "Expects aggregations processed. And ::ordered-clause-refs-for-fields set."
+  [{::keys [ordered-clause-refs-for-fields] :as query}]
+  (assert (and (vector? ordered-clause-refs-for-fields)
+               (seq ordered-clause-refs-for-fields))
+          (trs "Expected not empty vector of `ordered-clause-refs-for-fields`."))
+  (let [original-ag-index->clause-ref (subvec ordered-clause-refs-for-fields (::original-breakout-count query))]
     (mbql.u/replace-in query [:order-by]
       [:aggregation idx]
       (clause-ref->order-by-element query (original-ag-index->clause-ref idx)))))
@@ -704,36 +704,171 @@
                                            (reduce join-metrics-query query))]
       (-> with-joined-metrics-queries
           (assoc ::original-breakout-count (count (:breakout query)))
-          (infer-ordered-clauses-for-fields)
+          (infer-ordered-clause-refs-for-fields)
           (swap-metric-clauses)
           ;;;; TODO: confirm it is safe to remove this guy!
           #_(dissoc ::metric-id->field)
           (update-order-by-ag-refs)))
     query))
 
+(defn- clause-ref->column-index
+  [{:keys [breakout]} [type ref]]
+  (case type
+    :aggregation (+ ref (count breakout))
+    :breakout ref))
+
+(defn- clause-ref->clause
+  ;; :aggregation or breakout
+  [query [type :as clause-ref]]
+  (assert (contains? #{:aggregation :breakout} type))
+  (get-in query clause-ref))
+
+(comment
+  rrr
+  (clause-ref->clause fds [:breakout 0])
+  (def fds {:limit 5,
+            :joins
+            [{:alias "metric__0",
+              :strategy :left-join,
+              :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__0"}]],
+              :source-query
+              {:source-table 9,
+               :breakout [[:field 85 nil] [:expression "Just nesting"]],
+               :joins
+               [{:alias "metric__0",
+                 :strategy :left-join,
+                 :condition [:= [:field 85 nil] [:field 85 {:join-alias "metric__0"}]],
+                 :source-query
+                 {:source-table 9,
+                  :breakout [[:field 85 nil]],
+                  :aggregation
+                  [[:aggregation-options
+                    [:count]
+                    {:metabase.query-processor.middleware.expand-macros/metric-id 483,
+                     :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+                     :name "venues, count",
+                     :display-name "venues, count"}]]},
+                 :source-metadata
+                 [{:semantic_type :type/FK,
+                   :table_id 9,
+                   :coercion_strategy nil,
+                   :name "CATEGORY_ID",
+                   :settings nil,
+                   :field_ref [:field 85 nil],
+                   :effective_type :type/Integer,
+                   :nfc_path nil,
+                   :parent_id nil,
+                   :id 85,
+                   :display_name "Category ID",
+                   :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+                   :base_type :type/Integer}
+                  {:name "venues, count",
+                   :display_name "venues, count",
+                   :base_type :type/Integer,
+                   :semantic_type :type/Quantity,
+                   :field_ref [:aggregation 0]}],
+                 :fields :all}],
+               :metabase.query-processor.middleware.expand-macros/metric-id->field
+               {483
+                [:field
+                 "venues, count"
+                 {:metabase.query-processor.middleware.expand-macros/metric-id 483,
+                  :metabase.query-processor.middleware.expand-macros/metric-name "venues, count",
+                  :name "venues, count",
+                  :display-name "venues, count",
+                  :base-type :type/Integer,
+                  :join-alias "metric__0",
+                  :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true}]},
+               :metabase.query-processor.middleware.expand-macros/original-breakout-count 1,
+               :expressions
+               {"Just nesting"
+                [:field
+                 "venues, count"
+                 {:metabase.query-processor.middleware.expand-macros/display-name "Just nesting",
+                  :base-type :type/Integer,
+                  :metabase.query-processor.middleware.expand-macros/metric-name "Just nesting",
+                  :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true,
+                  :name "venues, count",
+                  :join-alias "metric__0",
+                  :metabase.query-processor.middleware.expand-macros/metric-id 482,
+                  :metabase.query-processor.middleware.expand-macros/name "Just nesting",
+                  :display-name "venues, count"}]}},
+              :source-metadata
+              [{:semantic_type :type/FK,
+                :table_id 9,
+                :coercion_strategy nil,
+                :name "CATEGORY_ID",
+                :settings nil,
+                :field_ref [:field 85 nil],
+                :effective_type :type/Integer,
+                :nfc_path nil,
+                :parent_id nil,
+                :id 85,
+                :display_name "Category ID",
+                :fingerprint {:global {:distinct-count 28, :nil% 0.0}},
+                :base_type :type/Integer}
+               {:name "Just nesting",
+                :display_name "Just nesting",
+                :base_type :type/Integer,
+                :source_alias "metric__0",
+                :field_ref [:expression "Just nesting"]}],
+              :fields :all}],
+            :source-table 9,
+            :expressions
+            {"Just nesting"
+             [:field
+              "Just nesting"
+              {:metabase.query-processor.middleware.expand-macros/display-name "Just nesting",
+               :base-type :type/Integer,
+               :metabase.query-processor.middleware.expand-macros/metric-name "Just nesting",
+               :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true,
+               :name "venues, count",
+               :join-alias "metric__0",
+               :metabase.query-processor.middleware.expand-macros/metric-id 482,
+               :metabase.query-processor.middleware.expand-macros/name "Just nesting",
+               :display-name "venues, count"}]},
+            :metabase.query-processor.middleware.expand-macros/original-breakout-count 1,
+            :breakout [[:field 85 nil] [:expression "Just nesting"]],
+            :order-by [[:asc [:field 85 nil]]],
+            :metabase.query-processor.middleware.expand-macros/metric-id->field
+            {482
+             [:field
+              "Just nesting"
+              {:metabase.query-processor.middleware.expand-macros/display-name "Just nesting",
+               :base-type :type/Integer,
+               :metabase.query-processor.middleware.expand-macros/metric-name "Just nesting",
+               :metabase.query-processor.middleware.annotate/avoid-display-name-prefix? true,
+               :name "venues, count",
+               :join-alias "metric__0",
+               :metabase.query-processor.middleware.expand-macros/metric-id 482,
+               :metabase.query-processor.middleware.expand-macros/name "Just nesting",
+               :display-name "venues, count"}]}})
+               )
+
 (defn- clause-ref->field
-  "Transform clause reference of format [type index] to field usable in wrapping query."
-  [{:keys [breakout] :as query} metadatas [clause-type index :as clause-ref]]
-  (clause->field query (get-in query clause-ref) (metadatas (+ index (case clause-type
-                                                                       :aggregation (count breakout)
-                                                                       0)))))
+  "Transform clause reference from :ordered-clause-refs-for-fields of format [type index] to field usable in wrapping query."
+  [query metadatas clause-ref]
+  (let [column-index (clause-ref->column-index query clause-ref)
+        metadata (metadatas column-index)
+        clause (clause-ref->clause query clause-ref)]
+    (clause->field query clause metadata)))
 
 (defn- maybe-wrap-in-ordering-query
   ;;;; TODO: doc!
   "Wrap query that previously contained metrics aggregations and was transformed by [[expand-metrics*]] into ordering
    query. Order of fields can change [[expand-metrics*]]"
-  [{ordered-clauses-for-fields ::ordered-clauses-for-fields :as inner-query}]
-  (if (some? ordered-clauses-for-fields)
-    (let [inner-query* (dissoc inner-query ::ordered-clauses-for-fields)
+  [{ordered-clause-refs-for-fields ::ordered-clause-refs-for-fields :as inner-query}]
+  (if (some? ordered-clause-refs-for-fields)
+    (let [inner-query* (dissoc inner-query ::ordered-clause-refs-for-fields)
           metadatas (mbql-query->metadata inner-query*)]
-      {:fields (mapv (partial clause-ref->field inner-query* metadatas) ordered-clauses-for-fields)
+      {:fields (mapv (partial clause-ref->field inner-query* metadatas) ordered-clause-refs-for-fields)
        :source-query inner-query*
        :source-metadata metadatas})
     inner-query))
 
 ;;;; TODO: Add something like `remove-metric-internals`. That's necessary because if there are some metrics
 ;;;;       expanded in deeper levels of query either in joins or source query, no wrapping occurs and queries
-;;;;       are left with ::ordered-clauses-for-fields set.
+;;;;       are left with ::ordered-clause-refs-for-fields set.
 (mu/defn expand-metrics :- mbql.s/Query
   ;;;; TODO: Proper docstring!
   "Expand metric macros. Expects expanded segments. If query contained metrics and expansion occured, query is wrapped
