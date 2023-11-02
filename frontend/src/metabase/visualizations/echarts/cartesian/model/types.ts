@@ -9,6 +9,8 @@ export type LegacySeriesSettingsObjectKey = {
 };
 
 export type RegularSeriesModel = {
+  name: string;
+  color: string;
   dataKey: DataKey;
   vizSettingsKey: VizSettingsKey;
 
