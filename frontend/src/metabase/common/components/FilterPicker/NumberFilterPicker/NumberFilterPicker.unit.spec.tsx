@@ -93,8 +93,7 @@ function setup({
   );
 
   function getNextFilterParts() {
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-    const [filter] = lastCall;
+    const [filter] = onChange.mock.lastCall;
     return Lib.numberFilterParts(query, 0, filter);
   }
 
@@ -157,8 +156,11 @@ describe("NumberFilterPicker", () => {
           userEvent.click(screen.getByText("Add filter"));
 
           const filterParts = getNextFilterParts();
-          expect(filterParts?.operator).toBe(">");
-          expect(filterParts?.values).toEqual([value]);
+          expect(filterParts).toMatchObject({
+            operator: ">",
+            column: expect.anything(),
+            values: [value],
+          });
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
@@ -184,8 +186,11 @@ describe("NumberFilterPicker", () => {
           userEvent.click(addFilterButton);
 
           const filterParts = getNextFilterParts();
-          expect(filterParts?.operator).toBe("between");
-          expect(filterParts?.values).toEqual([leftValue, rightValue]);
+          expect(filterParts).toMatchObject({
+            operator: "between",
+            column: expect.anything(),
+            values: [leftValue, rightValue],
+          });
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
@@ -202,8 +207,11 @@ describe("NumberFilterPicker", () => {
         userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("=");
-        expect(filterParts?.values).toEqual([-5, -1, 0, 1, 5]);
+        expect(filterParts).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: [-5, -1, 0, 1, 5],
+        });
         expect(getNextFilterColumnName()).toBe("Total");
       });
     });
@@ -216,8 +224,11 @@ describe("NumberFilterPicker", () => {
         userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("is-null");
-        expect(filterParts?.values).toEqual([]);
+        expect(filterParts).toMatchObject({
+          operator: "is-null",
+          column: expect.anything(),
+          values: [],
+        });
         expect(getNextFilterColumnName()).toBe("Total");
       });
     });
@@ -273,8 +284,11 @@ describe("NumberFilterPicker", () => {
           userEvent.click(screen.getByText("Update filter"));
 
           const filterParts = getNextFilterParts();
-          expect(filterParts?.operator).toBe(">");
-          expect(filterParts?.values).toEqual([value]);
+          expect(filterParts).toMatchObject({
+            operator: ">",
+            column: expect.anything(),
+            values: [value],
+          });
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
@@ -325,8 +339,11 @@ describe("NumberFilterPicker", () => {
           userEvent.click(updateButton);
 
           const filterParts = getNextFilterParts();
-          expect(filterParts?.operator).toBe("between");
-          expect(filterParts?.values).toEqual([leftValue, rightValue]);
+          expect(filterParts).toMatchObject({
+            operator: "between",
+            column: expect.anything(),
+            values: [leftValue, rightValue],
+          });
           expect(getNextFilterColumnName()).toBe("Total");
         },
       );
@@ -345,8 +362,11 @@ describe("NumberFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("=");
-        expect(filterParts?.values).toEqual([-1, 0, 5, 11, 7]);
+        expect(filterParts).toMatchObject({
+          operator: "=",
+          column: expect.anything(),
+          values: [-1, 0, 5, 11, 7],
+        });
         expect(getNextFilterColumnName()).toBe("Total");
       });
     });
@@ -369,8 +389,11 @@ describe("NumberFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("is-null");
-        expect(filterParts?.values).toEqual([]);
+        expect(filterParts).toMatchObject({
+          operator: "is-null",
+          column: expect.anything(),
+          values: [],
+        });
         expect(getNextFilterColumnName()).toBe("Total");
       });
     });
@@ -399,8 +422,11 @@ describe("NumberFilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([11]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [11],
+      });
       expect(getNextFilterColumnName()).toBe("Total");
     });
 
