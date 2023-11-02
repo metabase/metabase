@@ -1609,15 +1609,15 @@
                                       :query
                                       {:source-table (mt/id :orders)
                                        :expressions  {"TestColumn" [:+ 1 1]}
-                                       :aggregation  [[:count]],
+                                       :aggregation  [[:count]]
                                        :breakout     [[:expression "TestColumn"]
                                                       [:field (mt/id :orders :created_at)
-                                                       {:base-type :type/DateTime :temporal-unit :month}]]}})
+                                                       {:temporal-unit :month}]]}})
               right                (t2/select-one :model/Table (mt/id :orders))
               cell-query           [:and
                                     [:= [:expression "TestColumn"] 2]
                                     [:= [:field (mt/id :orders :created_at)
-                                         {:base-type :type/DateTime :temporal-unit :month}]
+                                         {:temporal-unit :month}]
                                      "2019-02-01T00:00:00Z"]]
               dashboard            (magic/automagic-analysis left {:show         nil
                                                                    :query-filter nil
@@ -1664,3 +1664,36 @@
               (is (= 7 (:row_count (qp/process-query series-dataset-query))))
               (is (some? card-dataset-query))
               (is (= 7 (:row_count (qp/process-query card-dataset-query)))))))))))
+
+(deftest preserve-entity-element-test
+  (testing "Join preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [[{:strategy :left-join, :alias "Orders"}
+             {:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            [{:strategy :left-join, :alias "Products"}]
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:joins [{:strategy :left-join :alias "Orders"}]}}}}
+                            {:card {:dataset_query {:query {:joins []}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:joins [{:strategy :left-join :alias "Products"}]}}}
+               :joins)
+             :dashcards
+             (mapv (comp :joins :query :dataset_query :card))))))
+  (testing "Expression preservation scenarios: merge, empty expressions, no expressions, no card"
+    (is (= [{"Existing" [:- 1 1] "TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            {"TestColumn" [:+ 1 1]}
+            nil]
+           (->>
+             (#'magic/preserve-entity-element
+               {:dashcards [{:card {:dataset_query {:query {:expressions {"Existing" [:- 1 1]}}}}}
+                            {:card {:dataset_query {:query {:expressions {}}}}}
+                            {:card {:dataset_query {:query {}}}}
+                            {:viz_settings nil}]}
+               {:dataset_query {:query {:expressions {"TestColumn" [:+ 1 1]}}}}
+               :expressions)
+             :dashcards
+             (mapv (comp :expressions :query :dataset_query :card)))))))

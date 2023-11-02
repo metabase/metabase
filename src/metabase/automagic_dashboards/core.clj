@@ -786,7 +786,9 @@
     (letfn [(splice-element [dashcard]
               (cond-> dashcard
                 (get-in dashcard [:card :dataset_query :query])
-                (assoc-in [:card :dataset_query :query entity-element] element-value)))]
+                (update-in [:card :dataset_query :query entity-element]
+                           (fnil into (empty element-value))
+                           element-value)))]
       (update dashboard :dashcards (partial map splice-element)))
     dashboard))
 
