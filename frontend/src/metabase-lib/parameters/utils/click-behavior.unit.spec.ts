@@ -103,9 +103,9 @@ describe("metabase/lib/click-behavior", () => {
 
     it("should include user attribute values from extraData", () => {
       expect(
-        getDataFromClicked({ extraData: { userAttributes: ["foo", "bar"] } })
+        getDataFromClicked({ extraData: { userAttributes: { foo: "bar" } } })
           .userAttribute,
-      ).toEqual({ foo: { value: "foo" }, bar: { value: "bar" } });
+      ).toEqual({ foo: { value: "bar" } });
     });
 
     it("should pull out parameter values from extraData", () => {

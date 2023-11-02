@@ -58,7 +58,7 @@ export function getDataFromClicked({
   extraData?: {
     dashboard?: Dashboard;
     parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: UserAttribute[] | null;
+    userAttributes?: Record<UserAttribute, UserAttribute> | null;
   };
   dimensions?: DimensionType[];
   data?: (ClickObjectDataRow & {
@@ -114,7 +114,10 @@ export function getDataFromClicked({
   );
 
   const userAttribute = Object.fromEntries(
-    (userAttributes || []).map(value => [value, { value }]),
+    Object.entries(userAttributes || {}).map(([key, value]) => [
+      key,
+      { value },
+    ]),
   );
 
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
