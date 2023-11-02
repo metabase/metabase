@@ -36,7 +36,7 @@ function setup({
 
 describe("ExcludeDatePicker", () => {
   it("should allow to exclude days", () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ isNew: true });
 
     userEvent.click(screen.getByText("Days of the week…"));
     userEvent.click(screen.getByText("Monday"));
@@ -52,7 +52,7 @@ describe("ExcludeDatePicker", () => {
   });
 
   it("should allow to exclude months", () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ isNew: true });
 
     userEvent.click(screen.getByText("Months of the year…"));
     userEvent.click(screen.getByText("January"));
@@ -68,7 +68,7 @@ describe("ExcludeDatePicker", () => {
   });
 
   it("should allow to exclude quarters", () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ isNew: true });
 
     userEvent.click(screen.getByText("Quarters of the year…"));
     userEvent.click(screen.getByText("1st"));
@@ -84,7 +84,7 @@ describe("ExcludeDatePicker", () => {
   });
 
   it("should allow to exclude hours", () => {
-    const { onChange } = setup();
+    const { onChange } = setup({ isNew: true });
 
     userEvent.click(screen.getByText("Hours of the day…"));
     userEvent.click(screen.getByText("12 AM"));
