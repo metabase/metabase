@@ -3,7 +3,7 @@ drop view if exists v_tables;
 create or replace view v_tables as
 select
     id as entity_id,
-    concat('table_', id) as entity_qualified_id,
+    'table_' || id as entity_qualified_id,
     created_at,
     updated_at,
     name,
@@ -11,6 +11,6 @@ select
     description,
     active,
     db_id as database_id,
-    "schema",
+    schema,
     is_upload
 from metabase_table;

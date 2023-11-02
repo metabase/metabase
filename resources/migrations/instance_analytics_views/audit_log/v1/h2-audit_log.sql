@@ -19,11 +19,9 @@ select
        model_id as entity_id,
        case
            when model = 'Dataset' then concat('card_', cast(model_id as text))
-           when model = 'Card' then concat('card_', cast(model_id as text))
-           when model = 'Pulse' then concat('subscription_', cast(model_id as text))
            when model_id is null then null
            else concat(lower(model), '_', model_id)
-           end as entity_qualified_id,
+           end as entity_qualified_id, -- h2 doesn't support functional indexes
        details
 from audit_log
 where topic not in ('card-read', 'card-query', 'dashboard-read', 'dashboard-query')

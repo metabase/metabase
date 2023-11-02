@@ -8,7 +8,6 @@ select
     user_id,
     model as entity_type,
     model_id as entity_id,
-    concat(model, '_', model_id) as entity_qualified_id,
-    metadata as details
+    concat(model, '_', model_id) as entity_qualified_id
 from view_log
 )

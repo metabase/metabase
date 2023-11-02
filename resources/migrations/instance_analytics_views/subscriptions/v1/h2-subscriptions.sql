@@ -7,16 +7,16 @@ with agg_recipients as (
         listagg(core_user.email,',') as recipients
     from pulse_channel_recipient
         left join core_user on pulse_channel_recipient.user_id = core_user.id
-    group by 1
+    group by pulse_channel_id
 )
 select
     pulse.id as entity_id,
-    concat('subscription_', pulse.id) as entity_qualified_id,
+    'pulse_' || pulse.id as entity_qualified_id,
     pulse.created_at,
     pulse.updated_at,
     creator_id,
     archived,
-    concat('dashboard_' || dashboard_id) as dashboard_qualified_id,
+    'dashboard_' || dashboard_id as dashboard_qualified_id,
     pulse_channel.schedule_type,
     pulse_channel.schedule_day,
     pulse_channel.schedule_hour,

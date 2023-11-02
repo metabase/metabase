@@ -3,7 +3,7 @@ drop view if exists v_fields;
 create or replace view v_fields as
 select
     id as entity_id,
-    concat('field_' || id) as entity_qualified_id,
+    'field_' || id as entity_qualified_id,
     created_at,
     updated_at,
     name,

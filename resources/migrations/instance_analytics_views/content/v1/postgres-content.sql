@@ -3,7 +3,7 @@ drop view if exists v_content;
 create or replace view v_content as
 select
     action.id as entity_id,
-    concat('action_', id) as entity_qualified_id,
+    'action_' || action.id as entity_qualified_id,
     'action' as entity_type,
     created_at,
     updated_at,
@@ -26,7 +26,7 @@ select
 union
 select
     collection.id as entity_id,
-    concat('collection_', id) as entity_qualified_id,
+    'collection_' || collection.id as entity_qualified_id,
     'collection' as entity_type,
     created_at,
     null as updated_at,
@@ -49,7 +49,7 @@ select
 union
 select
     report_card.id as entity_id,
-    concat('card_', id) as entity_qualified_id,
+    'card_' || report_card.id as entity_qualified_id,
     case when dataset then 'model' else 'question' end as entity_type,
     created_at,
     updated_at,
@@ -65,14 +65,14 @@ select
     null as collection_is_official,
     null as collection_is_personal,
     display as question_viz_type,
-    concat('database_', database_id) as question_database_id,
+   'database_' || database_id as question_database_id,
     case when query_type='native' then true else false end as question_is_native,
     null as event_timestamp
     from report_card
 union
 select
     report_dashboard.id as entity_id,
-    concat('dashboard_', id) as entity_qualified_id,
+    'dashboard_' || report_dashboard.id as entity_qualified_id,
     'dashboard' as entity_type,
     created_at,
     updated_at,
@@ -95,7 +95,7 @@ select
 union
 select
     event.id as entity_id,
-    concat('event_', event.id) as entity_qualified_id,
+    'event_' || event.id as entity_qualified_id,
     'event' as entity_type,
     event.created_at,
     event.updated_at,

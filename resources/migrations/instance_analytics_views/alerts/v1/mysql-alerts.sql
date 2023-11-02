@@ -7,11 +7,11 @@ with agg_recipients as (
         group_concat(core_user.email) as recipients
     from pulse_channel_recipient
         left join core_user on pulse_channel_recipient.user_id = core_user.id
-    group by 1
+    group by pulse_channel_id
 )
 select
     pulse.id as entity_id,
-    concat('alerts_', pulse.id) as entity_qualified_id,
+    concat('pulse_', pulse.id) as entity_qualified_id,
     pulse.created_at,
     pulse.updated_at,
     creator_id,
@@ -30,4 +30,3 @@ select
         left join pulse_channel on pulse.id = pulse_channel.pulse_id
         left join agg_recipients on pulse_channel.id = agg_recipients.pulse_channel_id
     where alert_condition is not null;
-
