@@ -157,36 +157,40 @@
        :day-of-year
        :week-of-year)  (u.date/extract dt unit))))
 
-(defn- humanize-filter-value-op
-  "Create a humanized comparison string for an item, where the comparison string may have two values based on the
-  item type (temporal or non-temporal). For example 'today is after yesterday' vs. '5 is greater than 4'."
-  ([root [_ field-reference value] temporal-str nontemporal-str]
-   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
-     (if (isa? (or effective_type base_type) :type/Temporal)
-       (tru "{0} {1} {2}" item-name temporal-str (humanize-datetime value unit))
-       (tru "{0} {1} {2}" item-name nontemporal-str value))))
-  ([root field-ref compa-str]
-   (humanize-filter-value-op root field-ref compa-str compa-str)))
-
 (defmethod humanize-filter-value :=
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "is"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is {1}" item-name value))))
 
 (defmethod humanize-filter-value :>=
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "is not before" "is at least"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is not before {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is at least {1}" item-name value))))
 
 (defmethod humanize-filter-value :>
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "is after" "is greater than"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is after {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is greater than {1}" item-name value))))
 
 (defmethod humanize-filter-value :<=
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "is not after" "is no more than"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is not after {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is no more than {1}" item-name value))))
 
 (defmethod humanize-filter-value :<
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "is before" "is less than"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} is before {1}" item-name (humanize-datetime value unit))
+      (tru "{0} is less than {1}" item-name value))))
 
 (defmethod humanize-filter-value :between
   [root [_ field-reference min-value max-value]]
@@ -205,8 +209,11 @@
        join-enumeration))
 
 (defmethod humanize-filter-value :default
-  [root field-ref]
-  (humanize-filter-value-op root field-ref "relates to"))
+  [root [_ field-reference value]]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (if (isa? (or effective_type base_type) :type/Temporal)
+      (tru "{0} relates to {1}" item-name (humanize-datetime value unit))
+      (tru "{0} relates to {1}" item-name value))))
 
 (defn cell-title
   "Return a cell title given a root object and a cell query."
