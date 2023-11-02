@@ -191,6 +191,8 @@ function LinkedEntityPicker({
   const dashboardTabId = isDash
     ? clickBehavior.tabId ?? defaultDashboardTabId
     : undefined;
+  const dashboardTabIdValue =
+    typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
 
   const handleDashboardTabChange = (value: string) => {
     if (!isDash) {
@@ -235,7 +237,7 @@ function LinkedEntityPicker({
         <DashboardTabSelect
           data={dashboardTabsOptions}
           label={t`Select a dashboard tab`}
-          value={String(dashboardTabId)}
+          value={dashboardTabIdValue}
           onChange={handleDashboardTabChange}
         />
       )}
