@@ -471,7 +471,7 @@ describe("scenarios > filters > filter sources", () => {
       assertQueryBuilderRowCount(115);
     });
 
-    it.skip("column from a nested breakout", () => {
+    it("column from a nested breakout", () => {
       cy.createQuestion(structuredQuestion).then(({ body: card }) => {
         visitQuestionAdhoc(nestedQuestionWithAggregations(card), {
           mode: "notebook",
@@ -480,10 +480,10 @@ describe("scenarios > filters > filter sources", () => {
       addNewFilter();
       popover().within(() => {
         cy.findByText("Product ID").click();
-        cy.findByPlaceholderText("Enter a number").type("10");
+        cy.findByPlaceholderText("Enter an ID").type("10");
         cy.button("Add filter").click();
       });
-      assertFilterName("Product ID is equal to 10", { stage: 1 });
+      assertFilterName("Product ID is 10", { stage: 1 });
       visualize();
       assertQueryBuilderRowCount(1);
     });
