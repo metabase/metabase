@@ -98,17 +98,3 @@
      (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
                     \newline
                     (u/pprint-to-str root))))))
-
-(defn field-reference->field
-  "Turn a field reference into a field."
-  [root field-reference]
-  (let [normalized-field-reference (mbql.normalize/normalize field-reference)
-        temporal-unit              (mbql.u/match-one normalized-field-reference
-                                     [:field _ (opts :guard :temporal-unit)]
-                                     (:temporal-unit opts))]
-    (cond-> (->> normalized-field-reference
-                 collect-field-references
-                 first
-                 (->field root))
-      temporal-unit
-      (assoc :unit temporal-unit))))

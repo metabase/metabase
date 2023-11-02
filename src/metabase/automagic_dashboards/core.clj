@@ -779,14 +779,14 @@
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
 
-(defn- preserve-joins
-  "Hack to shove back in joins when they get automagically stripped out by the question decomposition into metrics"
-  [entity dashboard]
-  (if-let [join-statement (get-in entity [:dataset_query :query :joins])]
+(defn- preserve-entity-element
+  "Ensure that elements of an original dataset query are preserved in dashcard queries."
+  [dashboard entity entity-element]
+  (if-let [element-value (get-in entity [:dataset_query :query entity-element])]
     (letfn [(splice-joins [dashcard]
               (cond-> dashcard
                 (get-in dashcard [:card :dataset_query :query])
-                (assoc-in [:card :dataset_query :query :joins] join-statement)))]
+                (assoc-in [:card :dataset_query :query entity-element] element-value)))]
       (update dashboard :dashcards (partial map splice-joins)))
     dashboard))
 
@@ -814,7 +814,9 @@
                                     (let [title (tru "A closer look at {0}" (names/cell-title root cell-query))]
                                       {:transient_name title
                                        :name           title})))))]
-    (preserve-joins (:entity root) transient-dash)))
+    (-> transient-dash
+        (preserve-entity-element (:entity root) :joins)
+        (preserve-entity-element (:entity root) :expressions))))
 
 (defmethod automagic-analysis Card
   [card {:keys [cell-query] :as opts}]
