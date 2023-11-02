@@ -187,6 +187,9 @@ function LinkedEntityPicker({
   const dashboardTabId = isDashboard
     ? clickBehavior.tabId ?? defaultDashboardTabId
     : undefined;
+  const dashboardTabExists = dashboardTabs.some(
+    tab => tab.id === dashboardTabId,
+  );
   const dashboardTabIdValue =
     typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
 
@@ -209,6 +212,25 @@ function LinkedEntityPicker({
       }
     },
     [clickBehavior, defaultDashboardTabId, isDashboard, updateSettings],
+  );
+
+  useEffect(
+    function migrateDeletedTab() {
+      if (
+        isDashboard &&
+        !dashboardTabExists &&
+        typeof defaultDashboardTabId !== "undefined"
+      ) {
+        updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
+      }
+    },
+    [
+      clickBehavior,
+      dashboardTabExists,
+      defaultDashboardTabId,
+      isDashboard,
+      updateSettings,
+    ],
   );
 
   return (
