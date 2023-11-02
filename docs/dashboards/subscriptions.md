@@ -49,7 +49,7 @@ You can specify how often Metabase sends a Slack message (hourly, daily, weekly,
 
 ### Sending subscriptions to private channels
 
-See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-channels).
+See [Sending alerts and subscriptions to private Slack channels](../configuring-metabase/slack.md#sending-alerts-and-subscriptions-to-private-slack-channels).
 
 ## Adding multiple subscriptions
 

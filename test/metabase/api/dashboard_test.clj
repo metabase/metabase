@@ -2054,6 +2054,7 @@
                                                                                     :tabs  []})))
           (is (= 1
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+
     (testing "prune"
       (mt/with-temp [Dashboard     {dashboard-id :id} {}
                      Card          {card-id :id}      {}
