@@ -212,4 +212,32 @@ describe("DateFilterPicker", () => {
       bucket: "day-of-week",
     });
   });
+
+  it("should update an exclude date filter", () => {
+    const clause = Lib.excludeDateFilterClause(initialQuery, STAGE_INDEX, {
+      column,
+      operator: "!=",
+      values: [1],
+      bucket: "day-of-week",
+    });
+    const { query, filter } = createFilteredQuery(initialQuery, clause);
+    const { getNextFilterColumnName, getNextExcludeFilterParts } = setup({
+      query,
+      column,
+      filter,
+    });
+
+    userEvent.click(screen.getByText("Monday"));
+    userEvent.click(screen.getByText("Wednesday"));
+    userEvent.click(screen.getByText("Friday"));
+    userEvent.click(screen.getByText("Update filter"));
+
+    expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+    expect(getNextExcludeFilterParts()).toMatchObject({
+      column: expect.anything(),
+      operator: "!=",
+      values: [3, 5],
+      bucket: "day-of-week",
+    });
+  });
 });
