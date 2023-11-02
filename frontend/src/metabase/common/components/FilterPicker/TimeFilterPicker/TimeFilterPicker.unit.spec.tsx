@@ -94,8 +94,7 @@ function setup({
   );
 
   function getNextFilterParts() {
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-    const [filter] = lastCall;
+    const [filter] = onChange.mock.lastCall;
     return Lib.timeFilterParts(query, 0, filter);
   }
 
@@ -145,17 +144,16 @@ describe("TimeFilterPicker", () => {
     });
 
     it("should apply a default filter", () => {
-      const { query, column, getNextFilterParts, getNextFilterColumnName } =
-        setup();
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
 
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      const columnInfo = Lib.displayInfo(query, 0, column);
-      expect(filterParts?.operator).toBe("<");
-      expect(columnInfo.displayName).toBe("Time");
-      expect(columnInfo.table?.displayName).toBe("Orders");
-      expect(filterParts?.values).toEqual([getDefaultValue()]);
+      expect(filterParts).toMatchObject({
+        operator: "<",
+        column: expect.anything(),
+        values: [getDefaultValue()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -167,8 +165,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:15", "HH:mm").toDate()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -183,11 +184,14 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("between");
-      expect(filterParts?.values).toEqual([
-        dayjs("11:15", "HH:mm").toDate(),
-        dayjs("12:30", "HH:mm").toDate(),
-      ]);
+      expect(filterParts).toMatchObject({
+        operator: "between",
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -198,8 +202,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe("is-null");
-      expect(filterParts?.values).toEqual([]);
+      expect(filterParts).toMatchObject({
+        operator: "is-null",
+        column: expect.anything(),
+        values: [],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -210,7 +217,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Add filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.values).toEqual([dayjs("03:59", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: "<",
+        column: expect.anything(),
+        values: [dayjs("03:59", "HH:mm").toDate()],
+      });
     });
 
     it("should go back", () => {
@@ -246,8 +257,11 @@ describe("TimeFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe(">");
-        expect(filterParts?.values).toEqual([dayjs("20:45", "HH:mm").toDate()]);
+        expect(filterParts).toMatchObject({
+          operator: ">",
+          column: expect.anything(),
+          values: [dayjs("20:45", "HH:mm").toDate()],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
@@ -286,21 +300,27 @@ describe("TimeFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         let filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("between");
-        expect(filterParts?.values).toEqual([
-          dayjs("08:00", "HH:mm").toDate(),
-          dayjs("13:00", "HH:mm").toDate(),
-        ]);
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [
+            dayjs("08:00", "HH:mm").toDate(),
+            dayjs("13:00", "HH:mm").toDate(),
+          ],
+        });
 
         userEvent.type(screen.getByDisplayValue("13:00"), "17:31");
         userEvent.click(screen.getByText("Update filter"));
 
         filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("between");
-        expect(filterParts?.values).toEqual([
-          dayjs("08:00", "HH:mm").toDate(),
-          dayjs("17:31", "HH:mm").toDate(),
-        ]);
+        expect(filterParts).toMatchObject({
+          operator: "between",
+          column: expect.anything(),
+          values: [
+            dayjs("08:00", "HH:mm").toDate(),
+            dayjs("17:31", "HH:mm").toDate(),
+          ],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
@@ -328,8 +348,11 @@ describe("TimeFilterPicker", () => {
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
-        expect(filterParts?.operator).toBe("is-null");
-        expect(filterParts?.values).toEqual([]);
+        expect(filterParts).toMatchObject({
+          operator: "is-null",
+          column: expect.anything(),
+          values: [],
+        });
         expect(getNextFilterColumnName()).toBe("Time");
       });
     });
@@ -359,8 +382,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.operator).toBe(">");
-      expect(filterParts?.values).toEqual([dayjs("11:15", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:15", "HH:mm").toDate()],
+      });
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
@@ -415,7 +441,11 @@ describe("TimeFilterPicker", () => {
       userEvent.click(screen.getByText("Update filter"));
 
       const filterParts = getNextFilterParts();
-      expect(filterParts?.values).toEqual([dayjs("11:00", "HH:mm").toDate()]);
+      expect(filterParts).toMatchObject({
+        operator: ">",
+        column: expect.anything(),
+        values: [dayjs("11:00", "HH:mm").toDate()],
+      });
     });
 
     it("should go back", () => {
