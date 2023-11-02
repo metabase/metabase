@@ -96,17 +96,17 @@ function getTargetClickMappingsHeading(entity: Question | Dashboard) {
 }
 
 function TargetClickMappings({
-  isDash,
+  isDashboard,
   clickBehavior,
   dashcard,
   updateSettings,
 }: {
-  isDash: boolean;
+  isDashboard: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
   dashcard: DashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
-  const Entity = isDash ? Dashboards : Questions;
+  const Entity = isDashboard ? Dashboards : Questions;
   return (
     <Entity.Loader id={clickBehavior.targetId}>
       {({ object }: { object: Question | Dashboard }) => (
@@ -115,7 +115,7 @@ function TargetClickMappings({
           <ClickMappings
             object={object}
             dashcard={dashcard}
-            isDash={isDash}
+            isDashboard={isDashboard}
             clickBehavior={clickBehavior}
             updateSettings={updateSettings}
           />
@@ -135,7 +135,7 @@ function LinkedEntityPicker({
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { linkType, targetId } = clickBehavior;
-  const isDash = linkType === "dashboard";
+  const isDashboard = linkType === "dashboard";
   const hasSelectedTarget = clickBehavior.targetId != null;
   const { PickerComponent, getModalTitle } = LINK_TARGETS[linkType];
 
@@ -179,19 +179,19 @@ function LinkedEntityPicker({
   }, [clickBehavior, updateSettings]);
 
   const { data: dashboard } = useDashboardQuery({
-    enabled: isDash,
+    enabled: isDashboard,
     id: targetId,
   });
   const dashboardTabs = dashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
-  const dashboardTabId = isDash
+  const dashboardTabId = isDashboard
     ? clickBehavior.tabId ?? defaultDashboardTabId
     : undefined;
   const dashboardTabIdValue =
     typeof dashboardTabId === "undefined" ? undefined : String(dashboardTabId);
 
   const handleDashboardTabChange = (value: string) => {
-    if (!isDash) {
+    if (!isDashboard) {
       throw new Error("This should never happen");
     }
 
@@ -201,14 +201,14 @@ function LinkedEntityPicker({
   useEffect(
     function migrateUndefinedDashboardTabId() {
       if (
-        isDash &&
+        isDashboard &&
         typeof clickBehavior.tabId === "undefined" &&
         typeof defaultDashboardTabId !== "undefined"
       ) {
         updateSettings({ ...clickBehavior, tabId: defaultDashboardTabId });
       }
     },
-    [clickBehavior, defaultDashboardTabId, isDash, updateSettings],
+    [clickBehavior, defaultDashboardTabId, isDashboard, updateSettings],
   );
 
   return (
@@ -242,7 +242,7 @@ function LinkedEntityPicker({
         </ModalWithTrigger>
       </div>
 
-      {isDash && dashboardTabs.length > 1 && (
+      {isDashboard && dashboardTabs.length > 1 && (
         <DashboardTabSelect
           data={dashboardTabs.map(tab => ({
             label: tab.name,
@@ -256,7 +256,7 @@ function LinkedEntityPicker({
 
       {hasSelectedTarget && (
         <TargetClickMappings
-          isDash={isDash}
+          isDashboard={isDashboard}
           clickBehavior={clickBehavior}
           dashcard={dashcard}
           updateSettings={updateSettings}
