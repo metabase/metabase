@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.db.util :as mdb.u]
    [metabase.models.action :as action]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -89,16 +88,23 @@
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
-(mi/define-simple-hydration-method series
+(mi/define-batched-hydration-method series
   :series
   "Return the `Cards` associated as additional series on this DashboardCard."
-  [{:keys [id]}]
-  (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
-             (merge
-               (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-               {:order-by [[(mdb.u/qualify DashboardCardSeries :position) :asc]]
-                :where    [:= (mdb.u/qualify DashboardCardSeries :dashboardcard_id) id]})))
-
+  [dashcards]
+  (let [dashcard-ids        (map :id dashcards)
+        dashcard-id->series (when (seq dashcard-ids)
+                              (as-> (t2/select
+                                     [:model/Card :id :name :description :display :dataset_query
+                                      :visualization_settings :collection_id :series.dashboardcard_id]
+                                     {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
+                                      :where     [:in :series.dashboardcard_id dashcard-ids]
+                                      :order-by  [[:series.position :asc]]}) series
+                               (group-by :dashboardcard_id series)
+                               (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+    (map (fn [dashcard]
+           (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
+         dashcards)))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
