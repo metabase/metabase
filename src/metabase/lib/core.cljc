@@ -164,7 +164,7 @@
  [lib.field
   add-field
   field-id
-  card-or-table-id
+  legacy-card-or-table-id
   fieldable-columns
   fields
   find-visible-column-for-legacy-ref

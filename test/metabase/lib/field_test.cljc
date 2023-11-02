@@ -1466,31 +1466,31 @@
                    :selected? true}
                   (get-state (mark-selected joined)))))))))
 
-(deftest ^:parallel card-or-table-id-test
+(deftest ^:parallel legacycard-or-table-id-test
   (testing "card query"
     (let [card (:venues lib.tu/mock-cards)
           query (lib/query lib.tu/metadata-provider-with-mock-cards card)]
       (testing "simple"
-        (is (= [:card (:id card)]
-               (lib/card-or-table-id (first (lib/returned-columns query))))))
+        (is (= (str "card__" (:id card))
+               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
       (testing "two stage"
-        (is (= [:card (:id card)]
-               (lib/card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
+        (is (= (str "card__" (:id card))
+               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
       (testing "breakout"
-        (is (= [:card (:id card)]
-               (lib/card-or-table-id (first (lib/returned-columns (-> query
-                                                                      (lib/breakout (first (lib/returned-columns query)))
-                                                                      lib/append-stage)))))))))
+        (is (= (str "card__" (:id card))
+               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
+                                                                             (lib/breakout (first (lib/returned-columns query)))
+                                                                             lib/append-stage)))))))))
   (testing "table query"
     (let [query lib.tu/venues-query]
       (testing "simple"
-        (is (= [:table (meta/id :venues)]
-               (lib/card-or-table-id (first (lib/returned-columns query))))))
+        (is (= (meta/id :venues)
+               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
       (testing "two stage"
-        (is (= [:table (meta/id :venues)]
-             (lib/card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
+        (is (= (meta/id :venues)
+               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
       (testing "breakout"
-        (is (= [:table (meta/id :venues)]
-               (lib/card-or-table-id (first (lib/returned-columns (-> query
-                                                                      (lib/breakout (first (lib/returned-columns query)))
-                                                                      lib/append-stage))))))))))
+        (is (= (meta/id :venues)
+               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
+                                                                             (lib/breakout (first (lib/returned-columns query)))
+                                                                             lib/append-stage))))))))))
